@@ -1,3 +1,7 @@
 <Solution>
+  <Project Path="../ADSUS_BE.BLL/ADSUS_BE.BLL.csproj" Id="02c95aa4-a289-41cb-af3e-d1bc6d09ff99" />
+  <Project Path="../ADSUS_BE.DAL/ADSUS_BE.DAL.csproj" Id="69a5cf60-965e-4ce6-87de-761bab324987" />
+  <Project Path="../ADSUS_BE.IntegrationTests/ADSUS_BE.IntegrationTests.csproj" Id="257b5d56-c77b-403d-bbb5-626623012b40" />
+  <Project Path="../ADSUS_BE.UnitTests/ADSUS_BE.UnitTests.csproj" Id="06f1a711-ea5b-49bd-898d-bdf25b182ffd" />
   <Project Path="ADSUS_BE.csproj" />
 </Solution>

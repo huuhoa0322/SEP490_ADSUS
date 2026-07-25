@@ -1,0 +1,67 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="AIDiagnosis\DTOs\" />
+    <Folder Include="AIDiagnosis\Interfaces\" />
+    <Folder Include="AIDiagnosis\Validators\" />
+    <Folder Include="AIDiagnosis\Services\" />
+    <Folder Include="AIModelManagement\DTOs\" />
+    <Folder Include="AIModelManagement\Interfaces\" />
+    <Folder Include="AIModelManagement\Services\" />
+    <Folder Include="AIModelManagement\Validators\" />
+    <Folder Include="AppointmentScheduling\DTOs\" />
+    <Folder Include="AppointmentScheduling\Interfaces\" />
+    <Folder Include="AppointmentScheduling\Services\" />
+    <Folder Include="AppointmentScheduling\Validators\" />
+    <Folder Include="Auth\DTOs\" />
+    <Folder Include="Auth\Interfaces\" />
+    <Folder Include="Auth\Services\" />
+    <Folder Include="Auth\Validators\" />
+    <Folder Include="DashboardReporting\DTOs\" />
+    <Folder Include="DashboardReporting\Interfaces\" />
+    <Folder Include="DashboardReporting\Services\" />
+    <Folder Include="DashboardReporting\Validators\" />
+    <Folder Include="Engagement\DTOs\" />
+    <Folder Include="Engagement\Interfaces\" />
+    <Folder Include="Engagement\Services\" />
+    <Folder Include="Engagement\Validators\" />
+    <Folder Include="HealthMonitoring\DTOs\" />
+    <Folder Include="HealthMonitoring\Interfaces\" />
+    <Folder Include="HealthMonitoring\Services\" />
+    <Folder Include="HealthMonitoring\Validators\" />
+    <Folder Include="MedicalRecord\DTOs\" />
+    <Folder Include="MedicalRecord\Interfaces\" />
+    <Folder Include="MedicalRecord\Services\" />
+    <Folder Include="MedicalRecord\Validators\" />
+    <Folder Include="Common\" />
+    <Folder Include="BackgroundJobs\" />
+    <Folder Include="PrescriptionAdherence\DTOs\" />
+    <Folder Include="PrescriptionAdherence\Interfaces\" />
+    <Folder Include="PrescriptionAdherence\Services\" />
+    <Folder Include="PrescriptionAdherence\Validators\" />
+    <Folder Include="UserRoleManagement\DTOs\" />
+    <Folder Include="UserRoleManagement\Interfaces\" />
+    <Folder Include="UserRoleManagement\Services\" />
+    <Folder Include="UserRoleManagement\Validators\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Quartz" Version="3.19.0" />
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.19.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.21.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ADSUS_BE.DAL\ADSUS_BE.DAL.csproj" />
+  </ItemGroup>
+
+</Project>
