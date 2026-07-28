@@ -1,5 +1,7 @@
 using ADSUS_BE.DAL.Data;
+using ADSUS_BE.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace ADSUS_BE
 {
@@ -16,8 +18,17 @@ namespace ADSUS_BE
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
-            builder.Services.AddDbContext<AdsusDbContext>(options =>
-                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+            // Npgsql không tự nhận enum PostgreSQL — phải khai báo tường minh qua DataSource.
+            // Thiếu phần này thì mọi truy vấn chạm cột role/status đều lỗi lúc chạy,
+            // dù build vẫn qua bình thường.
+            var dataSourceBuilder = new NpgsqlDataSourceBuilder(
+                builder.Configuration.GetConnectionString("DefaultConnection"));
+            dataSourceBuilder.MapEnum<UserRole>("user_role");
+            dataSourceBuilder.MapEnum<UserStatus>("user_status");
+            var dataSource = dataSourceBuilder.Build();
+
+            builder.Services.AddSingleton(dataSource);
+            builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(dataSource));
 
             var app = builder.Build();
 
