@@ -1,0 +1,142 @@
+using ADSUS_BE.DAL.Data;
+using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.Repositories.Implementations;
+using Microsoft.EntityFrameworkCore;
+
+namespace ADSUS_BE.UnitTests.PrescriptionAdherence;
+
+/// <summary>
+/// Tests cho PrescriptionRepository dùng Microsoft.EntityFrameworkCore.InMemory
+/// (master convention — không cần Postgres thật). 5 case:
+/// - GetByIdAsync returns entity with items + medicine navigation
+/// - GetByIdAsync returns null khi không tồn tại
+/// - ListByDoctorAsync sắp xếp theo PrescribedDate desc
+/// - ListByDoctorAsync lọc đúng theo doctorId
+/// - AddAsync chỉ add vào change tracker
+///
+/// Lưu ý: Tests KHÔNG tạo User / Case navigation đầy đủ vì AdsusDbContext
+/// chỉ có 5 DbSets Module 7 (master AppDbContext có Users + Cases, nhưng
+/// AdsusDbContext không chứa — để tách concern). FK tới User / Case dùng
+/// Guid chứ không navigation đầy đủ.
+/// </summary>
+public class PrescriptionRepositoryTests
+{
+    private static AdsusDbContext CreateContext()
+    {
+        var opts = new DbContextOptionsBuilder<AdsusDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        return new AdsusDbContext(opts);
+    }
+
+    private static Medicine NewMedicine(string name = "Paracetamol")
+        => new() { MedicineId = Guid.NewGuid(), Name = name, CreatedAt = DateTime.UtcNow };
+
+    private static Prescription NewPrescription(Guid doctorId, Guid caseId, DateOnly prescribedDate, DateTime createdAt)
+        => new()
+        {
+            PrescriptionId = Guid.NewGuid(),
+            CaseId = caseId,
+            DoctorId = doctorId,
+            PrescribedDate = prescribedDate,
+            CreatedAt = createdAt,
+            UpdatedAt = DateTime.UtcNow,
+        };
+
+    [Fact]
+    public async Task GetByIdAsync_ReturnsEntityWithItems()
+    {
+        using var db = CreateContext();
+        var medicine = NewMedicine();
+        await db.Medicines.AddAsync(medicine);
+
+        var prescription = NewPrescription(Guid.NewGuid(), Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow);
+        var item = new PrescriptionItem
+        {
+            PrescriptionItemId = Guid.NewGuid(),
+            PrescriptionId = prescription.PrescriptionId,
+            MedicineId = medicine.MedicineId,
+            Dosage = "1 viên",
+            DurationDays = 5,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+        };
+        prescription.PrescriptionItems.Add(item);
+        await db.Prescriptions.AddAsync(prescription);
+        await db.SaveChangesAsync();
+
+        var repo = new PrescriptionRepository(db);
+        var fetched = await repo.GetByIdAsync(prescription.PrescriptionId);
+
+        Assert.NotNull(fetched);
+        Assert.Single(fetched!.PrescriptionItems);
+        Assert.Equal("1 viên", fetched.PrescriptionItems.First().Dosage);
+        Assert.Equal("Paracetamol", fetched.PrescriptionItems.First().Medicine!.Name);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_NotFound_ReturnsNull()
+    {
+        using var db = CreateContext();
+        var repo = new PrescriptionRepository(db);
+
+        var fetched = await repo.GetByIdAsync(Guid.NewGuid());
+
+        Assert.Null(fetched);
+    }
+
+    [Fact]
+    public async Task ListByDoctorAsync_OrdersByPrescribedDateDescending()
+    {
+        using var db = CreateContext();
+        var doctor = Guid.NewGuid();
+
+        var oldPrescription = NewPrescription(
+            doctor, Guid.NewGuid(),
+            new DateOnly(2026, 7, 1),
+            new DateTime(2026, 7, 1, 10, 0, 0, DateTimeKind.Utc));
+        var newPrescription = NewPrescription(
+            doctor, Guid.NewGuid(),
+            new DateOnly(2026, 7, 28),
+            new DateTime(2026, 7, 28, 10, 0, 0, DateTimeKind.Utc));
+        await db.Prescriptions.AddRangeAsync(oldPrescription, newPrescription);
+        await db.SaveChangesAsync();
+
+        var repo = new PrescriptionRepository(db);
+        var list = await repo.ListByDoctorAsync(doctor);
+
+        Assert.Equal(2, list.Count);
+        Assert.Equal(newPrescription.PrescriptionId, list[0].PrescriptionId);
+    }
+
+    [Fact]
+    public async Task ListByDoctorAsync_FiltersByDoctor()
+    {
+        using var db = CreateContext();
+        var doctor1 = Guid.NewGuid();
+        var doctor2 = Guid.NewGuid();
+        await db.Prescriptions.AddRangeAsync(
+            NewPrescription(doctor1, Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow),
+            NewPrescription(doctor2, Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow));
+        await db.SaveChangesAsync();
+
+        var repo = new PrescriptionRepository(db);
+        var d1List = await repo.ListByDoctorAsync(doctor1);
+
+        Assert.Single(d1List);
+        Assert.Equal(doctor1, d1List[0].DoctorId);
+    }
+
+    [Fact]
+    public async Task AddAsync_AddsToChangeTracker()
+    {
+        using var db = CreateContext();
+        var repo = new PrescriptionRepository(db);
+
+        var p = NewPrescription(Guid.NewGuid(), Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow);
+        await repo.AddAsync(p);
+        await db.SaveChangesAsync();
+
+        var fetched = await db.Prescriptions.FindAsync(p.PrescriptionId);
+        Assert.NotNull(fetched);
+    }
+}
