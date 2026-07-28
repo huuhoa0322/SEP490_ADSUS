@@ -1,3 +1,5 @@
+using ADSUS_BE.DAL.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace ADSUS_BE
 {
@@ -13,6 +15,9 @@ namespace ADSUS_BE
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            builder.Services.AddDbContext<AdsusDbContext>(options =>
+                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             var app = builder.Build();
 
@@ -34,3 +39,5 @@ namespace ADSUS_BE
         }
     }
 }
+
+public partial class Program { }
