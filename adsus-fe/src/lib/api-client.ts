@@ -9,8 +9,12 @@ import type { ApiResponse } from "@/types/api.types";
  * Lưu ý: Next.js chỉ đọc biến môi trường LÚC KHỞI ĐỘNG. Sửa .env.local xong phải
  * tắt npm run dev rồi chạy lại, không thì vẫn dùng giá trị cũ.
  */
+// Dùng "||" chứ KHÔNG dùng "??": nếu .env.local ghi NEXT_PUBLIC_API_BASE_URL= (để trống),
+// "??" sẽ nhận chuỗi rỗng làm giá trị hợp lệ -> baseURL rỗng -> axios gọi đường dẫn tương
+// đối tới chính Next.js (cổng 3000) -> trả 404. "||" coi chuỗi rỗng như chưa đặt và rơi về
+// mặc định. Đây đúng là lỗi khiến máy thành viên gọi login ra 404.
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5036";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5036";
 
 const baseURL = API_BASE_URL;
 
