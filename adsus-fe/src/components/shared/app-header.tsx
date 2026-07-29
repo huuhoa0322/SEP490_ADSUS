@@ -11,6 +11,7 @@ import type { Role } from "@/types/api.types";
 const ROLE_LABEL: Record<Role, string> = {
   ADMIN: "Quản trị viên",
   DOCTOR: "Bác sĩ",
+  NURSE: "Điều dưỡng",
   PATIENT: "Bệnh nhân",
 };
 

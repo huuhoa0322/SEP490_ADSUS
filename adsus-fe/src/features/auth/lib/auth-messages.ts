@@ -39,18 +39,27 @@ const CHANGE_PASSWORD_ERRORS: Record<string, string> = {
 };
 
 export function getSignInErrorMessage(error: unknown): string {
-  // 401 always means "credentials rejected" — never say which part was wrong.
-  if (error instanceof AxiosError && error.response?.status === 401) {
+  const status = error instanceof AxiosError ? error.response?.status : undefined;
+
+  // 401 nghĩa là thông tin đăng nhập bị từ chối — không bao giờ nói rõ sai chỗ nào.
+  if (status === 401) {
     return SIGN_IN_FAILED;
   }
 
-  // 400 only ever comes from client-side shape validation (empty fields), which the form
-  // already guards, so this is a safety net rather than a normal path.
-  if (error instanceof AxiosError && error.response?.status === 400) {
+  // 400 chỉ đến từ kiểm tra định dạng (bỏ trống trường), mà form đã chặn sẵn.
+  if (status === 400) {
     return "Vui lòng nhập đầy đủ số điện thoại và mật khẩu.";
   }
 
-  // Anything else is a transport problem; getApiErrorMessage already words that in Vietnamese.
+  // 404 KHÔNG được gộp vào "sai mật khẩu". Đây là dấu hiệu request đi lạc: axios gọi vào
+  // chính Next.js (cổng 3000) chứ không tới backend, thường do NEXT_PUBLIC_API_BASE_URL sai
+  // hoặc để trống trong .env.local. Báo đúng để người dùng khỏi mò nhầm sang mật khẩu.
+  if (status === 404) {
+    return `Không gọi được tới API đăng nhập (404). Kiểm tra NEXT_PUBLIC_API_BASE_URL trong adsus-fe/.env.local có trỏ đúng địa chỉ backend không.`;
+  }
+
+  // Còn lại là lỗi đường truyền; getApiErrorMessage đã diễn đạt sẵn bằng tiếng Việt và nêu
+  // rõ địa chỉ đang gọi.
   return getApiErrorMessage(error, SIGN_IN_FAILED);
 }
 

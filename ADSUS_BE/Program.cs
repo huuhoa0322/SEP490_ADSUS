@@ -18,8 +18,18 @@ namespace ADSUS_BE
 {
     public class Program
     {
-        /// <summary>CORS policy that lets the frontend call the API during development.</summary>
+        /// <summary>Tên chính sách CORS cho phép frontend gọi API trong lúc phát triển.</summary>
         private const string DevCorsPolicy = "DevCors";
+
+        /// <summary>
+        /// Origin của frontend được phép gọi API. Next.js mặc định chạy ở cổng 3000.
+        /// Ai chạy frontend ở cổng khác thì phải thêm vào đây, không thì trình duyệt chặn.
+        /// </summary>
+        private static readonly string[] AllowedCorsOrigins =
+        {
+            "http://localhost:3000",
+            "https://localhost:3000",
+        };
 
         public static void Main(string[] args)
         {
@@ -119,12 +129,13 @@ namespace ADSUS_BE
             builder.Services.AddAuthorization();
 
             // ---------- CORS ----------
-            // Without this the browser blocks every call coming from Next.js.
-            // Development only — replace with the real domain before deploying.
+            // Không có phần này thì trình duyệt chặn sạch mọi lời gọi từ Next.js.
+            // Đây là origin cho môi trường phát triển — lúc deploy thật phải thay bằng
+            // tên miền thật.
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy(DevCorsPolicy, policy => policy
-                    .WithOrigins("http://localhost:3000", "https://localhost:3000")
+                    .WithOrigins(AllowedCorsOrigins)
                     .AllowAnyHeader()
                     .AllowAnyMethod()
                     .AllowCredentials());
@@ -148,8 +159,14 @@ namespace ADSUS_BE
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
-                app.UseCors(DevCorsPolicy);
             }
+
+            // CORS phải nằm NGOÀI khối IsDevelopment.
+            // Trước đây đặt bên trong, nên ai chạy backend ở môi trường khác Development là
+            // trình duyệt chặn sạch mọi lời gọi từ Next.js — mà triệu chứng nhìn y hệt
+            // "backend chưa chạy", rất khó đoán ra nguyên nhân.
+            // Bản thân chính sách đã giới hạn origin nên để ngoài vẫn an toàn.
+            app.UseCors(DevCorsPolicy);
 
             app.UseHttpsRedirection();
 
@@ -159,6 +176,19 @@ namespace ADSUS_BE
             app.UseAuthorization();
 
             app.MapControllers();
+
+            // In ra ngay lúc khởi động để người chạy biết backend đang lắng nghe ở đâu và
+            // cho phép origin nào. Không có dòng này thì lúc frontend báo "không kết nối
+            // được" sẽ phải mò rất lâu mới biết là do sai cổng hay do CORS.
+            app.Lifetime.ApplicationStarted.Register(() =>
+            {
+                var addresses = app.Urls.Count > 0 ? string.Join(", ", app.Urls) : "(theo launchSettings)";
+                app.Logger.LogInformation(
+                    "ADSUS API san sang | Dia chi: {Addresses} | CORS cho phep: {Origins} | Moi truong: {Env}",
+                    addresses,
+                    string.Join(", ", AllowedCorsOrigins),
+                    app.Environment.EnvironmentName);
+            });
 
             app.Run();
         }
