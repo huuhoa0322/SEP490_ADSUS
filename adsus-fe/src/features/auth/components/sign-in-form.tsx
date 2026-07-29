@@ -5,10 +5,10 @@ import { useState, type FormEvent } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getApiErrorMessage } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 import { useSignIn } from "../hooks/use-sign-in";
+import { getSignInErrorMessage } from "../lib/auth-messages";
 
 export function SignInForm() {
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -30,14 +30,12 @@ export function SignInForm() {
     signIn.mutate({ phoneNumber: phoneNumber.trim(), password });
   }
 
-  // Server errors are shown VERBATIM. The backend deliberately returns one identical
-  // sentence for every failure — wrong phone number, wrong password, locked or deactivated
-  // account (UCS GB-06). Never reinterpret it or branch on an error code.
+  // Every sign-in failure maps to ONE sentence, chosen by HTTP status rather than by the
+  // backend's wording. Wrong phone number, wrong password, locked account and deactivated
+  // account are indistinguishable to the user (UCS GB-06) — there is a single branch here,
+  // so there is nothing to leak.
   const errorMessage =
-    clientError ??
-    (signIn.isError
-      ? getApiErrorMessage(signIn.error, "Đăng nhập thất bại. Vui lòng thử lại.")
-      : null);
+    clientError ?? (signIn.isError ? getSignInErrorMessage(signIn.error) : null);
 
   const isSubmitting = signIn.isPending || signIn.isSuccess;
 

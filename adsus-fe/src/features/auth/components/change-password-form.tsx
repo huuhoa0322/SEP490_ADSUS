@@ -5,11 +5,11 @@ import { useState, type FormEvent } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getApiErrorMessage } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 
 import { useChangePassword } from "../hooks/use-change-password";
+import { getChangePasswordErrorMessage } from "../lib/auth-messages";
 import { PASSWORD_POLICY } from "../types/auth.types";
 
 const inputClass =
@@ -57,7 +57,7 @@ export function ChangePasswordForm() {
   const errorMessage =
     clientError ??
     (changePassword.isError
-      ? getApiErrorMessage(changePassword.error, "Đổi mật khẩu thất bại. Vui lòng thử lại.")
+      ? getChangePasswordErrorMessage(changePassword.error)
       : null);
 
   const isSubmitting = changePassword.isPending;
