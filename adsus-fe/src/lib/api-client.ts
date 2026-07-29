@@ -2,7 +2,17 @@ import axios, { AxiosError } from "axios";
 
 import type { ApiResponse } from "@/types/api.types";
 
-const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5036";
+/**
+ * Địa chỉ backend. Đọc từ .env.local, nếu không có thì dùng cổng mặc định của
+ * profile "http" trong Properties/launchSettings.json.
+ *
+ * Lưu ý: Next.js chỉ đọc biến môi trường LÚC KHỞI ĐỘNG. Sửa .env.local xong phải
+ * tắt npm run dev rồi chạy lại, không thì vẫn dùng giá trị cũ.
+ */
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5036";
+
+const baseURL = API_BASE_URL;
 
 export const apiClient = axios.create({
   baseURL,
@@ -39,9 +49,10 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
     const body = error.response?.data as ApiResponse<unknown> | undefined;
     if (body?.message) return body.message;
 
-    // No response at all means the backend could not be reached.
+    // Không có response nghĩa là không chạm được tới backend. Nêu rõ địa chỉ đang gọi,
+    // vì nguyên nhân hầu hết là backend chưa bật hoặc đang chạy ở cổng khác.
     if (!error.response) {
-      return "Không kết nối được tới máy chủ. Kiểm tra xem backend đã chạy chưa.";
+      return `Không kết nối được tới backend tại ${API_BASE_URL}. Kiểm tra: backend đã chạy chưa, và có đúng cổng đó không?`;
     }
   }
   return fallback;
