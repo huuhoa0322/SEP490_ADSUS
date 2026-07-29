@@ -17,6 +17,9 @@
   <ItemGroup>
     <PackageReference Include="FirebaseAdmin" Version="3.6.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.29" />
+    <!-- Phải khai báo tường minh. Design (PrivateAssets=all) kéo Relational 8.0.29 lúc biên
+         dịch, nhưng Npgsql chỉ kéo 8.0.11 lúc chạy -> FileNotFoundException ngay khi EF dựng
+         model. Khai ở đây để 8.0.29 thành tham chiếu chính và lan sang BLL + API. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.29" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.29">
       <PrivateAssets>all</PrivateAssets>
