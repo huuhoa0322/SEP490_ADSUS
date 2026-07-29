@@ -8,29 +8,43 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence;
 /// <summary>
 /// Tests cho PrescriptionRepository dùng Microsoft.EntityFrameworkCore.InMemory
 /// (master convention — không cần Postgres thật). 5 case:
-/// - GetByIdAsync returns entity with items + medicine navigation
+/// - GetByIdAsync returns entity with items + medicine + doctor navigation
 /// - GetByIdAsync returns null khi không tồn tại
 /// - ListByDoctorAsync sắp xếp theo PrescribedDate desc
 /// - ListByDoctorAsync lọc đúng theo doctorId
 /// - AddAsync chỉ add vào change tracker
 ///
-/// Lưu ý: Tests KHÔNG tạo User / Case navigation đầy đủ vì AdsusDbContext
-/// chỉ có 5 DbSets Module 7 (master AppDbContext có Users + Cases, nhưng
-/// AdsusDbContext không chứa — để tách concern). FK tới User / Case dùng
-/// Guid chứ không navigation đầy đủ.
+/// Lưu ý: navigation non-nullable (Prescription.Doctor, MedicationIntakeLog.PrescriptionItem)
+/// yêu cầu parent entity tồn tại trong DbContext để Include() resolve ở InMemory provider
+/// (khác với Postgres thật — không enforce FK).
 /// </summary>
 public class PrescriptionRepositoryTests
 {
-    private static AdsusDbContext CreateContext()
+    private static AppDbContext CreateContext()
     {
-        var opts = new DbContextOptionsBuilder<AdsusDbContext>()
+        var opts = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        return new AdsusDbContext(opts);
+        return new AppDbContext(opts);
     }
 
     private static Medicine NewMedicine(string name = "Paracetamol")
         => new() { MedicineId = Guid.NewGuid(), Name = name, CreatedAt = DateTime.UtcNow };
+
+    /// <summary>
+    /// Stub User cho Doctor navigation. Role + Status là Postgres enums (AppDbContext
+    /// HasPostgresEnum), KHÔNG có property C# — repo chỉ cần FK tồn tại để Include resolve.
+    /// </summary>
+    private static User NewDoctor(string phone = "0900000000")
+        => new()
+        {
+            UserId = Guid.NewGuid(),
+            Phone = phone,
+            FullName = "BS. Test",
+            PasswordHash = "x",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
 
     private static Prescription NewPrescription(Guid doctorId, Guid caseId, DateOnly prescribedDate, DateTime createdAt)
         => new()
@@ -50,7 +64,12 @@ public class PrescriptionRepositoryTests
         var medicine = NewMedicine();
         await db.Medicines.AddAsync(medicine);
 
-        var prescription = NewPrescription(Guid.NewGuid(), Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow);
+        // Repo Include(p => p.Doctor) cần User tồn tại trong DbContext để navigation resolve.
+        // Master Prescription.Doctor = User với FK DoctorId → InMemory yêu cầu entity stub.
+        var doctor = NewDoctor();
+        await db.Users.AddAsync(doctor);
+
+        var prescription = NewPrescription(doctor.UserId, Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow);
         var item = new PrescriptionItem
         {
             PrescriptionItemId = Guid.NewGuid(),

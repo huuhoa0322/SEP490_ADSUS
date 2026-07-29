@@ -12,9 +12,9 @@ namespace ADSUS_BE.DAL.Repositories.Implementations;
 /// </summary>
 public sealed class PrescriptionRepository : IPrescriptionRepository
 {
-    private readonly AdsusDbContext _db;
+    private readonly AppDbContext _db;
 
-    public PrescriptionRepository(AdsusDbContext db) => _db = db;
+    public PrescriptionRepository(AppDbContext db) => _db = db;
 
     public async Task<Prescription?> GetByIdAsync(Guid prescriptionId, CancellationToken ct = default)
     {

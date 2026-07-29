@@ -11,9 +11,9 @@ namespace ADSUS_BE.DAL.Repositories.Implementations;
 /// </summary>
 public sealed class MedicineRepository : IMedicineRepository
 {
-    private readonly AdsusDbContext _db;
+    private readonly AppDbContext _db;
 
-    public MedicineRepository(AdsusDbContext db) => _db = db;
+    public MedicineRepository(AppDbContext db) => _db = db;
 
     public async Task<Medicine?> GetByIdAsync(Guid medicineId, CancellationToken ct = default)
     {

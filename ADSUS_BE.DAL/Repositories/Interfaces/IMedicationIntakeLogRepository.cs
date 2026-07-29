@@ -5,7 +5,7 @@ namespace ADSUS_BE.DAL.Repositories.Interfaces;
 /// <summary>
 /// Repository cho MedicationIntakeLog (mỗi liều thuốc 1 dòng). Status = "PENDING" /
 /// "TAKEN" được derive từ ConfirmedAt — KHÔNG có column status (master convention,
-/// xem AdsusDbContext AppDbContext.OnModelCreating). Idempotency nhờ UNIQUE constraint
+/// xem AppDbContext.OnModelCreating). Idempotency nhờ UNIQUE constraint
 /// trên (prescription_item_id, scheduled_time) tầng DB — handler có thể bắt
 /// PostgresException 23505 để skip duplicate khi Quartz re-fire job.
 /// </summary>

@@ -15,12 +15,12 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence;
 /// </summary>
 public class MedicationIntakeLogRepositoryTests
 {
-    private static AdsusDbContext CreateContext()
+    private static AppDbContext CreateContext()
     {
-        var opts = new DbContextOptionsBuilder<AdsusDbContext>()
+        var opts = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        return new AdsusDbContext(opts);
+        return new AppDbContext(opts);
     }
 
     private static MedicationIntakeLog NewLog(Guid itemId, DateTime scheduled, DateTime? confirmed = null)
