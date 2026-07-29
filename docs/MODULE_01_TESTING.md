@@ -84,7 +84,11 @@ Chạy ở **http://localhost:3000** — màn đăng nhập tại `/login`.
 
 ## 3. Tài khoản kiểm thử
 
-Đã seed sẵn trong DB. **Mật khẩu chung: `Test@123`**
+Có **hai nhóm tài khoản với hai mật khẩu khác nhau** — chỗ này hay bị nhầm:
+
+### 3.1 Sáu tài khoản test — mật khẩu `Test@123`
+
+Phủ đủ các trạng thái để kiểm luồng đăng nhập.
 
 | Số điện thoại | Vai trò | Trạng thái | Dùng để kiểm |
 | :--- | :--- | :--- | :--- |
@@ -95,11 +99,19 @@ Chạy ở **http://localhost:3000** — màn đăng nhập tại `/login`.
 | `0900000005` | DOCTOR | **Deactivated** | **Phải bị từ chối** dù mật khẩu đúng |
 | `0900000006` | DOCTOR | Active | Bị **ép đổi mật khẩu** trước khi vào đâu khác |
 
-Muốn xoá hết tài khoản test:
+Muốn xoá riêng 6 tài khoản test này:
 
 ```sql
 DELETE FROM public.users WHERE phone LIKE '09000000%';
 ```
+
+### 3.2 Các tài khoản nhóm seed — mật khẩu `123456`
+
+Là những tài khoản mang tên thật (`0913456789` BS. Lê Minh Hoàng, `0981111005`
+Vũ Thị Cẩm Tú...). Dùng để test với dữ liệu giống thật hơn.
+
+> Nếu bạn thử `Test@123` cho mấy tài khoản này sẽ **luôn thất bại** — chúng dùng `123456`,
+> không phải `Test@123`. Đây là nguyên nhân phổ biến nhất khiến "đăng nhập không được".
 
 ---
 
@@ -244,7 +256,7 @@ Bảng màu lấy từ template Medizco của nhóm.
 dotnet test ADSUS_BE.UnitTests/ADSUS_BE.UnitTests.csproj
 ```
 
-Hiện có **60 test** — 27 của Module 1, 33 của Module 7. Tất cả phải pass.
+Hiện có **61 test** — 28 của Module 1, 33 của Module 7. Tất cả phải pass.
 
 ---
 
@@ -261,5 +273,6 @@ hiện tại một script có thể thử mật khẩu vô hạn lần. Cần b�
 httpOnly cookie, nhưng phải sửa cả backend lẫn chống CSRF. Đây là hệ thống y tế nên nhóm
 nên bàn lại.
 
-**Vai trò NURSE chưa có trong database.** UCS định nghĩa 4 vai trò nhưng enum `user_role`
-mới có 3. Cần `ALTER TYPE` trước khi làm phần liên quan tới Nurse.
+**Vai trò NURSE đã có đủ.** Enum `user_role` trong DB giờ có 4 giá trị (ADMIN, DOCTOR,
+PATIENT, NURSE), và code cũng đã khai đủ. Nurse có quyền giống hệt Doctor (theo UCS), nên
+đăng nhập bằng tài khoản Nurse cũng vào `/patients`.

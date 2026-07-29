@@ -1,6 +1,6 @@
 /**
- * Shared envelope for every ADSUS_BE response, per the team's api_design_rules.
- * The backend always returns this shape, including on errors.
+ * Vỏ bọc chung của mọi response từ ADSUS_BE — theo api_design_rules nhóm đã chốt.
+ * Backend luôn trả về đúng hình dạng này, kể cả khi lỗi.
  */
 export interface ApiResponse<T> {
   code: number;
@@ -9,7 +9,7 @@ export interface ApiResponse<T> {
 }
 
 /**
- * Account role. Matches the user_role enum in the database.
- * NURSE exists in the UCS but has not been added to the database yet.
+ * Vai trò tài khoản. Khớp với enum user_role trong database.
+ * NURSE có quyền giống hệt DOCTOR (theo quyết định ghi đè PRD trong UCS).
  */
-export type Role = "ADMIN" | "DOCTOR" | "PATIENT";
+export type Role = "ADMIN" | "DOCTOR" | "PATIENT" | "NURSE";

@@ -83,9 +83,11 @@ export function getHomePathForRole(role: Role): string {
     case "ADMIN":
       return "/dashboard";
     case "DOCTOR":
+    case "NURSE":
+      // Nurse có quyền giống hệt Doctor (UCS), nên cũng vào danh sách bệnh nhân.
       return "/patients";
     case "PATIENT":
-      // Patients use the mobile app; there is no web interface for them.
+      // Bệnh nhân dùng ứng dụng di động, không có giao diện web.
       return "/";
     default:
       return "/";
