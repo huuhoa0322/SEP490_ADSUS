@@ -253,6 +253,32 @@ public class UserAccountServiceTests
     }
 
     [Fact]
+    public async Task Admin_VO_HIEU_HOA_DUOC_Admin_KHAC()
+    {
+        // UC-04 AF-04 — nhóm chốt ngày 31/07/2026: Admin được vô hiệu hoá Admin khác.
+        // Chỉ cấm thao tác lên chính mình.
+        var adminKhac = TaoUserTrongDb(UserRole.Admin);
+        SetupGetById(adminKhac);
+
+        var result = await _sut.DeactivateAsync(adminKhac.UserId, Guid.NewGuid());
+
+        Assert.Equal(AccountOperationResult.Success, result);
+        Assert.Equal(UserStatus.Deactivated, adminKhac.Status);
+    }
+
+    [Fact]
+    public async Task Admin_KHOA_DUOC_Admin_KHAC()
+    {
+        var adminKhac = TaoUserTrongDb(UserRole.Admin);
+        SetupGetById(adminKhac);
+
+        var result = await _sut.SetLockedAsync(adminKhac.UserId, locked: true, Guid.NewGuid());
+
+        Assert.Equal(AccountOperationResult.Success, result);
+        Assert.Equal(UserStatus.Locked, adminKhac.Status);
+    }
+
+    [Fact]
     public async Task Admin_KhongTuVoHieuHoaChinhMinh()
     {
         var adminId = Guid.NewGuid();

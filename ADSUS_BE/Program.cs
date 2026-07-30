@@ -3,6 +3,8 @@ using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.BLL.Auth.Validators;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.DashboardReporting.Interfaces;
+using ADSUS_BE.BLL.DashboardReporting.Services;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.DAL.Data;
@@ -101,6 +103,10 @@ namespace ADSUS_BE
             var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
             dataSourceBuilder.MapEnum<UserRole>("user_role");
             dataSourceBuilder.MapEnum<UserStatus>("user_status");
+            // Dashboard (UC-05) đọc hai cột trạng thái này. Thiếu MapEnum thì build vẫn qua
+            // nhưng gọi API là văng ngay lúc chạy.
+            dataSourceBuilder.MapEnum<AiResultStatus>("ai_result_status");
+            dataSourceBuilder.MapEnum<AppointmentStatus>("appointment_status");
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);
@@ -176,6 +182,7 @@ namespace ADSUS_BE
             // ---------- Per-module service registration ----------
             // DAL
             builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 
             // BLL — Module 1: Authentication & Account
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -185,6 +192,9 @@ namespace ADSUS_BE
             // BLL — Module 2: User & Role Management
             builder.Services.AddScoped<IUserAccountService, UserAccountService>();
             builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
+
+            // BLL — Module 3: Dashboard & Reporting
+            builder.Services.AddScoped<IDashboardService, DashboardService>();
 
             // Gửi email (API-04) — PHẦN NÀY CÒN TRỐNG.
             // Ở Development dùng bản in mật khẩu tạm ra console để còn kiểm thử được.

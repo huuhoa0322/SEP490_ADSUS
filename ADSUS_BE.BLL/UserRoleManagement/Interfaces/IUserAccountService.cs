@@ -39,7 +39,10 @@ public interface IUserAccountService
     /// FT-08 AF-01 — khoá hoặc mở khoá, hoàn toàn thủ công (BR-04).
     /// Không có job tự mở khoá; đây là đường duy nhất đi từ Locked về Active.
     /// </summary>
-    /// <param name="actingAdminId">Id của Admin đang thao tác, để chặn tự khoá chính mình.</param>
+    /// <param name="actingAdminId">
+    /// Id của Admin đang thao tác. Dùng để chặn tự khoá chính mình — Admin khoá Admin KHÁC
+    /// thì được (quyết định của nhóm 31/07/2026 cho UC-04 AF-04).
+    /// </param>
     Task<AccountOperationResult> SetLockedAsync(
         Guid userId,
         bool locked,

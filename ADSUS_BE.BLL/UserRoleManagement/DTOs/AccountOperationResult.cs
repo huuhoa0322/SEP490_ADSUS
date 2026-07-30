@@ -25,8 +25,10 @@ public enum AccountOperationResult
     /// <summary>
     /// Admin đang thao tác lên chính tài khoản mình.
     ///
-    /// UC-04 AF-04 để ngỏ trường hợp này. Ở đây chặn tự khoá/tự vô hiệu hoá chính mình, vì
-    /// làm được thì Admin tự nhốt mình ra ngoài hệ thống và không còn ai mở ra được.
+    /// UC-04 AF-04 để ngỏ trường hợp này; nhóm đã chốt ngày 31/07/2026:
+    ///   - Admin ĐƯỢC khoá và vô hiệu hoá Admin khác.
+    ///   - Admin KHÔNG được thao tác lên chính mình — làm được thì tự nhốt mình ra ngoài
+    ///     hệ thống, và vì không có đường kích hoạt lại (BR-05) nên không ai cứu được.
     /// </summary>
     CannotTargetSelf,
 
