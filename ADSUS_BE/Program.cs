@@ -3,6 +3,7 @@ using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.BLL.Auth.Validators;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.Engagement.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
@@ -150,6 +151,10 @@ namespace ADSUS_BE
             // cho dev/test/CI. Production sẽ đổi sang FirebasePushNotificationClient (sprint sau,
             // cần FCM service account JSON qua User Secrets). Singleton vì stateless.
             builder.Services.AddSingleton<IPushNotificationClient, FakePushNotificationClient>();
+
+            // BLL — safety filter cho Module 10 Chat (trước khi gọi LLM). Singleton vì stateless,
+            // chỉ đọc mảng keyword tĩnh.
+            builder.Services.AddSingleton<IPsychologyTopicFilter, PsychologyTopicFilter>();
 
             // BLL — Module 1: Authentication & Account
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
