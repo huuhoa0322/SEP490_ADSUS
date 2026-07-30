@@ -2,6 +2,8 @@ using System.Security.Claims;
 using ADSUS_BE.BLL.Auth.DTOs;
 using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.UserRoleManagement.DTOs;
+using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,17 +15,57 @@ namespace ADSUS_BE.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _auth;
+    private readonly IPasswordResetService _passwordReset;
     private readonly IValidator<LoginRequest> _loginValidator;
     private readonly IValidator<ChangePasswordRequest> _changePasswordValidator;
+    private readonly IValidator<ForgotPasswordRequest> _forgotPasswordValidator;
 
     public AuthController(
         IAuthService auth,
+        IPasswordResetService passwordReset,
         IValidator<LoginRequest> loginValidator,
-        IValidator<ChangePasswordRequest> changePasswordValidator)
+        IValidator<ChangePasswordRequest> changePasswordValidator,
+        IValidator<ForgotPasswordRequest> forgotPasswordValidator)
     {
         _auth = auth;
+        _passwordReset = passwordReset;
         _loginValidator = loginValidator;
         _changePasswordValidator = changePasswordValidator;
+        _forgotPasswordValidator = forgotPasswordValidator;
+    }
+
+    /// <summary>
+    /// UC-03 FT-06 — người dùng tự yêu cầu cấp lại mật khẩu từ màn đăng nhập.
+    ///
+    /// LUÔN trả về 200 kèm ĐÚNG MỘT CÂU, bất kể số điện thoại có tồn tại không, email có
+    /// khớp không, hay tài khoản đã bị khoá (AF-01). Trả lời khác đi là biến endpoint này
+    /// thành công cụ dò xem số nào đã có tài khoản trong hệ thống.
+    ///
+    /// Service trả về void nên ở đây không có gì để phân nhánh — luật được ép bằng kiểu dữ
+    /// liệu chứ không dựa vào việc người viết nhớ hay quên.
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validation = await _forgotPasswordValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            // Chỉ báo lỗi về HÌNH DẠNG dữ liệu (bỏ trống, email sai định dạng). Không nói gì
+            // về việc tài khoản có tồn tại hay không.
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
+        }
+
+        await _passwordReset.RequestSelfServiceResetAsync(request, cancellationToken);
+
+        return Ok(ApiResponse<object>.Ok(
+            null!,
+            "If the information is correct, a new password has been sent to your email."));
     }
 
     /// <summary>

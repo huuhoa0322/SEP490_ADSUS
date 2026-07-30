@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Phone } from "lucide-react";
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -156,8 +157,14 @@ export function SignInForm() {
           )}
         </button>
 
+        {/* UC-03 Main Flow bước 1 — lối vào chức năng tự cấp lại mật khẩu. */}
         <p className="text-center text-sm text-muted-foreground">
-          Quên mật khẩu? Liên hệ quản trị viên để được cấp lại.
+          <Link
+            href="/forgot-password"
+            className="font-600 text-accent transition-colors hover:text-accent/80"
+          >
+            Quên mật khẩu?
+          </Link>
         </p>
       </form>
     </div>

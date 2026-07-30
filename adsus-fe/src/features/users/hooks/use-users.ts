@@ -6,6 +6,7 @@ import {
   createUser,
   deactivateUser,
   getUserById,
+  resetUserPassword,
   searchUsers,
   setUserLocked,
   updateUser,
@@ -77,6 +78,18 @@ export function useSetUserLocked() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: usersQueryKeys.all });
     },
+  });
+}
+
+/**
+ * UC-03 AF-02 — Admin cấp lại mật khẩu hộ.
+ *
+ * Không cần làm mới danh sách: thao tác này chỉ đổi mật khẩu và cờ buộc đổi, không đổi thứ
+ * gì đang hiển thị trên bảng.
+ */
+export function useResetUserPassword() {
+  return useMutation({
+    mutationFn: (userId: string) => resetUserPassword(userId),
   });
 }
 

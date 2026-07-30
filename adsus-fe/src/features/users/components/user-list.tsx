@@ -3,6 +3,8 @@
 import {
   AlertCircle,
   Ban,
+  CheckCircle2,
+  KeyRound,
   Loader2,
   Lock,
   Pencil,
@@ -18,6 +20,7 @@ import type { Role } from "@/types/api.types";
 
 import {
   useDeactivateUser,
+  useResetUserPassword,
   useSetUserLocked,
   useUserList,
 } from "../hooks/use-users";
@@ -33,7 +36,7 @@ import { ConfirmDialog } from "./confirm-dialog";
 
 /** Hành động đang chờ người dùng xác nhận. */
 type PendingAction =
-  | { kind: "lock" | "unlock" | "deactivate"; user: UserAccount }
+  | { kind: "lock" | "unlock" | "deactivate" | "reset"; user: UserAccount }
   | null;
 
 /**
@@ -48,14 +51,17 @@ export function UserList() {
   const [status, setStatus] = useState<AccountStatus | "">("");
   const [page, setPage] = useState(1);
   const [pending, setPending] = useState<PendingAction>(null);
+  /** Tên tài khoản vừa được cấp lại mật khẩu, để hiện lời xác nhận. */
+  const [resetSentTo, setResetSentTo] = useState<string | null>(null);
 
   const query = { keyword, role, status, page, pageSize: 20 };
   const { data, isLoading, isError, error } = useUserList(query);
 
   const setLocked = useSetUserLocked();
   const deactivate = useDeactivateUser();
+  const resetPassword = useResetUserPassword();
 
-  const actionError = setLocked.error ?? deactivate.error;
+  const actionError = setLocked.error ?? deactivate.error ?? resetPassword.error;
 
   /** Đổi bộ lọc thì phải quay về trang 1, không thì đang ở trang 5 mà kết quả chỉ có 1 trang. */
   function changeFilter(apply: () => void) {
@@ -68,6 +74,14 @@ export function UserList() {
 
     if (pending.kind === "deactivate") {
       deactivate.mutate(pending.user.userId, { onSettled: () => setPending(null) });
+      return;
+    }
+
+    if (pending.kind === "reset") {
+      resetPassword.mutate(pending.user.userId, {
+        onSuccess: () => setResetSentTo(pending.user.fullName),
+        onSettled: () => setPending(null),
+      });
       return;
     }
 
@@ -215,6 +229,19 @@ export function UserList() {
                     {/* Tài khoản đã vô hiệu hoá thì không còn thao tác nào — BR-05, một chiều. */}
                     {user.status !== "DEACTIVATED" && (
                       <>
+                        {/* UC-03 AF-02 — cấp lại mật khẩu hộ. Chỉ hiện khi tài khoản có
+                            email, vì mật khẩu tạm chỉ giao qua email (BR-03). */}
+                        {user.email && (
+                          <button
+                            type="button"
+                            title="Cấp lại mật khẩu (gửi qua email)"
+                            onClick={() => setPending({ kind: "reset", user })}
+                            className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+                          >
+                            <KeyRound className="size-4" />
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           title={user.status === "LOCKED" ? "Mở khoá" : "Khoá tài khoản"}
@@ -277,33 +304,64 @@ export function UserList() {
       <ConfirmDialog
         open={pending !== null}
         destructive={pending?.kind === "deactivate"}
-        isPending={setLocked.isPending || deactivate.isPending}
-        title={
-          pending?.kind === "deactivate"
-            ? "Vô hiệu hoá tài khoản?"
-            : pending?.kind === "lock"
-              ? "Khoá tài khoản?"
-              : "Mở khoá tài khoản?"
-        }
-        message={
-          pending?.kind === "deactivate"
-            ? `Tài khoản "${pending.user.fullName}" sẽ không bao giờ đăng nhập lại được. Đây là hành động MỘT CHIỀU, không có cách hoàn tác. Dữ liệu cũ vẫn được giữ nguyên, không bị xoá.`
-            : pending?.kind === "lock"
-              ? `Tài khoản "${pending.user.fullName}" sẽ không đăng nhập được cho tới khi bạn tự mở khoá. Hệ thống không tự mở khoá.`
-              : `Tài khoản "${pending?.user.fullName}" sẽ đăng nhập lại được ngay.`
-        }
-        confirmLabel={
-          pending?.kind === "deactivate"
-            ? "Vô hiệu hoá"
-            : pending?.kind === "lock"
-              ? "Khoá"
-              : "Mở khoá"
-        }
+        isPending={setLocked.isPending || deactivate.isPending || resetPassword.isPending}
+        title={CONFIRM_TITLE[pending?.kind ?? "lock"]}
+        message={pending ? buildConfirmMessage(pending) : ""}
+        confirmLabel={CONFIRM_LABEL[pending?.kind ?? "lock"]}
         onConfirm={runPendingAction}
         onCancel={() => setPending(null)}
       />
+
+      {/* Xác nhận đã gửi. Cố ý KHÔNG hiện mật khẩu tạm — nó chỉ đi qua email (BR-03). */}
+      {resetSentTo && (
+        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2.5 rounded-full border border-accent/25 bg-background px-5 py-3 text-sm shadow-xl">
+          <CheckCircle2 className="size-4 shrink-0 text-accent" />
+          <span>
+            Đã gửi mật khẩu mới tới email của {resetSentTo}.
+          </span>
+          <button
+            type="button"
+            onClick={() => setResetSentTo(null)}
+            className="ml-1 text-muted-foreground transition-colors hover:text-primary"
+          >
+            Đóng
+          </button>
+        </div>
+      )}
     </div>
   );
+}
+
+const CONFIRM_TITLE: Record<NonNullable<PendingAction>["kind"], string> = {
+  lock: "Khoá tài khoản?",
+  unlock: "Mở khoá tài khoản?",
+  deactivate: "Vô hiệu hoá tài khoản?",
+  reset: "Cấp lại mật khẩu?",
+};
+
+const CONFIRM_LABEL: Record<NonNullable<PendingAction>["kind"], string> = {
+  lock: "Khoá",
+  unlock: "Mở khoá",
+  deactivate: "Vô hiệu hoá",
+  reset: "Cấp lại",
+};
+
+function buildConfirmMessage(pending: NonNullable<PendingAction>): string {
+  const name = pending.user.fullName;
+
+  switch (pending.kind) {
+    case "deactivate":
+      // AF-02 yêu cầu cảnh báo rõ đây là hành động một chiều.
+      return `Tài khoản "${name}" sẽ không bao giờ đăng nhập lại được. Đây là hành động MỘT CHIỀU, không có cách hoàn tác. Dữ liệu cũ vẫn được giữ nguyên, không bị xoá.`;
+    case "lock":
+      // BR-04 — không có job tự mở khoá, phải nói rõ để Admin không ngồi chờ.
+      return `Tài khoản "${name}" sẽ không đăng nhập được cho tới khi bạn tự mở khoá. Hệ thống không tự mở khoá.`;
+    case "unlock":
+      return `Tài khoản "${name}" sẽ đăng nhập lại được ngay.`;
+    case "reset":
+      // BR-03 — nói trước rằng mật khẩu chỉ đi qua email, để Admin không chờ nó hiện ra.
+      return `Hệ thống sẽ sinh mật khẩu mới và gửi tới email ${pending.user.email}. Mật khẩu KHÔNG hiển thị ở đây. Mật khẩu cũ của "${name}" sẽ hết hiệu lực ngay.`;
+  }
 }
 
 function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {

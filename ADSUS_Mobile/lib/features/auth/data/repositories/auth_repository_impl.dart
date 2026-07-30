@@ -71,6 +71,23 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> requestPasswordReset({
+    required String phoneNumber,
+    required String email,
+  }) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        ApiConstants.forgotPassword,
+        data: {'phoneNumber': phoneNumber, 'email': email},
+      );
+    } on DioException catch (e) {
+      // Chỉ 400 (sai định dạng) và lỗi mạng mới tới được đây. Backend không bao giờ trả lỗi
+      // vì "không tìm thấy tài khoản" — đó là chủ đích của AF-01.
+      throw ApiErrorMapper.general(e, fallback: 'Không gửi được yêu cầu.');
+    }
+  }
+
+  @override
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,

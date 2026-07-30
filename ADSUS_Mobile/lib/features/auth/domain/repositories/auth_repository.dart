@@ -13,6 +13,16 @@ abstract interface class AuthRepository {
   });
 
   /// UC-25 — đổi mật khẩu của chính mình.
+  /// UC-03 FT-06 — yêu cầu cấp lại mật khẩu.
+  ///
+  /// Trả về void CÓ CHỦ Ý: backend luôn trả cùng một câu dù thông tin đúng hay sai (AF-01),
+  /// nên ở đây cũng không có gì để phân biệt. Đừng đổi thành Future&lt;bool&gt; — đó chính là
+  /// lỗ hổng dò xem số điện thoại nào đã có tài khoản.
+  Future<void> requestPasswordReset({
+    required String phoneNumber,
+    required String email,
+  });
+
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,

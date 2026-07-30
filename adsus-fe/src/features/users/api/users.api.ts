@@ -61,3 +61,13 @@ export async function setUserLocked(userId: string, locked: boolean): Promise<vo
 export async function deactivateUser(userId: string): Promise<void> {
   await apiClient.put<ApiResponse<null>>(`${BASE}/${userId}/deactivate`);
 }
+
+/**
+ * UC-03 AF-02 — Admin cấp lại mật khẩu hộ, dùng khi chủ tài khoản không vào được email.
+ *
+ * Mật khẩu tạm CHỈ đi qua email; API không trả nó về và giao diện không bao giờ hiển thị
+ * (BR-03). Tài khoản chưa khai email thì backend từ chối.
+ */
+export async function resetUserPassword(userId: string): Promise<void> {
+  await apiClient.put<ApiResponse<null>>(`${BASE}/${userId}/reset-password`);
+}

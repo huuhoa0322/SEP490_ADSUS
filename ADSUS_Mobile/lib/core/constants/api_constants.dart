@@ -16,6 +16,7 @@ class ApiConstants {
   );
 
   static const String login = '/api/v1/auth/login';
+  static const String forgotPassword = '/api/v1/auth/forgot-password';
   static const String changePassword = '/api/v1/auth/change-password';
   static const String myProfile = '/api/v1/users/me';
   static const String myBiometric = '/api/v1/users/me/biometric';

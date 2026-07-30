@@ -26,15 +26,18 @@ namespace ADSUS_BE.Controllers;
 public class AdminUsersController : ControllerBase
 {
     private readonly IUserAccountService _accounts;
+    private readonly IPasswordResetService _passwordReset;
     private readonly IValidator<CreateUserAccountRequest> _createValidator;
     private readonly IValidator<UpdateUserAccountRequest> _updateValidator;
 
     public AdminUsersController(
         IUserAccountService accounts,
+        IPasswordResetService passwordReset,
         IValidator<CreateUserAccountRequest> createValidator,
         IValidator<UpdateUserAccountRequest> updateValidator)
     {
         _accounts = accounts;
+        _passwordReset = passwordReset;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
     }
@@ -161,6 +164,32 @@ public class AdminUsersController : ControllerBase
             : MapFailure<object>(result);
     }
 
+    /// <summary>
+    /// UC-03 AF-02 — Admin cấp lại mật khẩu hộ, dùng khi chủ tài khoản không vào được email.
+    ///
+    /// BR-03: mật khẩu tạm chỉ đi qua email, KHÔNG BAO GIỜ nằm trong phản hồi này. Admin
+    /// cũng không được thấy — cùng nguyên tắc "không ai đọc được mật khẩu" ở PRD §6.2.
+    /// </summary>
+    [HttpPut("{userId:guid}/reset-password")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResetPassword(Guid userId, CancellationToken cancellationToken)
+    {
+        if (!TryGetActingAdminId(out var adminId))
+        {
+            return Unauthorized(ApiResponse<object>.Fail(
+                StatusCodes.Status401Unauthorized, "Invalid access token."));
+        }
+
+        var result = await _passwordReset.AdminResetAsync(userId, adminId, cancellationToken);
+
+        return result == AccountOperationResult.Success
+            ? Ok(ApiResponse<object>.Ok(
+                null!, "A temporary password has been emailed to the account holder."))
+            : MapFailure<object>(result);
+    }
+
     // ---- helpers ----
 
     private async Task<IActionResult> SetLocked(
@@ -213,6 +242,11 @@ public class AdminUsersController : ControllerBase
         AccountOperationResult.AccountIsDeactivated =>
             BadRequest(ApiResponse<T>.Fail(
                 StatusCodes.Status400BadRequest, "This account has been deactivated and cannot be changed.")),
+
+        AccountOperationResult.AccountHasNoEmail =>
+            BadRequest(ApiResponse<T>.Fail(
+                StatusCodes.Status400BadRequest,
+                "This account has no email address, so a temporary password cannot be delivered.")),
 
         _ => BadRequest(ApiResponse<T>.Fail(StatusCodes.Status400BadRequest, "Operation failed.")),
     };

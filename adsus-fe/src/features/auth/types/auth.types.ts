@@ -30,6 +30,15 @@ export class WebNotAvailableForRoleError extends Error {
   }
 }
 
+/**
+ * UC-03 FT-06 — tự yêu cầu cấp lại mật khẩu.
+ * BR-01: phải khớp CẢ số điện thoại LẪN email của một tài khoản đang tồn tại.
+ */
+export interface ForgotPasswordRequest {
+  phoneNumber: string;
+  email: string;
+}
+
 /** UC-25 — a signed-in user changes their own password. */
 export interface ChangePasswordRequest {
   currentPassword: string;

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../viewmodels/auth_view_model.dart';
+import 'forgot_password_screen.dart';
 import 'widgets/message_banner.dart';
 
 /// SCR-02 — màn hình đăng nhập trên Mobile (UC-01, và UC-02 nếu đã bật sinh trắc học).
@@ -140,11 +141,17 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 ),
               ],
 
-              const SizedBox(height: 22),
-              const Text(
-                'Quên mật khẩu? Liên hệ phòng khám để được cấp lại.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: AppColors.muted),
+              // UC-03 Main Flow bước 1 — lối vào chức năng tự cấp lại mật khẩu.
+              const SizedBox(height: 18),
+              TextButton(
+                onPressed: state.isLoading
+                    ? null
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const ForgotPasswordScreen(),
+                          ),
+                        ),
+                child: const Text('Quên mật khẩu?'),
               ),
             ],
           ),

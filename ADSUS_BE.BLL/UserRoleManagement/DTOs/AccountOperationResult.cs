@@ -35,4 +35,12 @@ public enum AccountOperationResult
     /// Deactivated là trạng thái cuối, PRD không định nghĩa đường kích hoạt lại.
     /// </summary>
     AccountIsDeactivated,
+
+    /// <summary>
+    /// UC-03 AF-02 — tài khoản chưa khai email nên không có chỗ nào để gửi mật khẩu tạm tới.
+    ///
+    /// Chỉ dùng cho đường Admin cấp lại hộ. Ở đường tự phục vụ thì không bao giờ trả về lỗi
+    /// nào cả (AF-01).
+    /// </summary>
+    AccountHasNoEmail,
 }

@@ -184,6 +184,7 @@ namespace ADSUS_BE
 
             // BLL — Module 2: User & Role Management
             builder.Services.AddScoped<IUserAccountService, UserAccountService>();
+            builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
 
             // Gửi email (API-04) — PHẦN NÀY CÒN TRỐNG.
             // Ở Development dùng bản in mật khẩu tạm ra console để còn kiểm thử được.
