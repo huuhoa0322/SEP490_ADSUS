@@ -9,6 +9,13 @@ import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../dtos/auth_dtos.dart';
 
+/// Vai trò duy nhất được dùng ứng dụng di động.
+///
+/// UC-01: SCR-02 (Mobile) dành cho Bệnh nhân; Admin, Bác sĩ và Điều dưỡng đăng nhập trên
+/// Web qua SCR-01. Bảng quyền PRD §3.2 cũng không giao chức năng nào của ba vai trò kia
+/// cho ứng dụng di động.
+const UserRole vaiTroDuocDungMobile = UserRole.patient;
+
 class AuthRepositoryImpl implements AuthRepository {
   // Dùng tham số vị trí thay vì tham số có tên, vì Dart không cho phép tên tham số bắt
   // đầu bằng dấu gạch dưới. Hai tham số khác kiểu nhau nên không sợ truyền nhầm thứ tự.
@@ -34,6 +41,22 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final session = AuthMapper.sessionFromJson(envelope.data!);
+
+      // Chặn TRƯỚC khi ghi bất cứ thứ gì xuống máy. Nếu ghi rồi mới chặn thì token của
+      // bác sĩ vẫn nằm lại trong thiết bị dù họ không vào được ứng dụng.
+      if (session.role != vaiTroDuocDungMobile) {
+        throw const ApiException(
+          'Tài khoản này sử dụng giao diện web của ADSUS. '
+          'Ứng dụng di động chỉ dành cho bệnh nhân.',
+        );
+      }
+
+      // Đổi sang tài khoản khác thì phải xoá trạng thái sinh trắc học của người trước.
+      // Không có bước này, người sau sẽ thừa hưởng nút vân tay mà chính họ chưa hề bật.
+      final soDaGhep = await _storage.read(key: StorageKeys.pairedPhone);
+      if (soDaGhep != null && soDaGhep != phoneNumber) {
+        await _storage.delete(key: StorageKeys.biometricEnabled);
+      }
 
       await _storage.write(key: StorageKeys.accessToken, value: session.accessToken);
 
@@ -120,9 +143,25 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> signOut() async {
+    // Xoá SẠCH cả ba khoá.
+    //
+    // Trước đây chỉ xoá token và cố ý giữ lại ghép đôi sinh trắc học, với ý định cho người
+    // dùng đăng nhập lại bằng vân tay. Nhưng đăng nhập bằng vân tay lại cần chính token
+    // vừa bị xoá, nên nút vân tay vẫn hiện mà bấm vào chỉ báo "phiên đã hết hạn".
+    //
+    // Giữ lại còn nguy hiểm hơn: máy dùng chung, người sau đăng nhập sẽ thấy nút vân tay
+    // bật sẵn dù chưa từng bật.
+    //
+    // Sinh trắc học vì vậy chỉ phục vụ trường hợp thật sự cần: thoát app rồi mở lại mà
+    // KHÔNG đăng xuất — token vẫn còn nên vân tay mở khoá được ngay. Đăng xuất là chủ động
+    // kết thúc phiên, muốn dùng vân tay tiếp thì ghép đôi lại bằng mật khẩu.
+    //
+    // LỆCH TÀI LIỆU — cần nhóm chốt: UC-02 ngụ ý vân tay dùng được lâu dài sau một lần
+    // đăng nhập mật khẩu. Muốn đúng như vậy thì backend phải có refresh token (hoặc token
+    // thiết bị dài hạn) để vân tay đổi lấy phiên mới. Hiện backend chưa có.
     await _storage.delete(key: StorageKeys.accessToken);
-    // Cố ý GIỮ LẠI pairedPhone và biometricEnabled: đăng xuất không có nghĩa là huỷ ghép
-    // đôi thiết bị. Lần sau người dùng vẫn dùng được vân tay mà không phải nhập lại mật khẩu.
+    await _storage.delete(key: StorageKeys.pairedPhone);
+    await _storage.delete(key: StorageKeys.biometricEnabled);
   }
 
   @override
@@ -132,8 +171,15 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<bool> isBiometricPaired() async {
     final paired = await _storage.read(key: StorageKeys.pairedPhone);
     final enabled = await _storage.read(key: StorageKeys.biometricEnabled);
-    // Phải thoả CẢ HAI: đã từng đăng nhập bằng mật khẩu trên máy này (BR-01),
-    // VÀ người dùng đã chủ động bật tính năng.
-    return paired != null && paired.isNotEmpty && enabled == 'true';
+    final token = await _storage.read(key: StorageKeys.accessToken);
+
+    // Phải thoả CẢ BA: đã đăng nhập bằng mật khẩu trên máy này (BR-01), người dùng đã chủ
+    // động bật tính năng, VÀ còn token để mở khoá. Thiếu token mà vẫn hiện nút thì bấm vào
+    // chỉ nhận được thông báo lỗi — thà đừng hiện.
+    return paired != null &&
+        paired.isNotEmpty &&
+        enabled == 'true' &&
+        token != null &&
+        token.isNotEmpty;
   }
 }

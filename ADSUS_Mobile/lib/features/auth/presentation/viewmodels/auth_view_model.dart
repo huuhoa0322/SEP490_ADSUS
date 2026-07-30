@@ -4,6 +4,7 @@ import '../../../../core/network/api_exception.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../data/repositories/biometric_service.dart';
 import '../../domain/entities/auth_session.dart';
+import 'profile_view_model.dart';
 
 /// Trạng thái phiên đăng nhập của toàn ứng dụng.
 class AuthState {
@@ -72,6 +73,10 @@ class AuthViewModel extends StateNotifier<AuthState> {
             phoneNumber: phoneNumber.trim(),
             password: password,
           );
+      // Vứt hồ sơ của người đăng nhập trước đi. Không có dòng này thì màn Hồ sơ cá nhân
+      // vẫn còn tên, email, ngày sinh của người cũ cho tới khi máy chủ trả về dữ liệu mới.
+      _ref.invalidate(profileViewModelProvider);
+
       state = state.copyWith(session: session, isLoading: false);
       // Đăng nhập bằng mật khẩu xong thì máy này đã được ghép đôi (UC-02 BR-01).
       await _loadBiometricStatus();
@@ -116,6 +121,10 @@ class AuthViewModel extends StateNotifier<AuthState> {
     try {
       // AF-02: token còn hạn nhưng tài khoản có thể đã bị khoá — backend sẽ từ chối.
       final profile = await repo.getMyProfile();
+
+      // Hồ sơ là của người khác trước đó thì phải bỏ đi, không để lẫn.
+      _ref.invalidate(profileViewModelProvider);
+
       state = state.copyWith(
         isLoading: false,
         session: AuthSession(
@@ -123,16 +132,23 @@ class AuthViewModel extends StateNotifier<AuthState> {
           fullName: profile.fullName,
           email: profile.email,
           role: profile.role,
-          mustChangePassword: false,
+          // Phải lấy đúng cờ từ máy chủ, KHÔNG được để cứng false. Admin cấp lại mật khẩu
+          // cho tài khoản đã bật sẵn vân tay là cờ này bật lên; để cứng false thì quét vân
+          // tay xong vào thẳng ứng dụng, bỏ qua màn ép đổi mật khẩu (UC-25).
+          mustChangePassword: profile.mustChangePassword,
         ),
       );
       return true;
     } on ApiException {
+      // Token chết (hết hạn, hoặc tài khoản đã bị khoá — AF-02). signOut xoá luôn ghép đôi
+      // sinh trắc học, rồi nạp lại trạng thái để nút vân tay biến mất thay vì cứ hiện ra
+      // và báo lỗi mỗi lần bấm.
       await repo.signOut();
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Phiên đăng nhập đã hết hạn. Vui lòng nhập mật khẩu.',
       );
+      await _loadBiometricStatus();
       return false;
     }
   }
@@ -156,6 +172,11 @@ class AuthViewModel extends StateNotifier<AuthState> {
 
   Future<void> signOut() async {
     await _ref.read(authRepositoryProvider).signOut();
+
+    // Hồ sơ cá nhân phải bị vứt cùng phiên. Nếu không, người đăng nhập kế tiếp trên cùng
+    // máy sẽ thấy tên, email và ngày sinh của người trước hiện sẵn trong ô nhập.
+    _ref.invalidate(profileViewModelProvider);
+
     state = const AuthState();
     await _loadBiometricStatus();
   }

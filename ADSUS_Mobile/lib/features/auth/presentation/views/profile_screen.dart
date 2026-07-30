@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../viewmodels/auth_view_model.dart';
 import '../viewmodels/profile_view_model.dart';
+import 'change_password_screen.dart';
 import 'widgets/message_banner.dart';
 
 /// SCR-03 — hồ sơ cá nhân trên Mobile (UC-10), kèm bật/tắt sinh trắc học (UC-02).
@@ -95,7 +96,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           IconButton(
             tooltip: 'Đăng xuất',
             icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authViewModelProvider.notifier).signOut(),
+            onPressed: () {
+              // Đóng các màn đang chồng lên trước rồi mới kết thúc phiên. Không có bước
+              // này thì token đã bị xoá nhưng màn Hồ sơ vẫn nằm nguyên trên màn hình cho
+              // tới khi người dùng tự bấm Back.
+              Navigator.of(context).popUntil((route) => route.isFirst);
+              ref.read(authViewModelProvider.notifier).signOut();
+            },
           ),
         ],
       ),
@@ -188,6 +195,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
 
               const SizedBox(height: 32),
+              const Divider(),
+
+              // UC-25 bước 1: người dùng chọn "Đổi mật khẩu" từ menu tài khoản.
+              // Trước đây màn SCR-05 chỉ mở ra khi bị ép đổi mật khẩu, nên bệnh nhân bình
+              // thường không có đường nào tự đổi.
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.key_outlined, color: AppColors.navy),
+                title: const Text(
+                  'Đổi mật khẩu',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ChangePasswordScreen(),
+                  ),
+                ),
+              ),
+
               const Divider(),
               const SizedBox(height: 12),
               _buildBiometricSection(state),

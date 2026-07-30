@@ -7,6 +7,7 @@ class UserProfile {
     required this.phoneNumber,
     required this.role,
     required this.biometricEnabled,
+    this.mustChangePassword = false,
     this.email,
     this.dateOfBirth,
   });
@@ -24,11 +25,16 @@ class UserProfile {
   final UserRole role;
   final bool biometricEnabled;
 
+  /// UC-25 — tài khoản đang dùng mật khẩu tạm, phải đổi trước khi vào màn khác.
+  /// Đăng nhập bằng vân tay đọc cờ này, vì nó không đi qua /auth/login.
+  final bool mustChangePassword;
+
   UserProfile copyWith({
     String? fullName,
     String? email,
     String? dateOfBirth,
     bool? biometricEnabled,
+    bool? mustChangePassword,
     bool clearEmail = false,
     bool clearDateOfBirth = false,
   }) {
@@ -39,6 +45,7 @@ class UserProfile {
       dateOfBirth: clearDateOfBirth ? null : (dateOfBirth ?? this.dateOfBirth),
       role: role,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
+      mustChangePassword: mustChangePassword ?? this.mustChangePassword,
     );
   }
 }
