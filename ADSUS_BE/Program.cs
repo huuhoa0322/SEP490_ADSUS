@@ -7,6 +7,7 @@ using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Implementations;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using ADSUS_BE.Middlewares;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -109,6 +110,10 @@ namespace ADSUS_BE
                 })
                 .AddJwtBearer(options =>
                 {
+                    // Sau khi chữ ký hợp lệ, còn phải hỏi thêm DB xem tài khoản có bị khoá
+                    // hay vô hiệu hoá không. Xem AccountStatusJwtEvents để biết lý do.
+                    options.EventsType = typeof(AccountStatusJwtEvents);
+
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuer = true,
@@ -125,6 +130,10 @@ namespace ADSUS_BE
                         ClockSkew = TimeSpan.Zero,
                     };
                 });
+
+            // EventsType yêu cầu lớp xử lý sự kiện phải nằm trong DI. Scoped vì nó dùng
+            // repository, mà repository sống theo vòng đời một request.
+            builder.Services.AddScoped<AccountStatusJwtEvents>();
 
             builder.Services.AddAuthorization();
 

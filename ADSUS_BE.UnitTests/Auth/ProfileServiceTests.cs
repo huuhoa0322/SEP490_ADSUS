@@ -50,6 +50,25 @@ public class ProfileServiceTests
         Assert.Null(result);
     }
 
+    [Theory]
+    [InlineData(UserStatus.Locked)]
+    [InlineData(UserStatus.Deactivated)]
+    public async Task LayHoSo_TaiKhoanKhongConHieuLuc_TraVeNull(UserStatus trangThai)
+    {
+        // UC-02 AF-02: quét vân tay đúng nhưng tài khoản đã bị Admin khoá thì vẫn không vào
+        // được. Ứng dụng di động dựa vào chính lời gọi GET /users/me này để kiểm tra.
+        //
+        // Trả null y hệt trường hợp không tìm thấy tài khoản (GB-06) — controller vì thế
+        // trả về đúng một câu 401 cho cả hai.
+        var user = TaoUser();
+        user.Status = trangThai;
+        SetupUser(user);
+
+        var result = await _sut.GetOwnProfileAsync(user.UserId);
+
+        Assert.Null(result);
+    }
+
     [Fact]
     public async Task CapNhat_ThanhCong_LuuDungBaTruong()
     {

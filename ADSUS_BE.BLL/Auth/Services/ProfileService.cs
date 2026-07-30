@@ -20,7 +20,14 @@ public class ProfileService : IProfileService
         CancellationToken cancellationToken = default)
     {
         var user = await _users.GetByIdAsync(userId, cancellationToken);
-        if (user is null) return null;
+
+        // Tài khoản không tồn tại hoặc đã bị khoá/vô hiệu hoá đều trả null như nhau, để
+        // controller trả về đúng một câu 401 (GB-06).
+        //
+        // Trên thực tế tầng xác thực (AccountStatusJwtEvents) đã chặn từ trước, nên nhánh
+        // này gần như không chạy tới. Vẫn giữ để service tự đứng vững được: ai gọi thẳng
+        // service mà quên đi qua tầng xác thực thì cũng không lọt.
+        if (user is null || user.Status != UserStatus.Active) return null;
 
         return new UserProfileResponse
         {
