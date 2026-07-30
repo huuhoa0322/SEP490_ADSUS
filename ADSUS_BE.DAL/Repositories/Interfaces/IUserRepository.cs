@@ -27,5 +27,32 @@ public interface IUserRepository
         string email,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// UC-04 BR-02 — số điện thoại là định danh đăng nhập duy nhất của toàn hệ thống,
+    /// hai tài khoản không bao giờ được trùng. Kiểm trước khi tạo để báo lỗi tử tế thay vì
+    /// để DB ném ra lỗi vi phạm ràng buộc.
+    /// </summary>
+    Task<bool> PhoneExistsAsync(string phone, CancellationToken cancellationToken = default);
+
+    /// <summary>Kiểm email đã có tài khoản nào dùng chưa. Dùng lúc TẠO MỚI (chưa có id để loại trừ).</summary>
+    Task<bool> IsEmailUsedAsync(string email, CancellationToken cancellationToken = default);
+
+    /// <summary>Thêm tài khoản mới vào ngữ cảnh. Phải gọi SaveChangesAsync sau đó.</summary>
+    Task AddAsync(User user, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// UC-04 / SCR-06 — danh sách tài khoản cho Admin, có tìm kiếm và lọc.
+    ///
+    /// <paramref name="keyword"/> khớp không phân biệt hoa thường trên họ tên hoặc số điện thoại.
+    /// Trả về cả tổng số bản ghi để giao diện dựng phân trang.
+    /// </summary>
+    Task<(IReadOnlyList<User> Items, int TotalCount)> SearchAsync(
+        string? keyword,
+        UserRole? role,
+        UserStatus? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

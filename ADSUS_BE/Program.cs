@@ -3,6 +3,8 @@ using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.BLL.Auth.Validators;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
+using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Implementations;
@@ -179,6 +181,18 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IProfileService, ProfileService>();
+
+            // BLL — Module 2: User & Role Management
+            builder.Services.AddScoped<IUserAccountService, UserAccountService>();
+
+            // Gửi email (API-04) — PHẦN NÀY CÒN TRỐNG.
+            // Ở Development dùng bản in mật khẩu tạm ra console để còn kiểm thử được.
+            // Ở môi trường khác thì cố ý KHÔNG đăng ký gì: thiếu bản hiện thực thật là ứng
+            // dụng chết ngay lúc khởi động, còn hơn âm thầm không gửi được mail nào.
+            if (builder.Environment.IsDevelopment())
+            {
+                builder.Services.AddScoped<IEmailService, DevConsoleEmailService>();
+            }
 
             // Scans the whole BLL assembly, so validators added by other modules are picked
             // up automatically.
