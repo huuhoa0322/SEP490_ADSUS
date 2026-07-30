@@ -5,6 +5,7 @@ using ADSUS_BE.BLL.Auth.Validators;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.ExternalServices;
 using ADSUS_BE.DAL.Repositories.Implementations;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using FluentValidation;
@@ -144,6 +145,11 @@ namespace ADSUS_BE
             // ---------- Per-module service registration ----------
             // DAL
             builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+            // External services — push notification. Hiện tại dùng FakePush (in-memory stub)
+            // cho dev/test/CI. Production sẽ đổi sang FirebasePushNotificationClient (sprint sau,
+            // cần FCM service account JSON qua User Secrets). Singleton vì stateless.
+            builder.Services.AddSingleton<IPushNotificationClient, FakePushNotificationClient>();
 
             // BLL — Module 1: Authentication & Account
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
