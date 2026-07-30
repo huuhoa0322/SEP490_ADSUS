@@ -17,6 +17,16 @@ public class UserRepository : IUserRepository
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
         _db.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
 
+    public Task<bool> IsEmailUsedByAnotherUserAsync(
+        Guid userId,
+        string email,
+        CancellationToken cancellationToken = default) =>
+        _db.Users.AnyAsync(
+            u => u.UserId != userId
+                 && u.Email != null
+                 && u.Email.ToLower() == email.ToLower(),
+            cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _db.SaveChangesAsync(cancellationToken);
 }

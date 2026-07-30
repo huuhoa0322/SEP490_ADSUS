@@ -148,6 +148,7 @@ namespace ADSUS_BE
             // BLL — Module 1: Authentication & Account
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IProfileService, ProfileService>();
 
             // Scans the whole BLL assembly, so validators added by other modules are picked
             // up automatically.
