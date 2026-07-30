@@ -74,8 +74,29 @@ namespace ADSUS_BE
             // Npgsql does not discover PostgreSQL enums on its own — they must be registered
             // on the data source. Without this every query touching role or status fails at
             // runtime, even though the build succeeds.
-            var dataSourceBuilder = new NpgsqlDataSourceBuilder(
-                builder.Configuration.GetConnectionString("DefaultConnection"));
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                // Không có dòng này thì Npgsql ném ra "Host can't be null" — đọc xong không
+                // ai đoán được phải sửa ở đâu.
+                //
+                // Nguyên nhân hay gặp nhất KHÔNG phải là quên nhập User Secrets, mà là chạy
+                // sai profile: trên thanh Run của Visual Studio phải chọn "http" hoặc
+                // "https". Chọn mục mang tên project ("ADSUS_BE") là chạy không qua
+                // launchSettings.json, ASPNETCORE_ENVIRONMENT không được đặt, môi trường rơi
+                // về Production, mà User Secrets thì chỉ nạp ở Development.
+                throw new InvalidOperationException(
+                    "Khong doc duoc chuoi ket noi 'DefaultConnection'. " +
+                    $"Moi truong hien tai: {builder.Environment.EnvironmentName}. " +
+                    "Neu khong phai 'Development' thi tren thanh Run cua Visual Studio hay chon " +
+                    "profile 'http' (dung chon muc ten project) roi chay lai. " +
+                    "Neu dung 'Development' roi ma van bao loi thi chuot phai project ADSUS_BE > " +
+                    "Manage User Secrets va dan khoi ConnectionStrings + JwtSettings — xin file " +
+                    "chung cua nhom.");
+            }
+
+            var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
             dataSourceBuilder.MapEnum<UserRole>("user_role");
             dataSourceBuilder.MapEnum<UserStatus>("user_status");
             var dataSource = dataSourceBuilder.Build();
