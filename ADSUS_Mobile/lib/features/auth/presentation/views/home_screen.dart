@@ -27,6 +27,13 @@ class HomeScreen extends ConsumerWidget {
               MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
             ),
           ),
+          // UC-01 bước 4: đăng xuất phải với tới được ngay từ màn chính, không bắt người
+          // dùng đi vòng qua màn hồ sơ mới tìm thấy.
+          IconButton(
+            tooltip: 'Đăng xuất',
+            icon: const Icon(Icons.logout),
+            onPressed: () => ref.read(authViewModelProvider.notifier).signOut(),
+          ),
         ],
       ),
       body: SafeArea(
