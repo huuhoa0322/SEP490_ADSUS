@@ -170,6 +170,24 @@ class AuthViewModel extends StateNotifier<AuthState> {
 
   Future<void> refreshBiometricStatus() => _loadBiometricStatus();
 
+  /// Máy chủ đã từ chối token đang dùng — hết hạn, hoặc tài khoản vừa bị Admin khoá.
+  ///
+  /// Khác [signOut] ở chỗ người dùng KHÔNG chủ động bấm gì, nên phải nói rõ lý do, nếu không
+  /// họ chỉ thấy ứng dụng tự nhiên nhảy về màn đăng nhập.
+  Future<void> handleSessionExpired() async {
+    // Đã ở màn đăng nhập rồi thì thôi, tránh xoá đè lên trạng thái đang hiển thị.
+    if (!mounted || !state.isSignedIn) return;
+
+    await _ref.read(authRepositoryProvider).signOut();
+    _ref.invalidate(profileViewModelProvider);
+
+    if (!mounted) return;
+    state = const AuthState(
+      errorMessage: 'Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.',
+    );
+    await _loadBiometricStatus();
+  }
+
   Future<void> signOut() async {
     await _ref.read(authRepositoryProvider).signOut();
 

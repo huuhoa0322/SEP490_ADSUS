@@ -6,6 +6,7 @@ import '../../core/network/dio_client.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/data/repositories/biometric_service.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
 
 /// Kho lưu trữ được hệ điều hành mã hoá (Keystore/Keychain).
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
@@ -15,7 +16,13 @@ final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
 });
 
 final dioProvider = Provider<Dio>((ref) {
-  return createDioClient(ref.watch(secureStorageProvider));
+  return createDioClient(
+    ref.watch(secureStorageProvider),
+    // ref.read chỉ chạy KHI thật sự nhận 401, không chạy lúc dựng provider — nên không tạo
+    // vòng phụ thuộc dù authViewModel lại phụ thuộc ngược vào dio qua repository.
+    onSessionExpired: () =>
+        ref.read(authViewModelProvider.notifier).handleSessionExpired(),
+  );
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {

@@ -38,10 +38,18 @@ export function AuthGuard({ children }: { children: ReactNode }) {
 
   // PRD §3.2 Permission Matrix: mỗi khu vực chỉ dành cho một số vai trò. Điều hướng sau
   // đăng nhập (BR-03) không đủ — người dùng vẫn có thể tự gõ đường dẫn lên thanh địa chỉ.
+  //
+  // CHỐT AN TOÀN: chỉ coi là sai khu vực khi thật sự có chỗ KHÁC để đưa họ tới. Nếu đích
+  // đến lại trùng đúng trang đang đứng thì màn hình sẽ kẹt vĩnh viễn ở vòng quay "đang kiểm
+  // tra phiên đăng nhập" — người dùng không thấy lỗi, không thấy nội dung, không làm gì được.
+  // Thà cho vào và để backend từ chối, còn hơn treo cứng giao diện.
+  const homePath = role === undefined ? null : getHomePathForRole(role);
+
   const isWrongArea =
     !needsRedirectToChangePassword &&
     role !== undefined &&
-    !isRoleAllowedOnPath(role, pathname);
+    !isRoleAllowedOnPath(role, pathname) &&
+    homePath !== pathname;
 
   const isAllowed =
     Boolean(accessToken) && !needsRedirectToChangePassword && !isWrongArea;
@@ -64,15 +72,15 @@ export function AuthGuard({ children }: { children: ReactNode }) {
 
     // Sai khu vực thì đưa về đúng khu vực của vai trò, không hiện trang "cấm truy cập" —
     // người dùng hợp lệ gõ nhầm đường dẫn không cần bị doạ.
-    if (isWrongArea && role !== undefined) {
-      router.replace(getHomePathForRole(role));
+    if (isWrongArea && homePath !== null) {
+      router.replace(homePath);
     }
   }, [
     hasHydrated,
     accessToken,
     needsRedirectToChangePassword,
     isWrongArea,
-    role,
+    homePath,
     router,
   ]);
 

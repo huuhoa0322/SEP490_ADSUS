@@ -23,6 +23,27 @@ describe("getHomePathForRole — UC-01 BR-03", () => {
   });
 });
 
+describe("Bất biến chống treo màn hình", () => {
+  it("đích đến của mỗi vai trò phải là nơi chính vai trò đó được vào", () => {
+    // Đây là bất biến giữ cho AuthGuard không quay vòng vô tận.
+    //
+    // AuthGuard thấy sai khu vực thì đưa người dùng về getHomePathForRole(role). Nếu đích
+    // đó lại là nơi vai trò ấy KHÔNG được vào, guard sẽ đẩy đi đẩy lại mãi và màn hình kẹt
+    // cứng ở vòng quay "đang kiểm tra phiên đăng nhập" — không lỗi, không nội dung, không
+    // làm gì được.
+    //
+    // Test này đỏ ngay khi ai đó thêm một luật vào ROUTE_ROLES mà quên chỉnh đích đến.
+    for (const role of ["ADMIN", "DOCTOR", "NURSE", "PATIENT"] satisfies Role[]) {
+      const home = getHomePathForRole(role);
+
+      expect(
+        isRoleAllowedOnPath(role, home),
+        `Vai trò ${role} bị đưa về ${home} nhưng lại không được vào đó`,
+      ).toBe(true);
+    }
+  });
+});
+
 describe("isRoleAllowedOnPath — PRD §3.2 Permission Matrix", () => {
   it('chỉ Admin xem được màn thống kê ("Statistics dashboard | View")', () => {
     expect(isRoleAllowedOnPath("ADMIN", "/dashboard")).toBe(true);

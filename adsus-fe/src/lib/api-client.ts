@@ -41,6 +41,47 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+/** Khoá zustand dùng để lưu phiên đăng nhập. Phải khớp tên trong auth-store.ts. */
+const AUTH_STORE_KEY = "adsus.auth";
+
+/**
+ * Phiên chết thì đưa người dùng về màn đăng nhập.
+ *
+ * VÌ SAO CẦN: backend kiểm trạng thái tài khoản ở MỌI request. Admin khoá một tài khoản
+ * (UC-04 FT-08) là token đang dùng chết ngay lập tức. Không có đoạn này thì người bị khoá
+ * vẫn ngồi nguyên trong giao diện, bấm gì cũng báo lỗi mà không hiểu vì sao, còn token chết
+ * thì nằm lại trong máy.
+ *
+ * Chỉ xử lý khi request CÓ GẮN token. Đăng nhập sai mật khẩu cũng trả 401 nhưng request đó
+ * không kèm token — nếu không phân biệt, nhập sai mật khẩu một lần là trang tự tải lại và
+ * người dùng không kịp đọc thông báo lỗi.
+ *
+ * Dùng window.location thay vì router của Next.js: đây là tệp thường, không phải component,
+ * và tải lại cả trang là cách chắc chắn nhất để mọi state trong bộ nhớ bị dọn sạch.
+ */
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: unknown) => {
+    const isUnauthorized =
+      error instanceof AxiosError && error.response?.status === 401;
+    const hadToken = Boolean(
+      error instanceof AxiosError && error.config?.headers?.Authorization,
+    );
+
+    if (isUnauthorized && hadToken && typeof window !== "undefined") {
+      window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+      window.localStorage.removeItem(AUTH_STORE_KEY);
+
+      // Đang ở trang đăng nhập rồi thì thôi, tránh tải lại vòng quanh.
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login?expired=1";
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
+
 /**
  * Extracts the error message from a backend response.
  *

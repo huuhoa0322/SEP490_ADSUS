@@ -27,13 +27,23 @@ namespace ADSUS_BE
         private const string DevCorsPolicy = "DevCors";
 
         /// <summary>
-        /// Origin của frontend được phép gọi API. Next.js mặc định chạy ở cổng 3000.
-        /// Ai chạy frontend ở cổng khác thì phải thêm vào đây, không thì trình duyệt chặn.
+        /// Origin của frontend được phép gọi API lúc phát triển.
+        ///
+        /// Next.js mặc định chạy ở cổng 3000, NHƯNG nếu cổng đó đang bận thì nó tự nhảy sang
+        /// 3001, 3002... mà chỉ báo một dòng nhỏ trong terminal. Thiếu các cổng dự phòng này
+        /// thì trình duyệt chặn sạch mọi lời gọi, triệu chứng nhìn y hệt "backend chưa chạy".
+        /// Hay gặp nhất là khi lỡ mở hai cửa sổ `npm run dev`.
+        ///
+        /// Lúc deploy thật phải thay hết bằng tên miền thật.
         /// </summary>
         private static readonly string[] AllowedCorsOrigins =
         {
             "http://localhost:3000",
             "https://localhost:3000",
+            "http://localhost:3001",
+            "https://localhost:3001",
+            "http://localhost:3002",
+            "https://localhost:3002",
         };
 
         public static void Main(string[] args)
