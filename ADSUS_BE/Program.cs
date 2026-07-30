@@ -178,7 +178,19 @@ namespace ADSUS_BE
             // Bản thân chính sách đã giới hạn origin nên để ngoài vẫn an toàn.
             app.UseCors(DevCorsPolicy);
 
-            app.UseHttpsRedirection();
+            // Chỉ ép HTTPS khi chạy thật.
+            //
+            // Lúc phát triển mà bật, ai chọn profile "https" trong Visual Studio là API sẽ
+            // đá mọi request http sang https. Máy ảo Android không tin chứng chỉ tự ký của
+            // .NET nên ứng dụng di động đứt kết nối, mà báo lỗi lại giống hệt "backend chưa
+            // chạy" — rất mất thời gian mới lần ra.
+            //
+            // Bỏ ở môi trường Development không mất mát gì: máy ảo, trình duyệt và backend
+            // đều nằm trên cùng một máy, không có đường truyền nào để nghe lén.
+            if (!app.Environment.IsDevelopment())
+            {
+                app.UseHttpsRedirection();
+            }
 
             // Order matters: Authentication (who are you) must run BEFORE Authorization
             // (are you allowed). Swap them and every [Authorize] returns 401.
