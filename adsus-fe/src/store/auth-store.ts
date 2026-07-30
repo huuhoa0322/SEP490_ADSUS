@@ -87,9 +87,40 @@ export function getHomePathForRole(role: Role): string {
       // Nurse có quyền giống hệt Doctor (UCS), nên cũng vào danh sách bệnh nhân.
       return "/patients";
     case "PATIENT":
-      // Bệnh nhân dùng ứng dụng di động, không có giao diện web.
-      return "/";
+      // Bệnh nhân dùng ứng dụng di động, không có giao diện web. Trường hợp này đã bị chặn
+      // ngay từ lúc đăng nhập, nên thực tế không đi tới đây.
+      return "/login";
     default:
-      return "/";
+      return "/login";
   }
+}
+
+/**
+ * Vai trò nào được vào khu vực nào — chép thẳng từ PRD §3.2 Permission Matrix.
+ *
+ * Điều hướng theo vai trò (BR-03) mới chỉ quyết định người dùng ĐƯỢC ĐƯA tới đâu sau khi
+ * đăng nhập. Nó không ngăn được ai đó tự gõ đường dẫn khác lên thanh địa chỉ — nên cần
+ * bảng này.
+ */
+const ROUTE_ROLES: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
+  // "Statistics dashboard | View": Admin = Full, Doctor/Nurse = No, Patient = No.
+  { prefix: "/dashboard", roles: ["ADMIN"] },
+  // UC-09: Admin KHÔNG vào màn lâm sàng này — Admin quản lý tài khoản ở SCR-06.
+  { prefix: "/patients", roles: ["DOCTOR", "NURSE"] },
+];
+
+/**
+ * Vai trò này có được mở đường dẫn này không.
+ *
+ * Đường dẫn không có luật riêng thì ai đã đăng nhập cũng vào được — ví dụ /change-password,
+ * vì ma trận quyền ghi "Change own password" là Full cho mọi vai trò.
+ *
+ * Lưu ý: đây vẫn chỉ là lớp trải nghiệm, giống [AuthGuard]. Chặn thật nằm ở backend.
+ */
+export function isRoleAllowedOnPath(role: Role, pathname: string): boolean {
+  const rule = ROUTE_ROLES.find(
+    (r) => pathname === r.prefix || pathname.startsWith(`${r.prefix}/`),
+  );
+
+  return rule ? rule.roles.includes(role) : true;
 }

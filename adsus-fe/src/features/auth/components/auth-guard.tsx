@@ -4,7 +4,12 @@ import { Loader2 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
-import { useAuthStore, useHasHydrated } from "@/store/auth-store";
+import {
+  getHomePathForRole,
+  isRoleAllowedOnPath,
+  useAuthStore,
+  useHasHydrated,
+} from "@/store/auth-store";
 
 const CHANGE_PASSWORD_PATH = "/change-password";
 
@@ -25,11 +30,21 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   const hasHydrated = useHasHydrated();
 
   const accessToken = useAuthStore((s) => s.accessToken);
+  const role = useAuthStore((s) => s.user?.role);
   const mustChangePassword = useAuthStore((s) => s.user?.mustChangePassword ?? false);
 
   const isOnChangePassword = pathname === CHANGE_PASSWORD_PATH;
   const needsRedirectToChangePassword = mustChangePassword && !isOnChangePassword;
-  const isAllowed = Boolean(accessToken) && !needsRedirectToChangePassword;
+
+  // PRD §3.2 Permission Matrix: mỗi khu vực chỉ dành cho một số vai trò. Điều hướng sau
+  // đăng nhập (BR-03) không đủ — người dùng vẫn có thể tự gõ đường dẫn lên thanh địa chỉ.
+  const isWrongArea =
+    !needsRedirectToChangePassword &&
+    role !== undefined &&
+    !isRoleAllowedOnPath(role, pathname);
+
+  const isAllowed =
+    Boolean(accessToken) && !needsRedirectToChangePassword && !isWrongArea;
 
   useEffect(() => {
     // Wait for localStorage to be read, otherwise a valid session gets bounced out.
@@ -44,8 +59,22 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     // screen; everything else stays blocked until that is done.
     if (needsRedirectToChangePassword) {
       router.replace(CHANGE_PASSWORD_PATH);
+      return;
     }
-  }, [hasHydrated, accessToken, needsRedirectToChangePassword, router]);
+
+    // Sai khu vực thì đưa về đúng khu vực của vai trò, không hiện trang "cấm truy cập" —
+    // người dùng hợp lệ gõ nhầm đường dẫn không cần bị doạ.
+    if (isWrongArea && role !== undefined) {
+      router.replace(getHomePathForRole(role));
+    }
+  }, [
+    hasHydrated,
+    accessToken,
+    needsRedirectToChangePassword,
+    isWrongArea,
+    role,
+    router,
+  ]);
 
   if (!hasHydrated || !isAllowed) {
     return (

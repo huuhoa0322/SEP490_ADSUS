@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { ACCESS_TOKEN_KEY } from "@/lib/api-client";
-import { useAuthStore } from "@/store/auth-store";
+import { getHomePathForRole, useAuthStore } from "@/store/auth-store";
 import type { Role } from "@/types/api.types";
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -30,7 +30,12 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-6">
-        <Link href="/" className="flex items-center gap-2.5">
+        {/* Trỏ về khu vực của chính vai trò. Trước đây trỏ "/" mà "/" lại chuyển thẳng sang
+            trang đăng nhập — bấm vào logo là như bị đăng xuất. */}
+        <Link
+          href={user ? getHomePathForRole(user.role) : "/login"}
+          className="flex items-center gap-2.5"
+        >
           <span className="flex size-9 items-center justify-center rounded-full bg-primary">
             <ScanLine className="size-4.5 text-primary-foreground" />
           </span>

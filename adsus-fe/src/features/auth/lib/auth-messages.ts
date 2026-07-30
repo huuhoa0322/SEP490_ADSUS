@@ -2,6 +2,8 @@ import { AxiosError } from "axios";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 
+import { WebNotAvailableForRoleError } from "../types/auth.types";
+
 /**
  * Vietnamese wording for authentication errors.
  *
@@ -39,6 +41,11 @@ const CHANGE_PASSWORD_ERRORS: Record<string, string> = {
 };
 
 export function getSignInErrorMessage(error: unknown): string {
+  // Mật khẩu đúng, chỉ là sai nền tảng — nói thẳng, đừng để bệnh nhân ngồi thử lại mật khẩu.
+  if (error instanceof WebNotAvailableForRoleError) {
+    return "Tài khoản bệnh nhân sử dụng ứng dụng ADSUS trên điện thoại. Giao diện web chỉ dành cho quản trị viên, bác sĩ và điều dưỡng.";
+  }
+
   const status = error instanceof AxiosError ? error.response?.status : undefined;
 
   // 401 nghĩa là thông tin đăng nhập bị từ chối — không bao giờ nói rõ sai chỗ nào.
