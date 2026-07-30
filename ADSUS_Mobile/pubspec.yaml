@@ -39,6 +39,9 @@ dependencies:
   go_router: ^17.3.0
   flutter_secure_storage: ^10.3.1
   connectivity_plus: ^7.3.1
+  # UC-02 đăng nhập sinh trắc học. Mẫu vân tay/khuôn mặt nằm trong secure enclave của
+  # hệ điều hành, thư viện này chỉ hỏi OS "xác thực có đúng không" chứ không đọc được mẫu.
+  local_auth: ^2.3.0
   firebase_core: ^4.12.1
   firebase_messaging: ^16.4.3
 
