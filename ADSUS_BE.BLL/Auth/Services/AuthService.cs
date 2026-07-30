@@ -41,6 +41,19 @@ public class AuthService : IAuthService
         // password.
         if (user is null || !passwordMatches || user.Status != UserStatus.Active)
         {
+            // LỆCH TÀI LIỆU — BR-04 chưa làm.
+            //
+            // UCS UC-01 BR-04 ghi: sai liên tiếp N lần thì hệ thống tự chuyển tài khoản sang
+            // Locked, và có hẳn kịch bản kiểm thử cho luật này. Nhóm đã quyết bỏ vì hệ thống
+            // nhỏ. Hệ quả: hiện KHÔNG có gì chặn dò mật khẩu, gọi bao nhiêu lần cũng được.
+            //
+            // Hướng đang bàn (chờ họp chốt): sai 5 lần thì khoá 15 phút. Nếu làm thì đừng
+            // đụng vào cột status — "Admin khoá" và "hệ thống tự khoá tạm" là hai việc khác
+            // nhau, chính UCS cũng ghi là distinct. Thêm hai cột riêng: failed_login_count
+            // và locked_until.
+            //
+            // Và dù có khoá tạm thì thông báo trả về vẫn phải giữ nguyên một câu duy nhất
+            // (GB-06) — báo "tài khoản bị khoá 15 phút" là lộ ngay số điện thoại đó có thật.
             return null;
         }
 

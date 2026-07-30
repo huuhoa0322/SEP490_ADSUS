@@ -37,6 +37,7 @@ public class ProfileService : IProfileService
             DateOfBirth = user.DateOfBirth?.ToString(DateFormat, CultureInfo.InvariantCulture),
             Role = user.Role.ToApiString(),
             BiometricEnabled = user.BiometricEnabled,
+            MustChangePassword = user.MustChangePassword,
         };
     }
 

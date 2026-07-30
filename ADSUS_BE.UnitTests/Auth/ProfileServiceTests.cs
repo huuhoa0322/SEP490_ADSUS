@@ -50,6 +50,21 @@ public class ProfileServiceTests
         Assert.Null(result);
     }
 
+    [Fact]
+    public async Task LayHoSo_TraVeCoEpDoiMatKhau()
+    {
+        // UC-25: đăng nhập bằng vân tay không đi qua /auth/login nên không nhận được cờ này
+        // từ LoginResponse — nó phải có trong hồ sơ. Thiếu thì Admin cấp lại mật khẩu cho
+        // tài khoản đã bật vân tay, người dùng quét vân tay là vào thẳng, bỏ qua màn đổi.
+        var user = TaoUser();
+        user.MustChangePassword = true;
+        SetupUser(user);
+
+        var result = await _sut.GetOwnProfileAsync(user.UserId);
+
+        Assert.True(result!.MustChangePassword);
+    }
+
     [Theory]
     [InlineData(UserStatus.Locked)]
     [InlineData(UserStatus.Deactivated)]
