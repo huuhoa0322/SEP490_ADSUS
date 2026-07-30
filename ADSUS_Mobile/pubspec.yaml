@@ -45,6 +45,18 @@ dependencies:
   firebase_core: ^4.12.1
   firebase_messaging: ^16.4.3
 
+# Ghim tạm để build Android chạy được.
+#
+# path_provider_android 2.3.x kéo theo gói `jni`, mà jni 1.0.1 có lỗi: file build.gradle của
+# nó chỉ áp plugin kotlin-android khi AGP < 9, nhưng vẫn dùng khối `kotlin { }` vô điều kiện.
+# Dự án đang chạy AGP 9.0.1 nên rơi đúng vào nhánh hỏng, build văng ngay ở bước dựng project
+# :jni với thông báo "Could not find method kotlin()".
+#
+# 2.2.x chưa dùng jni nên tránh được hoàn toàn. Bỏ dòng này đi khi jni ra bản vá, hoặc khi
+# nhóm hạ AGP về 8.x.
+dependency_overrides:
+  path_provider_android: 2.2.17
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
