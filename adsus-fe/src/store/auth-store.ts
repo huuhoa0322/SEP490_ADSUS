@@ -107,6 +107,9 @@ const ROUTE_ROLES: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
   { prefix: "/dashboard", roles: ["ADMIN"] },
   // UC-09: Admin KHÔNG vào màn lâm sàng này — Admin quản lý tài khoản ở SCR-06.
   { prefix: "/patients", roles: ["DOCTOR", "NURSE"] },
+  // UC-04 (SCR-06, SCR-07): "Create", "Lock / Deactivate" và "Assign role" đều là No cho
+  // Doctor/Nurse/Patient. Đây là chỗ đầu tiên NURSE khác DOCTOR.
+  { prefix: "/admin", roles: ["ADMIN"] },
 ];
 
 /**

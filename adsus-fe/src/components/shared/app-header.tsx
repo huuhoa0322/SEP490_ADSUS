@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, LogOut, ScanLine } from "lucide-react";
+import { KeyRound, LogOut, ScanLine, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -52,6 +52,18 @@ export function AppHeader() {
               </p>
               <p className="text-xs text-muted-foreground">{ROLE_LABEL[user.role]}</p>
             </div>
+          )}
+
+          {/* SCR-06 — chỉ Admin thấy. Không thấy nút không có nghĩa là không vào được:
+              chặn thật nằm ở AuthGuard và ở [Authorize(Roles = "ADMIN")] phía backend. */}
+          {user?.role === "ADMIN" && (
+            <Link
+              href="/admin/users"
+              className="flex items-center gap-2 rounded-full px-3.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+            >
+              <Users className="size-4" />
+              <span className="hidden sm:inline">Tài khoản</span>
+            </Link>
           )}
 
           <Link

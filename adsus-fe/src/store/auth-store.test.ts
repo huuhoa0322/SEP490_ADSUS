@@ -48,6 +48,19 @@ describe("isRoleAllowedOnPath — PRD §3.2 Permission Matrix", () => {
     expect(isRoleAllowedOnPath("DOCTOR", "/patients/123")).toBe(true);
   });
 
+  it("chỉ Admin vào được khu quản lý tài khoản (UC-04)", () => {
+    // Bảng quyền: Create, Lock/Deactivate, Assign role đều là No cho Doctor/Nurse/Patient.
+    // Đây là chỗ đầu tiên NURSE bị chặn trong khi DOCTOR cũng bị chặn — hai vai trò này
+    // giống nhau ở mọi màn lâm sàng nên rất dễ bị hiểu nhầm là giống nhau ở mọi nơi.
+    expect(isRoleAllowedOnPath("ADMIN", "/admin/users")).toBe(true);
+    expect(isRoleAllowedOnPath("ADMIN", "/admin/users/new")).toBe(true);
+
+    for (const role of ["DOCTOR", "NURSE", "PATIENT"] satisfies Role[]) {
+      expect(isRoleAllowedOnPath(role, "/admin/users")).toBe(false);
+      expect(isRoleAllowedOnPath(role, "/admin/users/new")).toBe(false);
+    }
+  });
+
   it('đổi mật khẩu thì mọi vai trò đều vào được ("Change own password" = Full)', () => {
     for (const role of ["ADMIN", "DOCTOR", "NURSE", "PATIENT"] satisfies Role[]) {
       expect(isRoleAllowedOnPath(role, "/change-password")).toBe(true);
