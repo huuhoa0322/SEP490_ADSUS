@@ -27,7 +27,7 @@ public class CreateUserAccountRequest
     public string? Email { get; set; }
 
     /// <summary>
-    /// Tuỳ chọn, định dạng yyyy-MM-dd, không được ở tương lai.
+    /// Tuỳ chọn, định dạng yyyy-MM-dd. Người được tạo tài khoản phải đủ 18 tuổi.
     ///
     /// BR-01: với vai trò PATIENT thì trường này bị BỎ QUA hoàn toàn ở tầng nghiệp vụ, kể cả
     /// khi người gọi có gửi lên. Ngày sinh của bệnh nhân là dữ liệu y tế, Admin không được

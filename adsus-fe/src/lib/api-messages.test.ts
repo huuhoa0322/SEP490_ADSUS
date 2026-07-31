@@ -40,4 +40,10 @@ describe("translateApiMessage", () => {
       "Số điện thoại hoặc mật khẩu không đúng.",
     );
   });
+
+  it("dịch lỗi chưa đủ tuổi từ validator quản lý tài khoản", () => {
+    expect(translateApiMessage("Account holder must be at least 18 years old.")).toBe(
+      "Người dùng phải đủ 18 tuổi.",
+    );
+  });
 });

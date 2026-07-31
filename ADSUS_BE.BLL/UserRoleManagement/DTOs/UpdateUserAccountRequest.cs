@@ -16,6 +16,6 @@ public class UpdateUserAccountRequest
 
     public string? Email { get; set; }
 
-    /// <summary>Bị bỏ qua khi vai trò là PATIENT (BR-01).</summary>
+    /// <summary>Phải đủ 18 tuổi nếu nhập; bị bỏ qua khi vai trò là PATIENT (BR-01).</summary>
     public string? DateOfBirth { get; set; }
 }

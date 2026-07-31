@@ -37,8 +37,14 @@ public class UpdateUserAccountRequestValidator : AbstractValidator<UpdateUserAcc
             .When(x => !string.IsNullOrWhiteSpace(x.Email));
 
         RuleFor(x => x.DateOfBirth)
-            .Must(CreateUserAccountRequestValidator.BeAValidPastDate)
-            .WithMessage("Date of birth must be in yyyy-MM-dd format and must not be in the future.")
+            .Must(CreateUserAccountRequestValidator.BeAParsableDate)
+            .WithMessage("Date of birth must be in yyyy-MM-dd format.")
             .When(x => !string.IsNullOrWhiteSpace(x.DateOfBirth));
+
+        RuleFor(x => x.DateOfBirth)
+            .Must(CreateUserAccountRequestValidator.BeAtLeastMinimumAge)
+            .WithMessage($"Account holder must be at least "
+                + $"{CreateUserAccountRequestValidator.MinimumAccountHolderAge} years old.")
+            .When(x => CreateUserAccountRequestValidator.BeAParsableDate(x.DateOfBirth));
     }
 }

@@ -15,6 +15,19 @@ import {
   type UserAccount,
 } from "../types/user.types";
 
+const MINIMUM_ACCOUNT_HOLDER_AGE = 18;
+
+/** Ngày sinh muộn nhất vẫn đủ tuổi, theo lịch địa phương và xử lý đúng cả ngày 29/02. */
+function latestEligibleBirthDate(): string {
+  const today = new Date();
+  const year = today.getFullYear() - MINIMUM_ACCOUNT_HOLDER_AGE;
+  const month = today.getMonth();
+  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+  const day = Math.min(today.getDate(), lastDayOfMonth);
+
+  return `${year}-${`${month + 1}`.padStart(2, "0")}-${`${day}`.padStart(2, "0")}`;
+}
+
 interface UserFormProps {
   /** Không truyền là đang tạo mới; có truyền là đang sửa tài khoản đó. */
   userId?: string;
@@ -100,6 +113,7 @@ function UserFormFields({
   const isPatient = role === "PATIENT";
   const isSubmitting = create.isPending || update.isPending;
   const serverError = create.error ?? update.error;
+  const maximumDateOfBirth = latestEligibleBirthDate();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -112,6 +126,11 @@ function UserFormFields({
 
     if (!isEdit && !/^0\d{8,10}$/.test(phoneNumber.trim())) {
       setClientError("Số điện thoại phải bắt đầu bằng 0 và có 9 đến 11 chữ số.");
+      return;
+    }
+
+    if (!isPatient && dateOfBirth && dateOfBirth > maximumDateOfBirth) {
+      setClientError(`Người dùng phải đủ ${MINIMUM_ACCOUNT_HOLDER_AGE} tuổi.`);
       return;
     }
 
@@ -244,13 +263,16 @@ function UserFormFields({
             Màn hình quản trị không hiển thị và không sửa được.
           </p>
         ) : (
-          <Field label="Ngày sinh" hint="Không bắt buộc">
+          <Field
+            label="Ngày sinh"
+            hint={`Không bắt buộc · người dùng phải đủ ${MINIMUM_ACCOUNT_HOLDER_AGE} tuổi`}
+          >
             <input
               value={dateOfBirth}
               onChange={(e) => setDateOfBirth(e.target.value)}
               disabled={isSubmitting}
               type="date"
-              max={new Date().toISOString().slice(0, 10)}
+              max={maximumDateOfBirth}
               className={inputClass}
             />
           </Field>

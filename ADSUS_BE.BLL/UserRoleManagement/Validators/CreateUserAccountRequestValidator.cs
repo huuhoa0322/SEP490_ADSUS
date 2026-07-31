@@ -1,5 +1,6 @@
 using System.Globalization;
 using ADSUS_BE.BLL.UserRoleManagement.DTOs;
+using ADSUS_BE.DAL.Data;
 using FluentValidation;
 
 namespace ADSUS_BE.BLL.UserRoleManagement.Validators;
@@ -12,6 +13,8 @@ namespace ADSUS_BE.BLL.UserRoleManagement.Validators;
 /// </summary>
 public class CreateUserAccountRequestValidator : AbstractValidator<CreateUserAccountRequest>
 {
+    internal const int MinimumAccountHolderAge = 18;
+
     /// <summary>
     /// Vai trò hợp lệ. Cố ý KHÔNG có ADMIN: theo UC-04, tài khoản quản trị được cấp lúc dựng
     /// hệ thống chứ không tạo qua màn này.
@@ -43,20 +46,29 @@ public class CreateUserAccountRequestValidator : AbstractValidator<CreateUserAcc
             .When(x => !string.IsNullOrWhiteSpace(x.Email));
 
         RuleFor(x => x.DateOfBirth)
-            .Must(BeAValidPastDate)
-            .WithMessage("Date of birth must be in yyyy-MM-dd format and must not be in the future.")
+            .Must(BeAParsableDate)
+            .WithMessage("Date of birth must be in yyyy-MM-dd format.")
             .When(x => !string.IsNullOrWhiteSpace(x.DateOfBirth));
+
+        RuleFor(x => x.DateOfBirth)
+            .Must(BeAtLeastMinimumAge)
+            .WithMessage($"Account holder must be at least {MinimumAccountHolderAge} years old.")
+            .When(x => BeAParsableDate(x.DateOfBirth));
     }
 
-    /// <summary>Đúng định dạng yyyy-MM-dd và không nằm ở tương lai.</summary>
-    internal static bool BeAValidPastDate(string? value)
+    internal static bool BeAParsableDate(string? value) =>
+        DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+            DateTimeStyles.None, out _);
+
+    internal static bool BeAtLeastMinimumAge(string? value)
     {
         if (!DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture,
                 DateTimeStyles.None, out var date))
         {
-            return false;
+            // Lỗi định dạng do luật BeAParsableDate báo; không tạo thêm lỗi tuổi trùng lặp.
+            return true;
         }
 
-        return date <= DateOnly.FromDateTime(DateTime.UtcNow);
+        return date <= ClinicClock.Today().AddYears(-MinimumAccountHolderAge);
     }
 }

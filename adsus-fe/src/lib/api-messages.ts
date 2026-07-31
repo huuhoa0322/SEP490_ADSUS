@@ -52,6 +52,8 @@ const MESSAGES: Record<string, string> = {
     "Ngày sinh phải đúng định dạng và không được ở tương lai.",
   "Date of birth must be in yyyy-MM-dd format.": "Ngày sinh không đúng định dạng.",
   "Date of birth must not be in the future.": "Ngày sinh không được ở tương lai.",
+  "Account holder must be at least 18 years old.":
+    "Người dùng phải đủ 18 tuổi.",
 
   // ---- Quản lý tài khoản (UC-04) ----
   "Account not found.": "Không tìm thấy tài khoản.",
