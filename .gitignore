@@ -372,3 +372,5 @@ FodyWeavers.xsd
 
 # Cấu hình riêng của IDE JetBrains (Rider, Android Studio). Không ai khác cần.
 .idea/
+/.ai-context
+/Prompt
