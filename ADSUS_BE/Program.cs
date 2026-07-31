@@ -79,6 +79,7 @@ namespace ADSUS_BE
                 builder.Configuration.GetConnectionString("DefaultConnection"));
             dataSourceBuilder.MapEnum<UserRole>("user_role");
             dataSourceBuilder.MapEnum<UserStatus>("user_status");
+            dataSourceBuilder.MapEnum<BlogPostStatus>("blog_status");
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);
