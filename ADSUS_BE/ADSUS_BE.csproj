@@ -4,6 +4,15 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- ĐỪNG ĐỔI GIÁ TRỊ NÀY.
+         Cả nhóm dùng chung một ID, mỗi người có kho secrets riêng nằm ở
+         %APPDATA%\Microsoft\UserSecrets\<ID>\secrets.json trên máy mình.
+         Đổi ID là mọi người pull về đều mất kết nối database.
+
+         Visual Studio đôi khi tự sinh ID mới rồi ghi đè vào đây khi bấm
+         "Manage User Secrets". Triệu chứng: đang chạy được tự nhiên báo
+         "Khong doc duoc chuoi ket noi 'DefaultConnection'".
+         Thấy dòng này đổi trong git diff thì trả lại giá trị cũ. -->
     <UserSecretsId>0b55daea-3ede-48d9-847b-1d62fa20823d</UserSecretsId>
   </PropertyGroup>
 

@@ -2,6 +2,8 @@ import { AxiosError } from "axios";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 
+import { WebNotAvailableForRoleError } from "../types/auth.types";
+
 /**
  * Vietnamese wording for authentication errors.
  *
@@ -39,6 +41,11 @@ const CHANGE_PASSWORD_ERRORS: Record<string, string> = {
 };
 
 export function getSignInErrorMessage(error: unknown): string {
+  // Mật khẩu đúng, chỉ là sai nền tảng — nói thẳng, đừng để bệnh nhân ngồi thử lại mật khẩu.
+  if (error instanceof WebNotAvailableForRoleError) {
+    return "Tài khoản bệnh nhân sử dụng ứng dụng ADSUS trên điện thoại. Giao diện web chỉ dành cho quản trị viên, bác sĩ và điều dưỡng.";
+  }
+
   const status = error instanceof AxiosError ? error.response?.status : undefined;
 
   // 401 nghĩa là thông tin đăng nhập bị từ chối — không bao giờ nói rõ sai chỗ nào.
@@ -58,8 +65,8 @@ export function getSignInErrorMessage(error: unknown): string {
     return `Không gọi được tới API đăng nhập (404). Kiểm tra NEXT_PUBLIC_API_BASE_URL trong adsus-fe/.env.local có trỏ đúng địa chỉ backend không.`;
   }
 
-  // Còn lại là lỗi đường truyền; getApiErrorMessage đã diễn đạt sẵn bằng tiếng Việt và nêu
-  // rõ địa chỉ đang gọi.
+  // Các lỗi còn lại (gồm cả 429) dùng message chuẩn của API; lỗi đường truyền thì
+  // getApiErrorMessage sẽ nêu rõ địa chỉ backend đang gọi.
   return getApiErrorMessage(error, SIGN_IN_FAILED);
 }
 

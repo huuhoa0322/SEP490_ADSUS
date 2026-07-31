@@ -1,6 +1,8 @@
 "use client";
 
-import { AlertCircle, Eye, EyeOff, Loader2, Lock, Phone } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Info, Loader2, Lock, Phone } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -17,6 +19,10 @@ export function SignInForm() {
   const [clientError, setClientError] = useState<string | null>(null);
 
   const signIn = useSignIn();
+
+  // Bị đá ra vì token hết hiệu lực (hết hạn, hoặc tài khoản vừa bị Admin khoá). Không nói
+  // gì thì người dùng tưởng hệ thống tự đăng xuất vô cớ.
+  const wasExpired = useSearchParams().get("expired") === "1";
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,6 +63,16 @@ export function SignInForm() {
           Sử dụng số điện thoại đã được cấp để truy cập hệ thống.
         </p>
       </div>
+
+      {wasExpired && (
+        <div className="mb-6 flex items-start gap-2.5 rounded-2xl border border-border bg-secondary/50 px-4 py-3 text-sm text-muted-foreground">
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>
+            Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại. Nếu tình trạng này lặp lại,
+            hãy liên hệ quản trị viên.
+          </span>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
         <div className="flex flex-col gap-2.5">
@@ -156,8 +172,14 @@ export function SignInForm() {
           )}
         </button>
 
+        {/* UC-03 Main Flow bước 1 — lối vào chức năng tự cấp lại mật khẩu. */}
         <p className="text-center text-sm text-muted-foreground">
-          Quên mật khẩu? Liên hệ quản trị viên để được cấp lại.
+          <Link
+            href="/forgot-password"
+            className="font-600 text-accent transition-colors hover:text-accent/80"
+          >
+            Quên mật khẩu?
+          </Link>
         </p>
       </form>
     </div>

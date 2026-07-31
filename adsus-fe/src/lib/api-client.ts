@@ -2,6 +2,8 @@ import axios, { AxiosError } from "axios";
 
 import type { ApiResponse } from "@/types/api.types";
 
+import { translateApiMessage } from "./api-messages";
+
 /**
  * Địa chỉ backend. Đọc từ .env.local, nếu không có thì dùng cổng mặc định của
  * profile "http" trong Properties/launchSettings.json.
@@ -41,17 +43,63 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+/** Khoá zustand dùng để lưu phiên đăng nhập. Phải khớp tên trong auth-store.ts. */
+const AUTH_STORE_KEY = "adsus.auth";
+
+/**
+ * Phiên chết thì đưa người dùng về màn đăng nhập.
+ *
+ * VÌ SAO CẦN: backend kiểm trạng thái tài khoản ở MỌI request. Admin khoá một tài khoản
+ * (UC-04 FT-08) là token đang dùng chết ngay lập tức. Không có đoạn này thì người bị khoá
+ * vẫn ngồi nguyên trong giao diện, bấm gì cũng báo lỗi mà không hiểu vì sao, còn token chết
+ * thì nằm lại trong máy.
+ *
+ * Chỉ xử lý khi request CÓ GẮN token. Đăng nhập sai mật khẩu cũng trả 401 nhưng request đó
+ * không kèm token — nếu không phân biệt, nhập sai mật khẩu một lần là trang tự tải lại và
+ * người dùng không kịp đọc thông báo lỗi.
+ *
+ * Dùng window.location thay vì router của Next.js: đây là tệp thường, không phải component,
+ * và tải lại cả trang là cách chắc chắn nhất để mọi state trong bộ nhớ bị dọn sạch.
+ */
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: unknown) => {
+    const isUnauthorized =
+      error instanceof AxiosError && error.response?.status === 401;
+    const hadToken = Boolean(
+      error instanceof AxiosError && error.config?.headers?.Authorization,
+    );
+
+    if (isUnauthorized && hadToken && typeof window !== "undefined") {
+      window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+      window.localStorage.removeItem(AUTH_STORE_KEY);
+
+      // Đang ở trang đăng nhập rồi thì thôi, tránh tải lại vòng quanh.
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login?expired=1";
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
+
 /**
  * Extracts the error message from a backend response.
  *
  * The backend always returns { code, message, data }, even on failure, so "message" is the
  * text it deliberately chose to expose. For sign-in it returns the same sentence for every
- * possible cause (UCS GB-06), which is exactly why it should be displayed verbatim.
+ * possible cause (UCS GB-06), which is exactly why it must be shown as-is — không được nghĩ
+ * ra lý do cụ thể hơn ở phía giao diện.
+ *
+ * Câu tiếng Anh đó được dịch sang tiếng Việt trước khi hiển thị: người dùng hệ thống này là
+ * nhân viên phòng khám, còn API thì giữ một thứ tiếng vì còn phục vụ ứng dụng di động và đi
+ * vào log. Xem api-messages.ts.
  */
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof AxiosError) {
     const body = error.response?.data as ApiResponse<unknown> | undefined;
-    if (body?.message) return body.message;
+    if (body?.message) return translateApiMessage(body.message);
 
     // Không có response nghĩa là không chạm được tới backend. Nêu rõ địa chỉ đang gọi,
     // vì nguyên nhân hầu hết là backend chưa bật hoặc đang chạy ở cổng khác.
