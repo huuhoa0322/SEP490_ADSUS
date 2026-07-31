@@ -5,8 +5,12 @@ using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.BLL.Auth.Validators;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.DashboardReporting.Interfaces;
+using ADSUS_BE.BLL.DashboardReporting.Services;
 using ADSUS_BE.BLL.Engagement.Interfaces;
 using ADSUS_BE.BLL.Engagement.Services;
+using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
+using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Implementations;
@@ -148,6 +152,8 @@ namespace ADSUS_BE
             dataSourceBuilder.MapEnum<UserRole>("user_role");
             dataSourceBuilder.MapEnum<UserStatus>("user_status");
             dataSourceBuilder.MapEnum<BlogPostStatus>("blog_status");
+            dataSourceBuilder.MapEnum<AiResultStatus>("ai_result_status");
+            dataSourceBuilder.MapEnum<AppointmentStatus>("appointment_status");
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);

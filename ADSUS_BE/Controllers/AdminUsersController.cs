@@ -5,6 +5,7 @@ using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PagedResult = ADSUS_BE.BLL.UserRoleManagement.DTOs.PagedResult<ADSUS_BE.BLL.UserRoleManagement.DTOs.UserAccountResponse>;
 
 namespace ADSUS_BE.Controllers;
 
@@ -46,7 +47,7 @@ public class AdminUsersController : ControllerBase
     /// SCR-06 — danh sách tài khoản, tìm theo tên hoặc số điện thoại, lọc theo vai trò và trạng thái.
     /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(ApiResponse<PagedResult<UserAccountResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PagedResult>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Search(
         [FromQuery] string? keyword,
         [FromQuery] string? role,
@@ -60,7 +61,7 @@ public class AdminUsersController : ControllerBase
         var result = await _accounts.SearchAsync(
             keyword, role, status, page, pageSize, adminId, cancellationToken);
 
-        return Ok(ApiResponse<PagedResult<UserAccountResponse>>.Ok(result, "User list loaded."));
+        return Ok(ApiResponse<PagedResult>.Ok(result, "User list loaded."));
     }
 
     /// <summary>SCR-07 — lấy một tài khoản để đổ vào form sửa.</summary>

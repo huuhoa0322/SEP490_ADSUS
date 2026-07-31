@@ -4,6 +4,7 @@ using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using PagedResult = ADSUS_BE.BLL.UserRoleManagement.DTOs.PagedResult<ADSUS_BE.BLL.UserRoleManagement.DTOs.UserAccountResponse>;
 
 namespace ADSUS_BE.BLL.UserRoleManagement.Services;
 
@@ -35,7 +36,7 @@ public class UserAccountService : IUserAccountService
         _email = email;
     }
 
-    public async Task<PagedResult<UserAccountResponse>> SearchAsync(
+    public async Task<PagedResult> SearchAsync(
         string? keyword,
         string? role,
         string? status,
@@ -56,7 +57,7 @@ public class UserAccountService : IUserAccountService
             pageSize,
             cancellationToken);
 
-        return new PagedResult<UserAccountResponse>
+        return new PagedResult
         {
             Items = items.Select(u => ToResponse(u, actingAdminId)).ToList(),
             Page = page,

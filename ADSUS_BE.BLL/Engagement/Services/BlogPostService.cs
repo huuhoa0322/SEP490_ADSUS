@@ -1,3 +1,4 @@
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Engagement.DTOs;
 using ADSUS_BE.BLL.Engagement.Interfaces;
 using ADSUS_BE.DAL.Entities;
@@ -36,13 +37,14 @@ public sealed class BlogPostService : IBlogPostService
             })
             .ToList();
 
-        return new PagedResult<BlogPostListItemResponse>
-        {
-            Items = paged,
-            Page = page,
-            PageSize = pageSize,
-            TotalCount = totalCount,
-        };
+        var totalPages = totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        return new PagedResult<BlogPostListItemResponse>(
+            paged,
+            page,
+            pageSize,
+            totalCount,
+            totalPages);
     }
 
     public async Task<BlogPostDetailResponse?> GetByIdAsync(Guid id, CancellationToken ct = default)

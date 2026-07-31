@@ -41,3 +41,24 @@ public enum BlogPostStatus
     [PgName("DRAFT")] Draft,
     [PgName("PUBLISHED")] Published,
 }
+
+/// <summary>
+/// Trạng thái kết quả chẩn đoán AI — enum <c>ai_result_status</c> trong DB (Module 5).
+/// Dùng bởi Dashboard (UC-05) để đếm tỉ lệ Confirmed/Rejected.
+/// </summary>
+public enum AiResultStatus
+{
+    [PgName("PENDING_REVIEW")] PendingReview,
+    [PgName("CONFIRMED")] Confirmed,
+    [PgName("REJECTED")] Rejected,
+}
+
+/// <summary>
+/// Trạng thái lịch hẹn — enum <c>appointment_status</c> trong DB (Module 8).
+/// Dùng bởi Dashboard (UC-05) để đếm tỉ lệ Booked/Cancelled.
+/// </summary>
+public enum AppointmentStatus
+{
+    [PgName("BOOKED")] Booked,
+    [PgName("CANCELLED")] Cancelled,
+}
