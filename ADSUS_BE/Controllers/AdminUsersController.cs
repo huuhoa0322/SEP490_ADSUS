@@ -55,7 +55,11 @@ public class AdminUsersController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        var result = await _accounts.SearchAsync(keyword, role, status, page, pageSize, cancellationToken);
+        TryGetActingAdminId(out var adminId);
+
+        var result = await _accounts.SearchAsync(
+            keyword, role, status, page, pageSize, adminId, cancellationToken);
+
         return Ok(ApiResponse<PagedResult<UserAccountResponse>>.Ok(result, "User list loaded."));
     }
 
@@ -65,7 +69,9 @@ public class AdminUsersController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<UserAccountResponse>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid userId, CancellationToken cancellationToken)
     {
-        var account = await _accounts.GetByIdAsync(userId, cancellationToken);
+        TryGetActingAdminId(out var adminId);
+
+        var account = await _accounts.GetByIdAsync(userId, adminId, cancellationToken);
 
         return account is null
             ? NotFound(ApiResponse<UserAccountResponse>.Fail(

@@ -11,6 +11,16 @@ export interface DashboardStatistics {
   clinical: ClinicalStatistics;
   appointments: AppointmentStatistics;
   adherence: AdherenceStatistics;
+  /** Luôn đủ mọi ngày trong khoảng, ngày không phát sinh có giá trị 0. */
+  trend: DailyPoint[];
+}
+
+/** Một điểm trên biểu đồ xu hướng (UC-05 bước 3). */
+export interface DailyPoint {
+  date: string;
+  newAccounts: number;
+  cases: number;
+  appointments: number;
 }
 
 export interface AccountStatistics {

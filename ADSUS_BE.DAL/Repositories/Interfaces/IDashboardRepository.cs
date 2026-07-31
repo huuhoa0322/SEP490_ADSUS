@@ -22,7 +22,21 @@ public interface IDashboardRepository
         DateTime fromInclusive,
         DateTime toExclusive,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// UC-05 bước 3 — diễn biến theo từng ngày, để vẽ biểu đồ xu hướng.
+    ///
+    /// CHỈ trả về những ngày CÓ phát sinh. Tầng nghiệp vụ tự điền 0 vào các ngày trống —
+    /// bắt database sinh ra một hàng cho mỗi ngày trong khoảng là việc thừa.
+    /// </summary>
+    Task<IReadOnlyList<DailyActivity>> GetDailyActivityAsync(
+        DateTime fromInclusive,
+        DateTime toExclusive,
+        CancellationToken cancellationToken = default);
 }
+
+/// <summary>Số phát sinh của đúng một ngày.</summary>
+public record DailyActivity(DateOnly Date, int NewAccounts, int Cases, int Appointments);
 
 /// <summary>Số đếm tài khoản. Bản ghi thuần số, không kèm dữ liệu cá nhân nào.</summary>
 public record AccountCounts(

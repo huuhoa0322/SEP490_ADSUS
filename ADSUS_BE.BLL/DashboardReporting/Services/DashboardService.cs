@@ -40,6 +40,7 @@ public class DashboardService : IDashboardService
 
         var accounts = await _dashboard.GetAccountCountsAsync(cancellationToken);
         var activity = await _dashboard.GetActivityCountsAsync(fromUtc, toExclusiveUtc, cancellationToken);
+        var daily = await _dashboard.GetDailyActivityAsync(fromUtc, toExclusiveUtc, cancellationToken);
 
         return new DashboardStatisticsResponse
         {
@@ -92,7 +93,42 @@ public class DashboardService : IDashboardService
                 TakenDoseCount = activity.MedicationTakenCount,
                 AdherenceRate = Percent(activity.MedicationTakenCount, activity.MedicationDoseCount),
             },
+
+            Trend = BuildTrend(from, to, daily),
         };
+    }
+
+    /// <summary>
+    /// Trải kết quả thưa của repository thành dãy liên tục, mỗi ngày một điểm.
+    ///
+    /// Repository chỉ trả về ngày CÓ phát sinh. Đưa thẳng dãy thưa đó lên biểu đồ thì đường
+    /// nối thẳng qua các ngày trống, nhìn như hoạt động vẫn đều trong khi thực tế là không
+    /// có gì — đọc sai hẳn ý nghĩa.
+    /// </summary>
+    private static List<DailyPoint> BuildTrend(
+        DateOnly from,
+        DateOnly to,
+        IReadOnlyList<DailyActivity> daily)
+    {
+        // Tra theo từ điển thay vì quét lại danh sách cho từng ngày: khoảng tối đa 366 ngày,
+        // quét lồng nhau là hơn 130 nghìn phép so sánh không cần thiết.
+        var theoNgay = daily.ToDictionary(d => d.Date);
+        var diem = new List<DailyPoint>();
+
+        for (var date = from; date <= to; date = date.AddDays(1))
+        {
+            theoNgay.TryGetValue(date, out var d);
+
+            diem.Add(new DailyPoint
+            {
+                Date = date.ToString(DateFormat, CultureInfo.InvariantCulture),
+                NewAccounts = d?.NewAccounts ?? 0,
+                Cases = d?.Cases ?? 0,
+                Appointments = d?.Appointments ?? 0,
+            });
+        }
+
+        return diem;
     }
 
     /// <summary>

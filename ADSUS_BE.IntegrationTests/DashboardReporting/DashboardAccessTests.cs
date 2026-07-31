@@ -80,6 +80,9 @@ public class DashboardAccessTests
         _dashboard.Setup(r => r.GetActivityCountsAsync(
                       It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(new ActivityCounts(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+        _dashboard.Setup(r => r.GetDailyActivityAsync(
+                      It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(Array.Empty<DailyActivity>());
 
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {

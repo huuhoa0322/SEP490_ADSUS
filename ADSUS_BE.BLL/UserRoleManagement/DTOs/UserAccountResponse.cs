@@ -28,5 +28,14 @@ public class UserAccountResponse
     /// <summary>Đang bị buộc đổi mật khẩu ở lần đăng nhập tới (UC-25).</summary>
     public bool MustChangePassword { get; set; }
 
+    /// <summary>
+    /// Dòng này chính là tài khoản của Admin đang xem.
+    ///
+    /// Để giao diện ẩn nút khoá và vô hiệu hoá trên dòng đó. Backend vốn đã chặn (UC-04
+    /// AF-04 — Admin không tự khoá chính mình), nhưng bày ra một cái nút chắc chắn báo lỗi
+    /// thì chỉ tổ làm người dùng bối rối.
+    /// </summary>
+    public bool IsCurrentUser { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }

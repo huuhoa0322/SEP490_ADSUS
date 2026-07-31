@@ -32,6 +32,12 @@ export interface UserAccount {
   dateOfBirth: string | null;
   mustChangePassword: boolean;
   createdAt: string;
+  /**
+   * Dòng này là tài khoản của chính Admin đang xem.
+   * Backend đã chặn tự khoá chính mình (UC-04 AF-04); cờ này để giao diện đừng bày ra nút
+   * chắc chắn báo lỗi.
+   */
+  isCurrentUser: boolean;
 }
 
 /** UC-04 FT-07. Không có trường mật khẩu: hệ thống tự sinh rồi gửi email. */

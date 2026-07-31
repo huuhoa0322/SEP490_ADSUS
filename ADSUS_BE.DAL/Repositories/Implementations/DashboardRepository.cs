@@ -105,15 +105,85 @@ public class DashboardRepository : IDashboardRepository
                              && l.ConfirmedAt != null,
                 cancellationToken);
 
+        return BuildActivityCounts(
+            newAccounts,
+            caseCount,
+            aiGroups.Sum(g => g.Count),
+            Ai(AiResultStatus.Confirmed),
+            Ai(AiResultStatus.Rejected),
+            Ai(AiResultStatus.PendingReview),
+            Appointments(AppointmentStatus.Booked),
+            Appointments(AppointmentStatus.Cancelled),
+            slotCount,
+            doseCount,
+            takenCount);
+    }
+
+    public async Task<IReadOnlyList<DailyActivity>> GetDailyActivityAsync(
+        DateTime fromInclusive,
+        DateTime toExclusive,
+        CancellationToken cancellationToken = default)
+    {
+        var fromDate = DateOnly.FromDateTime(fromInclusive);
+        var toDate = DateOnly.FromDateTime(toExclusive);
+
+        // Ba truy vấn nhóm riêng rồi ghép ở bộ nhớ. Không JOIN được vì ba bảng này không có
+        // quan hệ nào với nhau — ghép bằng ngày là cách duy nhất đúng.
+        var accountsByDay = await _db.Users.AsNoTracking()
+            .Where(u => u.CreatedAt >= fromInclusive && u.CreatedAt < toExclusive)
+            .GroupBy(u => DateOnly.FromDateTime(u.CreatedAt))
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        var casesByDay = await _db.Cases.AsNoTracking()
+            .Where(c => c.VisitDate >= fromDate && c.VisitDate < toDate)
+            .GroupBy(c => c.VisitDate)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        // Cùng mốc ngày khám như GetActivityCountsAsync, để hai chỗ không nói hai con số khác nhau.
+        var appointmentsByDay = await _db.Appointments.AsNoTracking()
+            .Where(a => a.Slot.SlotDate >= fromDate && a.Slot.SlotDate < toDate)
+            .GroupBy(a => a.Slot.SlotDate)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        var ngayCoDuLieu = accountsByDay.Select(x => x.Date)
+            .Union(casesByDay.Select(x => x.Date))
+            .Union(appointmentsByDay.Select(x => x.Date))
+            .OrderBy(d => d);
+
+        return ngayCoDuLieu
+            .Select(date => new DailyActivity(
+                date,
+                accountsByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0,
+                casesByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0,
+                appointmentsByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0))
+            .ToList();
+    }
+
+    private static ActivityCounts BuildActivityCounts(
+        int newAccounts,
+        int caseCount,
+        int aiRunCount,
+        int aiConfirmed,
+        int aiRejected,
+        int aiPending,
+        int booked,
+        int cancelled,
+        int slotCount,
+        int doseCount,
+        int takenCount)
+    {
         return new ActivityCounts(
             NewAccounts: newAccounts,
             CaseCount: caseCount,
-            AiRunCount: aiGroups.Sum(g => g.Count),
-            AiConfirmedCount: Ai(AiResultStatus.Confirmed),
-            AiRejectedCount: Ai(AiResultStatus.Rejected),
-            AiPendingCount: Ai(AiResultStatus.PendingReview),
-            AppointmentBookedCount: Appointments(AppointmentStatus.Booked),
-            AppointmentCancelledCount: Appointments(AppointmentStatus.Cancelled),
+            AiRunCount: aiRunCount,
+            AiConfirmedCount: aiConfirmed,
+            AiRejectedCount: aiRejected,
+            AiPendingCount: aiPending,
+            AppointmentBookedCount: booked,
+            AppointmentCancelledCount: cancelled,
             ScheduleSlotCount: slotCount,
             MedicationDoseCount: doseCount,
             MedicationTakenCount: takenCount);

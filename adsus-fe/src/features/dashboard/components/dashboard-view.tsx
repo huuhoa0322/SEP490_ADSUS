@@ -14,6 +14,7 @@ import {
   StatTile,
   StatusBreakdown,
 } from "./chart-primitives";
+import { TrendChart } from "./trend-chart";
 
 /** Các mốc thời gian bấm nhanh, tính lùi từ hôm nay. */
 const PRESETS = [
@@ -138,6 +139,14 @@ export function DashboardView() {
               value={data.adherence.scheduledDoseCount}
               hint={`${data.adherence.takenDoseCount} liều đã xác nhận uống`}
             />
+          </div>
+
+          {/* UC-05 bước 3 — diễn biến theo thời gian. Ba biểu đồ riêng vì ba đại lượng có
+              thang đo khác nhau; xem chú thích trong TrendChart. */}
+          <div className="mt-5 grid gap-5 lg:grid-cols-3">
+            <TrendChart points={data.trend} measure="newAccounts" label="Tài khoản mới" />
+            <TrendChart points={data.trend} measure="cases" label="Ca khám" />
+            <TrendChart points={data.trend} measure="appointments" label="Lượt hẹn" />
           </div>
 
           <div className="mt-5 grid gap-5 lg:grid-cols-2">

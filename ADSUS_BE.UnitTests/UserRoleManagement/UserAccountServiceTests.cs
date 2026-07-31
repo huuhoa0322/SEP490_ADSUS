@@ -179,9 +179,24 @@ public class UserAccountServiceTests
         user.DateOfBirth = new DateOnly(1990, 5, 20);
         SetupGetById(user);
 
-        var account = await _sut.GetByIdAsync(user.UserId);
+        var account = await _sut.GetByIdAsync(user.UserId, Guid.NewGuid());
 
         Assert.Null(account!.DateOfBirth);
+    }
+
+    [Fact]
+    public async Task LayTheoId_DanhDau_Dung_Dong_Cua_Chinh_Admin()
+    {
+        // Để giao diện ẩn nút khoá và vô hiệu hoá trên dòng của chính người đang đăng nhập —
+        // backend vốn đã chặn (AF-04), bày ra nút chắc chắn báo lỗi chỉ làm người dùng bối rối.
+        var user = TaoUserTrongDb(UserRole.Admin);
+        SetupGetById(user);
+
+        var chinhMinh = await _sut.GetByIdAsync(user.UserId, user.UserId);
+        var nguoiKhac = await _sut.GetByIdAsync(user.UserId, Guid.NewGuid());
+
+        Assert.True(chinhMinh!.IsCurrentUser);
+        Assert.False(nguoiKhac!.IsCurrentUser);
     }
 
     // ---------- FT-08: khoá / mở khoá / vô hiệu hoá ----------

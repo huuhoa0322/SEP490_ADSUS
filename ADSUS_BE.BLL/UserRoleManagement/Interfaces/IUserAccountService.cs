@@ -9,17 +9,27 @@ namespace ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 /// </summary>
 public interface IUserAccountService
 {
-    /// <summary>SCR-06 — danh sách tài khoản, có tìm kiếm theo tên/số điện thoại và lọc theo vai trò, trạng thái.</summary>
+    /// <summary>
+    /// SCR-06 — danh sách tài khoản, tìm theo tên/số điện thoại và lọc theo vai trò, trạng thái.
+    /// </summary>
+    /// <param name="actingAdminId">
+    /// Admin đang xem. Dùng để đánh dấu dòng của chính họ, cho giao diện ẩn nút khoá và vô
+    /// hiệu hoá ở dòng đó.
+    /// </param>
     Task<PagedResult<UserAccountResponse>> SearchAsync(
         string? keyword,
         string? role,
         string? status,
         int page,
         int pageSize,
+        Guid actingAdminId,
         CancellationToken cancellationToken = default);
 
     /// <summary>SCR-07 — lấy một tài khoản để đổ vào form sửa.</summary>
-    Task<UserAccountResponse?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<UserAccountResponse?> GetByIdAsync(
+        Guid userId,
+        Guid actingAdminId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// FT-07 — tạo tài khoản mới. Sinh mật khẩu tạm, đặt cờ buộc đổi mật khẩu, gửi email.

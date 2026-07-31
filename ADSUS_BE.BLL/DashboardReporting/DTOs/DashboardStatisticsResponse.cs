@@ -21,6 +21,26 @@ public class DashboardStatisticsResponse
     public AppointmentStatistics Appointments { get; set; } = new();
 
     public AdherenceStatistics Adherence { get; set; } = new();
+
+    /// <summary>
+    /// UC-05 bước 3 — diễn biến từng ngày để vẽ biểu đồ xu hướng.
+    ///
+    /// LUÔN đủ mọi ngày trong khoảng, kể cả ngày không có gì phát sinh (giá trị 0). Bỏ trống
+    /// ngày rỗng thì đường biểu đồ nối thẳng qua khoảng trống, nhìn như hoạt động vẫn đều
+    /// trong khi thực tế là không có gì.
+    /// </summary>
+    public IReadOnlyList<DailyPoint> Trend { get; set; } = Array.Empty<DailyPoint>();
+}
+
+/// <summary>Một điểm trên biểu đồ xu hướng.</summary>
+public class DailyPoint
+{
+    /// <summary>Định dạng yyyy-MM-dd.</summary>
+    public string Date { get; set; } = string.Empty;
+
+    public int NewAccounts { get; set; }
+    public int Cases { get; set; }
+    public int Appointments { get; set; }
 }
 
 /// <summary>Tài khoản — tính trên toàn hệ thống, không lọc theo thời gian.</summary>

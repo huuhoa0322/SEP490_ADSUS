@@ -41,6 +41,7 @@ public class UserAccountService : IUserAccountService
         string? status,
         int page,
         int pageSize,
+        Guid actingAdminId,
         CancellationToken cancellationToken = default)
     {
         // Chặn số vô lý từ client. pageSize quá lớn là kéo cả bảng users về một lần.
@@ -57,7 +58,7 @@ public class UserAccountService : IUserAccountService
 
         return new PagedResult<UserAccountResponse>
         {
-            Items = items.Select(ToResponse).ToList(),
+            Items = items.Select(u => ToResponse(u, actingAdminId)).ToList(),
             Page = page,
             PageSize = pageSize,
             TotalCount = total,
@@ -66,10 +67,11 @@ public class UserAccountService : IUserAccountService
 
     public async Task<UserAccountResponse?> GetByIdAsync(
         Guid userId,
+        Guid actingAdminId,
         CancellationToken cancellationToken = default)
     {
         var user = await _users.GetByIdAsync(userId, cancellationToken);
-        return user is null ? null : ToResponse(user);
+        return user is null ? null : ToResponse(user, actingAdminId);
     }
 
     public async Task<(AccountOperationResult Result, UserAccountResponse? Account)> CreateAsync(
@@ -131,7 +133,9 @@ public class UserAccountService : IUserAccountService
         }
 
         // Giá trị trả về KHÔNG chứa mật khẩu tạm — PRD §6.2, không ai được thấy nó dạng đọc được.
-        return (AccountOperationResult.Success, ToResponse(user));
+        // Tài khoản vừa tạo chắc chắn không phải Admin đang thao tác, nên cờ IsCurrentUser
+        // luôn là false ở đây.
+        return (AccountOperationResult.Success, ToResponse(user, Guid.Empty));
     }
 
     public async Task<AccountOperationResult> UpdateAsync(
@@ -213,8 +217,9 @@ public class UserAccountService : IUserAccountService
 
     // ---- helpers ----
 
-    private static UserAccountResponse ToResponse(User user) => new()
+    private static UserAccountResponse ToResponse(User user, Guid actingAdminId) => new()
     {
+        IsCurrentUser = user.UserId == actingAdminId,
         UserId = user.UserId,
         PhoneNumber = user.Phone,
         FullName = user.FullName,

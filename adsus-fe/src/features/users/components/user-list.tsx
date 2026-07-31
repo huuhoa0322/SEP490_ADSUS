@@ -202,7 +202,14 @@ export function UserList() {
 
             {data?.items.map((user) => (
               <tr key={user.userId} className="border-b border-border last:border-0">
-                <td className="px-5 py-4 font-600 text-foreground">{user.fullName}</td>
+                <td className="px-5 py-4 font-600 text-foreground">
+                  {user.fullName}
+                  {user.isCurrentUser && (
+                    <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-xs font-500 text-muted-foreground">
+                      Bạn
+                    </span>
+                  )}
+                </td>
                 <td className="px-5 py-4 tabular-nums">{user.phoneNumber}</td>
                 <td className="px-5 py-4 text-muted-foreground">{user.email ?? "—"}</td>
                 <td className="px-5 py-4">{ROLE_LABEL[user.role]}</td>
@@ -226,8 +233,12 @@ export function UserList() {
                       <Pencil className="size-4" />
                     </Link>
 
-                    {/* Tài khoản đã vô hiệu hoá thì không còn thao tác nào — BR-05, một chiều. */}
-                    {user.status !== "DEACTIVATED" && (
+                    {/* Không bày nút khoá / vô hiệu hoá / cấp lại mật khẩu trên dòng của
+                        chính mình: backend chặn hết (UC-04 AF-04), bấm vào chỉ nhận lỗi.
+                        Vẫn giữ nút sửa, vì Admin đổi được tên và email của chính mình.
+
+                        Tài khoản đã vô hiệu hoá cũng không còn thao tác nào — BR-05, một chiều. */}
+                    {user.status !== "DEACTIVATED" && !user.isCurrentUser && (
                       <>
                         {/* UC-03 AF-02 — cấp lại mật khẩu hộ. Chỉ hiện khi tài khoản có
                             email, vì mật khẩu tạm chỉ giao qua email (BR-03). */}

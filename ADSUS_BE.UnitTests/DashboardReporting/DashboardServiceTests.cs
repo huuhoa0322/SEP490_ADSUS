@@ -34,6 +34,10 @@ public class DashboardServiceTests
              })
              .ReturnsAsync(KhongCoHoatDong());
 
+        _repo.Setup(r => r.GetDailyActivityAsync(
+                 It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(Array.Empty<DailyActivity>());
+
         _sut = new DashboardService(_repo.Object);
     }
 
@@ -185,6 +189,49 @@ public class DashboardServiceTests
         var result = await _sut.GetStatisticsAsync(null, null);
 
         Assert.Equal(86.5, result.Adherence.AdherenceRate);
+    }
+
+    // ---------- Biểu đồ xu hướng ----------
+
+    [Fact]
+    public async Task XuHuong_DU_MOI_NGAY_KE_CA_NGAY_KHONG_CO_GI()
+    {
+        // Repository chỉ trả về ngày CÓ phát sinh. Nếu đưa thẳng dãy thưa đó lên biểu đồ thì
+        // đường nối thẳng qua các ngày trống, nhìn như hoạt động vẫn đều trong khi thực tế
+        // là không có gì — đọc sai hẳn ý nghĩa.
+        _repo.Setup(r => r.GetDailyActivityAsync(
+                 It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new List<DailyActivity>
+             {
+                 new(new DateOnly(2026, 7, 3), NewAccounts: 2, Cases: 1, Appointments: 0),
+             });
+
+        var result = await _sut.GetStatisticsAsync("2026-07-01", "2026-07-05");
+
+        // 1,2,3,4,5 tháng 7 — cả hai đầu đều được tính vào.
+        Assert.Equal(5, result.Trend.Count);
+        Assert.Equal("2026-07-01", result.Trend[0].Date);
+        Assert.Equal("2026-07-05", result.Trend[4].Date);
+
+        Assert.Equal(0, result.Trend[0].NewAccounts);
+        Assert.Equal(2, result.Trend[2].NewAccounts);
+        Assert.Equal(1, result.Trend[2].Cases);
+        Assert.Equal(0, result.Trend[4].NewAccounts);
+    }
+
+    [Fact]
+    public async Task XuHuong_KhongCoDuLieu_VanDuDiem_ToanSo0()
+    {
+        // AF-01 — khoảng trống vẫn phải vẽ được, không được ném lỗi hay trả dãy rỗng.
+        var result = await _sut.GetStatisticsAsync("2026-07-01", "2026-07-03");
+
+        Assert.Equal(3, result.Trend.Count);
+        Assert.All(result.Trend, p =>
+        {
+            Assert.Equal(0, p.NewAccounts);
+            Assert.Equal(0, p.Cases);
+            Assert.Equal(0, p.Appointments);
+        });
     }
 
     // ---------- helpers ----------
