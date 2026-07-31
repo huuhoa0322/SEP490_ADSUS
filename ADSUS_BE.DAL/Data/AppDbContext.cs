@@ -307,6 +307,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.PostId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("post_id");
+            entity.Property(e => e.Status).HasColumnName("status");
             entity.Property(e => e.AuthorId).HasColumnName("author_id");
             entity.Property(e => e.Content).HasColumnName("content");
             entity.Property(e => e.CreatedAt)
