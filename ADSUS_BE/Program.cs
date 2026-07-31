@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Threading.RateLimiting;
 using ADSUS_BE.BLL.Auth.Interfaces;
@@ -228,6 +229,25 @@ namespace ADSUS_BE
             builder.Services.AddRateLimiter(options =>
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.OnRejected = async (context, cancellationToken) =>
+                {
+                    var response = context.HttpContext.Response;
+                    response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+                    if (context.Lease.TryGetMetadata(
+                            MetadataName.RetryAfter,
+                            out var retryAfter))
+                    {
+                        response.Headers.RetryAfter = Math.Ceiling(retryAfter.TotalSeconds)
+                            .ToString(CultureInfo.InvariantCulture);
+                    }
+
+                    await response.WriteAsJsonAsync(
+                        ApiResponse<object>.Fail(
+                            StatusCodes.Status429TooManyRequests,
+                            "Too many requests. Please wait before trying again."),
+                        cancellationToken);
+                };
 
                 options.AddPolicy(RateLimitPolicies.Auth, httpContext =>
                     RateLimitPartition.GetFixedWindowLimiter(

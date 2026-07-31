@@ -65,8 +65,8 @@ export function getSignInErrorMessage(error: unknown): string {
     return `Không gọi được tới API đăng nhập (404). Kiểm tra NEXT_PUBLIC_API_BASE_URL trong adsus-fe/.env.local có trỏ đúng địa chỉ backend không.`;
   }
 
-  // Còn lại là lỗi đường truyền; getApiErrorMessage đã diễn đạt sẵn bằng tiếng Việt và nêu
-  // rõ địa chỉ đang gọi.
+  // Các lỗi còn lại (gồm cả 429) dùng message chuẩn của API; lỗi đường truyền thì
+  // getApiErrorMessage sẽ nêu rõ địa chỉ backend đang gọi.
   return getApiErrorMessage(error, SIGN_IN_FAILED);
 }
 

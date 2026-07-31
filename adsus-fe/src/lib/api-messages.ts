@@ -13,6 +13,8 @@ const MESSAGES: Record<string, string> = {
   // ---- Đăng nhập và mật khẩu (UC-01, UC-25) ----
   "Invalid phone number or password.":
     "Số điện thoại hoặc mật khẩu không đúng.",
+  "Too many requests. Please wait before trying again.":
+    "Bạn đã gửi quá nhiều yêu cầu. Vui lòng chờ một lúc rồi thử lại.",
   "Invalid access token.": "Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.",
   "Current password is incorrect.": "Mật khẩu hiện tại không đúng.",
   "This account is no longer active.": "Tài khoản này không còn hiệu lực.",

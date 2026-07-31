@@ -6,12 +6,12 @@ import { WebNotAvailableForRoleError } from "../types/auth.types";
 import { getSignInErrorMessage } from "./auth-messages";
 
 /** Dựng một lỗi axios đúng mã HTTP cần thử. */
-function loiHttp(status: number): AxiosError {
+function loiHttp(status: number, message?: string): AxiosError {
   const error = new AxiosError("Request failed");
   error.response = {
     status,
     statusText: "",
-    data: {},
+    data: message ? { code: status, message, data: null } : {},
     headers: {},
     config: { headers: new AxiosHeaders() },
   };
@@ -35,6 +35,17 @@ describe("getSignInErrorMessage — GB-06", () => {
     const cau = getSignInErrorMessage(loiHttp(404));
 
     expect(cau).toContain("NEXT_PUBLIC_API_BASE_URL");
+  });
+
+  it("429 báo chờ thử lại, không bị gộp vào 'sai mật khẩu'", () => {
+    const cau = getSignInErrorMessage(
+      loiHttp(429, "Too many requests. Please wait before trying again."),
+    );
+
+    expect(cau).toBe(
+      "Bạn đã gửi quá nhiều yêu cầu. Vui lòng chờ một lúc rồi thử lại.",
+    );
+    expect(cau).not.toContain("mật khẩu không đúng");
   });
 
   it("bệnh nhân đăng nhập trên Web được chỉ sang ứng dụng di động", () => {
