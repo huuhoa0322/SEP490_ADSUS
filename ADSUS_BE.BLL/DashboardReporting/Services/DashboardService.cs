@@ -1,6 +1,7 @@
 using System.Globalization;
 using ADSUS_BE.BLL.DashboardReporting.DTOs;
 using ADSUS_BE.BLL.DashboardReporting.Interfaces;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 
 namespace ADSUS_BE.BLL.DashboardReporting.Services;
@@ -13,12 +14,15 @@ public class DashboardService : IDashboardService
     private const string DateFormat = "yyyy-MM-dd";
 
     /// <summary>
-    /// Khoảng mặc định khi Admin chưa chọn gì.
+    /// Khoảng mặc định khi Admin chưa chọn gì, tính CẢ ngày hôm nay.
     /// UCS ghi rõ đây là giá trị TỰ ĐỀ XUẤT, PRD không quy định — cần chốt khi viết TDS/FDS.
     /// </summary>
     private const int DefaultRangeDays = 30;
 
-    /// <summary>Chặn khoảng quá dài để một cú bấm nhầm không quét cả bảng nhiều năm.</summary>
+    /// <summary>
+    /// Chặn khoảng quá dài để một cú bấm nhầm không quét cả bảng nhiều năm.
+    /// Cũng tính cả hai đầu: 366 nghĩa là nhiều nhất 366 điểm trên biểu đồ.
+    /// </summary>
     private const int MaxRangeDays = 366;
 
     private readonly IDashboardRepository _dashboard;
@@ -32,15 +36,11 @@ public class DashboardService : IDashboardService
     {
         var (from, to) = ResolveRange(fromDate, toDate);
 
-        // Mốc kết thúc cộng thêm một ngày rồi so sánh "nhỏ hơn", để ngày cuối được tính trọn
-        // vẹn. Dùng "nhỏ hơn hoặc bằng" với DateTime là mất sạch dữ liệu phát sinh trong
-        // ngày cuối, vì mọi mốc giờ đều lớn hơn 00:00.
-        var fromUtc = from.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-        var toExclusiveUtc = to.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-
+        // Truyền thẳng khoảng NGÀY xuống. Repository tự quy đổi sang UTC cho từng cột, vì
+        // chỉ ở đó mới biết cột nào lưu mốc giờ và cột nào lưu ngày thuần — xem ClinicClock.
         var accounts = await _dashboard.GetAccountCountsAsync(cancellationToken);
-        var activity = await _dashboard.GetActivityCountsAsync(fromUtc, toExclusiveUtc, cancellationToken);
-        var daily = await _dashboard.GetDailyActivityAsync(fromUtc, toExclusiveUtc, cancellationToken);
+        var activity = await _dashboard.GetActivityCountsAsync(from, to, cancellationToken);
+        var daily = await _dashboard.GetDailyActivityAsync(from, to, cancellationToken);
 
         return new DashboardStatisticsResponse
         {
@@ -137,17 +137,21 @@ public class DashboardService : IDashboardService
     /// </summary>
     private static (DateOnly From, DateOnly To) ResolveRange(string? fromDate, string? toDate)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today();
 
         var to = ParseOrNull(toDate) ?? today;
-        var from = ParseOrNull(fromDate) ?? to.AddDays(-DefaultRangeDays);
+
+        // Trừ đi (N - 1) chứ không phải N: khoảng tính cả hai đầu, nên "30 ngày" phải ra
+        // đúng 30 điểm. Trừ thẳng 30 là ra 31 ngày — biểu đồ dài hơn nhãn ghi trên nút.
+        var from = ParseOrNull(fromDate) ?? to.AddDays(-(DefaultRangeDays - 1));
 
         // Người dùng chọn ngược thì đổi chỗ, thay vì trả về bảng trống khó hiểu.
         if (from > to) (from, to) = (to, from);
 
-        if (to.DayNumber - from.DayNumber > MaxRangeDays)
+        // Cũng tính cả hai đầu: chênh lệch 366 ngày là 367 điểm, quá giới hạn một ngày.
+        if (to.DayNumber - from.DayNumber >= MaxRangeDays)
         {
-            from = to.AddDays(-MaxRangeDays);
+            from = to.AddDays(-(MaxRangeDays - 1));
         }
 
         return (from, to);

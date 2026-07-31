@@ -15,12 +15,17 @@ public interface IDashboardRepository
     Task<AccountCounts> GetAccountCountsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Số liệu phát sinh trong khoảng thời gian đã chọn.
-    /// <paramref name="toExclusive"/> là mốc LOẠI TRỪ, để ngày cuối được tính trọn vẹn.
+    /// Số liệu phát sinh trong khoảng thời gian đã chọn. Tính CẢ HAI đầu.
+    ///
+    /// Nhận ngày chứ không nhận mốc giờ, vì trong cùng một lượt đếm có hai loại cột: loại
+    /// lưu ngày thuần (ngày khám, ngày mở khung giờ) và loại lưu mốc thời gian UTC (ngày tạo
+    /// tài khoản). Ai gọi cũng chỉ có "ngày ở phòng khám", nên để repository tự quy đổi sang
+    /// UTC cho từng cột — trước đây tầng trên quy đổi sẵn rồi truyền xuống, thành ra cột ngày
+    /// thuần bị so với mốc UTC và lệch mất một ngày.
     /// </summary>
     Task<ActivityCounts> GetActivityCountsAsync(
-        DateTime fromInclusive,
-        DateTime toExclusive,
+        DateOnly fromDate,
+        DateOnly toDate,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -30,8 +35,8 @@ public interface IDashboardRepository
     /// bắt database sinh ra một hàng cho mỗi ngày trong khoảng là việc thừa.
     /// </summary>
     Task<IReadOnlyList<DailyActivity>> GetDailyActivityAsync(
-        DateTime fromInclusive,
-        DateTime toExclusive,
+        DateOnly fromDate,
+        DateOnly toDate,
         CancellationToken cancellationToken = default);
 }
 

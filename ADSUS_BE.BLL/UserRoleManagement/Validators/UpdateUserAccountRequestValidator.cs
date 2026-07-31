@@ -10,7 +10,15 @@ namespace ADSUS_BE.BLL.UserRoleManagement.Validators;
 /// </summary>
 public class UpdateUserAccountRequestValidator : AbstractValidator<UpdateUserAccountRequest>
 {
-    private static readonly string[] AllowedRoles = { "DOCTOR", "NURSE", "PATIENT" };
+    /// <summary>
+    /// Có ADMIN, khác với lúc tạo.
+    ///
+    /// Không phải để cho phép phong Admin — service vẫn chặn mọi thay đổi vai trò dính tới
+    /// ADMIN. Có ở đây là để sửa được TÊN và EMAIL của một tài khoản Admin: form phải gửi
+    /// lại đúng vai trò hiện tại, mà nếu validator không nhận "ADMIN" thì giao diện buộc
+    /// phải gửi một vai trò khác — tức là nói dối trên đường truyền để đi qua được kiểm tra.
+    /// </summary>
+    private static readonly string[] AllowedRoles = { "ADMIN", "DOCTOR", "NURSE", "PATIENT" };
 
     public UpdateUserAccountRequestValidator()
     {
@@ -21,7 +29,7 @@ public class UpdateUserAccountRequestValidator : AbstractValidator<UpdateUserAcc
         RuleFor(x => x.Role)
             .NotEmpty().WithMessage("Role is required.")
             .Must(r => AllowedRoles.Contains(r?.Trim().ToUpperInvariant()))
-            .WithMessage("Role must be one of DOCTOR, NURSE or PATIENT.");
+            .WithMessage("Role must be one of ADMIN, DOCTOR, NURSE or PATIENT.");
 
         RuleFor(x => x.Email)
             .EmailAddress().WithMessage("Email is not a valid address.")

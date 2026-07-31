@@ -46,16 +46,26 @@ public class PasswordResetService : IPasswordResetService
 
         if (!matched) return;
 
-        user!.PasswordHash = hash;
+        // GỬI THƯ TRƯỚC, LƯU SAU — thứ tự này quan trọng.
+        //
+        // Làm ngược lại (lưu rồi mới gửi) thì khi máy chủ mail trục trặc, mật khẩu cũ đã bị
+        // thay mất trong khi mật khẩu mới không tới tay ai: chủ tài khoản bị nhốt ở ngoài
+        // đúng lúc họ đang cần vào. Gửi trước thì thư hỏng chỉ có nghĩa là không có gì thay
+        // đổi cả, họ thử lại là xong.
+        var daGui = await _email.SendTemporaryPasswordAsync(
+            user!.Email!, user.FullName, temporaryPassword, cancellationToken);
+
+        // AF-01 — vẫn không được phát ra tín hiệu nào khác nhau. Phương thức trả về void nên
+        // ở đây không có gì rò rỉ ra ngoài được; chi tiết lỗi đã nằm trong log của server.
+        if (!daGui) return;
+
+        user.PasswordHash = hash;
 
         // BR-04 — dù đi đường nào thì cũng phải đổi mật khẩu ở lần đăng nhập kế tiếp (UC-25).
         user.MustChangePassword = true;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _users.SaveChangesAsync(cancellationToken);
-
-        await _email.SendTemporaryPasswordAsync(
-            user.Email!, user.FullName, temporaryPassword, cancellationToken);
     }
 
     public async Task<AccountOperationResult> AdminResetAsync(
@@ -78,15 +88,20 @@ public class PasswordResetService : IPasswordResetService
         if (string.IsNullOrWhiteSpace(user.Email)) return AccountOperationResult.AccountHasNoEmail;
 
         var temporaryPassword = TemporaryPasswordGenerator.Generate();
+        var hash = BCrypt.Net.BCrypt.HashPassword(temporaryPassword);
 
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(temporaryPassword);
+        // Gửi thư trước, lưu sau — cùng lý do như ở đường tự phục vụ bên trên: thư không tới
+        // nơi mà mật khẩu cũ đã bị thay thì chủ tài khoản mất luôn đường vào.
+        var daGui = await _email.SendTemporaryPasswordAsync(
+            user.Email, user.FullName, temporaryPassword, cancellationToken);
+
+        if (!daGui) return AccountOperationResult.EmailNotSent;
+
+        user.PasswordHash = hash;
         user.MustChangePassword = true;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _users.SaveChangesAsync(cancellationToken);
-
-        await _email.SendTemporaryPasswordAsync(
-            user.Email, user.FullName, temporaryPassword, cancellationToken);
 
         return AccountOperationResult.Success;
     }

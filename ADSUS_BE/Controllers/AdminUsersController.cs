@@ -100,7 +100,27 @@ public class AdminUsersController : ControllerBase
 
         var (result, account) = await _accounts.CreateAsync(request, cancellationToken);
 
-        if (result != AccountOperationResult.Success)
+        // Ba kết quả dưới đây đều là ĐÃ TẠO XONG, chỉ khác nhau ở chỗ mật khẩu tạm có tới
+        // tay chủ tài khoản không. Trả 4xx cho hai trường hợp sau là nói dối — bản ghi đã
+        // nằm trong database và số điện thoại đã bị chiếm, Admin bấm lại chỉ nhận được
+        // "số điện thoại đã tồn tại" rồi không hiểu chuyện gì đang xảy ra.
+        var successMessage = result switch
+        {
+            AccountOperationResult.Success =>
+                "Account created. A temporary password has been emailed.",
+
+            AccountOperationResult.CreatedWithoutEmail =>
+                "Account created, but it has no email address so no temporary password could be "
+                + "delivered. Add an email address, then use Reset password.",
+
+            AccountOperationResult.CreatedButEmailNotSent =>
+                "Account created, but the temporary password could not be emailed. "
+                + "Use Reset password to try sending it again.",
+
+            _ => null,
+        };
+
+        if (successMessage is null)
         {
             return MapFailure<UserAccountResponse>(result);
         }
@@ -108,7 +128,7 @@ public class AdminUsersController : ControllerBase
         return CreatedAtAction(
             nameof(GetById),
             new { userId = account!.UserId },
-            ApiResponse<UserAccountResponse>.Ok(account, "Account created. A temporary password has been emailed."));
+            ApiResponse<UserAccountResponse>.Ok(account, successMessage));
     }
 
     /// <summary>FT-09 — sửa thông tin và phân lại vai trò.</summary>
@@ -253,6 +273,20 @@ public class AdminUsersController : ControllerBase
             BadRequest(ApiResponse<T>.Fail(
                 StatusCodes.Status400BadRequest,
                 "This account has no email address, so a temporary password cannot be delivered.")),
+
+        AccountOperationResult.CannotChangeAdminRole =>
+            BadRequest(ApiResponse<T>.Fail(
+                StatusCodes.Status400BadRequest,
+                "An administrator's role cannot be changed here, and no account can be promoted "
+                + "to administrator on this screen.")),
+
+        // 502 chứ không phải 400: dữ liệu Admin gửi lên không sai chỗ nào, hỏng là ở máy chủ
+        // mail phía sau. Trả 400 thì Admin ngồi sửa lại form mãi không ra.
+        AccountOperationResult.EmailNotSent =>
+            StatusCode(StatusCodes.Status502BadGateway, ApiResponse<T>.Fail(
+                StatusCodes.Status502BadGateway,
+                "The temporary password could not be emailed, so the current password was left "
+                + "unchanged. Please try again later.")),
 
         _ => BadRequest(ApiResponse<T>.Fail(StatusCodes.Status400BadRequest, "Operation failed.")),
     };

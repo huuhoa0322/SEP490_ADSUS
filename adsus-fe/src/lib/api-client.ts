@@ -2,6 +2,8 @@ import axios, { AxiosError } from "axios";
 
 import type { ApiResponse } from "@/types/api.types";
 
+import { translateApiMessage } from "./api-messages";
+
 /**
  * Địa chỉ backend. Đọc từ .env.local, nếu không có thì dùng cổng mặc định của
  * profile "http" trong Properties/launchSettings.json.
@@ -87,12 +89,17 @@ apiClient.interceptors.response.use(
  *
  * The backend always returns { code, message, data }, even on failure, so "message" is the
  * text it deliberately chose to expose. For sign-in it returns the same sentence for every
- * possible cause (UCS GB-06), which is exactly why it should be displayed verbatim.
+ * possible cause (UCS GB-06), which is exactly why it must be shown as-is — không được nghĩ
+ * ra lý do cụ thể hơn ở phía giao diện.
+ *
+ * Câu tiếng Anh đó được dịch sang tiếng Việt trước khi hiển thị: người dùng hệ thống này là
+ * nhân viên phòng khám, còn API thì giữ một thứ tiếng vì còn phục vụ ứng dụng di động và đi
+ * vào log. Xem api-messages.ts.
  */
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof AxiosError) {
     const body = error.response?.data as ApiResponse<unknown> | undefined;
-    if (body?.message) return body.message;
+    if (body?.message) return translateApiMessage(body.message);
 
     // Không có response nghĩa là không chạm được tới backend. Nêu rõ địa chỉ đang gọi,
     // vì nguyên nhân hầu hết là backend chưa bật hoặc đang chạy ở cổng khác.

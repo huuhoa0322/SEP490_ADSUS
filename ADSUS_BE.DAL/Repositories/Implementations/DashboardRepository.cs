@@ -45,20 +45,22 @@ public class DashboardRepository : IDashboardRepository
     }
 
     public async Task<ActivityCounts> GetActivityCountsAsync(
-        DateTime fromInclusive,
-        DateTime toExclusive,
+        DateOnly fromDate,
+        DateOnly toDate,
         CancellationToken cancellationToken = default)
     {
+        // Cột lưu mốc thời gian là UTC, còn khoảng ngày nhận vào là ngày ở phòng khám —
+        // quy đổi qua ClinicClock. Cột lưu ngày thuần thì so trực tiếp, không đụng múi giờ.
+        var fromInclusive = ClinicClock.StartOfDayUtc(fromDate);
+        var toExclusive = ClinicClock.EndOfDayExclusiveUtc(toDate);
+
         // Lọc theo CreatedAt của từng bảng. Cases dùng VisitDate vì đó mới là ngày khám thật;
         // CreatedAt chỉ là lúc bấm lưu, có thể lệch ngày nếu bác sĩ nhập bù hôm sau.
-        var fromDate = DateOnly.FromDateTime(fromInclusive);
-        var toDate = DateOnly.FromDateTime(toExclusive);
-
         var newAccounts = await _db.Users.AsNoTracking()
             .CountAsync(u => u.CreatedAt >= fromInclusive && u.CreatedAt < toExclusive, cancellationToken);
 
         var caseCount = await _db.Cases.AsNoTracking()
-            .CountAsync(c => c.VisitDate >= fromDate && c.VisitDate < toDate, cancellationToken);
+            .CountAsync(c => c.VisitDate >= fromDate && c.VisitDate <= toDate, cancellationToken);
 
         var aiGroups = await _db.AiResults.AsNoTracking()
             .Where(r => r.CreatedAt >= fromInclusive && r.CreatedAt < toExclusive)
@@ -78,7 +80,7 @@ public class DashboardRepository : IDashboardRepository
         // Đọc theo ngày khám cũng đúng nghĩa hơn với Admin: "kỳ này phòng khám có bao nhiêu
         // lượt hẹn" chứ không phải "bao nhiêu lượt được bấm đặt".
         var appointmentGroups = await _db.Appointments.AsNoTracking()
-            .Where(a => a.Slot.SlotDate >= fromDate && a.Slot.SlotDate < toDate)
+            .Where(a => a.Slot.SlotDate >= fromDate && a.Slot.SlotDate <= toDate)
             .GroupBy(a => a.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);
@@ -87,7 +89,7 @@ public class DashboardRepository : IDashboardRepository
             appointmentGroups.FirstOrDefault(g => g.Status == status)?.Count ?? 0;
 
         var slotCount = await _db.ScheduleSlots.AsNoTracking()
-            .CountAsync(s => s.SlotDate >= fromDate && s.SlotDate < toDate, cancellationToken);
+            .CountAsync(s => s.SlotDate >= fromDate && s.SlotDate <= toDate, cancellationToken);
 
         // Tuân thủ uống thuốc: đếm theo giờ ĐƯỢC HẸN, không phải giờ xác nhận. Liều hẹn hôm
         // qua mà sáng nay mới bấm xác nhận vẫn phải tính vào hôm qua, nếu không tỉ lệ tuân
@@ -120,30 +122,33 @@ public class DashboardRepository : IDashboardRepository
     }
 
     public async Task<IReadOnlyList<DailyActivity>> GetDailyActivityAsync(
-        DateTime fromInclusive,
-        DateTime toExclusive,
+        DateOnly fromDate,
+        DateOnly toDate,
         CancellationToken cancellationToken = default)
     {
-        var fromDate = DateOnly.FromDateTime(fromInclusive);
-        var toDate = DateOnly.FromDateTime(toExclusive);
+        var fromInclusive = ClinicClock.StartOfDayUtc(fromDate);
+        var toExclusive = ClinicClock.EndOfDayExclusiveUtc(toDate);
 
         // Ba truy vấn nhóm riêng rồi ghép ở bộ nhớ. Không JOIN được vì ba bảng này không có
         // quan hệ nào với nhau — ghép bằng ngày là cách duy nhất đúng.
+        //
+        // Cộng độ lệch múi giờ TRƯỚC khi cắt lấy ngày, nếu không thì tài khoản tạo trong
+        // khoảng 00:00–07:00 giờ Việt Nam bị xếp nhầm sang cột hôm trước trên biểu đồ.
         var accountsByDay = await _db.Users.AsNoTracking()
             .Where(u => u.CreatedAt >= fromInclusive && u.CreatedAt < toExclusive)
-            .GroupBy(u => DateOnly.FromDateTime(u.CreatedAt))
+            .GroupBy(u => DateOnly.FromDateTime(u.CreatedAt.AddHours(ClinicClock.OffsetHours)))
             .Select(g => new { Date = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);
 
         var casesByDay = await _db.Cases.AsNoTracking()
-            .Where(c => c.VisitDate >= fromDate && c.VisitDate < toDate)
+            .Where(c => c.VisitDate >= fromDate && c.VisitDate <= toDate)
             .GroupBy(c => c.VisitDate)
             .Select(g => new { Date = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);
 
         // Cùng mốc ngày khám như GetActivityCountsAsync, để hai chỗ không nói hai con số khác nhau.
         var appointmentsByDay = await _db.Appointments.AsNoTracking()
-            .Where(a => a.Slot.SlotDate >= fromDate && a.Slot.SlotDate < toDate)
+            .Where(a => a.Slot.SlotDate >= fromDate && a.Slot.SlotDate <= toDate)
             .GroupBy(a => a.Slot.SlotDate)
             .Select(g => new { Date = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);

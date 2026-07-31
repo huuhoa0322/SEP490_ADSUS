@@ -188,7 +188,49 @@ public class PasswordResetServiceTests
         Assert.Equal(AccountOperationResult.CannotTargetSelf, result);
     }
 
+    // ---------- Gửi thư hỏng thì KHÔNG được đổi mật khẩu ----------
+
+    [Fact]
+    public async Task AdminCapLai_GuiMailThatBai_GIU_NGUYEN_MAT_KHAU_CU()
+    {
+        // Thứ tự quan trọng: gửi thư trước, lưu sau.
+        //
+        // Làm ngược lại thì máy chủ mail trục trặc là mật khẩu cũ đã bị thay trong khi mật
+        // khẩu mới không tới tay ai — chủ tài khoản bị nhốt ở ngoài đúng lúc đang cần vào,
+        // mà chính người bấm nút cũng không biết là đã hỏng.
+        var user = TaoUser();
+        var hashCu = user.PasswordHash;
+        SetupGetById(user);
+        SetupGuiMailThatBai();
+
+        var result = await _sut.AdminResetAsync(user.UserId, Guid.NewGuid());
+
+        Assert.Equal(AccountOperationResult.EmailNotSent, result);
+        Assert.Equal(hashCu, user.PasswordHash);
+        Assert.False(user.MustChangePassword);
+        _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task TuCapLai_GuiMailThatBai_GIU_NGUYEN_MAT_KHAU_CU()
+    {
+        var user = TaoUser();
+        var hashCu = user.PasswordHash;
+        SetupGetByPhone(user);
+        SetupGuiMailThatBai();
+
+        await _sut.RequestSelfServiceResetAsync(YeuCau());
+
+        Assert.Equal(hashCu, user.PasswordHash);
+        _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // ---------- helpers ----------
+
+    private void SetupGuiMailThatBai() =>
+        _email.Setup(e => e.SendTemporaryPasswordAsync(
+                  It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(false);
 
     private static ForgotPasswordRequest YeuCau() => new()
     {

@@ -122,20 +122,32 @@ public class UserAccountService : IUserAccountService
         await _users.AddAsync(user, cancellationToken);
         await _users.SaveChangesAsync(cancellationToken);
 
-        // Gửi email SAU khi lưu thành công, và cố ý KHÔNG để lỗi gửi mail làm hỏng cả thao
-        // tác: tài khoản đã tồn tại rồi, huỷ vì máy chủ mail trục trặc thì Admin phải tạo
-        // lại từ đầu mà số điện thoại thì đã bị chiếm. Gửi lại được qua chức năng cấp lại
-        // mật khẩu (UC-03).
-        if (email is not null)
+        // Gửi email SAU khi lưu, và cố ý KHÔNG để lỗi gửi mail làm hỏng cả thao tác: tài
+        // khoản đã tồn tại rồi, huỷ vì máy chủ mail trục trặc thì Admin phải tạo lại từ đầu
+        // mà số điện thoại thì đã bị chiếm. Gửi lại được qua chức năng cấp lại mật khẩu (UC-03).
+        //
+        // Ngược hẳn với đường CẤP LẠI mật khẩu bên PasswordResetService: ở đó phải gửi thư
+        // trước rồi mới lưu, vì lỡ hỏng thì mật khẩu cũ vẫn còn dùng được. Ở đây không có
+        // mật khẩu cũ nào để giữ.
+        //
+        // Giá trị trả về KHÔNG chứa mật khẩu tạm — PRD §6.2, không ai được thấy nó dạng đọc
+        // được. Tài khoản vừa tạo chắc chắn không phải Admin đang thao tác, nên cờ
+        // IsCurrentUser luôn là false ở đây.
+        var response = ToResponse(user, Guid.Empty);
+
+        if (email is null)
         {
-            await _email.SendTemporaryPasswordAsync(
-                email, user.FullName, temporaryPassword, cancellationToken);
+            // Tài khoản đã có nhưng mật khẩu tạm không đi đâu được. Im lặng báo thành công là
+            // Admin tưởng xong việc, rồi vài ngày sau mới có người kêu không đăng nhập được.
+            return (AccountOperationResult.CreatedWithoutEmail, response);
         }
 
-        // Giá trị trả về KHÔNG chứa mật khẩu tạm — PRD §6.2, không ai được thấy nó dạng đọc được.
-        // Tài khoản vừa tạo chắc chắn không phải Admin đang thao tác, nên cờ IsCurrentUser
-        // luôn là false ở đây.
-        return (AccountOperationResult.Success, ToResponse(user, Guid.Empty));
+        var daGui = await _email.SendTemporaryPasswordAsync(
+            email, user.FullName, temporaryPassword, cancellationToken);
+
+        return daGui
+            ? (AccountOperationResult.Success, response)
+            : (AccountOperationResult.CreatedButEmailNotSent, response);
     }
 
     public async Task<AccountOperationResult> UpdateAsync(
@@ -144,13 +156,36 @@ public class UserAccountService : IUserAccountService
         CancellationToken cancellationToken = default)
     {
         var role = EnumExtensions.ParseUserRole(request.Role);
-        if (role is null || !AssignableRoles.Contains(role.Value))
+        if (role is null)
         {
             return AccountOperationResult.InvalidRole;
         }
 
         var user = await _users.GetByIdAsync(userId, cancellationToken);
         if (user is null) return AccountOperationResult.NotFound;
+
+        // Vai trò ADMIN bị đóng băng ở CẢ HAI CHIỀU.
+        //
+        // UC-04 chỉ cho gán [Doctor, Nurse, Patient] và ghi rõ "Admin accounts are not created
+        // on this screen". Hệ quả nếu không chặn: ô vai trò trên form không có lựa chọn ADMIN
+        // nên khi mở tài khoản Admin ra sửa, nó rơi về giá trị đầu danh sách — chỉ cần bấm Lưu
+        // để đổi cái tên là mất luôn quyền quản trị, không có cảnh báo nào. Mà mất Admin cuối
+        // cùng thì không còn ai tạo lại được, kể cả chính người vừa bấm.
+        //
+        // Chiều ngược lại cũng chặn: không được nâng người khác lên Admin qua màn này.
+        var dangLaAdmin = user.Role == UserRole.Admin;
+        var muonThanhAdmin = role.Value == UserRole.Admin;
+
+        if (dangLaAdmin != muonThanhAdmin)
+        {
+            return AccountOperationResult.CannotChangeAdminRole;
+        }
+
+        // Ngoài ADMIN thì chỉ nhận ba vai trò gán được.
+        if (role.Value != UserRole.Admin && !AssignableRoles.Contains(role.Value))
+        {
+            return AccountOperationResult.InvalidRole;
+        }
 
         var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
         if (email is not null

@@ -7,6 +7,7 @@ using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ADSUS_BE.Controllers;
 
@@ -46,6 +47,9 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("forgot-password")]
     [AllowAnonymous]
+    // Mỗi lời gọi trúng là đổi mật khẩu của người ta và gửi một lá thư. Không chặn thì
+    // ai cũng quấy rối được chủ tài khoản, dù không hề đăng nhập được.
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ForgotPassword(
@@ -73,6 +77,10 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
+    // Chặn dò mật khẩu theo địa chỉ IP. Đây KHÔNG phải BR-04 (tự khoá tài khoản sau N lần
+    // sai) — luật đó bảo vệ một tài khoản, còn cái này chặn kẻ dò lần lượt qua hàng nghìn
+    // số điện thoại khác nhau. Cần cả hai; xem chú thích trong AuthService.LoginAsync.
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status401Unauthorized)]

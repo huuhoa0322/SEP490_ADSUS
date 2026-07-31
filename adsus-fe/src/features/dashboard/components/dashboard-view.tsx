@@ -23,13 +23,32 @@ const PRESETS = [
   { label: "90 ngày", days: 90 },
 ] as const;
 
-function isoDaysAgo(days: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date.toISOString().slice(0, 10);
+/**
+ * Ngày theo lịch ĐỊA PHƯƠNG, dạng yyyy-MM-dd.
+ *
+ * Không dùng toISOString(): hàm đó quy về UTC, nên từ 00:00 đến 07:00 giờ Việt Nam nó trả
+ * về ngày hôm qua. Hệ quả cụ thể: mở dashboard lúc 6 giờ sáng thì ô "đến ngày" nhảy về hôm
+ * qua và chặn luôn không cho chọn hôm nay.
+ */
+function toIsoDate(date: Date): string {
+  const thang = `${date.getMonth() + 1}`.padStart(2, "0");
+  const ngay = `${date.getDate()}`.padStart(2, "0");
+  return `${date.getFullYear()}-${thang}-${ngay}`;
 }
 
-const TODAY = new Date().toISOString().slice(0, 10);
+/**
+ * Mốc đầu của khoảng N ngày gần nhất, TÍNH CẢ HÔM NAY.
+ *
+ * Lùi đúng N ngày là ra N+1 ngày, nên nút "7 ngày" trước đây vẽ ra 8 cột — nhãn nói một
+ * đằng, biểu đồ vẽ một nẻo.
+ */
+function isoDaysAgo(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() - (days - 1));
+  return toIsoDate(date);
+}
+
+const TODAY = toIsoDate(new Date());
 
 /**
  * SCR-08 — thống kê vận hành hệ thống (UC-05).

@@ -3,12 +3,11 @@ namespace ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 /// <summary>
 /// Cổng gửi email của hệ thống (API-04 trong PRD).
 ///
-/// ====================================================================================
-/// PHẦN NÀY DO NGƯỜI KHÁC LÀM — đây chỉ là chỗ chừa sẵn để ráp vào.
-/// Repo hiện chưa có thư viện gửi mail nào (không MailKit, không SendGrid).
-/// Khi làm xong, chỉ cần viết một lớp hiện thực giao diện này rồi đăng ký trong
-/// Program.cs thay cho <c>DevConsoleEmailService</c>. Không phải sửa gì ở tầng nghiệp vụ.
-/// ====================================================================================
+/// Có hai bản hiện thực:
+///   <c>SmtpEmailService</c> — bản thật, dùng khi đã khai EmailSettings.
+///   <c>DevConsoleEmailService</c> — in mật khẩu tạm ra console, CHỈ ở Development và chỉ
+///   khi chưa khai SMTP, để cả nhóm không bị chặn vì thiếu tài khoản gửi mail.
+/// Program.cs chọn bản nào; ngoài Development mà chưa khai SMTP thì dừng ngay lúc khởi động.
 ///
 /// Hai use case đang cần: UC-04 (Admin tạo tài khoản) và UC-03 (người dùng tự quên mật khẩu).
 /// Cả hai đều gửi đúng một loại nội dung nên chỉ cần một phương thức.
@@ -25,8 +24,14 @@ public interface IEmailService
     /// không được ghi ra log, không được trả về cho client, không được lưu lại.
     /// </param>
     /// <returns>
-    /// true nếu gửi được. KHÔNG ném ngoại lệ khi gửi thất bại: tài khoản đã tạo xong rồi,
-    /// làm hỏng cả thao tác chỉ vì máy chủ mail trục trặc là không đáng.
+    /// true nếu gửi được. KHÔNG ném ngoại lệ khi gửi thất bại — bên gọi phải tự quyết định
+    /// dựa trên giá trị này, và mỗi chỗ quyết định một khác:
+    ///   UC-04 tạo tài khoản — vẫn giữ tài khoản (số điện thoại đã bị chiếm rồi), chỉ báo
+    ///   cho Admin biết là còn phải cấp lại mật khẩu.
+    ///   UC-03 cấp lại mật khẩu — KHÔNG lưu mật khẩu mới, giữ nguyên mật khẩu cũ, nếu không
+    ///   thì chủ tài khoản bị nhốt ở ngoài.
+    ///
+    /// Vì vậy TUYỆT ĐỐI không được bỏ qua giá trị trả về.
     /// </returns>
     Task<bool> SendTemporaryPasswordAsync(
         string toEmail,

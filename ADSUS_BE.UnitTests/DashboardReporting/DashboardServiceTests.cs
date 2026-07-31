@@ -1,4 +1,5 @@
 using ADSUS_BE.BLL.DashboardReporting.Services;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Moq;
 using Xunit;
@@ -17,8 +18,8 @@ public class DashboardServiceTests
     private readonly Mock<IDashboardRepository> _repo = new();
     private readonly DashboardService _sut;
 
-    private DateTime _capturedFrom;
-    private DateTime _capturedTo;
+    private DateOnly _capturedFrom;
+    private DateOnly _capturedTo;
 
     public DashboardServiceTests()
     {
@@ -26,8 +27,8 @@ public class DashboardServiceTests
              .ReturnsAsync(new AccountCounts(0, 0, 0, 0, 0, 0, 0, 0));
 
         _repo.Setup(r => r.GetActivityCountsAsync(
-                 It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-             .Callback<DateTime, DateTime, CancellationToken>((f, t, _) =>
+                 It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+             .Callback<DateOnly, DateOnly, CancellationToken>((f, t, _) =>
              {
                  _capturedFrom = f;
                  _capturedTo = t;
@@ -35,7 +36,7 @@ public class DashboardServiceTests
              .ReturnsAsync(KhongCoHoatDong());
 
         _repo.Setup(r => r.GetDailyActivityAsync(
-                 It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                 It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(Array.Empty<DailyActivity>());
 
         _sut = new DashboardService(_repo.Object);
@@ -80,8 +81,22 @@ public class DashboardServiceTests
         var from = DateOnly.Parse(result.FromDate);
         var to = DateOnly.Parse(result.ToDate);
 
-        Assert.Equal(30, to.DayNumber - from.DayNumber);
-        Assert.Equal(DateOnly.FromDateTime(DateTime.UtcNow), to);
+        // Tính CẢ HAI ĐẦU: 30 ngày là 30 điểm trên biểu đồ, nên chênh lệch phải là 29.
+        // Trước đây trừ thẳng 30 nên "30 ngày" ra 31 ngày — nhãn trên nút nói dối.
+        Assert.Equal(29, to.DayNumber - from.DayNumber);
+
+        // Hôm nay theo giờ Việt Nam, KHÔNG phải theo UTC. Từ 00:00 đến 07:00 giờ Việt Nam
+        // hai mốc này lệch nhau đúng một ngày.
+        Assert.Equal(ClinicClock.Today(), to);
+    }
+
+    [Fact]
+    public async Task KhoangNgay_TRUYEN_XUONG_NGUYEN_VEN_CA_HAI_DAU()
+    {
+        await _sut.GetStatisticsAsync("2026-07-01", "2026-07-31");
+
+        Assert.Equal(new DateOnly(2026, 7, 1), _capturedFrom);
+        Assert.Equal(new DateOnly(2026, 7, 31), _capturedTo);
     }
 
     [Fact]
@@ -104,18 +119,25 @@ public class DashboardServiceTests
         var from = DateOnly.Parse(result.FromDate);
         var to = DateOnly.Parse(result.ToDate);
 
-        Assert.Equal(366, to.DayNumber - from.DayNumber);
+        // 366 điểm, tức chênh lệch 365 ngày — tính cả hai đầu.
+        Assert.Equal(365, to.DayNumber - from.DayNumber);
     }
 
     [Fact]
-    public async Task NgayCuoi_DUOC_TINH_TRON_VEN()
+    public void NgayCuoi_DUOC_TINH_TRON_VEN()
     {
-        // Mốc kết thúc phải là 00:00 của NGÀY HÔM SAU. Nếu truyền 00:00 của chính ngày cuối
-        // thì mọi thứ phát sinh trong ngày hôm đó đều bị bỏ sót.
-        await _sut.GetStatisticsAsync("2026-07-01", "2026-07-31");
+        // Mốc kết thúc phải là đầu NGÀY HÔM SAU theo giờ phòng khám. Lấy đúng cuối ngày là
+        // mọi thứ phát sinh trong ngày hôm đó đều bị bỏ sót, vì mọi mốc giờ đều lớn hơn 00:00.
+        var ngay = new DateOnly(2026, 7, 31);
 
-        Assert.Equal(new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc), _capturedFrom);
-        Assert.Equal(new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc), _capturedTo);
+        // 01/08 ở Việt Nam bắt đầu lúc 17:00 ngày 31/07 giờ UTC.
+        Assert.Equal(
+            new DateTime(2026, 7, 31, 17, 0, 0, DateTimeKind.Utc),
+            ClinicClock.EndOfDayExclusiveUtc(ngay));
+
+        Assert.Equal(
+            new DateTime(2026, 7, 30, 17, 0, 0, DateTimeKind.Utc),
+            ClinicClock.StartOfDayUtc(ngay));
     }
 
     // ---------- Cách tính tỉ lệ ----------
@@ -200,7 +222,7 @@ public class DashboardServiceTests
         // đường nối thẳng qua các ngày trống, nhìn như hoạt động vẫn đều trong khi thực tế
         // là không có gì — đọc sai hẳn ý nghĩa.
         _repo.Setup(r => r.GetDailyActivityAsync(
-                 It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                 It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(new List<DailyActivity>
              {
                  new(new DateOnly(2026, 7, 3), NewAccounts: 2, Cases: 1, Appointments: 0),
@@ -251,7 +273,7 @@ public class DashboardServiceTests
         int taken = 0)
     {
         _repo.Setup(r => r.GetActivityCountsAsync(
-                 It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                 It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(new ActivityCounts(
                  NewAccounts: 0,
                  CaseCount: 0,

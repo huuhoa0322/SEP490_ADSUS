@@ -100,17 +100,42 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task Tao_KhongCoEmail_VanTaoDuoc_KhongGoiDichVuMail()
+    public async Task Tao_KhongCoEmail_VanTaoDuoc_NhungPhaiBaoLaCHUA_GUI_DUOC()
     {
+        // UCS ghi Email là Optional nên vẫn phải cho tạo. Nhưng mật khẩu tạm chỉ đi qua
+        // email, nên tài khoản này chưa ai đăng nhập được — báo Success là Admin tưởng xong
+        // việc rồi vài ngày sau mới có người kêu không vào được.
         var request = YeuCauTao("DOCTOR");
         request.Email = null;
 
-        var (result, _) = await _sut.CreateAsync(request);
+        var (result, account) = await _sut.CreateAsync(request);
 
-        Assert.Equal(AccountOperationResult.Success, result);
+        Assert.Equal(AccountOperationResult.CreatedWithoutEmail, result);
+
+        // Vẫn phải tạo thật, không được nuốt mất.
+        Assert.NotNull(account);
+        Assert.Single(_saved);
+
         _email.Verify(e => e.SendTemporaryPasswordAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task Tao_GuiMailThatBai_TAI_KHOAN_VAN_TON_TAI_VaBaoDungSuThat()
+    {
+        // Máy chủ mail hỏng thì KHÔNG được huỷ tài khoản: số điện thoại đã bị chiếm, Admin
+        // bấm tạo lại chỉ nhận được "số điện thoại đã tồn tại" rồi không hiểu chuyện gì.
+        _email.Setup(e => e.SendTemporaryPasswordAsync(
+                  It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(false);
+
+        var (result, account) = await _sut.CreateAsync(YeuCauTao("DOCTOR"));
+
+        Assert.Equal(AccountOperationResult.CreatedButEmailNotSent, result);
+        Assert.NotNull(account);
+        Assert.Single(_saved);
+        _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -367,6 +392,69 @@ public class UserAccountServiceTests
         });
 
         Assert.Null(user.DateOfBirth);
+    }
+
+    [Theory]
+    [InlineData("DOCTOR")]
+    [InlineData("NURSE")]
+    [InlineData("PATIENT")]
+    public async Task PhanQuyen_KHONG_DUOC_HA_QUYEN_ADMIN(string vaiTroMoi)
+    {
+        // Lỗ nguy hiểm nhất của màn này trước khi vá: ô vai trò trên form chỉ có Bác sĩ,
+        // Điều dưỡng, Bệnh nhân. Mở một tài khoản Admin ra sửa thì ô đó rơi về giá trị đầu
+        // danh sách, chỉ cần bấm Lưu để đổi cái tên là mất luôn quyền quản trị — không cảnh
+        // báo, không hoàn tác được. Mất Admin cuối cùng là không còn ai tạo lại được nữa.
+        var user = TaoUserTrongDb(UserRole.Admin);
+        SetupGetById(user);
+
+        var result = await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
+        {
+            FullName = "Quản trị viên",
+            Role = vaiTroMoi,
+        });
+
+        Assert.Equal(AccountOperationResult.CannotChangeAdminRole, result);
+        Assert.Equal(UserRole.Admin, user.Role);
+        _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task PhanQuyen_KHONG_DUOC_PHONG_ADMIN_QuaManNay()
+    {
+        // Chiều ngược lại. UC-04 ghi "Admin accounts are not created on this screen" —
+        // không cho tạo thì cũng không được đi cửa sau bằng cách sửa vai trò.
+        var user = TaoUserTrongDb(UserRole.Doctor);
+        SetupGetById(user);
+
+        var result = await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
+        {
+            FullName = "Nguyễn Văn A",
+            Role = "ADMIN",
+        });
+
+        Assert.Equal(AccountOperationResult.CannotChangeAdminRole, result);
+        Assert.Equal(UserRole.Doctor, user.Role);
+    }
+
+    [Fact]
+    public async Task PhanQuyen_ADMIN_VAN_SUA_DUOC_TEN_VA_EMAIL()
+    {
+        // Khoá vai trò nhưng không được khoá luôn cả form: sửa tên hay email của tài khoản
+        // Admin vẫn phải chạy, miễn là vai trò giữ nguyên ADMIN.
+        var user = TaoUserTrongDb(UserRole.Admin);
+        SetupGetById(user);
+
+        var result = await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
+        {
+            FullName = "Nguyễn Quý Hiếu",
+            Role = "ADMIN",
+            Email = "admin@example.com",
+        });
+
+        Assert.Equal(AccountOperationResult.Success, result);
+        Assert.Equal("Nguyễn Quý Hiếu", user.FullName);
+        Assert.Equal("admin@example.com", user.Email);
+        Assert.Equal(UserRole.Admin, user.Role);
     }
 
     // ---------- helpers ----------

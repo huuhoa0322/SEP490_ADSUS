@@ -73,6 +73,16 @@ function UserFormFields({
   const router = useRouter();
   const isEdit = Boolean(userId);
 
+  /**
+   * Tài khoản quản trị viên thì KHOÁ ô vai trò lại.
+   *
+   * UC-04 chỉ cho gán Bác sĩ / Điều dưỡng / Bệnh nhân, nên danh sách không có ADMIN. Trước
+   * đây mở một tài khoản Admin ra sửa là ô này rơi về "Bác sĩ" — chỉ cần bấm Lưu để đổi cái
+   * tên là tự hạ quyền chính mình, không hề có cảnh báo nào. Backend cũng đã chặn, đây là
+   * lớp thứ hai và cũng để giao diện nói đúng sự thật.
+   */
+  const isAdminAccount = initial?.role === "ADMIN";
+
   const [phoneNumber, setPhoneNumber] = useState(initial?.phoneNumber ?? "");
   const [fullName, setFullName] = useState(initial?.fullName ?? "");
   const [role, setRole] = useState<AssignableRole>(() =>
@@ -109,18 +119,27 @@ function UserFormFields({
     // trước lúc đổi vai trò. Backend cũng tự loại, đây là lớp chặn thứ hai.
     const payload = {
       fullName: fullName.trim(),
-      role,
       email: email.trim() || null,
       dateOfBirth: isPatient ? null : dateOfBirth || null,
     };
 
     if (isEdit) {
-      update.mutate(payload, { onSuccess: () => router.push("/admin/users") });
+      update.mutate(
+        {
+          ...payload,
+          // Gửi lại đúng ADMIN thay vì giá trị trong ô đã bị khoá — nói dối trên đường
+          // truyền để đi qua kiểm tra là kiểu về sau không ai lần ra được.
+          role: isAdminAccount ? "ADMIN" : role,
+        },
+        { onSuccess: () => router.push("/admin/users") },
+      );
       return;
     }
 
+    // Tạo mới thì không bao giờ có tài khoản Admin (UC-04), nên vai trò luôn nằm trong ba
+    // giá trị gán được.
     create.mutate(
-      { ...payload, phoneNumber: phoneNumber.trim() },
+      { ...payload, role, phoneNumber: phoneNumber.trim() },
       { onSuccess: () => router.push("/admin/users") },
     );
   }
@@ -171,19 +190,34 @@ function UserFormFields({
           />
         </Field>
 
-        <Field label="Vai trò">
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as AssignableRole)}
-            disabled={isSubmitting}
-            className={inputClass}
-          >
-            {ASSIGNABLE_ROLES.map((r) => (
-              <option key={r} value={r}>
-                {ROLE_LABEL[r]}
-              </option>
-            ))}
-          </select>
+        <Field
+          label="Vai trò"
+          hint={
+            isAdminAccount
+              ? "Không đổi được — tài khoản quản trị viên được cấp lúc dựng hệ thống"
+              : undefined
+          }
+        >
+          {isAdminAccount ? (
+            /* Ô chữ đọc-được thay vì select bị vô hiệu hoá: select có mũi tên xổ xuống,
+               nhìn như bấm được mà bấm lại không ra gì. */
+            <p className={`${inputClass} flex items-center bg-secondary/50 text-muted-foreground`}>
+              {ROLE_LABEL.ADMIN}
+            </p>
+          ) : (
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as AssignableRole)}
+              disabled={isSubmitting}
+              className={inputClass}
+            >
+              {ASSIGNABLE_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABEL[r]}
+                </option>
+              ))}
+            </select>
+          )}
         </Field>
 
         <Field label="Email" hint="Không bắt buộc, nhưng thiếu thì không gửi được mật khẩu tạm">

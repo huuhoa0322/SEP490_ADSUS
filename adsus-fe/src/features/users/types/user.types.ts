@@ -49,10 +49,22 @@ export interface CreateUserAccountRequest {
   dateOfBirth?: string | null;
 }
 
+/**
+ * Vai trò gửi lên khi SỬA.
+ *
+ * Có thêm ADMIN so với lúc tạo, nhưng KHÔNG phải để phong quản trị viên — backend chặn mọi
+ * thay đổi vai trò dính tới ADMIN, cả hai chiều. Có ở đây là để sửa được tên và email của
+ * một tài khoản Admin: form phải gửi lại đúng vai trò hiện tại của nó.
+ *
+ * Trước khi vá, ô vai trò rơi về "DOCTOR" khi mở tài khoản Admin ra sửa — chỉ cần bấm Lưu
+ * để đổi cái tên là mất luôn quyền quản trị.
+ */
+export type EditableRole = AssignableRole | "ADMIN";
+
 /** UC-04 FT-09. Không có số điện thoại (BR-02) và không có trạng thái (endpoint riêng). */
 export interface UpdateUserAccountRequest {
   fullName: string;
-  role: AssignableRole;
+  role: EditableRole;
   email?: string | null;
   dateOfBirth?: string | null;
 }

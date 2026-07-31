@@ -1,4 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Bản mẫu của Flutter chỉ khai quyền này trong debug/AndroidManifest.xml và
+         profile/AndroidManifest.xml, tức là APK RELEASE hoàn toàn không có quyền ra mạng —
+         cài lên máy là mọi lời gọi API tắt ngóm, mà thông báo lỗi lại giống hệt "backend
+         chưa chạy". Ứng dụng này không có màn nào chạy ngoại tuyến nên quyền phải nằm ở
+         manifest chính, áp dụng cho mọi kiểu build. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <!-- UC-02 — đăng nhập bằng vân tay/khuôn mặt. Gói local_auth yêu cầu quyền này; thiếu
          nó thì hệ điều hành không bật được hộp thoại quét sinh trắc học. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
