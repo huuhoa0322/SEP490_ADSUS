@@ -77,7 +77,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("reminder_slot", new[] { "MORNING", "NOON", "EVENING" })
             .HasPostgresEnum("slot_status", new[] { "OPEN", "FULL", "CLOSED" })
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
-            .HasPostgresEnum("user_role", new[] { "ADMIN", "DOCTOR", "PATIENT" })
+            .HasPostgresEnum("user_role", new[] { "ADMIN", "DOCTOR", "PATIENT", "NURSE" })
             .HasPostgresEnum("user_status", new[] { "ACTIVE", "LOCKED", "DEACTIVATED" })
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
