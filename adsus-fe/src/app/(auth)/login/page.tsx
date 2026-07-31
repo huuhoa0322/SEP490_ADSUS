@@ -1,5 +1,6 @@
 import { Activity, ScanLine, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { SignInForm } from "@/features/auth/components/sign-in-form";
 
@@ -99,7 +100,11 @@ export default function LoginPage() {
             </span>
           </div>
 
-          <SignInForm />
+          {/* SignInForm đọc query string (?expired=1) nên phải bọc Suspense — Next.js yêu
+              cầu vậy với trang dựng tĩnh. */}
+          <Suspense fallback={<div className="min-h-96" />}>
+            <SignInForm />
+          </Suspense>
         </div>
       </section>
     </main>

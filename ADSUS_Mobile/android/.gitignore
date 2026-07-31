@@ -12,3 +12,8 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Thư mục Gradle sinh ra khi build. Luật /build/ ở .gitignore gốc của Flutter chỉ chặn
+# ADSUS_Mobile/build, không với tới hai chỗ này.
+/build/
+/app/build/

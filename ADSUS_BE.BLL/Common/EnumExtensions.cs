@@ -11,4 +11,23 @@ namespace ADSUS_BE.BLL.Common;
 public static class EnumExtensions
 {
     public static string ToApiString(this UserRole role) => role.ToString().ToUpperInvariant();
+
+    public static string ToApiString(this UserStatus status) => status.ToString().ToUpperInvariant();
+
+    /// <summary>
+    /// Đọc vai trò từ chuỗi client gửi lên. Trả null nếu không khớp giá trị nào.
+    ///
+    /// Phải tự đọc thay vì để bộ chuyển đổi JSON làm: mặc định nó biến chuỗi lạ thành phần
+    /// tử ĐẦU TIÊN của enum, mà phần tử đầu tiên ở đây là Admin — gõ sai một chữ là vô tình
+    /// tạo ra tài khoản quản trị.
+    /// </summary>
+    public static UserRole? ParseUserRole(string? value) =>
+        Enum.TryParse<UserRole>(value, ignoreCase: true, out var role) && Enum.IsDefined(role)
+            ? role
+            : null;
+
+    public static UserStatus? ParseUserStatus(string? value) =>
+        Enum.TryParse<UserStatus>(value, ignoreCase: true, out var status) && Enum.IsDefined(status)
+            ? status
+            : null;
 }
