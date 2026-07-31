@@ -3,6 +3,8 @@ using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.BLL.Auth.Validators;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.Engagement.Interfaces;
+using ADSUS_BE.BLL.Engagement.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Implementations;
@@ -148,6 +150,12 @@ namespace ADSUS_BE
             // BLL — Module 1: Authentication & Account
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
+
+            // BLL — Module 10: Engagement (Blog PUBLIC endpoints)
+            builder.Services.AddScoped<IBlogPostService, BlogPostService>();
+
+            // DAL — Repositories
+            builder.Services.AddScoped<IBlogPostRepository, BlogPostRepository>();
 
             // Scans the whole BLL assembly, so validators added by other modules are picked
             // up automatically.

@@ -30,3 +30,14 @@ public enum UserStatus
     [PgName("LOCKED")] Locked,
     [PgName("DEACTIVATED")] Deactivated,
 }
+
+/// <summary>
+/// Trạng thái bài viết blog — enum <c>blog_status</c> trong DB.
+/// GB-01 (trạng thái một chiều): Draft → Published (không rollback).
+/// Bệnh nhân chỉ thấy Published (GB-05).
+/// </summary>
+public enum BlogPostStatus
+{
+    [PgName("DRAFT")] Draft,
+    [PgName("PUBLISHED")] Published,
+}
