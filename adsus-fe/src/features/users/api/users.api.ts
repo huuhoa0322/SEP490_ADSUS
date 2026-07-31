@@ -1,8 +1,10 @@
 import { apiClient } from "@/lib/api-client";
+import { translateApiMessage } from "@/lib/api-messages";
 import type { ApiResponse } from "@/types/api.types";
 
 import type {
   CreateUserAccountRequest,
+  CreateUserResult,
   PagedResult,
   UpdateUserAccountRequest,
   UserAccount,
@@ -37,12 +39,17 @@ export async function getUserById(userId: string): Promise<UserAccount> {
   return data.data;
 }
 
-export async function createUser(payload: CreateUserAccountRequest): Promise<UserAccount> {
+export async function createUser(payload: CreateUserAccountRequest): Promise<CreateUserResult> {
   const { data } = await apiClient.post<ApiResponse<UserAccount>>(BASE, payload);
 
   if (!data.data) throw new Error(data.message || "Tạo tài khoản thất bại.");
 
-  return data.data;
+  return {
+    account: data.data,
+    message: data.message
+      ? translateApiMessage(data.message)
+      : "Đã tạo tài khoản.",
+  };
 }
 
 export async function updateUser(

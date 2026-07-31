@@ -140,7 +140,12 @@ function UserFormFields({
     // giá trị gán được.
     create.mutate(
       { ...payload, role, phoneNumber: phoneNumber.trim() },
-      { onSuccess: () => router.push("/admin/users") },
+      {
+        onSuccess: ({ message }) => {
+          const params = new URLSearchParams({ created: message });
+          router.push(`/admin/users?${params.toString()}`);
+        },
+      },
     );
   }
 

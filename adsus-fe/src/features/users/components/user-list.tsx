@@ -13,7 +13,8 @@ import {
   UserPlus,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 import type { Role } from "@/types/api.types";
@@ -45,7 +46,13 @@ type PendingAction =
  * Admin tìm kiếm, lọc, và thực hiện FT-08 (khoá / mở khoá / vô hiệu hoá) ngay tại đây.
  * Tạo mới và sửa nằm ở SCR-07.
  */
-export function UserList() {
+interface UserListProps {
+  /** Thông báo tạo tài khoản do API trả về, được trang chuyển tiếp sang để không mất khi điều hướng. */
+  initialCreateNotice?: string;
+}
+
+export function UserList({ initialCreateNotice }: UserListProps) {
+  const router = useRouter();
   const [keyword, setKeyword] = useState("");
   const [role, setRole] = useState<Role | "">("");
   const [status, setStatus] = useState<AccountStatus | "">("");
@@ -53,6 +60,14 @@ export function UserList() {
   const [pending, setPending] = useState<PendingAction>(null);
   /** Tên tài khoản vừa được cấp lại mật khẩu, để hiện lời xác nhận. */
   const [resetSentTo, setResetSentTo] = useState<string | null>(null);
+  const [createNotice] = useState(initialCreateNotice);
+
+  useEffect(() => {
+    if (initialCreateNotice) {
+      // Xoá thông báo khỏi URL để tải lại hoặc mở lại trang không hiện cảnh báo cũ lần thứ hai.
+      router.replace("/admin/users", { scroll: false });
+    }
+  }, [initialCreateNotice, router]);
 
   const query = { keyword, role, status, page, pageSize: 20 };
   const { data, isLoading, isError, error } = useUserList(query);
@@ -111,6 +126,16 @@ export function UserList() {
           Tạo tài khoản
         </Link>
       </div>
+
+      {createNotice && (
+        <div
+          role="status"
+          className="mt-6 flex items-start gap-2.5 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-foreground"
+        >
+          <CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0 text-accent" />
+          <span>{createNotice}</span>
+        </div>
+      )}
 
       {/* ---- Bộ lọc ---- */}
       <div className="mt-8 flex flex-wrap gap-3">

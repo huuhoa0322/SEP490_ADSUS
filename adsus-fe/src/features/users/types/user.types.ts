@@ -49,6 +49,12 @@ export interface CreateUserAccountRequest {
   dateOfBirth?: string | null;
 }
 
+/** Kết quả tạo tài khoản gồm dữ liệu mới và thông báo giao mật khẩu tạm của API. */
+export interface CreateUserResult {
+  account: UserAccount;
+  message: string;
+}
+
 /**
  * Vai trò gửi lên khi SỬA.
  *
