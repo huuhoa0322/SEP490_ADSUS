@@ -7,12 +7,14 @@ using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Implementations;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using ADSUS_BE.Middlewares;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Npgsql;
+using Serilog;
 
 namespace ADSUS_BE
 {
@@ -34,6 +36,13 @@ namespace ADSUS_BE
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // ---------- Serilog ----------
+            // Replaces the default Microsoft.Extensions.Logging console provider. Sinks and
+            // levels are read from the "Serilog" section in appsettings.json — GlobalExceptionHandler
+            // and every Service still just inject ILogger<T> as usual, Serilog is only the provider.
+            builder.Host.UseSerilog((context, configuration) =>
+                configuration.ReadFrom.Configuration(context.Configuration));
 
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
@@ -154,6 +163,10 @@ namespace ADSUS_BE
             builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
 
             var app = builder.Build();
+
+            // Registered first so it wraps every middleware after it (CORS, auth, controllers)
+            // and can translate any exception thrown downstream into an ApiResponse<T>.Fail(...).
+            app.UseMiddleware<GlobalExceptionHandler>();
 
             if (app.Environment.IsDevelopment())
             {
