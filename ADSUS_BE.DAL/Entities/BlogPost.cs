@@ -5,16 +5,12 @@ namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
 /// Blog sức khỏe (UC-23/24). Bệnh nhân chỉ thấy PUBLISHED (§3.2: Patient chỉ có quyền View).
-/// GB-01: Draft → Published một chiều (không rollback).
 /// </summary>
 public partial class BlogPost
 {
     public Guid PostId { get; set; }
 
     public Guid AuthorId { get; set; }
-
-    /// <summary>Trạng thái: Draft hoặc Published. Derived từ DB enum blog_status.</summary>
-    public BlogPostStatus Status { get; set; } = BlogPostStatus.Draft;
 
     public string Title { get; set; } = null!;
 

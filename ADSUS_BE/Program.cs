@@ -154,6 +154,11 @@ namespace ADSUS_BE
             dataSourceBuilder.MapEnum<BlogPostStatus>("blog_status");
             dataSourceBuilder.MapEnum<AiResultStatus>("ai_result_status");
             dataSourceBuilder.MapEnum<AppointmentStatus>("appointment_status");
+            dataSourceBuilder.MapEnum<CaseStatus>("case_status");
+            dataSourceBuilder.MapEnum<ModelVersionStatus>("model_version_status");
+            dataSourceBuilder.MapEnum<PrescriptionStatus>("prescription_status");
+            dataSourceBuilder.MapEnum<IntakeStatus>("intake_status");
+            dataSourceBuilder.MapEnum<SlotStatus>("slot_status");
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);

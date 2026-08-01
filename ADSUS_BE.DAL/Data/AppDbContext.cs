@@ -75,7 +75,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in", "like", "ilike", "is", "match", "imatch", "isdistinct" })
             .HasPostgresEnum("reminder_slot", new[] { "MORNING", "NOON", "EVENING" })
-            .HasPostgresEnum("slot_status", new[] { "OPEN", "FULL", "CLOSED" })
+            .HasPostgresEnum("slot_status", new[] { "OPEN", "CLOSED" })
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
             .HasPostgresEnum("user_role", new[] { "ADMIN", "DOCTOR", "PATIENT", "NURSE" })
             .HasPostgresEnum("user_status", new[] { "ACTIVE", "LOCKED", "DEACTIVATED" })
@@ -272,7 +272,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<AuditLog>(entity =>
         {
-            entity.HasKey(e => e.LogId).HasName("audit_logs_pkey");
+            entity.HasKey(e => e.LogId).HasName("pk_audit_logs");
 
             entity.ToTable("audit_logs");
 
@@ -307,7 +307,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.PostId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("post_id");
-            entity.Property(e => e.Status).HasColumnName("status");
             entity.Property(e => e.AuthorId).HasColumnName("author_id");
             entity.Property(e => e.Content).HasColumnName("content");
             entity.Property(e => e.CreatedAt)
@@ -563,7 +562,7 @@ public partial class AppDbContext : DbContext
         {
             entity.HasKey(e => e.SlotId).HasName("pk_schedule_slots");
 
-            entity.ToTable("schedule_slots", tb => tb.HasComment("Quỹ giờ khám bác sĩ công bố (UC-15) — bệnh nhân đặt lịch bằng cách chọn slot OPEN (UC-13). EXCLUDE constraint chặn khung giờ chồng lấn của cùng bác sĩ ngay tại DB. Đơn giản hóa v2: mỗi khung giờ mặc định 1 bệnh nhân (không có capacity) — status chuyển FULL ngay khi có 1 booking BOOKED."));
+            entity.ToTable("schedule_slots", tb => tb.HasComment("Quỹ giờ khám bác sĩ công bố (UC-15) — không giới hạn số Appointment/slot, vòng đời chỉ Open → Closed (quyết định UCS 3.1, 23/07/2026)."));
 
             entity.HasIndex(e => new { e.SlotDate, e.DoctorId }, "idx_schedule_slots_open").HasFilter("(status = 'OPEN'::slot_status)");
 

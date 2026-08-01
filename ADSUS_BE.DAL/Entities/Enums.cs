@@ -62,3 +62,56 @@ public enum AppointmentStatus
     [PgName("BOOKED")] Booked,
     [PgName("CANCELLED")] Cancelled,
 }
+
+/// <summary>
+/// Trạng thái ca khám — enum <c>case_status</c> trong DB (Module 4, lõi đề tài).
+/// Vòng đời một chiều: Created → Analyzed (có kết quả AI) → Confirmed (bác sĩ đã duyệt).
+/// </summary>
+public enum CaseStatus
+{
+    [PgName("CREATED")] Created,
+    [PgName("ANALYZED")] Analyzed,
+    [PgName("CONFIRMED")] Confirmed,
+}
+
+/// <summary>
+/// Trạng thái phiên bản AI Model — enum <c>model_version_status</c> trong DB (Module 4).
+/// Chỉ 1 phiên bản ACTIVE tại một thời điểm (partial unique index) — kích hoạt bản mới tự
+/// chuyển bản đang ACTIVE về INACTIVE (rollback).
+/// </summary>
+public enum ModelVersionStatus
+{
+    [PgName("REGISTERED")] Registered,
+    [PgName("ACTIVE")] Active,
+    [PgName("INACTIVE")] Inactive,
+}
+
+/// <summary>
+/// Trạng thái đơn thuốc — enum <c>prescription_status</c> trong DB (Module 5).
+/// Completed suy ra khi mọi liều đã Taken (không phải job quét, tính tại thời điểm đọc).
+/// </summary>
+public enum PrescriptionStatus
+{
+    [PgName("ACTIVE")] Active,
+    [PgName("COMPLETED")] Completed,
+}
+
+/// <summary>
+/// Trạng thái 1 liều thuốc — enum <c>intake_status</c> trong DB (Module 5).
+/// Không có "Missed" — JOB-01 nhắc lặp lại liên tục cho tới khi bệnh nhân xác nhận Taken.
+/// </summary>
+public enum IntakeStatus
+{
+    [PgName("PENDING")] Pending,
+    [PgName("TAKEN")] Taken,
+}
+
+/// <summary>
+/// Trạng thái khung giờ khám — enum <c>slot_status</c> trong DB (Module 6).
+/// Không có "Full" — số Appointment/slot không giới hạn (quyết định UCS 3.1, 23/07/2026).
+/// </summary>
+public enum SlotStatus
+{
+    [PgName("OPEN")] Open,
+    [PgName("CLOSED")] Closed,
+}
