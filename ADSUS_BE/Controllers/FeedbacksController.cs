@@ -27,7 +27,7 @@ public sealed class FeedbacksController : ControllerBase
     /// Validation: Rating 1-5, Content 1-2000 ký tự.
     /// </summary>
     [HttpPost("api/v1/me/feedbacks")]
-    [Authorize(Roles = "Patient")]
+    [Authorize(Roles = "PATIENT")]
     [ProducesResponseType(typeof(ApiResponse<FeedbackResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Submit(
@@ -75,7 +75,7 @@ public sealed class FeedbacksController : ControllerBase
     /// GET /api/v1/admin/feedbacks — Admin xem tất cả feedback.
     /// </summary>
     [HttpGet("api/v1/admin/feedbacks")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "ADMIN")]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<FeedbackResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {

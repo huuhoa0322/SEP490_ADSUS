@@ -15,7 +15,7 @@ namespace ADSUS_BE.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/admin/blog-posts")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "ADMIN")]
 [Produces("application/json")]
 public sealed class AdminBlogPostsController : ControllerBase
 {

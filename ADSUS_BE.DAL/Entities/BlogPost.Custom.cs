@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
@@ -10,5 +12,6 @@ namespace ADSUS_BE.DAL.Entities;
 /// </summary>
 public partial class BlogPost
 {
+    [Column("status")]
     public BlogPostStatus Status { get; set; } = BlogPostStatus.Draft;
 }
