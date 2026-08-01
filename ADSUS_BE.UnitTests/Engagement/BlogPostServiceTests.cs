@@ -111,4 +111,131 @@ public class BlogPostServiceTests
 
         Assert.Null(result);
     }
+
+    // ==================== Admin tests ====================
+
+    [Fact]
+    public async Task ListAllAsync_ReturnsAllPostsForAdmin()
+    {
+        var posts = new List<BlogPost>
+        {
+            NewBlogPost(status: BlogPostStatus.Draft),
+            NewBlogPost(status: BlogPostStatus.Published),
+        };
+        var repo = new Mock<IBlogPostRepository>();
+        repo.Setup(r => r.ListAllAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(posts);
+
+        var sut = new BlogPostService(repo.Object);
+
+        var result = await sut.ListAllAsync();
+
+        Assert.Equal(2, result.Items.Count);
+    }
+
+    [Fact]
+    public async Task ListAllAsync_FiltersByStatus()
+    {
+        var posts = new List<BlogPost>
+        {
+            NewBlogPost(status: BlogPostStatus.Draft),
+            NewBlogPost(status: BlogPostStatus.Published),
+        };
+        var repo = new Mock<IBlogPostRepository>();
+        repo.Setup(r => r.ListAllAsync(BlogPostStatus.Draft, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(posts.Where(p => p.Status == BlogPostStatus.Draft).ToList());
+
+        var sut = new BlogPostService(repo.Object);
+
+        var result = await sut.ListAllAsync(statusFilter: BlogPostStatus.Draft);
+
+        Assert.Single(result.Items);
+        Assert.Equal(BlogPostStatus.Draft, result.Items[0].Status);
+    }
+
+    [Fact]
+    public async Task GetByIdForAdminAsync_ReturnsPost_EvenIfDraft()
+    {
+        var draft = NewBlogPost(status: BlogPostStatus.Draft);
+        var repo = new Mock<IBlogPostRepository>();
+        repo.Setup(r => r.GetByIdAsync(draft.PostId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(draft);
+
+        var sut = new BlogPostService(repo.Object);
+
+        var result = await sut.GetByIdForAdminAsync(draft.PostId);
+
+        Assert.NotNull(result);
+        Assert.Equal(draft.PostId, result.Id);
+        Assert.Equal(BlogPostStatus.Draft, result.Status);
+    }
+
+    [Fact]
+    public async Task CreateAsync_CreatesDraftPost()
+    {
+        var repo = new Mock<IBlogPostRepository>();
+        repo.Setup(r => r.AddAsync(It.IsAny<BlogPost>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((BlogPost p, CancellationToken _) => p);
+
+        var sut = new BlogPostService(repo.Object);
+        var request = new CreateBlogPostRequest { Title = "New Post", Content = "Content" };
+        var authorId = Guid.NewGuid();
+
+        var result = await sut.CreateAsync(request, authorId);
+
+        Assert.Equal("New Post", result.Title);
+        Assert.Equal(BlogPostStatus.Draft, result.Status);
+        repo.Verify(r => r.AddAsync(It.IsAny<BlogPost>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ReturnsNull_WhenPublished()
+    {
+        var published = NewBlogPost(status: BlogPostStatus.Published);
+        var repo = new Mock<IBlogPostRepository>();
+        repo.Setup(r => r.GetByIdForUpdateAsync(published.PostId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(published);
+
+        var sut = new BlogPostService(repo.Object);
+        var request = new UpdateBlogPostRequest { Title = "Updated", Content = "Content" };
+
+        var result = await sut.UpdateAsync(published.PostId, request);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task PublishAsync_ReturnsNull_WhenAlreadyPublished()
+    {
+        var published = NewBlogPost(status: BlogPostStatus.Published);
+        var repo = new Mock<IBlogPostRepository>();
+        repo.Setup(r => r.GetByIdForUpdateAsync(published.PostId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(published);
+
+        var sut = new BlogPostService(repo.Object);
+
+        var result = await sut.PublishAsync(published.PostId);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task PublishAsync_SetsPublishedAt_WhenDraft()
+    {
+        var draft = NewBlogPost(status: BlogPostStatus.Draft);
+        var repo = new Mock<IBlogPostRepository>();
+        repo.Setup(r => r.GetByIdForUpdateAsync(draft.PostId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(draft);
+        repo.Setup(r => r.UpdateAsync(It.IsAny<BlogPost>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var sut = new BlogPostService(repo.Object);
+
+        var result = await sut.PublishAsync(draft.PostId);
+
+        Assert.NotNull(result);
+        Assert.Equal(BlogPostStatus.Published, result.Status);
+        Assert.NotNull(result.PublishedAt);
+        repo.Verify(r => r.UpdateAsync(It.IsAny<BlogPost>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

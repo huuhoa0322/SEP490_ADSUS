@@ -27,11 +27,16 @@ public sealed class BlogPostRepository : IBlogPostRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<BlogPost>> ListAllAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<BlogPost>> ListAllAsync(BlogPostStatus? statusFilter = null, CancellationToken ct = default)
     {
-        return await _db.BlogPosts
-            .AsNoTracking()
-            .Include(b => b.Author)
+        IQueryable<BlogPost> query = _db.BlogPosts.AsNoTracking().Include(b => b.Author);
+
+        if (statusFilter.HasValue)
+        {
+            query = query.Where(b => b.Status == statusFilter.Value);
+        }
+
+        return await query
             .OrderByDescending(b => b.Status == BlogPostStatus.Published ? b.PublishedAt : b.CreatedAt)
             .ToListAsync(ct);
     }
@@ -42,5 +47,26 @@ public sealed class BlogPostRepository : IBlogPostRepository
             .AsNoTracking()
             .Include(b => b.Author)
             .FirstOrDefaultAsync(b => b.PostId == id, ct);
+    }
+
+    public async Task<BlogPost?> GetByIdForUpdateAsync(Guid id, CancellationToken ct = default)
+    {
+        // Tracking enabled for update
+        return await _db.BlogPosts
+            .Include(b => b.Author)
+            .FirstOrDefaultAsync(b => b.PostId == id, ct);
+    }
+
+    public async Task<BlogPost> AddAsync(BlogPost blogPost, CancellationToken ct = default)
+    {
+        _db.BlogPosts.Add(blogPost);
+        await _db.SaveChangesAsync(ct);
+        return blogPost;
+    }
+
+    public async Task UpdateAsync(BlogPost blogPost, CancellationToken ct = default)
+    {
+        _db.BlogPosts.Update(blogPost);
+        await _db.SaveChangesAsync(ct);
     }
 }
