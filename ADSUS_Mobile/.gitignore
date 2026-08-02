@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Cấu hình theo từng máy — mỗi người tự tạo từ .env.example, giống .env.local bên adsus-fe.
+# Giữ .env.example trong git để ai clone về cũng biết cần khai những khoá nào.
+.env
+!.env.example
