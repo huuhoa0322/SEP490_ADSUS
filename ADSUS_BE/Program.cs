@@ -153,6 +153,7 @@ namespace ADSUS_BE
             var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
             dataSourceBuilder.MapEnum<UserRole>("user_role");
             dataSourceBuilder.MapEnum<UserStatus>("user_status");
+            dataSourceBuilder.MapEnum<GenderType>("gender_type");
             dataSourceBuilder.MapEnum<BlogPostStatus>("blog_status");
             dataSourceBuilder.MapEnum<AiResultStatus>("ai_result_status");
             dataSourceBuilder.MapEnum<AppointmentStatus>("appointment_status");
