@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Xác nhận tổn thương — Công cụ hỗ trợ AI</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel-bg: #12181f;
+    --panel-border: #1f2933;
+    --text-primary: #e8edf2;
+    --text-muted: #7d8ba0;
+    --ai-accent: #e8934a;
+    --ai-accent-dim: #e8934a2a;
+    --confirm-accent: #4ade9a;
+    --confirm-accent-dim: #4ade9a1a;
+    --danger: #e8564a;
+    --mono: 'SF Mono','Consolas','Menlo',monospace;
+    --sans: -apple-system,'Segoe UI',Inter,Roboto,sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text-primary);
+    font-family: var(--sans); height: 100vh; display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 20px; border-bottom: 1px solid var(--panel-border);
+    background: #0d1218; flex-shrink: 0;
+  }
+  header h1 { font-size: 13px; font-weight: 600; margin: 0; color: var(--text-primary); }
+  header h1 span { color: var(--text-muted); font-weight: 400; }
+  .upload-btn {
+    background: var(--confirm-accent); color: #08130d; border: none;
+    padding: 7px 15px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: opacity .15s; display: inline-block;
+  }
+  .upload-btn:hover { opacity: .82; }
+  input[type=file] { display: none; }
+
+  /* ── Main layout — AI:3 / Edit:7 ── */
+  main { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+
+  .panel {
+    display: flex; flex-direction: column; min-width: 0;
+    border-right: 1px solid var(--panel-border);
+  }
+  .panel:last-child { border-right: none; }
+  .ai-panel   { flex: 4 4 40%; width: 40%; max-width: 40%; }
+  .edit-panel { flex: 6 6 60%; width: 60%; max-width: 60%; }
+
+  .panel-header {
+    padding: 8px 14px; font-size: 10px; font-weight: 700; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--text-muted);
+    border-bottom: 1px solid var(--panel-border);
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot.ai      { background: var(--ai-accent); }
+  .dot.confirm { background: var(--confirm-accent); }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    padding: 7px 12px; border-bottom: 1px solid var(--panel-border);
+    display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap;
+  }
+  .add-caliper-btn {
+    background: transparent; border: 1px solid var(--confirm-accent);
+    color: var(--confirm-accent); padding: 5px 11px; border-radius: 5px;
+    font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0;
+    transition: background .12s;
+  }
+  .add-caliper-btn.active { background: var(--confirm-accent); color: #08130d; }
+  .legend { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
+
+  /* Zoom controls */
+  .zoom-group {
+    display: flex; gap: 3px; align-items: center; margin-left: auto;
+  }
+  .zoom-btn {
+    background: var(--panel-bg); border: 1px solid var(--panel-border);
+    color: var(--text-primary); width: 24px; height: 24px; border-radius: 4px;
+    font-size: 15px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; transition: background .1s;
+  }
+  .zoom-btn:hover { background: #1c2533; }
+  .zoom-btn.wide { width: auto; padding: 0 7px; font-size: 11px; }
+  .zoom-level {
+    font-size: 11px; color: var(--text-muted); font-family: var(--mono);
+    min-width: 38px; text-align: center;
+  }
+
+  /* ── Canvas area ── */
+  .canvas-wrap {
+    flex: 1; position: relative; overflow: hidden;
+    background: #040609; cursor: grab; user-select: none;
+  }
+  .canvas-wrap.adding { cursor: crosshair !important; }
+
+  .canvas-inner {
+    position: absolute;
+    transform-origin: 0 0;
+  }
+  .canvas-inner img { display: block; }
+  .canvas-inner svg {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    overflow: visible;
+  }
+
+  .empty-state {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; color: var(--text-muted); font-size: 13px;
+    text-align: center; pointer-events: none;
+  }
+
+  /* Caliper cursor styles */
+  .caliper-point { cursor: grab; }
+  .caliper-point.dragging { cursor: grabbing; }
+  .caliper-line { pointer-events: none; }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--panel-border); background: #0d1218;
+    padding: 9px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  }
+  footer input[type=text] {
+    background: var(--panel-bg); border: 1px solid var(--panel-border);
+    color: var(--text-primary); padding: 6px 10px; border-radius: 5px;
+    font-size: 12px; font-family: var(--sans);
+  }
+  #doctorId { width: 130px; }
+  #notes { flex: 1; }
+  .save-btn {
+    background: var(--confirm-accent); color: #08130d; border: none;
+    padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 700;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .save-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .status { font-size: 12px; color: var(--text-muted); font-family: var(--mono); flex-shrink: 0; }
+  .status.ok  { color: var(--confirm-accent); }
+  .status.err { color: var(--danger); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Xác nhận tổn thương <span>— Công cụ hỗ trợ AI · không thay thế quyết định lâm sàng</span></h1>
+  <label class="upload-btn" id="uploadLabel">
+    Tải ảnh siêu âm
+    <input type="file" id="fileInput" accept="image/*">
+  </label>
+</header>
+
+<main>
+  <!-- Panel trái: AI gợi ý — 3/10 màn hình -->
+  <section class="panel ai-panel">
+    <div class="panel-header">
+      <span class="dot ai"></span>Kết quả AI phát hiện (chỉ tham khảo)
+    </div>
+    <div class="toolbar">
+      <span class="legend" id="aiDetectCount">—</span>
+      <div class="zoom-group">
+        <button class="zoom-btn" id="aiZoomOut" title="Thu nhỏ (cuộn chuột)">−</button>
+        <span class="zoom-level" id="aiZoomLevel">—</span>
+        <button class="zoom-btn" id="aiZoomIn"  title="Phóng to (cuộn chuột)">+</button>
+        <button class="zoom-btn wide" id="aiZoomReset" title="Vừa khung">↺ Fit</button>
+      </div>
+    </div>
+    <div class="canvas-wrap" id="aiCanvasWrap">
+      <div class="empty-state" id="aiEmpty">Tải ảnh lên để bắt đầu</div>
+    </div>
+  </section>
+
+  <!-- Panel phải: Bác sĩ tương tác — 7/10 màn hình -->
+  <section class="panel edit-panel">
+    <div class="panel-header">
+      <span class="dot confirm"></span>Ảnh gốc — xác nhận / chỉnh sửa caliper
+    </div>
+    <div class="toolbar">
+      <button class="add-caliper-btn" id="addCaliperBtn" disabled>+ Thêm caliper</button>
+      <span class="legend" id="addHint"></span>
+      <div class="zoom-group">
+        <button class="zoom-btn" id="editZoomOut" title="Thu nhỏ (cuộn chuột)">−</button>
+        <span class="zoom-level" id="editZoomLevel">—</span>
+        <button class="zoom-btn" id="editZoomIn"  title="Phóng to (cuộn chuột)">+</button>
+        <button class="zoom-btn wide" id="editZoomReset" title="Vừa khung">↺ Fit</button>
+      </div>
+    </div>
+    <div class="canvas-wrap" id="editCanvasWrap">
+      <div class="empty-state" id="editEmpty">Chưa có ảnh</div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <input type="text" id="doctorId" placeholder="Mã bác sĩ">
+  <input type="text" id="notes" placeholder="Ghi chú (tuỳ chọn)">
+  <span class="status" id="statusText"></span>
+  <button class="save-btn" id="saveBtn" disabled>Lưu xác nhận</button>
+</footer>
+
+<script>
+'use strict';
+const API_BASE = ''; // đổi thành http://localhost:8000 nếu chạy tách rời
+
+/* ─── State ─────────────────────────────────────────────────────────────────── */
+let state = {
+  sessionId: null,
+  imgW: 0, imgH: 0,
+  imgURL: null,
+  lesions: [],         // [{pair_a:[{x,y},{x,y}], pair_b:[{x,y},{x,y}], source, rejected}]
+  aiDetections: [],
+  addingMode: false,
+  addingClicks: [],
+};
+
+const $ = id => document.getElementById(id);
+
+/* ─── Pan / Zoom controller (reusable) ──────────────────────────────────────── */
+/**
+ * Gắn zoom + pan vào một .canvas-wrap.
+ * Zoom: cuộn chuột về phía con trỏ — giữ điểm dưới chuột cố định khi zoom.
+ * Pan : kéo khi không có phần tử caliper bên dưới.
+ */
+function makePanZoom(wrapId, zoomLabelId) {
+  const wrap = $(wrapId);
+  const lbl  = $(zoomLabelId);
+  let zoom = 1, tx = 0, ty = 0;
+  let active = false, startX = 0, startY = 0, startTx = 0, startTy = 0, moved = false;
+
+  const inner = () => wrap.querySelector('.canvas-inner');
+
+  function applyTransform() {
+    const el = inner();
+    if (el) el.style.transform = `translate(${tx}px,${ty}px) scale(${zoom})`;
+    if (lbl) lbl.textContent = Math.round(zoom * 100) + '%';
+  }
+
+  /** Thu ảnh vừa khung, căn giữa. */
+  function fit() {
+    const el = inner();
+    if (!el) return;
+    const ww = wrap.clientWidth, wh = wrap.clientHeight;
+    const iw = el.offsetWidth,  ih = el.offsetHeight;
+    if (!iw || !ih) return;
+    zoom = Math.min(ww / iw, wh / ih) * 0.93;
+    tx = (ww - iw * zoom) / 2;
+    ty = (wh - ih * zoom) / 2;
+    applyTransform();
+  }
+
+  /** Zoom về điểm (cx, cy) trong toạ độ canvas-wrap. */
+  function zoomAt(cx, cy, factor) {
+    const el = inner();
+    if (!el) return;
+    const nz = Math.max(0.08, Math.min(20, zoom * factor));
+    tx = cx - (cx - tx) / zoom * nz;
+    ty = cy - (cy - ty) / zoom * nz;
+    zoom = nz;
+    applyTransform();
+  }
+
+  /* Wheel zoom */
+  wrap.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r = wrap.getBoundingClientRect();
+    zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.12 : 1 / 1.12);
+  }, { passive: false });
+
+  /* Pan start */
+  wrap.addEventListener('pointerdown', e => {
+    // Không pan canvas khi nhấn vào bất kỳ phần tử caliper (điểm, đường, nút xóa)
+    if (e.target.closest('.caliper-point, .caliper-line, [data-reject-for], line, path, circle')) return;
+    active = true; moved = false;
+    startX = e.clientX; startY = e.clientY;
+    startTx = tx; startTy = ty;
+    wrap.setPointerCapture(e.pointerId);
+    wrap.style.cursor = 'grabbing';
+  });
+
+  /* Pan move */
+  wrap.addEventListener('pointermove', e => {
+    if (!active) return;
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+    if (!moved) return;
+    tx = startTx + dx;
+    ty = startTy + dy;
+    applyTransform();
+  });
+
+  /* Pan end */
+  const endPan = () => {
+    active = false;
+    // Khôi phục cursor phù hợp
+    if (wrapId === 'editCanvasWrap' && state.addingMode) {
+      wrap.style.cursor = 'crosshair';
+    } else {
+      wrap.style.cursor = 'grab';
+    }
+  };
+  wrap.addEventListener('pointerup', endPan);
+  wrap.addEventListener('pointercancel', endPan);
+
+  /**
+   * Chặn sự kiện click phát sinh SAU khi đã kéo-thả (pan).
+   * Dùng capture phase để ngăn handler click của "thêm caliper" nhận nhầm sự kiện.
+   */
+  wrap.addEventListener('click', e => {
+    if (moved) { moved = false; e.stopImmediatePropagation(); }
+  }, true);
+
+  function centerZoom(factor) {
+    const r = wrap.getBoundingClientRect();
+    zoomAt(r.width / 2, r.height / 2, factor);
+  }
+
+  return {
+    fit,
+    zoomIn:  () => centerZoom(1.25),
+    zoomOut: () => centerZoom(1 / 1.25),
+    reset:   fit,
+  };
+}
+
+let aiPZ, editPZ;
+
+/* ─── Upload & Detect ───────────────────────────────────────────────────────── */
+$('fileInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  await runDetect(file);
+  e.target.value = '';   // cho phép chọn lại cùng file
+});
+
+async function runDetect(file) {
+  setStatus('Đang phân tích ảnh...', '');
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await fetch(API_BASE + '/api/detect', { method: 'POST', body: form });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+
+    state.sessionId    = data.session_id;
+    state.imgW         = data.image_width;
+    state.imgH         = data.image_height;
+    state.imgURL       = URL.createObjectURL(file);
+    state.aiDetections = data.detections;
+    state.lesions      = data.detections.map((d, i) => ({
+      pair_a: d.suggested_calipers.pair_a.map(([x, y]) => ({ x, y })),
+      pair_b: d.suggested_calipers.pair_b.map(([x, y]) => ({ x, y })),
+      source: 'ai',
+      ai_detection_index: i,
+      rejected: false,
+    }));
+
+    $('aiEmpty').style.display   = 'none';
+    $('editEmpty').style.display = 'none';
+    renderAIPanel();
+    renderEditPanel();
+    $('addCaliperBtn').disabled = false;
+    $('saveBtn').disabled       = false;
+    $('aiDetectCount').textContent = data.detections.length
+      ? `${data.detections.length} vùng phát hiện`
+      : 'Không phát hiện vùng nào';
+    setStatus(`Phát hiện ${data.detections.length} vùng nghi ngờ.`, 'ok');
+  } catch (err) {
+    setStatus('Lỗi: ' + err.message, 'err');
+  }
+}
+
+function setStatus(msg, cls) {
+  const el = $('statusText');
+  el.textContent = msg;
+  el.className = 'status' + (cls ? ' ' + cls : '');
+}
+
+/* ─── Canvas-inner builder (dùng chung 2 panel) ─────────────────────────────── */
+function buildCanvasInner(wrapEl, extraId) {
+  wrapEl.querySelectorAll('.canvas-inner').forEach(e => e.remove());
+  const inner = document.createElement('div');
+  inner.className = 'canvas-inner';
+  if (extraId) inner.id = extraId;
+  // Kích thước bằng đúng kích thước ảnh gốc (pixel); zoom/pan xử lý qua CSS transform
+  inner.style.width  = state.imgW + 'px';
+  inner.style.height = state.imgH + 'px';
+  const img = new Image(state.imgW, state.imgH);
+  img.src      = state.imgURL;
+  img.draggable = false;
+  inner.appendChild(img);
+  wrapEl.appendChild(inner);
+  return { inner, img };
+}
+
+/* ─── AI Panel (read-only, bbox + confident score) ──────────────────────────── */
+function renderAIPanel() {
+  const { inner, img } = buildCanvasInner($('aiCanvasWrap'));
+
+  img.onload = () => {
+    const svg = makeSVG();
+
+    // Kích thước font confident: ~5% chiều cao ảnh, ít nhất 18 SVG-unit
+    const fontSize = Math.max(18, Math.round(state.imgH * 0.05));
+    const padX = 6, padY = 4;
+
+    state.aiDetections.forEach(d => {
+      const b = d.bbox;
+      const confStr = (d.confidence * 100).toFixed(0) + '%';
+
+      // BBox
+      const rect = svgEl('rect', {
+        x: b.x1, y: b.y1,
+        width: b.x2 - b.x1, height: b.y2 - b.y1,
+        fill: 'var(--ai-accent-dim)',
+        stroke: 'var(--ai-accent)',
+        'stroke-width': 2,
+      });
+      svg.appendChild(rect);
+
+      // Label background — cao đủ chứa fontSize
+      const lblH   = fontSize + padY * 2;
+      const lblW   = confStr.length * fontSize * 0.62 + padX * 2;
+      const lblTop = Math.max(b.y1 - lblH - 2, 0);
+
+      const bg = svgEl('rect', {
+        x: b.x1, y: lblTop, width: lblW, height: lblH,
+        fill: '#000000cc', rx: 4,
+      });
+      svg.appendChild(bg);
+
+      // Label text
+      const lbl = svgEl('text', {
+        x: b.x1 + padX, y: lblTop + fontSize + padY * 0.5,
+        fill: 'var(--ai-accent)',
+        'font-size': fontSize,
+        'font-weight': 'bold',
+        'font-family': 'monospace',
+      });
+      lbl.textContent = confStr;
+      svg.appendChild(lbl);
+    });
+
+    inner.appendChild(svg);
+    // Dùng 2 lần rAF để đảm bảo trình duyệt đã layout xong phần tử trước khi fit()
+    requestAnimationFrame(() => requestAnimationFrame(() => aiPZ.fit()));
+  };
+}
+
+/* ─── Edit Panel (draggable calipers) ───────────────────────────────────────── */
+function renderEditPanel() {
+  const { inner, img } = buildCanvasInner($('editCanvasWrap'), 'editCanvasInner');
+  img.onload = () => {
+    drawEditSVG();
+    requestAnimationFrame(() => requestAnimationFrame(() => editPZ.fit()));
+  };
+}
+
+function checkCaliperIntersection(pair_a, pair_b) {
+  const a0 = pair_a[0], a1 = pair_a[1];
+  const b0 = pair_b[0], b1 = pair_b[1];
+  const x1 = a0.x, y1 = a0.y, x2 = a1.x, y2 = a1.y;
+  const x3 = b0.x, y3 = b0.y, x4 = b1.x, y4 = b1.y;
+  const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(denom) < 1e-6) return null; // song song
+
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+  const s = ((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)) / denom;
+
+  // Cắt nhau trong phạm vi đoạn thẳng khi 0 <= t <= 1 và 0 <= s <= 1
+  const intersects = (t >= 0 && t <= 1 && s >= 0 && s <= 1);
+  return {
+    intersects,
+    t, s,
+    px: x1 + t * (x2 - x1),
+    py: y1 + t * (y2 - y1)
+  };
+}
+
+function checkIntersection(pair_a, pair_b) {
+  const x1 = pair_a[0].x, y1 = pair_a[0].y, x2 = pair_a[1].x, y2 = pair_a[1].y;
+  const x3 = pair_b[0].x, y3 = pair_b[0].y, x4 = pair_b[1].x, y4 = pair_b[1].y;
+  const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(denom) < 1e-6) return false;
+
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+  const s = ((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)) / denom;
+  return t >= 0 && t <= 1 && s >= 0 && s <= 1;
+}
+
+function checkAndShowIntersectionWarning() {
+  const activeLesions = state.lesions.filter(l => !l.rejected);
+  let hasError = false;
+  activeLesions.forEach(l => {
+    l.isValid = checkIntersection(l.pair_a, l.pair_b);
+    if (!l.isValid) hasError = true;
+  });
+
+  if (hasError) {
+    setStatus('⚠️ Có thước đo không cắt nhau (chưa tạo thành hình). Vui lòng điều chỉnh trước khi lưu!', 'err');
+  } else if (activeLesions.length > 0) {
+    setStatus(`Đang xác nhận ${activeLesions.length} vùng tổn thương hợp lệ.`, 'ok');
+  }
+}
+
+function drawEditSVG() {
+  const inner = $('editCanvasInner');
+  if (!inner) return;
+  inner.querySelectorAll('svg').forEach(e => e.remove());
+
+  const svg = makeSVG();
+  svg.id = 'editSVG';
+
+  state.lesions.forEach((lesion, lesionIdx) => {
+    if (lesion.rejected) return;
+    drawPair(svg, lesion, lesionIdx, 'pair_a', '+');
+    drawPair(svg, lesion, lesionIdx, 'pair_b', 'x');
+    drawRejectButton(svg, lesion, lesionIdx);
+  });
+
+  inner.appendChild(svg);
+  checkAndShowIntersectionWarning();
+}
+
+/* ─── SVG helpers ────────────────────────────────────────────────────────────── */
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+function makeSVG() {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('viewBox', `0 0 ${state.imgW} ${state.imgH}`);
+  s.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  return s;
+}
+
+/* ─── Caliper rendering constants ────────────────────────────────────────────── */
+const MARKER_SIZE = 5;
+const STROKE_W    = 0.8;
+const RING_R      = 7;
+const HIT_R       = 18;
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function markerPath(shape, sz) {
+  return shape === '+'
+    ? `M${-sz} 0 L${sz} 0 M 0 ${-sz} L 0 ${sz}`
+    : `M${-sz} ${-sz} L${sz} ${sz} M${-sz} ${sz} L${sz} ${-sz}`;
+}
+
+function drawPair(svg, lesion, lesionIdx, pairKey, markerShape) {
+  const pair = lesion[pairKey];
+
+  const line = svgEl('line', {
+    x1: pair[0].x, y1: pair[0].y, x2: pair[1].x, y2: pair[1].y,
+    stroke: 'var(--confirm-accent)', 'stroke-width': STROKE_W,
+    'stroke-dasharray': '6 4', class: 'caliper-line',
+  });
+  svg.appendChild(line);
+
+  const lineHit = svgEl('line', {
+    x1: pair[0].x, y1: pair[0].y, x2: pair[1].x, y2: pair[1].y,
+    stroke: 'transparent', 'stroke-width': 16,
+  });
+  lineHit.style.cursor = 'move';
+  svg.appendChild(lineHit);
+
+  const pointEls = pair.map((pt) => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'caliper-point');
+    g.setAttribute('transform', `translate(${pt.x},${pt.y})`);
+
+    const ring = svgEl('circle', {
+      r: RING_R, fill: 'none',
+      stroke: 'var(--confirm-accent)', 'stroke-width': 0, opacity: 0.45,
+    });
+    g.appendChild(ring);
+
+    const marker = svgEl('path', {
+      d: markerPath(markerShape, MARKER_SIZE),
+      stroke: 'var(--confirm-accent)', 'stroke-width': 1.8, 'stroke-linecap': 'round',
+    });
+    g.appendChild(marker);
+    g.appendChild(svgEl('circle', { r: HIT_R, fill: 'transparent' }));
+
+    g.addEventListener('pointerenter', () => ring.setAttribute('stroke-width', 2));
+    g.addEventListener('pointerleave', () => {
+      if (!g.classList.contains('dragging')) ring.setAttribute('stroke-width', 0);
+    });
+    svg.appendChild(g);
+    return g;
+  });
+
+  // Kéo 1 điểm caliper
+  pair.forEach((_, ptIdx) => {
+    const g = pointEls[ptIdx];
+    makeDraggable(g, svg, (rawX, rawY) => {
+      const nx = clamp(rawX, 0, state.imgW);
+      const ny = clamp(rawY, 0, state.imgH);
+      lesion[pairKey][ptIdx] = { x: nx, y: ny };
+      g.setAttribute('transform', `translate(${nx},${ny})`);
+      syncLineEndpoint(line, lineHit, ptIdx, nx, ny);
+      updateRejectBtnPos(svg, lesion, lesionIdx);
+      checkAndShowIntersectionWarning();
+    });
+  });
+
+  // Kéo cả đường
+  makeDraggable(lineHit, svg, null, (dx, dy) => {
+    const p0 = lesion[pairKey][0], p1 = lesion[pairKey][1];
+    const nx0 = clamp(p0.x + dx, 0, state.imgW), ny0 = clamp(p0.y + dy, 0, state.imgH);
+    const nx1 = clamp(p1.x + dx, 0, state.imgW), ny1 = clamp(p1.y + dy, 0, state.imgH);
+    lesion[pairKey] = [{ x: nx0, y: ny0 }, { x: nx1, y: ny1 }];
+    line.setAttribute('x1', nx0); line.setAttribute('y1', ny0);
+    line.setAttribute('x2', nx1); line.setAttribute('y2', ny1);
+    lineHit.setAttribute('x1', nx0); lineHit.setAttribute('y1', ny0);
+    lineHit.setAttribute('x2', nx1); lineHit.setAttribute('y2', ny1);
+    pointEls[0].setAttribute('transform', `translate(${nx0},${ny0})`);
+    pointEls[1].setAttribute('transform', `translate(${nx1},${ny1})`);
+    updateRejectBtnPos(svg, lesion, lesionIdx);
+    checkAndShowIntersectionWarning();
+  });
+}
+
+function syncLineEndpoint(line, lineHit, ptIdx, x, y) {
+  const s = ptIdx === 0 ? '1' : '2';
+  [line, lineHit].forEach(el => { el.setAttribute('x' + s, x); el.setAttribute('y' + s, y); });
+}
+
+function lesionCentroid(lesion) {
+  const pts = [...lesion.pair_a, ...lesion.pair_b];
+  return {
+    cx: pts.reduce((s, p) => s + p.x, 0) / 4,
+    cy: pts.reduce((s, p) => s + p.y, 0) / 4,
+  };
+}
+
+function updateRejectBtnPos(svg, lesion, lesionIdx) {
+  const g = svg.querySelector(`[data-reject-for="${lesionIdx}"]`);
+  if (!g) return;
+  const { cx, cy } = lesionCentroid(lesion);
+  g.setAttribute('transform', `translate(${cx + 34},${cy - 34})`);
+}
+
+function drawRejectButton(svg, lesion, lesionIdx) {
+  const { cx, cy } = lesionCentroid(lesion);
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('transform', `translate(${cx + 34},${cy - 34})`);
+  g.setAttribute('data-reject-for', lesionIdx);
+  g.style.cursor = 'pointer';
+  g.appendChild(svgEl('circle', { r: 11, fill: 'var(--danger)', opacity: 0.9 }));
+  const lbl = svgEl('text', {
+    x: 0, y: 4, 'text-anchor': 'middle', fill: '#fff', 'font-size': 14,
+  });
+  lbl.textContent = '×';
+  g.appendChild(lbl);
+  g.addEventListener('click', e => { e.stopPropagation(); lesion.rejected = true; drawEditSVG(); });
+  svg.appendChild(g);
+}
+
+/* ─── Drag helper ────────────────────────────────────────────────────────────── */
+/**
+ * onPointMove(x, y): kéo 1 điểm — trả toạ độ tuyệt đối trong hệ ảnh.
+ * onDeltaMove(dx, dy): kéo cả đường — trả độ dịch chuyển tương đối.
+ */
+function makeDraggable(el, svg, onPointMove, onDeltaMove) {
+  let active = false, lastPt = null;
+  el.addEventListener('pointerdown', e => {
+    active = true; lastPt = svgPoint(svg, e);
+    el.setPointerCapture(e.pointerId);
+    el.classList?.add('dragging');
+    e.stopPropagation();
+  });
+  el.addEventListener('pointermove', e => {
+    if (!active) return;
+    const pt = svgPoint(svg, e);
+    if (onPointMove) onPointMove(pt.x, pt.y);
+    else if (onDeltaMove) { onDeltaMove(pt.x - lastPt.x, pt.y - lastPt.y); lastPt = pt; }
+  });
+  const end = () => { active = false; el.classList?.remove('dragging'); };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+}
+
+/**
+ * Chuyển toạ độ viewport → toạ độ ảnh.
+ * Vì getBoundingClientRect() đã phản ánh CSS transform (zoom/pan),
+ * hàm này tự động đúng ở mọi mức zoom.
+ */
+function svgPoint(svg, evt) {
+  const r = svg.getBoundingClientRect();
+  return {
+    x: (evt.clientX - r.left) * (state.imgW / r.width),
+    y: (evt.clientY - r.top)  * (state.imgH / r.height),
+  };
+}
+
+/* ─── Thêm caliper mới (bác sĩ tự đánh dấu vùng AI bỏ sót) ─────────────────── */
+$('addCaliperBtn').addEventListener('click', () => {
+  state.addingMode = !state.addingMode;
+  state.addingClicks = [];
+  $('addCaliperBtn').classList.toggle('active', state.addingMode);
+  $('editCanvasWrap').classList.toggle('adding', state.addingMode);
+  $('addHint').textContent = state.addingMode
+    ? 'Click 4 điểm: [A1 A2] trục dài → [B1 B2] trục ngắn'
+    : '';
+});
+
+$('editCanvasWrap').addEventListener('click', e => {
+  if (!state.addingMode) return;
+  const svg = $('editSVG');
+  if (!svg) return;
+  if (e.target.closest('[data-reject-for]')) return; // bỏ qua click lên nút từ chối
+  const pt = svgPoint(svg, e);
+  state.addingClicks.push(pt);
+  const n = state.addingClicks.length;
+  $('addHint').textContent = `Đã chọn ${n}/4 điểm`;
+  if (n === 4) {
+    const [a1, a2, b1, b2] = state.addingClicks;
+    state.lesions.push({ pair_a: [a1, a2], pair_b: [b1, b2], source: 'doctor_added', rejected: false });
+    state.addingClicks = [];
+    state.addingMode = false;
+    $('addCaliperBtn').classList.remove('active');
+    $('editCanvasWrap').classList.remove('adding');
+    $('addHint').textContent = '';
+    drawEditSVG();
+  }
+});
+
+/* ─── Lưu xác nhận ───────────────────────────────────────────────────────────── */
+$('saveBtn').addEventListener('click', async () => {
+  if (!state.sessionId) return;
+  
+  const confirmedLesions = state.lesions.filter(l => !l.rejected);
+  const invalidLesions   = confirmedLesions.filter(l => !l.isValid);
+  if (invalidLesions.length > 0) {
+    setStatus('⚠️ Có thước đo chưa cắt nhau (chưa tạo thành hình). Vui lòng điều chỉnh trước khi lưu!', 'err');
+    return;
+  }
+
+  setStatus('Đang lưu...', '');
+  try {
+    const rejectedAiIndices   = state.lesions
+      .filter(l => l.source === 'ai' && l.rejected)
+      .map(l => l.ai_detection_index);
+
+    const res = await fetch(API_BASE + '/api/save-annotation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: state.sessionId,
+        lesions: confirmedLesions.map(l => ({
+          pair_a: l.pair_a, pair_b: l.pair_b,
+          source: l.source, ai_detection_index: l.ai_detection_index ?? null,
+        })),
+        rejected_ai_indices: rejectedAiIndices,
+        doctor_id: $('doctorId').value || null,
+        notes:     $('notes').value || null,
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    setStatus(`✓ Đã lưu ${data.regions.length} vùng tổn thương vào dataset.`, 'ok');
+  } catch (err) {
+    setStatus('Lỗi khi lưu: ' + err.message, 'err');
+  }
+});
+
+/* ─── Khởi tạo zoom controllers + gán nút bấm ───────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  aiPZ   = makePanZoom('aiCanvasWrap',   'aiZoomLevel');
+  editPZ = makePanZoom('editCanvasWrap', 'editZoomLevel');
+
+  $('aiZoomIn').addEventListener('click',    () => aiPZ.zoomIn());
+  $('aiZoomOut').addEventListener('click',   () => aiPZ.zoomOut());
+  $('aiZoomReset').addEventListener('click', () => aiPZ.reset());
+
+  $('editZoomIn').addEventListener('click',    () => editPZ.zoomIn());
+  $('editZoomOut').addEventListener('click',   () => editPZ.zoomOut());
+  $('editZoomReset').addEventListener('click', () => editPZ.reset());
+});
+</script>
+</body>
+</html>

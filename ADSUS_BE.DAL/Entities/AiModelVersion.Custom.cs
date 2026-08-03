@@ -11,5 +11,5 @@ namespace ADSUS_BE.DAL.Entities;
 /// </summary>
 public partial class AiModelVersion
 {
-    public ModelVersionStatus Status { get; set; } = ModelVersionStatus.Registered;
+    public ModelVersionStatus Status { get; set; } = ModelVersionStatus.Inactive;
 }

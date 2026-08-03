@@ -9,6 +9,8 @@ using ADSUS_BE.BLL.DashboardReporting.Interfaces;
 using ADSUS_BE.BLL.DashboardReporting.Services;
 using ADSUS_BE.BLL.Engagement.Interfaces;
 using ADSUS_BE.BLL.Engagement.Services;
+using ADSUS_BE.BLL.AIModelManagement.Interfaces;
+using ADSUS_BE.BLL.AIModelManagement.Services;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.DAL.Data;
@@ -280,6 +282,8 @@ namespace ADSUS_BE
             // DAL
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+            builder.Services.AddScoped<IAiModelVersionRepository, AiModelVersionRepository>();
+            builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
             // BLL — Module 1: Authentication & Account
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -292,6 +296,14 @@ namespace ADSUS_BE
 
             // BLL — Module 3: Dashboard & Reporting
             builder.Services.AddScoped<IDashboardService, DashboardService>();
+
+            // BLL — Module 6: AI Model Management
+            builder.Services.AddScoped<IAiModelService, AiModelService>();
+
+            // ---------- Cấu hình AI Backend ----------
+            builder.Services.Configure<AiBackendSettings>(
+                builder.Configuration.GetSection(AiBackendSettings.SectionName));
+            builder.Services.AddHttpClient("AiBackend");
 
             // ---------- Gửi email (API-04) ----------
             builder.Services.Configure<EmailSettings>(

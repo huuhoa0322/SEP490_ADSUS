@@ -81,7 +81,6 @@ public enum CaseStatus
 /// </summary>
 public enum ModelVersionStatus
 {
-    [PgName("REGISTERED")] Registered,
     [PgName("ACTIVE")] Active,
     [PgName("INACTIVE")] Inactive,
 }
