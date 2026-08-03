@@ -24,7 +24,8 @@ public sealed class CreateScheduleSlotRequestValidator : AbstractValidator<Creat
             {
                 if (!TimeOnly.TryParse(r.StartTime, out var s) ||
                     !TimeOnly.TryParse(r.EndTime, out var e)) return false;
-                return e > s.AddMinutes(15);
+                // BR-01: gap phải > 15 phút (>= 15 phút nghĩa là 09:00 → 09:15 hợp lệ)
+                return e >= s.AddMinutes(15);
             })
             .WithMessage("EndTime phải lớn hơn StartTime ít nhất 15 phút (UC-15 BR-01).");
     }
