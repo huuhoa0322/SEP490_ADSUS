@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { PrescribeMedicationForm } from "@/features/prescription-adherence/components/prescribe-medication-form";
+import { PrescribePageClient } from "@/features/prescription-adherence/components/prescribe-page-client";
 
 export const metadata: Metadata = {
   title: "Kê đơn thuốc | ADSUS",
@@ -14,7 +14,7 @@ interface PageProps {
 /**
  * Module 7 UC-18 — trang kê đơn mới (Doctor only).
  * Case phải ở trạng thái CONFIRMED — BE Service enforce (BR-04).
- * Sau kê thành công → redirect đến trang detail của đơn.
+ * Page server render + đẩy cho PrescribePageClient để xử lý redirect sau khi kê.
  */
 export default async function NewPrescriptionPage({ params, searchParams }: PageProps) {
   const { caseId } = await params;
@@ -37,20 +37,7 @@ export default async function NewPrescriptionPage({ params, searchParams }: Page
         Đơn thuốc sẽ được gắn với ca khám và bác sĩ đang đăng nhập.
       </p>
       <div className="mt-8">
-        <PrescribeMedicationForm
-          caseId={caseId}
-          patientProfileId={patientId}
-          onSuccess={(id) => {
-            // Server component không có window — phải dùng Client wrapper cho redirect.
-            // Inline redirect ở đây hoạt động với form nằm trong client component:
-            //   dùng window.location ở client side sau khi mutate thành công.
-            // Ở đây PrescribeMedicationForm handle redirect nội bộ rồi; page này
-            // chỉ render form.
-            if (typeof window !== "undefined") {
-              window.location.href = `/patients/${patientId}/prescriptions/${id}`;
-            }
-          }}
-        />
+        <PrescribePageClient caseId={caseId} patientProfileId={patientId} />
       </div>
     </div>
   );
