@@ -36,7 +36,16 @@ public static class UltrasoundImageContentValidator
         }
 
         var header = new byte[8];
-        var read = await file.Content.ReadAsync(header.AsMemory(0, 8), ct);
+        var totalRead = 0;
+
+        // Stream.ReadAsync có thể trả về ít hơn số byte yêu cầu dù chưa hết luồng — phải lặp
+        // đến khi đầy buffer hoặc gặp EOF thật sự (đọc được 0 byte), không được tin một lần gọi.
+        while (totalRead < header.Length)
+        {
+            var read = await file.Content.ReadAsync(header.AsMemory(totalRead, header.Length - totalRead), ct);
+            if (read == 0) break;
+            totalRead += read;
+        }
 
         // Trả con trỏ về đầu, nếu không thì lát nữa upload sẽ đẩy lên thiếu 8 byte đầu.
         if (file.Content.CanSeek)
@@ -44,12 +53,12 @@ public static class UltrasoundImageContentValidator
             file.Content.Seek(0, SeekOrigin.Begin);
         }
 
-        if (read >= 3 && StartsWith(header, JpegMagic))
+        if (totalRead >= 3 && StartsWith(header, JpegMagic))
         {
             return "image/jpeg";
         }
 
-        if (read >= 8 && StartsWith(header, PngMagic))
+        if (totalRead >= 8 && StartsWith(header, PngMagic))
         {
             return "image/png";
         }

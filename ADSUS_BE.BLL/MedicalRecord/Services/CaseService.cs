@@ -278,7 +278,17 @@ public sealed class CaseService : ICaseService
     {
         foreach (var path in objectPaths)
         {
-            await _storage.DeleteAsync(path, ct);
+            try
+            {
+                await _storage.DeleteAsync(path, ct);
+            }
+            catch (Exception exception)
+            {
+                // Best-effort cleanup on an already-failing rollback path. One failed delete
+                // must not mask the original exception that triggered this cleanup, nor stop
+                // us from attempting to clean up the rest of the batch.
+                _logger.LogWarning(exception, "Failed to delete orphaned object {ObjectPath} during rollback", path);
+            }
         }
     }
 
