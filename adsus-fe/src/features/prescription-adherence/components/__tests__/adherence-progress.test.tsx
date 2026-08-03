@@ -9,11 +9,11 @@ describe("AdherenceProgress", () => {
     expect(screen.getByText("80%")).toBeInTheDocument();
   });
 
-  it("clamps out-of-range values to [0, 100]", () => {
+  it("clamps out-of-range values to [0, 100] qua aria-label", () => {
     const { rerender } = render(<AdherenceProgress percent={150} level="good" />);
-    expect(screen.getByText("100%")).toBeInTheDocument();
+    expect(screen.getByLabelText("Adherence 100%")).toBeInTheDocument();
     rerender(<AdherenceProgress percent={-10} level="poor" />);
-    expect(screen.getByText("0%")).toBeInTheDocument();
+    expect(screen.getByLabelText("Adherence 0%")).toBeInTheDocument();
   });
 
   it("uses level color class", () => {
