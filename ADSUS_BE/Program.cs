@@ -15,6 +15,7 @@ using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.ExternalServices;
 using ADSUS_BE.DAL.Repositories.Implementations;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using ADSUS_BE.Middlewares;
@@ -305,6 +306,27 @@ namespace ADSUS_BE
             builder.Services.Configure<AiBackendSettings>(
                 builder.Configuration.GetSection(AiBackendSettings.SectionName));
             builder.Services.AddHttpClient("AiBackend");
+
+            // ---------- Supabase Storage (ảnh siêu âm, Module 4) ----------
+            builder.Services.Configure<SupabaseStorageSettings>(
+                builder.Configuration.GetSection(SupabaseStorageSettings.SectionName));
+
+            var storageSettings = builder.Configuration
+                .GetSection(SupabaseStorageSettings.SectionName)
+                .Get<SupabaseStorageSettings>();
+
+            if (storageSettings?.IsConfigured != true)
+            {
+                // Dừng ngay tại đây thay vì để vỡ lúc bác sĩ bấm tải ảnh lên. Lỗi lúc đó chỉ
+                // hiện ra là 500 giữa ca khám, còn ở đây thì biết ngay phải sửa gì.
+                throw new InvalidOperationException(
+                    "Chua cau hinh SupabaseStorage. Chuot phai project ADSUS_BE > Manage User "
+                    + "Secrets va them ca SupabaseStorage:Url va SupabaseStorage:ServiceKey — "
+                    + "ca hai gia tri deu nam trong User Secrets, khong nam trong appsettings.json.");
+            }
+
+            builder.Services.AddHttpClient("SupabaseStorage");
+            builder.Services.AddScoped<IFileStorageService, SupabaseStorageService>();
 
             // ---------- Gửi email (API-04) ----------
             builder.Services.Configure<EmailSettings>(
