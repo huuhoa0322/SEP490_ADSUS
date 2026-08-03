@@ -69,7 +69,41 @@ public class PrescriptionRepositoryTests
         var doctor = NewDoctor();
         await db.Users.AddAsync(doctor);
 
-        var prescription = NewPrescription(doctor.UserId, Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow);
+        // UC-11 detail navigation: Include Case → PatientProfile cần stub để InMemory
+        // provider resolve (test trước đó chỉ truyền CaseId nhưng giờ cần entity).
+        var patientUser = new User
+        {
+            UserId = Guid.NewGuid(),
+            Phone = "0911111111",
+            FullName = "Bệnh nhân Test",
+            PasswordHash = "x",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        await db.Users.AddAsync(patientUser);
+
+        var patientProfile = new PatientProfile
+        {
+            PatientProfileId = Guid.NewGuid(),
+            UserId = patientUser.UserId,
+            CreatedBy = doctor.UserId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        await db.PatientProfiles.AddAsync(patientProfile);
+
+        var caseEntity = new Case
+        {
+            CaseId = Guid.NewGuid(),
+            PatientProfileId = patientProfile.PatientProfileId,
+            DoctorId = doctor.UserId,
+            VisitDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        await db.Cases.AddAsync(caseEntity);
+
+        var prescription = NewPrescription(doctor.UserId, caseEntity.CaseId, DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow);
         var item = new PrescriptionItem
         {
             PrescriptionItemId = Guid.NewGuid(),
