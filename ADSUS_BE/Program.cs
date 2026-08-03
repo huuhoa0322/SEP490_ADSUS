@@ -9,6 +9,8 @@ using ADSUS_BE.BLL.DashboardReporting.Interfaces;
 using ADSUS_BE.BLL.DashboardReporting.Services;
 using ADSUS_BE.BLL.Engagement.Interfaces;
 using ADSUS_BE.BLL.Engagement.Services;
+using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
+using ADSUS_BE.BLL.PrescriptionAdherence.Services;
 using ADSUS_BE.BLL.AIModelManagement.Interfaces;
 using ADSUS_BE.BLL.AIModelManagement.Services;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
@@ -343,6 +345,15 @@ namespace ADSUS_BE
 
             // DAL — Repositories
             builder.Services.AddScoped<IBlogPostRepository, BlogPostRepository>();
+
+            // Module 7 — Prescription & Adherence (UC-11 + UC-18, Web cho Doctor/Nurse)
+            builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
+            builder.Services.AddScoped<IPrescriptionItemRepository, PrescriptionItemRepository>();
+            builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
+            builder.Services.AddScoped<IMedicationIntakeLogRepository, MedicationIntakeLogRepository>();
+            builder.Services.AddScoped<IPatientProfileRepository, PatientProfileRepository>();
+            builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
+            builder.Services.AddScoped<IMedicineService, MedicineService>();
 
             // Scans the whole BLL assembly, so validators added by other modules are picked
             // up automatically.
