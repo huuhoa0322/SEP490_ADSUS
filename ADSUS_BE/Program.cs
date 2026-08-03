@@ -291,6 +291,8 @@ namespace ADSUS_BE
 
             // DAL — Module 4: Medical Record
             builder.Services.AddScoped<IPatientProfileRepository, PatientProfileRepository>();
+            builder.Services.AddScoped<ICaseRepository, CaseRepository>();
+            builder.Services.AddScoped<IUltrasoundImageRepository, UltrasoundImageRepository>();
 
             // BLL — Module 1: Authentication & Account
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -306,6 +308,7 @@ namespace ADSUS_BE
 
             // BLL — Module 4: Medical Record
             builder.Services.AddScoped<IPatientProfileService, PatientProfileService>();
+            builder.Services.AddScoped<ICaseService, CaseService>();
 
             // BLL — Module 6: AI Model Management
             builder.Services.AddScoped<IAiModelService, AiModelService>();
