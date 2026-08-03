@@ -1,6 +1,7 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Exceptions;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;

@@ -1,4 +1,5 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
+using ADSUS_BE.BLL.Common;
 
 namespace ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 
