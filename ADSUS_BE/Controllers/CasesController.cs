@@ -2,6 +2,7 @@ using System.Security.Claims;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,8 +20,18 @@ namespace ADSUS_BE.Controllers;
 public sealed class CasesController : ControllerBase
 {
     private readonly ICaseService _cases;
+    private readonly IValidator<CreateCaseRequest> _createValidator;
+    private readonly IValidator<AddUltrasoundImagesRequest> _addImagesValidator;
 
-    public CasesController(ICaseService cases) => _cases = cases;
+    public CasesController(
+        ICaseService cases,
+        IValidator<CreateCaseRequest> createValidator,
+        IValidator<AddUltrasoundImagesRequest> addImagesValidator)
+    {
+        _cases = cases;
+        _createValidator = createValidator;
+        _addImagesValidator = addImagesValidator;
+    }
 
     /// <summary>Danh sách ảnh siêu âm thô của một ca (UC-07, UC-08).</summary>
     [HttpGet("{caseId:guid}/ultrasound-images")]
@@ -108,6 +119,88 @@ public sealed class CasesController : ControllerBase
         var staffView = await _cases.GetForStaffAsync(id, ct);
         return Ok(ApiResponse<CaseResponse>.Ok(staffView));
     }
+
+    /// <summary>
+    /// Tạo lần khám mới kèm ảnh siêu âm, trong một request multipart (UC-07).
+    /// </summary>
+    [HttpPost]
+    [Authorize(Roles = "DOCTOR,NURSE")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(120L * 1024 * 1024)]
+    [ProducesResponseType(typeof(ApiResponse<CaseResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> Create(
+        [FromForm] Guid patientProfileId,
+        [FromForm] Guid responsibleDoctorId,
+        [FromForm] string? clinicalInfo,
+        [FromForm] List<IFormFile> images,
+        CancellationToken ct)
+    {
+        var request = new CreateCaseRequest(
+            patientProfileId, responsibleDoctorId, clinicalInfo, ToUploadedFiles(images));
+
+        var validation = await _createValidator.ValidateAsync(request, ct);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
+        }
+
+        var result = await _cases.CreateAsync(request, ct);
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = result.CaseId },
+            ApiResponse<CaseResponse>.Ok(result, "Case created successfully"));
+    }
+
+    /// <summary>Bổ sung ảnh siêu âm vào một ca chưa được chốt (UC-07).</summary>
+    [HttpPost("{caseId:guid}/ultrasound-images")]
+    [Authorize(Roles = "DOCTOR,NURSE")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(120L * 1024 * 1024)]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<UltrasoundImageResponse>>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> AddImages(
+        Guid caseId,
+        [FromForm] List<IFormFile> images,
+        [FromForm] string? note,
+        CancellationToken ct)
+    {
+        var request = new AddUltrasoundImagesRequest(ToUploadedFiles(images), note);
+
+        // Đặc tả cho #21 quy định lỗi "không đính kèm file" là 400, khác với #20 (422) — nên
+        // ở đây kiểm bằng validator. Bất nhất này đã ghi lại ở flag N2.
+        var validation = await _addImagesValidator.ValidateAsync(request, ct);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
+        }
+
+        var result = await _cases.AddImagesAsync(caseId, request, ct);
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            ApiResponse<IReadOnlyList<UltrasoundImageResponse>>.Ok(
+                result, "Ultrasound image(s) uploaded successfully"));
+    }
+
+    /// <summary>
+    /// Quy đổi IFormFile (kiểu của tầng web) sang UploadedFile (kiểu trung tính của BLL).
+    /// </summary>
+    private static List<UploadedFile> ToUploadedFiles(List<IFormFile> files) =>
+        files
+            .Select(f => new UploadedFile(
+                FileName: f.FileName,
+                ContentType: f.ContentType,
+                Length: f.Length,
+                Content: f.OpenReadStream()))
+            .ToList();
 
     private Guid GetCallerUserId() =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id)

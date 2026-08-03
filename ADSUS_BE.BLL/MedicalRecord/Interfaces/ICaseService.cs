@@ -29,4 +29,10 @@ public interface ICaseService
     /// <summary>#25 — danh sách lần khám của chính người gọi, luôn ép về CONFIRMED.</summary>
     Task<PagedResult<CaseSummaryResponse>> ListMineAsync(
         Guid callerUserId, int page, int pageSize, CancellationToken ct = default);
+
+    Task<CaseResponse> CreateAsync(
+        CreateCaseRequest request, CancellationToken ct = default);
+
+    Task<IReadOnlyList<UltrasoundImageResponse>> AddImagesAsync(
+        Guid caseId, AddUltrasoundImagesRequest request, CancellationToken ct = default);
 }

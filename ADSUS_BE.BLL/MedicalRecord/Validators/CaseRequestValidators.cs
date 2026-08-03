@@ -1,0 +1,40 @@
+using ADSUS_BE.BLL.MedicalRecord.DTOs;
+using FluentValidation;
+
+namespace ADSUS_BE.BLL.MedicalRecord.Validators;
+
+/// <summary>
+/// Chỉ kiểm các trường vô hướng. Số lượng ảnh KHÔNG kiểm ở đây: UC-07 AF-02 quy định lỗi
+/// "chưa có ảnh nào" trả 422, mà FluentValidation thì luôn cho ra 400 — luật đó nằm trong
+/// CaseService.CreateAsync.
+/// </summary>
+public sealed class CreateCaseRequestValidator : AbstractValidator<CreateCaseRequest>
+{
+    public CreateCaseRequestValidator()
+    {
+        RuleFor(x => x.PatientProfileId)
+            .NotEmpty().WithMessage("Patient profile id is required.");
+
+        RuleFor(x => x.ResponsibleDoctorId)
+            .NotEmpty().WithMessage("Responsible doctor id is required.");
+
+        RuleFor(x => x.ClinicalInfo)
+            .MaximumLength(5000).WithMessage("Clinical info must be 5000 characters or fewer.");
+    }
+}
+
+/// <summary>
+/// Ở đây thì ngược lại: đặc tả #21 quy định "không đính kèm file" trả 400, nên kiểm bằng
+/// validator là đúng. Sự khác biệt giữa #20 và #21 đã được ghi lại ở flag N2.
+/// </summary>
+public sealed class AddUltrasoundImagesRequestValidator : AbstractValidator<AddUltrasoundImagesRequest>
+{
+    public AddUltrasoundImagesRequestValidator()
+    {
+        RuleFor(x => x.Images)
+            .NotEmpty().WithMessage("At least one image file is required.");
+
+        RuleFor(x => x.Note)
+            .MaximumLength(1000).WithMessage("Note must be 1000 characters or fewer.");
+    }
+}

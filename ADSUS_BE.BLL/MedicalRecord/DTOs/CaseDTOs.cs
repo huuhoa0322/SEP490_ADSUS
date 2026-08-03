@@ -71,3 +71,15 @@ public sealed record CaseSummaryResponse(
     DateOnly VisitDate,
     string Status,
     Guid DoctorId);
+
+/// <summary>#20 — tạo lần khám mới kèm ít nhất một ảnh siêu âm (UC-07).</summary>
+public sealed record CreateCaseRequest(
+    Guid PatientProfileId,
+    Guid ResponsibleDoctorId,
+    string? ClinicalInfo,
+    IReadOnlyList<UploadedFile> Images);
+
+/// <summary>#21 — bổ sung ảnh vào một ca chưa được chốt (UC-07).</summary>
+public sealed record AddUltrasoundImagesRequest(
+    IReadOnlyList<UploadedFile> Images,
+    string? Note);

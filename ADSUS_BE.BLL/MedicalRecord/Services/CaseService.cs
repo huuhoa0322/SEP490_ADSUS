@@ -3,6 +3,7 @@ using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Mappers;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
 using ADSUS_BE.DAL.Repositories.Interfaces;
@@ -18,6 +19,7 @@ public sealed class CaseService : ICaseService
     private readonly ICaseRepository _cases;
     private readonly IUltrasoundImageRepository _images;
     private readonly IPatientProfileRepository _profiles;
+    private readonly IUserRepository _users;
     private readonly IFileStorageService _storage;
     private readonly ILogger<CaseService> _logger;
 
@@ -25,12 +27,14 @@ public sealed class CaseService : ICaseService
         ICaseRepository cases,
         IUltrasoundImageRepository images,
         IPatientProfileRepository profiles,
+        IUserRepository users,
         IFileStorageService storage,
         ILogger<CaseService> logger)
     {
         _cases = cases;
         _images = images;
         _profiles = profiles;
+        _users = users;
         _storage = storage;
         _logger = logger;
     }
@@ -125,6 +129,157 @@ public sealed class CaseService : ICaseService
             profile.PatientProfileId, CaseStatus.Confirmed, "desc", page, pageSize, ct);
 
         return ToPagedResult(items, page, pageSize, total);
+    }
+
+    public async Task<CaseResponse> CreateAsync(
+        CreateCaseRequest request,
+        CancellationToken ct = default)
+    {
+        // AF-02 / BR-02: chặn ở đây chứ không ở FluentValidation, vì đặc tả quy định lỗi này
+        // trả 422 còn validator thì luôn cho ra 400.
+        if (request.Images.Count == 0)
+        {
+            throw new BusinessException("A Case must have at least 1 ultrasound image.");
+        }
+
+        var profile = await _profiles.GetByIdAsync(request.PatientProfileId, ct)
+            ?? throw new ResourceNotFoundException("Patient profile not found.");
+
+        var doctor = await _users.GetByIdAsync(request.ResponsibleDoctorId, ct)
+            ?? throw new ResourceNotFoundException("Responsible doctor not found.");
+
+        // GB-04: mỗi ca phải quy về đúng một bác sĩ chịu trách nhiệm. Điều dưỡng tạo hộ thì
+        // vẫn phải chọn bác sĩ — không bao giờ tự suy ra từ người đang đăng nhập.
+        if (doctor.Role != UserRole.Doctor)
+        {
+            throw new BusinessException("The responsible doctor must be a doctor account.");
+        }
+
+        var caseId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        var (images, uploadedPaths) = await UploadImagesAsync(caseId, request.Images, note: null, ct);
+
+        var newCase = new Case
+        {
+            CaseId = caseId,
+            PatientProfileId = profile.PatientProfileId,
+            DoctorId = doctor.UserId,
+            VisitDate = ClinicClock.Today(),
+            ClinicalInfo = request.ClinicalInfo,
+            Status = CaseStatus.Created,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        try
+        {
+            await _cases.CreateWithImagesAsync(newCase, images, ct);
+        }
+        catch
+        {
+            // File đã nằm trên Storage rồi mà bản ghi thì không ghi được — dọn file đi.
+            // Làm ngược lại (ghi DB trước) sẽ để lại bản ghi trỏ vào file không tồn tại, mà
+            // GB-03 cấm xoá bản ghi y tế nên hỏng là hỏng vĩnh viễn.
+            await CleanUpAsync(uploadedPaths, ct);
+            throw;
+        }
+
+        _logger.LogInformation(
+            "Case {CaseId} created for patient profile {PatientProfileId} with {ImageCount} image(s)",
+            caseId, profile.PatientProfileId, images.Count);
+
+        return await GetForStaffAsync(caseId, ct);
+    }
+
+    public async Task<IReadOnlyList<UltrasoundImageResponse>> AddImagesAsync(
+        Guid caseId,
+        AddUltrasoundImagesRequest request,
+        CancellationToken ct = default)
+    {
+        var medicalCase = await _cases.GetByIdAsync(caseId, ct)
+            ?? throw new ResourceNotFoundException("Case not found.");
+
+        // GB-01: ca đã chốt thì không mở lại để nhận thêm đầu vào.
+        if (medicalCase.Status == CaseStatus.Confirmed)
+        {
+            throw new BusinessException("This case is already confirmed and cannot accept more images.");
+        }
+
+        var (images, uploadedPaths) = await UploadImagesAsync(caseId, request.Images, request.Note, ct);
+
+        try
+        {
+            await _images.AddRangeAsync(images, ct);
+        }
+        catch
+        {
+            await CleanUpAsync(uploadedPaths, ct);
+            throw;
+        }
+
+        _logger.LogInformation("Added {ImageCount} image(s) to case {CaseId}", images.Count, caseId);
+
+        var urls = await BuildImageUrlsAsync(images, ct);
+
+        return images
+            .Select(i => CaseMapper.ToImageResponse(i, urls.GetValueOrDefault(i.ImageId)))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Kiểm rồi đẩy từng file lên Storage. Hỏng giữa chừng thì dọn sạch những file đã lên
+    /// trước khi ném tiếp — không để lại rác nửa vời.
+    /// </summary>
+    private async Task<(List<UltrasoundImage> Images, List<string> UploadedPaths)> UploadImagesAsync(
+        Guid caseId,
+        IReadOnlyList<UploadedFile> files,
+        string? note,
+        CancellationToken ct)
+    {
+        var images = new List<UltrasoundImage>(files.Count);
+        var uploadedPaths = new List<string>(files.Count);
+        var now = DateTime.UtcNow;
+
+        try
+        {
+            foreach (var file in files)
+            {
+                var contentType = await UltrasoundImageContentValidator
+                    .ValidateAndResolveContentTypeAsync(file, ct);
+
+                var imageId = Guid.NewGuid();
+                var extension = contentType == "image/png" ? ".png" : ".jpg";
+                var objectPath = $"{caseId}/{imageId}{extension}";
+
+                await _storage.UploadAsync(file.Content, objectPath, contentType, ct);
+                uploadedPaths.Add(objectPath);
+
+                images.Add(new UltrasoundImage
+                {
+                    ImageId = imageId,
+                    CaseId = caseId,
+                    FileRef = objectPath,
+                    UploadedAt = now,
+                    Note = note,
+                });
+            }
+        }
+        catch
+        {
+            await CleanUpAsync(uploadedPaths, ct);
+            throw;
+        }
+
+        return (images, uploadedPaths);
+    }
+
+    private async Task CleanUpAsync(IReadOnlyList<string> objectPaths, CancellationToken ct)
+    {
+        foreach (var path in objectPaths)
+        {
+            await _storage.DeleteAsync(path, ct);
+        }
     }
 
     /// <summary>
