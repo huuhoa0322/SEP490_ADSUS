@@ -30,4 +30,13 @@ public static class EnumExtensions
         Enum.TryParse<UserStatus>(value, ignoreCase: true, out var status) && Enum.IsDefined(status)
             ? status
             : null;
+
+    /// <summary>
+    /// Đọc giới tính từ chuỗi client gửi lên. Trả null nếu không khớp giá trị nào.
+    /// Tự đọc thay vì để bộ chuyển đổi JSON làm — cùng lý do như ParseUserRole ở trên.
+    /// </summary>
+    public static GenderType? ParseGenderType(string? value) =>
+        Enum.TryParse<GenderType>(value, ignoreCase: true, out var gender) && Enum.IsDefined(gender)
+            ? gender
+            : null;
 }

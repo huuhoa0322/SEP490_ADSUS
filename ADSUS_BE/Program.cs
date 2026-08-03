@@ -13,6 +13,8 @@ using ADSUS_BE.BLL.AIModelManagement.Interfaces;
 using ADSUS_BE.BLL.AIModelManagement.Services;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
+using ADSUS_BE.BLL.MedicalRecord.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
@@ -287,6 +289,9 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IAiModelVersionRepository, AiModelVersionRepository>();
             builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
+            // DAL — Module 4: Medical Record
+            builder.Services.AddScoped<IPatientProfileRepository, PatientProfileRepository>();
+
             // BLL — Module 1: Authentication & Account
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
@@ -298,6 +303,9 @@ namespace ADSUS_BE
 
             // BLL — Module 3: Dashboard & Reporting
             builder.Services.AddScoped<IDashboardService, DashboardService>();
+
+            // BLL — Module 4: Medical Record
+            builder.Services.AddScoped<IPatientProfileService, PatientProfileService>();
 
             // BLL — Module 6: AI Model Management
             builder.Services.AddScoped<IAiModelService, AiModelService>();
