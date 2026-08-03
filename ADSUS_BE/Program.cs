@@ -355,6 +355,11 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
             builder.Services.AddScoped<IMedicineService, MedicineService>();
 
+            // Module 8 — Appointment Scheduling (Doctor/Nurse — UC-15 #46-49)
+            builder.Services.AddScoped<IScheduleSlotRepository, ScheduleSlotRepository>();
+            builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+            builder.Services.AddScoped<IScheduleSlotService, ScheduleSlotService>();
+
             // Scans the whole BLL assembly, so validators added by other modules are picked
             // up automatically.
             builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
