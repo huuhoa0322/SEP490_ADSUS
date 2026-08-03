@@ -128,7 +128,7 @@ public sealed class PatientProfileService : IPatientProfileService
                 FullName: row.Profile.User?.FullName ?? string.Empty,
                 Phone: row.Profile.User?.Phone ?? string.Empty,
                 LatestVisitDate: row.LatestCase?.VisitDate,
-                LatestVisitStatus: row.LatestCase?.Status.ToString().ToUpperInvariant()))
+                LatestVisitStatus: row.LatestCase?.Status.ToApiString()))
             .ToList();
 
         var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)pageSize);

@@ -333,16 +333,34 @@ namespace ADSUS_BE
 
             if (storageSettings?.IsConfigured != true)
             {
-                // Dừng ngay tại đây thay vì để vỡ lúc bác sĩ bấm tải ảnh lên. Lỗi lúc đó chỉ
-                // hiện ra là 500 giữa ca khám, còn ở đây thì biết ngay phải sửa gì.
-                throw new InvalidOperationException(
-                    "Chua cau hinh SupabaseStorage. Chuot phai project ADSUS_BE > Manage User "
-                    + "Secrets va them ca SupabaseStorage:Url va SupabaseStorage:ServiceKey — "
-                    + "ca hai gia tri deu nam trong User Secrets, khong nam trong appsettings.json.");
+                if (builder.Environment.IsDevelopment())
+                {
+                    // Chưa khai Supabase thì vẫn phải chạy được ở Development — nếu không, ai
+                    // không đụng tới upload ảnh siêu âm cũng bị chặn khởi động chỉ vì thiếu một
+                    // secret không liên quan tới việc họ đang làm. Chỉ request nào thực sự cần
+                    // IFileStorageService mới vỡ, kèm thông báo rõ phải sửa gì.
+                    builder.Services.AddScoped<IFileStorageService>(_ =>
+                        throw new InvalidOperationException(
+                            "Chua cau hinh SupabaseStorage. Chuot phai project ADSUS_BE > Manage "
+                            + "User Secrets va them ca SupabaseStorage:Url va "
+                            + "SupabaseStorage:ServiceKey — ca hai gia tri deu nam trong User "
+                            + "Secrets, khong nam trong appsettings.json."));
+                }
+                else
+                {
+                    // Dừng ngay tại đây thay vì để vỡ lúc bác sĩ bấm tải ảnh lên. Lỗi lúc đó chỉ
+                    // hiện ra là 500 giữa ca khám, còn ở đây thì biết ngay phải sửa gì.
+                    throw new InvalidOperationException(
+                        "Chua cau hinh SupabaseStorage. Moi truong " +
+                        $"'{builder.Environment.EnvironmentName}' bat buoc phai cau hinh " +
+                        "SupabaseStorage:Url va SupabaseStorage:ServiceKey.");
+                }
             }
-
-            builder.Services.AddHttpClient("SupabaseStorage");
-            builder.Services.AddScoped<IFileStorageService, SupabaseStorageService>();
+            else
+            {
+                builder.Services.AddHttpClient("SupabaseStorage");
+                builder.Services.AddScoped<IFileStorageService, SupabaseStorageService>();
+            }
 
             // ---------- Gửi email (API-04) ----------
             builder.Services.Configure<EmailSettings>(

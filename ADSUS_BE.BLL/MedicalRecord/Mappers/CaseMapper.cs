@@ -1,3 +1,4 @@
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.DAL.Entities;
 
@@ -29,7 +30,7 @@ public static class CaseMapper
         DoctorName: medicalCase.Doctor?.FullName ?? string.Empty,
         VisitDate: medicalCase.VisitDate,
         ClinicalInfo: medicalCase.ClinicalInfo,
-        Status: medicalCase.Status.ToString().ToUpperInvariant(),
+        Status: medicalCase.Status.ToApiString(),
         FinalDiagnosis: medicalCase.FinalDiagnosis,
         DoctorConclusion: medicalCase.DoctorConclusion,
         PatientProfile: medicalCase.PatientProfile is null
@@ -43,7 +44,7 @@ public static class CaseMapper
             .OrderByDescending(r => r.CreatedAt)
             .Select(r => new AiResultSummary(
                 AiResultId: r.AiResultId,
-                Status: r.Status.ToString().ToUpperInvariant(),
+                Status: r.Status.ToApiString(),
                 FindingCount: r.AiFindings.Count))
             .ToList(),
         Prescription: ToPrescriptionSummary(medicalCase),
@@ -59,7 +60,7 @@ public static class CaseMapper
         DoctorId: medicalCase.DoctorId,
         DoctorName: medicalCase.Doctor?.FullName ?? string.Empty,
         VisitDate: medicalCase.VisitDate,
-        Status: medicalCase.Status.ToString().ToUpperInvariant(),
+        Status: medicalCase.Status.ToApiString(),
         FinalDiagnosis: medicalCase.FinalDiagnosis,
         DoctorConclusion: medicalCase.DoctorConclusion,
         Prescription: ToPrescriptionSummary(medicalCase));
@@ -67,20 +68,30 @@ public static class CaseMapper
     public static CaseSummaryResponse ToSummary(Case medicalCase) => new(
         CaseId: medicalCase.CaseId,
         VisitDate: medicalCase.VisitDate,
-        Status: medicalCase.Status.ToString().ToUpperInvariant(),
+        Status: medicalCase.Status.ToApiString(),
         DoctorId: medicalCase.DoctorId);
 
-    private static PrescriptionSummary? ToPrescriptionSummary(Case medicalCase)
-    {
-        var prescription = medicalCase.Prescriptions
+    /// <summary>
+    /// Đơn thuốc được coi là "hiện hành" cho một ca khám — cùng ngày kê thì phân định bằng
+    /// CreatedAt, để #23 (GET /cases/{id}) và #27 (PDF) không bao giờ chọn khác nhau.
+    /// Dùng chung ở cả hai nơi thay vì mỗi nơi tự viết lại logic sắp xếp — CaseReportService
+    /// từng có một bản sao chép thiếu ThenByDescending, khiến PDF và API có thể trả về hai
+    /// đơn thuốc khác nhau cho cùng một ca có hai đơn cùng ngày.
+    /// </summary>
+    public static Prescription? SelectLatestPrescription(Case medicalCase) =>
+        medicalCase.Prescriptions
             .OrderByDescending(p => p.PrescribedDate)
             .ThenByDescending(p => p.CreatedAt)
             .FirstOrDefault();
+
+    private static PrescriptionSummary? ToPrescriptionSummary(Case medicalCase)
+    {
+        var prescription = SelectLatestPrescription(medicalCase);
 
         return prescription is null
             ? null
             : new PrescriptionSummary(
                 PrescriptionId: prescription.PrescriptionId,
-                Status: prescription.Status.ToString().ToUpperInvariant());
+                Status: prescription.Status.ToApiString());
     }
 }

@@ -1,4 +1,5 @@
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 
 namespace ADSUS_BE.BLL.MedicalRecord.Mappers;
@@ -16,7 +17,7 @@ public static class PatientProfileMapper
         FullName: profile.User?.FullName ?? string.Empty,
         Phone: profile.User?.Phone ?? string.Empty,
         DateOfBirth: profile.User?.DateOfBirth,
-        Gender: profile.Gender.ToString().ToUpperInvariant(),
+        Gender: profile.Gender.ToApiString(),
         MedicalHistory: profile.MedicalHistory,
         Allergies: profile.Allergies,
         CreatedBy: profile.CreatedBy,

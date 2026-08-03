@@ -1,6 +1,7 @@
 using System.Globalization;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
+using ADSUS_BE.BLL.MedicalRecord.Mappers;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -52,9 +53,9 @@ public sealed class CaseReportService : ICaseReportService
     private static byte[] BuildPdf(Case medicalCase)
     {
         var patient = medicalCase.PatientProfile?.User;
-        var prescription = medicalCase.Prescriptions
-            .OrderByDescending(p => p.PrescribedDate)
-            .FirstOrDefault();
+        // Cùng logic chọn "đơn thuốc hiện hành" với #23 (GET /cases/{id}) — xem
+        // CaseMapper.SelectLatestPrescription — để PDF không bao giờ mâu thuẫn với API.
+        var prescription = CaseMapper.SelectLatestPrescription(medicalCase);
 
         return Document.Create(container =>
         {
@@ -65,6 +66,20 @@ public sealed class CaseReportService : ICaseReportService
 
                 // Font phải có dấu tiếng Việt. Lato (mặc định của QuestPDF) không có, để
                 // nguyên là toàn bộ dấu biến thành ô vuông.
+                //
+                // RỦI RO CHƯA XỬ LÝ (final review finding #5, ghi nhận nhưng chưa fix):
+                // "Arial" giả định host giống Windows có sẵn font Arial. Trên container Linux
+                // (nơi rất có thể sẽ deploy) không có Arial — QuestPDF âm thầm fallback về Lato
+                // (bundled sẵn), font KHÔNG có dấu tiếng Việt. Hậu quả: response vẫn 200, vẫn
+                // đúng Content-Type application/pdf, PDF vẫn "sinh ra" bình thường — không có
+                // exception, không có log lỗi — nhưng toàn bộ chữ có dấu trong đó bị mất dấu
+                // hoặc hiển thị thành ô vuông. Đây là lỗi âm thầm, không phải lỗi ồn ào.
+                // Cách sửa đúng và lâu dài: nhúng một font TTF hỗ trợ tiếng Việt (vd. Noto Sans,
+                // Roboto) qua QuestPDF.Drawing.FontManager.RegisterFont(...) khi ứng dụng khởi
+                // động, rồi trỏ FontFamily về tên font đó — không phụ thuộc font có sẵn trên OS.
+                // Việc này cần một file .ttf thật (và xác nhận license) nên KHÔNG làm trong đợt
+                // sửa lỗi review này — để lại làm follow-up, cần người quyết định có chặn release
+                // vì rủi ro này hay chấp nhận nếu môi trường deploy thực tế chỉ là Windows.
                 page.DefaultTextStyle(style => style.FontSize(11).FontFamily("Arial"));
 
                 page.Header()
