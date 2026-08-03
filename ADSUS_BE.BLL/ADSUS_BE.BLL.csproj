@@ -62,6 +62,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
     <PackageReference Include="Quartz" Version="3.19.0" />
     <PackageReference Include="Quartz.Extensions.Hosting" Version="3.19.0" />
+    <PackageReference Include="QuestPDF" Version="2024.12.3" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.21.0" />
   </ItemGroup>
 

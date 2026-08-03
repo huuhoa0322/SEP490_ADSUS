@@ -86,6 +86,10 @@ namespace ADSUS_BE
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            // QuestPDF Community: miễn phí cho tổ chức có doanh thu dưới 1 triệu USD/năm.
+            // Thiếu dòng này thì thư viện ném exception ngay lần dựng PDF đầu tiên.
+            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
             // ---------- Serilog ----------
             // Replaces the default Microsoft.Extensions.Logging console provider. Sinks and
             // levels are read from the "Serilog" section in appsettings.json — GlobalExceptionHandler
@@ -309,6 +313,7 @@ namespace ADSUS_BE
             // BLL — Module 4: Medical Record
             builder.Services.AddScoped<IPatientProfileService, PatientProfileService>();
             builder.Services.AddScoped<ICaseService, CaseService>();
+            builder.Services.AddScoped<ICaseReportService, CaseReportService>();
 
             // BLL — Module 6: AI Model Management
             builder.Services.AddScoped<IAiModelService, AiModelService>();

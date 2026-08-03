@@ -20,15 +20,18 @@ namespace ADSUS_BE.Controllers;
 public sealed class CasesController : ControllerBase
 {
     private readonly ICaseService _cases;
+    private readonly ICaseReportService _reports;
     private readonly IValidator<CreateCaseRequest> _createValidator;
     private readonly IValidator<AddUltrasoundImagesRequest> _addImagesValidator;
 
     public CasesController(
         ICaseService cases,
+        ICaseReportService reports,
         IValidator<CreateCaseRequest> createValidator,
         IValidator<AddUltrasoundImagesRequest> addImagesValidator)
     {
         _cases = cases;
+        _reports = reports;
         _createValidator = createValidator;
         _addImagesValidator = addImagesValidator;
     }
@@ -188,6 +191,28 @@ public sealed class CasesController : ControllerBase
             StatusCodes.Status201Created,
             ApiResponse<IReadOnlyList<UltrasoundImageResponse>>.Ok(
                 result, "Ultrasound image(s) uploaded successfully"));
+    }
+
+    /// <summary>
+    /// Xuất báo cáo PDF của một lần khám đã duyệt (UC-12).
+    ///
+    /// Đây là endpoint DUY NHẤT không bọc trong khuôn {code, message, data} — thân phản hồi
+    /// là byte của file PDF. Riêng nhánh lỗi thì vẫn dùng khuôn JSON như mọi chỗ khác, vì
+    /// lúc đó chưa có file nào để trả.
+    ///
+    /// Chỉ Bác sĩ/Điều dưỡng. Bệnh nhân xem được cùng nội dung trên Mobile (UC-08) nhưng
+    /// không có chức năng xuất file (quyết định UCS ngày 01/08/2026).
+    /// </summary>
+    [HttpGet("{id:guid}/report")]
+    [Authorize(Roles = "DOCTOR,NURSE")]
+    [Produces("application/pdf")]
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ExportReport(Guid id, CancellationToken ct)
+    {
+        var pdf = await _reports.GenerateReportAsync(id, ct);
+        return File(pdf, "application/pdf", $"visit-report-{id}.pdf");
     }
 
     /// <summary>
