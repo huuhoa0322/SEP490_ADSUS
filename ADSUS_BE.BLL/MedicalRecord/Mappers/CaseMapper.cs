@@ -74,6 +74,7 @@ public static class CaseMapper
     {
         var prescription = medicalCase.Prescriptions
             .OrderByDescending(p => p.PrescribedDate)
+            .ThenByDescending(p => p.CreatedAt)
             .FirstOrDefault();
 
         return prescription is null
