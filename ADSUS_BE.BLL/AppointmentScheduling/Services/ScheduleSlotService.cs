@@ -50,7 +50,8 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         var total = await _slots.CountAsync(doctorId, slotDate, statusEnum, ct);
 
         var items = entities.Select(ToResponse).ToList();
-        return new PagedResult<ScheduleSlotResponse>(items, total, page, pageSize);
+        var totalPages = pageSize > 0 ? (int)Math.Ceiling((double)total / pageSize) : 0;
+        return new PagedResult<ScheduleSlotResponse>(items, page, pageSize, total, totalPages);
     }
 
     public async Task<ScheduleSlotResponse> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -140,7 +141,8 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             a.CreatedAt,
             a.UpdatedAt)).ToList();
 
-        return new PagedResult<AppointmentSummaryResponse>(items, total, page, pageSize);
+        var totalPages = pageSize > 0 ? (int)Math.Ceiling((double)total / pageSize) : 0;
+        return new PagedResult<AppointmentSummaryResponse>(items, page, pageSize, total, totalPages);
     }
 
     private static ScheduleSlotResponse ToResponse(ScheduleSlot s) =>
