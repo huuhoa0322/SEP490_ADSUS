@@ -1,6 +1,6 @@
 "use client";
 
-import { BrainCircuit, KeyRound, LogOut, ScanLine, Users } from "lucide-react";
+import { BrainCircuit, FileText, KeyRound, LogOut, ScanLine, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -71,6 +71,13 @@ export function AppHeader() {
               >
                 <BrainCircuit className="size-4" />
                 <span className="hidden sm:inline">Mô hình AI</span>
+              </Link>
+              <Link
+                href="/admin/blog"
+                className="flex items-center gap-2 rounded-full px-3.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+              >
+                <FileText className="size-4" />
+                <span className="hidden sm:inline">Blog</span>
               </Link>
             </>
           )}
