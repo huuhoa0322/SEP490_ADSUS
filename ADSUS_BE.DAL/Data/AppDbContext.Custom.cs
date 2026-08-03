@@ -42,5 +42,14 @@ public partial class AppDbContext
                 .HasColumnName("status")
                 .HasDefaultValue(AppointmentStatus.Booked);
         });
+
+        modelBuilder.HasPostgresEnum<ModelVersionStatus>("public", "model_version_status");
+
+        modelBuilder.Entity<AiModelVersion>(entity =>
+        {
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasDefaultValue(ModelVersionStatus.Inactive);
+        });
     }
 }

@@ -55,6 +55,7 @@
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <!-- Khai tường minh thay vì dựa vào Quartz kéo hộ. Tầng nghiệp vụ cần ILogger, mà phụ
          thuộc bắc cầu thì biến mất ngay khi ai đó gỡ Quartz — lúc đó lỗi biên dịch hiện ra
          ở chỗ chẳng liên quan gì. -->
