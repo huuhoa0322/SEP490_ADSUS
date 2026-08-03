@@ -11,6 +11,8 @@ using ADSUS_BE.BLL.Engagement.Interfaces;
 using ADSUS_BE.BLL.Engagement.Services;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
 using ADSUS_BE.BLL.PrescriptionAdherence.Services;
+using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
+using ADSUS_BE.BLL.AppointmentScheduling.Services;
 using ADSUS_BE.BLL.AIModelManagement.Interfaces;
 using ADSUS_BE.BLL.AIModelManagement.Services;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
