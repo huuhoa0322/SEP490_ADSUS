@@ -111,4 +111,28 @@ public sealed class PatientProfileService : IPatientProfileService
 
         return PatientProfileMapper.ToResponse(profile);
     }
+
+    public async Task<PagedResult<PatientSummaryResponse>> SearchPatientsAsync(
+        string? search,
+        string? visitStatus,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        var (rows, total) = await _profiles.SearchAsync(search, visitStatus, page, pageSize, ct);
+
+        var items = rows
+            .Select(row => new PatientSummaryResponse(
+                PatientProfileId: row.Profile.PatientProfileId,
+                PatientUserId: row.Profile.UserId,
+                FullName: row.Profile.User?.FullName ?? string.Empty,
+                Phone: row.Profile.User?.Phone ?? string.Empty,
+                LatestVisitDate: row.LatestCase?.VisitDate,
+                LatestVisitStatus: row.LatestCase?.Status.ToString().ToUpperInvariant()))
+            .ToList();
+
+        var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)pageSize);
+
+        return new PagedResult<PatientSummaryResponse>(items, page, pageSize, total, totalPages);
+    }
 }

@@ -19,4 +19,15 @@ public interface IPatientProfileRepository
     Task<PatientProfile> AddAsync(PatientProfile profile, CancellationToken ct = default);
 
     Task UpdateAsync(PatientProfile profile, CancellationToken ct = default);
+
+    /// <summary>
+    /// UC-09 — danh sách bệnh nhân kèm ca khám gần nhất, sắp xếp theo lần khám mới nhất.
+    /// visitStatus: null = tất cả; "Pending" = ca mới nhất ở CREATED/ANALYZED; "Confirmed" = CONFIRMED.
+    /// </summary>
+    Task<(IReadOnlyList<(PatientProfile Profile, Case? LatestCase)> Items, int TotalCount)> SearchAsync(
+        string? search,
+        string? visitStatus,
+        int page,
+        int pageSize,
+        CancellationToken ct = default);
 }
