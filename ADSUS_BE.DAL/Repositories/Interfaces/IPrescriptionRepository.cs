@@ -15,6 +15,27 @@ public interface IPrescriptionRepository
     /// <summary>Lấy tất cả đơn của 1 bệnh nhân, sắp xếp đơn mới nhất trước.</summary>
     Task<IReadOnlyList<Prescription>> ListByPatientAsync(Guid patientId, CancellationToken ct = default);
 
+    /// <summary>Module 7 UC-11: danh sách phân trang, filter theo status/date, filter theo Case.PatientProfileId.</summary>
+    Task<IReadOnlyList<Prescription>> ListByPatientPagedAsync(
+        Guid patientProfileId,
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        IReadOnlyCollection<PrescriptionStatus>? statuses,
+        int skip,
+        int take,
+        CancellationToken ct = default);
+
+    /// <summary>Module 7 UC-11: đếm tổng để phân trang — đi cùng ListByPatientPagedAsync.</summary>
+    Task<int> CountByPatientAsync(
+        Guid patientProfileId,
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        IReadOnlyCollection<PrescriptionStatus>? statuses,
+        CancellationToken ct = default);
+
+    /// <summary>Module 7 UC-18 BR-03: kiểm tra case đã có đơn ACTIVE chưa trước khi kê.</summary>
+    Task<bool> HasActiveForCaseAsync(Guid caseId, CancellationToken ct = default);
+
     /// <summary>Lấy tất cả đơn của 1 bác sĩ đã kê.</summary>
     Task<IReadOnlyList<Prescription>> ListByDoctorAsync(Guid doctorId, CancellationToken ct = default);
 

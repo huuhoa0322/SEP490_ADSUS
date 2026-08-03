@@ -60,6 +60,18 @@ public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogReposito
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<MedicationIntakeLog>> ListByPrescriptionItemIdsAsync(
+        IReadOnlyCollection<Guid> prescriptionItemIds,
+        CancellationToken ct = default)
+    {
+        if (prescriptionItemIds.Count == 0) return Array.Empty<MedicationIntakeLog>();
+        return await _db.MedicationIntakeLogs
+            .AsNoTracking()
+            .Where(l => prescriptionItemIds.Contains(l.PrescriptionItemId))
+            .OrderBy(l => l.ScheduledTime)
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(MedicationIntakeLog log, CancellationToken ct = default)
     {
         await _db.MedicationIntakeLogs.AddAsync(log, ct);

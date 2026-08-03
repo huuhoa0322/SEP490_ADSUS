@@ -14,6 +14,9 @@ public interface IMedicineRepository
     /// <summary>Tìm theo tên chính xác (case-insensitive). Trả null nếu chưa có.</summary>
     Task<Medicine?> FindByNameAsync(string name, CancellationToken ct = default);
 
+    /// <summary>Module 7 UC-18 BR-01: autocomplete cho bác sĩ khi kê đơn (case-insensitive substring).</summary>
+    Task<IReadOnlyList<Medicine>> SearchAsync(string keyword, int max, CancellationToken ct = default);
+
     /// <summary>Add 1 medicine vào catalog.</summary>
     Task AddAsync(Medicine medicine, CancellationToken ct = default);
 }

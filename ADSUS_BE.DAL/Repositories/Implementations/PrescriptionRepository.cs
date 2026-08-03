@@ -23,19 +23,72 @@ public sealed class PrescriptionRepository : IPrescriptionRepository
             .Include(p => p.PrescriptionItems)
                 .ThenInclude(pi => pi.Medicine)
             .Include(p => p.Doctor)
+            .Include(p => p.Case)
+                .ThenInclude(c => c!.PatientProfile)
             .FirstOrDefaultAsync(p => p.PrescriptionId == prescriptionId, ct);
     }
 
     public async Task<IReadOnlyList<Prescription>> ListByPatientAsync(Guid patientId, CancellationToken ct = default)
     {
-        // Prescription aggregate không có patientId trực tiếp — patient thuộc về Case
-        // nhưng repository chỉ thấy Prescription. Caller truyền patientId để filter
-        // qua Case.PatientProfileId. Implementation này giả định caller đã lookup
-        // Case để derive patientId, hoặc sẽ dùng join ở controller layer.
-        // Để tránh scope creep của repository, hiện trả về rỗng — sẽ bổ sung khi
-        // Prescription entity có FK trực tiếp tới PatientProfile (xem schema team).
-        await Task.CompletedTask;
-        return Array.Empty<Prescription>();
+        return await _db.Prescriptions
+            .AsNoTracking()
+            .Include(p => p.PrescriptionItems)
+                .ThenInclude(pi => pi.Medicine)
+            .Include(p => p.Doctor)
+            .Where(p => p.Case!.PatientProfileId == patientId)
+            .OrderByDescending(p => p.PrescribedDate)
+            .ThenByDescending(p => p.CreatedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Prescription>> ListByPatientPagedAsync(
+        Guid patientProfileId,
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        IReadOnlyCollection<PrescriptionStatus>? statuses,
+        int skip,
+        int take,
+        CancellationToken ct = default)
+    {
+        var query = _db.Prescriptions
+            .AsNoTracking()
+            .Include(p => p.Doctor)
+            .Where(p => p.Case!.PatientProfileId == patientProfileId);
+
+        if (fromDate.HasValue) query = query.Where(p => p.PrescribedDate >= fromDate.Value);
+        if (toDate.HasValue) query = query.Where(p => p.PrescribedDate <= toDate.Value);
+        if (statuses is { Count: > 0 }) query = query.Where(p => statuses.Contains(p.Status));
+
+        return await query
+            .OrderByDescending(p => p.PrescribedDate)
+            .ThenByDescending(p => p.CreatedAt)
+            .Skip(skip).Take(take)
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> CountByPatientAsync(
+        Guid patientProfileId,
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        IReadOnlyCollection<PrescriptionStatus>? statuses,
+        CancellationToken ct = default)
+    {
+        var query = _db.Prescriptions
+            .AsNoTracking()
+            .Where(p => p.Case!.PatientProfileId == patientProfileId);
+
+        if (fromDate.HasValue) query = query.Where(p => p.PrescribedDate >= fromDate.Value);
+        if (toDate.HasValue) query = query.Where(p => p.PrescribedDate <= toDate.Value);
+        if (statuses is { Count: > 0 }) query = query.Where(p => statuses.Contains(p.Status));
+
+        return await query.CountAsync(ct);
+    }
+
+    public async Task<bool> HasActiveForCaseAsync(Guid caseId, CancellationToken ct = default)
+    {
+        return await _db.Prescriptions
+            .AsNoTracking()
+            .AnyAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active, ct);
     }
 
     public async Task<IReadOnlyList<Prescription>> ListByDoctorAsync(Guid doctorId, CancellationToken ct = default)

@@ -22,6 +22,11 @@ public interface IMedicationIntakeLogRepository
         Guid prescriptionItemId,
         CancellationToken ct = default);
 
+    /// <summary>Module 7 UC-11: lấy logs của nhiều items trong 1 query (tính adherence rate).</summary>
+    Task<IReadOnlyList<MedicationIntakeLog>> ListByPrescriptionItemIdsAsync(
+        IReadOnlyCollection<Guid> prescriptionItemIds,
+        CancellationToken ct = default);
+
     /// <summary>Lấy logs của 1 bệnh nhân trong khoảng thời gian (UTC). Dùng cho report.</summary>
     Task<IReadOnlyList<MedicationIntakeLog>> ListByPatientRangeAsync(
         Guid patientId,

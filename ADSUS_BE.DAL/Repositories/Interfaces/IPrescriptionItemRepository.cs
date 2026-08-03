@@ -14,6 +14,11 @@ public interface IPrescriptionItemRepository
     /// <summary>Lấy tất cả items thuộc 1 đơn thuốc.</summary>
     Task<IReadOnlyList<PrescriptionItem>> ListByPrescriptionAsync(Guid prescriptionId, CancellationToken ct = default);
 
+    /// <summary>Module 7 UC-11: lấy items của nhiều đơn thuốc trong 1 query (tránh N+1).</summary>
+    Task<IReadOnlyList<PrescriptionItem>> ListByPrescriptionIdsAsync(
+        IReadOnlyCollection<Guid> prescriptionIds,
+        CancellationToken ct = default);
+
     /// <summary>Add 1 item vào change tracker.</summary>
     Task AddAsync(PrescriptionItem item, CancellationToken ct = default);
 

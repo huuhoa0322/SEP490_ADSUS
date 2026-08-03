@@ -32,6 +32,20 @@ public sealed class MedicineRepository : IMedicineRepository
             .FirstOrDefaultAsync(m => m.Name == trimmed, ct);
     }
 
+    public async Task<IReadOnlyList<Medicine>> SearchAsync(string keyword, int max, CancellationToken ct = default)
+    {
+        var kw = (keyword ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(kw)) return Array.Empty<Medicine>();
+
+        var lower = kw.ToLowerInvariant();
+        return await _db.Medicines
+            .AsNoTracking()
+            .Where(m => m.Name.ToLower().Contains(lower))
+            .OrderBy(m => m.Name)
+            .Take(Math.Clamp(max, 1, 50))
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(Medicine medicine, CancellationToken ct = default)
     {
         await _db.Medicines.AddAsync(medicine, ct);

@@ -35,6 +35,18 @@ public sealed class PrescriptionItemRepository : IPrescriptionItemRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<PrescriptionItem>> ListByPrescriptionIdsAsync(
+        IReadOnlyCollection<Guid> prescriptionIds,
+        CancellationToken ct = default)
+    {
+        if (prescriptionIds.Count == 0) return Array.Empty<PrescriptionItem>();
+        return await _db.PrescriptionItems
+            .AsNoTracking()
+            .Include(pi => pi.Medicine)
+            .Where(pi => prescriptionIds.Contains(pi.PrescriptionId))
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(PrescriptionItem item, CancellationToken ct = default)
     {
         await _db.PrescriptionItems.AddAsync(item, ct);
