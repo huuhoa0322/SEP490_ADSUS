@@ -41,6 +41,8 @@
     <Folder Include="MedicalRecord\Validators\" />
     <Folder Include="Common\" />
     <Folder Include="BackgroundJobs\" />
+    <Folder Include="Resources\Fonts\" />
+    <Folder Include="Resources\" />
     <Folder Include="PrescriptionAdherence\DTOs\" />
     <Folder Include="PrescriptionAdherence\Interfaces\" />
     <Folder Include="PrescriptionAdherence\Services\" />
@@ -49,6 +51,10 @@
     <Folder Include="UserRoleManagement\Interfaces\" />
     <Folder Include="UserRoleManagement\Services\" />
     <Folder Include="UserRoleManagement\Validators\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Fonts\NotoSans-VariableFont_wdth_wght.ttf" />
   </ItemGroup>
 
   <ItemGroup>

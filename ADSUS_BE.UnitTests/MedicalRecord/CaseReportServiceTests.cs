@@ -81,4 +81,25 @@ public class CaseReportServiceTests
         // Assert
         Assert.NotEmpty(pdfBytes);
     }
+
+    [Fact]
+    public async Task GenerateReportAsync_ConfirmedCase_EmbedsVietnameseCapableFontNotArial()
+    {
+        // Arrange — khoá lại fix rủi ro font đã ghi ở finding #5 review: server thật deploy
+        // trên Render (Linux), không có Arial cài sẵn — QuestPDF phải tự nhúng Noto Sans
+        // (đăng ký qua FontManager.RegisterFont), không phụ thuộc font có sẵn trên OS host.
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Confirmed);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId);
+
+        // Assert — tên font PostScript được PDF nhúng vào /BaseFont đọc được trực tiếp từ
+        // byte thô (không cần thư viện parse PDF); Latin1 an toàn vì mọi ký tự trong PDF
+        // dictionary đều nằm trong dải byte đơn.
+        var pdfText = System.Text.Encoding.Latin1.GetString(pdfBytes);
+        Assert.Contains("NotoSans", pdfText);
+        Assert.DoesNotContain("Arial", pdfText);
+    }
 }
