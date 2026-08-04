@@ -19,7 +19,11 @@ public class PasswordResetServiceTests
 {
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IEmailService> _email = new();
+    private readonly Mock<IAuditLogRepository> _auditLogs = new();
     private readonly PasswordResetService _sut;
+
+    /// <summary>Các dòng nhật ký đã được xếp vào hàng chờ trong bài test.</summary>
+    private readonly List<AuditLog> _audited = new();
 
     public PasswordResetServiceTests()
     {
@@ -27,7 +31,12 @@ public class PasswordResetServiceTests
                   It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(true);
 
-        _sut = new PasswordResetService(_users.Object, _email.Object);
+        _auditLogs.Setup(r => r.AddAsync(It.IsAny<AuditLog>(), It.IsAny<CancellationToken>()))
+                  .Callback<AuditLog, CancellationToken>((l, _) => _audited.Add(l))
+                  .Returns(Task.CompletedTask);
+
+        _sut = new PasswordResetService(
+            _users.Object, _email.Object, new AccountAuditTrail(_auditLogs.Object));
     }
 
     // ---------- Đường tự phục vụ ----------
@@ -223,6 +232,60 @@ public class PasswordResetServiceTests
 
         Assert.Equal(hashCu, user.PasswordHash);
         _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ---------- Nhật ký thao tác ----------
+
+    [Fact]
+    public async Task AdminCapLai_GHI_NHAT_KY_VoiNguoiThucHienLaAdmin()
+    {
+        var user = TaoUser();
+        var adminId = Guid.NewGuid();
+        SetupGetById(user);
+
+        await _sut.AdminResetAsync(user.UserId, adminId);
+
+        var log = Assert.Single(_audited);
+        Assert.Equal("ADMIN_RESET_PASSWORD", log.Action);
+        Assert.Equal(adminId, log.ActorId);
+    }
+
+    [Fact]
+    public async Task TuCapLai_GHI_NHAT_KY_VoiNguoiThucHienLaChinhChuTaiKhoan()
+    {
+        var user = TaoUser();
+        SetupGetByPhone(user);
+
+        await _sut.RequestSelfServiceResetAsync(YeuCau());
+
+        var log = Assert.Single(_audited);
+        Assert.Equal("SELF_RESET_PASSWORD", log.Action);
+        Assert.Equal(user.UserId, log.ActorId);
+    }
+
+    [Fact]
+    public async Task KhongKhopThongTin_KHONG_GHI_NHAT_KY()
+    {
+        // AF-01 — không khớp thì im lặng hoàn toàn. Ghi nhật ký ở đây là biến bảng nhật ký
+        // thành chỗ dò xem số điện thoại nào có tài khoản thật.
+        SetupGetByPhone(null);
+
+        await _sut.RequestSelfServiceResetAsync(YeuCau());
+
+        Assert.Empty(_audited);
+    }
+
+    [Fact]
+    public async Task GuiMailThatBai_KHONG_GHI_NHAT_KY()
+    {
+        // Mật khẩu không đổi thì cũng không có việc gì đã xảy ra để mà ghi.
+        var user = TaoUser();
+        SetupGetById(user);
+        SetupGuiMailThatBai();
+
+        await _sut.AdminResetAsync(user.UserId, Guid.NewGuid());
+
+        Assert.Empty(_audited);
     }
 
     // ---------- helpers ----------

@@ -7,6 +7,7 @@ import { getApiErrorMessage } from "@/lib/api-client";
 
 import { useDashboardStatistics } from "../hooks/use-dashboard";
 
+import { AuditLogPanel } from "./audit-log-panel";
 import {
   BarList,
   ChartCard,
@@ -247,6 +248,12 @@ export function DashboardView() {
                 ]}
               />
             </ChartCard>
+          </div>
+
+          {/* Nhật ký thao tác quản trị (UC-04). Đặt sau các biểu đồ vì nó trả lời câu hỏi
+              khác hẳn: "vừa có ai động vào cái gì" chứ không phải "kỳ này ra sao". */}
+          <div className="mt-5">
+            <AuditLogPanel />
           </div>
 
           <div className="mt-5">

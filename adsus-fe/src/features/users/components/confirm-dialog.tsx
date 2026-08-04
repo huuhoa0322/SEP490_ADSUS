@@ -63,12 +63,14 @@ export function ConfirmDialog({
           </div>
         </div>
 
-        {error && (
+        {/* Dùng "? :" chứ KHÔNG dùng "&&": prop error có kiểu unknown (để nhận thẳng lỗi
+            của axios), mà "unknown && ..." cho ra kiểu unknown — React không dựng được. */}
+        {error ? (
           <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
             <span>{getApiErrorMessage(error, "Thao tác thất bại. Vui lòng thử lại.")}</span>
           </div>
-        )}
+        ) : null}
 
         <div className="mt-7 flex justify-end gap-3">
           <button

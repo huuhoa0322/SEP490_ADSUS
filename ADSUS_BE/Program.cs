@@ -315,6 +315,9 @@ namespace ADSUS_BE
             // BLL — Module 2: User & Role Management
             builder.Services.AddScoped<IUserAccountService, UserAccountService>();
             builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
+            // Ghi và đọc nhật ký thao tác quản trị tài khoản (UC-04).
+            builder.Services.AddScoped<AccountAuditTrail>();
+            builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
             // BLL — Module 3: Dashboard & Reporting
             builder.Services.AddScoped<IDashboardService, DashboardService>();

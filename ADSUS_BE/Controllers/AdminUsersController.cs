@@ -99,7 +99,13 @@ public class AdminUsersController : ControllerBase
                 StatusCodes.Status400BadRequest, message));
         }
 
-        var (result, account) = await _accounts.CreateAsync(request, cancellationToken);
+        if (!TryGetActingAdminId(out var adminId))
+        {
+            return Unauthorized(ApiResponse<UserAccountResponse>.Fail(
+                StatusCodes.Status401Unauthorized, "Invalid access token."));
+        }
+
+        var (result, account) = await _accounts.CreateAsync(request, adminId, cancellationToken);
 
         // Ba kết quả dưới đây đều là ĐÃ TẠO XONG, chỉ khác nhau ở chỗ mật khẩu tạm có tới
         // tay chủ tài khoản không. Trả 4xx cho hai trường hợp sau là nói dối — bản ghi đã
@@ -149,7 +155,13 @@ public class AdminUsersController : ControllerBase
             return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
         }
 
-        var result = await _accounts.UpdateAsync(userId, request, cancellationToken);
+        if (!TryGetActingAdminId(out var adminId))
+        {
+            return Unauthorized(ApiResponse<object>.Fail(
+                StatusCodes.Status401Unauthorized, "Invalid access token."));
+        }
+
+        var result = await _accounts.UpdateAsync(userId, request, adminId, cancellationToken);
 
         return result == AccountOperationResult.Success
             ? Ok(ApiResponse<object>.Ok(null!, "Account updated."))

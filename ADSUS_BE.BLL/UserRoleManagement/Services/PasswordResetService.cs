@@ -12,11 +12,13 @@ public class PasswordResetService : IPasswordResetService
 {
     private readonly IUserRepository _users;
     private readonly IEmailService _email;
+    private readonly AccountAuditTrail _audit;
 
-    public PasswordResetService(IUserRepository users, IEmailService email)
+    public PasswordResetService(IUserRepository users, IEmailService email, AccountAuditTrail audit)
     {
         _users = users;
         _email = email;
+        _audit = audit;
     }
 
     public async Task RequestSelfServiceResetAsync(
@@ -65,6 +67,15 @@ public class PasswordResetService : IPasswordResetService
         user.MustChangePassword = true;
         user.UpdatedAt = DateTime.UtcNow;
 
+        // Người thực hiện chính là chủ tài khoản. Ghi lại để sau này còn đối chiếu được:
+        // một tài khoản bị đặt lại mật khẩu liên tục là dấu hiệu có người đang thử chiếm.
+        //
+        // Chỉ ghi khi ĐÃ khớp và ĐÃ gửi được thư, nên nhật ký không biến thành chỗ dò xem số
+        // điện thoại nào có tài khoản (AF-01).
+        await _audit.RecordAsync(
+            user.UserId, AccountAuditTrail.SelfServiceResetPassword, user,
+            "người dùng tự yêu cầu cấp lại mật khẩu", cancellationToken);
+
         await _users.SaveChangesAsync(cancellationToken);
     }
 
@@ -100,6 +111,10 @@ public class PasswordResetService : IPasswordResetService
         user.PasswordHash = hash;
         user.MustChangePassword = true;
         user.UpdatedAt = DateTime.UtcNow;
+
+        await _audit.RecordAsync(
+            actingAdminId, AccountAuditTrail.AdminResetPassword, user,
+            "quản trị viên cấp lại mật khẩu hộ", cancellationToken);
 
         await _users.SaveChangesAsync(cancellationToken);
 

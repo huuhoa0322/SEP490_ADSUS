@@ -29,11 +29,13 @@ public class UserAccountService : IUserAccountService
 
     private readonly IUserRepository _users;
     private readonly IEmailService _email;
+    private readonly AccountAuditTrail _audit;
 
-    public UserAccountService(IUserRepository users, IEmailService email)
+    public UserAccountService(IUserRepository users, IEmailService email, AccountAuditTrail audit)
     {
         _users = users;
         _email = email;
+        _audit = audit;
     }
 
     public async Task<PagedResult> SearchAsync(
@@ -77,6 +79,7 @@ public class UserAccountService : IUserAccountService
 
     public async Task<(AccountOperationResult Result, UserAccountResponse? Account)> CreateAsync(
         CreateUserAccountRequest request,
+        Guid actingAdminId,
         CancellationToken cancellationToken = default)
     {
         var role = EnumExtensions.ParseUserRole(request.Role);
@@ -121,6 +124,12 @@ public class UserAccountService : IUserAccountService
         };
 
         await _users.AddAsync(user, cancellationToken);
+
+        // Nhật ký đi cùng một lượt lưu với chính bản ghi tài khoản — xem AccountAuditTrail.
+        await _audit.RecordAsync(
+            actingAdminId, AccountAuditTrail.CreateAccount, user,
+            cancellationToken: cancellationToken);
+
         await _users.SaveChangesAsync(cancellationToken);
 
         // Gửi email SAU khi lưu, và cố ý KHÔNG để lỗi gửi mail làm hỏng cả thao tác: tài
@@ -154,6 +163,7 @@ public class UserAccountService : IUserAccountService
     public async Task<AccountOperationResult> UpdateAsync(
         Guid userId,
         UpdateUserAccountRequest request,
+        Guid actingAdminId,
         CancellationToken cancellationToken = default)
     {
         var role = EnumExtensions.ParseUserRole(request.Role);
@@ -195,6 +205,10 @@ public class UserAccountService : IUserAccountService
             return AccountOperationResult.EmailAlreadyUsed;
         }
 
+        // Giữ lại vai trò cũ TRƯỚC khi ghi đè, để nhật ký nói được là đã đổi từ gì sang gì.
+        // Đây là thay đổi đáng theo dõi nhất ở màn này: đổi vai trò là đổi quyền truy cập.
+        var vaiTroCu = user.Role;
+
         user.FullName = request.FullName.Trim();
         user.Email = email;
         user.Role = role.Value;
@@ -202,6 +216,13 @@ public class UserAccountService : IUserAccountService
         user.UpdatedAt = DateTime.UtcNow;
 
         // KHÔNG đụng tới Phone (BR-02) và Status (đi qua endpoint riêng).
+
+        var doiVaiTro = vaiTroCu != role.Value
+            ? $"đổi vai trò {vaiTroCu.ToString().ToUpperInvariant()} → {role.Value.ToString().ToUpperInvariant()}"
+            : "sửa thông tin";
+
+        await _audit.RecordAsync(
+            actingAdminId, AccountAuditTrail.UpdateAccount, user, doiVaiTro, cancellationToken);
 
         await _users.SaveChangesAsync(cancellationToken);
 
@@ -226,6 +247,12 @@ public class UserAccountService : IUserAccountService
         user.Status = locked ? UserStatus.Locked : UserStatus.Active;
         user.UpdatedAt = DateTime.UtcNow;
 
+        await _audit.RecordAsync(
+            actingAdminId,
+            locked ? AccountAuditTrail.LockAccount : AccountAuditTrail.UnlockAccount,
+            user,
+            cancellationToken: cancellationToken);
+
         await _users.SaveChangesAsync(cancellationToken);
 
         return AccountOperationResult.Success;
@@ -243,8 +270,18 @@ public class UserAccountService : IUserAccountService
 
         // BR-05 — chỉ đổi trạng thái, TUYỆT ĐỐI không xoá bản ghi. Dữ liệu y tế gắn với tài
         // khoản này vẫn phải truy cập được sau khi vô hiệu hoá.
+        var trangThaiCu = user.Status;
+
         user.Status = UserStatus.Deactivated;
         user.UpdatedAt = DateTime.UtcNow;
+
+        // Thao tác một chiều, không có đường hoàn tác (BR-05) — càng phải ghi lại ai đã bấm.
+        await _audit.RecordAsync(
+            actingAdminId,
+            AccountAuditTrail.DeactivateAccount,
+            user,
+            $"vô hiệu hoá vĩnh viễn, trạng thái trước đó {trangThaiCu.ToString().ToUpperInvariant()}",
+            cancellationToken);
 
         await _users.SaveChangesAsync(cancellationToken);
 
