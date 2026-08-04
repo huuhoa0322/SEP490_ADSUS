@@ -496,6 +496,24 @@ public class CasesControllerIntegrationTests
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PostUltrasoundImages_CalledByPatientRole_Returns403Forbidden()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _patientUser);
+        using var form = new MultipartFormDataContent();
+        var imageContent = new ByteArrayContent(ValidPngBytes);
+        imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        form.Add(imageContent, "images", "anh.png");
+
+        // Act
+        var response = await client.PostAsync($"/api/v1/cases/{Guid.NewGuid()}/ultrasound-images", form);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     // ---------- #27 GET /cases/{id}/report ----------
 
     [Fact]
