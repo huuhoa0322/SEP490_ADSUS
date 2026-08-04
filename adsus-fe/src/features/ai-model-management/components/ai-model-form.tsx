@@ -1,9 +1,14 @@
 "use client";
 
+<<<<<<< Updated upstream
 import { AlertCircle, ArrowLeft, Loader2, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
+=======
+import { AlertCircle, Loader2, Save, Upload, X } from "lucide-react";
+import { type FormEvent, useEffect, useState, useRef } from "react";
+>>>>>>> Stashed changes
 
 import { getApiErrorMessage } from "@/lib/api-client";
 import {
@@ -13,6 +18,7 @@ import {
 } from "../hooks/use-ai-models";
 import type { RegisterModelVersionRequest } from "../types/ai-model.types";
 
+<<<<<<< Updated upstream
 interface AiModelFormProps {
   id?: string;
 }
@@ -20,6 +26,18 @@ interface AiModelFormProps {
 export function AiModelForm({ id }: AiModelFormProps) {
   const router = useRouter();
   const isEditing = !!id;
+=======
+interface AiModelFormDialogProps {
+  id?: string;
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export function AiModelFormDialog({ id, open, onClose, onSuccess }: AiModelFormDialogProps) {
+  const isEditing = !!id;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+>>>>>>> Stashed changes
 
   const { data: detail, isLoading: isLoadingDetail } = useAiModelDetail(id);
   const { mutate: register, isPending: isRegistering, error: registerError } = useRegisterAiModel();
@@ -51,6 +69,56 @@ export function AiModelForm({ id }: AiModelFormProps) {
     }
   }, [detail]);
 
+<<<<<<< Updated upstream
+=======
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        let parsed: Record<string, string> = {};
+        
+        if (text.trim().startsWith('{')) {
+          parsed = JSON.parse(text);
+        } else {
+          // Parse Key=Value
+          text.split('\n').forEach(line => {
+            if (!line.trim() || line.startsWith('#')) return;
+            const parts = line.split('=');
+            if (parts.length >= 2) {
+              const key = parts[0].trim();
+              const val = parts.slice(1).join('=').trim();
+              // Normalizing keys: VersionCode -> versionCode
+              const normalizedKey = key.charAt(0).toLowerCase() + key.slice(1);
+              parsed[normalizedKey] = val;
+            }
+          });
+        }
+        
+        setFormData(prev => ({
+          ...prev,
+          versionCode: (!isEditing && parsed.versionCode) ? parsed.versionCode : prev.versionCode,
+          description: parsed.description ?? prev.description,
+          hfRepoId: parsed.hfRepoId ?? prev.hfRepoId,
+          hfFilename: parsed.hfFilename ?? prev.hfFilename,
+          metricsPrecision: parsed.metricsPrecision ? parseFloat(parsed.metricsPrecision) : prev.metricsPrecision,
+          metricsMap50: parsed.metricsMap50 ? parseFloat(parsed.metricsMap50) : prev.metricsMap50,
+          metricsRecall: parsed.metricsRecall ? parseFloat(parsed.metricsRecall) : prev.metricsRecall,
+        }));
+        
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } catch (err) {
+        console.error("Error parsing file", err);
+        alert("File không đúng định dạng. Vui lòng dùng JSON hoặc chuẩn Key=Value");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+>>>>>>> Stashed changes
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitError(false);
@@ -75,7 +143,12 @@ export function AiModelForm({ id }: AiModelFormProps) {
         },
         {
           onSuccess: () => {
+<<<<<<< Updated upstream
             router.push("/admin/ai-models");
+=======
+            onSuccess();
+            onClose();
+>>>>>>> Stashed changes
           },
           onError: () => setIsSubmitError(true),
         }
@@ -90,6 +163,7 @@ export function AiModelForm({ id }: AiModelFormProps) {
     }
   };
 
+<<<<<<< Updated upstream
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     
@@ -106,12 +180,16 @@ export function AiModelForm({ id }: AiModelFormProps) {
       </div>
     );
   }
+=======
+  if (!open) return null;
+>>>>>>> Stashed changes
 
   const isPending = isRegistering || isUpdating;
   const apiError = isEditing ? updateError : registerError;
   const disabledForm = isEditing && detail?.status === "Active";
 
   return (
+<<<<<<< Updated upstream
     <div className="mx-auto w-full max-w-2xl">
       <div className="mb-6 flex items-center gap-4">
         <Link
@@ -157,6 +235,89 @@ export function AiModelForm({ id }: AiModelFormProps) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6 rounded-3xl border border-border bg-background p-6 shadow-sm md:p-8">
+=======
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="mx-auto w-full max-w-2xl overflow-hidden rounded-3xl bg-background shadow-2xl flex flex-col max-h-full">
+        <div className="flex items-center justify-between border-b border-border p-5 md:p-7 shrink-0">
+          <div>
+            <h2 className="font-heading text-xl font-bold tracking-tight text-foreground">
+              {isEditing ? `Sửa phiên bản: ${detail?.versionCode}` : "Đăng ký phiên bản AI mới"}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isEditing 
+                ? "Cập nhật thông tin cấu hình cho mô hình AI." 
+                : "Thêm một mô hình AI mới từ HuggingFace vào hệ thống."}
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {!disabledForm && (
+              <div>
+                <input 
+                  type="file" 
+                  accept=".txt,.json" 
+                  className="hidden" 
+                  ref={fileInputRef}
+                  onChange={handleFileUpload} 
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-10 items-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-500 transition-colors hover:bg-secondary"
+                >
+                  <Upload className="size-4 text-muted-foreground" />
+                  <span className="hidden sm:inline">Tải cấu hình từ File</span>
+                  <span className="sm:hidden">Tải File</span>
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-2 text-muted-foreground hover:bg-secondary transition-colors"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-y-auto p-5 md:p-7">
+          {isEditing && isLoadingDetail ? (
+            <div className="flex min-h-64 items-center justify-center">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              {(isSubmitError && apiError) && (
+                <div
+                  role="alert"
+                  className="mb-6 flex items-start gap-2.5 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                >
+                  <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    {getApiErrorMessage(apiError, "Lưu thất bại. Vui lòng kiểm tra lại dữ liệu.")}
+                  </span>
+                </div>
+              )}
+
+              {disabledForm && (
+                <div
+                  role="alert"
+                  className="mb-6 flex items-start gap-2.5 rounded-2xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-600"
+                >
+                  <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    Phiên bản này đang được <strong>Kích hoạt (ACTIVE)</strong> và đang phục vụ hệ thống. Bạn không thể sửa đổi cấu hình của phiên bản đang chạy. Vui lòng tạo phiên bản mới.
+                  </span>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+>>>>>>> Stashed changes
         <div className="space-y-4">
           <div>
             <label htmlFor="versionCode" className="mb-1.5 block text-sm font-600 text-foreground">
@@ -167,12 +328,20 @@ export function AiModelForm({ id }: AiModelFormProps) {
               name="versionCode"
               type="text"
               required
+<<<<<<< Updated upstream
               disabled={isEditing}
               maxLength={50}
               placeholder="VD: yolov8-seg-v1"
               value={formData.versionCode}
               onChange={handleChange}
               className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none transition-colors focus:border-accent disabled:bg-secondary/50 disabled:text-muted-foreground"
+=======
+              readOnly
+              maxLength={50}
+              placeholder="Vui lòng tải file cấu hình để tự điền..."
+              value={formData.versionCode}
+              className="h-11 w-full rounded-xl border border-border bg-secondary/30 px-4 text-sm outline-none cursor-default text-muted-foreground"
+>>>>>>> Stashed changes
             />
             {isEditing && (
               <p className="mt-1 text-xs text-muted-foreground">Không thể thay đổi mã phiên bản sau khi tạo.</p>
@@ -186,12 +355,20 @@ export function AiModelForm({ id }: AiModelFormProps) {
             <textarea
               id="description"
               name="description"
+<<<<<<< Updated upstream
               disabled={disabledForm}
               rows={3}
               placeholder="Mô tả về điểm mới, dữ liệu huấn luyện của phiên bản này..."
               value={formData.description}
               onChange={handleChange}
               className="w-full rounded-xl border border-border bg-background p-4 text-sm outline-none transition-colors focus:border-accent disabled:bg-secondary/50 disabled:text-muted-foreground"
+=======
+              readOnly
+              rows={3}
+              placeholder="Vui lòng tải file cấu hình để tự điền..."
+              value={formData.description}
+              className="w-full rounded-xl border border-border bg-secondary/30 p-4 text-sm outline-none cursor-default text-muted-foreground"
+>>>>>>> Stashed changes
             />
           </div>
 
@@ -206,11 +383,18 @@ export function AiModelForm({ id }: AiModelFormProps) {
                 type="text"
                 required
                 maxLength={255}
+<<<<<<< Updated upstream
                 disabled={disabledForm}
                 placeholder="VD: adsus/endometriosis-ai"
                 value={formData.hfRepoId}
                 onChange={handleChange}
                 className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm font-mono outline-none transition-colors focus:border-accent disabled:bg-secondary/50 disabled:text-muted-foreground"
+=======
+                readOnly
+                placeholder="Tự điền..."
+                value={formData.hfRepoId}
+                className="h-11 w-full rounded-xl border border-border bg-secondary/30 px-4 text-sm font-mono outline-none cursor-default text-muted-foreground"
+>>>>>>> Stashed changes
               />
             </div>
             <div>
@@ -223,11 +407,18 @@ export function AiModelForm({ id }: AiModelFormProps) {
                 type="text"
                 required
                 maxLength={255}
+<<<<<<< Updated upstream
                 disabled={disabledForm}
                 placeholder="VD: best.pt"
                 value={formData.hfFilename}
                 onChange={handleChange}
                 className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm font-mono outline-none transition-colors focus:border-accent disabled:bg-secondary/50 disabled:text-muted-foreground"
+=======
+                readOnly
+                placeholder="Tự điền..."
+                value={formData.hfFilename}
+                className="h-11 w-full rounded-xl border border-border bg-secondary/30 px-4 text-sm font-mono outline-none cursor-default text-muted-foreground"
+>>>>>>> Stashed changes
               />
             </div>
           </div>
@@ -249,10 +440,17 @@ export function AiModelForm({ id }: AiModelFormProps) {
                   step="0.01"
                   min="0"
                   max="100"
+<<<<<<< Updated upstream
                   disabled={disabledForm}
                   value={formData.metricsPrecision ?? ""}
                   onChange={handleChange}
                   className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-accent disabled:bg-secondary/50"
+=======
+                  readOnly
+                  placeholder="Tự điền..."
+                  value={formData.metricsPrecision ?? ""}
+                  className="h-10 w-full rounded-lg border border-border bg-secondary/30 px-3 text-sm outline-none cursor-default text-muted-foreground"
+>>>>>>> Stashed changes
                 />
               </div>
               <div>
@@ -266,10 +464,17 @@ export function AiModelForm({ id }: AiModelFormProps) {
                   step="0.01"
                   min="0"
                   max="100"
+<<<<<<< Updated upstream
                   disabled={disabledForm}
                   value={formData.metricsMap50 ?? ""}
                   onChange={handleChange}
                   className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-accent disabled:bg-secondary/50"
+=======
+                  readOnly
+                  placeholder="Tự điền..."
+                  value={formData.metricsMap50 ?? ""}
+                  className="h-10 w-full rounded-lg border border-border bg-secondary/30 px-3 text-sm outline-none cursor-default text-muted-foreground"
+>>>>>>> Stashed changes
                 />
               </div>
               <div>
@@ -283,10 +488,17 @@ export function AiModelForm({ id }: AiModelFormProps) {
                   step="0.001"
                   min="0"
                   max="1"
+<<<<<<< Updated upstream
                   disabled={disabledForm}
                   value={formData.metricsRecall ?? ""}
                   onChange={handleChange}
                   className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-accent disabled:bg-secondary/50"
+=======
+                  readOnly
+                  placeholder="Tự điền..."
+                  value={formData.metricsRecall ?? ""}
+                  className="h-10 w-full rounded-lg border border-border bg-secondary/30 px-3 text-sm outline-none cursor-default text-muted-foreground"
+>>>>>>> Stashed changes
                 />
               </div>
             </div>
@@ -303,7 +515,15 @@ export function AiModelForm({ id }: AiModelFormProps) {
             {isEditing ? "Lưu thay đổi" : "Đăng ký mô hình"}
           </button>
         </div>
+<<<<<<< Updated upstream
       </form>
+=======
+              </form>
+            </>
+          )}
+        </div>
+      </div>
+>>>>>>> Stashed changes
     </div>
   );
 }
