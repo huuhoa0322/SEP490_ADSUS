@@ -11,6 +11,9 @@ using ADSUS_BE.BLL.Engagement.Interfaces;
 using ADSUS_BE.BLL.Engagement.Services;
 using ADSUS_BE.BLL.AIModelManagement.Interfaces;
 using ADSUS_BE.BLL.AIModelManagement.Services;
+using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
+using ADSUS_BE.BLL.PrescriptionAdherence.Services;
+using ADSUS_BE.Jobs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
@@ -28,6 +31,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Npgsql;
+using Quartz;
 using Serilog;
 
 namespace ADSUS_BE
@@ -409,6 +413,42 @@ namespace ADSUS_BE
 
             // DAL — Repositories
             builder.Services.AddScoped<IBlogPostRepository, BlogPostRepository>();
+
+            // BLL — Module 7: Prescription & Medication Adherence
+            builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
+            builder.Services.AddScoped<IPrescriptionItemRepository, PrescriptionItemRepository>();
+            builder.Services.AddScoped<IMedicationIntakeLogRepository, MedicationIntakeLogRepository>();
+            builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
+            // AdherenceCalculator is static — used directly, not injected.
+            builder.Services.AddSingleton<IMedicationIntakeScheduleGenerator, MedicationIntakeScheduleGenerator>();
+            builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
+            builder.Services.AddScoped<IMedicationIntakeService, MedicationIntakeService>();
+
+            // ---------- Quartz JOB-01: Medication Reminder ----------
+            builder.Services.AddQuartz(q =>
+            {
+                // Dev: every 30 seconds. Prod: every 1 minute (override via appsettings).
+                var devCron = "0/30 * * * * ?";       // every 30 sec
+                var prodCron = "0 0/1 * * * ?";       // every 1 min
+
+                var cronExpression = builder.Environment.IsDevelopment()
+                    ? devCron
+                    : prodCron;
+
+                var jobKey = new Quartz.JobKey("MedicationReminderJob", "medication");
+
+                q.AddJob<MedicationReminderJob>(opts => opts
+                    .WithIdentity(jobKey)
+                    .StoreDurably());
+
+                q.AddTrigger(opts => opts
+                    .ForJob(jobKey)
+                    .WithIdentity("MedicationReminderTrigger", "medication")
+                    .WithCronSchedule(cronExpression));
+            });
+
+            builder.Services.AddQuartzHostedService(q => q
+                .WaitForJobsToComplete = true);
 
             // Scans the whole BLL assembly, so validators added by other modules are picked
             // up automatically.
