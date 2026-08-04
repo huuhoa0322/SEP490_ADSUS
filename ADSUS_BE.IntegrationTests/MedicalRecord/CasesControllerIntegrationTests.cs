@@ -216,6 +216,20 @@ public class CasesControllerIntegrationTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetCasesByPatientProfileId_CalledByPatientRole_Returns403Forbidden()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _patientUser);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases?patientProfileId={Guid.NewGuid()}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     // ---------- #22 GET /cases/{caseId}/ultrasound-images ----------
 
     [Fact]
