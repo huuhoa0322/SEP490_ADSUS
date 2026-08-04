@@ -1,0 +1,298 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using ADSUS_BE.BLL.Auth.Interfaces;
+using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.MedicalRecord.DTOs;
+using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.ExternalServices;
+using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Moq;
+
+namespace ADSUS_BE.IntegrationTests.MedicalRecord;
+
+/// <summary>UC-07, UC-08, UC-12 — #20–#25, #27.</summary>
+public class CasesControllerIntegrationTests
+{
+    private readonly Mock<ICaseRepository> _cases = new();
+    private readonly Mock<IUltrasoundImageRepository> _images = new();
+    private readonly Mock<IPatientProfileRepository> _profiles = new();
+    private readonly Mock<IUserRepository> _users = new();
+    private readonly Mock<IFileStorageService> _storage = new();
+
+    private readonly User _doctor = new()
+    {
+        UserId = Guid.NewGuid(), FullName = "BS. Lê Minh Hoàng", Phone = "0913456789",
+        PasswordHash = "x", Role = UserRole.Doctor, Status = UserStatus.Active,
+        CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+    };
+
+    private readonly User _patientUser = new()
+    {
+        UserId = Guid.NewGuid(), FullName = "Nguyễn Thị Hoa", Phone = "0981111001",
+        PasswordHash = "x", Role = UserRole.Patient, Status = UserStatus.Active,
+        CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+    };
+
+    private PatientProfile MakePatientProfile() => new()
+    {
+        PatientProfileId = Guid.NewGuid(), UserId = _patientUser.UserId, User = _patientUser,
+        Gender = GenderType.Female, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+    };
+
+    private Case MakeCase(PatientProfile profile, CaseStatus status) => new()
+    {
+        CaseId = Guid.NewGuid(), PatientProfileId = profile.PatientProfileId, PatientProfile = profile,
+        DoctorId = _doctor.UserId, Doctor = _doctor,
+        VisitDate = DateOnly.FromDateTime(DateTime.UtcNow), Status = status,
+        FinalDiagnosis = status == CaseStatus.Confirmed ? "U tuyến xơ vú phải (BI-RADS 3)" : null,
+        DoctorConclusion = status == CaseStatus.Confirmed ? "Theo dõi định kỳ" : null,
+        CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+    };
+
+    // ---------- #23 GET /cases/{id} ----------
+
+    [Fact]
+    public async Task GetCaseById_CalledByDoctor_Returns200WithFullStaffShape()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Confirmed);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
+        Assert.Equal(200, body!.Code);
+        Assert.NotNull(body.Data!.PatientProfile); // chỉ bản Staff mới có field này
+    }
+
+    [Fact]
+    public async Task GetCaseById_CalledByOwningPatientOnConfirmedCase_Returns200WithPatientShape()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _patientUser);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Confirmed);
+        _profiles.Setup(r => r.GetByUserIdAsync(_patientUser.UserId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}");
+
+        // Assert — dùng JsonDocument thay vì ApiResponse<CaseResponse> vì shape thật trả về
+        // là PatientCaseResponse (ít field hơn) khi caller là Patient.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonDocument>();
+        var data = json!.RootElement.GetProperty("data");
+        Assert.False(data.TryGetProperty("clinicalInfo", out _));
+        Assert.False(data.TryGetProperty("ultrasoundImages", out _));
+    }
+
+    [Fact]
+    public async Task GetCaseById_PatientRequestsOwnUnconfirmedCase_Returns404NotFound()
+    {
+        // Arrange — GB-05: ca chưa duyệt của chính họ vẫn phải bị giấu.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _patientUser);
+        var profile = MakePatientProfile();
+        var pendingCase = MakeCase(profile, CaseStatus.Created);
+        _profiles.Setup(r => r.GetByUserIdAsync(_patientUser.UserId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _cases.Setup(r => r.GetDetailAsync(pendingCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(pendingCase);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{pendingCase.CaseId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetCaseById_PatientRequestsAnotherPatientsConfirmedCase_Returns404NotFound()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _patientUser);
+        var callerProfile = MakePatientProfile();
+        var someoneElsesCase = MakeCase(MakePatientProfile(), CaseStatus.Confirmed);
+        _profiles.Setup(r => r.GetByUserIdAsync(_patientUser.UserId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(callerProfile);
+        _cases.Setup(r => r.GetDetailAsync(someoneElsesCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(someoneElsesCase);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{someoneElsesCase.CaseId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    // ---------- #25 GET /cases/me ----------
+
+    [Fact]
+    public async Task GetCasesMe_PatientCaller_Returns200AndDoesNotAcceptStatusParam()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _patientUser);
+        var profile = MakePatientProfile();
+        _profiles.Setup(r => r.GetByUserIdAsync(_patientUser.UserId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _cases.Setup(r => r.SearchByPatientAsync(
+                  profile.PatientProfileId, CaseStatus.Confirmed, "desc", 1, 20, It.IsAny<CancellationToken>()))
+              .ReturnsAsync((new List<Case>(), 0));
+
+        // Act
+        var response = await client.GetAsync("/api/v1/cases/me");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        _cases.Verify(r => r.SearchByPatientAsync(
+            profile.PatientProfileId, CaseStatus.Confirmed, "desc", 1, 20, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCasesMe_CalledByDoctor_Returns403Forbidden()
+    {
+        // Arrange — route dành riêng cho Patient; đồng thời chứng minh {id:guid} không nuốt
+        // nhầm "me" thành 400 (nếu bị nuốt nhầm sẽ ra 400, không phải 403).
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+
+        // Act
+        var response = await client.GetAsync("/api/v1/cases/me");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    // ---------- #24 GET /cases?patientProfileId= ----------
+
+    [Fact]
+    public async Task GetCasesByPatientProfileId_MissingParam_Returns400BadRequest()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+
+        // Act
+        var response = await client.GetAsync("/api/v1/cases");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetCasesByPatientProfileId_ValidRequest_Returns200OkWithPagedResult()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _cases.Setup(r => r.SearchByPatientAsync(
+                  profile.PatientProfileId, null, "desc", 1, 20, It.IsAny<CancellationToken>()))
+              .ReturnsAsync((new List<Case>(), 0));
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases?patientProfileId={profile.PatientProfileId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    // ---------- #22 GET /cases/{caseId}/ultrasound-images ----------
+
+    [Fact]
+    public async Task GetUltrasoundImages_CaseExists_Returns200WithImageList()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Created);
+        var image = new UltrasoundImage
+        {
+            ImageId = Guid.NewGuid(), CaseId = medicalCase.CaseId,
+            FileRef = "path/anh.png", UploadedAt = DateTime.UtcNow,
+        };
+        _cases.Setup(r => r.GetByIdAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _images.Setup(r => r.ListByCaseAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+               .ReturnsAsync(new List<UltrasoundImage> { image });
+        _storage.Setup(s => s.CreateSignedUrlAsync(image.FileRef, It.IsAny<CancellationToken>()))
+                .ReturnsAsync("https://signed-url.example/anh.png");
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}/ultrasound-images");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content
+            .ReadFromJsonAsync<ApiResponse<IReadOnlyList<UltrasoundImageResponse>>>();
+        Assert.Single(body!.Data!);
+    }
+
+    [Fact]
+    public async Task GetUltrasoundImages_CalledByPatientRole_Returns403Forbidden()
+    {
+        // Arrange — chỉ Doctor/Nurse, kể cả với ca của chính họ.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _patientUser);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{Guid.NewGuid()}/ultrasound-images");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    // ---- helpers (dùng chung cho cả Task 13, 14 nối tiếp vào file này) ----
+
+    private WebApplicationFactory<Program> MakeApp() =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<ICaseRepository>();
+                services.AddScoped(_ => _cases.Object);
+                services.RemoveAll<IUltrasoundImageRepository>();
+                services.AddScoped(_ => _images.Object);
+                services.RemoveAll<IPatientProfileRepository>();
+                services.AddScoped(_ => _profiles.Object);
+                services.RemoveAll<IUserRepository>();
+                services.AddScoped(_ => _users.Object);
+                services.RemoveAll<IFileStorageService>();
+                services.AddScoped(_ => _storage.Object);
+            });
+        });
+
+    private HttpClient MakeClientWithToken(WebApplicationFactory<Program> app, User caller)
+    {
+        // Pipeline xác thực gọi IUserRepository.GetByIdAsync(callerId) để kiểm tra tài khoản
+        // chưa bị khoá (AccountStatusJwtEvents) — PHẢI mock caller ở đây (bài học từ Task 10).
+        _users.Setup(r => r.GetByIdAsync(caller.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(caller);
+
+        using var scope = app.Services.CreateScope();
+        var token = scope.ServiceProvider.GetRequiredService<IJwtTokenService>().GenerateAccessToken(caller);
+        var client = app.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
+    }
+}
