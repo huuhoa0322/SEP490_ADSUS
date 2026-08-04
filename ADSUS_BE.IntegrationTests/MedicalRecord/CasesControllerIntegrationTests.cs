@@ -264,6 +264,33 @@ public class CasesControllerIntegrationTests
 
     // ---- helpers (dùng chung cho cả Task 13, 14 nối tiếp vào file này) ----
 
+    private static MultipartFormDataContent MakeCreateCaseForm(
+        Guid patientProfileId, Guid responsibleDoctorId, string? clinicalInfo, byte[]? imageBytes)
+    {
+        var form = new MultipartFormDataContent
+        {
+            { new StringContent(patientProfileId.ToString()), "patientProfileId" },
+            { new StringContent(responsibleDoctorId.ToString()), "responsibleDoctorId" },
+        };
+
+        if (clinicalInfo is not null)
+        {
+            form.Add(new StringContent(clinicalInfo), "clinicalInfo");
+        }
+
+        if (imageBytes is not null)
+        {
+            var imageContent = new ByteArrayContent(imageBytes);
+            imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            form.Add(imageContent, "images", "anh.png");
+        }
+
+        return form;
+    }
+
+    private static readonly byte[] ValidPngBytes =
+        { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00 };
+
     private WebApplicationFactory<Program> MakeApp() =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -294,5 +321,178 @@ public class CasesControllerIntegrationTests
         var client = app.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
+    }
+
+    // ---------- #20 POST /cases ----------
+
+    [Fact]
+    public async Task PostCases_ValidMultipartRequest_Returns201Created()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+
+        _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _users.Setup(r => r.GetByIdAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_doctor);
+        _storage.Setup(s => s.UploadAsync(
+                    It.IsAny<Stream>(), It.IsAny<string>(), "image/png", It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Stream _, string path, string _, CancellationToken _) => path);
+
+        Case? createdCase = null;
+        _cases.Setup(r => r.CreateWithImagesAsync(
+                  It.IsAny<Case>(), It.IsAny<IReadOnlyList<UltrasoundImage>>(), It.IsAny<CancellationToken>()))
+              .Callback<Case, IReadOnlyList<UltrasoundImage>, CancellationToken>((c, imgs, _) =>
+              {
+                  c.PatientProfile = profile;
+                  c.Doctor = _doctor;
+                  c.UltrasoundImages = imgs.ToList();
+                  createdCase = c;
+              })
+              .ReturnsAsync((Case c, IReadOnlyList<UltrasoundImage> _, CancellationToken _) => c);
+        _cases.Setup(r => r.GetDetailAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(() => createdCase);
+
+        using var form = MakeCreateCaseForm(profile.PatientProfileId, _doctor.UserId, "Đau vú trái", ValidPngBytes);
+
+        // Act
+        var response = await client.PostAsync("/api/v1/cases", form);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
+        Assert.Equal("CREATED", body!.Data!.Status);
+    }
+
+    [Fact]
+    public async Task PostCases_NoImageAttached_Returns422UnprocessableEntity()
+    {
+        // Arrange — AF-02: #20 trả 422 (khác #21, xem flag N2).
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _users.Setup(r => r.GetByIdAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_doctor);
+
+        using var form = MakeCreateCaseForm(profile.PatientProfileId, _doctor.UserId, null, imageBytes: null);
+
+        // Act
+        var response = await client.PostAsync("/api/v1/cases", form);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostCases_ResponsibleDoctorIsNurseAccount_Returns422UnprocessableEntity()
+    {
+        // Arrange — GB-04.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var nurse = new User
+        {
+            UserId = Guid.NewGuid(), FullName = "ĐD. Võ Thị Thu Hà", Phone = "0915678901",
+            PasswordHash = "x", Role = UserRole.Nurse, Status = UserStatus.Active,
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        };
+        _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _users.Setup(r => r.GetByIdAsync(nurse.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(nurse);
+
+        using var form = MakeCreateCaseForm(profile.PatientProfileId, nurse.UserId, null, ValidPngBytes);
+
+        // Act
+        var response = await client.PostAsync("/api/v1/cases", form);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostCases_CalledByPatientRole_Returns403Forbidden()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _patientUser);
+        using var form = MakeCreateCaseForm(Guid.NewGuid(), Guid.NewGuid(), null, ValidPngBytes);
+
+        // Act
+        var response = await client.PostAsync("/api/v1/cases", form);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    // ---------- #21 POST /cases/{caseId}/ultrasound-images ----------
+
+    [Fact]
+    public async Task PostUltrasoundImages_ValidRequestOnCreatedCase_Returns201Created()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Created);
+        _cases.Setup(r => r.GetByIdAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _storage.Setup(s => s.UploadAsync(
+                    It.IsAny<Stream>(), It.IsAny<string>(), "image/png", It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Stream _, string path, string _, CancellationToken _) => path);
+
+        using var form = new MultipartFormDataContent();
+        var imageContent = new ByteArrayContent(ValidPngBytes);
+        imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        form.Add(imageContent, "images", "anh2.png");
+        form.Add(new StringContent("Ảnh góc nghiêng"), "note");
+
+        // Act
+        var response = await client.PostAsync($"/api/v1/cases/{medicalCase.CaseId}/ultrasound-images", form);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostUltrasoundImages_NoImageAttached_Returns400BadRequest()
+    {
+        // Arrange — NGƯỢC #20: #21 trả 400 cho cùng lỗi (flag N2).
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        using var form = new MultipartFormDataContent();
+
+        // Act
+        var response = await client.PostAsync($"/api/v1/cases/{Guid.NewGuid()}/ultrasound-images", form);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostUltrasoundImages_CaseAlreadyConfirmed_Returns422UnprocessableEntity()
+    {
+        // Arrange — GB-01.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var confirmedCase = MakeCase(profile, CaseStatus.Confirmed);
+        _cases.Setup(r => r.GetByIdAsync(confirmedCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(confirmedCase);
+
+        using var form = new MultipartFormDataContent();
+        var imageContent = new ByteArrayContent(ValidPngBytes);
+        imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        form.Add(imageContent, "images", "anh.png");
+
+        // Act
+        var response = await client.PostAsync($"/api/v1/cases/{confirmedCase.CaseId}/ultrasound-images", form);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
     }
 }
