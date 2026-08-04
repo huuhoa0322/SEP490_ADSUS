@@ -11,10 +11,7 @@ import { ConfirmDialog } from "@/features/users/components/confirm-dialog";
 import { useActivateAiModel, useAiModelList } from "../hooks/use-ai-models";
 import type { AiModelVersion } from "../types/ai-model.types";
 import { AiModelDetailDialog } from "./ai-model-detail-dialog";
-<<<<<<< Updated upstream
-=======
 import { AiModelFormDialog } from "./ai-model-form";
->>>>>>> Stashed changes
 
 function PagerButton({
   children,
@@ -51,11 +48,8 @@ export function AiModelList() {
   const [selectedModel, setSelectedModel] = useState<AiModelVersion | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [modelToActivate, setModelToActivate] = useState<AiModelVersion | null>(null);
-<<<<<<< Updated upstream
-=======
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingModelId, setEditingModelId] = useState<string | undefined>(undefined);
->>>>>>> Stashed changes
 
   const handleOpenDetail = (model: AiModelVersion) => {
     setSelectedModel(model);
@@ -85,25 +79,16 @@ export function AiModelList() {
             Quản lý và kích hoạt các phiên bản mô hình AI nhận diện bệnh.
           </p>
         </div>
-<<<<<<< Updated upstream
-        <Link
-          href="/admin/ai-models/new"
-=======
         <button
           onClick={() => {
             setEditingModelId(undefined);
             setIsFormOpen(true);
           }}
->>>>>>> Stashed changes
           className="flex h-12 items-center justify-center gap-2 rounded-full bg-accent px-6 font-heading text-sm font-600 tracking-wider text-white transition-colors hover:bg-accent/90"
         >
           <Plus className="size-5" />
           Đăng ký Model
-<<<<<<< Updated upstream
-        </Link>
-=======
         </button>
->>>>>>> Stashed changes
       </div>
 
       {/* Bộ lọc */}
@@ -208,25 +193,16 @@ export function AiModelList() {
                     </button>
                     {model.status === "Inactive" && (
                       <>
-<<<<<<< Updated upstream
-                        <Link
-                          href={`/admin/ai-models/${model.modelVersionId}`}
-=======
                         <button
                           onClick={() => {
                             setEditingModelId(model.modelVersionId);
                             setIsFormOpen(true);
                           }}
->>>>>>> Stashed changes
                           title="Sửa thông tin"
                           className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
                         >
                           <Pencil className="size-4" />
-<<<<<<< Updated upstream
-                        </Link>
-=======
                         </button>
->>>>>>> Stashed changes
                         <button
                           onClick={() => setModelToActivate(model)}
                           title="Kích hoạt mô hình này"
@@ -318,8 +294,6 @@ export function AiModelList() {
           resetActivate();
         }}
       />
-<<<<<<< Updated upstream
-=======
 
       <AiModelFormDialog
         open={isFormOpen}
@@ -327,7 +301,6 @@ export function AiModelList() {
         onClose={() => setIsFormOpen(false)}
         onSuccess={() => setIsFormOpen(false)}
       />
->>>>>>> Stashed changes
     </div>
   );
 }
