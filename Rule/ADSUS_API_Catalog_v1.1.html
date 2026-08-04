@@ -1,0 +1,2458 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ADSUS — RESTful API Catalog (v1.1)</title>
+        <style>
+            :root {
+                --bg: #f7f8fa;
+                --surface: #ffffff;
+                --text: #1a1d23;
+                --muted: #5b6270;
+                --border: #e2e5ea;
+                --accent: #2563eb;
+                --accent-soft: #eaf1ff;
+                --good: #15803d;
+                --good-bg: #eafaf0;
+                --bad: #b91c1c;
+                --bad-bg: #fdecec;
+                --warn: #b45309;
+                --warn-bg: #fef3e2;
+                --code-bg: #f1f3f6;
+                --admin: #7c3aed;
+                --admin-bg: #f2eaff;
+                --patient: #c2410c;
+                --patient-bg: #fef1e7;
+                --doctor: #0f766e;
+                --doctor-bg: #e7faf7;
+                --neutral: #475569;
+                --neutral-bg: #eef1f5;
+            }
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --bg: #14161a;
+                    --surface: #1c1f26;
+                    --text: #e7e9ee;
+                    --muted: #9aa2b1;
+                    --border: #2c303a;
+                    --accent: #7aa2ff;
+                    --accent-soft: #1e2740;
+                    --good: #4ade80;
+                    --good-bg: #123322;
+                    --bad: #f87171;
+                    --bad-bg: #3a1a1a;
+                    --warn: #fbbf24;
+                    --warn-bg: #3a2c10;
+                    --code-bg: #20232b;
+                    --admin: #c4b5fd;
+                    --admin-bg: #2c2140;
+                    --patient: #fb923c;
+                    --patient-bg: #3a2412;
+                    --doctor: #5eead4;
+                    --doctor-bg: #0f2b28;
+                    --neutral: #cbd5e1;
+                    --neutral-bg: #262b34;
+                }
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--text);
+                font-family:
+                    "Segoe UI",
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    Roboto,
+                    Arial,
+                    sans-serif;
+                line-height: 1.6;
+                padding: 0 0 60px;
+            }
+            .wrap {
+                max-width: 1280px;
+                margin: 0 auto;
+                padding: 32px 20px;
+            }
+            header.doc-header {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                padding: 28px 32px;
+                margin-bottom: 24px;
+            }
+            header.doc-header h1 {
+                margin: 0 0 6px;
+                font-size: 1.7rem;
+            }
+            header.doc-header .sub {
+                color: var(--muted);
+                font-size: 0.95rem;
+            }
+            .meta-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 18px;
+                font-size: 0.9rem;
+            }
+            .meta-table td {
+                padding: 6px 10px;
+                border-top: 1px solid var(--border);
+                vertical-align: top;
+            }
+            .meta-table td:first-child {
+                color: var(--muted);
+                width: 190px;
+                font-weight: 600;
+            }
+            h2 {
+                font-size: 1.2rem;
+                margin-top: 36px;
+                padding-bottom: 8px;
+                border-bottom: 2px solid var(--accent);
+                color: var(--text);
+            }
+            h3 {
+                font-size: 1.02rem;
+                margin-top: 22px;
+                color: var(--text);
+            }
+            section {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                padding: 24px 28px;
+                margin-bottom: 20px;
+            }
+            p {
+                color: var(--text);
+            }
+            code {
+                font-family: "Cascadia Code", "Consolas", monospace;
+                background: var(--code-bg);
+                padding: 1px 5px;
+                border-radius: 4px;
+                font-size: 0.88em;
+            }
+
+            .legend-grid {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin: 14px 0 4px;
+            }
+            .badge {
+                display: inline-block;
+                padding: 3px 10px;
+                border-radius: 999px;
+                font-weight: 600;
+                font-size: 0.78rem;
+                white-space: nowrap;
+            }
+            .auth-public {
+                background: var(--good-bg);
+                color: var(--good);
+            }
+            .auth-protected {
+                background: var(--accent-soft);
+                color: var(--accent);
+            }
+            .auth-admin {
+                background: var(--admin-bg);
+                color: var(--admin);
+            }
+            .auth-doctor {
+                background: var(--doctor-bg);
+                color: var(--doctor);
+            }
+            .auth-patient {
+                background: var(--patient-bg);
+                color: var(--patient);
+            }
+            .auth-mixed {
+                background: var(--warn-bg);
+                color: var(--warn);
+            }
+            .auth-na {
+                background: var(--neutral-bg);
+                color: var(--neutral);
+            }
+            .tag {
+                display: inline-block;
+                padding: 1px 7px;
+                border-radius: 5px;
+                font-size: 0.72rem;
+                font-weight: 700;
+                letter-spacing: 0.02em;
+                margin-left: 6px;
+            }
+            .tag-crud {
+                background: var(--accent-soft);
+                color: var(--accent);
+            }
+            .tag-action {
+                background: var(--warn-bg);
+                color: var(--warn);
+            }
+            .tag-na {
+                background: var(--neutral-bg);
+                color: var(--neutral);
+            }
+            .tag-new {
+                background: var(--good-bg);
+                color: var(--good);
+            }
+            .method {
+                font-family: "Cascadia Code", "Consolas", monospace;
+                font-weight: 700;
+                padding: 2px 8px;
+                border-radius: 5px;
+                font-size: 0.82rem;
+            }
+            .m-GET {
+                background: var(--good-bg);
+                color: var(--good);
+            }
+            .m-POST {
+                background: var(--accent-soft);
+                color: var(--accent);
+            }
+            .m-PUT {
+                background: var(--warn-bg);
+                color: var(--warn);
+            }
+            .m-PATCH {
+                background: var(--admin-bg);
+                color: var(--admin);
+            }
+            .m-DELETE {
+                background: var(--bad-bg);
+                color: var(--bad);
+            }
+            .m-NA {
+                background: var(--neutral-bg);
+                color: var(--neutral);
+            }
+
+            .table-scroll {
+                overflow-x: auto;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+            }
+            table.catalog {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 0.86rem;
+                min-width: 1180px;
+            }
+            table.catalog thead th {
+                position: sticky;
+                top: 0;
+                background: var(--accent-soft);
+                color: var(--text);
+                font-weight: 700;
+                padding: 10px 10px;
+                text-align: left;
+                border-bottom: 2px solid var(--accent);
+                white-space: nowrap;
+                z-index: 1;
+            }
+            table.catalog td {
+                border-top: 1px solid var(--border);
+                padding: 9px 10px;
+                vertical-align: top;
+            }
+            table.catalog td.num {
+                color: var(--muted);
+                font-variant-numeric: tabular-nums;
+                width: 34px;
+            }
+            table.catalog td.module-cell {
+                white-space: nowrap;
+                font-weight: 600;
+                color: var(--muted);
+            }
+            table.catalog td.endpoint-cell {
+                font-family: "Cascadia Code", "Consolas", monospace;
+                font-size: 0.83rem;
+                white-space: nowrap;
+            }
+            table.catalog tbody tr:hover td {
+                background: rgba(37, 99, 235, 0.05);
+            }
+            table.catalog tr.module-start td {
+                border-top: 2px solid var(--accent);
+            }
+            table.catalog tr.na-row td {
+                opacity: 0.75;
+                font-style: italic;
+            }
+            table.catalog tr.new-row td {
+                background: rgba(21, 128, 61, 0.06);
+            }
+
+            table.summary {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 14px 0;
+                font-size: 0.9rem;
+            }
+            table.summary th,
+            table.summary td {
+                border: 1px solid var(--border);
+                padding: 8px 12px;
+                text-align: left;
+            }
+            table.summary th {
+                background: var(--accent-soft);
+            }
+            table.summary td.count {
+                text-align: center;
+                font-weight: 700;
+                font-variant-numeric: tabular-nums;
+            }
+            table.summary tr.total-row td {
+                font-weight: 700;
+                background: rgba(127, 127, 127, 0.05);
+            }
+
+            ul.notes {
+                padding-left: 22px;
+            }
+            ul.notes li {
+                margin-bottom: 8px;
+            }
+            .note-box {
+                margin-top: 20px;
+                padding: 14px 18px;
+                border: 1px dashed var(--border);
+                border-radius: 10px;
+                color: var(--muted);
+                font-size: 0.88rem;
+            }
+            .note-box.flag {
+                border-color: var(--warn);
+                background: var(--warn-bg);
+                color: var(--text);
+            }
+            .note-box.changelog {
+                border-color: var(--good);
+                background: var(--good-bg);
+                color: var(--text);
+                border-style: solid;
+            }
+            .toc {
+                font-size: 0.9rem;
+            }
+            .toc a {
+                color: var(--accent);
+                text-decoration: none;
+            }
+            .toc a:hover {
+                text-decoration: underline;
+            }
+            footer.doc-footer {
+                color: var(--muted);
+                font-size: 0.82rem;
+                text-align: center;
+                margin-top: 30px;
+            }
+            @media (max-width: 640px) {
+                section {
+                    padding: 18px;
+                }
+                header.doc-header {
+                    padding: 20px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <header class="doc-header">
+                <h1>ADSUS — RESTful API Catalog</h1>
+                <div class="sub">
+                    Full endpoint inventory derived from the PRD (Report 3.0)
+                    and the Use Case Specification (Report 3.1), applying the
+                    routing/contract rules already ratified in
+                    <code>api_design_rules_v0.2.md</code>.
+                </div>
+                <table class="meta-table">
+                    <tr>
+                        <td>Document version</td>
+                        <td>v1.1 — 2026-07-30</td>
+                    </tr>
+                    <tr>
+                        <td>Role</td>
+                        <td>
+                            Senior API Architect pass — endpoint extraction
+                            &amp; contract mapping, not detailed schema design
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Prepared for</td>
+                        <td>
+                            ADSUS (AI Automated Detection and Segmentation of
+                            Abnormal Structures Based on Ultrasound Images and
+                            Clinical Information)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Source — L1/L2 context</td>
+                        <td>
+                            <code>.ai-context/project_context.md</code>,
+                            <code
+                                >.ai-context/api_design_rule/api_design_rules_v0.2.md</code
+                            >
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Source — business/UC</td>
+                        <td>
+                            <code>Reports_md/Report_3.0_PRD_ADSUS_md.md</code>
+                            (v1.23) ·
+                            <code>Reports_md/Report_3.1_UCS_ADSUS.md</code>
+                            (v1.2, 26/26 UCs + Appendix A)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Coverage</td>
+                        <td>
+                            All 26 UCs (UC-01–UC-26), 40 FTs, 10 modules — every
+                            UC maps to ≥1 endpoint below
+                        </td>
+                    </tr>
+                </table>
+                <div class="note-box flag">
+                    <strong>Source substitution note:</strong> the linked
+                    <code>Report_3.1_UCS_Template_md.md</code> is the
+                    <em>blank</em> UCS template (all fields are literal
+                    <code>{{placeholders}}</code>, no ADSUS content). The actual
+                    filled Use Case Specification — 26/26 UCs, version 1.2,
+                    dated 2026-07-23 — lives at
+                    <code>Reports_md/Report_3.1_UCS_ADSUS.md</code>. This
+                    catalog was built from that document instead, since it is
+                    the one containing ADSUS's real Main Flows, Business Rules,
+                    and Request Fields per UC.
+                </div>
+                <div class="note-box changelog">
+                    <strong>Changelog v1.0 → v1.1</strong> (Senior API Architect
+                    review pass, 2026-07-30):
+                    <ul style="margin: 8px 0 0; padding-left: 20px">
+                        <li>
+                            Added <code>GET /api/v1/users/me</code> (#8) —
+                            session/profile hydration was missing; needed by
+                            UC-01 (post-login) and UC-10 (prefill the edit
+                            form).
+                        </li>
+                        <li>
+                            Added
+                            <code>POST /api/v1/auth/biometric-devices</code>
+                            (#5) — UC-02's BR-01 requires an explicit
+                            device-pairing step that the login endpoint alone
+                            cannot perform.
+                        </li>
+                        <li>
+                            Split
+                            <code>GET /api/v1/cases?patientProfileId=</code>
+                            (#24) into a staff-only query-param endpoint and a
+                            new self-scoped
+                            <code>GET /api/v1/cases/me</code> (#25) for Patient
+                            — the single path previously mixed two structurally
+                            different scoping mechanisms under one contract.
+                        </li>
+                        <li>
+                            Renamed
+                            <code>PUT /api/v1/reminder-preferences</code> to
+                            <code>PUT /api/v1/reminder-preferences/{slot}</code>
+                            (#45) — the previous form was the only PUT/PATCH in
+                            the catalog with no identifier in the path.
+                        </li>
+                        <li>
+                            Endpoint count: 60 → 63 (62 real backend endpoints +
+                            1 N/A row).
+                        </li>
+                    </ul>
+                </div>
+            </header>
+
+            <section>
+                <h2 id="legend">Legend &amp; Notation</h2>
+                <p>
+                    <strong>Auth classification</strong> (per
+                    <code>api_design_rules_v0.2.md</code> §6):
+                </p>
+                <div class="legend-grid">
+                    <span class="badge auth-public">Public</span>
+                    <span class="badge auth-protected">Protected</span>
+                    <span class="badge auth-admin"
+                        >Role-restricted (Admin)</span
+                    >
+                    <span class="badge auth-doctor"
+                        >Role-restricted (Doctor / Nurse)</span
+                    >
+                    <span class="badge auth-patient"
+                        >Role-restricted (Patient)</span
+                    >
+                    <span class="badge auth-mixed"
+                        >Role-restricted (mixed / own-data-only)</span
+                    >
+                    <span class="badge auth-na">N/A</span>
+                </div>
+                <p style="margin-top: 14px">
+                    <strong>Endpoint type tag</strong> (per the task's
+                    classification rule):
+                </p>
+                <div class="legend-grid">
+                    <span class="tag tag-crud">CRUD</span> — standard resource
+                    operation, including state transitions expressed as
+                    <code>PATCH + status field</code> (preferred over inventing
+                    an action verb, per §3.3 of the API rules) <br /><span
+                        class="tag tag-action"
+                        >ACTION</span
+                    >
+                    — business logic with no natural REST-CRUD mapping (auth
+                    flows, AI inference trigger, PDF generation, external LLM
+                    call, aggregated read-only views) <br /><span
+                        class="tag tag-na"
+                        >N/A</span
+                    >
+                    — UC has no ADSUS_BE endpoint at all (client-device-only
+                    integration) <br /><span class="tag tag-new"
+                        >NEW in v1.1</span
+                    >
+                    — added or changed by this review pass; see Changelog above
+                </div>
+                <p style="margin-top: 14px">
+                    <strong>Notation:</strong> <code>{id}</code> /
+                    <code>{caseId}</code> = UUID path parameter · query params
+                    are <code>camelCase</code> · every path starts with the
+                    global prefix <code>/api/v1</code> (omitted from column
+                    headers below only for brevity in the section title, always
+                    present in the Endpoint column) · nesting never exceeds 2
+                    levels, matching §3.2 of the API rules. The self-scoped
+                    alias <code>/me</code> (e.g. <code>/users/me</code>,
+                    <code>/cases/me</code>) denotes "this resource, scoped to
+                    the caller's own JWT identity" — a convention used
+                    consistently in this catalog though not yet formalized in
+                    <code>api_design_rules_v0.2.md</code> (see Method &amp;
+                    Boundary Notes below).
+                </p>
+            </section>
+
+            <section>
+                <h2 id="catalog">API Catalog — Grouped by Module</h2>
+                <div class="table-scroll">
+                    <table class="catalog">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Module</th>
+                                <th>Method</th>
+                                <th>Endpoint</th>
+                                <th>Summary</th>
+                                <th>Auth</th>
+                                <th>Actor(s)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- MODULE 1 — Authentication & Account -->
+                            <tr class="module-start">
+                                <td class="num">1</td>
+                                <td class="module-cell">
+                                    Authentication &amp; Account
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/auth/login
+                                </td>
+                                <td>
+                                    Authenticate with phone number + password;
+                                    returns JWT access/refresh tokens and routes
+                                    the caller to their role-based home area
+                                    (UC-01).<span class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-public"
+                                        >Public</span
+                                    >
+                                </td>
+                                <td>All roles</td>
+                            </tr>
+                            <tr>
+                                <td class="num">2</td>
+                                <td class="module-cell">
+                                    Authentication &amp; Account
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/auth/refresh
+                                </td>
+                                <td>
+                                    Exchange a valid refresh token for a new
+                                    access token (UC-01).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-public"
+                                        >Public</span
+                                    >
+                                </td>
+                                <td>All roles</td>
+                            </tr>
+                            <tr>
+                                <td class="num">3</td>
+                                <td class="module-cell">
+                                    Authentication &amp; Account
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/auth/logout
+                                </td>
+                                <td>
+                                    Invalidate the current refresh token, ending
+                                    the signed-in session (UC-01).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected</span
+                                    >
+                                </td>
+                                <td>All roles</td>
+                            </tr>
+                            <tr>
+                                <td class="num">4</td>
+                                <td class="module-cell">
+                                    Authentication &amp; Account
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/auth/biometric-login
+                                </td>
+                                <td>
+                                    Sign in via a device-paired biometric
+                                    credential, valid only after enrollment
+                                    through <code>biometric-devices</code> below
+                                    (UC-02, <em>planned</em>).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-public"
+                                        >Public*</span
+                                    >
+                                </td>
+                                <td>
+                                    Patient
+                                    <span style="color: var(--muted)"
+                                        >(*device-pairing credential, not a user
+                                        JWT)</span
+                                    >
+                                </td>
+                            </tr>
+                            <tr class="new-row">
+                                <td class="num">5</td>
+                                <td class="module-cell">
+                                    Authentication &amp; Account
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/auth/biometric-devices
+                                </td>
+                                <td>
+                                    Enroll (pair) the current device for
+                                    biometric sign-in, callable only from an
+                                    active password-authenticated session;
+                                    stores the device credential and sets
+                                    <code>Users.BiometricEnabled = true</code> —
+                                    the prerequisite step UC-02's BR-01
+                                    requires, which
+                                    <code>biometric-login</code> alone cannot
+                                    perform.<span class="tag tag-action"
+                                        >ACTION</span
+                                    ><span class="tag tag-new"
+                                        >NEW in v1.1</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">6</td>
+                                <td class="module-cell">
+                                    Authentication &amp; Account
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/password-reset-requests
+                                </td>
+                                <td>
+                                    Self-service "Forgot password": validates
+                                    phone + email match, emails a temporary
+                                    password, flags a forced password change on
+                                    next sign-in (UC-03, FT-06).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-public"
+                                        >Public</span
+                                    >
+                                </td>
+                                <td>All roles</td>
+                            </tr>
+                            <tr>
+                                <td class="num">7</td>
+                                <td class="module-cell">
+                                    Authentication &amp; Account
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/users/{id}/reset-password
+                                </td>
+                                <td>
+                                    Admin-triggered fallback reset for another
+                                    account when the holder cannot access email;
+                                    temp password is emailed, never shown on
+                                    screen (UC-03 AF-02).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr class="new-row">
+                                <td class="num">8</td>
+                                <td class="module-cell">
+                                    Authentication &amp; Account
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">/api/v1/users/me</td>
+                                <td>
+                                    Read the signed-in user's own full profile
+                                    (full name, phone, email, date of birth,
+                                    role) — hydrates the session after
+                                    login/page-reload and prefills the edit form
+                                    (UC-01, UC-10).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    ><span class="tag tag-new"
+                                        >NEW in v1.1</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected</span
+                                    >
+                                </td>
+                                <td>All roles (own profile)</td>
+                            </tr>
+                            <tr>
+                                <td class="num">9</td>
+                                <td class="module-cell">
+                                    Authentication &amp; Account
+                                </td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">/api/v1/users/me</td>
+                                <td>
+                                    Update the signed-in user's own contact
+                                    profile (full name, email, date of birth);
+                                    phone number is immutable, it is the sole
+                                    login identifier (UC-10).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected</span
+                                    >
+                                </td>
+                                <td>All roles (own profile)</td>
+                            </tr>
+                            <tr>
+                                <td class="num">10</td>
+                                <td class="module-cell">
+                                    Authentication &amp; Account
+                                </td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/users/me/password
+                                </td>
+                                <td>
+                                    Change the signed-in user's own password
+                                    (current + new + confirmation) (UC-25).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected</span
+                                    >
+                                </td>
+                                <td>All roles</td>
+                            </tr>
+
+                            <!-- MODULE 2 — User & Role Management -->
+                            <tr class="module-start">
+                                <td class="num">11</td>
+                                <td class="module-cell">
+                                    User &amp; Role Management
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">/api/v1/users</td>
+                                <td>
+                                    List/search login accounts, paginated, for
+                                    the Admin User List screen (UC-04).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">12</td>
+                                <td class="module-cell">
+                                    User &amp; Role Management
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">/api/v1/users</td>
+                                <td>
+                                    Create a Doctor / Nurse / Patient login
+                                    account; system auto-generates and emails a
+                                    temporary password (UC-04).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">13</td>
+                                <td class="module-cell">
+                                    User &amp; Role Management
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/users/{id}
+                                </td>
+                                <td>
+                                    View one account's admin-facing profile;
+                                    <code>DateOfBirth</code> is omitted when the
+                                    target's role is Patient
+                                    (sensitive_data_rules §5) (UC-04).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">14</td>
+                                <td class="module-cell">
+                                    User &amp; Role Management
+                                </td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/users/{id}
+                                </td>
+                                <td>
+                                    Update an account's role or status,
+                                    including Lock ⇄ Unlock via
+                                    <code>{"status":"LOCKED"|"ACTIVE"}</code>
+                                    (UC-04).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">15</td>
+                                <td class="module-cell">
+                                    User &amp; Role Management
+                                </td>
+                                <td>
+                                    <span class="method m-DELETE">DELETE</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/users/{id}
+                                </td>
+                                <td>
+                                    Soft-delete: deactivate an account (<code
+                                        >Status = DEACTIVATED</code
+                                    >), one-way, never hard-deleted
+                                    (UC-04).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+
+                            <!-- MODULE 3 — Dashboard & Reporting -->
+                            <tr class="module-start">
+                                <td class="num">16</td>
+                                <td class="module-cell">
+                                    Dashboard &amp; Reporting
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/dashboard/statistics?from=&amp;to=
+                                </td>
+                                <td>
+                                    Aggregated, anonymized operational KPIs
+                                    (accounts, cases, AI confirm/reject ratio,
+                                    appointments, adherence rate), filterable by
+                                    date range (UC-05).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+
+                            <!-- MODULE 4 — Medical Record -->
+                            <tr class="module-start">
+                                <td class="num">17</td>
+                                <td class="module-cell">Medical Record</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/patient-profiles
+                                </td>
+                                <td>
+                                    Create a patient's baseline medical profile
+                                    (gender, medical history, allergies), linked
+                                    1–1 to an existing Patient account
+                                    (UC-06).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor, Nurse)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse</td>
+                            </tr>
+                            <tr>
+                                <td class="num">18</td>
+                                <td class="module-cell">Medical Record</td>
+                                <td><span class="method m-PUT">PUT</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/patient-profiles/{id}
+                                </td>
+                                <td>
+                                    Replace/update the baseline profile
+                                    (UC-06).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor, Nurse)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse</td>
+                            </tr>
+                            <tr>
+                                <td class="num">19</td>
+                                <td class="module-cell">Medical Record</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/patient-profiles/{id}
+                                </td>
+                                <td>
+                                    Read one patient's baseline profile
+                                    (UC-06).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor, Nurse)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse</td>
+                            </tr>
+                            <tr>
+                                <td class="num">20</td>
+                                <td class="module-cell">Medical Record</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">/api/v1/cases</td>
+                                <td>
+                                    Create a new visit (Case) with clinical
+                                    symptoms and ≥1 ultrasound image (JPEG/PNG,
+                                    ≤20MB each) in one multipart request;
+                                    attributes the Case to exactly one
+                                    responsible Doctor (GB-04) (UC-07).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor, Nurse)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse</td>
+                            </tr>
+                            <tr>
+                                <td class="num">21</td>
+                                <td class="module-cell">Medical Record</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{caseId}/ultrasound-images
+                                </td>
+                                <td>
+                                    Attach additional ultrasound image(s) to an
+                                    existing, not-yet-Confirmed Case
+                                    (UC-07).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor, Nurse)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse</td>
+                            </tr>
+                            <tr>
+                                <td class="num">22</td>
+                                <td class="module-cell">Medical Record</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{caseId}/ultrasound-images
+                                </td>
+                                <td>
+                                    List the raw ultrasound images uploaded to a
+                                    Case (UC-07, UC-08).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor, Nurse)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse</td>
+                            </tr>
+                            <tr>
+                                <td class="num">23</td>
+                                <td class="module-cell">Medical Record</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{id}
+                                </td>
+                                <td>
+                                    Full record for Doctor/Nurse (raw images, AI
+                                    Findings, all statuses, progression); the
+                                    same path returns only the doctor-confirmed
+                                    conclusion + prescription when called by the
+                                    owning Patient (GB-05) (UC-08).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-mixed"
+                                        >Role-restricted (Doctor, Nurse,
+                                        Patient-own)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse, Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">24</td>
+                                <td class="module-cell">Medical Record</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases?patientProfileId={id}
+                                </td>
+                                <td>
+                                    List a given patient's visits for
+                                    Doctor/Nurse (Web SCR-12);
+                                    <code>patientProfileId</code> is required —
+                                    Patient no longer calls this path (see
+                                    <code>/cases/me</code> below) (UC-08).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor, Nurse)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse</td>
+                            </tr>
+                            <tr class="new-row">
+                                <td class="num">25</td>
+                                <td class="module-cell">Medical Record</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">/api/v1/cases/me</td>
+                                <td>
+                                    List the signed-in Patient's own visits,
+                                    auto-scoped to Confirmed-only (Mobile
+                                    SCR-13) — split out from #24 above so that
+                                    one path no longer mixes an explicit staff
+                                    query param with an implicit self-scope for
+                                    Patient; mirrors the
+                                    <code>/me</code> convention from Module 1
+                                    (UC-08).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    ><span class="tag tag-new"
+                                        >NEW in v1.1</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">26</td>
+                                <td class="module-cell">Medical Record</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/patients?search=&amp;visitStatus=&amp;page=&amp;pageSize=
+                                </td>
+                                <td>
+                                    Search/filter the clinical patient list by
+                                    name, phone, or code, with a visit-status
+                                    filter — distinct DTO from Admin's
+                                    <code>/users</code> (no account/status
+                                    fields) (UC-09).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor, Nurse)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse</td>
+                            </tr>
+                            <tr>
+                                <td class="num">27</td>
+                                <td class="module-cell">Medical Record</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{id}/report
+                                </td>
+                                <td>
+                                    Generate and return the PDF visit report —
+                                    Confirmed conclusion + prescription only,
+                                    never raw AI confidence/unreviewed data
+                                    (UC-12).<span class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-mixed"
+                                        >Role-restricted (Doctor, Nurse,
+                                        Patient-own)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse, Patient</td>
+                            </tr>
+
+                            <!-- MODULE 5 — AI Diagnosis (Core) -->
+                            <tr class="module-start">
+                                <td class="num">28</td>
+                                <td class="module-cell">AI Diagnosis (Core)</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{caseId}/ai-results
+                                </td>
+                                <td>
+                                    Run AI analysis (CLAHE preprocessing + model
+                                    inference) on the Case's images; creates a
+                                    new AI Result at
+                                    <code>PENDING_REVIEW</code> and moves the
+                                    Case to <code>ANALYZED</code> (UC-19).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor)</span
+                                    >
+                                </td>
+                                <td>Doctor</td>
+                            </tr>
+                            <tr>
+                                <td class="num">29</td>
+                                <td class="module-cell">AI Diagnosis (Core)</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{caseId}/ai-results
+                                </td>
+                                <td>
+                                    List all AI Result runs for a Case,
+                                    including their AI Findings (segmentation
+                                    mask, classification, confidence, size)
+                                    (UC-19).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor)</span
+                                    >
+                                </td>
+                                <td>Doctor</td>
+                            </tr>
+                            <tr>
+                                <td class="num">30</td>
+                                <td class="module-cell">AI Diagnosis (Core)</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/ai-results/{id}
+                                </td>
+                                <td>
+                                    Read one AI Result's full detail
+                                    (UC-19).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor)</span
+                                    >
+                                </td>
+                                <td>Doctor</td>
+                            </tr>
+                            <tr>
+                                <td class="num">31</td>
+                                <td class="module-cell">AI Diagnosis (Core)</td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/ai-results/{id}
+                                </td>
+                                <td>
+                                    Confirm or reject a
+                                    <code>PENDING_REVIEW</code> AI Result via
+                                    <code
+                                        >{"status":"CONFIRMED"|"REJECTED","doctorNote":"..."}</code
+                                    >
+                                    — one-way, Doctor-only (GB-01, GB-02)
+                                    (UC-19).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor)</span
+                                    >
+                                </td>
+                                <td>Doctor</td>
+                            </tr>
+                            <tr>
+                                <td class="num">32</td>
+                                <td class="module-cell">AI Diagnosis (Core)</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{caseId}/progress
+                                </td>
+                                <td>
+                                    Read-only prognosis-tracking aggregate:
+                                    conclusion/lesion trend across the patient's
+                                    prior visits, no separate stored entity
+                                    (FT-22) (UC-19).<span class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor)</span
+                                    >
+                                </td>
+                                <td>Doctor</td>
+                            </tr>
+
+                            <!-- MODULE 6 — AI Model Management -->
+                            <tr class="module-start">
+                                <td class="num">33</td>
+                                <td class="module-cell">AI Model Management</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/ai-model-versions
+                                </td>
+                                <td>
+                                    Register a new AI model version (version
+                                    code, artifact URI, change description,
+                                    benchmark metrics) at status
+                                    <code>REGISTERED</code> (UC-20).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">34</td>
+                                <td class="module-cell">AI Model Management</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/ai-model-versions
+                                </td>
+                                <td>
+                                    List registered model versions with status
+                                    and metrics (Sensitivity, Accuracy, AUC)
+                                    (UC-20).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">35</td>
+                                <td class="module-cell">AI Model Management</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/ai-model-versions/{id}
+                                </td>
+                                <td>
+                                    Read one model version's detail/performance
+                                    metrics (UC-20).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">36</td>
+                                <td class="module-cell">AI Model Management</td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/ai-model-versions/{id}
+                                </td>
+                                <td>
+                                    Activate or roll back a version via
+                                    <code>{"status":"ACTIVE"}</code>; the
+                                    previously Active version automatically
+                                    moves to <code>INACTIVE</code> (two-way
+                                    toggle, exception to GB-01) (UC-20).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+
+                            <!-- MODULE 7 — Prescription & Adherence -->
+                            <tr class="module-start">
+                                <td class="num">37</td>
+                                <td class="module-cell">
+                                    Prescription &amp; Adherence
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/prescriptions
+                                </td>
+                                <td>
+                                    Prescribe medication for a Confirmed Case;
+                                    ≥1 item, each with ≥1 intake slot
+                                    (Morning/Noon/Evening) (UC-18).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor)</span
+                                    >
+                                </td>
+                                <td>Doctor</td>
+                            </tr>
+                            <tr>
+                                <td class="num">38</td>
+                                <td class="module-cell">
+                                    Prescription &amp; Adherence
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/medicines?search=
+                                </td>
+                                <td>
+                                    Search/autocomplete the shared Medicine
+                                    catalog while prescribing; an unmatched name
+                                    is auto-added as a new Medicine record
+                                    (UC-18).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor)</span
+                                    >
+                                </td>
+                                <td>Doctor</td>
+                            </tr>
+                            <tr>
+                                <td class="num">39</td>
+                                <td class="module-cell">
+                                    Prescription &amp; Adherence
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/patient-profiles/{id}/prescriptions
+                                </td>
+                                <td>
+                                    List a patient's prescription history
+                                    (UC-11).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-mixed"
+                                        >Role-restricted (Doctor, Nurse,
+                                        Patient-own)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse, Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">40</td>
+                                <td class="module-cell">
+                                    Prescription &amp; Adherence
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/prescriptions/{id}
+                                </td>
+                                <td>
+                                    Read one prescription's detail with its
+                                    items (drug, dosage, intake slots, duration)
+                                    (UC-11).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-mixed"
+                                        >Role-restricted (Doctor, Nurse,
+                                        Patient-own)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse, Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">41</td>
+                                <td class="module-cell">
+                                    Prescription &amp; Adherence
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/prescriptions/{id}/intake-logs
+                                </td>
+                                <td>
+                                    Chronological dose-by-dose intake timeline
+                                    plus the computed Adherence Rate %
+                                    (UC-11).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-mixed"
+                                        >Role-restricted (Doctor, Nurse,
+                                        Patient-own)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse, Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">42</td>
+                                <td class="module-cell">
+                                    Prescription &amp; Adherence
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/medication-intake-logs?status=PENDING
+                                </td>
+                                <td>
+                                    List the signed-in Patient's due/pending
+                                    doses (UC-17).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">43</td>
+                                <td class="module-cell">
+                                    Prescription &amp; Adherence
+                                </td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/medication-intake-logs/{id}
+                                </td>
+                                <td>
+                                    Confirm a dose taken via
+                                    <code>{"status":"TAKEN"}</code>;
+                                    auto-completes the parent Prescription once
+                                    every scheduled dose is Taken (UC-17).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">44</td>
+                                <td class="module-cell">
+                                    Prescription &amp; Adherence
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/reminder-preferences
+                                </td>
+                                <td>
+                                    Read the signed-in Patient's custom reminder
+                                    time for every intake slot (UC-17).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+                            <tr class="new-row">
+                                <td class="num">45</td>
+                                <td class="module-cell">
+                                    Prescription &amp; Adherence
+                                </td>
+                                <td><span class="method m-PUT">PUT</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/reminder-preferences/{slot}
+                                </td>
+                                <td>
+                                    Upsert the custom reminder time for one
+                                    intake slot, identified in the path (e.g.
+                                    <code>.../morning</code>) — now consistent
+                                    with the ID-addressed PUT/PATCH convention
+                                    used everywhere else in this catalog (the
+                                    v1.0 form had no identifier in the path);
+                                    applies to every future prescription, not
+                                    tied to one order (UC-17).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    ><span class="tag tag-new"
+                                        >FIXED in v1.1</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+
+                            <!-- MODULE 8 — Appointment Scheduling -->
+                            <tr class="module-start">
+                                <td class="num">46</td>
+                                <td class="module-cell">
+                                    Appointment Scheduling
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/schedule-slots
+                                </td>
+                                <td>
+                                    Publish a new <code>OPEN</code> schedule
+                                    slot (date, time range, doctor); rejects an
+                                    overlapping time range for the same doctor
+                                    (UC-15).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor, Nurse)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse</td>
+                            </tr>
+                            <tr>
+                                <td class="num">47</td>
+                                <td class="module-cell">
+                                    Appointment Scheduling
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/schedule-slots?doctorId=&amp;slotDate=&amp;status=
+                                </td>
+                                <td>
+                                    List/filter schedule slots — used both by
+                                    Doctor/Nurse managing the calendar and by
+                                    Patient browsing available slots to book
+                                    (UC-13, UC-15).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-mixed"
+                                        >Role-restricted (Doctor, Nurse,
+                                        Patient)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse, Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">48</td>
+                                <td class="module-cell">
+                                    Appointment Scheduling
+                                </td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/schedule-slots/{id}
+                                </td>
+                                <td>
+                                    Close a slot via
+                                    <code>{"status":"CLOSED"}</code> — terminal,
+                                    no reopen; slot status is never affected by
+                                    booking count (no Capacity concept)
+                                    (UC-15).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor, Nurse)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse</td>
+                            </tr>
+                            <tr>
+                                <td class="num">49</td>
+                                <td class="module-cell">
+                                    Appointment Scheduling
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/schedule-slots/{id}/appointments
+                                </td>
+                                <td>
+                                    List the bookings on one slot, so
+                                    Doctor/Nurse can see affected patients
+                                    before closing it (UC-15 AF-02).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Doctor, Nurse)</span
+                                    >
+                                </td>
+                                <td>Doctor, Nurse</td>
+                            </tr>
+                            <tr>
+                                <td class="num">50</td>
+                                <td class="module-cell">
+                                    Appointment Scheduling
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/appointments
+                                </td>
+                                <td>
+                                    Book an <code>OPEN</code> slot; rejects if
+                                    the Patient already holds another
+                                    <code>BOOKED</code> appointment in the same
+                                    window (BR — one active booking per patient
+                                    per slot) (UC-13).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">51</td>
+                                <td class="module-cell">
+                                    Appointment Scheduling
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/appointments/{id}/cancel
+                                </td>
+                                <td>
+                                    Cancel a Booked appointment; requires a
+                                    mandatory
+                                    <code>cancellationReason</code> field — kept
+                                    as an action endpoint since a bare status
+                                    flip cannot express the required-reason gate
+                                    (UC-14).<span class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">52</td>
+                                <td class="module-cell">
+                                    Appointment Scheduling
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/appointments/{id}
+                                </td>
+                                <td>
+                                    Read one of the signed-in Patient's own
+                                    appointments (UC-14).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">53</td>
+                                <td class="module-cell">
+                                    Appointment Scheduling
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/appointments?status=
+                                </td>
+                                <td>
+                                    List the signed-in Patient's own appointment
+                                    history (Booked/Cancelled) (UC-13,
+                                    UC-14).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+                            <tr class="na-row">
+                                <td class="num">54</td>
+                                <td class="module-cell">
+                                    Appointment Scheduling
+                                </td>
+                                <td><span class="method m-NA">—</span></td>
+                                <td class="endpoint-cell">
+                                    N/A — client-device-only
+                                </td>
+                                <td>
+                                    Device-calendar sync is one-way, no
+                                    read-back: the Mobile App calls the OS
+                                    Calendar API (API-02) directly. ADSUS_BE
+                                    exposes <strong>no endpoint</strong> for
+                                    this integration — inventing one would add
+                                    scope not in the UCS (UC-16).<span
+                                        class="tag tag-na"
+                                        >N/A</span
+                                    >
+                                </td>
+                                <td><span class="badge auth-na">N/A</span></td>
+                                <td>Patient (client-side only)</td>
+                            </tr>
+
+                            <!-- MODULE 9 — Health Monitoring -->
+                            <tr class="module-start">
+                                <td class="num">55</td>
+                                <td class="module-cell">Health Monitoring</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/health-logs
+                                </td>
+                                <td>
+                                    Log a daily exercise/diet entry; same-day
+                                    entries accumulate rather than overwrite
+                                    (UC-21).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">56</td>
+                                <td class="module-cell">Health Monitoring</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/health-logs?date=
+                                </td>
+                                <td>
+                                    Read a day's log entries, backing both the
+                                    in-app screen (SCR-23) and the home-screen
+                                    widget (SCR-24) (UC-21).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+
+                            <!-- MODULE 10 — Engagement -->
+                            <tr class="module-start">
+                                <td class="num">57</td>
+                                <td class="module-cell">Engagement</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/service-feedback
+                                </td>
+                                <td>
+                                    Submit a 1–5 star rating with an optional
+                                    free-text comment (UC-22).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">58</td>
+                                <td class="module-cell">Engagement</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/blog-posts?category=
+                                </td>
+                                <td>
+                                    List blog posts; a Patient caller sees
+                                    <code>PUBLISHED</code> only, an Admin caller
+                                    additionally sees <code>DRAFT</code> (GB-05)
+                                    — same endpoint, role-filtered result set
+                                    (UC-23, UC-24).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected†</span
+                                    >
+                                </td>
+                                <td>Patient, Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">59</td>
+                                <td class="module-cell">Engagement</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/blog-posts/{id}
+                                </td>
+                                <td>
+                                    Read one post's full content, subject to the
+                                    same Published/Draft visibility rule (UC-23,
+                                    UC-24).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected†</span
+                                    >
+                                </td>
+                                <td>Patient, Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">60</td>
+                                <td class="module-cell">Engagement</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/blog-posts
+                                </td>
+                                <td>
+                                    Create a new post at status
+                                    <code>DRAFT</code> (UC-24).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">61</td>
+                                <td class="module-cell">Engagement</td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/blog-posts/{id}
+                                </td>
+                                <td>
+                                    Edit content, or publish via
+                                    <code>{"status":"PUBLISHED"}</code>
+                                    (requires title + content, sets publish
+                                    date, one-way per GB-01) (UC-24).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">62</td>
+                                <td class="module-cell">Engagement</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/chat-messages
+                                </td>
+                                <td>
+                                    Ask the AI assistant a general health
+                                    question; forwards context to the external
+                                    LLM (API-03), appends the mandatory GB-02
+                                    disclaimer, and persists the Q&amp;A turn
+                                    (UC-26).<span class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+                            <tr>
+                                <td class="num">63</td>
+                                <td class="module-cell">Engagement</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/chat-messages?page=&amp;pageSize=
+                                </td>
+                                <td>
+                                    Read the signed-in Patient's own saved AI
+                                    Chat History (UC-26).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Patient)</span
+                                    >
+                                </td>
+                                <td>Patient</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p
+                    style="
+                        margin-top: 10px;
+                        font-size: 0.85rem;
+                        color: var(--muted);
+                    "
+                >
+                    † "Protected" here means any authenticated role may call it;
+                    the response set itself is filtered by role (Draft
+                    visibility), not gated by a role check on the endpoint.
+                </p>
+            </section>
+
+            <section>
+                <h2 id="summary">Endpoint Count per Module</h2>
+                <table class="summary">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Module</th>
+                            <th>Endpoints</th>
+                            <th>CRUD</th>
+                            <th>ACTION</th>
+                            <th>N/A</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>Authentication &amp; Account</td>
+                            <td class="count">10</td>
+                            <td class="count">3</td>
+                            <td class="count">7</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>User &amp; Role Management</td>
+                            <td class="count">5</td>
+                            <td class="count">5</td>
+                            <td class="count">0</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td>Dashboard &amp; Reporting</td>
+                            <td class="count">1</td>
+                            <td class="count">0</td>
+                            <td class="count">1</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td>Medical Record</td>
+                            <td class="count">11</td>
+                            <td class="count">10</td>
+                            <td class="count">1</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>5</td>
+                            <td>AI Diagnosis (Core)</td>
+                            <td class="count">5</td>
+                            <td class="count">3</td>
+                            <td class="count">2</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>6</td>
+                            <td>AI Model Management</td>
+                            <td class="count">4</td>
+                            <td class="count">4</td>
+                            <td class="count">0</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>7</td>
+                            <td>Prescription &amp; Adherence</td>
+                            <td class="count">9</td>
+                            <td class="count">9</td>
+                            <td class="count">0</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>8</td>
+                            <td>Appointment Scheduling</td>
+                            <td class="count">9</td>
+                            <td class="count">7</td>
+                            <td class="count">1</td>
+                            <td class="count">1</td>
+                        </tr>
+                        <tr>
+                            <td>9</td>
+                            <td>Health Monitoring</td>
+                            <td class="count">2</td>
+                            <td class="count">2</td>
+                            <td class="count">0</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>10</td>
+                            <td>Engagement</td>
+                            <td class="count">7</td>
+                            <td class="count">5</td>
+                            <td class="count">2</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr class="total-row">
+                            <td colspan="2">Total</td>
+                            <td class="count">63</td>
+                            <td class="count">48</td>
+                            <td class="count">14</td>
+                            <td class="count">1</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2 id="cross-module">Cross-Module Notes</h2>
+                <ul class="notes">
+                    <li>
+                        <strong>User identity is shared, DTOs are not.</strong>
+                        <code>/api/v1/users/*</code> (Module 2, Admin account
+                        management) and <code>/api/v1/users/me</code> (Module 1,
+                        self-service) both read/write the same
+                        <code>Users</code> table, but never the same DTO shape —
+                        the Admin-facing DTO omits <code>DateOfBirth</code> for
+                        Patient targets and never exposes password fields; the
+                        self-service DTO exposes only the caller's own editable
+                        fields.
+                    </li>
+                    <li>
+                        <strong
+                            >The <code>/me</code> alias is now used in two
+                            modules — <code>/users/me</code> (Module 1) and
+                            <code>/cases/me</code> (Module 4)</strong
+                        >
+                        — as a deliberate, consistent convention for "this
+                        resource, scoped to the caller's own JWT identity,"
+                        introduced in this v1.1 pass. It is not yet formalized
+                        in <code>api_design_rules_v0.2.md</code>; recommend
+                        adding a short clause for it alongside §3.2's
+                        plural-noun rule.
+                    </li>
+                    <li>
+                        <strong
+                            ><code>/api/v1/cases/{id}</code> is intentionally
+                            reused across UC-08 (Medical Record), UC-19 (AI
+                            Diagnosis), and UC-12 (PDF export)</strong
+                        >
+                        rather than duplicated per UC — a Case aggregates
+                        Ultrasound Images, AI Results, and the eventual
+                        Prescription, so one detail endpoint naturally serves
+                        all three read-heavy UCs, filtered by the caller's role.
+                        The list-level access, however, is now split by actor
+                        (#24 staff, #25 Patient) rather than overloaded on one
+                        path — see the v1.1 changelog.
+                    </li>
+                    <li>
+                        <strong
+                            ><code
+                                >/api/v1/patient-profiles/{id}/prescriptions</code
+                            >
+                            (Module 7) nests under a Module 4 resource</strong
+                        >
+                        — Prescription history is conceptually part of a
+                        patient's medical record even though its CRUD lifecycle
+                        (Active → Completed) is owned by the Prescription &amp;
+                        Adherence module.
+                    </li>
+                    <li>
+                        <strong
+                            ><code>/api/v1/schedule-slots</code> (Module 8) is
+                            read by three different actors with three different
+                            intents</strong
+                        >: Doctor/Nurse manage capacity (UC-15), Patient browses
+                        to book (UC-13), and the same nested
+                        <code>/appointments</code> sub-resource lets
+                        Doctor/Nurse see who is affected before closing a slot
+                        (UC-15 AF-02).
+                    </li>
+                    <li>
+                        <strong
+                            ><code>/api/v1/blog-posts</code> (Module 10) is the
+                            single source for both UC-23 (Patient reads) and
+                            UC-24 (Admin authors)</strong
+                        >
+                        — GB-05's "Published-only for Patient" rule is enforced
+                        as a query filter inside this one endpoint, not as two
+                        separate endpoints. Unlike the Module 4 case above, this
+                        is a pure visibility filter on an otherwise identical
+                        scoping mechanism (both callers query "all posts"), so
+                        it was kept as one endpoint rather than split.
+                    </li>
+                    <li>
+                        <strong
+                            >AI Model activation (Module 6) has a downstream
+                            effect on Module 5</strong
+                        >:
+                        <code>PATCH /api/v1/ai-model-versions/{id}</code>
+                        changing a version to <code>ACTIVE</code> is what
+                        <code>POST /api/v1/cases/{caseId}/ai-results</code>
+                        (UC-19) actually invokes at inference time — there is no
+                        separate "current model" endpoint; the Active version is
+                        looked up server-side. Nesting the AI Diagnosis
+                        endpoints under <code>/cases</code> is a URL-level
+                        convenience only — it does not imply the AI Diagnosis
+                        module's Controller/BLL code must live inside the
+                        Medical Record module in the Modular Monolith (ADR-001).
+                    </li>
+                    <li>
+                        <strong
+                            >Prescribing (Module 7, UC-18) depends on Module 5's
+                            outcome</strong
+                        >: <code>POST /api/v1/prescriptions</code> is only valid
+                        once the target Case's
+                        <code>PATCH /api/v1/ai-results/{id}</code> confirmation
+                        has moved the Case to <code>CONFIRMED</code> (BR-04 of
+                        UC-18).
+                    </li>
+                    <li>
+                        <strong
+                            ><code>POST /api/v1/chat-messages</code> (Module 10,
+                            UC-26) carries a soft dependency on Module 4</strong
+                        >: the UCS's own Request Fields for UC-26 include an
+                        optional "Context Case ID" so the assistant can explain
+                        a Confirmed conclusion — omitted from this catalog's
+                        summary text (per the "no request/response body"
+                        constraint) but worth surfacing here since it is a real
+                        Engagement → Medical Record coupling.
+                    </li>
+                </ul>
+            </section>
+
+            <section>
+                <h2 id="exclusions">
+                    Explicit Exclusions (kept out of scope, per the source
+                    documents)
+                </h2>
+                <ul class="notes">
+                    <li>
+                        No endpoint for Grad-CAM/heatmap explanation — descoped
+                        in PRD §4.1x / §6.3; Doctors still see segmented regions
+                        via AI Findings (existing
+                        <code>ai-results</code> endpoints already cover this).
+                    </li>
+                    <li>
+                        No endpoint for national e-ID (CCCD/BHYT/VNeID),
+                        payment/insurance, or HIS/PACS integration — explicitly
+                        out of scope (PRD §6.3).
+                    </li>
+                    <li>
+                        No SMS or business-notification-Email endpoints — Push
+                        (API-01) is the only in-app notification channel; Email
+                        is scoped solely to the password-reset flow (endpoint #6
+                        above).
+                    </li>
+                    <li>
+                        No endpoint invented for "processing_ms" or a per-run AI
+                        timing record — PRD §6.1 confirms the &lt;2s target is
+                        verified via testing/APM, not stored per inference.
+                    </li>
+                    <li>
+                        No hard-delete endpoint exists anywhere in this catalog
+                        for medical entities (Case, AI Result, Prescription,
+                        Appointment, Ultrasound Image) — consistent with GB-03;
+                        only <code>DELETE /api/v1/users/{id}</code> exists, and
+                        it performs a soft-delete (see
+                        <code>&lt;http_status_codes&gt;</code> in
+                        <code>api_design_rules_v0.2.md</code>).
+                    </li>
+                    <li>
+                        UC-02 (Biometric login) is retained as
+                        <em>planned/Could-priority</em> per FT-03 — included in
+                        the catalog for completeness, not a claim that it is
+                        implemented.
+                    </li>
+                </ul>
+            </section>
+
+            <section>
+                <h2 id="method-notes">Method &amp; Boundary Notes</h2>
+                <ul class="notes">
+                    <li>
+                        Every state-transition UC (AI Result confirm/reject,
+                        Model Version activate/rollback, Schedule Slot close,
+                        Account lock/unlock, Blog Post publish, Intake Log
+                        confirm) uses <code>PATCH + status field</code> rather
+                        than an invented action verb — per §3.3 of
+                        <code>api_design_rules_v0.2.md</code>, action-style
+                        <code>POST .../verb</code> is reserved only for
+                        transitions with no natural REST mapping.
+                    </li>
+                    <li>
+                        The exceptions that do use an action-style endpoint are
+                        <code>POST /appointments/{id}/cancel</code> (the
+                        mandatory <code>cancellationReason</code> gate is not a
+                        plain field update),
+                        <code>POST /auth/biometric-devices</code> (a security
+                        enrollment step, not a field update), and the Auth
+                        module's
+                        <code>login</code
+                        >/<code>refresh</code>/<code>logout</code>/<code
+                            >biometric-login</code
+                        >
+                        (no underlying resource to PATCH).
+                    </li>
+                    <li>
+                        Reschedule (UC-14 AF-01) has
+                        <strong>no dedicated endpoint</strong> — the UCS
+                        explicitly models it as
+                        <code>POST /appointments/{id}/cancel</code> followed by
+                        a fresh <code>POST /appointments</code>, matching
+                        BR-04's "cancel old + book new, both kept" rule.
+                    </li>
+                    <li>
+                        All list endpoints follow the mandatory pagination
+                        contract (<code>page</code>, <code>pageSize</code>,
+                        wrapped in <code>PagedResult&lt;T&gt;</code>) per §7.1
+                        of the API rules — omitted from the Endpoint column
+                        above for brevity except where a UC-specific filter is
+                        the point of interest.
+                    </li>
+                    <li>
+                        <strong
+                            >Naming rule tension (unresolved, flagged for the
+                            API rules document, not fixed here):</strong
+                        >
+                        <code>service-feedback</code> (#57) and
+                        <code>.../progress</code> (#32) are uncountable/mass
+                        nouns that cannot be meaningfully pluralized, which sits
+                        at odds with §3.2's literal "always plural nouns"
+                        wording. This catalog keeps them singular rather than
+                        forcing an awkward plural ("service-feedbacks",
+                        "progresses");
+                        <code>api_design_rules_v0.2.md</code> should gain an
+                        explicit carve-out for this case rather than leave it as
+                        a silent, undocumented deviation.
+                    </li>
+                    <li>
+                        <strong
+                            >Data-model gap inherited from the UCS, not
+                            introduced here:</strong
+                        >
+                        the <code>category</code> query param on
+                        <code>GET /blog-posts</code> (#58) traces back to
+                        UC-23's own <code>GetBlogArticlesRequest</code> Request
+                        Fields table, but the Blog Post entity in PRD §2.2.o has
+                        no corresponding stored attribute (only title, content,
+                        status, publish date). This should be raised back to
+                        whoever owns the PRD/UCS, not silently resolved at the
+                        API layer.
+                    </li>
+                </ul>
+            </section>
+
+            <div class="note-box flag">
+                <strong>Note (2026-07-30):</strong> the physical database schema
+                (<code>ADSUS_Physical_Schema_PostgreSQL_v1.sql</code>) may still change
+                before implementation — e.g. adding the missing <code>NURSE</code> value
+                to <code>user_role</code>, or resolving the <code>slot_status</code>
+                <code>FULL</code> vs. the Open/Closed-only decision already recorded in
+                <code>Report_3.1_UCS_ADSUS.md</code>. This catalog's endpoint list should
+                be revisited and adjusted whenever the underlying schema changes, rather
+                than treated as permanently fixed.
+            </div>
+
+            <footer class="doc-footer">
+                Generated for ADSUS · sources:
+                <code>Report_3.0_PRD_ADSUS_md.md</code> (v1.23) ·
+                <code>Report_3.1_UCS_ADSUS.md</code> (v1.2) ·
+                <code>project_context.md</code> ·
+                <code>api_design_rules_v0.2.md</code><br />
+                This catalog extracts and organizes endpoints already implied by
+                ratified project documents — it does not introduce new business
+                features.
+            </footer>
+        </div>
+    </body>
+</html>

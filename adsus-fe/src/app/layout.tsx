@@ -30,12 +30,15 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const htmlClassName = [exo.variable, roboto.variable, "h-full", "antialiased"]
+    .filter(Boolean)
+    .join(" ");
+
+  const bodyClassName = ["min-h-full", "flex", "flex-col"].join(" ");
+
   return (
-    <html
-      lang="vi"
-      className={`${exo.variable} ${roboto.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
+    <html lang="vi" className={htmlClassName}>
+      <body className={bodyClassName}>
         <QueryProvider>{children}</QueryProvider>
       </body>
     </html>

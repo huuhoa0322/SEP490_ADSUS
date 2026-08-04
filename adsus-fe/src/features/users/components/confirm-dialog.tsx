@@ -1,6 +1,8 @@
 "use client";
 
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, AlertCircle } from "lucide-react";
+
+import { getApiErrorMessage } from "@/lib/api-client";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -10,6 +12,7 @@ interface ConfirmDialogProps {
   /** true thì nút xác nhận mang màu cảnh báo — dùng cho hành động không hoàn tác được. */
   destructive?: boolean;
   isPending?: boolean;
+  error?: unknown;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -27,6 +30,7 @@ export function ConfirmDialog({
   confirmLabel,
   destructive = false,
   isPending = false,
+  error,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -58,6 +62,13 @@ export function ConfirmDialog({
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{message}</p>
           </div>
         </div>
+
+        {error && (
+          <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <span>{getApiErrorMessage(error, "Thao tác thất bại. Vui lòng thử lại.")}</span>
+          </div>
+        )}
 
         <div className="mt-7 flex justify-end gap-3">
           <button

@@ -81,7 +81,6 @@ public enum CaseStatus
 /// </summary>
 public enum ModelVersionStatus
 {
-    [PgName("REGISTERED")] Registered,
     [PgName("ACTIVE")] Active,
     [PgName("INACTIVE")] Inactive,
 }
@@ -114,4 +113,16 @@ public enum SlotStatus
 {
     [PgName("OPEN")] Open,
     [PgName("CLOSED")] Closed,
+}
+
+/// <summary>
+/// Giới tính trong hồ sơ y tế nền — enum <c>gender_type</c> trong DB (Module 4).
+/// Thuộc tính nghiệp vụ chính thức của Patient Profile (PRD §2.2.b, UC-06).
+/// Cột DB mặc định 'FEMALE', nhưng đó là đặc thù schema — client luôn nên gửi giá trị rõ ràng.
+/// </summary>
+public enum GenderType
+{
+    [PgName("FEMALE")] Female,
+    [PgName("MALE")] Male,
+    [PgName("OTHER")] Other,
 }

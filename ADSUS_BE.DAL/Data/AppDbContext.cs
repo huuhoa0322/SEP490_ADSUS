@@ -70,7 +70,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("gender_type", new[] { "FEMALE", "MALE", "OTHER" })
             .HasPostgresEnum("health_log_type", new[] { "EXERCISE", "DIET" })
             .HasPostgresEnum("intake_status", new[] { "PENDING", "TAKEN" })
-            .HasPostgresEnum("model_version_status", new[] { "REGISTERED", "ACTIVE", "INACTIVE" })
+            .HasPostgresEnum("model_version_status", new[] { "ACTIVE", "INACTIVE" })
             .HasPostgresEnum("prescription_status", new[] { "ACTIVE", "COMPLETED" })
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in", "like", "ilike", "is", "match", "imatch", "isdistinct" })
@@ -151,7 +151,7 @@ public partial class AppDbContext : DbContext
         {
             entity.HasKey(e => e.ModelVersionId).HasName("pk_ai_model_versions");
 
-            entity.ToTable("ai_model_versions", tb => tb.HasComment("Phiên bản mô hình AI (đăng ký / kích hoạt / rollback / theo dõi — FT-23/24/25). Partial unique index bảo đảm chỉ 1 phiên bản ACTIVE. Rollback = ACTIVE → INACTIVE và kích hoạt bản khác."));
+            entity.ToTable("ai_model_versions", tb => tb.HasComment("Phiên bản mô hình AI (thêm mới / kích hoạt / rollback / theo dõi — FT-23/24/25). Chỉ 2 trạng thái Active/Inactive — phiên bản mới thêm mặc định Inactive cho tới khi Admin kích hoạt. Partial unique index bảo đảm chỉ 1 phiên bản ACTIVE. Rollback = ACTIVE → INACTIVE và kích hoạt bản khác."));
 
             entity.HasIndex(e => e.VersionCode, "uq_ai_model_versions_code").IsUnique();
 
@@ -159,18 +159,24 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("model_version_id");
             entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.EvalAccuracy)
+            entity.Property(e => e.HfFilename)
+                .HasMaxLength(255)
+                .HasColumnName("hf_filename");
+            entity.Property(e => e.HfRepoId)
+                .HasMaxLength(255)
+                .HasColumnName("hf_repo_id");
+            entity.Property(e => e.MetricsMap50)
                 .HasPrecision(5, 2)
                 .HasComment("Đơn vị %. Ngưỡng KPI: > 85%.")
-                .HasColumnName("eval_accuracy");
-            entity.Property(e => e.EvalAuc)
-                .HasPrecision(4, 3)
-                .HasComment("Thang 0–1. Ngưỡng KPI: > 0.90.")
-                .HasColumnName("eval_auc");
-            entity.Property(e => e.EvalSensitivity)
+                .HasColumnName("metrics_map50");
+            entity.Property(e => e.MetricsPrecision)
                 .HasPrecision(5, 2)
                 .HasComment("Chỉ số đo offline khi đăng ký, đơn vị %. Ngưỡng KPI nghiên cứu: > 90%.")
-                .HasColumnName("eval_sensitivity");
+                .HasColumnName("metrics_precision");
+            entity.Property(e => e.MetricsRecall)
+                .HasPrecision(4, 3)
+                .HasComment("Thang 0–1. Ngưỡng KPI: > 0.90.")
+                .HasColumnName("metrics_recall");
             entity.Property(e => e.RegisteredAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("registered_at");

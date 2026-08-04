@@ -44,6 +44,7 @@ public class GlobalExceptionHandler
         var (statusCode, message) = exception switch
         {
             ResourceNotFoundException => (HttpStatusCode.NotFound, exception.Message),
+            ConflictException => (HttpStatusCode.Conflict, exception.Message),
             BusinessException => (HttpStatusCode.UnprocessableEntity, exception.Message),
             UnauthorizedAccessException => (HttpStatusCode.Forbidden, exception.Message),
             ValidationException validationException => (
