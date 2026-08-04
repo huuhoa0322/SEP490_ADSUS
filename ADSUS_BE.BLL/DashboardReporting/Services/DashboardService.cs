@@ -82,9 +82,6 @@ public class DashboardService : IDashboardService
                 CancellationRate = Percent(
                     activity.AppointmentCancelledCount,
                     activity.AppointmentBookedCount + activity.AppointmentCancelledCount),
-                AverageBookingsPerSlot = Ratio(
-                    activity.AppointmentBookedCount + activity.AppointmentCancelledCount,
-                    activity.ScheduleSlotCount),
             },
 
             Adherence = new AdherenceStatistics
@@ -166,8 +163,4 @@ public class DashboardService : IDashboardService
     /// <summary>Phần trăm, làm tròn 1 chữ số. Mẫu số 0 thì trả 0 — AF-01, không chia cho 0.</summary>
     private static double Percent(int part, int total) =>
         total == 0 ? 0 : Math.Round(part * 100.0 / total, 1);
-
-    /// <summary>Tỉ số trung bình, làm tròn 2 chữ số. Mẫu số 0 thì trả 0.</summary>
-    private static double Ratio(int part, int total) =>
-        total == 0 ? 0 : Math.Round(part / (double)total, 2);
 }

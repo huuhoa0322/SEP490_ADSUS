@@ -235,7 +235,7 @@ export function DashboardView() {
 
             <ChartCard
               title="Lịch hẹn"
-              description={`Trung bình ${data.appointments.averageBookingsPerSlot} lượt đặt trên mỗi khung giờ.`}
+              description={`${data.appointments.slotCount} khung giờ đã mở trong kỳ.`}
             >
               <StatusBreakdown
                 segments={[
