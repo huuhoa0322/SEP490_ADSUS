@@ -1,3 +1,5 @@
+using ADSUS_BE.BLL.Auth.DTOs;
+using ADSUS_BE.BLL.Auth.Validators;
 using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using ADSUS_BE.BLL.UserRoleManagement.Validators;
 using ADSUS_BE.DAL.Data;
@@ -52,6 +54,71 @@ public class UserAccountRequestValidatorTests
         var result = _update.Validate(request);
 
         Assert.False(result.IsValid);
+    }
+
+    // ---------- Định dạng số điện thoại ----------
+
+    [Theory]
+    [InlineData("0900000001")]
+    [InlineData("0987654321")]
+    public void Tao_SoDienThoaiDung10ChuSo_DuocChapNhan(string soDienThoai)
+    {
+        var request = CreateRequest(ClinicClock.Today().AddYears(-30));
+        request.PhoneNumber = soDienThoai;
+
+        Assert.True(_create.Validate(request).IsValid);
+    }
+
+    [Theory]
+    [InlineData("090000001", "chỉ 9 chữ số")]
+    [InlineData("09000000012", "11 chữ số")]
+    [InlineData("1900000001", "không bắt đầu bằng 0")]
+    [InlineData("090000000a", "có chữ cái")]
+    [InlineData("0900 000 001", "có khoảng trắng")]
+    [InlineData("+84900000001", "dạng quốc tế")]
+    public void Tao_SoDienThoaiSaiDinhDang_BiTuChoi(string soDienThoai, string lyDo)
+    {
+        // Khoảng cũ là 9–11 chữ số, quá rộng: gõ thiếu hoặc thừa một số vẫn lọt qua, mà số
+        // điện thoại là ĐỊNH DANH ĐĂNG NHẬP (BR-02) — sai một chữ số là tạo ra một tài khoản
+        // không ai đăng nhập được, và số thật thì vẫn còn trống.
+        var request = CreateRequest(ClinicClock.Today().AddYears(-30));
+        request.PhoneNumber = soDienThoai;
+
+        Assert.False(_create.Validate(request).IsValid, lyDo);
+    }
+
+    [Theory]
+    [InlineData("090000001")]
+    [InlineData("09000000012")]
+    [InlineData("khong-phai-so")]
+    public void QuenMatKhau_SoDienThoaiSaiDinhDang_BiTuChoi(string soDienThoai)
+    {
+        // Chỗ này TRƯỚC ĐÂY không kiểm định dạng, chỉ kiểm độ dài tối đa — nên cùng một số
+        // sai bị chặn ở màn tạo tài khoản lại đi lọt tới tận database ở màn quên mật khẩu.
+        var result = new ForgotPasswordRequestValidator().Validate(new ForgotPasswordRequest
+        {
+            PhoneNumber = soDienThoai,
+            Email = "a@example.com",
+        });
+
+        Assert.False(result.IsValid);
+    }
+
+    [Fact]
+    public void DangNhap_KHONG_kiem_dinh_dang_so_dien_thoai()
+    {
+        // Cố ý khác hai màn kia. Đăng nhập là ĐỐI CHIẾU chứ không phải nhập liệu: số sai định
+        // dạng thì đằng nào cũng không khớp tài khoản nào, cứ để GB-06 trả về đúng một câu.
+        //
+        // Quan trọng hơn: siết định dạng ở đây là nhốt người dùng ra ngoài — tài khoản cũ có
+        // số 9 hay 11 chữ số sẽ không đăng nhập được nữa dù mật khẩu vẫn đúng.
+        var result = new LoginRequestValidator().Validate(new LoginRequest
+        {
+            PhoneNumber = "090000001",
+            Password = "Aa123456@",
+        });
+
+        Assert.True(result.IsValid);
     }
 
     private static CreateUserAccountRequest CreateRequest(DateOnly dateOfBirth) => new()

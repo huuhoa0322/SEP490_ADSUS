@@ -35,8 +35,8 @@ const MESSAGES: Record<string, string> = {
   "Phone number is required.": "Vui lòng nhập số điện thoại.",
   "Phone number must not exceed 15 characters.":
     "Số điện thoại không được quá 15 ký tự.",
-  "Phone number must start with 0 and contain 9 to 11 digits.":
-    "Số điện thoại phải bắt đầu bằng 0 và có 9 đến 11 chữ số.",
+  "Phone number must start with 0 and contain exactly 10 digits.":
+    "Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số.",
   "Full name is required.": "Vui lòng nhập họ và tên.",
   "Full name must not exceed 100 characters.": "Họ và tên không được quá 100 ký tự.",
   "Role is required.": "Vui lòng chọn vai trò.",
