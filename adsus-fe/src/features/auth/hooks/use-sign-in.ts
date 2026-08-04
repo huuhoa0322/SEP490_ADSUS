@@ -7,14 +7,28 @@ import { ACCESS_TOKEN_KEY } from "@/lib/api-client";
 import { getHomePathForRole, useAuthStore } from "@/store/auth-store";
 
 import { login } from "../api/auth.api";
-import type { LoginRequest } from "../types/auth.types";
+import {
+  WebNotAvailableForRoleError,
+  type LoginRequest,
+} from "../types/auth.types";
 
 export function useSignIn() {
   const router = useRouter();
   const signIn = useAuthStore((state) => state.signIn);
 
   return useMutation({
-    mutationFn: (payload: LoginRequest) => login(payload),
+    mutationFn: async (payload: LoginRequest) => {
+      const data = await login(payload);
+
+      // UC-01: SCR-01 là màn đăng nhập Web của Admin/Doctor/Nurse. Bệnh nhân đăng nhập
+      // trên ứng dụng di động. Chặn ở đây, TRƯỚC khi lưu token — nếu để lọt thì bệnh nhân
+      // vừa đăng nhập xong lại bị đá về đúng màn đăng nhập mà không hiểu vì sao.
+      if (data.role === "PATIENT") {
+        throw new WebNotAvailableForRoleError();
+      }
+
+      return data;
+    },
 
     onSuccess: (data) => {
       // Store the token first so the axios interceptor can attach it to the next request.

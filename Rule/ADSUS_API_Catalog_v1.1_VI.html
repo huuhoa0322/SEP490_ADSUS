@@ -1,0 +1,2461 @@
+<!doctype html>
+<html lang="vi">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ADSUS — Danh mục API RESTful (v1.1)</title>
+        <style>
+            :root {
+                --bg: #f7f8fa;
+                --surface: #ffffff;
+                --text: #1a1d23;
+                --muted: #5b6270;
+                --border: #e2e5ea;
+                --accent: #2563eb;
+                --accent-soft: #eaf1ff;
+                --good: #15803d;
+                --good-bg: #eafaf0;
+                --bad: #b91c1c;
+                --bad-bg: #fdecec;
+                --warn: #b45309;
+                --warn-bg: #fef3e2;
+                --code-bg: #f1f3f6;
+                --admin: #7c3aed;
+                --admin-bg: #f2eaff;
+                --patient: #c2410c;
+                --patient-bg: #fef1e7;
+                --doctor: #0f766e;
+                --doctor-bg: #e7faf7;
+                --neutral: #475569;
+                --neutral-bg: #eef1f5;
+            }
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --bg: #14161a;
+                    --surface: #1c1f26;
+                    --text: #e7e9ee;
+                    --muted: #9aa2b1;
+                    --border: #2c303a;
+                    --accent: #7aa2ff;
+                    --accent-soft: #1e2740;
+                    --good: #4ade80;
+                    --good-bg: #123322;
+                    --bad: #f87171;
+                    --bad-bg: #3a1a1a;
+                    --warn: #fbbf24;
+                    --warn-bg: #3a2c10;
+                    --code-bg: #20232b;
+                    --admin: #c4b5fd;
+                    --admin-bg: #2c2140;
+                    --patient: #fb923c;
+                    --patient-bg: #3a2412;
+                    --doctor: #5eead4;
+                    --doctor-bg: #0f2b28;
+                    --neutral: #cbd5e1;
+                    --neutral-bg: #262b34;
+                }
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--text);
+                font-family:
+                    "Segoe UI",
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    Roboto,
+                    Arial,
+                    sans-serif;
+                line-height: 1.6;
+                padding: 0 0 60px;
+            }
+            .wrap {
+                max-width: 1280px;
+                margin: 0 auto;
+                padding: 32px 20px;
+            }
+            header.doc-header {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                padding: 28px 32px;
+                margin-bottom: 24px;
+            }
+            header.doc-header h1 {
+                margin: 0 0 6px;
+                font-size: 1.7rem;
+            }
+            header.doc-header .sub {
+                color: var(--muted);
+                font-size: 0.95rem;
+            }
+            .meta-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 18px;
+                font-size: 0.9rem;
+            }
+            .meta-table td {
+                padding: 6px 10px;
+                border-top: 1px solid var(--border);
+                vertical-align: top;
+            }
+            .meta-table td:first-child {
+                color: var(--muted);
+                width: 190px;
+                font-weight: 600;
+            }
+            h2 {
+                font-size: 1.2rem;
+                margin-top: 36px;
+                padding-bottom: 8px;
+                border-bottom: 2px solid var(--accent);
+                color: var(--text);
+            }
+            h3 {
+                font-size: 1.02rem;
+                margin-top: 22px;
+                color: var(--text);
+            }
+            section {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                padding: 24px 28px;
+                margin-bottom: 20px;
+            }
+            p {
+                color: var(--text);
+            }
+            code {
+                font-family: "Cascadia Code", "Consolas", monospace;
+                background: var(--code-bg);
+                padding: 1px 5px;
+                border-radius: 4px;
+                font-size: 0.88em;
+            }
+
+            .legend-grid {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin: 14px 0 4px;
+            }
+            .badge {
+                display: inline-block;
+                padding: 3px 10px;
+                border-radius: 999px;
+                font-weight: 600;
+                font-size: 0.78rem;
+                white-space: nowrap;
+            }
+            .auth-public {
+                background: var(--good-bg);
+                color: var(--good);
+            }
+            .auth-protected {
+                background: var(--accent-soft);
+                color: var(--accent);
+            }
+            .auth-admin {
+                background: var(--admin-bg);
+                color: var(--admin);
+            }
+            .auth-doctor {
+                background: var(--doctor-bg);
+                color: var(--doctor);
+            }
+            .auth-patient {
+                background: var(--patient-bg);
+                color: var(--patient);
+            }
+            .auth-mixed {
+                background: var(--warn-bg);
+                color: var(--warn);
+            }
+            .auth-na {
+                background: var(--neutral-bg);
+                color: var(--neutral);
+            }
+            .tag {
+                display: inline-block;
+                padding: 1px 7px;
+                border-radius: 5px;
+                font-size: 0.72rem;
+                font-weight: 700;
+                letter-spacing: 0.02em;
+                margin-left: 6px;
+            }
+            .tag-crud {
+                background: var(--accent-soft);
+                color: var(--accent);
+            }
+            .tag-action {
+                background: var(--warn-bg);
+                color: var(--warn);
+            }
+            .tag-na {
+                background: var(--neutral-bg);
+                color: var(--neutral);
+            }
+            .tag-new {
+                background: var(--good-bg);
+                color: var(--good);
+            }
+            .method {
+                font-family: "Cascadia Code", "Consolas", monospace;
+                font-weight: 700;
+                padding: 2px 8px;
+                border-radius: 5px;
+                font-size: 0.82rem;
+            }
+            .m-GET {
+                background: var(--good-bg);
+                color: var(--good);
+            }
+            .m-POST {
+                background: var(--accent-soft);
+                color: var(--accent);
+            }
+            .m-PUT {
+                background: var(--warn-bg);
+                color: var(--warn);
+            }
+            .m-PATCH {
+                background: var(--admin-bg);
+                color: var(--admin);
+            }
+            .m-DELETE {
+                background: var(--bad-bg);
+                color: var(--bad);
+            }
+            .m-NA {
+                background: var(--neutral-bg);
+                color: var(--neutral);
+            }
+
+            .table-scroll {
+                overflow-x: auto;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+            }
+            table.catalog {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 0.86rem;
+                min-width: 1180px;
+            }
+            table.catalog thead th {
+                position: sticky;
+                top: 0;
+                background: var(--accent-soft);
+                color: var(--text);
+                font-weight: 700;
+                padding: 10px 10px;
+                text-align: left;
+                border-bottom: 2px solid var(--accent);
+                white-space: nowrap;
+                z-index: 1;
+            }
+            table.catalog td {
+                border-top: 1px solid var(--border);
+                padding: 9px 10px;
+                vertical-align: top;
+            }
+            table.catalog td.num {
+                color: var(--muted);
+                font-variant-numeric: tabular-nums;
+                width: 34px;
+            }
+            table.catalog td.module-cell {
+                white-space: nowrap;
+                font-weight: 600;
+                color: var(--muted);
+            }
+            table.catalog td.endpoint-cell {
+                font-family: "Cascadia Code", "Consolas", monospace;
+                font-size: 0.83rem;
+                white-space: nowrap;
+            }
+            table.catalog tbody tr:hover td {
+                background: rgba(37, 99, 235, 0.05);
+            }
+            table.catalog tr.module-start td {
+                border-top: 2px solid var(--accent);
+            }
+            table.catalog tr.na-row td {
+                opacity: 0.75;
+                font-style: italic;
+            }
+            table.catalog tr.new-row td {
+                background: rgba(21, 128, 61, 0.06);
+            }
+
+            table.summary {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 14px 0;
+                font-size: 0.9rem;
+            }
+            table.summary th,
+            table.summary td {
+                border: 1px solid var(--border);
+                padding: 8px 12px;
+                text-align: left;
+            }
+            table.summary th {
+                background: var(--accent-soft);
+            }
+            table.summary td.count {
+                text-align: center;
+                font-weight: 700;
+                font-variant-numeric: tabular-nums;
+            }
+            table.summary tr.total-row td {
+                font-weight: 700;
+                background: rgba(127, 127, 127, 0.05);
+            }
+
+            ul.notes {
+                padding-left: 22px;
+            }
+            ul.notes li {
+                margin-bottom: 8px;
+            }
+            .note-box {
+                margin-top: 20px;
+                padding: 14px 18px;
+                border: 1px dashed var(--border);
+                border-radius: 10px;
+                color: var(--muted);
+                font-size: 0.88rem;
+            }
+            .note-box.flag {
+                border-color: var(--warn);
+                background: var(--warn-bg);
+                color: var(--text);
+            }
+            .note-box.changelog {
+                border-color: var(--good);
+                background: var(--good-bg);
+                color: var(--text);
+                border-style: solid;
+            }
+            footer.doc-footer {
+                color: var(--muted);
+                font-size: 0.82rem;
+                text-align: center;
+                margin-top: 30px;
+            }
+            @media (max-width: 640px) {
+                section {
+                    padding: 18px;
+                }
+                header.doc-header {
+                    padding: 20px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <header class="doc-header">
+                <h1>ADSUS — Danh mục API RESTful</h1>
+                <div class="sub">
+                    Bản dịch tiếng Việt để xem qua (bản chính thức áp dụng vào
+                    dự án là file <code>ADSUS_API_Catalog_v1.1.html</code> tiếng
+                    Anh). Toàn bộ endpoint được trích xuất từ PRD (Report 3.0)
+                    và Use Case Specification (Report 3.1), áp dụng đúng các quy
+                    tắc routing/contract đã chốt trong
+                    <code>api_design_rules_v0.2.md</code>.
+                </div>
+                <table class="meta-table">
+                    <tr>
+                        <td>Phiên bản tài liệu</td>
+                        <td>v1.1 — 2026-07-30</td>
+                    </tr>
+                    <tr>
+                        <td>Vai trò thực hiện</td>
+                        <td>
+                            Senior API Architect — trích xuất endpoint &amp; ánh
+                            xạ contract, không thiết kế chi tiết schema
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Chuẩn bị cho</td>
+                        <td>
+                            ADSUS (AI Automated Detection and Segmentation of
+                            Abnormal Structures Based on Ultrasound Images and
+                            Clinical Information)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Nguồn — ngữ cảnh L1/L2</td>
+                        <td>
+                            <code>.ai-context/project_context.md</code>,
+                            <code
+                                >.ai-context/api_design_rule/api_design_rules_v0.2.md</code
+                            >
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Nguồn — nghiệp vụ/UC</td>
+                        <td>
+                            <code>Reports_md/Report_3.0_PRD_ADSUS_md.md</code>
+                            (v1.23) ·
+                            <code>Reports_md/Report_3.1_UCS_ADSUS.md</code>
+                            (v1.2, 26/26 UC + Appendix A)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Phạm vi bao phủ</td>
+                        <td>
+                            Toàn bộ 26 UC (UC-01–UC-26), 40 FT, 10 module — mỗi
+                            UC đều ánh xạ tới ≥1 endpoint bên dưới
+                        </td>
+                    </tr>
+                </table>
+                <div class="note-box flag">
+                    <strong>Ghi chú thay thế nguồn:</strong> file được đính kèm
+                    <code>Report_3.1_UCS_Template_md.md</code> là bản
+                    <em>template rỗng</em> của UCS (mọi trường đều là
+                    <code>{{placeholder}}</code>, chưa có nội dung ADSUS thật).
+                    Bản Use Case Specification đã điền đầy đủ — 26/26 UC, phiên
+                    bản 1.2, ngày 2026-07-23 — nằm ở file khác:
+                    <code>Reports_md/Report_3.1_UCS_ADSUS.md</code>. Catalog này
+                    được xây dựng từ file đó, vì đây mới là nơi chứa Main Flow,
+                    Business Rule, và Request Fields thật của từng UC ADSUS.
+                </div>
+                <div class="note-box changelog">
+                    <strong>Changelog v1.0 → v1.1</strong> (đợt rà soát Senior
+                    API Architect, 2026-07-30):
+                    <ul style="margin: 8px 0 0; padding-left: 20px">
+                        <li>
+                            Thêm <code>GET /api/v1/users/me</code> (#8) — thiếu
+                            endpoint hydrate session/hồ sơ; cần cho UC-01 (sau
+                            đăng nhập) và UC-10 (điền sẵn form sửa).
+                        </li>
+                        <li>
+                            Thêm
+                            <code>POST /api/v1/auth/biometric-devices</code>
+                            (#5) — BR-01 của UC-02 yêu cầu bước ghép cặp thiết
+                            bị tường minh mà riêng endpoint đăng nhập không thể
+                            làm được.
+                        </li>
+                        <li>
+                            Tách
+                            <code>GET /api/v1/cases?patientProfileId=</code>
+                            (#24) thành endpoint chỉ dành cho Bác sĩ/Điều dưỡng
+                            và thêm mới <code>GET /api/v1/cases/me</code> (#25)
+                            tự scope cho Bệnh nhân — trước đây 1 path gộp 2 cơ
+                            chế scoping khác hẳn nhau trong cùng 1 contract.
+                        </li>
+                        <li>
+                            Đổi tên
+                            <code>PUT /api/v1/reminder-preferences</code> thành
+                            <code>PUT /api/v1/reminder-preferences/{slot}</code>
+                            (#45) — đây là PUT/PATCH duy nhất trong catalog
+                            trước đó không có định danh trong path.
+                        </li>
+                        <li>
+                            Số lượng endpoint: 60 → 63 (62 endpoint thật + 1
+                            dòng N/A).
+                        </li>
+                    </ul>
+                </div>
+            </header>
+
+            <section>
+                <h2 id="legend">Chú giải &amp; Ký hiệu</h2>
+                <p>
+                    <strong>Phân loại Auth</strong> (theo §6 của
+                    <code>api_design_rules_v0.2.md</code>):
+                </p>
+                <div class="legend-grid">
+                    <span class="badge auth-public">Public</span>
+                    <span class="badge auth-protected">Protected</span>
+                    <span class="badge auth-admin"
+                        >Role-restricted (Admin)</span
+                    >
+                    <span class="badge auth-doctor"
+                        >Role-restricted (Bác sĩ / Điều dưỡng)</span
+                    >
+                    <span class="badge auth-patient"
+                        >Role-restricted (Bệnh nhân)</span
+                    >
+                    <span class="badge auth-mixed"
+                        >Role-restricted (nhiều vai trò / chỉ dữ liệu của chính
+                        mình)</span
+                    >
+                    <span class="badge auth-na">N/A</span>
+                </div>
+                <p style="margin-top: 14px">
+                    <strong>Nhãn phân loại endpoint</strong> (theo quy tắc phân
+                    loại của đề bài):
+                </p>
+                <div class="legend-grid">
+                    <span class="tag tag-crud">CRUD</span> — thao tác tài nguyên
+                    tiêu chuẩn, kể cả chuyển trạng thái thể hiện qua
+                    <code>PATCH + trường status</code> (được ưu tiên hơn việc
+                    bịa ra một động từ hành động riêng, theo §3.3 của
+                    api_design_rules) <br /><span class="tag tag-action"
+                        >ACTION</span
+                    >
+                    — logic nghiệp vụ không có ánh xạ REST-CRUD tự nhiên (luồng
+                    auth, kích hoạt suy luận AI, sinh PDF, gọi LLM ngoài, view
+                    tổng hợp chỉ-đọc) <br /><span class="tag tag-na">N/A</span>
+                    — UC không có endpoint nào ở ADSUS_BE (tích hợp hoàn toàn
+                    phía client/thiết bị) <br /><span class="tag tag-new"
+                        >NEW in v1.1</span
+                    >
+                    — được thêm/sửa trong đợt rà soát này; xem Changelog ở trên
+                </div>
+                <p style="margin-top: 14px">
+                    <strong>Ký hiệu:</strong> <code>{id}</code> /
+                    <code>{caseId}</code> = tham số path dạng UUID · query param
+                    viết <code>camelCase</code> · mọi path đều bắt đầu bằng
+                    prefix toàn cục <code>/api/v1</code> · độ sâu lồng nhau
+                    không bao giờ vượt quá 2 cấp, đúng theo §3.2 của
+                    api_design_rules. Alias tự-scope <code>/me</code> (vd.
+                    <code>/users/me</code>, <code>/cases/me</code>) nghĩa là
+                    "tài nguyên này, thu hẹp về đúng danh tính JWT của người
+                    gọi" — một convention được dùng nhất quán trong catalog này
+                    dù chưa được ratify chính thức trong
+                    <code>api_design_rules_v0.2.md</code> (xem Ghi chú Method
+                    &amp; Ranh giới bên dưới).
+                </p>
+            </section>
+
+            <section>
+                <h2 id="catalog">Danh mục API — Nhóm theo Module</h2>
+                <div class="table-scroll">
+                    <table class="catalog">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Module</th>
+                                <th>Method</th>
+                                <th>Endpoint</th>
+                                <th>Mô tả</th>
+                                <th>Auth</th>
+                                <th>Vai trò (Actor)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- MODULE 1 — Xác thực & Tài khoản -->
+                            <tr class="module-start">
+                                <td class="num">1</td>
+                                <td class="module-cell">
+                                    Xác thực &amp; Tài khoản
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/auth/login
+                                </td>
+                                <td>
+                                    Đăng nhập bằng số điện thoại + mật khẩu; trả
+                                    về JWT access/refresh token và điều hướng
+                                    người dùng về khu vực trang chủ theo vai trò
+                                    (UC-01).<span class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-public"
+                                        >Public</span
+                                    >
+                                </td>
+                                <td>Tất cả vai trò</td>
+                            </tr>
+                            <tr>
+                                <td class="num">2</td>
+                                <td class="module-cell">
+                                    Xác thực &amp; Tài khoản
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/auth/refresh
+                                </td>
+                                <td>
+                                    Đổi refresh token còn hiệu lực lấy access
+                                    token mới (UC-01).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-public"
+                                        >Public</span
+                                    >
+                                </td>
+                                <td>Tất cả vai trò</td>
+                            </tr>
+                            <tr>
+                                <td class="num">3</td>
+                                <td class="module-cell">
+                                    Xác thực &amp; Tài khoản
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/auth/logout
+                                </td>
+                                <td>
+                                    Vô hiệu hóa refresh token hiện tại, kết thúc
+                                    phiên đăng nhập (UC-01).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected</span
+                                    >
+                                </td>
+                                <td>Tất cả vai trò</td>
+                            </tr>
+                            <tr>
+                                <td class="num">4</td>
+                                <td class="module-cell">
+                                    Xác thực &amp; Tài khoản
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/auth/biometric-login
+                                </td>
+                                <td>
+                                    Đăng nhập bằng sinh trắc học đã ghép cặp với
+                                    thiết bị, chỉ hợp lệ sau khi đã ghép cặp qua
+                                    <code>biometric-devices</code> bên dưới
+                                    (UC-02, <em>planned</em>).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-public"
+                                        >Public*</span
+                                    >
+                                </td>
+                                <td>
+                                    Bệnh nhân
+                                    <span style="color: var(--muted)"
+                                        >(*credential ghép cặp thiết bị, không
+                                        phải JWT người dùng)</span
+                                    >
+                                </td>
+                            </tr>
+                            <tr class="new-row">
+                                <td class="num">5</td>
+                                <td class="module-cell">
+                                    Xác thực &amp; Tài khoản
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/auth/biometric-devices
+                                </td>
+                                <td>
+                                    Ghép cặp (enroll) thiết bị hiện tại để dùng
+                                    đăng nhập sinh trắc học, chỉ gọi được từ một
+                                    phiên đã đăng nhập mật khẩu thành công; lưu
+                                    credential thiết bị và set
+                                    <code>Users.BiometricEnabled = true</code> —
+                                    bước tiên quyết mà BR-01 của UC-02 yêu cầu
+                                    nhưng riêng
+                                    <code>biometric-login</code> không thể tự
+                                    thực hiện.<span class="tag tag-action"
+                                        >ACTION</span
+                                    ><span class="tag tag-new"
+                                        >NEW in v1.1</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">6</td>
+                                <td class="module-cell">
+                                    Xác thực &amp; Tài khoản
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/password-reset-requests
+                                </td>
+                                <td>
+                                    Tự phục vụ "Quên mật khẩu": kiểm tra khớp số
+                                    điện thoại + email, gửi email mật khẩu tạm,
+                                    đánh dấu bắt buộc đổi mật khẩu ở lần đăng
+                                    nhập kế tiếp (UC-03, FT-06).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-public"
+                                        >Public</span
+                                    >
+                                </td>
+                                <td>Tất cả vai trò</td>
+                            </tr>
+                            <tr>
+                                <td class="num">7</td>
+                                <td class="module-cell">
+                                    Xác thực &amp; Tài khoản
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/users/{id}/reset-password
+                                </td>
+                                <td>
+                                    Admin reset mật khẩu thay thế cho tài khoản
+                                    khác khi chủ tài khoản không truy cập được
+                                    email; mật khẩu tạm được gửi email, không
+                                    hiển thị trên màn hình (UC-03 AF-02).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr class="new-row">
+                                <td class="num">8</td>
+                                <td class="module-cell">
+                                    Xác thực &amp; Tài khoản
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">/api/v1/users/me</td>
+                                <td>
+                                    Đọc hồ sơ đầy đủ của chính người dùng đang
+                                    đăng nhập (họ tên, số điện thoại, email,
+                                    ngày sinh, role) — dùng để hydrate session
+                                    sau khi đăng nhập/reload trang và điền sẵn
+                                    form sửa (UC-01, UC-10).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    ><span class="tag tag-new"
+                                        >NEW in v1.1</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected</span
+                                    >
+                                </td>
+                                <td>Tất cả vai trò (hồ sơ của chính mình)</td>
+                            </tr>
+                            <tr>
+                                <td class="num">9</td>
+                                <td class="module-cell">
+                                    Xác thực &amp; Tài khoản
+                                </td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">/api/v1/users/me</td>
+                                <td>
+                                    Cập nhật hồ sơ liên hệ của chính người dùng
+                                    đang đăng nhập (họ tên, email, ngày sinh);
+                                    số điện thoại không đổi được vì là định danh
+                                    đăng nhập duy nhất (UC-10).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected</span
+                                    >
+                                </td>
+                                <td>Tất cả vai trò (hồ sơ của chính mình)</td>
+                            </tr>
+                            <tr>
+                                <td class="num">10</td>
+                                <td class="module-cell">
+                                    Xác thực &amp; Tài khoản
+                                </td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/users/me/password
+                                </td>
+                                <td>
+                                    Đổi mật khẩu của chính người dùng đang đăng
+                                    nhập (mật khẩu hiện tại + mật khẩu mới + xác
+                                    nhận) (UC-25).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected</span
+                                    >
+                                </td>
+                                <td>Tất cả vai trò</td>
+                            </tr>
+
+                            <!-- MODULE 2 — Quản lý Người dùng & Phân quyền -->
+                            <tr class="module-start">
+                                <td class="num">11</td>
+                                <td class="module-cell">
+                                    Quản lý Người dùng &amp; Phân quyền
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">/api/v1/users</td>
+                                <td>
+                                    Liệt kê/tìm kiếm tài khoản đăng nhập, có
+                                    phân trang, cho màn hình User List của Admin
+                                    (UC-04).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">12</td>
+                                <td class="module-cell">
+                                    Quản lý Người dùng &amp; Phân quyền
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">/api/v1/users</td>
+                                <td>
+                                    Tạo tài khoản Bác sĩ / Điều dưỡng / Bệnh
+                                    nhân; hệ thống tự sinh và gửi email mật khẩu
+                                    tạm (UC-04).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">13</td>
+                                <td class="module-cell">
+                                    Quản lý Người dùng &amp; Phân quyền
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/users/{id}
+                                </td>
+                                <td>
+                                    Xem hồ sơ một tài khoản theo góc nhìn Admin;
+                                    ẩn <code>DateOfBirth</code> khi tài khoản
+                                    đích có role Patient (sensitive_data_rules
+                                    §5) (UC-04).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">14</td>
+                                <td class="module-cell">
+                                    Quản lý Người dùng &amp; Phân quyền
+                                </td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/users/{id}
+                                </td>
+                                <td>
+                                    Cập nhật role hoặc trạng thái tài khoản, gồm
+                                    Lock ⇄ Unlock qua
+                                    <code>{"status":"LOCKED"|"ACTIVE"}</code>
+                                    (UC-04).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">15</td>
+                                <td class="module-cell">
+                                    Quản lý Người dùng &amp; Phân quyền
+                                </td>
+                                <td>
+                                    <span class="method m-DELETE">DELETE</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/users/{id}
+                                </td>
+                                <td>
+                                    Soft-delete: vô hiệu hóa tài khoản (<code
+                                        >Status = DEACTIVATED</code
+                                    >), một chiều, không bao giờ xóa cứng
+                                    (UC-04).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+
+                            <!-- MODULE 3 — Dashboard & Báo cáo -->
+                            <tr class="module-start">
+                                <td class="num">16</td>
+                                <td class="module-cell">
+                                    Dashboard &amp; Báo cáo
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/dashboard/statistics?from=&amp;to=
+                                </td>
+                                <td>
+                                    Số liệu vận hành tổng hợp, ẩn danh (tài
+                                    khoản, ca bệnh, tỷ lệ AI Confirm/Reject,
+                                    lịch hẹn, tỷ lệ tuân thủ), lọc theo khoảng
+                                    thời gian (UC-05).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+
+                            <!-- MODULE 4 — Hồ sơ Bệnh án -->
+                            <tr class="module-start">
+                                <td class="num">17</td>
+                                <td class="module-cell">Hồ sơ Bệnh án</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/patient-profiles
+                                </td>
+                                <td>
+                                    Tạo hồ sơ y tế nền của bệnh nhân (giới tính,
+                                    tiền sử bệnh, dị ứng), liên kết 1-1 với tài
+                                    khoản Patient đã tồn tại (UC-06).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ, Điều
+                                        dưỡng)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng</td>
+                            </tr>
+                            <tr>
+                                <td class="num">18</td>
+                                <td class="module-cell">Hồ sơ Bệnh án</td>
+                                <td><span class="method m-PUT">PUT</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/patient-profiles/{id}
+                                </td>
+                                <td>
+                                    Thay thế/cập nhật hồ sơ nền (UC-06).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ, Điều
+                                        dưỡng)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng</td>
+                            </tr>
+                            <tr>
+                                <td class="num">19</td>
+                                <td class="module-cell">Hồ sơ Bệnh án</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/patient-profiles/{id}
+                                </td>
+                                <td>
+                                    Xem hồ sơ nền của một bệnh nhân
+                                    (UC-06).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ, Điều
+                                        dưỡng)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng</td>
+                            </tr>
+                            <tr>
+                                <td class="num">20</td>
+                                <td class="module-cell">Hồ sơ Bệnh án</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">/api/v1/cases</td>
+                                <td>
+                                    Tạo một lượt khám (Case) mới kèm triệu chứng
+                                    lâm sàng và ≥1 ảnh siêu âm (JPEG/PNG,
+                                    ≤20MB/ảnh) trong 1 request multipart; gán
+                                    Case cho đúng 1 Bác sĩ chịu trách nhiệm
+                                    (GB-04) (UC-07).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ, Điều
+                                        dưỡng)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng</td>
+                            </tr>
+                            <tr>
+                                <td class="num">21</td>
+                                <td class="module-cell">Hồ sơ Bệnh án</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{caseId}/ultrasound-images
+                                </td>
+                                <td>
+                                    Đính kèm thêm ảnh siêu âm vào một Case đã
+                                    tồn tại, chưa ở trạng thái Confirmed
+                                    (UC-07).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ, Điều
+                                        dưỡng)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng</td>
+                            </tr>
+                            <tr>
+                                <td class="num">22</td>
+                                <td class="module-cell">Hồ sơ Bệnh án</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{caseId}/ultrasound-images
+                                </td>
+                                <td>
+                                    Liệt kê ảnh siêu âm gốc đã upload vào một
+                                    Case (UC-07, UC-08).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ, Điều
+                                        dưỡng)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng</td>
+                            </tr>
+                            <tr>
+                                <td class="num">23</td>
+                                <td class="module-cell">Hồ sơ Bệnh án</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{id}
+                                </td>
+                                <td>
+                                    Hồ sơ đầy đủ cho Bác sĩ/Điều dưỡng (ảnh gốc,
+                                    AI Findings, mọi trạng thái, tiến triển);
+                                    cùng 1 path này chỉ trả về kết luận đã
+                                    Confirmed + đơn thuốc khi được gọi bởi chính
+                                    Bệnh nhân sở hữu (GB-05) (UC-08).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-mixed"
+                                        >Role-restricted (Bác sĩ, Điều dưỡng,
+                                        Bệnh nhân-chính mình)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng, Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">24</td>
+                                <td class="module-cell">Hồ sơ Bệnh án</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases?patientProfileId={id}
+                                </td>
+                                <td>
+                                    Liệt kê các lượt khám của một bệnh nhân cụ
+                                    thể, dành cho Bác sĩ/Điều dưỡng (Web
+                                    SCR-12); <code>patientProfileId</code> bắt
+                                    buộc — Bệnh nhân không còn gọi path này nữa
+                                    (xem <code>/cases/me</code> bên dưới)
+                                    (UC-08).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ, Điều
+                                        dưỡng)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng</td>
+                            </tr>
+                            <tr class="new-row">
+                                <td class="num">25</td>
+                                <td class="module-cell">Hồ sơ Bệnh án</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">/api/v1/cases/me</td>
+                                <td>
+                                    Liệt kê các lượt khám của chính Bệnh nhân
+                                    đang đăng nhập, tự động chỉ lấy Confirmed
+                                    (Mobile SCR-13) — tách ra từ endpoint #24 ở
+                                    trên để 1 path không còn gộp query param
+                                    tường minh (staff) với tự-scope ngầm định
+                                    (Bệnh nhân); theo đúng convention
+                                    <code>/me</code> ở Module 1 (UC-08).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    ><span class="tag tag-new"
+                                        >NEW in v1.1</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">26</td>
+                                <td class="module-cell">Hồ sơ Bệnh án</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/patients?search=&amp;visitStatus=&amp;page=&amp;pageSize=
+                                </td>
+                                <td>
+                                    Tìm kiếm/lọc danh sách bệnh nhân theo tên,
+                                    số điện thoại, hoặc mã bệnh nhân, kèm bộ lọc
+                                    trạng thái lượt khám — DTO khác hẳn
+                                    <code>/users</code> của Admin (không có
+                                    trường tài khoản/status) (UC-09).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ, Điều
+                                        dưỡng)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng</td>
+                            </tr>
+                            <tr>
+                                <td class="num">27</td>
+                                <td class="module-cell">Hồ sơ Bệnh án</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{id}/report
+                                </td>
+                                <td>
+                                    Sinh và trả về báo cáo PDF của lượt khám —
+                                    chỉ gồm kết luận Confirmed + đơn thuốc,
+                                    không bao giờ có điểm tin cậy AI thô/dữ liệu
+                                    chưa duyệt (UC-12).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-mixed"
+                                        >Role-restricted (Bác sĩ, Điều dưỡng,
+                                        Bệnh nhân-chính mình)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng, Bệnh nhân</td>
+                            </tr>
+
+                            <!-- MODULE 5 — Chẩn đoán AI (Core) -->
+                            <tr class="module-start">
+                                <td class="num">28</td>
+                                <td class="module-cell">Chẩn đoán AI (Core)</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{caseId}/ai-results
+                                </td>
+                                <td>
+                                    Chạy phân tích AI (tiền xử lý CLAHE + suy
+                                    luận model) trên ảnh của Case; tạo AI Result
+                                    mới ở trạng thái
+                                    <code>PENDING_REVIEW</code> và chuyển Case
+                                    sang <code>ANALYZED</code> (UC-19).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ</td>
+                            </tr>
+                            <tr>
+                                <td class="num">29</td>
+                                <td class="module-cell">Chẩn đoán AI (Core)</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{caseId}/ai-results
+                                </td>
+                                <td>
+                                    Liệt kê toàn bộ lượt chạy AI Result của một
+                                    Case, kèm AI Finding (mask phân vùng, phân
+                                    loại, độ tin cậy, kích thước) (UC-19).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ</td>
+                            </tr>
+                            <tr>
+                                <td class="num">30</td>
+                                <td class="module-cell">Chẩn đoán AI (Core)</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/ai-results/{id}
+                                </td>
+                                <td>
+                                    Xem chi tiết đầy đủ của một AI Result
+                                    (UC-19).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ</td>
+                            </tr>
+                            <tr>
+                                <td class="num">31</td>
+                                <td class="module-cell">Chẩn đoán AI (Core)</td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/ai-results/{id}
+                                </td>
+                                <td>
+                                    Confirm hoặc Reject một AI Result đang
+                                    <code>PENDING_REVIEW</code> qua
+                                    <code
+                                        >{"status":"CONFIRMED"|"REJECTED","doctorNote":"..."}</code
+                                    >
+                                    — một chiều, chỉ Bác sĩ (GB-01, GB-02)
+                                    (UC-19).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ</td>
+                            </tr>
+                            <tr>
+                                <td class="num">32</td>
+                                <td class="module-cell">Chẩn đoán AI (Core)</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/cases/{caseId}/progress
+                                </td>
+                                <td>
+                                    View tổng hợp chỉ-đọc theo dõi tiến triển
+                                    (prognosis tracking): xu hướng kết luận/tổn
+                                    thương qua các lần khám trước của bệnh nhân,
+                                    không có entity lưu trữ riêng (FT-22)
+                                    (UC-19).<span class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ</td>
+                            </tr>
+
+                            <!-- MODULE 6 — Quản lý Phiên bản AI -->
+                            <tr class="module-start">
+                                <td class="num">33</td>
+                                <td class="module-cell">
+                                    Quản lý Phiên bản AI
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/ai-model-versions
+                                </td>
+                                <td>
+                                    Đăng ký một phiên bản AI model mới (mã phiên
+                                    bản, URI artifact, mô tả thay đổi, chỉ số
+                                    benchmark) ở trạng thái
+                                    <code>REGISTERED</code> (UC-20).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">34</td>
+                                <td class="module-cell">
+                                    Quản lý Phiên bản AI
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/ai-model-versions
+                                </td>
+                                <td>
+                                    Liệt kê các phiên bản model đã đăng ký cùng
+                                    trạng thái và chỉ số (Sensitivity, Accuracy,
+                                    AUC) (UC-20).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">35</td>
+                                <td class="module-cell">
+                                    Quản lý Phiên bản AI
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/ai-model-versions/{id}
+                                </td>
+                                <td>
+                                    Xem chi tiết/chỉ số hiệu năng của một phiên
+                                    bản model (UC-20).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">36</td>
+                                <td class="module-cell">
+                                    Quản lý Phiên bản AI
+                                </td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/ai-model-versions/{id}
+                                </td>
+                                <td>
+                                    Activate hoặc rollback một phiên bản qua
+                                    <code>{"status":"ACTIVE"}</code>; phiên bản
+                                    Active trước đó tự động chuyển sang
+                                    <code>INACTIVE</code> (toggle hai chiều,
+                                    ngoại lệ của GB-01) (UC-20).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+
+                            <!-- MODULE 7 — Đơn thuốc & Tuân thủ điều trị -->
+                            <tr class="module-start">
+                                <td class="num">37</td>
+                                <td class="module-cell">
+                                    Đơn thuốc &amp; Tuân thủ điều trị
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/prescriptions
+                                </td>
+                                <td>
+                                    Kê đơn thuốc cho một Case đã Confirmed; ≥1
+                                    item, mỗi item có ≥1 khung giờ uống
+                                    (Sáng/Trưa/Tối) (UC-18).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ</td>
+                            </tr>
+                            <tr>
+                                <td class="num">38</td>
+                                <td class="module-cell">
+                                    Đơn thuốc &amp; Tuân thủ điều trị
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/medicines?search=
+                                </td>
+                                <td>
+                                    Tìm kiếm/gợi ý trong danh mục thuốc dùng
+                                    chung khi kê đơn; tên chưa có trong danh mục
+                                    sẽ tự thêm mới (UC-18).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ</td>
+                            </tr>
+                            <tr>
+                                <td class="num">39</td>
+                                <td class="module-cell">
+                                    Đơn thuốc &amp; Tuân thủ điều trị
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/patient-profiles/{id}/prescriptions
+                                </td>
+                                <td>
+                                    Liệt kê lịch sử đơn thuốc của một bệnh nhân
+                                    (UC-11).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-mixed"
+                                        >Role-restricted (Bác sĩ, Điều dưỡng,
+                                        Bệnh nhân-chính mình)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng, Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">40</td>
+                                <td class="module-cell">
+                                    Đơn thuốc &amp; Tuân thủ điều trị
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/prescriptions/{id}
+                                </td>
+                                <td>
+                                    Xem chi tiết một đơn thuốc cùng các item
+                                    (tên thuốc, liều, khung giờ uống, thời gian
+                                    điều trị) (UC-11).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-mixed"
+                                        >Role-restricted (Bác sĩ, Điều dưỡng,
+                                        Bệnh nhân-chính mình)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng, Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">41</td>
+                                <td class="module-cell">
+                                    Đơn thuốc &amp; Tuân thủ điều trị
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/prescriptions/{id}/intake-logs
+                                </td>
+                                <td>
+                                    Dòng thời gian uống thuốc theo từng liều,
+                                    kèm Adherence Rate (%) đã tính (UC-11).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-mixed"
+                                        >Role-restricted (Bác sĩ, Điều dưỡng,
+                                        Bệnh nhân-chính mình)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng, Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">42</td>
+                                <td class="module-cell">
+                                    Đơn thuốc &amp; Tuân thủ điều trị
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/medication-intake-logs?status=PENDING
+                                </td>
+                                <td>
+                                    Liệt kê các liều thuốc đến hạn/chưa xác nhận
+                                    của chính Bệnh nhân đang đăng nhập
+                                    (UC-17).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">43</td>
+                                <td class="module-cell">
+                                    Đơn thuốc &amp; Tuân thủ điều trị
+                                </td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/medication-intake-logs/{id}
+                                </td>
+                                <td>
+                                    Xác nhận đã uống thuốc qua
+                                    <code>{"status":"TAKEN"}</code>; tự động
+                                    chuyển Prescription cha sang Completed khi
+                                    mọi liều đã Taken (UC-17).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">44</td>
+                                <td class="module-cell">
+                                    Đơn thuốc &amp; Tuân thủ điều trị
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/reminder-preferences
+                                </td>
+                                <td>
+                                    Xem giờ nhắc tùy chỉnh của chính Bệnh nhân
+                                    theo từng khung giờ uống (UC-17).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+                            <tr class="new-row">
+                                <td class="num">45</td>
+                                <td class="module-cell">
+                                    Đơn thuốc &amp; Tuân thủ điều trị
+                                </td>
+                                <td><span class="method m-PUT">PUT</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/reminder-preferences/{slot}
+                                </td>
+                                <td>
+                                    Upsert giờ nhắc tùy chỉnh cho một khung giờ,
+                                    xác định qua path (vd.
+                                    <code>.../morning</code>) — nay nhất quán
+                                    với quy ước PUT/PATCH gắn ID dùng ở mọi nơi
+                                    khác trong catalog (bản v1.0 không có định
+                                    danh trong path); áp dụng cho mọi đơn thuốc
+                                    trong tương lai, không gắn riêng 1 đơn
+                                    (UC-17).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    ><span class="tag tag-new"
+                                        >FIXED in v1.1</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+
+                            <!-- MODULE 8 — Lịch hẹn khám -->
+                            <tr class="module-start">
+                                <td class="num">46</td>
+                                <td class="module-cell">Lịch hẹn khám</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/schedule-slots
+                                </td>
+                                <td>
+                                    Mở một khung giờ khám mới ở trạng thái
+                                    <code>OPEN</code> (ngày, khung giờ, bác sĩ);
+                                    từ chối nếu trùng khung giờ với slot khác
+                                    của cùng bác sĩ (UC-15).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ, Điều
+                                        dưỡng)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng</td>
+                            </tr>
+                            <tr>
+                                <td class="num">47</td>
+                                <td class="module-cell">Lịch hẹn khám</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/schedule-slots?doctorId=&amp;slotDate=&amp;status=
+                                </td>
+                                <td>
+                                    Liệt kê/lọc khung giờ khám — dùng chung bởi
+                                    Bác sĩ/Điều dưỡng quản lý lịch và Bệnh nhân
+                                    duyệt slot để đặt (UC-13, UC-15).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-mixed"
+                                        >Role-restricted (Bác sĩ, Điều dưỡng,
+                                        Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng, Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">48</td>
+                                <td class="module-cell">Lịch hẹn khám</td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/schedule-slots/{id}
+                                </td>
+                                <td>
+                                    Đóng một slot qua
+                                    <code>{"status":"CLOSED"}</code> — terminal,
+                                    không mở lại; trạng thái slot không bị ảnh
+                                    hưởng bởi số lượt đặt (không có khái niệm
+                                    Capacity) (UC-15).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ, Điều
+                                        dưỡng)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng</td>
+                            </tr>
+                            <tr>
+                                <td class="num">49</td>
+                                <td class="module-cell">Lịch hẹn khám</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/schedule-slots/{id}/appointments
+                                </td>
+                                <td>
+                                    Liệt kê các lượt đặt trên một slot, để Bác
+                                    sĩ/Điều dưỡng thấy bệnh nhân bị ảnh hưởng
+                                    trước khi đóng slot (UC-15 AF-02).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-doctor"
+                                        >Role-restricted (Bác sĩ, Điều
+                                        dưỡng)</span
+                                    >
+                                </td>
+                                <td>Bác sĩ, Điều dưỡng</td>
+                            </tr>
+                            <tr>
+                                <td class="num">50</td>
+                                <td class="module-cell">Lịch hẹn khám</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/appointments
+                                </td>
+                                <td>
+                                    Đặt lịch vào một slot <code>OPEN</code>; từ
+                                    chối nếu Bệnh nhân đã có lịch
+                                    <code>BOOKED</code> khác trùng khung giờ (BR
+                                    — mỗi bệnh nhân chỉ 1 lượt đặt hoạt
+                                    động/slot) (UC-13).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">51</td>
+                                <td class="module-cell">Lịch hẹn khám</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/appointments/{id}/cancel
+                                </td>
+                                <td>
+                                    Hủy một lịch hẹn Booked; bắt buộc phải có
+                                    <code>cancellationReason</code> — giữ dạng
+                                    action endpoint vì một status-flip đơn thuần
+                                    không thể hiện được điều kiện bắt buộc-lý-do
+                                    (UC-14).<span class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">52</td>
+                                <td class="module-cell">Lịch hẹn khám</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/appointments/{id}
+                                </td>
+                                <td>
+                                    Xem chi tiết một lịch hẹn của chính Bệnh
+                                    nhân (UC-14).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">53</td>
+                                <td class="module-cell">Lịch hẹn khám</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/appointments?status=
+                                </td>
+                                <td>
+                                    Liệt kê lịch sử lịch hẹn của chính Bệnh nhân
+                                    (Booked/Cancelled) (UC-13, UC-14).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+                            <tr class="na-row">
+                                <td class="num">54</td>
+                                <td class="module-cell">Lịch hẹn khám</td>
+                                <td><span class="method m-NA">—</span></td>
+                                <td class="endpoint-cell">
+                                    N/A — chỉ ở phía client/thiết bị
+                                </td>
+                                <td>
+                                    Đồng bộ lịch với calendar thiết bị là một
+                                    chiều, không đọc ngược: Mobile App gọi trực
+                                    tiếp OS Calendar API (API-02). ADSUS_BE
+                                    <strong>không có endpoint nào</strong> cho
+                                    tích hợp này — bịa ra một endpoint sẽ tạo
+                                    scope không có trong UCS (UC-16).<span
+                                        class="tag tag-na"
+                                        >N/A</span
+                                    >
+                                </td>
+                                <td><span class="badge auth-na">N/A</span></td>
+                                <td>Bệnh nhân (chỉ phía client)</td>
+                            </tr>
+
+                            <!-- MODULE 9 — Theo dõi Sức khỏe -->
+                            <tr class="module-start">
+                                <td class="num">55</td>
+                                <td class="module-cell">Theo dõi Sức khỏe</td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/health-logs
+                                </td>
+                                <td>
+                                    Ghi nhật ký tập luyện/ăn uống trong ngày;
+                                    các mục cùng ngày được cộng dồn thay vì ghi
+                                    đè (UC-21).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">56</td>
+                                <td class="module-cell">Theo dõi Sức khỏe</td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/health-logs?date=
+                                </td>
+                                <td>
+                                    Đọc nhật ký của một ngày, phục vụ cả màn
+                                    hình trong app (SCR-23) lẫn widget màn hình
+                                    chính (SCR-24) (UC-21).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+
+                            <!-- MODULE 10 — Tương tác & Nội dung -->
+                            <tr class="module-start">
+                                <td class="num">57</td>
+                                <td class="module-cell">
+                                    Tương tác &amp; Nội dung
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/service-feedback
+                                </td>
+                                <td>
+                                    Gửi đánh giá 1–5 sao kèm bình luận tùy chọn
+                                    (UC-22).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">58</td>
+                                <td class="module-cell">
+                                    Tương tác &amp; Nội dung
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/blog-posts?category=
+                                </td>
+                                <td>
+                                    Liệt kê bài blog; Bệnh nhân chỉ thấy
+                                    <code>PUBLISHED</code>, Admin thấy thêm cả
+                                    <code>DRAFT</code> (GB-05) — cùng 1
+                                    endpoint, kết quả được lọc theo vai trò
+                                    (UC-23, UC-24).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected†</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân, Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">59</td>
+                                <td class="module-cell">
+                                    Tương tác &amp; Nội dung
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/blog-posts/{id}
+                                </td>
+                                <td>
+                                    Xem toàn bộ nội dung một bài, theo cùng quy
+                                    tắc hiển thị Published/Draft (UC-23,
+                                    UC-24).<span class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-protected"
+                                        >Protected†</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân, Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">60</td>
+                                <td class="module-cell">
+                                    Tương tác &amp; Nội dung
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/blog-posts
+                                </td>
+                                <td>
+                                    Tạo bài blog mới ở trạng thái
+                                    <code>DRAFT</code> (UC-24).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">61</td>
+                                <td class="module-cell">
+                                    Tương tác &amp; Nội dung
+                                </td>
+                                <td>
+                                    <span class="method m-PATCH">PATCH</span>
+                                </td>
+                                <td class="endpoint-cell">
+                                    /api/v1/blog-posts/{id}
+                                </td>
+                                <td>
+                                    Sửa nội dung, hoặc publish qua
+                                    <code>{"status":"PUBLISHED"}</code> (yêu cầu
+                                    có title + content, gán publish date, một
+                                    chiều theo GB-01) (UC-24).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-admin"
+                                        >Role-restricted (Admin)</span
+                                    >
+                                </td>
+                                <td>Admin</td>
+                            </tr>
+                            <tr>
+                                <td class="num">62</td>
+                                <td class="module-cell">
+                                    Tương tác &amp; Nội dung
+                                </td>
+                                <td><span class="method m-POST">POST</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/chat-messages
+                                </td>
+                                <td>
+                                    Gửi câu hỏi sức khỏe tổng quát cho AI
+                                    assistant; chuyển ngữ cảnh sang LLM ngoài
+                                    (API-03), tự thêm disclaimer bắt buộc theo
+                                    GB-02, và lưu lại lượt hỏi-đáp (UC-26).<span
+                                        class="tag tag-action"
+                                        >ACTION</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+                            <tr>
+                                <td class="num">63</td>
+                                <td class="module-cell">
+                                    Tương tác &amp; Nội dung
+                                </td>
+                                <td><span class="method m-GET">GET</span></td>
+                                <td class="endpoint-cell">
+                                    /api/v1/chat-messages?page=&amp;pageSize=
+                                </td>
+                                <td>
+                                    Đọc lại lịch sử chat AI (AI Chat History) đã
+                                    lưu của chính Bệnh nhân (UC-26).<span
+                                        class="tag tag-crud"
+                                        >CRUD</span
+                                    >
+                                </td>
+                                <td>
+                                    <span class="badge auth-patient"
+                                        >Role-restricted (Bệnh nhân)</span
+                                    >
+                                </td>
+                                <td>Bệnh nhân</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p
+                    style="
+                        margin-top: 10px;
+                        font-size: 0.85rem;
+                        color: var(--muted);
+                    "
+                >
+                    † "Protected" ở đây nghĩa là bất kỳ vai trò đã đăng nhập nào
+                    cũng gọi được; tập kết quả trả về mới bị lọc theo vai trò
+                    (hiển thị Draft), chứ không phải endpoint bị chặn theo role.
+                </p>
+            </section>
+
+            <section>
+                <h2 id="summary">Số lượng Endpoint theo Module</h2>
+                <table class="summary">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Module</th>
+                            <th>Số endpoint</th>
+                            <th>CRUD</th>
+                            <th>ACTION</th>
+                            <th>N/A</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>Xác thực &amp; Tài khoản</td>
+                            <td class="count">10</td>
+                            <td class="count">3</td>
+                            <td class="count">7</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>Quản lý Người dùng &amp; Phân quyền</td>
+                            <td class="count">5</td>
+                            <td class="count">5</td>
+                            <td class="count">0</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td>Dashboard &amp; Báo cáo</td>
+                            <td class="count">1</td>
+                            <td class="count">0</td>
+                            <td class="count">1</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td>Hồ sơ Bệnh án</td>
+                            <td class="count">11</td>
+                            <td class="count">10</td>
+                            <td class="count">1</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>5</td>
+                            <td>Chẩn đoán AI (Core)</td>
+                            <td class="count">5</td>
+                            <td class="count">3</td>
+                            <td class="count">2</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>6</td>
+                            <td>Quản lý Phiên bản AI</td>
+                            <td class="count">4</td>
+                            <td class="count">4</td>
+                            <td class="count">0</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>7</td>
+                            <td>Đơn thuốc &amp; Tuân thủ điều trị</td>
+                            <td class="count">9</td>
+                            <td class="count">9</td>
+                            <td class="count">0</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>8</td>
+                            <td>Lịch hẹn khám</td>
+                            <td class="count">9</td>
+                            <td class="count">7</td>
+                            <td class="count">1</td>
+                            <td class="count">1</td>
+                        </tr>
+                        <tr>
+                            <td>9</td>
+                            <td>Theo dõi Sức khỏe</td>
+                            <td class="count">2</td>
+                            <td class="count">2</td>
+                            <td class="count">0</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr>
+                            <td>10</td>
+                            <td>Tương tác &amp; Nội dung</td>
+                            <td class="count">7</td>
+                            <td class="count">5</td>
+                            <td class="count">2</td>
+                            <td class="count">0</td>
+                        </tr>
+                        <tr class="total-row">
+                            <td colspan="2">Tổng cộng</td>
+                            <td class="count">63</td>
+                            <td class="count">48</td>
+                            <td class="count">14</td>
+                            <td class="count">1</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2 id="cross-module">Ghi chú liên module (cross-module)</h2>
+                <ul class="notes">
+                    <li>
+                        <strong
+                            >Danh tính người dùng dùng chung, nhưng DTO thì
+                            không.</strong
+                        >
+                        <code>/api/v1/users/*</code> (Module 2, Admin quản lý
+                        tài khoản) và <code>/api/v1/users/me</code> (Module 1,
+                        tự phục vụ) cùng đọc/ghi trên bảng <code>Users</code>,
+                        nhưng không bao giờ dùng chung 1 DTO — DTO phía Admin ẩn
+                        <code>DateOfBirth</code> khi đối tượng là Patient và
+                        không bao giờ trả về trường mật khẩu; DTO tự phục vụ chỉ
+                        lộ các trường người gọi được sửa của chính mình.
+                    </li>
+                    <li>
+                        <strong
+                            >Alias <code>/me</code> nay xuất hiện ở 2 module —
+                            <code>/users/me</code> (Module 1) và
+                            <code>/cases/me</code> (Module 4)</strong
+                        >
+                        — như một convention nhất quán, có chủ đích cho "tài
+                        nguyên này, thu hẹp về đúng danh tính JWT của người
+                        gọi", được đưa vào ở đợt v1.1 này. Convention này chưa
+                        được ratify chính thức trong
+                        <code>api_design_rules_v0.2.md</code>; đề xuất thêm 1
+                        điều khoản ngắn cho nó cạnh rule "plural noun" ở §3.2.
+                    </li>
+                    <li>
+                        <strong
+                            ><code>/api/v1/cases/{id}</code> được dùng lại có
+                            chủ đích giữa UC-08 (Hồ sơ Bệnh án), UC-19 (Chẩn
+                            đoán AI), và UC-12 (xuất PDF)</strong
+                        >
+                        thay vì tách riêng theo từng UC — một Case gộp
+                        Ultrasound Image, AI Result, và Prescription về sau, nên
+                        một endpoint chi tiết duy nhất phục vụ được cả 3 UC
+                        đọc-nhiều này, lọc theo vai trò người gọi. Tuy nhiên,
+                        tầng truy cập danh sách nay đã tách theo actor (#24 cho
+                        staff, #25 cho Bệnh nhân) thay vì gộp trên 1 path — xem
+                        changelog v1.1.
+                    </li>
+                    <li>
+                        <strong
+                            ><code
+                                >/api/v1/patient-profiles/{id}/prescriptions</code
+                            >
+                            (Module 7) lồng dưới một tài nguyên của Module
+                            4</strong
+                        >
+                        — lịch sử đơn thuốc về mặt nghiệp vụ là một phần hồ sơ
+                        bệnh án, dù vòng đời CRUD (Active → Completed) của nó
+                        thuộc về module Đơn thuốc &amp; Tuân thủ điều trị.
+                    </li>
+                    <li>
+                        <strong
+                            ><code>/api/v1/schedule-slots</code> (Module 8) được
+                            3 vai trò khác nhau đọc với 3 mục đích khác
+                            nhau</strong
+                        >: Bác sĩ/Điều dưỡng quản lý công suất (UC-15), Bệnh
+                        nhân duyệt để đặt (UC-13), và sub-resource lồng
+                        <code>/appointments</code> giúp Bác sĩ/Điều dưỡng thấy
+                        ai bị ảnh hưởng trước khi đóng slot (UC-15 AF-02).
+                    </li>
+                    <li>
+                        <strong
+                            ><code>/api/v1/blog-posts</code> (Module 10) là
+                            nguồn duy nhất cho cả UC-23 (Bệnh nhân đọc) và UC-24
+                            (Admin biên tập)</strong
+                        >
+                        — quy tắc "chỉ Published cho Bệnh nhân" của GB-05 được
+                        thực thi như một bộ lọc query bên trong endpoint này,
+                        không phải tách thành 2 endpoint riêng. Khác với case ở
+                        Module 4 phía trên, đây thuần túy là 1 filter hiển thị
+                        trên cùng 1 cơ chế scope (cả 2 bên đều query "toàn bộ
+                        bài viết"), nên giữ nguyên 1 endpoint thay vì tách.
+                    </li>
+                    <li>
+                        <strong
+                            >Việc activate AI Model (Module 6) có tác động xuôi
+                            dòng tới Module 5</strong
+                        >:
+                        <code>PATCH /api/v1/ai-model-versions/{id}</code> chuyển
+                        một phiên bản sang <code>ACTIVE</code> chính là thứ mà
+                        <code>POST /api/v1/cases/{caseId}/ai-results</code>
+                        (UC-19) thực sự gọi tới khi suy luận — không có endpoint
+                        "model hiện hành" riêng; phiên bản Active được tra cứu ở
+                        phía server. Việc lồng endpoint AI Diagnosis dưới
+                        <code>/cases</code> chỉ là tiện lợi ở mức URL — không
+                        đồng nghĩa code Controller/BLL của module AI Diagnosis
+                        phải nằm trong module Medical Record trong kiến trúc
+                        Modular Monolith (ADR-001).
+                    </li>
+                    <li>
+                        <strong
+                            >Kê đơn (Module 7, UC-18) phụ thuộc vào kết quả của
+                            Module 5</strong
+                        >: <code>POST /api/v1/prescriptions</code> chỉ hợp lệ
+                        khi Case đích đã được
+                        <code>PATCH /api/v1/ai-results/{id}</code> confirm,
+                        chuyển Case sang <code>CONFIRMED</code> (BR-04 của
+                        UC-18).
+                    </li>
+                    <li>
+                        <strong
+                            ><code>POST /api/v1/chat-messages</code> (Module 10,
+                            UC-26) mang một phụ thuộc mềm vào Module 4</strong
+                        >: Request Fields của chính UCS cho UC-26 có trường tùy
+                        chọn "Context Case ID" để trợ lý AI giải thích một kết
+                        luận đã Confirmed — bị lược khỏi phần mô tả tóm tắt của
+                        catalog này (theo đúng ràng buộc "không thiết kế
+                        request/response body"), nhưng đáng nêu ra ở đây vì đây
+                        là một phụ thuộc Engagement → Medical Record có thật.
+                    </li>
+                </ul>
+            </section>
+
+            <section>
+                <h2 id="exclusions">
+                    Loại trừ tường minh (giữ ngoài phạm vi, theo đúng tài liệu
+                    nguồn)
+                </h2>
+                <ul class="notes">
+                    <li>
+                        Không có endpoint cho Grad-CAM/heatmap giải thích — đã
+                        descope theo PRD §4.1x / §6.3; Bác sĩ vẫn xem được vùng
+                        đã phân vùng qua AI Findings (đã có sẵn trong các
+                        endpoint <code>ai-results</code>).
+                    </li>
+                    <li>
+                        Không có endpoint cho định danh điện tử quốc gia
+                        (CCCD/BHYT/VNeID), thanh toán/bảo hiểm, hay tích hợp
+                        HIS/PACS — nằm ngoài phạm vi theo PRD §6.3.
+                    </li>
+                    <li>
+                        Không có endpoint SMS hay Email nghiệp vụ chung — Push
+                        (API-01) là kênh thông báo in-app duy nhất; Email chỉ
+                        dùng riêng cho luồng quên mật khẩu (endpoint #6 ở trên).
+                    </li>
+                    <li>
+                        Không bịa ra endpoint/trường "processing_ms" hay bản ghi
+                        thời gian AI theo từng lượt chạy — PRD §6.1 xác nhận chỉ
+                        tiêu &lt;2s được kiểm chứng qua testing/APM, không lưu
+                        theo từng lượt suy luận.
+                    </li>
+                    <li>
+                        Không có endpoint xóa cứng nào cho các entity y tế
+                        (Case, AI Result, Prescription, Appointment, Ultrasound
+                        Image) — nhất quán với GB-03; chỉ có
+                        <code>DELETE /api/v1/users/{id}</code>, và đây thực chất
+                        là soft-delete (xem
+                        <code>&lt;http_status_codes&gt;</code> trong
+                        <code>api_design_rules_v0.2.md</code>).
+                    </li>
+                    <li>
+                        UC-02 (Đăng nhập sinh trắc học) được giữ lại ở dạng
+                        <em>planned/ưu tiên Could</em> theo FT-03 — có trong
+                        catalog để đầy đủ, không khẳng định đã được cài đặt.
+                    </li>
+                </ul>
+            </section>
+
+            <section>
+                <h2 id="method-notes">Ghi chú về Method &amp; Ranh giới</h2>
+                <ul class="notes">
+                    <li>
+                        Mọi UC chuyển trạng thái (AI Result confirm/reject,
+                        Model Version activate/rollback, Schedule Slot close,
+                        Account lock/unlock, Blog Post publish, Intake Log
+                        confirm) đều dùng
+                        <code>PATCH + trường status</code> thay vì bịa ra một
+                        động từ hành động — theo §3.3 của
+                        <code>api_design_rules_v0.2.md</code>, endpoint dạng
+                        action <code>POST .../verb</code> chỉ dành cho các
+                        chuyển trạng thái không có ánh xạ REST tự nhiên.
+                    </li>
+                    <li>
+                        Các ngoại lệ dùng endpoint dạng action là
+                        <code>POST /appointments/{id}/cancel</code> (điều kiện
+                        bắt buộc <code>cancellationReason</code> không phải một
+                        cập nhật field đơn thuần),
+                        <code>POST /auth/biometric-devices</code> (một bước
+                        enrollment bảo mật, không phải cập nhật field), và nhóm
+                        Auth
+                        <code>login</code
+                        >/<code>refresh</code>/<code>logout</code>/<code
+                            >biometric-login</code
+                        >
+                        (không có tài nguyên nền để PATCH).
+                    </li>
+                    <li>
+                        Reschedule (UC-14 AF-01)
+                        <strong>không có endpoint riêng</strong> — UCS mô tả rõ
+                        đây là <code>POST /appointments/{id}/cancel</code> rồi
+                        tiếp theo một <code>POST /appointments</code> mới, đúng
+                        theo BR-04 "hủy cái cũ + đặt cái mới, cả hai đều được
+                        giữ lại".
+                    </li>
+                    <li>
+                        Mọi endpoint dạng danh sách đều tuân thủ hợp đồng phân
+                        trang bắt buộc (<code>page</code>,
+                        <code>pageSize</code>, bọc trong
+                        <code>PagedResult&lt;T&gt;</code>) theo §7.1 của
+                        api_design_rules — lược bớt khỏi cột Endpoint ở trên cho
+                        gọn, trừ khi bộ lọc riêng của UC là điểm đáng chú ý.
+                    </li>
+                    <li>
+                        <strong
+                            >Điểm căng giữa naming rule (chưa xử lý, chỉ gắn cờ
+                            cho tài liệu api_design_rules, không tự sửa ở
+                            đây):</strong
+                        >
+                        <code>service-feedback</code> (#57) và
+                        <code>.../progress</code> (#32) là danh từ không đếm
+                        được, không thể ép số nhiều một cách hợp lý — điều này
+                        mâu thuẫn với câu chữ nguyên văn "luôn dùng danh từ số
+                        nhiều" ở §3.2. Catalog này giữ nguyên số ít thay vì ép
+                        ra dạng số nhiều gượng gạo ("service-feedbacks",
+                        "progresses"); <code>api_design_rules_v0.2.md</code> nên
+                        có 1 ngoại lệ tường minh cho trường hợp này thay vì để
+                        nó lệch rule một cách âm thầm, không ghi chép.
+                    </li>
+                    <li>
+                        <strong
+                            >Khoảng trống data-model kế thừa từ UCS, không phải
+                            do catalog này tạo ra:</strong
+                        >
+                        query <code>category</code> trên
+                        <code>GET /blog-posts</code> (#58) bắt nguồn từ chính
+                        bảng Request Fields
+                        <code>GetBlogArticlesRequest</code> của UC-23, nhưng
+                        entity Blog Post trong PRD §2.2.o không có thuộc tính
+                        lưu trữ tương ứng (chỉ có title, content, status,
+                        publish date). Điểm này nên được phản hồi lại cho người
+                        phụ trách PRD/UCS, không nên tự âm thầm giải quyết ở
+                        tầng API.
+                    </li>
+                </ul>
+            </section>
+
+            <div class="note-box flag">
+                <strong>Ghi chú (2026-07-30):</strong> schema database vật lý
+                (<code>ADSUS_Physical_Schema_PostgreSQL_v1.sql</code>) có thể còn thay đổi
+                trước khi triển khai — vd. bổ sung giá trị <code>NURSE</code> còn thiếu
+                trong <code>user_role</code>, hoặc giải quyết chênh lệch giữa
+                <code>slot_status</code> có <code>FULL</code> với quyết định chỉ
+                Open/Closed đã ghi nhận trong <code>Report_3.1_UCS_ADSUS.md</code>. Danh
+                sách endpoint trong catalog này cần được rà soát và điều chỉnh lại mỗi
+                khi schema nền thay đổi, không nên xem là cố định vĩnh viễn.
+            </div>
+
+            <footer class="doc-footer">
+                Sinh cho ADSUS · nguồn:
+                <code>Report_3.0_PRD_ADSUS_md.md</code> (v1.23) ·
+                <code>Report_3.1_UCS_ADSUS.md</code> (v1.2) ·
+                <code>project_context.md</code> ·
+                <code>api_design_rules_v0.2.md</code><br />
+                Catalog này trích xuất và tổ chức lại các endpoint đã ngầm định
+                trong các tài liệu dự án đã chốt — không tự thêm tính năng
+                nghiệp vụ mới.
+            </footer>
+        </div>
+    </body>
+</html>

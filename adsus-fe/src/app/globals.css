@@ -78,6 +78,17 @@
   --chart-3: #558dca;
   --chart-4: #f13a66;
   --chart-5: #4d94c4;
+
+  /* Màu trạng thái cho biểu đồ (UC-05 / SCR-08).
+     Ba màu này đã chạy qua trình kiểm tra bảng màu: đạt dải độ sáng, ngưỡng bão hoà, và
+     tách biệt được với các dạng mù màu.
+     KHÔNG dùng --chart-1 (#223a66) cho biểu đồ: nó trượt cả hai kiểm tra đầu — quá tối và
+     bão hoà quá thấp nên hiển thị ra gần như màu xám.
+     Màu trạng thái luôn đi kèm biểu tượng và nhãn chữ, không bao giờ dùng màu một mình. */
+  --status-good: #1cba9f;
+  --status-warning: #e0912f;
+  --status-critical: #f13a66;
+
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -114,6 +125,13 @@
   --chart-3: #4d94c4;
   --chart-4: #fc7e8a;
   --chart-5: #f06699;
+
+  /* Bản cho nền tối — KHÔNG phải bản sáng làm đậm lên, mà là bộ riêng đã kiểm tra lại với
+     nền tối. Dải độ sáng cho nền tối hẹp và THẤP hơn nền sáng, nên ba màu này tối hơn bản
+     ở trên chứ không sáng hơn. */
+  --status-good: #0f9c83;
+  --status-warning: #b8801a;
+  --status-critical: #e03a66;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

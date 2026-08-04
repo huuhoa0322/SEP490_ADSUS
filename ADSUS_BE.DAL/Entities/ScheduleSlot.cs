@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
-/// Quỹ giờ khám bác sĩ công bố (UC-15) — bệnh nhân đặt lịch bằng cách chọn slot OPEN (UC-13). EXCLUDE constraint chặn khung giờ chồng lấn của cùng bác sĩ ngay tại DB. Đơn giản hóa v2: mỗi khung giờ mặc định 1 bệnh nhân (không có capacity) — status chuyển FULL ngay khi có 1 booking BOOKED.
+/// Quỹ giờ khám bác sĩ công bố (UC-15) — không giới hạn số Appointment/slot, vòng đời chỉ Open → Closed (quyết định UCS 3.1, 23/07/2026).
 /// </summary>
 public partial class ScheduleSlot
 {

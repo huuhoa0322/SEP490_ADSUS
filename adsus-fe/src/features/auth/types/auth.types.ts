@@ -16,6 +16,29 @@ export interface LoginResponse {
   mustChangePassword: boolean;
 }
 
+/**
+ * Đăng nhập đúng mật khẩu nhưng vai trò này không có giao diện Web.
+ *
+ * UC-01: SCR-01 (Web) dành cho Admin, Doctor, Nurse. Bệnh nhân dùng SCR-02 trên ứng dụng
+ * di động. Không phải lỗi xác thực nên KHÔNG gộp vào câu chung của GB-06 — nói mơ hồ ở đây
+ * chỉ khiến bệnh nhân tưởng mình nhập sai mật khẩu và thử đi thử lại.
+ */
+export class WebNotAvailableForRoleError extends Error {
+  constructor() {
+    super("WEB_NOT_AVAILABLE_FOR_ROLE");
+    this.name = "WebNotAvailableForRoleError";
+  }
+}
+
+/**
+ * UC-03 FT-06 — tự yêu cầu cấp lại mật khẩu.
+ * BR-01: phải khớp CẢ số điện thoại LẪN email của một tài khoản đang tồn tại.
+ */
+export interface ForgotPasswordRequest {
+  phoneNumber: string;
+  email: string;
+}
+
 /** UC-25 — a signed-in user changes their own password. */
 export interface ChangePasswordRequest {
   currentPassword: string;

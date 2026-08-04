@@ -23,5 +23,64 @@ public partial class AppDbContext
                 .HasColumnName("status")
                 .HasDefaultValue(UserStatus.Active);
         });
+
+        // Hai enum của module khác, khai ở đây vì Dashboard (UC-05) cần đếm theo trạng thái.
+        // Xem chú thích trong Enums.cs. Ai làm Module 5 / Module 8 dùng lại, đừng khai lại.
+        modelBuilder.HasPostgresEnum<AiResultStatus>("public", "ai_result_status");
+        modelBuilder.HasPostgresEnum<AppointmentStatus>("public", "appointment_status");
+
+        modelBuilder.Entity<AiResult>(entity =>
+        {
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasDefaultValue(AiResultStatus.PendingReview);
+        });
+
+        modelBuilder.Entity<Appointment>(entity =>
+        {
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasDefaultValue(AppointmentStatus.Booked);
+        });
+
+        modelBuilder.HasPostgresEnum<ModelVersionStatus>("public", "model_version_status");
+
+        modelBuilder.Entity<AiModelVersion>(entity =>
+        {
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasDefaultValue(ModelVersionStatus.Inactive);
+        });
+
+        // ---------- Module 4: Medical Record ----------
+        // Ba enum này đã được khai bằng chuỗi trong AppDbContext.cs (bản scaffold), nhưng bản
+        // đó không gắn với kiểu CLR nào. Khai lại theo kiểu để EF biết PatientProfile.Gender,
+        // Case.Status, Prescription.Status ánh xạ sang enum nào.
+        modelBuilder.HasPostgresEnum<GenderType>("public", "gender_type");
+        modelBuilder.HasPostgresEnum<CaseStatus>("public", "case_status");
+        modelBuilder.HasPostgresEnum<PrescriptionStatus>("public", "prescription_status");
+
+        modelBuilder.Entity<PatientProfile>(entity =>
+        {
+            entity.Property(e => e.Gender)
+                .HasColumnName("gender")
+                .HasDefaultValue(GenderType.Female);
+        });
+
+        modelBuilder.Entity<Case>(entity =>
+        {
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasDefaultValue(CaseStatus.Created);
+        });
+
+        // Cột của Module 7 nhưng phải map ở đây: CaseResponse nhúng trạng thái đơn thuốc (#23).
+        // Ai làm Module 7 dùng lại, đừng khai lại.
+        modelBuilder.Entity<Prescription>(entity =>
+        {
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasDefaultValue(PrescriptionStatus.Active);
+        });
     }
 }

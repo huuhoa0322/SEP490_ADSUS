@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Bản debug KHÔNG tự có quyền này. Thiếu nó thì mọi lời gọi API hỏng ngay, mà báo lỗi
+         lại giống hệt "không kết nối được máy chủ" nên rất khó đoán ra nguyên nhân.
+         Flutter cũng cần quyền này cho hot reload và đặt breakpoint. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <application
+        android:name="${applicationName}"
+        android:usesCleartextTraffic="true"/>
+    <!-- Từ Android 9 (API 28), HTTP thường bị chặn mặc định, chỉ cho HTTPS. Backend lúc
+         phát triển chạy ở http://10.0.2.2:5036 nên bản debug phải mở HTTP.
+
+         CHỈ mở ở debug. Bản release cố ý KHÔNG có dòng này — lên thật là bắt buộc HTTPS,
+         dữ liệu bệnh nhân không được truyền dạng thô. -->
+</manifest>

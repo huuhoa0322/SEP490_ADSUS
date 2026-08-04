@@ -361,3 +361,17 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# ---- Flutter / Android ----
+# Luật "[Dd]ebug/" ở phần trên là của Visual Studio (dành cho bin/Debug), nhưng nó nuốt
+# nhầm luôn thư mục MÃ NGUỒN android/app/src/debug của Flutter.
+# Thư mục đó phải được commit: nó chứa quyền INTERNET và cho phép HTTP cho bản debug.
+# Thiếu file đó thì ứng dụng không gọi được API, mà báo lỗi lại giống hệt
+# "không kết nối được máy chủ" nên rất khó lần ra.
+!ADSUS_Mobile/android/app/src/debug/
+!ADSUS_Mobile/android/app/src/debug/**
+
+# Cấu hình riêng của IDE JetBrains (Rider, Android Studio). Không ai khác cần.
+.idea/
+/.ai-context
+/Prompt
+/05_APIs

@@ -41,6 +41,8 @@
     <Folder Include="MedicalRecord\Validators\" />
     <Folder Include="Common\" />
     <Folder Include="BackgroundJobs\" />
+    <Folder Include="Resources\Fonts\" />
+    <Folder Include="Resources\" />
     <Folder Include="PrescriptionAdherence\DTOs\" />
     <Folder Include="PrescriptionAdherence\Interfaces\" />
     <Folder Include="PrescriptionAdherence\Services\" />
@@ -52,11 +54,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Resources\Fonts\NotoSans-VariableFont_wdth_wght.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <!-- Khai tường minh thay vì dựa vào Quartz kéo hộ. Tầng nghiệp vụ cần ILogger, mà phụ
+         thuộc bắc cầu thì biến mất ngay khi ai đó gỡ Quartz — lúc đó lỗi biên dịch hiện ra
+         ở chỗ chẳng liên quan gì. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
     <PackageReference Include="Quartz" Version="3.19.0" />
     <PackageReference Include="Quartz.Extensions.Hosting" Version="3.19.0" />
+    <PackageReference Include="QuestPDF" Version="2024.12.3" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.21.0" />
   </ItemGroup>
 

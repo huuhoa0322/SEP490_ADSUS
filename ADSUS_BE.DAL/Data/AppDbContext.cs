@@ -70,14 +70,14 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("gender_type", new[] { "FEMALE", "MALE", "OTHER" })
             .HasPostgresEnum("health_log_type", new[] { "EXERCISE", "DIET" })
             .HasPostgresEnum("intake_status", new[] { "PENDING", "TAKEN" })
-            .HasPostgresEnum("model_version_status", new[] { "REGISTERED", "ACTIVE", "INACTIVE" })
+            .HasPostgresEnum("model_version_status", new[] { "ACTIVE", "INACTIVE" })
             .HasPostgresEnum("prescription_status", new[] { "ACTIVE", "COMPLETED" })
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in", "like", "ilike", "is", "match", "imatch", "isdistinct" })
             .HasPostgresEnum("reminder_slot", new[] { "MORNING", "NOON", "EVENING" })
-            .HasPostgresEnum("slot_status", new[] { "OPEN", "FULL", "CLOSED" })
+            .HasPostgresEnum("slot_status", new[] { "OPEN", "CLOSED" })
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
-            .HasPostgresEnum("user_role", new[] { "ADMIN", "DOCTOR", "PATIENT" })
+            .HasPostgresEnum("user_role", new[] { "ADMIN", "DOCTOR", "PATIENT", "NURSE" })
             .HasPostgresEnum("user_status", new[] { "ACTIVE", "LOCKED", "DEACTIVATED" })
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
@@ -151,7 +151,7 @@ public partial class AppDbContext : DbContext
         {
             entity.HasKey(e => e.ModelVersionId).HasName("pk_ai_model_versions");
 
-            entity.ToTable("ai_model_versions", tb => tb.HasComment("Phiên bản mô hình AI (đăng ký / kích hoạt / rollback / theo dõi — FT-23/24/25). Partial unique index bảo đảm chỉ 1 phiên bản ACTIVE. Rollback = ACTIVE → INACTIVE và kích hoạt bản khác."));
+            entity.ToTable("ai_model_versions", tb => tb.HasComment("Phiên bản mô hình AI (thêm mới / kích hoạt / rollback / theo dõi — FT-23/24/25). Chỉ 2 trạng thái Active/Inactive — phiên bản mới thêm mặc định Inactive cho tới khi Admin kích hoạt. Partial unique index bảo đảm chỉ 1 phiên bản ACTIVE. Rollback = ACTIVE → INACTIVE và kích hoạt bản khác."));
 
             entity.HasIndex(e => e.VersionCode, "uq_ai_model_versions_code").IsUnique();
 
@@ -159,18 +159,24 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("model_version_id");
             entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.EvalAccuracy)
+            entity.Property(e => e.HfFilename)
+                .HasMaxLength(255)
+                .HasColumnName("hf_filename");
+            entity.Property(e => e.HfRepoId)
+                .HasMaxLength(255)
+                .HasColumnName("hf_repo_id");
+            entity.Property(e => e.MetricsMap50)
                 .HasPrecision(5, 2)
                 .HasComment("Đơn vị %. Ngưỡng KPI: > 85%.")
-                .HasColumnName("eval_accuracy");
-            entity.Property(e => e.EvalAuc)
-                .HasPrecision(4, 3)
-                .HasComment("Thang 0–1. Ngưỡng KPI: > 0.90.")
-                .HasColumnName("eval_auc");
-            entity.Property(e => e.EvalSensitivity)
+                .HasColumnName("metrics_map50");
+            entity.Property(e => e.MetricsPrecision)
                 .HasPrecision(5, 2)
                 .HasComment("Chỉ số đo offline khi đăng ký, đơn vị %. Ngưỡng KPI nghiên cứu: > 90%.")
-                .HasColumnName("eval_sensitivity");
+                .HasColumnName("metrics_precision");
+            entity.Property(e => e.MetricsRecall)
+                .HasPrecision(4, 3)
+                .HasComment("Thang 0–1. Ngưỡng KPI: > 0.90.")
+                .HasColumnName("metrics_recall");
             entity.Property(e => e.RegisteredAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("registered_at");
@@ -272,7 +278,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<AuditLog>(entity =>
         {
-            entity.HasKey(e => e.LogId).HasName("audit_logs_pkey");
+            entity.HasKey(e => e.LogId).HasName("pk_audit_logs");
 
             entity.ToTable("audit_logs");
 
@@ -562,7 +568,7 @@ public partial class AppDbContext : DbContext
         {
             entity.HasKey(e => e.SlotId).HasName("pk_schedule_slots");
 
-            entity.ToTable("schedule_slots", tb => tb.HasComment("Quỹ giờ khám bác sĩ công bố (UC-15) — bệnh nhân đặt lịch bằng cách chọn slot OPEN (UC-13). EXCLUDE constraint chặn khung giờ chồng lấn của cùng bác sĩ ngay tại DB. Đơn giản hóa v2: mỗi khung giờ mặc định 1 bệnh nhân (không có capacity) — status chuyển FULL ngay khi có 1 booking BOOKED."));
+            entity.ToTable("schedule_slots", tb => tb.HasComment("Quỹ giờ khám bác sĩ công bố (UC-15) — không giới hạn số Appointment/slot, vòng đời chỉ Open → Closed (quyết định UCS 3.1, 23/07/2026)."));
 
             entity.HasIndex(e => new { e.SlotDate, e.DoctorId }, "idx_schedule_slots_open").HasFilter("(status = 'OPEN'::slot_status)");
 
