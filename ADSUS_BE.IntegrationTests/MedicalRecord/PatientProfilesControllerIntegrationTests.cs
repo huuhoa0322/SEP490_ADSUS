@@ -164,6 +164,31 @@ public class PatientProfilesControllerIntegrationTests
     }
 
     [Fact]
+    public async Task GetPatientProfileById_Found_Returns200WithProfile()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = new PatientProfile
+        {
+            PatientProfileId = Guid.NewGuid(), UserId = _patient.UserId, User = _patient,
+            Gender = GenderType.Female, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        };
+        _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/patient-profiles/{profile.PatientProfileId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientProfileResponse>>();
+        Assert.Equal(200, body!.Code);
+        Assert.Equal(profile.PatientProfileId, body.Data!.PatientProfileId);
+        Assert.Equal(_patient.UserId, body.Data.PatientUserId);
+    }
+
+    [Fact]
     public async Task PutPatientProfile_ValidRequest_Returns200OkWithUpdatedFields()
     {
         // Arrange
