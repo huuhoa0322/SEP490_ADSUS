@@ -26,6 +26,13 @@ public class PatientsControllerIntegrationTests
         CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
     };
 
+    private readonly User _patientUser = new()
+    {
+        UserId = Guid.NewGuid(), FullName = "Nguyễn Thị Hoa", Phone = "0981111001",
+        PasswordHash = "x", Role = UserRole.Patient, Status = UserStatus.Active,
+        CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+    };
+
     [Fact]
     public async Task GetPatients_ValidQuery_Returns200OkWithPagedResult()
     {
@@ -71,6 +78,20 @@ public class PatientsControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetPatients_CalledByPatientRole_Returns403Forbidden()
+    {
+        // Arrange — PatientsController giới hạn [Authorize(Roles = "DOCTOR,NURSE")].
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _patientUser);
+
+        // Act
+        var response = await client.GetAsync("/api/v1/patients");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     // ---- helpers ----
