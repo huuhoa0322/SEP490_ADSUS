@@ -568,5 +568,7 @@ public class CasesControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        Assert.Equal(404, body!.Code);
     }
 }
