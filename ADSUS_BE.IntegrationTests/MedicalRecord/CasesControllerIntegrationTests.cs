@@ -495,4 +495,78 @@ public class CasesControllerIntegrationTests
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
     }
+
+    // ---------- #27 GET /cases/{id}/report ----------
+
+    [Fact]
+    public async Task GetCaseReport_ConfirmedCase_Returns200WithPdfContentType()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Confirmed);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}/report");
+
+        // Assert — đây là endpoint DUY NHẤT không bọc ApiResponse<T> ở nhánh thành công.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/pdf", response.Content.Headers.ContentType!.MediaType);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
+    }
+
+    [Fact]
+    public async Task GetCaseReport_CaseNotYetConfirmed_Returns422WithJsonEnvelope()
+    {
+        // Arrange — AF-01: nhánh lỗi vẫn dùng khuôn JSON như mọi endpoint khác.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var pendingCase = MakeCase(profile, CaseStatus.Created);
+        _cases.Setup(r => r.GetDetailAsync(pendingCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(pendingCase);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{pendingCase.CaseId}/report");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        Assert.Equal(422, body!.Code);
+    }
+
+    [Fact]
+    public async Task GetCaseReport_CalledByPatientRole_Returns403Forbidden()
+    {
+        // Arrange — quyết định UCS 01/08/2026: Patient bị loại trừ tường minh, kể cả ca của
+        // chính họ đã CONFIRMED — chỉ Doctor/Nurse mới xuất được PDF.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _patientUser);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{Guid.NewGuid()}/report");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetCaseReport_CaseNotFound_Returns404WithJsonEnvelope()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        _cases.Setup(r => r.GetDetailAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((Case?)null);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{Guid.NewGuid()}/report");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }
