@@ -298,6 +298,15 @@ namespace ADSUS_BE
             builder.Services.AddScoped<ICaseRepository, CaseRepository>();
             builder.Services.AddScoped<IUltrasoundImageRepository, UltrasoundImageRepository>();
 
+            // External services — push notification. Hiện tại dùng FakePush (in-memory stub)
+            // cho dev/test/CI. Production sẽ đổi sang FirebasePushNotificationClient (sprint sau,
+            // cần FCM service account JSON qua User Secrets). Singleton vì stateless.
+            builder.Services.AddSingleton<IPushNotificationClient, FakePushNotificationClient>();
+
+            // BLL — safety filter cho Module 10 Chat (trước khi gọi LLM). Singleton vì stateless,
+            // chỉ đọc mảng keyword tĩnh.
+            builder.Services.AddSingleton<IPsychologyTopicFilter, PsychologyTopicFilter>();
+
             // BLL — Module 1: Authentication & Account
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
