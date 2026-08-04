@@ -13,8 +13,11 @@ using ADSUS_BE.BLL.AIModelManagement.Interfaces;
 using ADSUS_BE.BLL.AIModelManagement.Services;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
+using ADSUS_BE.BLL.MedicalRecord.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.ExternalServices;
 using ADSUS_BE.DAL.Repositories.Implementations;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using ADSUS_BE.Middlewares;
@@ -82,6 +85,10 @@ namespace ADSUS_BE
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // QuestPDF Community: miễn phí cho tổ chức có doanh thu dưới 1 triệu USD/năm.
+            // Thiếu dòng này thì thư viện ném exception ngay lần dựng PDF đầu tiên.
+            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
             // ---------- Serilog ----------
             // Replaces the default Microsoft.Extensions.Logging console provider. Sinks and
@@ -153,6 +160,7 @@ namespace ADSUS_BE
             var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
             dataSourceBuilder.MapEnum<UserRole>("user_role");
             dataSourceBuilder.MapEnum<UserStatus>("user_status");
+            dataSourceBuilder.MapEnum<GenderType>("gender_type");
             dataSourceBuilder.MapEnum<BlogPostStatus>("blog_status");
             dataSourceBuilder.MapEnum<AiResultStatus>("ai_result_status");
             dataSourceBuilder.MapEnum<AppointmentStatus>("appointment_status");
@@ -285,6 +293,11 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IAiModelVersionRepository, AiModelVersionRepository>();
             builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
+            // DAL — Module 4: Medical Record
+            builder.Services.AddScoped<IPatientProfileRepository, PatientProfileRepository>();
+            builder.Services.AddScoped<ICaseRepository, CaseRepository>();
+            builder.Services.AddScoped<IUltrasoundImageRepository, UltrasoundImageRepository>();
+
             // BLL — Module 1: Authentication & Account
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
@@ -297,6 +310,11 @@ namespace ADSUS_BE
             // BLL — Module 3: Dashboard & Reporting
             builder.Services.AddScoped<IDashboardService, DashboardService>();
 
+            // BLL — Module 4: Medical Record
+            builder.Services.AddScoped<IPatientProfileService, PatientProfileService>();
+            builder.Services.AddScoped<ICaseService, CaseService>();
+            builder.Services.AddScoped<ICaseReportService, CaseReportService>();
+
             // BLL — Module 6: AI Model Management
             builder.Services.AddScoped<IAiModelService, AiModelService>();
 
@@ -304,6 +322,45 @@ namespace ADSUS_BE
             builder.Services.Configure<AiBackendSettings>(
                 builder.Configuration.GetSection(AiBackendSettings.SectionName));
             builder.Services.AddHttpClient("AiBackend");
+
+            // ---------- Supabase Storage (ảnh siêu âm, Module 4) ----------
+            builder.Services.Configure<SupabaseStorageSettings>(
+                builder.Configuration.GetSection(SupabaseStorageSettings.SectionName));
+
+            var storageSettings = builder.Configuration
+                .GetSection(SupabaseStorageSettings.SectionName)
+                .Get<SupabaseStorageSettings>();
+
+            if (storageSettings?.IsConfigured != true)
+            {
+                if (builder.Environment.IsDevelopment())
+                {
+                    // Chưa khai Supabase thì vẫn phải chạy được ở Development — nếu không, ai
+                    // không đụng tới upload ảnh siêu âm cũng bị chặn khởi động chỉ vì thiếu một
+                    // secret không liên quan tới việc họ đang làm. Chỉ request nào thực sự cần
+                    // IFileStorageService mới vỡ, kèm thông báo rõ phải sửa gì.
+                    builder.Services.AddScoped<IFileStorageService>(_ =>
+                        throw new InvalidOperationException(
+                            "Chua cau hinh SupabaseStorage. Chuot phai project ADSUS_BE > Manage "
+                            + "User Secrets va them ca SupabaseStorage:Url va "
+                            + "SupabaseStorage:ServiceKey — ca hai gia tri deu nam trong User "
+                            + "Secrets, khong nam trong appsettings.json."));
+                }
+                else
+                {
+                    // Dừng ngay tại đây thay vì để vỡ lúc bác sĩ bấm tải ảnh lên. Lỗi lúc đó chỉ
+                    // hiện ra là 500 giữa ca khám, còn ở đây thì biết ngay phải sửa gì.
+                    throw new InvalidOperationException(
+                        "Chua cau hinh SupabaseStorage. Moi truong " +
+                        $"'{builder.Environment.EnvironmentName}' bat buoc phai cau hinh " +
+                        "SupabaseStorage:Url va SupabaseStorage:ServiceKey.");
+                }
+            }
+            else
+            {
+                builder.Services.AddHttpClient("SupabaseStorage");
+                builder.Services.AddScoped<IFileStorageService, SupabaseStorageService>();
+            }
 
             // ---------- Gửi email (API-04) ----------
             builder.Services.Configure<EmailSettings>(
