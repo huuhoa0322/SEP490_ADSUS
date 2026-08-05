@@ -388,10 +388,10 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task PhanQuyen_DoiSangBenhNhan_ThiXOA_NgaySinh()
+    public async Task PhanQuyen_DoiSangBenhNhan_GIU_NGUYEN_NgaySinh_NhungKHONG_TRA_VE()
     {
-        // Đổi vai trò sang PATIENT thì ngày sinh đang có phải bị xoá, nếu không Admin vẫn
-        // đọc được dữ liệu y tế của tài khoản đó (BR-01).
+        // BR-01 nói Admin không được THẤY ngày sinh bệnh nhân — không nói phải XOÁ nó.
+        // Hai việc khác nhau, và trước đây code làm nhầm sang việc thứ hai.
         var user = TaoUserTrongDb(UserRole.Doctor);
         user.DateOfBirth = new DateOnly(1985, 3, 10);
         SetupGetById(user);
@@ -403,7 +403,35 @@ public class UserAccountServiceTests
             DateOfBirth = "1985-03-10",
         }, _adminId);
 
-        Assert.Null(user.DateOfBirth);
+        // Dữ liệu còn nguyên trong database...
+        Assert.Equal(new DateOnly(1985, 3, 10), user.DateOfBirth);
+
+        // ...nhưng Admin vẫn không đọc được. Đó mới là chỗ BR-01 được thi hành.
+        var response = await _sut.GetByIdAsync(user.UserId, _adminId);
+        Assert.Null(response!.DateOfBirth);
+    }
+
+    [Fact]
+    public async Task PhanQuyen_SuaTenBenhNhan_KHONG_DUOC_XOA_NGAY_SINH_DIEU_DUONG_DA_NHAP()
+    {
+        // Lỗi thật, xuất hiện khi UC-06 (Điều dưỡng tạo hồ sơ bệnh nhân) bắt đầu ghi ngày
+        // sinh: Admin chỉ vào sửa lại cái tên cho đúng chính tả, mà ngày sinh Điều dưỡng vừa
+        // nhập bị xoá sạch. Admin không nhìn thấy ô đó nên không hề biết mình vừa xoá gì, và
+        // cũng không ai khôi phục lại được.
+        var user = TaoUserTrongDb(UserRole.Patient);
+        user.DateOfBirth = new DateOnly(1992, 7, 15);
+        SetupGetById(user);
+
+        await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
+        {
+            FullName = "Nguyễn Thị Hoa",
+            Role = "PATIENT",
+            // Form của Admin ẩn hẳn ô ngày sinh nên luôn gửi lên null.
+            DateOfBirth = null,
+        }, _adminId);
+
+        Assert.Equal(new DateOnly(1992, 7, 15), user.DateOfBirth);
+        Assert.Equal("Nguyễn Thị Hoa", user.FullName);
     }
 
     [Theory]

@@ -212,7 +212,22 @@ public class UserAccountService : IUserAccountService
         user.FullName = request.FullName.Trim();
         user.Email = email;
         user.Role = role.Value;
-        user.DateOfBirth = role.Value == UserRole.Patient ? null : ParseDateOrNull(request.DateOfBirth);
+        // BR-01 — tài khoản BỆNH NHÂN thì KHÔNG ĐỤNG vào ngày sinh, giữ nguyên giá trị đang có.
+        //
+        // Trước đây chỗ này gán null, với lý do "xoá đi thì Admin không đọc được dữ liệu y
+        // tế". Lý do đó sai: ToResponse đã lọc bỏ ngày sinh của PATIENT rồi, Admin không đọc
+        // được dù cột có dữ liệu.
+        //
+        // Và từ khi UC-06 cho Điều dưỡng khai ngày sinh bệnh nhân, gán null trở thành PHÁ DỮ
+        // LIỆU: Admin chỉ sửa cái tên cho đúng chính tả là ngày sinh Điều dưỡng nhập bị xoá
+        // sạch — mà Admin không nhìn thấy ô đó nên không hề biết mình vừa làm gì.
+        //
+        // Giữ nguyên vẫn thoả BR-01 trọn vẹn: Admin không đọc được (ToResponse lọc) và không
+        // ghi được (dòng này bỏ qua mọi giá trị client gửi lên).
+        if (role.Value != UserRole.Patient)
+        {
+            user.DateOfBirth = ParseDateOrNull(request.DateOfBirth);
+        }
         user.UpdatedAt = DateTime.UtcNow;
 
         // KHÔNG đụng tới Phone (BR-02) và Status (đi qua endpoint riêng).
