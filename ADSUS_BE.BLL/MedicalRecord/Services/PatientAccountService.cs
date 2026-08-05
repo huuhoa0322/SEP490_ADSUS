@@ -107,9 +107,57 @@ public sealed class PatientAccountService : IPatientAccountService
         return ToResponse(user);
     }
 
-    public Task<PatientAccountResponse> UpdateContactAsync(
-        Guid userId, UpdatePatientAccountRequest request, Guid actingNurseId, CancellationToken ct = default) =>
-        throw new NotImplementedException("Task A5");
+    public async Task<PatientAccountResponse> UpdateContactAsync(
+        Guid userId, UpdatePatientAccountRequest request, Guid actingNurseId, CancellationToken ct = default)
+    {
+        var user = await _users.GetForUpdateAsync(userId, ct)
+            ?? throw new ResourceNotFoundException("Patient account not found.");
+
+        // BR-03 — Điều dưỡng chỉ được chạm tài khoản Bệnh nhân. Chặn ở tầng nghiệp vụ chứ
+        // không chỉ ẩn nút: ai cũng gọi thẳng API được.
+        if (user.Role != UserRole.Patient)
+        {
+            throw new BusinessException("Only patient accounts can be edited here.");
+        }
+
+        var phone = request.PhoneNumber.Trim();
+        if (!string.Equals(phone, user.Phone, StringComparison.Ordinal)
+            && await _users.PhoneExistsAsync(phone, ct))
+        {
+            // UC-04 BR-02 vẫn nguyên vẹn — đổi số điện thoại là đổi định danh đăng nhập.
+            throw new ConflictException("This phone number is already registered.");
+        }
+
+        var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
+        if (email is not null && await _users.IsEmailUsedByAnotherUserAsync(userId, email, ct))
+        {
+            throw new ConflictException("This email is already registered.");
+        }
+
+        // BR-04 — đúng 4 trường này, không hơn. Role và Status không xuất hiện ở đây, và
+        // cũng không có trong DTO: đó là cách chắc chắn nhất để chúng không bị đổi.
+        user.FullName = request.FullName.Trim();
+        user.Phone = phone;
+        user.DateOfBirth = request.DateOfBirth;
+        user.Email = email;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _audit.AddAsync(new AuditLog
+        {
+            LogId = Guid.NewGuid(),
+            ActorId = actingNurseId,
+            Action = "NURSE_UPDATE_PATIENT_ACCOUNT",
+            Detail = $"Updated contact info of patient account {user.UserId}",
+            PerformedAt = DateTime.UtcNow,
+        }, ct);
+
+        await _users.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Nurse {NurseId} updated patient account {UserId}", actingNurseId, user.UserId);
+
+        return ToResponse(user);
+    }
 
     public Task ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default) =>
         throw new NotImplementedException("Task A6");

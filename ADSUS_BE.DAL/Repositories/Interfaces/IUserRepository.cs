@@ -16,6 +16,12 @@ public interface IUserRepository
     Task<User?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Đọc tài khoản để SỬA — có tracking, khác GetByIdAsync (AsNoTracking, chỉ để hiển thị).
+    /// Dùng ở UC-06 AF-02 khi Điều dưỡng sửa lỗi nhập liệu trên tài khoản Bệnh nhân.
+    /// </summary>
+    Task<User?> GetForUpdateAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Kiểm tra email đã bị tài khoản KHÁC dùng chưa. So sánh không phân biệt hoa thường
     /// để khớp với unique index uq_users_email_lower trong DB.
     ///

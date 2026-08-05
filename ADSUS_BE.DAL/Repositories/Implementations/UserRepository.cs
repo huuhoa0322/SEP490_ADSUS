@@ -17,6 +17,9 @@ public class UserRepository : IUserRepository
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
         _db.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
 
+    public Task<User?> GetForUpdateAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        _db.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
+
     public Task<bool> IsEmailUsedByAnotherUserAsync(
         Guid userId,
         string email,

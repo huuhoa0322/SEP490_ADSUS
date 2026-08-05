@@ -23,15 +23,18 @@ public sealed class PatientsController : ControllerBase
     private readonly IPatientProfileService _profiles;
     private readonly IPatientAccountService _accounts;
     private readonly IValidator<CreatePatientAccountRequest> _createAccountValidator;
+    private readonly IValidator<UpdatePatientAccountRequest> _updateAccountValidator;
 
     public PatientsController(
         IPatientProfileService profiles,
         IPatientAccountService accounts,
-        IValidator<CreatePatientAccountRequest> createAccountValidator)
+        IValidator<CreatePatientAccountRequest> createAccountValidator,
+        IValidator<UpdatePatientAccountRequest> updateAccountValidator)
     {
         _profiles = profiles;
         _accounts = accounts;
         _createAccountValidator = createAccountValidator;
+        _updateAccountValidator = updateAccountValidator;
     }
 
     /// <summary>
@@ -108,6 +111,34 @@ public sealed class PatientsController : ControllerBase
         return StatusCode(
             StatusCodes.Status201Created,
             ApiResponse<PatientAccountResponse>.Ok(result, "Patient account created successfully"));
+    }
+
+    /// <summary>
+    /// UC-06 AF-02 — Điều dưỡng sửa lỗi nhập liệu trên tài khoản Bệnh nhân.
+    /// CHỈ NURSE (BR-03), CHỈ 4 trường liên hệ (BR-04) — role và status vẫn là việc của Admin.
+    /// </summary>
+    [HttpPut("{userId:guid}")]
+    [Authorize(Roles = "NURSE")]
+    [ProducesResponseType(typeof(ApiResponse<PatientAccountResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateAccountContact(
+        Guid userId,
+        [FromBody] UpdatePatientAccountRequest request,
+        CancellationToken ct)
+    {
+        var validation = await _updateAccountValidator.ValidateAsync(request, ct);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
+        }
+
+        var result = await _accounts.UpdateContactAsync(userId, request, GetActingUserId(), ct);
+        return Ok(ApiResponse<PatientAccountResponse>.Ok(result, "Patient account updated successfully"));
     }
 
     /// <summary>

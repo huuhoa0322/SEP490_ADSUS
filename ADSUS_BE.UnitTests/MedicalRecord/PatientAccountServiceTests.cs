@@ -144,4 +144,130 @@ public class PatientAccountServiceTests
         _email.Verify(e => e.SendTemporaryPasswordAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    private static User MakePatientAccount() => new()
+    {
+        UserId = Guid.NewGuid(),
+        Phone = "0981234567",
+        FullName = "Lê Thị Hoa",
+        Email = "hoa@example.com",
+        Role = UserRole.Patient,
+        Status = UserStatus.Active,
+        PasswordHash = "x",
+        DateOfBirth = new DateOnly(1984, 3, 12),
+    };
+
+    private static UpdatePatientAccountRequest ValidUpdateRequest() => new(
+        FullName: "Lê Thị Hoà",
+        PhoneNumber: "0981234567",
+        DateOfBirth: new DateOnly(1984, 3, 12),
+        Email: "hoa.le@example.com");
+
+    [Fact]
+    public async Task UpdateContactAsync_ExistingPatient_UpdatesFourContactFields()
+    {
+        // Arrange — BR-04: đúng 4 trường đã nhập lúc tạo.
+        var account = MakePatientAccount();
+        _users.Setup(r => r.GetForUpdateAsync(account.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(account);
+        _users.Setup(r => r.IsEmailUsedByAnotherUserAsync(
+                  account.UserId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(false);
+
+        // Act
+        var response = await _sut.UpdateContactAsync(account.UserId, ValidUpdateRequest(), _actingNurseId);
+
+        // Assert
+        Assert.Equal("Lê Thị Hoà", account.FullName);
+        Assert.Equal("hoa.le@example.com", account.Email);
+        Assert.Equal("Lê Thị Hoà", response.FullName);
+    }
+
+    [Fact]
+    public async Task UpdateContactAsync_NeverChangesRoleOrStatus()
+    {
+        // Arrange — BR-04: role và status vẫn hoàn toàn là việc của Admin (UC-04). Nếu ai đó
+        // sau này thêm hai trường ấy vào DTO, test này gãy ngay.
+        var account = MakePatientAccount();
+        _users.Setup(r => r.GetForUpdateAsync(account.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(account);
+        _users.Setup(r => r.IsEmailUsedByAnotherUserAsync(
+                  It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(false);
+
+        // Act
+        await _sut.UpdateContactAsync(account.UserId, ValidUpdateRequest(), _actingNurseId);
+
+        // Assert
+        Assert.Equal(UserRole.Patient, account.Role);
+        Assert.Equal(UserStatus.Active, account.Status);
+    }
+
+    [Fact]
+    public async Task UpdateContactAsync_TargetIsNotPatientRole_ThrowsBusinessException()
+    {
+        // Arrange — BR-03: Điều dưỡng không bao giờ được chạm vào tài khoản Bác sĩ/Điều
+        // dưỡng/Admin. Chặn ở tầng nghiệp vụ, không chỉ ẩn nút ở giao diện.
+        var doctorAccount = MakePatientAccount();
+        doctorAccount.Role = UserRole.Doctor;
+        _users.Setup(r => r.GetForUpdateAsync(doctorAccount.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(doctorAccount);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.UpdateContactAsync(doctorAccount.UserId, ValidUpdateRequest(), _actingNurseId));
+    }
+
+    [Fact]
+    public async Task UpdateContactAsync_AccountNotFound_ThrowsResourceNotFoundException()
+    {
+        // Arrange
+        _users.Setup(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((User?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ResourceNotFoundException>(
+            () => _sut.UpdateContactAsync(Guid.NewGuid(), ValidUpdateRequest(), _actingNurseId));
+    }
+
+    [Fact]
+    public async Task UpdateContactAsync_NewPhoneTakenByAnotherAccount_ThrowsConflictException()
+    {
+        // Arrange — UC-04 BR-02 vẫn áp dụng nguyên vẹn khi đổi số điện thoại.
+        var account = MakePatientAccount();
+        _users.Setup(r => r.GetForUpdateAsync(account.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(account);
+        _users.Setup(r => r.PhoneExistsAsync("0989999999", It.IsAny<CancellationToken>()))
+              .ReturnsAsync(true);
+
+        var request = ValidUpdateRequest() with { PhoneNumber = "0989999999" };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ConflictException>(
+            () => _sut.UpdateContactAsync(account.UserId, request, _actingNurseId));
+    }
+
+    [Fact]
+    public async Task UpdateContactAsync_WritesAuditLog()
+    {
+        // Arrange — BR-06 / GB-09.
+        var account = MakePatientAccount();
+        _users.Setup(r => r.GetForUpdateAsync(account.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(account);
+        _users.Setup(r => r.IsEmailUsedByAnotherUserAsync(
+                  It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(false);
+
+        AuditLog? logged = null;
+        _audit.Setup(a => a.AddAsync(It.IsAny<AuditLog>(), It.IsAny<CancellationToken>()))
+              .Callback<AuditLog, CancellationToken>((l, _) => logged = l)
+              .Returns(Task.CompletedTask);
+
+        // Act
+        await _sut.UpdateContactAsync(account.UserId, ValidUpdateRequest(), _actingNurseId);
+
+        // Assert
+        Assert.Equal(_actingNurseId, logged!.ActorId);
+        Assert.Equal("NURSE_UPDATE_PATIENT_ACCOUNT", logged.Action);
+    }
 }
