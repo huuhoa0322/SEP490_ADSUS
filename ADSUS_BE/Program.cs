@@ -323,6 +323,7 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IPatientProfileService, PatientProfileService>();
             builder.Services.AddScoped<ICaseService, CaseService>();
             builder.Services.AddScoped<ICaseReportService, CaseReportService>();
+            builder.Services.AddScoped<IDoctorDirectoryService, DoctorDirectoryService>();
 
             // BLL — Module 6: AI Model Management
             builder.Services.AddScoped<IAiModelService, AiModelService>();

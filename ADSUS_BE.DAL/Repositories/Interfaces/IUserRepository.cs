@@ -55,4 +55,13 @@ public interface IUserRepository
         CancellationToken cancellationToken = default);
 
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// UC-07 GB-04 — danh sách Bác sĩ để chọn người phụ trách ca khám.
+    ///
+    /// Chỉ tài khoản Active: giao ca cho một bác sĩ đã bị khoá hoặc vô hiệu hoá là tạo ra
+    /// một ca không ai xử lý được. Không phân trang — số bác sĩ trong một phòng khám là tập
+    /// nhỏ có biên, không phải collection tăng trưởng vô hạn.
+    /// </summary>
+    Task<IReadOnlyList<User>> ListActiveDoctorsAsync(CancellationToken cancellationToken = default);
 }

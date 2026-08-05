@@ -71,4 +71,12 @@ public class UserRepository : IUserRepository
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _db.SaveChangesAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<User>> ListActiveDoctorsAsync(
+        CancellationToken cancellationToken = default) =>
+        await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Role == UserRole.Doctor && u.Status == UserStatus.Active)
+            .OrderBy(u => u.FullName)
+            .ToListAsync(cancellationToken);
 }
