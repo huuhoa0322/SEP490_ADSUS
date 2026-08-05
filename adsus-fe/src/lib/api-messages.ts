@@ -37,6 +37,11 @@ const MESSAGES: Record<string, string> = {
     "Số điện thoại không được quá 15 ký tự.",
   "Phone number must start with 0 and contain exactly 10 digits.":
     "Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số.",
+  // Cùng luật nhưng câu chữ khác, từ validator của UC-06 (điều dưỡng tạo tài khoản bệnh
+  // nhân). Không gộp được vì đây là khoá tra cứu theo nguyên văn — thiếu dòng này thì màn
+  // đó hiện tiếng Anh.
+  "Phone number must be 10 digits starting with 0.":
+    "Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số.",
   "Full name is required.": "Vui lòng nhập họ và tên.",
   "Full name must not exceed 100 characters.": "Họ và tên không được quá 100 ký tự.",
   "Role is required.": "Vui lòng chọn vai trò.",
