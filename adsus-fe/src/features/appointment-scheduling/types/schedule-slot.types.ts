@@ -20,9 +20,13 @@ export interface ScheduleSlotResponse {
 }
 
 export interface CreateScheduleSlotRequest {
-  doctorId: string;
-  visitDate: string; // "YYYY-MM-DD"
-  startTime: string; // "HH:mm:ss"
+  visitDate: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface UpdateScheduleSlotRequest {
+  startTime: string;
   endTime: string;
 }
 
@@ -34,6 +38,5 @@ export interface CloseSlotImpactResponse {
 export interface ListSlotsParams {
   fromDate?: string;
   toDate?: string;
-  doctorId?: string;
   status?: SlotStatus;
 }

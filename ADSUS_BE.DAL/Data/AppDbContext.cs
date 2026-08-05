@@ -184,6 +184,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.VersionCode)
                 .HasMaxLength(50)
                 .HasColumnName("version_code");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("model_version_status");
 
             entity.HasOne(d => d.RegisteredByNavigation).WithMany(p => p.AiModelVersions)
                 .HasForeignKey(d => d.RegisteredBy)
@@ -217,6 +220,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("ai_result_status");
 
             entity.HasOne(d => d.Case).WithMany(p => p.AiResults)
                 .HasForeignKey(d => d.CaseId)
@@ -328,6 +334,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("blog_status");
 
             entity.HasOne(d => d.Author).WithMany(p => p.BlogPosts)
                 .HasForeignKey(d => d.AuthorId)
@@ -366,6 +375,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.VisitDate)
                 .HasDefaultValueSql("CURRENT_DATE")
                 .HasColumnName("visit_date");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("case_status");
 
             entity.HasOne(d => d.Doctor).WithMany(p => p.Cases)
                 .HasForeignKey(d => d.DoctorId)
@@ -420,6 +432,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.ConfirmedAt).HasColumnName("confirmed_at");
             entity.Property(e => e.PrescriptionItemId).HasColumnName("prescription_item_id");
             entity.Property(e => e.ScheduledTime).HasColumnName("scheduled_time");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("intake_status");
 
             entity.HasOne(d => d.PrescriptionItem).WithMany(p => p.MedicationIntakeLogs)
                 .HasForeignKey(d => d.PrescriptionItemId)
@@ -519,6 +534,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("prescription_status");
 
             entity.HasOne(d => d.Case).WithMany(p => p.Prescriptions)
                 .HasForeignKey(d => d.CaseId)
@@ -690,6 +708,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("user_status");
         });
 
         OnModelCreatingPartial(modelBuilder);

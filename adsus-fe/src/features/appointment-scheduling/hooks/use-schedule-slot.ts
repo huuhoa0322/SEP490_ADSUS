@@ -5,22 +5,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   closeScheduleSlot,
   createScheduleSlot,
+  ensureDefaultSlots,
   getScheduleSlot,
   getScheduleSlots,
+  updateScheduleSlot,
 } from "../api/schedule-slot.api";
 import type {
   CreateScheduleSlotRequest,
   ListSlotsParams,
+  UpdateScheduleSlotRequest,
 } from "../types/schedule-slot.types";
 
-/**
- * Hooks cho UC-15 — Manage Clinic Schedule.
- * Roles: Doctor, Nurse.
- */
-
-/**
- * Lấy danh sách slot theo range + filter.
- */
+/** Lấy danh sách slot của Doctor đang đăng nhập. */
 export function useScheduleSlots(params: ListSlotsParams = {}) {
   return useQuery({
     queryKey: ["schedule-slots", "list", params],
@@ -28,9 +24,7 @@ export function useScheduleSlots(params: ListSlotsParams = {}) {
   });
 }
 
-/**
- * Lấy chi tiết 1 slot.
- */
+/** Lấy chi tiết 1 slot. */
 export function useScheduleSlot(id: string | null) {
   return useQuery({
     queryKey: ["schedule-slots", "detail", id],
@@ -39,31 +33,40 @@ export function useScheduleSlot(id: string | null) {
   });
 }
 
-/**
- * Tạo slot mới.
- */
+/** Tạo slot mới cho chính mình. */
 export function useCreateScheduleSlot() {
-  const queryClient = useQueryClient();
-
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateScheduleSlotRequest) => createScheduleSlot(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["schedule-slots", "list"] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["schedule-slots", "list"] }),
   });
 }
 
-/**
- * Đóng slot. Nếu slot có booking, gọi với force=true để xác nhận.
- */
-export function useCloseScheduleSlot() {
-  const queryClient = useQueryClient();
+/** Sửa giờ slot (tách ca). */
+export function useUpdateScheduleSlot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateScheduleSlotRequest }) =>
+      updateScheduleSlot(id, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["schedule-slots"] }),
+  });
+}
 
+/** Đóng slot (xin nghỉ/bận). */
+export function useCloseScheduleSlot() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, force }: { id: string; force: boolean }) =>
       closeScheduleSlot(id, force),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["schedule-slots"] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["schedule-slots"] }),
+  });
+}
+
+/** Tự sinh ca mặc định T2-T6 cho 1 tuần (gọi khi mở trang lần đầu). */
+export function useEnsureDefaultSlots() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (weekStart: string) => ensureDefaultSlots(weekStart),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["schedule-slots", "list"] }),
   });
 }

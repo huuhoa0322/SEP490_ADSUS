@@ -4,12 +4,21 @@ namespace ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 
 /// <summary>
 /// Request để tạo schedule slot mới (UC-15).
-/// Validation: DoctorId tồn tại, VisitDate không trong quá khứ, Start < End, range > 15 phút, không overlap.
+/// BR-01: VisitDate + StartTime > now (UTC); Start &lt; End; range > 15 phút; không overlap.
+/// DoctorId được lấy từ JWT ở Controller — Doctor chỉ tạo slot cho chính mình.
 /// </summary>
 public sealed class CreateScheduleSlotRequest
 {
-    public Guid DoctorId { get; init; }
     public DateOnly VisitDate { get; init; }
+    public TimeOnly StartTime { get; init; }
+    public TimeOnly EndTime { get; init; }
+}
+
+/// <summary>
+/// Request để update slot (tách ca, đổi giờ).
+/// </summary>
+public sealed class UpdateScheduleSlotRequest
+{
     public TimeOnly StartTime { get; init; }
     public TimeOnly EndTime { get; init; }
 }

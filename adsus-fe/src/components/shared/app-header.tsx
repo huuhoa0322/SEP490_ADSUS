@@ -90,8 +90,8 @@ export function AppHeader() {
             <span className="hidden sm:inline">Đổi mật khẩu</span>
           </Link>
 
-          {/* UC-15 — Manage Schedule Slots: Doctor/Nurse only. */}
-          {(user?.role === "DOCTOR" || user?.role === "NURSE") && (
+          {/* UC-15 — Manage Schedule Slots: Doctor only. */}
+          {user?.role === "DOCTOR" && (
             <Link
               href="/schedule"
               className="flex items-center gap-2 rounded-full px-3.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
