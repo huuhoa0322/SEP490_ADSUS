@@ -23,6 +23,7 @@ public sealed class PrescriptionRepository : IPrescriptionRepository
             .Include(p => p.PrescriptionItems)
                 .ThenInclude(pi => pi.Medicine)
             .Include(p => p.Doctor)
+            .Include(p => p.Case)
             .FirstOrDefaultAsync(p => p.PrescriptionId == prescriptionId, ct);
     }
 

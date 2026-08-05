@@ -64,12 +64,33 @@ public class PrescriptionRepositoryTests
         var medicine = NewMedicine();
         await db.Medicines.AddAsync(medicine);
 
-        // Repo Include(p => p.Doctor) cần User tồn tại trong DbContext để navigation resolve.
-        // Master Prescription.Doctor = User với FK DoctorId → InMemory yêu cầu entity stub.
         var doctor = NewDoctor();
         await db.Users.AddAsync(doctor);
 
-        var prescription = NewPrescription(doctor.UserId, Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow);
+        // GetByIdAsync includes Case — InMemory enforces FK, so Case must exist.
+        var patientProfile = new PatientProfile
+        {
+            PatientProfileId = Guid.NewGuid(),
+            UserId = doctor.UserId,
+            CreatedBy = doctor.UserId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        await db.PatientProfiles.AddAsync(patientProfile);
+
+        var @case = new Case
+        {
+            CaseId = Guid.NewGuid(),
+            PatientProfileId = patientProfile.PatientProfileId,
+            DoctorId = doctor.UserId,
+            VisitDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            Status = CaseStatus.Confirmed,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        await db.Cases.AddAsync(@case);
+
+        var prescription = NewPrescription(doctor.UserId, @case.CaseId, DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow);
         var item = new PrescriptionItem
         {
             PrescriptionItemId = Guid.NewGuid(),

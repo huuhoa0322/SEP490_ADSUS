@@ -16,4 +16,7 @@ public interface IMedicineRepository
 
     /// <summary>Add 1 medicine vào catalog.</summary>
     Task AddAsync(Medicine medicine, CancellationToken ct = default);
+
+    /// <summary>Lấy toàn bộ danh mục thuốc (dùng cho bác sĩ khi kê đơn).</summary>
+    Task<IReadOnlyList<Medicine>> ListAllAsync(CancellationToken ct = default);
 }
