@@ -142,6 +142,24 @@ public sealed class PatientsController : ControllerBase
     }
 
     /// <summary>
+    /// UC-06 AF-03 — Điều dưỡng cấp lại mật khẩu cho Bệnh nhân.
+    ///
+    /// Mật khẩu tạm CHỈ đi qua email; API không trả nó về và giao diện không bao giờ hiển thị
+    /// (BR-05, PRD §6.2). CHỈ NURSE (BR-03).
+    /// </summary>
+    [HttpPut("{userId:guid}/reset-password")]
+    [Authorize(Roles = "NURSE")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ResetAccountPassword(Guid userId, CancellationToken ct)
+    {
+        await _accounts.ResetPasswordAsync(userId, GetActingUserId(), ct);
+        return Ok(ApiResponse<object>.Ok(null!, "Temporary password sent to the patient's email"));
+    }
+
+    /// <summary>
     /// Id người đang thao tác, lấy từ token — KHÔNG bao giờ nhận từ request, nếu không thì
     /// ai cũng ghi tên người khác vào Audit Log được.
     /// </summary>

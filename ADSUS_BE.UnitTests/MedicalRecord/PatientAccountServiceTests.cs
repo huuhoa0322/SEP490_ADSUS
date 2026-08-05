@@ -270,4 +270,96 @@ public class PatientAccountServiceTests
         Assert.Equal(_actingNurseId, logged!.ActorId);
         Assert.Equal("NURSE_UPDATE_PATIENT_ACCOUNT", logged.Action);
     }
+
+    [Fact]
+    public async Task ResetPasswordAsync_ExistingPatient_DelegatesToPasswordResetService()
+    {
+        // Arrange — BR-05: dùng lại đúng cơ chế sinh-và-gửi của UC-03/UC-04. Điều dưỡng
+        // không bao giờ thấy hay tự đặt mật khẩu, nên service này không được tự sinh mật khẩu
+        // ở một đường code thứ hai.
+        var account = MakePatientAccount();
+        _users.Setup(r => r.GetByIdAsync(account.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(account);
+        _passwordReset.Setup(p => p.AdminResetAsync(
+                          account.UserId, _actingNurseId, It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(ADSUS_BE.BLL.UserRoleManagement.DTOs.AccountOperationResult.Success);
+
+        // Act
+        await _sut.ResetPasswordAsync(account.UserId, _actingNurseId);
+
+        // Assert
+        _passwordReset.Verify(p => p.AdminResetAsync(
+            account.UserId, _actingNurseId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_TargetIsNotPatientRole_ThrowsBusinessException()
+    {
+        // Arrange — BR-03. Không chặn thì Điều dưỡng cấp lại mật khẩu tài khoản Admin được.
+        var adminAccount = MakePatientAccount();
+        adminAccount.Role = UserRole.Admin;
+        _users.Setup(r => r.GetByIdAsync(adminAccount.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(adminAccount);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.ResetPasswordAsync(adminAccount.UserId, _actingNurseId));
+
+        _passwordReset.Verify(p => p.AdminResetAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_AccountHasNoEmail_ThrowsBusinessException()
+    {
+        // Arrange — không có email thì mật khẩu tạm không đi đâu được. Báo im lặng thành công
+        // là Điều dưỡng tưởng xong việc, rồi bệnh nhân gọi lại kêu không đăng nhập được.
+        var account = MakePatientAccount();
+        account.Email = null;
+        _users.Setup(r => r.GetByIdAsync(account.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(account);
+        _passwordReset.Setup(p => p.AdminResetAsync(
+                          It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(ADSUS_BE.BLL.UserRoleManagement.DTOs.AccountOperationResult.AccountHasNoEmail);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.ResetPasswordAsync(account.UserId, _actingNurseId));
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_AccountNotFound_ThrowsResourceNotFoundException()
+    {
+        // Arrange
+        _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((User?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ResourceNotFoundException>(
+            () => _sut.ResetPasswordAsync(Guid.NewGuid(), _actingNurseId));
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_WritesAuditLog()
+    {
+        // Arrange — BR-06 / GB-09.
+        var account = MakePatientAccount();
+        _users.Setup(r => r.GetByIdAsync(account.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(account);
+        _passwordReset.Setup(p => p.AdminResetAsync(
+                          It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(ADSUS_BE.BLL.UserRoleManagement.DTOs.AccountOperationResult.Success);
+
+        AuditLog? logged = null;
+        _audit.Setup(a => a.AddAsync(It.IsAny<AuditLog>(), It.IsAny<CancellationToken>()))
+              .Callback<AuditLog, CancellationToken>((l, _) => logged = l)
+              .Returns(Task.CompletedTask);
+
+        // Act
+        await _sut.ResetPasswordAsync(account.UserId, _actingNurseId);
+
+        // Assert
+        Assert.Equal(_actingNurseId, logged!.ActorId);
+        Assert.Equal("NURSE_RESET_PATIENT_PASSWORD", logged.Action);
+    }
 }

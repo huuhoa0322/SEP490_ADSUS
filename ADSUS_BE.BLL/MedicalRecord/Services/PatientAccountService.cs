@@ -1,6 +1,7 @@
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
+using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.DAL.Entities;
@@ -159,8 +160,52 @@ public sealed class PatientAccountService : IPatientAccountService
         return ToResponse(user);
     }
 
-    public Task ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default) =>
-        throw new NotImplementedException("Task A6");
+    public async Task ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default)
+    {
+        var user = await _users.GetByIdAsync(userId, ct)
+            ?? throw new ResourceNotFoundException("Patient account not found.");
+
+        // BR-03 — chỉ tài khoản Bệnh nhân.
+        if (user.Role != UserRole.Patient)
+        {
+            throw new BusinessException("Only patient accounts can be reset here.");
+        }
+
+        // BR-05 — dùng lại đúng cơ chế sinh-và-gửi của UC-03/UC-04, KHÔNG viết đường sinh mật
+        // khẩu thứ hai. Ở đó thứ tự là gửi thư trước rồi mới lưu: đổi mật khẩu trước mà thư
+        // không tới nơi thì mật khẩu cũ đã chết trong khi mật khẩu mới không ai biết.
+        var result = await _passwordReset.AdminResetAsync(userId, actingNurseId, ct);
+
+        if (result != AccountOperationResult.Success)
+        {
+            // Nói đúng sự thật thay vì im lặng báo thành công: Điều dưỡng cần biết còn việc
+            // phải làm (bổ sung email, hoặc thử lại khi máy chủ mail hoạt động trở lại).
+            throw new BusinessException(result switch
+            {
+                AccountOperationResult.AccountHasNoEmail =>
+                    "This account has no email address, so the temporary password cannot be sent.",
+                AccountOperationResult.EmailNotSent =>
+                    "Could not send the temporary password. The old password is still valid — please try again.",
+                AccountOperationResult.AccountIsDeactivated =>
+                    "This account has been deactivated.",
+                _ => "Could not reset the password for this account.",
+            });
+        }
+
+        await _audit.AddAsync(new AuditLog
+        {
+            LogId = Guid.NewGuid(),
+            ActorId = actingNurseId,
+            Action = "NURSE_RESET_PATIENT_PASSWORD",
+            Detail = $"Reset password of patient account {userId}",
+            PerformedAt = DateTime.UtcNow,
+        }, ct);
+
+        await _users.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Nurse {NurseId} reset password of patient account {UserId}", actingNurseId, userId);
+    }
 
     private static PatientAccountResponse ToResponse(User user) => new(
         UserId: user.UserId,
