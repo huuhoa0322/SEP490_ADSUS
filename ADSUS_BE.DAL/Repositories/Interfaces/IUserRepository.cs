@@ -16,6 +16,12 @@ public interface IUserRepository
     Task<User?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Đọc tài khoản để SỬA — có tracking, khác GetByIdAsync (AsNoTracking, chỉ để hiển thị).
+    /// Dùng ở UC-06 AF-02 khi Điều dưỡng sửa lỗi nhập liệu trên tài khoản Bệnh nhân.
+    /// </summary>
+    Task<User?> GetForUpdateAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Kiểm tra email đã bị tài khoản KHÁC dùng chưa. So sánh không phân biệt hoa thường
     /// để khớp với unique index uq_users_email_lower trong DB.
     ///
@@ -55,4 +61,13 @@ public interface IUserRepository
         CancellationToken cancellationToken = default);
 
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// UC-07 GB-04 — danh sách Bác sĩ để chọn người phụ trách ca khám.
+    ///
+    /// Chỉ tài khoản Active: giao ca cho một bác sĩ đã bị khoá hoặc vô hiệu hoá là tạo ra
+    /// một ca không ai xử lý được. Không phân trang — số bác sĩ trong một phòng khám là tập
+    /// nhỏ có biên, không phải collection tăng trưởng vô hạn.
+    /// </summary>
+    Task<IReadOnlyList<User>> ListActiveDoctorsAsync(CancellationToken cancellationToken = default);
 }

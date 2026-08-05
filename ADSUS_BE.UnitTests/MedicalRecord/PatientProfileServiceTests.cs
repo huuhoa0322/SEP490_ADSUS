@@ -186,13 +186,20 @@ public class PatientProfileServiceTests
     public async Task SearchPatientsAsync_ReturnsPagedResultWithComputedTotalPages()
     {
         // Arrange
-        var profile = MedicalRecordTestData.MakePatientProfile();
-        var rows = new List<(PatientProfile Profile, Case? LatestCase)> { (profile, null) };
-        _profiles.Setup(r => r.SearchAsync("hoa", null, 1, 20, It.IsAny<CancellationToken>()))
+        var rows = new List<PatientListRow>
+        {
+            new(PatientProfileId: Guid.NewGuid(),
+                PatientUserId: Guid.NewGuid(),
+                FullName: "Trần Thị Mai",
+                Phone: "0987654321",
+                LatestVisitDate: new DateOnly(2026, 7, 22),
+                LatestVisitStatus: "CONFIRMED"),
+        };
+        _profiles.Setup(r => r.SearchAsync("hoa", null, null, 1, 20, It.IsAny<CancellationToken>()))
                  .ReturnsAsync((rows, 1));
 
         // Act
-        var result = await _sut.SearchPatientsAsync("hoa", null, 1, 20);
+        var result = await _sut.SearchPatientsAsync("hoa", null, null, 1, 20);
 
         // Assert
         Assert.Single(result.Items);
@@ -204,14 +211,54 @@ public class PatientProfileServiceTests
     public async Task SearchPatientsAsync_NoResults_TotalPagesIsAtLeastOne()
     {
         // Arrange — tránh chia cho 0 / trang 0 khiến UI phải xử lý trường hợp đặc biệt.
-        _profiles.Setup(r => r.SearchAsync(It.IsAny<string?>(), It.IsAny<string?>(), 1, 20, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync((new List<(PatientProfile, Case?)>(), 0));
+        _profiles.Setup(r => r.SearchAsync(
+                     It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(), 1, 20, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((new List<PatientListRow>(), 0));
 
         // Act
-        var result = await _sut.SearchPatientsAsync(null, null, 1, 20);
+        var result = await _sut.SearchPatientsAsync(null, null, null, 1, 20);
 
         // Assert
         Assert.Empty(result.Items);
         Assert.Equal(1, result.TotalPages);
+    }
+
+    [Fact]
+    public async Task SearchPatientsAsync_PassesHasProfileFilterThroughToRepository()
+    {
+        // Arrange — luồng tạo hồ sơ nền (#17) gọi với hasProfile=false để chỉ lấy tài khoản
+        // chưa có hồ sơ. Nếu service nuốt mất tham số này thì màn chọn tài khoản sẽ hiện cả
+        // người đã có hồ sơ, và bấm tạo sẽ nhận 409.
+        _profiles.Setup(r => r.SearchAsync(null, null, false, 1, 20, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((new List<PatientListRow>(), 0));
+
+        // Act
+        await _sut.SearchPatientsAsync(null, null, false, 1, 20);
+
+        // Assert
+        _profiles.Verify(r => r.SearchAsync(null, null, false, 1, 20, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SearchPatientsAsync_AccountWithoutProfile_ReturnsNullPatientProfileId()
+    {
+        // Arrange
+        var rows = new List<PatientListRow>
+        {
+            new(PatientProfileId: null,
+                PatientUserId: Guid.NewGuid(),
+                FullName: "Lê Thị Hoa",
+                Phone: "0978123456",
+                LatestVisitDate: null,
+                LatestVisitStatus: null),
+        };
+        _profiles.Setup(r => r.SearchAsync(null, null, false, 1, 20, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((rows, 1));
+
+        // Act
+        var result = await _sut.SearchPatientsAsync(null, null, false, 1, 20);
+
+        // Assert — giao diện dựa vào null này để đổi nút thành "Tạo hồ sơ nền".
+        Assert.Null(result.Items.Single().PatientProfileId);
     }
 }

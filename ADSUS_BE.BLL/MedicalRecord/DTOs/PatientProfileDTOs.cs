@@ -42,9 +42,12 @@ public sealed record PatientProfileResponse(
 /// #26 — một dòng trong danh sách bệnh nhân của bác sĩ (UC-09).
 /// KHÔNG có email, trạng thái tài khoản, mustChangePassword — đó là dữ liệu quản trị tài
 /// khoản của Module 2, không thuộc màn hình lâm sàng này.
+///
+/// PatientProfileId NULL nghĩa là tài khoản đã tồn tại nhưng chưa được lập hồ sơ nền — giao
+/// diện đổi nút hành động thành "Tạo hồ sơ nền" thay vì "Xem hồ sơ".
 /// </summary>
 public sealed record PatientSummaryResponse(
-    Guid PatientProfileId,
+    Guid? PatientProfileId,
     Guid PatientUserId,
     string FullName,
     string Phone,
