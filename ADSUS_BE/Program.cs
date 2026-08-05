@@ -16,8 +16,10 @@ using ADSUS_BE.BLL.PrescriptionAdherence.Services;
 using ADSUS_BE.Jobs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
+using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Services;
+using ADSUS_BE.BLL.MedicalRecord.Validators;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
@@ -327,6 +329,10 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IPatientProfileService, PatientProfileService>();
             builder.Services.AddScoped<ICaseService, CaseService>();
             builder.Services.AddScoped<ICaseReportService, CaseReportService>();
+            builder.Services.AddScoped<IDoctorDirectoryService, DoctorDirectoryService>();
+            builder.Services.AddScoped<IPatientAccountService, PatientAccountService>();
+            builder.Services.AddScoped<IValidator<CreatePatientAccountRequest>, CreatePatientAccountRequestValidator>();
+            builder.Services.AddScoped<IValidator<UpdatePatientAccountRequest>, UpdatePatientAccountRequestValidator>();
 
             // BLL — Module 6: AI Model Management
             builder.Services.AddScoped<IAiModelService, AiModelService>();

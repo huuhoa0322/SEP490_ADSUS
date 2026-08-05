@@ -59,6 +59,7 @@ public class AuthService : IAuthService
 
         return new LoginResponse
         {
+            UserId = user.UserId,
             AccessToken = _tokens.GenerateAccessToken(user),
             Role = user.Role.ToApiString(),
             FullName = user.FullName,

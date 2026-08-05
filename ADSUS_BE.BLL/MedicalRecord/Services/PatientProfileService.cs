@@ -115,22 +115,24 @@ public sealed class PatientProfileService : IPatientProfileService
     public async Task<PagedResult<PatientSummaryResponse>> SearchPatientsAsync(
         string? search,
         string? visitStatus,
+        bool? hasProfile,
         int page,
         int pageSize,
         CancellationToken ct = default)
     {
-        var (rows, total) = await _profiles.SearchAsync(search, visitStatus, page, pageSize, ct);
+        var (rows, total) = await _profiles.SearchAsync(search, visitStatus, hasProfile, page, pageSize, ct);
 
         var items = rows
-            .Select(row => new PatientSummaryResponse(
-                PatientProfileId: row.Profile.PatientProfileId,
-                PatientUserId: row.Profile.UserId,
-                FullName: row.Profile.User?.FullName ?? string.Empty,
-                Phone: row.Profile.User?.Phone ?? string.Empty,
-                LatestVisitDate: row.LatestCase?.VisitDate,
-                LatestVisitStatus: row.LatestCase?.Status.ToApiString()))
+            .Select(r => new PatientSummaryResponse(
+                PatientProfileId: r.PatientProfileId,
+                PatientUserId: r.PatientUserId,
+                FullName: r.FullName,
+                Phone: r.Phone,
+                LatestVisitDate: r.LatestVisitDate,
+                LatestVisitStatus: r.LatestVisitStatus))
             .ToList();
 
+        // Trang 0 buộc giao diện phải xử lý riêng một trường hợp vô nghĩa, nên tối thiểu là 1.
         var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)pageSize);
 
         return new PagedResult<PatientSummaryResponse>(items, page, pageSize, total, totalPages);
