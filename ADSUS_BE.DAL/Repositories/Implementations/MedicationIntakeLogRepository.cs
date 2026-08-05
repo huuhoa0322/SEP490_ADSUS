@@ -69,4 +69,86 @@ public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogReposito
     {
         await _db.MedicationIntakeLogs.AddRangeAsync(logs, ct);
     }
+
+    public async Task<MedicationIntakeLog?> GetByIdAsync(Guid intakeId, CancellationToken ct = default)
+    {
+        return await _db.MedicationIntakeLogs
+            .AsNoTracking()
+            .Include(l => l.PrescriptionItem)
+                .ThenInclude(i => i!.Medicine)
+            .Include(l => l.PrescriptionItem)
+                .ThenInclude(i => i!.Prescription)
+                    .ThenInclude(p => p!.Case)
+            .FirstOrDefaultAsync(l => l.IntakeId == intakeId, ct);
+    }
+
+    public async Task<IReadOnlyList<MedicationIntakeLog>> ListByPrescriptionAsync(
+        Guid prescriptionId,
+        CancellationToken ct = default)
+    {
+        var itemIds = await _db.PrescriptionItems
+            .AsNoTracking()
+            .Where(i => i.PrescriptionId == prescriptionId)
+            .Select(i => i.PrescriptionItemId)
+            .ToListAsync(ct);
+
+        return await _db.MedicationIntakeLogs
+            .AsNoTracking()
+            .Include(l => l.PrescriptionItem)
+                .ThenInclude(i => i!.Medicine)
+            .Where(l => itemIds.Contains(l.PrescriptionItemId))
+            .OrderBy(l => l.ScheduledTime)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<MedicationIntakeLog>> ListUpcomingAsync(
+        Guid patientProfileId,
+        CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+
+        return await _db.MedicationIntakeLogs
+            .AsNoTracking()
+            .Include(l => l.PrescriptionItem)
+                .ThenInclude(i => i!.Medicine)
+            .Include(l => l.PrescriptionItem)
+                .ThenInclude(i => i!.Prescription)
+                    .ThenInclude(p => p!.Case)
+            .Where(l => l.PrescriptionItem!.Prescription!.Case!.PatientProfileId == patientProfileId
+                     && l.ScheduledTime >= now
+                     && l.ConfirmedAt == null)
+            .OrderBy(l => l.ScheduledTime)
+            .ToListAsync(ct);
+    }
+
+    public async Task ConfirmTakenAsync(Guid intakeId, DateTime confirmedAt, CancellationToken ct = default)
+    {
+        var log = await _db.MedicationIntakeLogs.FindAsync([intakeId], ct);
+        if (log is null) return;
+        log.ConfirmedAt = confirmedAt;
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<MedicationIntakeLog>> ListDueRemindersAsync(
+        DateTime windowStart,
+        int reminderWindowMinutes,
+        CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        // Only remind once per intake log — only when ScheduledTime just passed.
+        // If windowStart=now-30min and ScheduledTime falls within [now-30min, now], send one reminder.
+        return await _db.MedicationIntakeLogs
+            .AsNoTracking()
+            .Include(l => l.PrescriptionItem)
+                .ThenInclude(i => i!.Medicine)
+            .Include(l => l.PrescriptionItem)
+                .ThenInclude(i => i!.Prescription)
+                    .ThenInclude(p => p!.Case)
+                        .ThenInclude(c => c!.PatientProfile)
+                            .ThenInclude(pt => pt!.User)
+            .Where(l => l.ScheduledTime >= windowStart
+                     && l.ScheduledTime <= now
+                     && l.ConfirmedAt == null)
+            .ToListAsync(ct);
+    }
 }

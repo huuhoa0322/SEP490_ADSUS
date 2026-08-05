@@ -16,6 +16,7 @@ public interface IPatientProfileService
     Task<PagedResult<PatientSummaryResponse>> SearchPatientsAsync(
         string? search,
         string? visitStatus,
+        bool? hasProfile,
         int page,
         int pageSize,
         CancellationToken ct = default);

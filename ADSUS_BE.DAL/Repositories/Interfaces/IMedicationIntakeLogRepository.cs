@@ -34,4 +34,31 @@ public interface IMedicationIntakeLogRepository
 
     /// <summary>Add nhiều logs cùng lúc (dùng cho IntakeLogGenerationService khi sinh lịch).</summary>
     Task AddRangeAsync(IEnumerable<MedicationIntakeLog> logs, CancellationToken ct = default);
+
+    /// <summary>Lấy log theo ID, có Include PrescriptionItem → Prescription → Case.</summary>
+    Task<MedicationIntakeLog?> GetByIdAsync(Guid intakeId, CancellationToken ct = default);
+
+    /// <summary>Lấy logs của 1 đơn, kèm medicine info, sắp xếp theo scheduled_time.</summary>
+    Task<IReadOnlyList<MedicationIntakeLog>> ListByPrescriptionAsync(
+        Guid prescriptionId,
+        CancellationToken ct = default);
+
+    /// <summary>Lấy logs sắp tới (scheduled_time > now) của 1 bệnh nhân.</summary>
+    Task<IReadOnlyList<MedicationIntakeLog>> ListUpcomingAsync(
+        Guid patientProfileId,
+        CancellationToken ct = default);
+
+    /// <summary>Xác nhận đã uống (GB-01: ghi ConfirmedAt = now).</summary>
+    Task ConfirmTakenAsync(Guid intakeId, DateTime confirmedAt, CancellationToken ct = default);
+
+    /// <summary>
+    /// JOB-01: lấy pending logs sẵn sàng nhắc.
+    /// - ConfirmedAt == null (chưa uống).
+    /// - ScheduledTime trong khoảng [now - reminderWindowMinutes, now] (gửi 1 lần khi vừa đến giờ).
+    /// - Không cần LastReminderSentAt column — dùng time window thay thế.
+    /// </summary>
+    Task<IReadOnlyList<MedicationIntakeLog>> ListDueRemindersAsync(
+        DateTime windowStart,
+        int reminderWindowMinutes,
+        CancellationToken ct = default);
 }

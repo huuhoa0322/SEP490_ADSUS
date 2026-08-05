@@ -39,8 +39,8 @@ public class PatientsControllerIntegrationTests
         // Arrange
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
-        _profiles.Setup(r => r.SearchAsync(null, null, 1, 20, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync((new List<(PatientProfile, Case?)>(), 0));
+        _profiles.Setup(r => r.SearchAsync(null, null, null, 1, 20, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((new List<PatientListRow>(), 0));
 
         // Act
         var response = await client.GetAsync("/api/v1/patients");
@@ -50,6 +50,28 @@ public class PatientsControllerIntegrationTests
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<PatientSummaryResponse>>>();
         Assert.Equal(200, body!.Code);
         Assert.Empty(body.Data!.Items);
+    }
+
+    [Fact]
+    public async Task GetPatients_HasProfileFalse_PassesFilterToRepository()
+    {
+        // Arrange — màn chọn tài khoản cho luồng tạo hồ sơ nền gọi đúng tham số này.
+        _profiles.Setup(r => r.SearchAsync(
+                     It.IsAny<string?>(), It.IsAny<string?>(), false, It.IsAny<int>(), It.IsAny<int>(),
+                     It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((new List<PatientListRow>(), 0));
+
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+
+        // Act
+        var response = await client.GetAsync("/api/v1/patients?hasProfile=false");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        _profiles.Verify(r => r.SearchAsync(
+            It.IsAny<string?>(), It.IsAny<string?>(), false, It.IsAny<int>(), It.IsAny<int>(),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

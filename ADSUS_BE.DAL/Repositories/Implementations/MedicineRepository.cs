@@ -36,4 +36,12 @@ public sealed class MedicineRepository : IMedicineRepository
     {
         await _db.Medicines.AddAsync(medicine, ct);
     }
+
+    public async Task<IReadOnlyList<Medicine>> ListAllAsync(CancellationToken ct = default)
+    {
+        return await _db.Medicines
+            .AsNoTracking()
+            .OrderBy(m => m.Name)
+            .ToListAsync(ct);
+    }
 }
