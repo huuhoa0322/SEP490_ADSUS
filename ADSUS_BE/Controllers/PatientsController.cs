@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,8 +21,18 @@ namespace ADSUS_BE.Controllers;
 public sealed class PatientsController : ControllerBase
 {
     private readonly IPatientProfileService _profiles;
+    private readonly IPatientAccountService _accounts;
+    private readonly IValidator<CreatePatientAccountRequest> _createAccountValidator;
 
-    public PatientsController(IPatientProfileService profiles) => _profiles = profiles;
+    public PatientsController(
+        IPatientProfileService profiles,
+        IPatientAccountService accounts,
+        IValidator<CreatePatientAccountRequest> createAccountValidator)
+    {
+        _profiles = profiles;
+        _accounts = accounts;
+        _createAccountValidator = createAccountValidator;
+    }
 
     /// <summary>
     /// Tìm theo họ tên hoặc số điện thoại, lọc theo trạng thái lần khám gần nhất (UC-09).
@@ -64,4 +76,46 @@ public sealed class PatientsController : ControllerBase
 
         return Ok(ApiResponse<PagedResult<PatientSummaryResponse>>.Ok(result, "Patients retrieved successfully"));
     }
+
+    /// <summary>
+    /// UC-06 AF-01 (quyết định ghi đè 04/08/2026) — Điều dưỡng tạo tài khoản Bệnh nhân mới
+    /// ngay tại luồng tiếp nhận, thay vì phải nhờ Admin (UC-04).
+    ///
+    /// CHỈ NURSE. Class đã có [Authorize(Roles="DOCTOR,NURSE")]; thuộc tính ở method là phép
+    /// AND với nó, nên hiệu lực rút còn đúng NURSE. Bác sĩ nhận 403 — đúng BR-03.
+    ///
+    /// Endpoint nằm ngoài API Catalog v1.1, đã ghi vào Flags Summary.
+    /// </summary>
+    [HttpPost]
+    [Authorize(Roles = "NURSE")]
+    [ProducesResponseType(typeof(ApiResponse<PatientAccountResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CreateAccount(
+        [FromBody] CreatePatientAccountRequest request,
+        CancellationToken ct)
+    {
+        var validation = await _createAccountValidator.ValidateAsync(request, ct);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
+        }
+
+        var result = await _accounts.CreateAsync(request, GetActingUserId(), ct);
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            ApiResponse<PatientAccountResponse>.Ok(result, "Patient account created successfully"));
+    }
+
+    /// <summary>
+    /// Id người đang thao tác, lấy từ token — KHÔNG bao giờ nhận từ request, nếu không thì
+    /// ai cũng ghi tên người khác vào Audit Log được.
+    /// </summary>
+    private Guid GetActingUserId() =>
+        Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
+            ? id
+            : throw new UnauthorizedAccessException("Invalid access token.");
 }
