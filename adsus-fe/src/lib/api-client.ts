@@ -34,7 +34,9 @@ export const ACCESS_TOKEN_KEY = "adsus.accessToken";
  * exactly "Authorization: Bearer <token>".
  */
 apiClient.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
+  // window.localStorage luôn tồn tại trên trình duyệt thật; kiểm tra thêm ở đây chỉ để
+  // không crash trong môi trường test (jsdom) khi localStorage chưa sẵn sàng.
+  if (typeof window !== "undefined" && window.localStorage) {
     const token = window.localStorage.getItem(ACCESS_TOKEN_KEY);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -70,7 +72,7 @@ apiClient.interceptors.response.use(
       error instanceof AxiosError && error.config?.headers?.Authorization,
     );
 
-    if (isUnauthorized && hadToken && typeof window !== "undefined") {
+    if (isUnauthorized && hadToken && typeof window !== "undefined" && window.localStorage) {
       window.localStorage.removeItem(ACCESS_TOKEN_KEY);
       window.localStorage.removeItem(AUTH_STORE_KEY);
 
