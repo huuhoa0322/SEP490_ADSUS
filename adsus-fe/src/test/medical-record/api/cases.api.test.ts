@@ -45,4 +45,18 @@ describe("downloadCaseReport", () => {
     // báo trống và người dùng không biết vì sao không xuất được PDF.
     await expect(downloadCaseReport("case-1")).rejects.toThrow("The case is not confirmed yet.");
   });
+
+  it("rơi về lỗi gốc khi thân phản hồi không phải JSON", async () => {
+    server.use(
+      http.get(`${API_BASE_URL}/api/v1/cases/case-1/report`, () =>
+        HttpResponse.text("<html><body>502 Bad Gateway</body></html>", { status: 502 }),
+      ),
+    );
+
+    // Gateway/proxy chen vào giữa đường trả HTML thay vì JSON — JSON.parse thất bại. Phải
+    // rơi về lỗi axios gốc (rejects.toThrow không cần chuỗi cụ thể) chứ không phải để lộ
+    // SyntaxError của JSON.parse ra ngoài — đó là lỗi thực thi bên trong, không phải thông
+    // báo có ý nghĩa cho người dùng.
+    await expect(downloadCaseReport("case-1")).rejects.not.toThrow(/Unexpected token|JSON/);
+  });
 });

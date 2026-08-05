@@ -122,14 +122,18 @@ export async function downloadCaseReport(caseId: string): Promise<Blob> {
     if (error instanceof AxiosError && error.response?.data instanceof Blob) {
       const text = await error.response.data.text();
 
+      // Bắt riêng lỗi của JSON.parse (không phải lỗi tự ném ở dưới): nếu bắt chung, không
+      // thể phân biệt "JSON.parse thật sự lỗi" với "mình vừa throw message" — cả hai đều
+      // rơi vào cùng một catch. Thân phản hồi không phải JSON (proxy chen vào, backend sập
+      // giữa chừng...) thì rơi xuống throw error gốc bên dưới thay vì lộ ra SyntaxError thô.
+      let message: string | undefined;
       try {
-        const body = JSON.parse(text) as ApiResponse<null>;
-        if (body.message) throw new Error(body.message);
-      } catch (parseError) {
-        // Thân phản hồi không phải JSON (proxy chen vào, backend sập giữa chừng...).
-        // Ném lại lỗi đã dựng ở trên nếu có, còn không thì rơi xuống câu chung bên dưới.
-        if (parseError instanceof Error && parseError.message !== text) throw parseError;
+        message = (JSON.parse(text) as ApiResponse<null>).message ?? undefined;
+      } catch {
+        // không phải JSON — message giữ nguyên undefined, rơi xuống throw error bên dưới.
       }
+
+      if (message) throw new Error(message);
     }
 
     throw error;
