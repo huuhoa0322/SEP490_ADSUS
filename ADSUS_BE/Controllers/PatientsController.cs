@@ -27,12 +27,18 @@ public sealed class PatientsController : ControllerBase
     /// </summary>
     /// <param name="search">Khớp chuỗi con, không phân biệt hoa thường, trên họ tên hoặc số điện thoại.</param>
     /// <param name="visitStatus">All (mặc định) | Pending | Confirmed.</param>
+    /// <param name="hasProfile">
+    /// Bỏ trống = tất cả bệnh nhân. true = chỉ người đã có hồ sơ nền. false = chỉ người
+    /// CHƯA có hồ sơ nền — giao diện dùng giá trị này để chọn tài khoản cho luồng tạo hồ sơ
+    /// nền (#17).
+    /// </param>
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<PatientSummaryResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Search(
         [FromQuery] string? search,
         [FromQuery] string? visitStatus,
+        [FromQuery] bool? hasProfile,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
@@ -54,7 +60,7 @@ public sealed class PatientsController : ControllerBase
             ? null
             : visitStatus;
 
-        var result = await _profiles.SearchPatientsAsync(search, filter, page, pageSize, ct);
+        var result = await _profiles.SearchPatientsAsync(search, filter, hasProfile, page, pageSize, ct);
 
         return Ok(ApiResponse<PagedResult<PatientSummaryResponse>>.Ok(result, "Patients retrieved successfully"));
     }
