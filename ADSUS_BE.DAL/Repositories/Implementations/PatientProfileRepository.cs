@@ -56,67 +56,102 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
         int pageSize,
         CancellationToken ct = default)
     {
-        // Gốc truy vấn là users chứ không phải patient_profiles: bệnh nhân vừa được tạo tài
-        // khoản mà chưa lập hồ sơ nền vẫn phải tìm thấy được, nếu không thì #17 không có
-        // đường nào lấy patientUserId. LEFT JOIN nên hồ sơ nền có thể null.
-        var query = from u in _db.Users.AsNoTracking()
-                    where u.Role == UserRole.Patient
-                    join p in _db.PatientProfiles on u.UserId equals p.UserId into profiles
-                    from p in profiles.DefaultIfEmpty()
-                    select new
-                    {
-                        User = u,
-                        Profile = p,
-                        // Gắn ca khám mới nhất ngay trong một câu truy vấn. Lặp từng bệnh nhân
-                        // rồi hỏi ca mới nhất là N+1 — index idx_cases_patient_timeline đỡ sẵn.
-                        LatestCase = p == null
-                            ? null
-                            : p.Cases
-                                .OrderByDescending(c => c.VisitDate)
-                                .ThenByDescending(c => c.CreatedAt)
-                                .FirstOrDefault(),
-                    };
+        // Hai lần thử dịch "ca khám mới nhất của mỗi hồ sơ" thành MỘT câu SQL duy nhất đều gãy
+        // trên Postgres thật, dù build sạch và test (mock) đều pass cả hai lần — EF Core 8 không
+        // dịch được kiểu tương quan-subquery-tái-dùng-trong-OrderBy (lần 1), rồi không dịch được
+        // GroupBy-subquery-làm-nguồn-JOIN kết hợp CountAsync (lần 2).
+        //
+        // Tách hẳn thành 2 câu SQL đơn giản (không GroupBy, không subquery làm nguồn JOIN) rồi
+        // ghép/lọc/sắp bằng LINQ-to-Objects. Đánh đổi: tải nhiều hơn 1 trang mỗi lần — chấp nhận
+        // được ở quy mô một phòng khám (UC-09 mặc định pageSize 20, không phải hệ thống hàng
+        // triệu bản ghi). Đổi lại loại bỏ hoàn toàn rủi ro dịch SQL.
+
+        // Bước 1 — chỉ LEFT JOIN + WHERE, đã xác nhận dịch được (câu COUNT đầu tiên từng chạy
+        // đúng trước khi Case tham gia vào truy vấn).
+        var baseQuery = from u in _db.Users.AsNoTracking()
+                        where u.Role == UserRole.Patient
+                        join p in _db.PatientProfiles.AsNoTracking() on u.UserId equals p.UserId into profiles
+                        from p in profiles.DefaultIfEmpty()
+                        select new { User = u, Profile = p };
 
         if (!string.IsNullOrWhiteSpace(search))
         {
             var keyword = $"%{search.Trim()}%";
 
             // ILike là so khớp không phân biệt hoa thường đúng chuẩn Postgres (UC-09 BR-01).
-            query = query.Where(x =>
+            baseQuery = baseQuery.Where(x =>
                 EF.Functions.ILike(x.User.FullName, keyword)
                 || EF.Functions.ILike(x.User.Phone, keyword));
         }
 
         if (hasProfile == true)
         {
-            query = query.Where(x => x.Profile != null);
+            baseQuery = baseQuery.Where(x => x.Profile != null);
         }
         else if (hasProfile == false)
         {
-            query = query.Where(x => x.Profile == null);
+            baseQuery = baseQuery.Where(x => x.Profile == null);
         }
+
+        var candidates = await baseQuery.ToListAsync(ct);
+
+        // Bước 2 — WHERE ... IN (...) đơn giản, không GroupBy, không subquery làm nguồn JOIN.
+        var profileIds = candidates
+            .Where(x => x.Profile != null)
+            .Select(x => x.Profile!.PatientProfileId)
+            .ToList();
+
+        var casesByProfile = profileIds.Count == 0
+            ? new List<Case>()
+            : await _db.Cases
+                .AsNoTracking()
+                .Where(c => profileIds.Contains(c.PatientProfileId))
+                .ToListAsync(ct);
+
+        // Từ đây trở đi là LINQ-to-Objects thuần — không còn gì để EF Core dịch, nên không còn
+        // rủi ro translation nữa.
+        var latestCaseByProfile = casesByProfile
+            .GroupBy(c => c.PatientProfileId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(c => c.VisitDate).ThenByDescending(c => c.CreatedAt).First());
+
+        var merged = candidates
+            .Select(x => new
+            {
+                x.User,
+                x.Profile,
+                LatestCase = x.Profile != null && latestCaseByProfile.TryGetValue(x.Profile.PatientProfileId, out var lc)
+                    ? lc
+                    : null,
+            })
+            .AsEnumerable();
 
         if (string.Equals(visitStatus, "Pending", StringComparison.OrdinalIgnoreCase))
         {
-            query = query.Where(x => x.LatestCase != null
+            merged = merged.Where(x => x.LatestCase != null
                 && (x.LatestCase.Status == CaseStatus.Created || x.LatestCase.Status == CaseStatus.Analyzed));
         }
         else if (string.Equals(visitStatus, "Confirmed", StringComparison.OrdinalIgnoreCase))
         {
-            query = query.Where(x => x.LatestCase != null && x.LatestCase.Status == CaseStatus.Confirmed);
+            merged = merged.Where(x => x.LatestCase != null && x.LatestCase.Status == CaseStatus.Confirmed);
         }
 
-        var total = await query.CountAsync(ct);
+        var mergedList = merged.ToList();
+        var total = mergedList.Count;
 
-        var rows = await query
-            // Bệnh nhân chưa có ca nào xuống cuối, thay vì lên đầu như mặc định của null.
-            .OrderByDescending(x => x.LatestCase != null ? x.LatestCase.VisitDate : DateOnly.MinValue)
-            .ThenBy(x => x.User.FullName)
+        // .NET's default comparer for nullable value types treats null as smaller than any
+        // non-null value, so OrderByDescending puts null LatestCase?.VisitDate rows last —
+        // bệnh nhân chưa có ca nào xuống cuối, không cần giá trị sentinel nào.
+        // ThenBy dùng StringComparer.Ordinal thay vì mặc định: đây là sắp trong bộ nhớ, không
+        // cần khớp collation với Postgres (ILike ở Bước 1 chỉ lọc, không sắp) — Ordinal cho kết
+        // quả tất định, không phụ thuộc culture của máy chạy, phù hợp vì đây chỉ là tiêu chí
+        // phụ (tiêu chí chính là ngày khám).
+        var rows = mergedList
+            .OrderByDescending(x => x.LatestCase?.VisitDate)
+            .ThenBy(x => x.User.FullName, StringComparer.Ordinal)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync(ct);
-
-        var items = rows
             .Select(x => new PatientListRow(
                 PatientProfileId: x.Profile?.PatientProfileId,
                 PatientUserId: x.User.UserId,
@@ -130,6 +165,6 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
                 LatestVisitStatus: x.LatestCase?.Status.ToString().ToUpperInvariant()))
             .ToList();
 
-        return (items, total);
+        return (rows, total);
     }
 }
