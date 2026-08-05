@@ -1,6 +1,6 @@
 "use client";
 
-import { BrainCircuit, FileText, KeyRound, LogOut, ScanLine, Users } from "lucide-react";
+import { BrainCircuit, CalendarClock, FileText, KeyRound, LogOut, ScanLine, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -89,6 +89,17 @@ export function AppHeader() {
             <KeyRound className="size-4" />
             <span className="hidden sm:inline">Đổi mật khẩu</span>
           </Link>
+
+          {/* UC-15 — Manage Schedule Slots: Doctor/Nurse only. */}
+          {(user?.role === "DOCTOR" || user?.role === "NURSE") && (
+            <Link
+              href="/schedule"
+              className="flex items-center gap-2 rounded-full px-3.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+            >
+              <CalendarClock className="size-4" />
+              <span className="hidden sm:inline">Quản lý lịch</span>
+            </Link>
+          )}
 
           <button
             type="button"

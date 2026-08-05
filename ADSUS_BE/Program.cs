@@ -18,6 +18,8 @@ using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Services;
+using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
+using ADSUS_BE.BLL.AppointmentScheduling.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
@@ -330,6 +332,10 @@ namespace ADSUS_BE
 
             // BLL — Module 6: AI Model Management
             builder.Services.AddScoped<IAiModelService, AiModelService>();
+
+            // BLL — Module 8: Appointment Scheduling (UC-15)
+            builder.Services.AddScoped<IScheduleSlotRepository, ScheduleSlotRepository>();
+            builder.Services.AddScoped<IScheduleSlotService, ScheduleSlotService>();
 
             // ---------- Cấu hình AI Backend ----------
             builder.Services.Configure<AiBackendSettings>(

@@ -261,6 +261,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
             entity.Property(e => e.Reason).HasColumnName("reason");
             entity.Property(e => e.SlotId).HasColumnName("slot_id");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("appointment_status");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
@@ -583,6 +586,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.DoctorId).HasColumnName("doctor_id");
             entity.Property(e => e.EndTime).HasColumnName("end_time");
             entity.Property(e => e.SlotDate).HasColumnName("slot_date");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("slot_status");
             entity.Property(e => e.StartTime).HasColumnName("start_time");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
