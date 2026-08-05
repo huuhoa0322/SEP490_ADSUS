@@ -82,5 +82,23 @@ public partial class AppDbContext
                 .HasColumnName("status")
                 .HasDefaultValue(PrescriptionStatus.Active);
         });
+
+        // ---------- Module 7: Medication Intake ----------
+        modelBuilder.HasPostgresEnum<IntakeStatus>("public", "intake_status");
+        modelBuilder.HasPostgresEnum<ReminderSlot>("public", "reminder_slot");
+
+        modelBuilder.Entity<MedicationIntakeLog>(entity =>
+        {
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasDefaultValue(IntakeStatus.Pending);
+        });
+
+        modelBuilder.Entity<PrescriptionItem>(entity =>
+        {
+            entity.Property(e => e.ScheduleSlots)
+                .HasColumnName("schedule_slots")
+                .HasColumnType("reminder_slot[]");
+        });
     }
 }

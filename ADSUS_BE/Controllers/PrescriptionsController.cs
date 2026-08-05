@@ -29,7 +29,7 @@ public class PrescriptionsController : ControllerBase
             return Unauthorized();
 
         var result = await _prescriptionService.CreateAsync(userId, request, ct);
-        return CreatedAtRoute(GetByIdRoute, new { id = result.PrescriptionId }, result);
+        return Created($"/api/v1/prescriptions/{result.PrescriptionId}", result);
     }
 
     /// <summary>UC-17 — Lấy chi tiết đơn thuốc.</summary>

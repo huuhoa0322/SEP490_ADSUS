@@ -126,3 +126,14 @@ public enum GenderType
     [PgName("MALE")] Male,
     [PgName("OTHER")] Other,
 }
+
+/// <summary>
+/// Khung giờ nhắc uống thuốc — enum <c>reminder_slot</c> trong DB.
+/// Persisted vào prescription_items.schedule_slots (array column).
+/// </summary>
+public enum ReminderSlot
+{
+    [PgName("MORNING")] Morning,
+    [PgName("NOON")] Noon,
+    [PgName("EVENING")] Evening,
+}

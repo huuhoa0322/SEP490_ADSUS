@@ -6,10 +6,11 @@ using Microsoft.EntityFrameworkCore;
 namespace ADSUS_BE.DAL.Repositories.Implementations;
 
 /// <summary>
-/// EF Core implementation của IMedicationIntakeLogRepository. Status ("PENDING" /
-/// "TAKEN") derive từ ConfirmedAt — DB không có column status (xem AppDbContext
-/// master). UNIQUE constraint uq_medication_intake_logs_dose ở DB sẽ reject duplicate
-/// (item, scheduled_time); handler bắt PostgresException 23505 khi Quartz re-fire.
+/// EF Core implementation của IMedicationIntakeLogRepository. Cột status (intake_status
+/// enum) tồn tại trong DB và được cập nhật song song với ConfirmedAt để query/list
+/// có thể filter trực tiếp (không phải derive). UNIQUE constraint
+/// uq_medication_intake_logs_dose ở DB sẽ reject duplicate (item, scheduled_time);
+/// handler bắt PostgresException 23505 khi Quartz re-fire.
 /// </summary>
 public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogRepository
 {
@@ -126,6 +127,7 @@ public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogReposito
         var log = await _db.MedicationIntakeLogs.FindAsync([intakeId], ct);
         if (log is null) return;
         log.ConfirmedAt = confirmedAt;
+        log.Status = IntakeStatus.Taken;
         await _db.SaveChangesAsync(ct);
     }
 
