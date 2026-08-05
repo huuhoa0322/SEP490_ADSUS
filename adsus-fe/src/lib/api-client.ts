@@ -20,9 +20,13 @@ export const API_BASE_URL =
 
 const baseURL = API_BASE_URL;
 
+// KHÔNG đặt "Content-Type": "application/json" mặc định ở đây. axios đã tự set header đó
+// cho payload là object thường (defaults/index.js: setContentType nếu chưa có). Nếu đặt cứng
+// ở đây, mọi request FormData (#20/#21 — tải ảnh siêu âm) sẽ bị hasJSONContentType=true,
+// khiến axios âm thầm JSON.stringify() FormData thay vì giữ nguyên multipart, trong khi
+// header vẫn ghi application/json — backend nhận sai định dạng, không phải lỗi chỉ ở test.
 export const apiClient = axios.create({
   baseURL,
-  headers: { "Content-Type": "application/json" },
   timeout: 15_000,
 });
 
