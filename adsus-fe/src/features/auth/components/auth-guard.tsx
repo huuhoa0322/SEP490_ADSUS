@@ -32,6 +32,8 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   const accessToken = useAuthStore((s) => s.accessToken);
   const role = useAuthStore((s) => s.user?.role);
   const mustChangePassword = useAuthStore((s) => s.user?.mustChangePassword ?? false);
+  const user = useAuthStore((s) => s.user);
+  const signOut = useAuthStore((s) => s.signOut);
 
   const isOnChangePassword = pathname === CHANGE_PASSWORD_PATH;
   const needsRedirectToChangePassword = mustChangePassword && !isOnChangePassword;
@@ -83,6 +85,17 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     homePath,
     router,
   ]);
+
+  // Phiên được lưu TRƯỚC 04/08/2026 không có userId (backend mới thêm vào LoginResponse).
+  // Để nguyên thì form tạo ca khám gửi responsibleDoctorId = undefined và nhận 400 khó hiểu.
+  // Rẻ hơn nhiều nếu bắt đăng nhập lại một lần: token vẫn còn hạn nên người dùng chỉ tốn
+  // một lần gõ mật khẩu, thay vì gặp lỗi không đoán được ở màn tạo ca.
+  useEffect(() => {
+    if (hasHydrated && accessToken && user && !user.userId) {
+      signOut();
+      router.replace("/login?expired=1");
+    }
+  }, [hasHydrated, accessToken, user, signOut, router]);
 
   if (!hasHydrated || !isAllowed) {
     return (

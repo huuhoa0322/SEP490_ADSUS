@@ -8,6 +8,8 @@ export interface LoginRequest {
 
 /** The "data" payload of a successful sign-in response. */
 export interface LoginResponse {
+  /** Id tài khoản — GB-04: form tạo ca khám cần nó để điền sẵn ô "Bác sĩ phụ trách". */
+  userId: string;
   accessToken: string;
   role: Role;
   fullName: string;
