@@ -4,6 +4,7 @@ import type { ApiResponse } from "@/types/api.types";
 import type {
   CreatePatientAccountRequest,
   PatientAccount,
+  PatientAccountCreated,
   UpdatePatientAccountRequest,
 } from "../types/medical-record.types";
 
@@ -17,10 +18,14 @@ import type {
  */
 const BASE = "/api/v1/patients";
 
+/**
+ * AF-01 — sửa lại 06/08/2026: response giờ trả `temporaryPassword` plaintext đúng một lần,
+ * không còn gửi email chứa mật khẩu. Xem `PatientAccountCreated`.
+ */
 export async function createPatientAccount(
   payload: CreatePatientAccountRequest,
-): Promise<PatientAccount> {
-  const { data } = await apiClient.post<ApiResponse<PatientAccount>>(BASE, payload);
+): Promise<PatientAccountCreated> {
+  const { data } = await apiClient.post<ApiResponse<PatientAccountCreated>>(BASE, payload);
 
   if (!data.data) throw new Error(data.message || "Tạo tài khoản bệnh nhân thất bại.");
 

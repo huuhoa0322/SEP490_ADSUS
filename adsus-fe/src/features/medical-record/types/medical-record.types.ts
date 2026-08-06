@@ -79,6 +79,15 @@ export interface PatientAccount {
   email: string | null;
 }
 
+/**
+ * Response của #28 POST /patients — DUY NHẤT chỗ có `temporaryPassword`, và chỉ đúng một lần
+ * ngay lúc tạo (quyết định ghi đè 06/08/2026, thay một phần BR-05 gốc). Không endpoint nào
+ * khác của Module 04 trả trường này.
+ */
+export interface PatientAccountCreated extends PatientAccount {
+  temporaryPassword: string;
+}
+
 /** UC-06 AF-01 — chỉ Điều dưỡng. Không có role (luôn PATIENT), không có mật khẩu. */
 export interface CreatePatientAccountRequest {
   phoneNumber: string;

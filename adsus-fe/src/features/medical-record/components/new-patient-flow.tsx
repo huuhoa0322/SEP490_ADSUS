@@ -1,13 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
 
 import { usePatientList } from "../hooks/use-patients";
-import type { PatientAccount } from "../types/medical-record.types";
 
 import { PatientAccountForm } from "./patient-account-form";
 import { PatientProfileForm } from "./patient-profile-form";
@@ -21,20 +19,18 @@ interface Props {
  * Điều phối hai luồng tạo bệnh nhân.
  *
  * Vào từ SCR-09:
- *   nút "Tạo hồ sơ nền" trên dòng chưa có hồ sơ  → kèm patientUserId
- *   nút "+ Thêm bệnh nhân mới" (chỉ Điều dưỡng)  → không kèm gì, phải tạo tài khoản trước
+ *   nút "Tạo hồ sơ nền" trên dòng chưa có hồ sơ  → kèm patientUserId, chỉ còn thiếu hồ sơ nền
+ *   nút "+ Thêm bệnh nhân mới" (chỉ Điều dưỡng)  → không kèm gì, PatientAccountForm tự lo cả
+ *     tài khoản lẫn hồ sơ nền trong một form (quyết định ghi đè 06/08/2026)
  */
 export function NewPatientFlow({ patientUserId }: Props) {
   const router = useRouter();
   const isNurse = useAuthStore((state) => state.user?.role) === "NURSE";
 
-  // Tài khoản vừa tạo ở bước 1; giữ lại để đổ sang form hồ sơ nền mà không phải gọi lại API.
-  const [createdAccount, setCreatedAccount] = useState<PatientAccount | null>(null);
-
   // Chỉ nạp khi cần đọc thông tin định danh của một tài khoản đã có.
   const accountsQuery = usePatientList({ hasProfile: false, pageSize: 100 });
 
-  // Luồng A — tài khoản đã có sẵn.
+  // Luồng A — tài khoản đã có sẵn, chỉ còn thiếu hồ sơ nền.
   if (patientUserId) {
     if (accountsQuery.isLoading) {
       return <p className="p-10 text-sm text-muted-foreground">Đang tải thông tin tài khoản...</p>;
@@ -91,26 +87,12 @@ export function NewPatientFlow({ patientUserId }: Props) {
     );
   }
 
-  if (createdAccount) {
-    return (
-      <PatientProfileForm
-        mode="create"
-        patientUserId={createdAccount.userId}
-        identity={{
-          fullName: createdAccount.fullName,
-          phone: createdAccount.phoneNumber,
-          dateOfBirth: createdAccount.dateOfBirth,
-        }}
-      />
-    );
-  }
-
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
       <h1 className="mb-6 font-heading text-[28px] font-bold tracking-[-0.02em] text-foreground">
         Thêm bệnh nhân mới
       </h1>
-      <PatientAccountForm onCreated={setCreatedAccount} />
+      <PatientAccountForm />
     </div>
   );
 }
