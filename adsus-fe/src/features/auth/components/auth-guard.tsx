@@ -2,7 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 import {
   getHomePathForRole,
@@ -53,14 +53,38 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     !isRoleAllowedOnPath(role, pathname) &&
     homePath !== pathname;
 
+  // Phiên được lưu TRƯỚC 04/08/2026 không có userId (backend mới thêm vào LoginResponse).
+  // Để nguyên thì form tạo ca khám gửi responsibleDoctorId = undefined và nhận 400 khó hiểu.
+  const hasInvalidSession = Boolean(accessToken) && Boolean(user && !user.userId);
+
   const isAllowed =
-    Boolean(accessToken) && !needsRedirectToChangePassword && !isWrongArea;
+    Boolean(accessToken) &&
+    !hasInvalidSession &&
+    !needsRedirectToChangePassword &&
+    !isWrongArea;
+
+  // Đánh dấu ĐÃ điều hướng vì phiên hỏng, để lần render kế tiếp (sau khi signOut() đổi
+  // accessToken/user về null) không rơi xuống nhánh "!accessToken" bên dưới rồi gọi
+  // router.replace("/login") đè mất query "?expired=1" vừa set — hai lệnh replace liên tiếp
+  // thì lệnh sau thắng, nên không có cờ này thì thông báo phiên hết hạn không bao giờ hiện.
+  const invalidSessionHandled = useRef(false);
 
   useEffect(() => {
     // Wait for localStorage to be read, otherwise a valid session gets bounced out.
     if (!hasHydrated) return;
 
+    if (hasInvalidSession) {
+      if (invalidSessionHandled.current) return;
+      invalidSessionHandled.current = true;
+      signOut();
+      router.replace("/login?expired=1");
+      return;
+    }
+
     if (!accessToken) {
+      // Đã điều hướng vì phiên hỏng ở nhánh trên rồi (signOut() vừa đưa accessToken về null
+      // NGAY TRONG lần chạy effect này) — đừng gọi replace("/login") đè mất "?expired=1".
+      if (invalidSessionHandled.current) return;
       router.replace("/login");
       return;
     }
@@ -79,23 +103,14 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     }
   }, [
     hasHydrated,
+    hasInvalidSession,
     accessToken,
     needsRedirectToChangePassword,
     isWrongArea,
     homePath,
+    signOut,
     router,
   ]);
-
-  // Phiên được lưu TRƯỚC 04/08/2026 không có userId (backend mới thêm vào LoginResponse).
-  // Để nguyên thì form tạo ca khám gửi responsibleDoctorId = undefined và nhận 400 khó hiểu.
-  // Rẻ hơn nhiều nếu bắt đăng nhập lại một lần: token vẫn còn hạn nên người dùng chỉ tốn
-  // một lần gõ mật khẩu, thay vì gặp lỗi không đoán được ở màn tạo ca.
-  useEffect(() => {
-    if (hasHydrated && accessToken && user && !user.userId) {
-      signOut();
-      router.replace("/login?expired=1");
-    }
-  }, [hasHydrated, accessToken, user, signOut, router]);
 
   if (!hasHydrated || !isAllowed) {
     return (
