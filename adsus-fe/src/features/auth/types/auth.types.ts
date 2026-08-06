@@ -41,9 +41,15 @@ export interface ForgotPasswordRequest {
   email: string;
 }
 
-/** UC-25 — a signed-in user changes their own password. */
+/**
+ * UC-25 — a signed-in user changes their own password.
+ *
+ * currentPassword bỏ trống được (sửa 06/08/2026) khi tài khoản còn đang dùng mật khẩu tạm
+ * (mustChangePassword) — backend tự bỏ qua bước xác thực trong trường hợp đó, dựa trên cờ
+ * phía server chứ không phải giá trị client gửi lên.
+ */
 export interface ChangePasswordRequest {
-  currentPassword: string;
+  currentPassword: string | null;
   newPassword: string;
   confirmNewPassword: string;
 }

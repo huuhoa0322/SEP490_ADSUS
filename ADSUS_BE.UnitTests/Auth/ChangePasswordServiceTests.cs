@@ -95,6 +95,62 @@ public class ChangePasswordServiceTests
     }
 
     [Fact]
+    public async Task ChangePasswordAsync_MustChangePassword_WrongCurrentPassword_StillSucceeds()
+    {
+        // Sửa 06/08/2026 — tài khoản còn đang dùng mật khẩu tạm (do Admin/Điều dưỡng cấp) thì
+        // không cần xác thực CurrentPassword nữa: người dùng vừa chứng minh biết giá trị đó
+        // qua bước đăng nhập ngay trước đây. Cố tình gửi CurrentPassword SAI vẫn phải thành
+        // công, để không ai có thể "khoá" luồng này bằng cách âm thầm gửi giá trị đúng thật.
+        var user = BuildUser(UserStatus.Active);
+        user.MustChangePassword = true;
+        SetupUser(user);
+
+        var result = await _sut.ChangePasswordAsync(user.UserId, Request("DefinitelyWrong1"));
+
+        Assert.Equal(ChangePasswordResult.Success, result);
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_MustChangePassword_NullCurrentPassword_StillSucceeds()
+    {
+        var user = BuildUser(UserStatus.Active);
+        user.MustChangePassword = true;
+        SetupUser(user);
+
+        var request = new ChangePasswordRequest
+        {
+            CurrentPassword = null,
+            NewPassword = NewPassword,
+            ConfirmNewPassword = NewPassword,
+        };
+
+        var result = await _sut.ChangePasswordAsync(user.UserId, request);
+
+        Assert.Equal(ChangePasswordResult.Success, result);
+        Assert.True(BCrypt.Net.BCrypt.Verify(NewPassword, user.PasswordHash));
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_NotMustChangePassword_NullCurrentPassword_ReturnsCurrentPasswordIncorrect()
+    {
+        // Đổi mật khẩu tự nguyện (không bị ép) — CurrentPassword vẫn bắt buộc và phải đúng,
+        // hành vi không đổi so với trước.
+        var user = BuildUser(UserStatus.Active);
+        SetupUser(user);
+
+        var request = new ChangePasswordRequest
+        {
+            CurrentPassword = null,
+            NewPassword = NewPassword,
+            ConfirmNewPassword = NewPassword,
+        };
+
+        var result = await _sut.ChangePasswordAsync(user.UserId, request);
+
+        Assert.Equal(ChangePasswordResult.CurrentPasswordIncorrect, result);
+    }
+
+    [Fact]
     public async Task ChangePasswordAsync_UserNoLongerExists_ReturnsUserNotFound()
     {
         SetupUser(null);

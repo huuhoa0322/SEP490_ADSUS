@@ -79,18 +79,21 @@ public class ChangePasswordRequestValidatorTests
     }
 
     [Fact]
-    public void Invalid_CurrentPasswordMissing_Fails()
+    public void Valid_CurrentPasswordMissing_PassesFormatValidation()
     {
+        // Sửa 06/08/2026 — CurrentPassword không còn NotEmpty ở đây: có bắt buộc hay không phụ
+        // thuộc User.MustChangePassword, dữ liệu DB mà validator không truy cập được. Luật
+        // thật nằm ở AuthService.ChangePasswordAsync — xem ChangePasswordServiceTests.
         var request = new ChangePasswordRequest
         {
-            CurrentPassword = "",
+            CurrentPassword = null,
             NewPassword = "Valid123",
             ConfirmNewPassword = "Valid123",
         };
 
         var result = _sut.Validate(request);
 
-        Assert.False(result.IsValid);
+        Assert.True(result.IsValid);
     }
 
     [Fact]
