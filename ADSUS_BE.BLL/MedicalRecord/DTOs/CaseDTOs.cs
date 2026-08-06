@@ -12,16 +12,6 @@ public sealed record UltrasoundImageResponse(
     DateTime UploadedAt,
     string? Note);
 
-/// <summary>Tóm tắt kết quả AI nhúng trong #23. Chi tiết thuộc Module 5.</summary>
-/// <remarks>
-/// KHÔNG có confidenceScore: bảng ai_results không có cột nào như vậy — độ tin cậy nằm ở
-/// từng ai_findings.confidence. Xem flag N1 trong tài liệu thiết kế.
-/// </remarks>
-public sealed record AiResultSummary(
-    Guid AiResultId,
-    string Status,
-    int FindingCount);
-
 /// <summary>Tóm tắt đơn thuốc nhúng trong #23. Chi tiết thuộc Module 7.</summary>
 public sealed record PrescriptionSummary(
     Guid PrescriptionId,
@@ -42,7 +32,7 @@ public sealed record CaseResponse(
     string? DoctorConclusion,
     PatientProfileResponse? PatientProfile,
     IReadOnlyList<UltrasoundImageResponse> UltrasoundImages,
-    IReadOnlyList<AiResultSummary> AiResults,
+    // AiResults removed
     PrescriptionSummary? Prescription,
     DateTime CreatedAt,
     DateTime UpdatedAt);

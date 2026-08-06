@@ -40,13 +40,7 @@ public static class CaseMapper
             .OrderBy(i => i.UploadedAt)
             .Select(i => ToImageResponse(i, imageUrls.GetValueOrDefault(i.ImageId)))
             .ToList(),
-        AiResults: medicalCase.AiResults
-            .OrderByDescending(r => r.CreatedAt)
-            .Select(r => new AiResultSummary(
-                AiResultId: r.AiResultId,
-                Status: r.Status.ToApiString(),
-                FindingCount: r.AiFindings.Count))
-            .ToList(),
+        // AiResults mapping removed
         Prescription: ToPrescriptionSummary(medicalCase),
         CreatedAt: medicalCase.CreatedAt,
         UpdatedAt: medicalCase.UpdatedAt);

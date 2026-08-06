@@ -37,7 +37,7 @@ public partial class AiModelVersion
 
     public string HfFilename { get; set; } = null!;
 
-    public virtual ICollection<AiResult> AiResults { get; set; } = new List<AiResult>();
+    public virtual ICollection<AiPrediction> AiPredictions { get; set; } = new List<AiPrediction>();
 
     public virtual User RegisteredByNavigation { get; set; } = null!;
 }
