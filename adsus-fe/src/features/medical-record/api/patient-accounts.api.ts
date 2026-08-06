@@ -32,6 +32,19 @@ export async function createPatientAccount(
   return data.data;
 }
 
+/**
+ * AF-02 phần đọc (thêm 06/08/2026, review Task C11) — PatientProfile không có email nên form
+ * Sửa thông tin tài khoản cần nguồn riêng, không thì lưu là xoá mất email đang có (UpdateContact
+ * thay TOÀN BỘ 4 trường, BR-04).
+ */
+export async function getPatientAccount(userId: string): Promise<PatientAccount> {
+  const { data } = await apiClient.get<ApiResponse<PatientAccount>>(`${BASE}/${userId}`);
+
+  if (!data.data) throw new Error(data.message || "Không tải được thông tin tài khoản.");
+
+  return data.data;
+}
+
 export async function updatePatientAccountContact(
   userId: string,
   payload: UpdatePatientAccountRequest,
@@ -44,14 +57,15 @@ export async function updatePatientAccountContact(
 }
 
 /**
- * UC-06 AF-03 — sinh mật khẩu tạm mới.
- *
- * Có email thì gửi âm thầm, trả về `null` (Điều dưỡng không thấy — không đổi). KHÔNG có email
- * thì backend không còn báo lỗi chặn nữa (quyết định ghi đè 06/08/2026): trả plaintext MỘT
- * LẦN để hiển thị ngay, giống hệt cơ chế đã dùng cho luồng tạo tài khoản (`PatientAccountCreated`).
+ * UC-06 AF-03 — sinh mật khẩu tạm mới. Luôn trả plaintext MỘT LẦN để hiển thị ngay (quyết định
+ * ghi đè 06/08/2026, mở rộng lần 2 — không còn phân biệt có/không có email nữa, không còn gửi
+ * email ở đường này nữa), giống hệt cơ chế đã dùng cho luồng tạo tài khoản
+ * (`PatientAccountCreated`).
  */
-export async function resetPatientAccountPassword(userId: string): Promise<string | null> {
-  const { data } = await apiClient.put<ApiResponse<string | null>>(`${BASE}/${userId}/reset-password`);
+export async function resetPatientAccountPassword(userId: string): Promise<string> {
+  const { data } = await apiClient.put<ApiResponse<string>>(`${BASE}/${userId}/reset-password`);
+
+  if (!data.data) throw new Error(data.message || "Cấp lại mật khẩu thất bại.");
 
   return data.data;
 }

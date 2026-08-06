@@ -153,7 +153,21 @@ public sealed class PatientAccountService : IPatientAccountService
         return ToResponse(user);
     }
 
-    public async Task<string?> ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default)
+    public async Task<PatientAccountResponse> GetAccountAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await _users.GetByIdAsync(userId, ct)
+            ?? throw new ResourceNotFoundException("Patient account not found.");
+
+        // BR-03 — chỉ tài khoản Bệnh nhân.
+        if (user.Role != UserRole.Patient)
+        {
+            throw new BusinessException("Only patient accounts can be read here.");
+        }
+
+        return ToResponse(user);
+    }
+
+    public async Task<string> ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default)
     {
         var user = await _users.GetByIdAsync(userId, ct)
             ?? throw new ResourceNotFoundException("Patient account not found.");
@@ -164,17 +178,15 @@ public sealed class PatientAccountService : IPatientAccountService
             throw new BusinessException("Only patient accounts can be reset here.");
         }
 
-        // BR-05 — dùng lại đúng cơ chế sinh-và-gửi của UC-03/UC-04, KHÔNG viết đường sinh mật
-        // khẩu thứ hai. AccountHasNoEmail không còn xuất hiện ở đây nữa kể từ 06/08/2026 —
-        // tài khoản không có email giờ trả về plaintext thay vì lỗi, xem AdminResetAsync.
+        // BR-05 — dùng lại đúng cơ chế sinh của UC-03/UC-04, KHÔNG viết đường sinh mật khẩu
+        // thứ hai. Từ 06/08/2026 (mở rộng lần 2), AdminResetAsync không còn gửi email ở đường
+        // này nữa trong MỌI trường hợp — email không còn ảnh hưởng gì tới luồng cấp lại này.
         var outcome = await _passwordReset.AdminResetAsync(userId, actingNurseId, ct);
 
         if (outcome.Result != AccountOperationResult.Success)
         {
             throw new BusinessException(outcome.Result switch
             {
-                AccountOperationResult.EmailNotSent =>
-                    "Could not send the temporary password. The old password is still valid — please try again.",
                 AccountOperationResult.AccountIsDeactivated =>
                     "This account has been deactivated.",
                 _ => "Could not reset the password for this account.",
@@ -195,7 +207,9 @@ public sealed class PatientAccountService : IPatientAccountService
         _logger.LogInformation(
             "Nurse {NurseId} reset password of patient account {UserId}", actingNurseId, userId);
 
-        return outcome.TemporaryPassword;
+        // AdminResetOutcome.TemporaryPassword luôn có giá trị khi Result là Success (đã kiểm
+        // ở trên) — xem AdminResetAsync.
+        return outcome.TemporaryPassword!;
     }
 
     private static PatientAccountResponse ToResponse(User user) => new(

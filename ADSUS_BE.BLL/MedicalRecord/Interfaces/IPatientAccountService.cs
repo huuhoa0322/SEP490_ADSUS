@@ -21,13 +21,19 @@ public interface IPatientAccountService
     Task<PatientAccountCreatedResponse> CreateAsync(
         CreatePatientAccountRequest request, Guid actingNurseId, CancellationToken ct = default);
 
+    /// <summary>AF-02 phần đọc — trả thông tin tài khoản hiện tại, gồm email. PatientProfile
+    /// (#19) không có trường email nên form Sửa thông tin tài khoản cần nguồn riêng để không
+    /// vô tình gửi email rỗng lên UpdateContactAsync (full-replace, xem BR-04).</summary>
+    Task<PatientAccountResponse> GetAccountAsync(Guid userId, CancellationToken ct = default);
+
     /// <summary>AF-02 — sửa 4 trường liên hệ. Không đụng role/status.</summary>
     Task<PatientAccountResponse> UpdateContactAsync(
         Guid userId, UpdatePatientAccountRequest request, Guid actingNurseId, CancellationToken ct = default);
 
     /// <summary>
-    /// AF-03 — sinh mật khẩu tạm mới. Có email thì gửi âm thầm (trả về null); không có email
-    /// thì trả plaintext MỘT LẦN (quyết định ghi đè 06/08/2026, thay một phần BR-05).
+    /// AF-03 — sinh mật khẩu tạm mới, luôn trả plaintext MỘT LẦN để Điều dưỡng đọc trực tiếp
+    /// cho bệnh nhân, bất kể tài khoản có email hay không (quyết định ghi đè 06/08/2026, mở
+    /// rộng lần 2, thay một phần BR-05). Không còn gửi email ở đường này nữa.
     /// </summary>
-    Task<string?> ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default);
+    Task<string> ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default);
 }

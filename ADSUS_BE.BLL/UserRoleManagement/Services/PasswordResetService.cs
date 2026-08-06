@@ -87,34 +87,18 @@ public class PasswordResetService : IPasswordResetService
         var temporaryPassword = TemporaryPasswordGenerator.Generate();
         var hash = BCrypt.Net.BCrypt.HashPassword(temporaryPassword);
 
-        // Quyết định ghi đè 06/08/2026 — tài khoản KHÔNG CÓ email không còn bị chặn nữa: lưu
-        // mật khẩu mới ngay và trả plaintext MỘT LẦN cho người thao tác (Admin/Điều dưỡng) đọc
-        // trực tiếp cho chủ tài khoản. Không cần gửi thư (không có chỗ để gửi), nên không có
-        // rủi ro "gửi trước lưu sau" ở nhánh này — lưu ngay, không đường lùi cần giữ.
-        if (string.IsNullOrWhiteSpace(user.Email))
-        {
-            user.PasswordHash = hash;
-            user.MustChangePassword = true;
-            user.UpdatedAt = DateTime.UtcNow;
-
-            await _users.SaveChangesAsync(cancellationToken);
-
-            return new AdminResetOutcome(AccountOperationResult.Success, temporaryPassword);
-        }
-
-        // Có email — hành vi CŨ, không đổi. Gửi thư trước, lưu sau: thư không tới nơi mà mật
-        // khẩu cũ đã bị thay thì chủ tài khoản mất luôn đường vào.
-        var daGui = await _email.SendTemporaryPasswordAsync(
-            user.Email, user.FullName, temporaryPassword, cancellationToken);
-
-        if (!daGui) return new AdminResetOutcome(AccountOperationResult.EmailNotSent, null);
-
+        // Quyết định ghi đè 06/08/2026, mở rộng lần 2 — KHÔNG còn phân biệt có/không có email
+        // nữa. Người thao tác (Admin/Điều dưỡng) luôn thấy mật khẩu tạm ngay tại đây để đọc
+        // trực tiếp cho chủ tài khoản, thống nhất hoàn toàn với luồng tạo tài khoản mới
+        // (CreateAsync). Không còn nhánh gửi thư ở đây nữa nên không còn rủi ro "gửi trước lưu
+        // sau" phải giữ — lưu ngay, không đường lùi cần giữ. Email giờ CHỈ còn dùng cho tự
+        // phục vụ quên mật khẩu (RequestSelfServiceResetAsync, UC-03).
         user.PasswordHash = hash;
         user.MustChangePassword = true;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _users.SaveChangesAsync(cancellationToken);
 
-        return new AdminResetOutcome(AccountOperationResult.Success, null);
+        return new AdminResetOutcome(AccountOperationResult.Success, temporaryPassword);
     }
 }

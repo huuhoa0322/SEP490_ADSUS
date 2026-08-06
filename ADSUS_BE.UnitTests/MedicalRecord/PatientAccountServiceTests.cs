@@ -182,6 +182,50 @@ public class PatientAccountServiceTests
         Email: "hoa.le@example.com");
 
     [Fact]
+    public async Task GetAccountAsync_ExistingPatient_ReturnsEmail()
+    {
+        // Arrange — thêm 06/08/2026 (review Task C11): PatientProfile không có email, nên
+        // form Sửa thông tin tài khoản (FE) cần đọc được giá trị thật qua đây trước khi cho
+        // sửa, tránh UpdateContactAsync (full-replace, BR-04) xoá mất email đang có.
+        var account = MakePatientAccount();
+        _users.Setup(r => r.GetByIdAsync(account.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(account);
+
+        // Act
+        var response = await _sut.GetAccountAsync(account.UserId);
+
+        // Assert
+        Assert.Equal(account.UserId, response.UserId);
+        Assert.Equal("hoa@example.com", response.Email);
+    }
+
+    [Fact]
+    public async Task GetAccountAsync_TargetIsNotPatientRole_ThrowsBusinessException()
+    {
+        // Arrange — BR-03, cùng luật với UpdateContactAsync/ResetPasswordAsync.
+        var doctorAccount = MakePatientAccount();
+        doctorAccount.Role = UserRole.Doctor;
+        _users.Setup(r => r.GetByIdAsync(doctorAccount.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(doctorAccount);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.GetAccountAsync(doctorAccount.UserId));
+    }
+
+    [Fact]
+    public async Task GetAccountAsync_AccountNotFound_ThrowsResourceNotFoundException()
+    {
+        // Arrange
+        _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((User?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ResourceNotFoundException>(
+            () => _sut.GetAccountAsync(Guid.NewGuid()));
+    }
+
+    [Fact]
     public async Task UpdateContactAsync_ExistingPatient_UpdatesFourContactFields()
     {
         // Arrange — BR-04: đúng 4 trường đã nhập lúc tạo.
@@ -300,7 +344,8 @@ public class PatientAccountServiceTests
               .ReturnsAsync(account);
         _passwordReset.Setup(p => p.AdminResetAsync(
                           account.UserId, _actingNurseId, It.IsAny<CancellationToken>()))
-                      .ReturnsAsync(new ADSUS_BE.BLL.UserRoleManagement.DTOs.AdminResetOutcome(ADSUS_BE.BLL.UserRoleManagement.DTOs.AccountOperationResult.Success, null));
+                      .ReturnsAsync(new ADSUS_BE.BLL.UserRoleManagement.DTOs.AdminResetOutcome(
+                          ADSUS_BE.BLL.UserRoleManagement.DTOs.AccountOperationResult.Success, "Ab3xyz9pqr2K"));
 
         // Act
         await _sut.ResetPasswordAsync(account.UserId, _actingNurseId);
@@ -328,11 +373,11 @@ public class PatientAccountServiceTests
     }
 
     [Fact]
-    public async Task ResetPasswordAsync_AccountHasNoEmail_ReturnsPlaintextPassword()
+    public async Task ResetPasswordAsync_AlwaysReturnsPlaintextPasswordRegardlessOfEmail()
     {
-        // Quyết định ghi đè 06/08/2026 — tài khoản Patient không có email giờ vẫn cấp lại
-        // được, PatientAccountService.ResetPasswordAsync trả thẳng plaintext nhận từ
-        // AdminResetAsync ra ngoài cho controller, không còn ném BusinessException.
+        // Quyết định ghi đè 06/08/2026, mở rộng lần 2 — không còn phân biệt có/không có email
+        // nữa. PatientAccountService.ResetPasswordAsync trả thẳng plaintext nhận từ
+        // AdminResetAsync ra ngoài cho controller trong MỌI trường hợp.
         var account = MakePatientAccount();
         _users.Setup(r => r.GetByIdAsync(account.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(account);
@@ -368,7 +413,8 @@ public class PatientAccountServiceTests
               .ReturnsAsync(account);
         _passwordReset.Setup(p => p.AdminResetAsync(
                           It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                      .ReturnsAsync(new ADSUS_BE.BLL.UserRoleManagement.DTOs.AdminResetOutcome(ADSUS_BE.BLL.UserRoleManagement.DTOs.AccountOperationResult.Success, null));
+                      .ReturnsAsync(new ADSUS_BE.BLL.UserRoleManagement.DTOs.AdminResetOutcome(
+                          ADSUS_BE.BLL.UserRoleManagement.DTOs.AccountOperationResult.Success, "Ab3xyz9pqr2K"));
 
         AuditLog? logged = null;
         _audit.Setup(a => a.AddAsync(It.IsAny<AuditLog>(), It.IsAny<CancellationToken>()))

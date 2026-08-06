@@ -12,6 +12,20 @@ const { updateMutate, resetMutate } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/features/medical-record/hooks/use-patient-account", () => ({
+  // PatientAccountActions tự gọi hook này để lấy email thật (sửa 06/08/2026, review Task
+  // C11) thay vì nhận qua prop — mock trả sẵn dữ liệu, giả lập trường hợp đã tải xong.
+  usePatientAccount: () => ({
+    data: {
+      userId: "user-1",
+      fullName: "Lê Thị Hoa",
+      phoneNumber: "0978123456",
+      dateOfBirth: "1984-03-12",
+      email: "hoa@example.com",
+    },
+    isLoading: false,
+    isError: false,
+    error: null,
+  }),
   useUpdatePatientAccountContact: () => ({
     mutate: updateMutate,
     isPending: false,
@@ -33,7 +47,6 @@ const props = {
   fullName: "Lê Thị Hoa",
   phone: "0978123456",
   dateOfBirth: "1984-03-12",
-  email: "hoa@example.com",
 };
 
 function signInAs(role: "DOCTOR" | "NURSE") {
@@ -88,23 +101,10 @@ describe("PatientAccountActions", () => {
     expect(resetMutate).toHaveBeenCalled();
   });
 
-  it("hiện thông báo đã gửi email khi tài khoản có email (backend trả null)", async () => {
-    resetMutate.mockImplementation((_payload, options) => {
-      options?.onSuccess?.(null);
-    });
-
-    signInAs("NURSE");
-    const user = userEvent.setup();
-
-    render(<PatientAccountActions {...props} />);
-    await user.click(screen.getByRole("button", { name: /cấp lại mật khẩu/i }));
-    await user.click(screen.getByRole("button", { name: /^xác nhận$/i }));
-
-    expect(screen.getByText(/đã gửi mật khẩu tạm tới email/i)).toBeInTheDocument();
-  });
-
-  it("hiện mật khẩu tạm trực tiếp khi tài khoản không có email (backend trả chuỗi)", async () => {
-    // Quyết định ghi đè 06/08/2026 — tài khoản không có email không còn báo lỗi chặn nữa.
+  it("hiện mật khẩu tạm trực tiếp dù tài khoản có email (mock usePatientAccount có sẵn email)", async () => {
+    // Quyết định ghi đè 06/08/2026, mở rộng lần 2 — không còn phân biệt có/không có email
+    // nữa. Mock usePatientAccount ở đầu file trả email "hoa@example.com" (có email), và ở
+    // đây vẫn phải hiện plaintext, không còn nhánh "đã gửi email" nào cả.
     resetMutate.mockImplementation((_payload, options) => {
       options?.onSuccess?.("Xk4mnpq8rt2Z");
     });
@@ -117,7 +117,6 @@ describe("PatientAccountActions", () => {
     await user.click(screen.getByRole("button", { name: /^xác nhận$/i }));
 
     expect(screen.getByText("Xk4mnpq8rt2Z")).toBeInTheDocument();
-    expect(screen.queryByText(/đã gửi mật khẩu tạm tới email/i)).not.toBeInTheDocument();
   });
 
   it("gửi đủ bốn trường liên hệ khi lưu", async () => {

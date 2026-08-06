@@ -164,15 +164,15 @@ export function PatientProfileForm(props: Props) {
         </section>
       ) : null}
 
-      {/* PatientProfile không có email — đó là dữ liệu tài khoản, không phải hồ sơ nền. Điều
-          dưỡng tự nhập lại nếu muốn bổ sung. */}
+      {/* PatientProfile không có email — đó là dữ liệu tài khoản, không phải hồ sơ nền.
+          PatientAccountActions tự gọi usePatientAccount để lấy email thật (sửa 06/08/2026,
+          review Task C11) thay vì nhận null cứng, vốn khiến lưu là xoá mất email đang có. */}
       {props.mode === "edit" && loaded ? (
         <PatientAccountActions
           userId={loaded.patientUserId}
           fullName={loaded.fullName}
           phone={loaded.phone}
           dateOfBirth={loaded.dateOfBirth}
-          email={null}
         />
       ) : null}
 

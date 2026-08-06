@@ -31,9 +31,9 @@ public interface IPasswordResetService
     /// Ở đây trả về kết quả chi tiết được, vì người gọi đã biết tài khoản tồn tại (họ chọn nó
     /// từ danh sách) nên không có gì để lộ thêm.
     ///
-    /// BR-03 sửa lại 06/08/2026: CÓ email thì mật khẩu tạm vẫn chỉ gửi qua email, KHÔNG BAO GIỜ
-    /// hiện trên màn hình. KHÔNG có email thì giờ vẫn cấp lại được (trước đây báo lỗi chặn
-    /// hoàn toàn) — <see cref="AdminResetOutcome.TemporaryPassword"/> mang plaintext để người
+    /// BR-03 sửa lại 06/08/2026, mở rộng lần 2 — không còn phân biệt có/không có email nữa,
+    /// KHÔNG BAO GIỜ gửi email ở đường này nữa. <see cref="AdminResetOutcome.TemporaryPassword"/>
+    /// luôn mang plaintext khi <see cref="AdminResetOutcome.Result"/> là Success, để người
     /// thao tác đọc trực tiếp cho chủ tài khoản, đúng một lần.
     /// </summary>
     Task<AdminResetOutcome> AdminResetAsync(

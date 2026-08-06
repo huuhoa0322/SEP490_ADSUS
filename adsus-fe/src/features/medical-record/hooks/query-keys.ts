@@ -14,6 +14,7 @@ export const medicalRecordQueryKeys = {
   doctors: () => [...medicalRecordQueryKeys.all, "doctors"] as const,
 
   profile: (profileId: string) => [...medicalRecordQueryKeys.all, "profile", profileId] as const,
+  account: (userId: string) => [...medicalRecordQueryKeys.all, "account", userId] as const,
 
   cases: (query: CaseListQuery) => [...medicalRecordQueryKeys.all, "cases", query] as const,
   case: (caseId: string) => [...medicalRecordQueryKeys.all, "case", caseId] as const,

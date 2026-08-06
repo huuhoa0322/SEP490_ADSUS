@@ -1,9 +1,10 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   createPatientAccount,
+  getPatientAccount,
   resetPatientAccountPassword,
   updatePatientAccountContact,
 } from "../api/patient-accounts.api";
@@ -29,6 +30,21 @@ export function useCreatePatientAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.all });
     },
+  });
+}
+
+/**
+ * AF-02 phần đọc (thêm 06/08/2026, review Task C11) — PatientProfile không có email, nên
+ * form Sửa thông tin tài khoản tự nạp email thật qua đây thay vì nhận từ prop tĩnh. Nạp ngay
+ * khi khối tài khoản hiện ra (không đợi bấm Sửa) để có sẵn khi Điều dưỡng cần.
+ */
+export function usePatientAccount(userId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: medicalRecordQueryKeys.account(userId),
+    queryFn: () => getPatientAccount(userId),
+    // Endpoint chỉ [Authorize(Roles="NURSE")] — không gọi khi vai trò khác, tránh một request
+    // chắc chắn nhận 403 mỗi lần Bác sĩ mở màn này.
+    enabled,
   });
 }
 

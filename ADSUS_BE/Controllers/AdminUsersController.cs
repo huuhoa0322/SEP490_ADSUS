@@ -194,13 +194,13 @@ public class AdminUsersController : ControllerBase
     /// <summary>
     /// UC-03 AF-02 — Admin cấp lại mật khẩu hộ, dùng khi chủ tài khoản không vào được email.
     ///
-    /// BR-03 sửa lại 06/08/2026: CÓ email thì mật khẩu tạm vẫn chỉ đi qua email, KHÔNG BAO GIỜ
-    /// nằm trong phản hồi này. KHÔNG có email thì giờ trả plaintext thay vì báo lỗi (xem
+    /// BR-03 sửa lại 06/08/2026, mở rộng lần 2 — KHÔNG còn phân biệt có/không có email nữa,
+    /// KHÔNG BAO GIỜ gửi email ở đường này nữa. Phản hồi luôn mang plaintext (xem
     /// AdminResetOutcome) — nhưng trang quản trị (FE Module 2, `features/users/`) CHƯA có UI
-    /// hiện trường này; đó là việc của task riêng sau. Ở đây chỉ đảm bảo message không nói dối.
+    /// hiện trường này; đó là việc của task riêng sau, backend đã sẵn sàng.
     /// </summary>
     [HttpPut("{userId:guid}/reset-password")]
-    [ProducesResponseType(typeof(ApiResponse<string?>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ResetPassword(Guid userId, CancellationToken cancellationToken)
@@ -218,11 +218,9 @@ public class AdminUsersController : ControllerBase
             return MapFailure<object>(outcome.Result);
         }
 
-        return Ok(outcome.TemporaryPassword is null
-            ? ApiResponse<string?>.Ok(null, "A temporary password has been emailed to the account holder.")
-            : ApiResponse<string?>.Ok(
-                outcome.TemporaryPassword,
-                "This account has no email on file — a temporary password was generated. Communicate it to the account holder directly."));
+        // outcome.TemporaryPassword luôn có giá trị khi Result là Success — xem AdminResetAsync.
+        return Ok(ApiResponse<string>.Ok(
+            outcome.TemporaryPassword!, "Temporary password generated — communicate it to the account holder directly."));
     }
 
     // ---- helpers ----

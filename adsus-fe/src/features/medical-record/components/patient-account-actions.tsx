@@ -6,6 +6,7 @@ import { getApiErrorMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
 
 import {
+  usePatientAccount,
   useResetPatientAccountPassword,
   useUpdatePatientAccountContact,
 } from "../hooks/use-patient-account";
@@ -17,7 +18,6 @@ interface Props {
   fullName: string;
   phone: string;
   dateOfBirth: string | null;
-  email: string | null;
 }
 
 /**
@@ -29,29 +29,44 @@ interface Props {
  *
  * Lưu ý: đây chỉ là lớp trải nghiệm. Chặn thật nằm ở [Authorize(Roles="NURSE")] phía backend.
  *
- * AF-03 (cấp lại mật khẩu) sửa lại 06/08/2026 (Task C11-ext, sau Task C10-ext đổi luồng tạo
- * tài khoản #28): có email thì vẫn gửi âm thầm như cũ, Điều dưỡng không thấy giá trị. KHÔNG có
- * email thì backend không còn báo lỗi chặn nữa — trả plaintext MỘT LẦN để hiện ngay tại đây.
+ * AF-03 (cấp lại mật khẩu) sửa lại 06/08/2026, mở rộng lần 2 (sau Task C11-ext, sau Task
+ * C10-ext đổi luồng tạo tài khoản #28): không còn phân biệt có/không có email nữa — LUÔN hiện
+ * mật khẩu tạm ngay tại đây, KHÔNG BAO GIỜ gửi email ở đường này nữa.
+ *
+ * email KHÔNG nhận qua prop (sửa 06/08/2026, review Task C11) — PatientProfile (#19) không có
+ * trường này, nên tự gọi `usePatientAccount` để lấy giá trị thật. Nhận `email: null` cứng từ
+ * nơi gọi từng khiến "Sửa thông tin tài khoản" luôn khởi tạo ô email rỗng, và vì
+ * UpdateContactAsync thay TOÀN BỘ 4 trường (BR-04), bấm Lưu là xoá mất email đang có.
  */
-export function PatientAccountActions({ userId, fullName, phone, dateOfBirth, email }: Props) {
+export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: Props) {
   const isNurse = useAuthStore((state) => state.user?.role) === "NURSE";
 
   const [editing, setEditing] = useState(false);
   const [confirmingReset, setConfirmingReset] = useState(false);
-  // undefined = chưa cấp lại lần nào; null = vừa cấp lại xong, đã gửi email (không có gì để
-  // hiện); chuỗi = vừa cấp lại xong, không có email, hiện plaintext. Khởi tạo undefined chứ
-  // không phải null: nếu khởi tạo null thì nhánh "đã gửi email" luôn set null → null, React
-  // coi là không đổi giá trị nên BỎ QUA render lại — UI không bao giờ cập nhật sau khi xác nhận.
-  const [revealedPassword, setRevealedPassword] = useState<string | null | undefined>(undefined);
+  // undefined = chưa cấp lại lần nào; chuỗi = vừa cấp lại xong, hiện plaintext. Không còn
+  // nhánh "đã gửi email" (mở rộng lần 2, 06/08/2026) nên không còn rủi ro bail-out của React
+  // từng buộc phải dùng undefined làm sentinel — giữ lại kiểu này chỉ vì vẫn cần phân biệt
+  // "chưa cấp lại" khỏi "cấp lại rồi".
+  const [revealedPassword, setRevealedPassword] = useState<string | undefined>(undefined);
 
   const [formFullName, setFormFullName] = useState(fullName);
   const [formPhone, setFormPhone] = useState(phone);
   const [formDateOfBirth, setFormDateOfBirth] = useState(dateOfBirth ?? "");
-  const [formEmail, setFormEmail] = useState(email ?? "");
+  const [formEmail, setFormEmail] = useState("");
   const [clientError, setClientError] = useState<string | null>(null);
 
+  const accountQuery = usePatientAccount(userId, isNurse);
   const updateMutation = useUpdatePatientAccountContact(userId);
   const resetMutation = useResetPatientAccountPassword(userId);
+
+  // Đồng bộ email thật vào form ngay khi tải xong, theo mẫu "đồng bộ state khi prop đổi" của
+  // React (giống patient-profile-form.tsx) — không dùng useEffect vì sẽ có một nhịp hiển thị
+  // rỗng trước khi effect chạy, và Điều dưỡng bấm Lưu đúng lúc đó là xoá mất email thật.
+  const [syncedAccountUserId, setSyncedAccountUserId] = useState<string | null>(null);
+  if (accountQuery.data && accountQuery.data.userId !== syncedAccountUserId) {
+    setSyncedAccountUserId(accountQuery.data.userId);
+    setFormEmail(accountQuery.data.email ?? "");
+  }
 
   // Bác sĩ không thấy gì cả — không phải nút mờ, mà là không có nút.
   if (!isNurse) return null;
@@ -100,7 +115,10 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth, em
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+            // Chờ email thật nạp xong mới cho sửa — mở sớm hơn là có khả năng (dù nhỏ) bấm Lưu
+            // trước khi formEmail kịp đồng bộ, xoá mất email đang có.
+            disabled={accountQuery.isLoading}
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
           >
             Sửa thông tin tài khoản
           </button>
@@ -119,8 +137,8 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth, em
           {/* Không có đường hoàn tác: mật khẩu cũ chết ngay khi API trả về thành công. */}
           <p className="text-sm text-foreground">
             Cấp lại mật khẩu cho <strong>{fullName}</strong>? Mật khẩu hiện tại sẽ không dùng
-            được nữa; mật khẩu tạm mới sẽ gửi qua email nếu tài khoản có email, hoặc hiện trực
-            tiếp ở đây nếu chưa có email.
+            được nữa; mật khẩu tạm mới sẽ hiện ngay tại đây để đọc cho bệnh nhân nghe hoặc ghi
+            lại — không gửi qua email.
           </p>
 
           {resetMutation.isError ? (
@@ -130,9 +148,6 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth, em
           ) : null}
 
           {revealedPassword ? (
-            // Tài khoản không có email — không còn chỗ nào để gửi thư (quyết định ghi đè
-            // 06/08/2026), nên backend trả thẳng plaintext để đọc cho bệnh nhân nghe tại chỗ,
-            // giống hệt cơ chế đã dùng ở luồng tạo tài khoản mới.
             <div className="mt-3 rounded-lg border border-dashed border-primary bg-primary/5 p-3">
               <div className="text-xs font-semibold uppercase text-muted-foreground">
                 Mật khẩu tạm
@@ -141,16 +156,9 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth, em
                 {revealedPassword}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Tài khoản này không có email — đọc mật khẩu trên cho bệnh nhân nghe hoặc ghi
-                lại, sẽ không hiện lại được nữa.
+                Đọc mật khẩu trên cho bệnh nhân nghe hoặc ghi lại — sẽ không hiện lại được nữa.
               </p>
             </div>
-          ) : null}
-
-          {revealedPassword === null ? (
-            <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
-              Đã gửi mật khẩu tạm tới email của bệnh nhân.
-            </p>
           ) : null}
 
           <div className="mt-4 flex justify-end gap-3">

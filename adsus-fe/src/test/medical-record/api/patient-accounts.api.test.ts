@@ -61,18 +61,34 @@ describe("createPatientAccount", () => {
 });
 
 describe("resetPatientAccountPassword", () => {
-  it("gọi đúng đường dẫn và trả về null khi tài khoản có email", async () => {
+  it("gọi đúng đường dẫn và trả về mật khẩu tạm plaintext", async () => {
     let receivedPath = "";
     server.use(
       http.put(`${API_BASE_URL}/api/v1/patients/:userId/reset-password`, ({ request }) => {
         receivedPath = new URL(request.url).pathname;
-        return HttpResponse.json({ code: 200, message: "Temporary password sent", data: null });
+        return HttpResponse.json({
+          code: 200,
+          message: "Temporary password generated",
+          data: "Xk4mnpq8rt2Z",
+        });
       }),
     );
 
-    // Quyết định ghi đè 06/08/2026 (Task C11-ext) — tài khoản CÓ email vẫn gửi âm thầm,
-    // backend trả `data: null` và hàm truyền nguyên giá trị đó ra ngoài.
-    await expect(resetPatientAccountPassword("user-9")).resolves.toBeNull();
+    // Quyết định ghi đè 06/08/2026, mở rộng lần 2 — không còn phân biệt có/không có email
+    // nữa, luôn trả plaintext.
+    await expect(resetPatientAccountPassword("user-9")).resolves.toBe("Xk4mnpq8rt2Z");
     expect(receivedPath).toBe("/api/v1/patients/user-9/reset-password");
+  });
+
+  it("throw khi API trả data null", async () => {
+    server.use(
+      http.put(`${API_BASE_URL}/api/v1/patients/:userId/reset-password`, () =>
+        HttpResponse.json({ code: 400, message: "This account has been deactivated.", data: null }),
+      ),
+    );
+
+    await expect(resetPatientAccountPassword("user-9")).rejects.toThrow(
+      "This account has been deactivated.",
+    );
   });
 });
