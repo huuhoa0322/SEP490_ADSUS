@@ -130,6 +130,9 @@ public sealed class PrescriptionService : IPrescriptionService
                 DurationDays = itemDto.DurationDays,
                 StartDate = itemDto.StartDate,
                 Instructions = itemDto.Instructions,
+                ScheduleSlots = itemDto.ScheduleSlots
+                    .Select(s => (ReminderSlot)(int)s)
+                    .ToArray(),
             };
             await _itemRepo.AddAsync(prescriptionItem, ct);
 

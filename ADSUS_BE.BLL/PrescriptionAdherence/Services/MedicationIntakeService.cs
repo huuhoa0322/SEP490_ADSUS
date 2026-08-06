@@ -88,7 +88,14 @@ public sealed class MedicationIntakeService : IMedicationIntakeService
         if (log.ConfirmedAt.HasValue)
             return; // Idempotent: already Taken, return 204
 
-        await _intakeLogRepo.ConfirmTakenAsync(intakeId, DateTime.UtcNow, ct);
+        // Không cho bệnh nhân xác nhận liều trước giờ uống — tránh gian lận tuân thủ
+        // và đảm bảo dữ liệu ConfirmedAt phản ánh đúng thời điểm uống thực tế.
+        var now = DateTime.UtcNow;
+        if (log.ScheduledTime > now)
+            throw new BusinessException(
+                "Chưa đến giờ uống thuốc. Không thể xác nhận sớm hơn giờ đã hẹn.");
+
+        await _intakeLogRepo.ConfirmTakenAsync(intakeId, now, ct);
     }
 
     public async Task<AdherenceSummary> GetAdherenceAsync(

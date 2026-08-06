@@ -105,7 +105,20 @@ namespace ADSUS_BE
             builder.Host.UseSerilog((context, configuration) =>
                 configuration.ReadFrom.Configuration(context.Configuration));
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.PropertyNamingPolicy =
+                        System.Text.Json.JsonNamingPolicy.CamelCase;
+                    options.JsonSerializerOptions.DictionaryKeyPolicy =
+                        System.Text.Json.JsonNamingPolicy.CamelCase;
+                    // Cho phép map camelCase JSON sang PascalCase property khi deserialize.
+                    // Không có cờ này thì request gửi "doctorId" không khớp property "DoctorId".
+                    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+                    // Cho phép enum parse từ cả string ("Morning") lẫn integer (0)
+                    options.JsonSerializerOptions.Converters.Add(
+                        new System.Text.Json.Serialization.JsonStringEnumConverter());
+                });
             builder.Services.AddEndpointsApiExplorer();
 
             // ---------- Swagger: token input so protected endpoints can be tried out ----------
@@ -177,6 +190,7 @@ namespace ADSUS_BE
             dataSourceBuilder.MapEnum<PrescriptionStatus>("prescription_status");
             dataSourceBuilder.MapEnum<IntakeStatus>("intake_status");
             dataSourceBuilder.MapEnum<SlotStatus>("slot_status");
+            dataSourceBuilder.MapEnum<ReminderSlot>("reminder_slot");
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);
