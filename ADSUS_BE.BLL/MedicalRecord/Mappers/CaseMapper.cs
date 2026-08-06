@@ -65,6 +65,13 @@ public static class CaseMapper
         Status: medicalCase.Status.ToApiString(),
         DoctorId: medicalCase.DoctorId);
 
+    public static StaffCaseSummaryResponse ToStaffSummary(Case medicalCase) => new(
+        CaseId: medicalCase.CaseId,
+        VisitDate: medicalCase.VisitDate,
+        Status: medicalCase.Status.ToApiString(),
+        DoctorId: medicalCase.DoctorId,
+        CreatedAt: medicalCase.CreatedAt);
+
     /// <summary>
     /// Đơn thuốc được coi là "hiện hành" cho một ca khám — cùng ngày kê thì phân định bằng
     /// CreatedAt, để #23 (GET /cases/{id}) và #27 (PDF) không bao giờ chọn khác nhau.

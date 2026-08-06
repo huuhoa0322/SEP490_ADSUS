@@ -89,7 +89,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> changePassword({
-    required String currentPassword,
+    required String? currentPassword,
     required String newPassword,
     required String confirmNewPassword,
   }) async {

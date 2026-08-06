@@ -35,6 +35,7 @@ export function useSignIn() {
       window.localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
 
       signIn(data.accessToken, {
+        userId: data.userId,
         fullName: data.fullName,
         email: data.email,
         role: data.role,

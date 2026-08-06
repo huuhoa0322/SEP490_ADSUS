@@ -13,26 +13,23 @@ namespace ADSUS_BE.BLL.MedicalRecord.Services;
 public sealed class PatientAccountService : IPatientAccountService
 {
     private readonly IUserRepository _users;
-    private readonly IEmailService _email;
     private readonly IAuditLogRepository _audit;
     private readonly IPasswordResetService _passwordReset;
     private readonly ILogger<PatientAccountService> _logger;
 
     public PatientAccountService(
         IUserRepository users,
-        IEmailService email,
         IAuditLogRepository audit,
         IPasswordResetService passwordReset,
         ILogger<PatientAccountService> logger)
     {
         _users = users;
-        _email = email;
         _audit = audit;
         _passwordReset = passwordReset;
         _logger = logger;
     }
 
-    public async Task<PatientAccountResponse> CreateAsync(
+    public async Task<PatientAccountCreatedResponse> CreateAsync(
         CreatePatientAccountRequest request, Guid actingNurseId, CancellationToken ct = default)
     {
         var phone = request.PhoneNumber.Trim();
@@ -50,7 +47,8 @@ public sealed class PatientAccountService : IPatientAccountService
         }
 
         // BR-03 của UC-04 — mật khẩu tạm do hệ thống sinh, lưu dạng băm, buộc đổi lần đầu.
-        // Điều dưỡng không bao giờ thấy giá trị này (UC-06 BR-05).
+        // Trả plaintext MỘT LẦN trong response tạo tài khoản (quyết định ghi đè 06/08/2026),
+        // KHÔNG lưu lại plaintext ở đâu khác, KHÔNG gửi qua email.
         var temporaryPassword = TemporaryPasswordGenerator.Generate();
 
         var now = DateTime.UtcNow;
@@ -92,20 +90,15 @@ public sealed class PatientAccountService : IPatientAccountService
         _logger.LogInformation(
             "Nurse {NurseId} created patient account {UserId}", actingNurseId, user.UserId);
 
-        // Gửi email SAU khi lưu, và cố ý KHÔNG để lỗi gửi mail làm hỏng cả thao tác: tài
-        // khoản đã tồn tại và số điện thoại đã bị chiếm, huỷ vì máy chủ mail trục trặc thì
-        // tạo lại chỉ nhận được "số điện thoại đã tồn tại". Gửi lại được qua AF-03.
-        if (email is not null)
-        {
-            var sent = await _email.SendTemporaryPasswordAsync(email, user.FullName, temporaryPassword, ct);
-            if (!sent)
-            {
-                _logger.LogWarning(
-                    "Patient account {UserId} created but temporary password email failed", user.UserId);
-            }
-        }
-
-        return ToResponse(user);
+        // Trả plaintext đúng một lần ở đây — quyết định ghi đè 06/08/2026. Điều dưỡng đọc trực tiếp
+        // cho bệnh nhân, không còn kênh email nào cho mật khẩu tạm nữa.
+        return new PatientAccountCreatedResponse(
+            UserId: user.UserId,
+            FullName: user.FullName,
+            PhoneNumber: user.Phone,
+            DateOfBirth: user.DateOfBirth,
+            Email: user.Email,
+            TemporaryPassword: temporaryPassword);
     }
 
     public async Task<PatientAccountResponse> UpdateContactAsync(
@@ -160,7 +153,21 @@ public sealed class PatientAccountService : IPatientAccountService
         return ToResponse(user);
     }
 
-    public async Task ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default)
+    public async Task<PatientAccountResponse> GetAccountAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await _users.GetByIdAsync(userId, ct)
+            ?? throw new ResourceNotFoundException("Patient account not found.");
+
+        // BR-03 — chỉ tài khoản Bệnh nhân.
+        if (user.Role != UserRole.Patient)
+        {
+            throw new BusinessException("Only patient accounts can be read here.");
+        }
+
+        return ToResponse(user);
+    }
+
+    public async Task<string> ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default)
     {
         var user = await _users.GetByIdAsync(userId, ct)
             ?? throw new ResourceNotFoundException("Patient account not found.");
@@ -171,21 +178,15 @@ public sealed class PatientAccountService : IPatientAccountService
             throw new BusinessException("Only patient accounts can be reset here.");
         }
 
-        // BR-05 — dùng lại đúng cơ chế sinh-và-gửi của UC-03/UC-04, KHÔNG viết đường sinh mật
-        // khẩu thứ hai. Ở đó thứ tự là gửi thư trước rồi mới lưu: đổi mật khẩu trước mà thư
-        // không tới nơi thì mật khẩu cũ đã chết trong khi mật khẩu mới không ai biết.
-        var result = await _passwordReset.AdminResetAsync(userId, actingNurseId, ct);
+        // BR-05 — dùng lại đúng cơ chế sinh của UC-03/UC-04, KHÔNG viết đường sinh mật khẩu
+        // thứ hai. Từ 06/08/2026 (mở rộng lần 2), AdminResetAsync không còn gửi email ở đường
+        // này nữa trong MỌI trường hợp — email không còn ảnh hưởng gì tới luồng cấp lại này.
+        var outcome = await _passwordReset.AdminResetAsync(userId, actingNurseId, ct);
 
-        if (result != AccountOperationResult.Success)
+        if (outcome.Result != AccountOperationResult.Success)
         {
-            // Nói đúng sự thật thay vì im lặng báo thành công: Điều dưỡng cần biết còn việc
-            // phải làm (bổ sung email, hoặc thử lại khi máy chủ mail hoạt động trở lại).
-            throw new BusinessException(result switch
+            throw new BusinessException(outcome.Result switch
             {
-                AccountOperationResult.AccountHasNoEmail =>
-                    "This account has no email address, so the temporary password cannot be sent.",
-                AccountOperationResult.EmailNotSent =>
-                    "Could not send the temporary password. The old password is still valid — please try again.",
                 AccountOperationResult.AccountIsDeactivated =>
                     "This account has been deactivated.",
                 _ => "Could not reset the password for this account.",
@@ -205,6 +206,10 @@ public sealed class PatientAccountService : IPatientAccountService
 
         _logger.LogInformation(
             "Nurse {NurseId} reset password of patient account {UserId}", actingNurseId, userId);
+
+        // AdminResetOutcome.TemporaryPassword luôn có giá trị khi Result là Success (đã kiểm
+        // ở trên) — xem AdminResetAsync.
+        return outcome.TemporaryPassword!;
     }
 
     private static PatientAccountResponse ToResponse(User user) => new(

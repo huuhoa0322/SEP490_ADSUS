@@ -1,11 +1,34 @@
 import { useSyncExternalStore } from "react";
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 
 import { ACCESS_TOKEN_KEY } from "@/lib/api-client";
 import type { Role } from "@/types/api.types";
 
+/**
+ * window.localStorage luôn tồn tại trên trình duyệt thật. Bọc lại chỉ để không crash trong
+ * môi trường test (jsdom/Node) khi localStorage chưa sẵn sàng — cùng lớp vấn đề đã gặp ở
+ * api-client.ts. Không bọc thì persist middleware của zustand gọi thẳng storage.setItem trên
+ * giá trị undefined và ném lỗi ngay khi signIn() được gọi.
+ */
+const safeStorage: StateStorage = {
+  getItem: (name) => (typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem(name) : null),
+  setItem: (name, value) => {
+    if (typeof window !== "undefined" && window.localStorage) window.localStorage.setItem(name, value);
+  },
+  removeItem: (name) => {
+    if (typeof window !== "undefined" && window.localStorage) window.localStorage.removeItem(name);
+  },
+};
+
 export interface AuthUser {
+  /**
+   * Id tài khoản đang đăng nhập.
+   *
+   * Có mặt từ 04/08/2026 (backend thêm vào LoginResponse). Phiên persist trước mốc đó KHÔNG
+   * có trường này — AuthGuard coi đó là phiên hỏng và bắt đăng nhập lại, xem lý do ở đó.
+   */
+  userId: string;
   fullName: string;
   email: string | null;
   role: Role;
@@ -42,7 +65,7 @@ export const useAuthStore = create<AuthState>()(
 
       signOut: () => {
         set({ accessToken: null, user: null });
-        if (typeof window !== "undefined") {
+        if (typeof window !== "undefined" && window.localStorage) {
           window.localStorage.removeItem(ACCESS_TOKEN_KEY);
         }
       },
@@ -54,7 +77,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "adsus.auth",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeStorage),
     },
   ),
 );
@@ -107,6 +130,9 @@ const ROUTE_ROLES: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
   { prefix: "/dashboard", roles: ["ADMIN"] },
   // UC-09: Admin KHÔNG vào màn lâm sàng này — Admin quản lý tài khoản ở SCR-06.
   { prefix: "/patients", roles: ["DOCTOR", "NURSE"] },
+  // SCR-30 — chi tiết ca khám. Cùng vai trò với /patients: UC-08 cho cả Bác sĩ lẫn Điều
+  // dưỡng xem bản đầy đủ trên Web. Bệnh nhân xem bản rút gọn trên di động, không qua đây.
+  { prefix: "/cases", roles: ["DOCTOR", "NURSE"] },
   // UC-04 (SCR-06, SCR-07): "Create", "Lock / Deactivate" và "Assign role" đều là No cho
   // Doctor/Nurse/Patient. Đây là chỗ đầu tiên NURSE khác DOCTOR.
   { prefix: "/admin", roles: ["ADMIN"] },

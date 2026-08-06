@@ -130,38 +130,29 @@ public class PasswordResetServiceTests
 
     // ---------- Đường Admin cấp lại hộ (AF-02) ----------
 
-    [Fact]
-    public async Task AdminCapLai_ThanhCong_DoiMatKhauVaGuiMail()
+    [Theory]
+    [InlineData("a@example.com")]
+    [InlineData(null)]
+    public async Task AdminCapLai_ThanhCong_LuonTraPlaintextKhongGuiMail(string? email)
     {
+        // Quyết định ghi đè 06/08/2026, mở rộng lần 2 — không còn phân biệt có/không có email
+        // nữa: cả hai trường hợp đều đổi mật khẩu thật và trả plaintext đúng một lần để người
+        // thao tác đọc trực tiếp cho chủ tài khoản, KHÔNG BAO GIỜ gửi email ở đường này nữa.
         var user = TaoUser();
+        user.Email = email;
         var hashCu = user.PasswordHash;
         SetupGetById(user);
 
         var result = await _sut.AdminResetAsync(user.UserId, Guid.NewGuid());
 
-        Assert.Equal(AccountOperationResult.Success, result);
+        Assert.Equal(AccountOperationResult.Success, result.Result);
+        Assert.NotNull(result.TemporaryPassword);
         Assert.NotEqual(hashCu, user.PasswordHash);
         Assert.True(user.MustChangePassword);
+        _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _email.Verify(e => e.SendTemporaryPasswordAsync(
-            user.Email!, user.FullName, It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task AdminCapLai_TaiKhoanKhongCoEmail_BaoLoi_VaKHONG_DOI_MatKhau()
-    {
-        // BR-03 — mật khẩu tạm chỉ giao qua email. Không có email mà vẫn đặt lại thì mật khẩu
-        // mới rơi vào hư không, chủ tài khoản bị khoá luôn ở ngoài mà không ai biết vì sao.
-        var user = TaoUser();
-        user.Email = null;
-        var hashCu = user.PasswordHash;
-        SetupGetById(user);
-
-        var result = await _sut.AdminResetAsync(user.UserId, Guid.NewGuid());
-
-        Assert.Equal(AccountOperationResult.AccountHasNoEmail, result);
-        Assert.Equal(hashCu, user.PasswordHash);
-        _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -173,7 +164,7 @@ public class PasswordResetServiceTests
 
         var result = await _sut.AdminResetAsync(user.UserId, Guid.NewGuid());
 
-        Assert.Equal(AccountOperationResult.AccountIsDeactivated, result);
+        Assert.Equal(AccountOperationResult.AccountIsDeactivated, result.Result);
     }
 
     [Fact]
@@ -183,7 +174,7 @@ public class PasswordResetServiceTests
 
         var result = await _sut.AdminResetAsync(Guid.NewGuid(), Guid.NewGuid());
 
-        Assert.Equal(AccountOperationResult.NotFound, result);
+        Assert.Equal(AccountOperationResult.NotFound, result.Result);
     }
 
     [Fact]
@@ -194,31 +185,11 @@ public class PasswordResetServiceTests
 
         var result = await _sut.AdminResetAsync(adminId, adminId);
 
-        Assert.Equal(AccountOperationResult.CannotTargetSelf, result);
+        Assert.Equal(AccountOperationResult.CannotTargetSelf, result.Result);
     }
 
-    // ---------- Gửi thư hỏng thì KHÔNG được đổi mật khẩu ----------
-
-    [Fact]
-    public async Task AdminCapLai_GuiMailThatBai_GIU_NGUYEN_MAT_KHAU_CU()
-    {
-        // Thứ tự quan trọng: gửi thư trước, lưu sau.
-        //
-        // Làm ngược lại thì máy chủ mail trục trặc là mật khẩu cũ đã bị thay trong khi mật
-        // khẩu mới không tới tay ai — chủ tài khoản bị nhốt ở ngoài đúng lúc đang cần vào,
-        // mà chính người bấm nút cũng không biết là đã hỏng.
-        var user = TaoUser();
-        var hashCu = user.PasswordHash;
-        SetupGetById(user);
-        SetupGuiMailThatBai();
-
-        var result = await _sut.AdminResetAsync(user.UserId, Guid.NewGuid());
-
-        Assert.Equal(AccountOperationResult.EmailNotSent, result);
-        Assert.Equal(hashCu, user.PasswordHash);
-        Assert.False(user.MustChangePassword);
-        _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
+    // ---------- Gửi thư hỏng thì KHÔNG được đổi mật khẩu (chỉ còn áp dụng cho đường tự phục vụ —
+    // AdminResetAsync không còn gửi email nữa kể từ 06/08/2026 mở rộng lần 2, xem Theory phía trên) ----------
 
     [Fact]
     public async Task TuCapLai_GuiMailThatBai_GIU_NGUYEN_MAT_KHAU_CU()

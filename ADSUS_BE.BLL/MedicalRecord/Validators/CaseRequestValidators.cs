@@ -4,9 +4,9 @@ using FluentValidation;
 namespace ADSUS_BE.BLL.MedicalRecord.Validators;
 
 /// <summary>
-/// Chỉ kiểm các trường vô hướng. Số lượng ảnh KHÔNG kiểm ở đây: UC-07 AF-02 quy định lỗi
-/// "chưa có ảnh nào" trả 422, mà FluentValidation thì luôn cho ra 400 — luật đó nằm trong
-/// CaseService.CreateAsync.
+/// Chỉ kiểm các trường vô hướng. Số lượng ảnh KHÔNG kiểm ở đây — và từ quyết định ghi đè
+/// 07/08/2026, cũng không kiểm ở đâu khác nữa: ảnh siêu âm giờ hoàn toàn tùy chọn khi tạo ca
+/// khám (#20). Bổ sung ảnh sau đó (#21) vẫn bắt buộc ≥1 ảnh, xem AddUltrasoundImagesRequestValidator.
 /// </summary>
 public sealed class CreateCaseRequestValidator : AbstractValidator<CreateCaseRequest>
 {

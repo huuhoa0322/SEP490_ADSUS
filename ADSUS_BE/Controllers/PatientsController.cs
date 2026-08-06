@@ -91,7 +91,7 @@ public sealed class PatientsController : ControllerBase
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "NURSE")]
-    [ProducesResponseType(typeof(ApiResponse<PatientAccountResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<PatientAccountCreatedResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
@@ -110,7 +110,7 @@ public sealed class PatientsController : ControllerBase
 
         return StatusCode(
             StatusCodes.Status201Created,
-            ApiResponse<PatientAccountResponse>.Ok(result, "Patient account created successfully"));
+            ApiResponse<PatientAccountCreatedResponse>.Ok(result, "Patient account created successfully"));
     }
 
     /// <summary>
@@ -142,21 +142,39 @@ public sealed class PatientsController : ControllerBase
     }
 
     /// <summary>
-    /// UC-06 AF-03 — Điều dưỡng cấp lại mật khẩu cho Bệnh nhân.
-    ///
-    /// Mật khẩu tạm CHỈ đi qua email; API không trả nó về và giao diện không bao giờ hiển thị
-    /// (BR-05, PRD §6.2). CHỈ NURSE (BR-03).
+    /// UC-06 AF-02 phần đọc (thêm 06/08/2026, review Task C11) — Điều dưỡng cần biết email
+    /// hiện tại trước khi sửa: PatientProfile (#19) không có trường này, và
+    /// UpdateContactAsync thay TOÀN BỘ 4 trường (BR-04) nên form phải nạp giá trị thật, không
+    /// thì lưu là xoá mất email đang có.
+    /// </summary>
+    [HttpGet("{userId:guid}")]
+    [Authorize(Roles = "NURSE")]
+    [ProducesResponseType(typeof(ApiResponse<PatientAccountResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetAccount(Guid userId, CancellationToken ct)
+    {
+        var result = await _accounts.GetAccountAsync(userId, ct);
+        return Ok(ApiResponse<PatientAccountResponse>.Ok(result, "Patient account retrieved successfully"));
+    }
+
+    /// <summary>
+    /// UC-06 AF-03 — sinh mật khẩu tạm mới (sửa lại 06/08/2026, mở rộng lần 2 sau Task
+    /// C11-ext). Luôn trả plaintext MỘT LẦN để Điều dưỡng đọc trực tiếp cho bệnh nhân, bất kể
+    /// tài khoản có email hay không — không còn gửi email ở đường này nữa.
     /// </summary>
     [HttpPut("{userId:guid}/reset-password")]
     [Authorize(Roles = "NURSE")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> ResetAccountPassword(Guid userId, CancellationToken ct)
     {
-        await _accounts.ResetPasswordAsync(userId, GetActingUserId(), ct);
-        return Ok(ApiResponse<object>.Ok(null!, "Temporary password sent to the patient's email"));
+        var temporaryPassword = await _accounts.ResetPasswordAsync(userId, GetActingUserId(), ct);
+
+        return Ok(ApiResponse<string>.Ok(
+            temporaryPassword, "Temporary password generated — read it to the patient now"));
     }
 
     /// <summary>

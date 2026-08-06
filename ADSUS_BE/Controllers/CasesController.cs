@@ -52,7 +52,7 @@ public sealed class CasesController : ControllerBase
     /// </summary>
     [HttpGet]
     [Authorize(Roles = "DOCTOR,NURSE")]
-    [ProducesResponseType(typeof(ApiResponse<PagedResult<CaseSummaryResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PagedResult<StaffCaseSummaryResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ListByPatient(
         [FromQuery] Guid patientProfileId,
@@ -75,7 +75,7 @@ public sealed class CasesController : ControllerBase
         var result = await _cases.ListByPatientProfileAsync(
             patientProfileId, status, sortOrder, page, pageSize, ct);
 
-        return Ok(ApiResponse<PagedResult<CaseSummaryResponse>>.Ok(result, "Cases retrieved successfully"));
+        return Ok(ApiResponse<PagedResult<StaffCaseSummaryResponse>>.Ok(result, "Cases retrieved successfully"));
     }
 
     /// <summary>
@@ -124,7 +124,8 @@ public sealed class CasesController : ControllerBase
     }
 
     /// <summary>
-    /// Tạo lần khám mới kèm ảnh siêu âm, trong một request multipart (UC-07).
+    /// Tạo lần khám mới (UC-07), request multipart. Ảnh siêu âm tùy chọn (quyết định ghi đè
+    /// 07/08/2026) — bỏ trống được, bổ sung sau qua AddImages (`#21`, vẫn bắt buộc ≥1 ảnh).
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "DOCTOR,NURSE")]
