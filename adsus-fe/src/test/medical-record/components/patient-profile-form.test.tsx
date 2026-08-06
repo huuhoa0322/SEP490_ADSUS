@@ -1,8 +1,17 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PatientProfileForm } from "@/features/medical-record/components/patient-profile-form";
+
+// Chế độ sửa gắn thêm <PatientAccountActions> (Task C11) — component đó dùng useMutation
+// nên cần QueryClientProvider, dù các test ở đây không đụng tới khối tài khoản.
+function renderWithClient(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -54,7 +63,7 @@ describe("PatientProfileForm — chế độ sửa", () => {
   });
 
   it("hiện họ tên, ngày sinh, SĐT dưới dạng chỉ đọc chứ không phải ô nhập", () => {
-    render(<PatientProfileForm mode="edit" profileId="profile-1" />);
+    renderWithClient(<PatientProfileForm mode="edit" profileId="profile-1" />);
 
     // UC-06 bước 2 — ba trường này lấy từ bảng users, #18 không nhận chúng. Cho sửa ở đây
     // là hứa một điều hệ thống không làm được.
@@ -65,7 +74,7 @@ describe("PatientProfileForm — chế độ sửa", () => {
 
   it("gửi đúng ba trường của #18 khi lưu", async () => {
     const user = userEvent.setup();
-    render(<PatientProfileForm mode="edit" profileId="profile-1" />);
+    renderWithClient(<PatientProfileForm mode="edit" profileId="profile-1" />);
 
     await user.click(screen.getByRole("button", { name: /lưu/i }));
 
@@ -83,7 +92,7 @@ describe("PatientProfileForm — chế độ sửa", () => {
 
   it("chặn lưu khi bỏ trống giới tính", async () => {
     const user = userEvent.setup();
-    render(<PatientProfileForm mode="edit" profileId="profile-1" />);
+    renderWithClient(<PatientProfileForm mode="edit" profileId="profile-1" />);
 
     // #18 là thay TOÀN BỘ hồ sơ nên gender bắt buộc — khác #17 vốn cho bỏ trống.
     await user.selectOptions(screen.getByLabelText(/giới tính/i), "");

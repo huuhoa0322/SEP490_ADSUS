@@ -29,15 +29,20 @@ interface Props {
  *
  * Lưu ý: đây chỉ là lớp trải nghiệm. Chặn thật nằm ở [Authorize(Roles="NURSE")] phía backend.
  *
- * AF-03 (cấp lại mật khẩu) ở đây KHÔNG đổi theo quyết định ghi đè 06/08/2026 (Task C10-ext) —
- * đó chỉ áp dụng cho luồng TẠO tài khoản mới (#28). Cấp lại mật khẩu vẫn sinh-và-gửi-email như
- * cũ, Điều dưỡng vẫn không bao giờ thấy giá trị.
+ * AF-03 (cấp lại mật khẩu) sửa lại 06/08/2026 (Task C11-ext, sau Task C10-ext đổi luồng tạo
+ * tài khoản #28): có email thì vẫn gửi âm thầm như cũ, Điều dưỡng không thấy giá trị. KHÔNG có
+ * email thì backend không còn báo lỗi chặn nữa — trả plaintext MỘT LẦN để hiện ngay tại đây.
  */
 export function PatientAccountActions({ userId, fullName, phone, dateOfBirth, email }: Props) {
   const isNurse = useAuthStore((state) => state.user?.role) === "NURSE";
 
   const [editing, setEditing] = useState(false);
   const [confirmingReset, setConfirmingReset] = useState(false);
+  // undefined = chưa cấp lại lần nào; null = vừa cấp lại xong, đã gửi email (không có gì để
+  // hiện); chuỗi = vừa cấp lại xong, không có email, hiện plaintext. Khởi tạo undefined chứ
+  // không phải null: nếu khởi tạo null thì nhánh "đã gửi email" luôn set null → null, React
+  // coi là không đổi giá trị nên BỎ QUA render lại — UI không bao giờ cập nhật sau khi xác nhận.
+  const [revealedPassword, setRevealedPassword] = useState<string | null | undefined>(undefined);
 
   const [formFullName, setFormFullName] = useState(fullName);
   const [formPhone, setFormPhone] = useState(phone);
@@ -114,7 +119,8 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth, em
           {/* Không có đường hoàn tác: mật khẩu cũ chết ngay khi API trả về thành công. */}
           <p className="text-sm text-foreground">
             Cấp lại mật khẩu cho <strong>{fullName}</strong>? Mật khẩu hiện tại sẽ không dùng
-            được nữa; mật khẩu tạm mới chỉ gửi qua email và không hiển thị ở đây.
+            được nữa; mật khẩu tạm mới sẽ gửi qua email nếu tài khoản có email, hoặc hiện trực
+            tiếp ở đây nếu chưa có email.
           </p>
 
           {resetMutation.isError ? (
@@ -123,7 +129,25 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth, em
             </p>
           ) : null}
 
-          {resetMutation.isSuccess ? (
+          {revealedPassword ? (
+            // Tài khoản không có email — không còn chỗ nào để gửi thư (quyết định ghi đè
+            // 06/08/2026), nên backend trả thẳng plaintext để đọc cho bệnh nhân nghe tại chỗ,
+            // giống hệt cơ chế đã dùng ở luồng tạo tài khoản mới.
+            <div className="mt-3 rounded-lg border border-dashed border-primary bg-primary/5 p-3">
+              <div className="text-xs font-semibold uppercase text-muted-foreground">
+                Mật khẩu tạm
+              </div>
+              <div className="mt-1 select-all break-all font-mono text-lg font-bold tracking-wider text-foreground">
+                {revealedPassword}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Tài khoản này không có email — đọc mật khẩu trên cho bệnh nhân nghe hoặc ghi
+                lại, sẽ không hiện lại được nữa.
+              </p>
+            </div>
+          ) : null}
+
+          {revealedPassword === null ? (
             <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
               Đã gửi mật khẩu tạm tới email của bệnh nhân.
             </p>
@@ -139,7 +163,7 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth, em
             </button>
             <button
               type="button"
-              onClick={() => resetMutation.mutate()}
+              onClick={() => resetMutation.mutate(undefined, { onSuccess: setRevealedPassword })}
               disabled={resetMutation.isPending || resetMutation.isSuccess}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >

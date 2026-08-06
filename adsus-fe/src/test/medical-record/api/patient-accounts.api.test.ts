@@ -61,7 +61,7 @@ describe("createPatientAccount", () => {
 });
 
 describe("resetPatientAccountPassword", () => {
-  it("gọi đúng đường dẫn và không trả mật khẩu về", async () => {
+  it("gọi đúng đường dẫn và trả về null khi tài khoản có email", async () => {
     let receivedPath = "";
     server.use(
       http.put(`${API_BASE_URL}/api/v1/patients/:userId/reset-password`, ({ request }) => {
@@ -70,9 +70,9 @@ describe("resetPatientAccountPassword", () => {
       }),
     );
 
-    // UC-06 BR-05 — hàm trả void. Điều dưỡng không bao giờ thấy mật khẩu tạm, nên không có
-    // giá trị nào để trả về, và kiểu void khiến component không thể vô tình hiển thị nó.
-    await expect(resetPatientAccountPassword("user-9")).resolves.toBeUndefined();
+    // Quyết định ghi đè 06/08/2026 (Task C11-ext) — tài khoản CÓ email vẫn gửi âm thầm,
+    // backend trả `data: null` và hàm truyền nguyên giá trị đó ra ngoài.
+    await expect(resetPatientAccountPassword("user-9")).resolves.toBeNull();
     expect(receivedPath).toBe("/api/v1/patients/user-9/reset-password");
   });
 });

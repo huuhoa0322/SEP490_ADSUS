@@ -88,6 +88,38 @@ describe("PatientAccountActions", () => {
     expect(resetMutate).toHaveBeenCalled();
   });
 
+  it("hiện thông báo đã gửi email khi tài khoản có email (backend trả null)", async () => {
+    resetMutate.mockImplementation((_payload, options) => {
+      options?.onSuccess?.(null);
+    });
+
+    signInAs("NURSE");
+    const user = userEvent.setup();
+
+    render(<PatientAccountActions {...props} />);
+    await user.click(screen.getByRole("button", { name: /cấp lại mật khẩu/i }));
+    await user.click(screen.getByRole("button", { name: /^xác nhận$/i }));
+
+    expect(screen.getByText(/đã gửi mật khẩu tạm tới email/i)).toBeInTheDocument();
+  });
+
+  it("hiện mật khẩu tạm trực tiếp khi tài khoản không có email (backend trả chuỗi)", async () => {
+    // Quyết định ghi đè 06/08/2026 — tài khoản không có email không còn báo lỗi chặn nữa.
+    resetMutate.mockImplementation((_payload, options) => {
+      options?.onSuccess?.("Xk4mnpq8rt2Z");
+    });
+
+    signInAs("NURSE");
+    const user = userEvent.setup();
+
+    render(<PatientAccountActions {...props} />);
+    await user.click(screen.getByRole("button", { name: /cấp lại mật khẩu/i }));
+    await user.click(screen.getByRole("button", { name: /^xác nhận$/i }));
+
+    expect(screen.getByText("Xk4mnpq8rt2Z")).toBeInTheDocument();
+    expect(screen.queryByText(/đã gửi mật khẩu tạm tới email/i)).not.toBeInTheDocument();
+  });
+
   it("gửi đủ bốn trường liên hệ khi lưu", async () => {
     signInAs("NURSE");
     const user = userEvent.setup();

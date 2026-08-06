@@ -44,11 +44,14 @@ export async function updatePatientAccountContact(
 }
 
 /**
- * UC-06 AF-03 — sinh mật khẩu tạm và gửi email.
+ * UC-06 AF-03 — sinh mật khẩu tạm mới.
  *
- * TRẢ VỀ void, có chủ ý: BR-05 nói Điều dưỡng không bao giờ thấy mật khẩu. API không trả nó
- * về, và kiểu void khiến component không thể vô tình hiển thị thứ gì.
+ * Có email thì gửi âm thầm, trả về `null` (Điều dưỡng không thấy — không đổi). KHÔNG có email
+ * thì backend không còn báo lỗi chặn nữa (quyết định ghi đè 06/08/2026): trả plaintext MỘT
+ * LẦN để hiển thị ngay, giống hệt cơ chế đã dùng cho luồng tạo tài khoản (`PatientAccountCreated`).
  */
-export async function resetPatientAccountPassword(userId: string): Promise<void> {
-  await apiClient.put<ApiResponse<null>>(`${BASE}/${userId}/reset-password`);
+export async function resetPatientAccountPassword(userId: string): Promise<string | null> {
+  const { data } = await apiClient.put<ApiResponse<string | null>>(`${BASE}/${userId}/reset-password`);
+
+  return data.data;
 }
