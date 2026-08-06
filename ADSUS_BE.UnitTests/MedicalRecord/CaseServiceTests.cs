@@ -334,15 +334,41 @@ public class CaseServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_NoImagesAttached_ThrowsBusinessExceptionWithoutTouchingStorage()
+    public async Task CreateAsync_NoImagesAttached_SucceedsWithEmptyImageListAndSkipsStorage()
     {
-        // Arrange — AF-02/BR-02: #20 phải trả 422, và KHÔNG được gọi Storage vì chưa có gì
-        // hợp lệ để upload.
+        // Arrange — quyết định ghi đè 07/08/2026: #20 không còn bắt buộc ảnh nữa. Không có ảnh
+        // nào thì đơn giản là không gọi Storage lần nào (không phải lỗi).
+        var profile = MedicalRecordTestData.MakePatientProfile();
+        var doctor = MedicalRecordTestData.MakeDoctor();
         var request = new ADSUS_BE.BLL.MedicalRecord.DTOs.CreateCaseRequest(
-            Guid.NewGuid(), Guid.NewGuid(), null, Array.Empty<ADSUS_BE.BLL.MedicalRecord.DTOs.UploadedFile>());
+            profile.PatientProfileId, doctor.UserId, "Đau vú trái",
+            Array.Empty<ADSUS_BE.BLL.MedicalRecord.DTOs.UploadedFile>());
 
-        // Act & Assert
-        await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateAsync(request));
+        _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _users.Setup(r => r.GetByIdAsync(doctor.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(doctor);
+
+        Case? createdCase = null;
+        _cases.Setup(r => r.CreateWithImagesAsync(
+                  It.IsAny<Case>(), It.IsAny<IReadOnlyList<UltrasoundImage>>(), It.IsAny<CancellationToken>()))
+              .Callback<Case, IReadOnlyList<UltrasoundImage>, CancellationToken>((c, imgs, _) =>
+              {
+                  createdCase = c;
+                  c.UltrasoundImages = imgs.ToList();
+                  c.PatientProfile = profile;
+                  c.Doctor = doctor;
+              })
+              .ReturnsAsync((Case c, IReadOnlyList<UltrasoundImage> _, CancellationToken _) => c);
+        _cases.Setup(r => r.GetDetailAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(() => createdCase);
+
+        // Act
+        var response = await _sut.CreateAsync(request);
+
+        // Assert
+        Assert.Equal("CREATED", response.Status);
+        Assert.Empty(response.UltrasoundImages);
         _storage.Verify(s => s.UploadAsync(
             It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }

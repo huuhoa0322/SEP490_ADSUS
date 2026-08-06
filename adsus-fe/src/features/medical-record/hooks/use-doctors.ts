@@ -12,10 +12,11 @@ import { medicalRecordQueryKeys } from "./query-keys";
  * Danh sách nhân sự phòng khám gần như không đổi trong một ca làm việc, nên giữ 5 phút để
  * không gọi lại mỗi lần mở form tạo ca.
  */
-export function useDoctorList() {
+export function useDoctorList(enabled = true) {
   return useQuery({
     queryKey: medicalRecordQueryKeys.doctors(),
     queryFn: () => listDoctors(),
     staleTime: 5 * 60 * 1000,
+    enabled,
   });
 }

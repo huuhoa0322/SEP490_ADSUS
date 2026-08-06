@@ -135,13 +135,10 @@ public sealed class CaseService : ICaseService
         CreateCaseRequest request,
         CancellationToken ct = default)
     {
-        // AF-02 / BR-02: chặn ở đây chứ không ở FluentValidation, vì đặc tả quy định lỗi này
-        // trả 422 còn validator thì luôn cho ra 400.
-        if (request.Images.Count == 0)
-        {
-            throw new BusinessException("A Case must have at least 1 ultrasound image.");
-        }
-
+        // Quyết định ghi đè 07/08/2026 — BR-02 gốc ("phải có ít nhất 1 ảnh siêu âm") không còn
+        // áp dụng cho việc TẠO ca khám nữa: không phải lần khám nào cũng chụp siêu âm ngay lúc
+        // tiếp nhận. Ảnh giờ hoàn toàn tùy chọn ở #20, bổ sung sau qua #21 (AddUltrasoundImagesAsync
+        // — luật đó KHÔNG đổi, #21 vẫn bắt buộc ≥1 ảnh vì "bổ sung 0 ảnh" là một no-op vô nghĩa).
         var profile = await _profiles.GetByIdAsync(request.PatientProfileId, ct)
             ?? throw new ResourceNotFoundException("Patient profile not found.");
 

@@ -124,7 +124,8 @@ public sealed class CasesController : ControllerBase
     }
 
     /// <summary>
-    /// Tạo lần khám mới kèm ảnh siêu âm, trong một request multipart (UC-07).
+    /// Tạo lần khám mới (UC-07), request multipart. Ảnh siêu âm tùy chọn (quyết định ghi đè
+    /// 07/08/2026) — bỏ trống được, bổ sung sau qua AddImages (`#21`, vẫn bắt buộc ≥1 ảnh).
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "DOCTOR,NURSE")]
