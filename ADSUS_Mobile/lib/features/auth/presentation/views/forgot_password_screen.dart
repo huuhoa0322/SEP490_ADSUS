@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/phone_number_rule.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/app_providers.dart';
@@ -41,6 +42,15 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     if (phone.isEmpty || email.isEmpty) {
       setState(() => _errorMessage = 'Vui lòng nhập số điện thoại và email đã đăng ký.');
+      return;
+    }
+
+    // Kiểm định dạng KHÔNG phạm AF-01: câu báo lỗi chỉ nói "chuỗi này không thể là số điện
+    // thoại", đúng với mọi giá trị sai dạng, chứ không hé lộ số đó có tài khoản hay không.
+    // Thiếu bước này thì gõ nhầm một chữ số vẫn nhận được câu "đã gửi yêu cầu", rồi ngồi chờ
+    // mail mãi không tới mà tưởng hệ thống hỏng.
+    if (!PhoneNumberRule.isValid(phone)) {
+      setState(() => _errorMessage = PhoneNumberRule.errorMessage);
       return;
     }
 

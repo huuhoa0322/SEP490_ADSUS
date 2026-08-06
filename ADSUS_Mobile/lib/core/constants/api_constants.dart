@@ -4,7 +4,16 @@ class ApiConstants {
 
   /// Địa chỉ backend ADSUS_BE.
   ///
-  /// Truyền lúc build để mỗi người dùng địa chỉ của mình mà không phải sửa code:
+  /// Khai trong file `.env` ở gốc ADSUS_Mobile (chép từ `.env.example`), rồi chạy:
+  ///   flutter run --dart-define-from-file=.env
+  /// Dùng VS Code thì bấm F5, cờ đã gắn sẵn trong .vscode/launch.json.
+  ///
+  /// Vì sao PHẢI có cờ, trong khi bên adsus-fe chỉ cần đặt file .env.local là xong:
+  /// Flutter biên dịch ra mã máy, nên giá trị cấu hình phải có SẴN LÚC BUILD —
+  /// `String.fromEnvironment` là hằng số biên dịch, không phải đọc file lúc chạy.
+  /// Trình biên dịch không tự đi tìm .env, phải chỉ đường cho nó.
+  ///
+  /// Truyền thẳng một giá trị cũng được, và nó thắng giá trị trong file:
   ///   flutter run --dart-define=API_BASE_URL=http://192.168.1.10:5036
   ///
   /// Mặc định dùng 10.0.2.2 — đó là cách máy ảo Android gọi về localhost của máy tính.

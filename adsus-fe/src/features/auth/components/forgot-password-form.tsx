@@ -6,6 +6,11 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
 import { getApiErrorMessage } from "@/lib/api-client";
+import {
+  PHONE_ERROR_MESSAGE,
+  PHONE_MAX_LENGTH,
+  isValidPhoneNumber,
+} from "@/lib/phone-number";
 
 import { forgotPassword } from "../api/auth.api";
 
@@ -35,6 +40,15 @@ export function ForgotPasswordForm() {
 
     if (!phoneNumber.trim() || !email.trim()) {
       setClientError("Vui lòng nhập số điện thoại và email đã đăng ký.");
+      return;
+    }
+
+    // Kiểm định dạng ở đây KHÔNG phạm AF-01: câu báo lỗi chỉ nói "chuỗi này không thể là số
+    // điện thoại", đúng với mọi giá trị sai dạng, chứ không hé lộ số đó có tài khoản hay
+    // không. Thiếu bước này thì gõ nhầm một chữ số vẫn nhận được câu "đã gửi yêu cầu", rồi
+    // ngồi chờ mail mãi không tới mà tưởng hệ thống hỏng.
+    if (!isValidPhoneNumber(phoneNumber)) {
+      setClientError(PHONE_ERROR_MESSAGE);
       return;
     }
 
@@ -104,7 +118,7 @@ export function ForgotPasswordForm() {
             disabled={request.isPending}
             type="tel"
             inputMode="numeric"
-            maxLength={15}
+            maxLength={PHONE_MAX_LENGTH}
             placeholder="0900000000"
             className={inputClass}
           />

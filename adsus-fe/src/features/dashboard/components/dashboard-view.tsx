@@ -7,6 +7,7 @@ import { getApiErrorMessage } from "@/lib/api-client";
 
 import { useDashboardStatistics } from "../hooks/use-dashboard";
 
+import { AuditLogPanel } from "./audit-log-panel";
 import {
   BarList,
   ChartCard,
@@ -234,7 +235,7 @@ export function DashboardView() {
 
             <ChartCard
               title="Lịch hẹn"
-              description={`Trung bình ${data.appointments.averageBookingsPerSlot} lượt đặt trên mỗi khung giờ.`}
+              description={`${data.appointments.slotCount} khung giờ đã mở trong kỳ.`}
             >
               <StatusBreakdown
                 segments={[
@@ -247,6 +248,12 @@ export function DashboardView() {
                 ]}
               />
             </ChartCard>
+          </div>
+
+          {/* Nhật ký thao tác quản trị (UC-04). Đặt sau các biểu đồ vì nó trả lời câu hỏi
+              khác hẳn: "vừa có ai động vào cái gì" chứ không phải "kỳ này ra sao". */}
+          <div className="mt-5">
+            <AuditLogPanel />
           </div>
 
           <div className="mt-5">

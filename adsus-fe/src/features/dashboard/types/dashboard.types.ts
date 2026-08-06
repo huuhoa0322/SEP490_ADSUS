@@ -51,7 +51,11 @@ export interface AppointmentStatistics {
   cancelledCount: number;
   slotCount: number;
   cancellationRate: number;
-  averageBookingsPerSlot: number;
+  /*
+   * ĐÃ BỎ averageBookingsPerSlot — xem chú thích ở AppointmentStatistics phía backend.
+   * Tóm tắt: ScheduleSlot không có Capacity nên không tính được tỉ lệ lấp đầy, mà số trung
+   * bình thì dễ bị đọc nhầm thành tỉ lệ đó.
+   */
 }
 
 export interface AdherenceStatistics {

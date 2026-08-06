@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { getApiErrorMessage } from "@/lib/api-client";
+import {
+  PHONE_ERROR_MESSAGE,
+  PHONE_MAX_LENGTH,
+  isValidPhoneNumber,
+} from "@/lib/phone-number";
 
 import { useCreateUser, useUpdateUser, useUserDetail } from "../hooks/use-users";
 import { ROLE_LABEL } from "../lib/user-labels";
@@ -124,8 +129,8 @@ function UserFormFields({
       return;
     }
 
-    if (!isEdit && !/^0\d{8,10}$/.test(phoneNumber.trim())) {
-      setClientError("Số điện thoại phải bắt đầu bằng 0 và có 9 đến 11 chữ số.");
+    if (!isEdit && !isValidPhoneNumber(phoneNumber)) {
+      setClientError(PHONE_ERROR_MESSAGE);
       return;
     }
 
@@ -198,7 +203,8 @@ function UserFormFields({
             /* BR-02 — số điện thoại là định danh đăng nhập, sửa thì khoá lại. */
             disabled={isEdit || isSubmitting}
             inputMode="numeric"
-            maxLength={15}
+            /* Chặn gõ quá 10 chữ số ngay từ đầu, thay vì để bấm Lưu rồi mới báo lỗi. */
+            maxLength={PHONE_MAX_LENGTH}
             placeholder="0900000000"
             className={inputClass}
           />
