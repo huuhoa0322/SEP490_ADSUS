@@ -86,7 +86,7 @@ public sealed class CaseService : ICaseService
         return CaseMapper.ToPatientResponse(medicalCase);
     }
 
-    public async Task<PagedResult<CaseSummaryResponse>> ListByPatientProfileAsync(
+    public async Task<PagedResult<StaffCaseSummaryResponse>> ListByPatientProfileAsync(
         Guid patientProfileId,
         string? status,
         string sortOrder,
@@ -111,7 +111,7 @@ public sealed class CaseService : ICaseService
         var (items, total) = await _cases.SearchByPatientAsync(
             patientProfileId, statusFilter, sortOrder, page, pageSize, ct);
 
-        return ToPagedResult(items, page, pageSize, total);
+        return ToPagedResult(items, page, pageSize, total, CaseMapper.ToStaffSummary);
     }
 
     public async Task<PagedResult<CaseSummaryResponse>> ListMineAsync(
@@ -128,7 +128,7 @@ public sealed class CaseService : ICaseService
         var (items, total) = await _cases.SearchByPatientAsync(
             profile.PatientProfileId, CaseStatus.Confirmed, "desc", page, pageSize, ct);
 
-        return ToPagedResult(items, page, pageSize, total);
+        return ToPagedResult(items, page, pageSize, total, CaseMapper.ToSummary);
     }
 
     public async Task<CaseResponse> CreateAsync(
@@ -310,16 +310,22 @@ public sealed class CaseService : ICaseService
         return urls;
     }
 
-    private static PagedResult<CaseSummaryResponse> ToPagedResult(
+    /// <summary>
+    /// Dùng chung cho cả #24 (StaffCaseSummaryResponse) và #25 (CaseSummaryResponse) — hai
+    /// endpoint map cùng một trang Case entity sang hai response khác nhau (#24 thêm
+    /// CreatedAt), nên phần phân trang tách hẳn khỏi phần map từng dòng qua tham số map.
+    /// </summary>
+    private static PagedResult<T> ToPagedResult<T>(
         IReadOnlyList<Case> items,
         int page,
         int pageSize,
-        int total)
+        int total,
+        Func<Case, T> map)
     {
         var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)pageSize);
 
-        return new PagedResult<CaseSummaryResponse>(
-            items.Select(CaseMapper.ToSummary).ToList(),
+        return new PagedResult<T>(
+            items.Select(map).ToList(),
             page,
             pageSize,
             total,

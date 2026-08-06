@@ -217,6 +217,30 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
+    public async Task GetCasesByPatientProfileId_ReturnsCreatedAt()
+    {
+        // Thêm 06/08/2026 — #24 (StaffCaseSummaryResponse) mang thêm CreatedAt so với #25,
+        // kiểm qua cả pipeline HTTP thật để bắt lỗi serialize (không chỉ ở tầng service).
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Created);
+        _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _cases.Setup(r => r.SearchByPatientAsync(
+                  profile.PatientProfileId, null, "desc", 1, 20, It.IsAny<CancellationToken>()))
+              .ReturnsAsync((new List<Case> { medicalCase }, 1));
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases?patientProfileId={profile.PatientProfileId}");
+
+        // Assert
+        var body = await response.Content
+            .ReadFromJsonAsync<ApiResponse<PagedResult<StaffCaseSummaryResponse>>>();
+        Assert.Equal(medicalCase.CreatedAt, body!.Data!.Items.Single().CreatedAt);
+    }
+
+    [Fact]
     public async Task GetCasesByPatientProfileId_CalledByPatientRole_Returns403Forbidden()
     {
         // Arrange

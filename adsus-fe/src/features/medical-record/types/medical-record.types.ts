@@ -163,12 +163,19 @@ export interface CaseDetail {
   updatedAt: string;
 }
 
-/** #24 — một dòng lịch sử khám (SCR-12). */
+/**
+ * #24 — một dòng lịch sử khám (SCR-12), CHỈ dành cho Bác sĩ/Điều dưỡng (Web).
+ *
+ * createdAt thêm 06/08/2026 — visitDate là ngày thuần (DateOnly, không giờ), nên cần trường
+ * riêng để hiện giờ tạo ca. KHÔNG dùng lại type này cho #25 (danh sách của chính bệnh nhân,
+ * chỉ tồn tại ở Mobile) — backend cố tình tách hai response khác nhau ở đây.
+ */
 export interface CaseSummary {
   caseId: string;
   visitDate: string;
   status: CaseStatus;
   doctorId: string;
+  createdAt: string;
 }
 
 export interface PatientListQuery {

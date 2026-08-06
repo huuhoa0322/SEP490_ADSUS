@@ -187,6 +187,25 @@ public class CaseServiceTests
     }
 
     [Fact]
+    public async Task ListByPatientProfileAsync_ReturnsCreatedAt()
+    {
+        // Thêm 06/08/2026 — #24 (StaffCaseSummaryResponse) mang thêm CreatedAt so với #25
+        // (CaseSummaryResponse) vì VisitDate là DateOnly, không có giờ; SCR-12 cần hiện giờ
+        // tạo ca khám thay cho caseId thô.
+        var profile = MedicalRecordTestData.MakePatientProfile();
+        var medicalCase = MedicalRecordTestData.MakeCase(profile);
+        _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _cases.Setup(r => r.SearchByPatientAsync(
+                  profile.PatientProfileId, null, "desc", 1, 20, It.IsAny<CancellationToken>()))
+              .ReturnsAsync((new List<Case> { medicalCase }, 1));
+
+        var result = await _sut.ListByPatientProfileAsync(profile.PatientProfileId, null, "desc", 1, 20);
+
+        Assert.Equal(medicalCase.CreatedAt, result.Items.Single().CreatedAt);
+    }
+
+    [Fact]
     public async Task ListByPatientProfileAsync_PatientProfileNotFound_ThrowsResourceNotFoundException()
     {
         // Arrange

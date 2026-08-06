@@ -52,7 +52,7 @@ public sealed class CasesController : ControllerBase
     /// </summary>
     [HttpGet]
     [Authorize(Roles = "DOCTOR,NURSE")]
-    [ProducesResponseType(typeof(ApiResponse<PagedResult<CaseSummaryResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PagedResult<StaffCaseSummaryResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ListByPatient(
         [FromQuery] Guid patientProfileId,
@@ -75,7 +75,7 @@ public sealed class CasesController : ControllerBase
         var result = await _cases.ListByPatientProfileAsync(
             patientProfileId, status, sortOrder, page, pageSize, ct);
 
-        return Ok(ApiResponse<PagedResult<CaseSummaryResponse>>.Ok(result, "Cases retrieved successfully"));
+        return Ok(ApiResponse<PagedResult<StaffCaseSummaryResponse>>.Ok(result, "Cases retrieved successfully"));
     }
 
     /// <summary>
