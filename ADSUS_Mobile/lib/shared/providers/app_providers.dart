@@ -7,6 +7,8 @@ import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/data/repositories/biometric_service.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
+import '../../features/medication_reminder/data/repositories/medication_intake_repository_impl.dart';
+import '../../features/medication_reminder/domain/repositories/medication_intake_repository.dart';
 
 /// Kho lưu trữ được hệ điều hành mã hoá (Keystore/Keychain).
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
@@ -34,4 +36,10 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 final biometricServiceProvider = Provider<BiometricService>((ref) {
   return BiometricService();
+});
+
+/// Module 7 — Patient xem lịch uống thuốc + xác nhận đã uống (SCR-19, UC-19/20).
+/// Stub cho đến khi team bổ sung giao diện Doctor xem trên Mobile (sprint sau).
+final medicationIntakeRepositoryProvider = Provider<MedicationIntakeRepository>((ref) {
+  return MedicationIntakeRepositoryImpl(ref.watch(dioProvider));
 });
