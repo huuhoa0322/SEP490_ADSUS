@@ -91,7 +91,7 @@ public sealed class PatientsController : ControllerBase
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "NURSE")]
-    [ProducesResponseType(typeof(ApiResponse<PatientAccountResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<PatientAccountCreatedResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
@@ -110,7 +110,7 @@ public sealed class PatientsController : ControllerBase
 
         return StatusCode(
             StatusCodes.Status201Created,
-            ApiResponse<PatientAccountResponse>.Ok(result, "Patient account created successfully"));
+            ApiResponse<PatientAccountCreatedResponse>.Ok(result, "Patient account created successfully"));
     }
 
     /// <summary>

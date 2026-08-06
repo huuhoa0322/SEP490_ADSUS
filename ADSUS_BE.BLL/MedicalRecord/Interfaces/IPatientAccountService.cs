@@ -15,8 +15,10 @@ namespace ADSUS_BE.BLL.MedicalRecord.Interfaces;
 /// </summary>
 public interface IPatientAccountService
 {
-    /// <summary>AF-01 — tạo tài khoản Bệnh nhân mới, sinh mật khẩu tạm và gửi email.</summary>
-    Task<PatientAccountResponse> CreateAsync(
+    /// <summary>AF-01 — tạo tài khoản Bệnh nhân mới, sinh mật khẩu tạm, trả về plaintext đúng
+    /// một lần để Điều dưỡng đọc cho bệnh nhân (quyết định ghi đè 06/08/2026 — không còn gửi
+    /// email).</summary>
+    Task<PatientAccountCreatedResponse> CreateAsync(
         CreatePatientAccountRequest request, Guid actingNurseId, CancellationToken ct = default);
 
     /// <summary>AF-02 — sửa 4 trường liên hệ. Không đụng role/status.</summary>

@@ -13,26 +13,23 @@ namespace ADSUS_BE.BLL.MedicalRecord.Services;
 public sealed class PatientAccountService : IPatientAccountService
 {
     private readonly IUserRepository _users;
-    private readonly IEmailService _email;
     private readonly IAuditLogRepository _audit;
     private readonly IPasswordResetService _passwordReset;
     private readonly ILogger<PatientAccountService> _logger;
 
     public PatientAccountService(
         IUserRepository users,
-        IEmailService email,
         IAuditLogRepository audit,
         IPasswordResetService passwordReset,
         ILogger<PatientAccountService> logger)
     {
         _users = users;
-        _email = email;
         _audit = audit;
         _passwordReset = passwordReset;
         _logger = logger;
     }
 
-    public async Task<PatientAccountResponse> CreateAsync(
+    public async Task<PatientAccountCreatedResponse> CreateAsync(
         CreatePatientAccountRequest request, Guid actingNurseId, CancellationToken ct = default)
     {
         var phone = request.PhoneNumber.Trim();
@@ -50,7 +47,8 @@ public sealed class PatientAccountService : IPatientAccountService
         }
 
         // BR-03 của UC-04 — mật khẩu tạm do hệ thống sinh, lưu dạng băm, buộc đổi lần đầu.
-        // Điều dưỡng không bao giờ thấy giá trị này (UC-06 BR-05).
+        // Trả plaintext MỘT LẦN trong response tạo tài khoản (quyết định ghi đè 06/08/2026),
+        // KHÔNG lưu lại plaintext ở đâu khác, KHÔNG gửi qua email.
         var temporaryPassword = TemporaryPasswordGenerator.Generate();
 
         var now = DateTime.UtcNow;
@@ -92,20 +90,15 @@ public sealed class PatientAccountService : IPatientAccountService
         _logger.LogInformation(
             "Nurse {NurseId} created patient account {UserId}", actingNurseId, user.UserId);
 
-        // Gửi email SAU khi lưu, và cố ý KHÔNG để lỗi gửi mail làm hỏng cả thao tác: tài
-        // khoản đã tồn tại và số điện thoại đã bị chiếm, huỷ vì máy chủ mail trục trặc thì
-        // tạo lại chỉ nhận được "số điện thoại đã tồn tại". Gửi lại được qua AF-03.
-        if (email is not null)
-        {
-            var sent = await _email.SendTemporaryPasswordAsync(email, user.FullName, temporaryPassword, ct);
-            if (!sent)
-            {
-                _logger.LogWarning(
-                    "Patient account {UserId} created but temporary password email failed", user.UserId);
-            }
-        }
-
-        return ToResponse(user);
+        // Trả plaintext đúng một lần ở đây — quyết định ghi đè 06/08/2026. Điều dưỡng đọc trực tiếp
+        // cho bệnh nhân, không còn kênh email nào cho mật khẩu tạm nữa.
+        return new PatientAccountCreatedResponse(
+            UserId: user.UserId,
+            FullName: user.FullName,
+            PhoneNumber: user.Phone,
+            DateOfBirth: user.DateOfBirth,
+            Email: user.Email,
+            TemporaryPassword: temporaryPassword);
     }
 
     public async Task<PatientAccountResponse> UpdateContactAsync(

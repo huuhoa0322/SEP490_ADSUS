@@ -77,8 +77,9 @@ public class PatientAccountsControllerIntegrationTests
     public async Task PostPatientAccount_CalledByNurse_Returns201()
     {
         // Arrange
-        var created = new PatientAccountResponse(
-            Guid.NewGuid(), "Lê Thị Hoa", "0981234567", new DateOnly(1984, 3, 12), "hoa@example.com");
+        var created = new PatientAccountCreatedResponse(
+            Guid.NewGuid(), "Lê Thị Hoa", "0981234567", new DateOnly(1984, 3, 12), "hoa@example.com",
+            TemporaryPassword: "Ab3xyz9pqr");
         _accounts.Setup(s => s.CreateAsync(
                      It.IsAny<CreatePatientAccountRequest>(), _nurse.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(created);
@@ -93,9 +94,10 @@ public class PatientAccountsControllerIntegrationTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         // ApiResponse.Ok hard-code Code = 200 bất kể HTTP status thật — quy ước toàn repo.
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientAccountResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientAccountCreatedResponse>>();
         Assert.Equal(200, body!.Code);
         Assert.Equal(new DateOnly(1984, 3, 12), body.Data!.DateOfBirth);
+        Assert.Equal("Ab3xyz9pqr", body.Data!.TemporaryPassword);
     }
 
     [Fact]

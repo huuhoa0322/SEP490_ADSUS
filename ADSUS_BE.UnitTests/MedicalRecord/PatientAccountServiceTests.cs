@@ -12,7 +12,6 @@ namespace ADSUS_BE.UnitTests.MedicalRecord;
 public class PatientAccountServiceTests
 {
     private readonly Mock<IUserRepository> _users = new();
-    private readonly Mock<IEmailService> _email = new();
     private readonly Mock<IAuditLogRepository> _audit = new();
     private readonly Mock<IPasswordResetService> _passwordReset = new();
     private readonly PatientAccountService _sut;
@@ -23,7 +22,6 @@ public class PatientAccountServiceTests
     {
         _sut = new PatientAccountService(
             _users.Object,
-            _email.Object,
             _audit.Object,
             _passwordReset.Object,
             Mock.Of<ILogger<PatientAccountService>>());
@@ -46,9 +44,6 @@ public class PatientAccountServiceTests
               .ReturnsAsync(false);
         _users.Setup(r => r.IsEmailUsedAsync(request.Email!, It.IsAny<CancellationToken>()))
               .ReturnsAsync(false);
-        _email.Setup(e => e.SendTemporaryPasswordAsync(
-                  It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(true);
 
         User? saved = null;
         _users.Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
@@ -65,6 +60,8 @@ public class PatientAccountServiceTests
         Assert.Equal(new DateOnly(1984, 3, 12), saved.DateOfBirth);
         Assert.Equal(saved.UserId, response.UserId);
         Assert.Equal(new DateOnly(1984, 3, 12), response.DateOfBirth);
+        Assert.False(string.IsNullOrEmpty(response.TemporaryPassword));
+        Assert.True(response.TemporaryPassword.Length >= 8);
     }
 
     [Fact]
@@ -103,9 +100,6 @@ public class PatientAccountServiceTests
               .ReturnsAsync(false);
         _users.Setup(r => r.IsEmailUsedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(false);
-        _email.Setup(e => e.SendTemporaryPasswordAsync(
-                  It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(true);
 
         AuditLog? logged = null;
         _audit.Setup(a => a.AddAsync(It.IsAny<AuditLog>(), It.IsAny<CancellationToken>()))
@@ -124,8 +118,9 @@ public class PatientAccountServiceTests
     [Fact]
     public async Task CreateAsync_EmailNotProvided_StillCreatesAccount()
     {
-        // Arrange — UC-04 ghi Email là Optional. Tài khoản vẫn tạo được, chỉ là mật khẩu tạm
-        // không đi đâu được; Điều dưỡng bổ sung email rồi bấm Cấp lại mật khẩu sau.
+        // Arrange — UC-04 ghi Email là Optional. Tài khoản vẫn tạo được và mật khẩu tạm vẫn trả về
+        // plaintext trong response như bình thường — email giờ chỉ dùng cho quên mật khẩu sau này
+        // (UC-03), không còn ảnh hưởng gì tới việc tạo tài khoản hay hiển thị mật khẩu tạm.
         var request = ValidCreateRequest() with { Email = null };
         _users.Setup(r => r.PhoneExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(false);
@@ -141,8 +136,31 @@ public class PatientAccountServiceTests
         // Assert
         Assert.Null(saved!.Email);
         Assert.Equal(saved.UserId, response.UserId);
-        _email.Verify(e => e.SendTemporaryPasswordAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.False(string.IsNullOrEmpty(response.TemporaryPassword));
+    }
+
+    [Fact]
+    public async Task CreateAsync_GeneratedPasswordMatchesPolicy()
+    {
+        // Arrange — TDS §4.3: 8-72 ký tự, ít nhất 1 chữ hoa, ít nhất 1 chữ số. Quyết định ghi đè
+        // 06/08/2026 khiến mật khẩu này giờ hiển thị trực tiếp cho Điều dưỡng đọc cho bệnh nhân,
+        // nên hợp đồng "đúng chính sách" đáng có một test riêng, không chỉ kiểm "không rỗng".
+        var request = ValidCreateRequest();
+        _users.Setup(r => r.PhoneExistsAsync(request.PhoneNumber, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(false);
+        _users.Setup(r => r.IsEmailUsedAsync(request.Email!, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(false);
+        _users.Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
+              .Returns(Task.CompletedTask);
+
+        // Act
+        var response = await _sut.CreateAsync(request, _actingNurseId);
+
+        // Assert
+        var pwd = response.TemporaryPassword;
+        Assert.InRange(pwd.Length, 8, 72);
+        Assert.Contains(pwd, c => char.IsUpper(c));
+        Assert.Contains(pwd, c => char.IsDigit(c));
     }
 
     private static User MakePatientAccount() => new()
