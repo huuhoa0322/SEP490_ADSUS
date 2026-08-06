@@ -25,6 +25,9 @@ public interface IPatientAccountService
     Task<PatientAccountResponse> UpdateContactAsync(
         Guid userId, UpdatePatientAccountRequest request, Guid actingNurseId, CancellationToken ct = default);
 
-    /// <summary>AF-03 — sinh mật khẩu tạm mới và gửi email. Không trả mật khẩu về (BR-05).</summary>
-    Task ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default);
+    /// <summary>
+    /// AF-03 — sinh mật khẩu tạm mới. Có email thì gửi âm thầm (trả về null); không có email
+    /// thì trả plaintext MỘT LẦN (quyết định ghi đè 06/08/2026, thay một phần BR-05).
+    /// </summary>
+    Task<string?> ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default);
 }

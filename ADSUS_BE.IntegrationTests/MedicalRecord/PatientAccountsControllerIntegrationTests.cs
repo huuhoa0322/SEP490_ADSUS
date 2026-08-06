@@ -136,7 +136,7 @@ public class PatientAccountsControllerIntegrationTests
         // Arrange
         var targetId = Guid.NewGuid();
         _accounts.Setup(s => s.ResetPasswordAsync(targetId, _nurse.UserId, It.IsAny<CancellationToken>()))
-                 .Returns(Task.CompletedTask);
+                 .ReturnsAsync((string?)null);
 
         await using var app = CreateApp();
         var client = MakeClientWithToken(app, _nurse);

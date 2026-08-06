@@ -153,7 +153,7 @@ public sealed class PatientAccountService : IPatientAccountService
         return ToResponse(user);
     }
 
-    public async Task ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default)
+    public async Task<string?> ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default)
     {
         var user = await _users.GetByIdAsync(userId, ct)
             ?? throw new ResourceNotFoundException("Patient account not found.");
@@ -165,18 +165,14 @@ public sealed class PatientAccountService : IPatientAccountService
         }
 
         // BR-05 — dùng lại đúng cơ chế sinh-và-gửi của UC-03/UC-04, KHÔNG viết đường sinh mật
-        // khẩu thứ hai. Ở đó thứ tự là gửi thư trước rồi mới lưu: đổi mật khẩu trước mà thư
-        // không tới nơi thì mật khẩu cũ đã chết trong khi mật khẩu mới không ai biết.
-        var result = await _passwordReset.AdminResetAsync(userId, actingNurseId, ct);
+        // khẩu thứ hai. AccountHasNoEmail không còn xuất hiện ở đây nữa kể từ 06/08/2026 —
+        // tài khoản không có email giờ trả về plaintext thay vì lỗi, xem AdminResetAsync.
+        var outcome = await _passwordReset.AdminResetAsync(userId, actingNurseId, ct);
 
-        if (result != AccountOperationResult.Success)
+        if (outcome.Result != AccountOperationResult.Success)
         {
-            // Nói đúng sự thật thay vì im lặng báo thành công: Điều dưỡng cần biết còn việc
-            // phải làm (bổ sung email, hoặc thử lại khi máy chủ mail hoạt động trở lại).
-            throw new BusinessException(result switch
+            throw new BusinessException(outcome.Result switch
             {
-                AccountOperationResult.AccountHasNoEmail =>
-                    "This account has no email address, so the temporary password cannot be sent.",
                 AccountOperationResult.EmailNotSent =>
                     "Could not send the temporary password. The old password is still valid — please try again.",
                 AccountOperationResult.AccountIsDeactivated =>
@@ -198,6 +194,8 @@ public sealed class PatientAccountService : IPatientAccountService
 
         _logger.LogInformation(
             "Nurse {NurseId} reset password of patient account {UserId}", actingNurseId, userId);
+
+        return outcome.TemporaryPassword;
     }
 
     private static PatientAccountResponse ToResponse(User user) => new(

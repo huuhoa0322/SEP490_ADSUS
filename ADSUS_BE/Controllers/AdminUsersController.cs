@@ -194,11 +194,13 @@ public class AdminUsersController : ControllerBase
     /// <summary>
     /// UC-03 AF-02 — Admin cấp lại mật khẩu hộ, dùng khi chủ tài khoản không vào được email.
     ///
-    /// BR-03: mật khẩu tạm chỉ đi qua email, KHÔNG BAO GIỜ nằm trong phản hồi này. Admin
-    /// cũng không được thấy — cùng nguyên tắc "không ai đọc được mật khẩu" ở PRD §6.2.
+    /// BR-03 sửa lại 06/08/2026: CÓ email thì mật khẩu tạm vẫn chỉ đi qua email, KHÔNG BAO GIỜ
+    /// nằm trong phản hồi này. KHÔNG có email thì giờ trả plaintext thay vì báo lỗi (xem
+    /// AdminResetOutcome) — nhưng trang quản trị (FE Module 2, `features/users/`) CHƯA có UI
+    /// hiện trường này; đó là việc của task riêng sau. Ở đây chỉ đảm bảo message không nói dối.
     /// </summary>
     [HttpPut("{userId:guid}/reset-password")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<string?>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ResetPassword(Guid userId, CancellationToken cancellationToken)
@@ -209,12 +211,18 @@ public class AdminUsersController : ControllerBase
                 StatusCodes.Status401Unauthorized, "Invalid access token."));
         }
 
-        var result = await _passwordReset.AdminResetAsync(userId, adminId, cancellationToken);
+        var outcome = await _passwordReset.AdminResetAsync(userId, adminId, cancellationToken);
 
-        return result == AccountOperationResult.Success
-            ? Ok(ApiResponse<object>.Ok(
-                null!, "A temporary password has been emailed to the account holder."))
-            : MapFailure<object>(result);
+        if (outcome.Result != AccountOperationResult.Success)
+        {
+            return MapFailure<object>(outcome.Result);
+        }
+
+        return Ok(outcome.TemporaryPassword is null
+            ? ApiResponse<string?>.Ok(null, "A temporary password has been emailed to the account holder.")
+            : ApiResponse<string?>.Ok(
+                outcome.TemporaryPassword,
+                "This account has no email on file — a temporary password was generated. Communicate it to the account holder directly."));
     }
 
     // ---- helpers ----

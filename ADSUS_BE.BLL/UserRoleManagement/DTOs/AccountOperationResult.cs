@@ -41,8 +41,10 @@ public enum AccountOperationResult
     /// <summary>
     /// UC-03 AF-02 — tài khoản chưa khai email nên không có chỗ nào để gửi mật khẩu tạm tới.
     ///
-    /// Chỉ dùng cho đường Admin cấp lại hộ. Ở đường tự phục vụ thì không bao giờ trả về lỗi
-    /// nào cả (AF-01).
+    /// KHÔNG còn được AdminResetAsync trả về nữa kể từ quyết định ghi đè 06/08/2026 — trường
+    /// hợp không có email giờ vẫn cấp lại thành công, trả plaintext qua
+    /// AdminResetOutcome.TemporaryPassword thay vì báo lỗi này. Giữ lại enum member để không
+    /// phá vỡ chỗ khác có thể đang tham chiếu.
     /// </summary>
     AccountHasNoEmail,
 

@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 
+import { PatientAccountActions } from "./patient-account-actions";
 import {
   useCreatePatientProfile,
   usePatientProfile,
@@ -161,6 +162,18 @@ export function PatientProfileForm(props: Props) {
             </div>
           </dl>
         </section>
+      ) : null}
+
+      {/* PatientProfile không có email — đó là dữ liệu tài khoản, không phải hồ sơ nền. Điều
+          dưỡng tự nhập lại nếu muốn bổ sung. */}
+      {props.mode === "edit" && loaded ? (
+        <PatientAccountActions
+          userId={loaded.patientUserId}
+          fullName={loaded.fullName}
+          phone={loaded.phone}
+          dateOfBirth={loaded.dateOfBirth}
+          email={null}
+        />
       ) : null}
 
       <section className="mt-6 space-y-5 rounded-xl border border-border p-5">

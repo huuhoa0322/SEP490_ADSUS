@@ -25,14 +25,18 @@ public interface IPasswordResetService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// AF-02 — Admin cấp lại hộ từ SCR-06, dùng khi chủ tài khoản không vào được email.
+    /// AF-02 — Admin cấp lại hộ từ SCR-06 (và UC-06 AF-03 — Điều dưỡng cấp lại hộ Patient),
+    /// dùng khi chủ tài khoản không vào được email.
     ///
-    /// Ở đây trả về kết quả chi tiết được, vì Admin đã biết tài khoản tồn tại (họ chọn nó từ
-    /// danh sách) nên không có gì để lộ thêm.
+    /// Ở đây trả về kết quả chi tiết được, vì người gọi đã biết tài khoản tồn tại (họ chọn nó
+    /// từ danh sách) nên không có gì để lộ thêm.
     ///
-    /// BR-03: mật khẩu tạm vẫn chỉ gửi qua email, KHÔNG BAO GIỜ hiện trên màn hình Admin.
+    /// BR-03 sửa lại 06/08/2026: CÓ email thì mật khẩu tạm vẫn chỉ gửi qua email, KHÔNG BAO GIỜ
+    /// hiện trên màn hình. KHÔNG có email thì giờ vẫn cấp lại được (trước đây báo lỗi chặn
+    /// hoàn toàn) — <see cref="AdminResetOutcome.TemporaryPassword"/> mang plaintext để người
+    /// thao tác đọc trực tiếp cho chủ tài khoản, đúng một lần.
     /// </summary>
-    Task<AccountOperationResult> AdminResetAsync(
+    Task<AdminResetOutcome> AdminResetAsync(
         Guid userId,
         Guid actingAdminId,
         CancellationToken cancellationToken = default);

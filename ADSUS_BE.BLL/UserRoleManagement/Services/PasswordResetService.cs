@@ -68,34 +68,46 @@ public class PasswordResetService : IPasswordResetService
         await _users.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<AccountOperationResult> AdminResetAsync(
+    public async Task<AdminResetOutcome> AdminResetAsync(
         Guid userId,
         Guid actingAdminId,
         CancellationToken cancellationToken = default)
     {
         // Admin tự đặt lại mật khẩu của chính mình thì đã có chức năng đổi mật khẩu (UC-25),
         // không cần đi vòng qua đây.
-        if (userId == actingAdminId) return AccountOperationResult.CannotTargetSelf;
+        if (userId == actingAdminId)
+            return new AdminResetOutcome(AccountOperationResult.CannotTargetSelf, null);
 
         var user = await _users.GetByIdAsync(userId, cancellationToken);
-        if (user is null) return AccountOperationResult.NotFound;
+        if (user is null) return new AdminResetOutcome(AccountOperationResult.NotFound, null);
 
-        if (user.Status == UserStatus.Deactivated) return AccountOperationResult.AccountIsDeactivated;
-
-        // BR-03 — mật khẩu tạm CHỈ đi qua email, không bao giờ hiện trên màn hình Admin.
-        // Không có email thì không có đường giao, nên phải báo lỗi thay vì đặt lại rồi để
-        // mật khẩu mới rơi vào hư không và khoá luôn chủ tài khoản ở ngoài.
-        if (string.IsNullOrWhiteSpace(user.Email)) return AccountOperationResult.AccountHasNoEmail;
+        if (user.Status == UserStatus.Deactivated)
+            return new AdminResetOutcome(AccountOperationResult.AccountIsDeactivated, null);
 
         var temporaryPassword = TemporaryPasswordGenerator.Generate();
         var hash = BCrypt.Net.BCrypt.HashPassword(temporaryPassword);
 
-        // Gửi thư trước, lưu sau — cùng lý do như ở đường tự phục vụ bên trên: thư không tới
-        // nơi mà mật khẩu cũ đã bị thay thì chủ tài khoản mất luôn đường vào.
+        // Quyết định ghi đè 06/08/2026 — tài khoản KHÔNG CÓ email không còn bị chặn nữa: lưu
+        // mật khẩu mới ngay và trả plaintext MỘT LẦN cho người thao tác (Admin/Điều dưỡng) đọc
+        // trực tiếp cho chủ tài khoản. Không cần gửi thư (không có chỗ để gửi), nên không có
+        // rủi ro "gửi trước lưu sau" ở nhánh này — lưu ngay, không đường lùi cần giữ.
+        if (string.IsNullOrWhiteSpace(user.Email))
+        {
+            user.PasswordHash = hash;
+            user.MustChangePassword = true;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _users.SaveChangesAsync(cancellationToken);
+
+            return new AdminResetOutcome(AccountOperationResult.Success, temporaryPassword);
+        }
+
+        // Có email — hành vi CŨ, không đổi. Gửi thư trước, lưu sau: thư không tới nơi mà mật
+        // khẩu cũ đã bị thay thì chủ tài khoản mất luôn đường vào.
         var daGui = await _email.SendTemporaryPasswordAsync(
             user.Email, user.FullName, temporaryPassword, cancellationToken);
 
-        if (!daGui) return AccountOperationResult.EmailNotSent;
+        if (!daGui) return new AdminResetOutcome(AccountOperationResult.EmailNotSent, null);
 
         user.PasswordHash = hash;
         user.MustChangePassword = true;
@@ -103,6 +115,6 @@ public class PasswordResetService : IPasswordResetService
 
         await _users.SaveChangesAsync(cancellationToken);
 
-        return AccountOperationResult.Success;
+        return new AdminResetOutcome(AccountOperationResult.Success, null);
     }
 }
