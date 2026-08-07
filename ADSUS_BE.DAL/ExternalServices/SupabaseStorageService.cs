@@ -34,15 +34,26 @@ public sealed class SupabaseStorageService : IFileStorageService
         request.Headers.Add("apikey", _settings.ServiceKey);
     }
 
-    public async Task<string> UploadAsync(
+    public Task<string> UploadAsync(
         Stream content,
         string objectPath,
         string contentType,
         CancellationToken ct = default)
     {
+        return UploadAsync(content, objectPath, contentType, _settings.Bucket, ct);
+    }
+
+    public async Task<string> UploadAsync(
+        Stream content,
+        string objectPath,
+        string contentType,
+        string bucketName,
+        CancellationToken ct = default)
+    {
+        var targetBucket = bucketName;
         using var request = new HttpRequestMessage(
             HttpMethod.Post,
-            $"{BaseUrl}/storage/v1/object/{_settings.Bucket}/{objectPath}");
+            $"{BaseUrl}/storage/v1/object/{targetBucket}/{objectPath}");
         AddAuth(request);
 
         request.Content = new StreamContent(content);
@@ -61,17 +72,23 @@ public sealed class SupabaseStorageService : IFileStorageService
             throw new InvalidOperationException("Could not store the uploaded file.");
         }
 
-        _logger.LogInformation("Uploaded {ObjectPath} to storage bucket {Bucket}", objectPath, _settings.Bucket);
+        _logger.LogInformation("Uploaded {ObjectPath} to storage bucket {Bucket}", objectPath, targetBucket);
         return objectPath;
     }
 
-    public async Task<string?> CreateSignedUrlAsync(string objectPath, CancellationToken ct = default)
+    public Task<string?> CreateSignedUrlAsync(string objectPath, CancellationToken ct = default)
+    {
+        return CreateSignedUrlAsync(objectPath, _settings.Bucket, ct);
+    }
+
+    public async Task<string?> CreateSignedUrlAsync(string objectPath, string bucketName, CancellationToken ct = default)
     {
         try
         {
+            var targetBucket = bucketName;
             using var request = new HttpRequestMessage(
                 HttpMethod.Post,
-                $"{BaseUrl}/storage/v1/object/sign/{_settings.Bucket}/{objectPath}")
+                $"{BaseUrl}/storage/v1/object/sign/{targetBucket}/{objectPath}")
             {
                 Content = JsonContent.Create(new { expiresIn = _settings.SignedUrlTtlSeconds }),
             };
@@ -105,11 +122,17 @@ public sealed class SupabaseStorageService : IFileStorageService
         }
     }
 
-    public async Task DeleteAsync(string objectPath, CancellationToken ct = default)
+    public Task DeleteAsync(string objectPath, CancellationToken ct = default)
     {
+        return DeleteAsync(objectPath, _settings.Bucket, ct);
+    }
+
+    public async Task DeleteAsync(string objectPath, string bucketName, CancellationToken ct = default)
+    {
+        var targetBucket = bucketName;
         using var request = new HttpRequestMessage(
             HttpMethod.Delete,
-            $"{BaseUrl}/storage/v1/object/{_settings.Bucket}/{objectPath}");
+            $"{BaseUrl}/storage/v1/object/{targetBucket}/{objectPath}");
         AddAuth(request);
 
         using var response = await _http.SendAsync(request, ct);

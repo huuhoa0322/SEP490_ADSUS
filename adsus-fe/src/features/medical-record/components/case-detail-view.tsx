@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { getApiErrorMessage } from "@/lib/api-client";
@@ -21,6 +22,7 @@ import {
   formatIsoDateTime,
 } from "../lib/medical-record-labels";
 import type { CaseStatus } from "../types/medical-record.types";
+import { useDiagnosticStore } from "../stores/use-diagnostic-store";
 
 import { UltrasoundImageGallery } from "./ultrasound-image-gallery";
 import { UltrasoundUploadField } from "./ultrasound-upload-field";
@@ -60,6 +62,8 @@ function statusBadgeClass(status: CaseStatus): string {
  * này — vẫn bấm được ngay cả khi đang khoá, vì nó chỉ gửi lại đúng nội dung vừa lưu.
  */
 export function CaseDetailView({ caseId }: { caseId: string }) {
+  const router = useRouter();
+  const { data: medicalCase, isLoading, isError, error } = useCaseDetail(caseId);
   const [showUpload, setShowUpload] = useState(false);
   const [pendingImages, setPendingImages] = useState<File[]>([]);
   const [note, setNote] = useState("");
@@ -74,25 +78,23 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const [syncedCaseId, setSyncedCaseId] = useState<string | null>(null);
 
   const currentUser = useAuthStore((state) => state.user);
-  const detailQuery = useCaseDetail(caseId);
   const addImagesMutation = useAddUltrasoundImages(caseId);
   const saveConclusionMutation = useSaveCaseConclusion(caseId);
   const confirmMutation = useConfirmCase(caseId);
   const report = useExportCaseReport(caseId);
 
-  if (detailQuery.isLoading) {
+  if (isLoading) {
     return <p className="p-10 text-sm text-muted-foreground">Đang tải ca khám...</p>;
   }
 
-  if (detailQuery.isError || !detailQuery.data) {
+  if (isError || !medicalCase) {
     return (
       <p className="m-10 rounded-lg bg-destructive/10 p-4 text-sm text-destructive" role="alert">
-        {getApiErrorMessage(detailQuery.error, "Không tìm thấy ca khám.")}
+        {getApiErrorMessage(error, "Không tìm thấy ca khám.")}
       </p>
     );
   }
 
-  const medicalCase = detailQuery.data;
   const isConfirmed = medicalCase.status === "CONFIRMED";
   // GB-04 — chỉ hiện form kết luận cho ĐÚNG Bác sĩ phụ trách ca này, không phải Bác sĩ bất kỳ
   // hay Điều dưỡng. Đây chỉ là lớp trải nghiệm; backend chặn thật ở SaveConclusionAsync/ConfirmAsync.
@@ -146,16 +148,9 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   function handleAddImages() {
     if (pendingImages.length === 0) return;
 
-    addImagesMutation.mutate(
-      { images: pendingImages, note: note.trim() || null },
-      {
-        onSuccess: () => {
-          setPendingImages([]);
-          setNote("");
-          setShowUpload(false);
-        },
-      },
-    );
+    // Use diagnostic store and redirect instead of mutating directly
+    useDiagnosticStore.getState().setDiagnosticSession(caseId, pendingImages);
+    router.push(`/cases/${caseId}/diagnostic`);
   }
 
   return (
@@ -295,10 +290,11 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                 <button
                   type="button"
                   onClick={handleAddImages}
-                  disabled={pendingImages.length === 0 || addImagesMutation.isPending}
+                  disabled={pendingImages.length === 0}
                   className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {addImagesMutation.isPending ? "Đang tải lên..." : "Tải lên"}
+                  {/* eslint-disable-next-line react/jsx-curly-brace-presence */}
+                  Chẩn đoán AI
                 </button>
               </div>
             </div>
