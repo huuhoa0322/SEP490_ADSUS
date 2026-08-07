@@ -102,6 +102,26 @@ export async function confirmIntake(intakeId: string): Promise<void> {
 }
 
 /**
+ * GET /api/v1/cases/my?status=Confirmed — Danh sách ca khám đang Confirmed của Doctor hiện tại.
+ *
+ * Dùng cho form kê đơn (SCR-17 / UC-18): bác sĩ chỉ được kê đơn cho ca của chính mình,
+ * và ca phải ở trạng thái Confirmed (GB-04 mock — chỉ check Role + Status, không check license).
+ *
+ * Response shape tương tự CaseSummary: { caseId, patientProfileId, patientName, patientCode, ... }
+ */
+export async function listMyCases() {
+  const { data } = await apiClient.get<ApiResponse<Array<{
+    caseId: string;
+    patientProfileId: string;
+    patientName: string;
+    patientCode: string;
+  }>>>("/api/v1/cases/my", {
+    params: { status: "Confirmed" },
+  });
+  return data.data ?? [];
+}
+
+/**
  * GET /api/v1/medication-catalog — Danh mục thuốc (Doctor chọn thuốc khi kê đơn).
  * Trả về array trực tiếp, không paginate.
  */

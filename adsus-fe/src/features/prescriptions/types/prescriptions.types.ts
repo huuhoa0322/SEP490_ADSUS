@@ -22,6 +22,7 @@ export type IntakeStatus = "PENDING" | "TAKEN";
 /** 1 dòng thuốc trong đơn kê (POST /api/v1/prescriptions body). */
 export interface CreatePrescriptionItemDto {
   medicineId: string;
+  /** Required string — vd: "1 viên", "2 viên". */
   dosage: string;
   /** 1..365 — backend validate [Range(1, 365)]. */
   durationDays: number;
@@ -32,10 +33,14 @@ export interface CreatePrescriptionItemDto {
   scheduleSlots: ScheduleSlot[];
 }
 
-/** Body POST /api/v1/prescriptions (UC-18). */
+/** Body POST /api/v1/prescriptions (UC-18).
+ *
+ * doctorId KHÔNG có trong body — backend tự lấy từ JWT claim (User.FindFirstValue
+ * ClaimTypes.NameIdentifier → truyền vào CreateAsync(userId, request, ct)).
+ * Backend dùng PascalCase trong record: GeneralNote (không phải notes).
+ */
 export interface CreatePrescriptionRequest {
   caseId: string;
-  doctorId: string;
   generalNote?: string;
   items: CreatePrescriptionItemDto[];
 }
