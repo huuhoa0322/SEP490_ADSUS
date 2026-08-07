@@ -30,7 +30,9 @@ public interface ICaseRepository
         IReadOnlyList<UltrasoundImage> images,
         CancellationToken ct = default);
 
-    /// <summary>Lưu thay đổi trên một Case đã tải qua GetByIdAsync/GetDetailAsync (entity vẫn
-    /// đang được EF theo dõi) — dùng cho các cập nhật đơn giản như ConfirmAsync.</summary>
+    /// <summary>Lưu thay đổi trên một Case đã tải qua GetForUpdateAsync (bản CÓ theo dõi) —
+    /// dùng cho các cập nhật đơn giản như SaveConclusionAsync/ConfirmAsync. KHÔNG dùng với
+    /// entity tải qua GetByIdAsync/GetDetailAsync — hai hàm đó dùng AsNoTracking(), sửa xong
+    /// gọi SaveChangesAsync sẽ không ghi được gì (EF không theo dõi để biết mà lưu).</summary>
     Task SaveChangesAsync(CancellationToken ct = default);
 }
