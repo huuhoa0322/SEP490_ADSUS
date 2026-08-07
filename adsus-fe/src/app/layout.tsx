@@ -3,6 +3,7 @@ import { Exo, Roboto } from "next/font/google";
 import "./globals.css";
 
 import { QueryProvider } from "@/providers/query-provider";
+import { Toaster } from "react-hot-toast";
 
 // Same fonts as the team's Medizco template:
 //   Exo    for headings (style.css line 100)
@@ -40,6 +41,7 @@ export default function RootLayout({
     <html lang="vi" className={htmlClassName}>
       <body className={bodyClassName}>
         <QueryProvider>{children}</QueryProvider>
+        <Toaster position="top-right" />
       </body>
     </html>
   );

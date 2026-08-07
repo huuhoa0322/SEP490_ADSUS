@@ -6,6 +6,7 @@ import {
   getAiModels,
   registerAiModel,
   updateAiModel,
+  calculateMap50,
 } from "../api/ai-models.api";
 
 import type { AiModelListQuery } from "../types/ai-model.types";
@@ -64,6 +65,17 @@ export function useActivateAiModel() {
     mutationFn: activateAiModel,
     onSuccess: () => {
       // Vì activate ảnh hưởng toàn bộ list (chỉ 1 thằng đc active), invalidate list
+      queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
+    },
+  });
+}
+
+export function useCalculateMap50() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: calculateMap50,
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
     },
   });

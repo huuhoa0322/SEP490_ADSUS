@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Loader2, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 
@@ -240,7 +241,7 @@ export function ScheduleSlotManagementView() {
                   await closeMutation.mutateAsync({ id: s.slotId, force: true });
                 }
               } else {
-                alert(getApiErrorMessage(err, "Không đóng được khung giờ."));
+                toast.error(getApiErrorMessage(err, "Không đóng được khung giờ."));
               }
             }
           }}
@@ -283,7 +284,7 @@ export function ScheduleSlotManagementView() {
                   await closeMutation.mutateAsync({ id: s.slotId, force: true });
                 }
               } else {
-                alert(getApiErrorMessage(err, "Không đóng được khung giờ."));
+                toast.error(getApiErrorMessage(err, "Không đóng được khung giờ."));
               }
             }
           }}
@@ -299,7 +300,7 @@ export function ScheduleSlotManagementView() {
               await createMutation.mutateAsync(payload);
               setShowCreate(false);
             } catch (err) {
-              alert(getApiErrorMessage(err, "Không tạo được khung giờ."));
+              toast.error(getApiErrorMessage(err, "Không tạo được khung giờ."));
             }
           }}
           submitting={createMutation.isPending}
@@ -315,7 +316,7 @@ export function ScheduleSlotManagementView() {
               await updateMutation.mutateAsync({ id: editingSlot.slotId, payload });
               setEditingSlot(null);
             } catch (err) {
-              alert(getApiErrorMessage(err, "Không cập nhật được khung giờ."));
+              toast.error(getApiErrorMessage(err, "Không cập nhật được khung giờ."));
             }
           }}
           submitting={updateMutation.isPending}

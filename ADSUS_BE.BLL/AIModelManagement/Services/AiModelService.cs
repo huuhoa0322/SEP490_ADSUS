@@ -45,7 +45,12 @@ public class AiModelService : IAiModelService
             HfRepoId = v.HfRepoId,
             HfFilename = v.HfFilename,
             RegisteredAt = v.RegisteredAt,
-            RegisteredBy = v.RegisteredBy
+            RegisteredBy = v.RegisteredBy,
+            LiveTp = v.LiveTp,
+            LiveFp = v.LiveFp,
+            LiveFn = v.LiveFn,
+            LiveMap50 = v.LiveMap50,
+            LastEvaluatedAt = v.LastEvaluatedAt
         }).ToList();
 
         var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
@@ -73,7 +78,12 @@ public class AiModelService : IAiModelService
             HfRepoId = v.HfRepoId,
             HfFilename = v.HfFilename,
             RegisteredAt = v.RegisteredAt,
-            RegisteredBy = v.RegisteredBy
+            RegisteredBy = v.RegisteredBy,
+            LiveTp = v.LiveTp,
+            LiveFp = v.LiveFp,
+            LiveFn = v.LiveFn,
+            LiveMap50 = v.LiveMap50,
+            LastEvaluatedAt = v.LastEvaluatedAt
         };
     }
 

@@ -40,7 +40,8 @@ public class DashboardServiceTests
                  It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(Array.Empty<DailyActivity>());
 
-        _sut = new DashboardService(_repo.Object);
+        var aiModelRepo = new Mock<IAiModelVersionRepository>();
+        _sut = new DashboardService(_repo.Object, aiModelRepo.Object);
     }
 
     // ---------- AF-01: không bao giờ vỡ ----------

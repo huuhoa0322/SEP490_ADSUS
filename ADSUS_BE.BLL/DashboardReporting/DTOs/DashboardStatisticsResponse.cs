@@ -22,6 +22,8 @@ public class DashboardStatisticsResponse
 
     public AdherenceStatistics Adherence { get; set; } = new();
 
+    public AiModelMetrics ActiveAiModel { get; set; } = new();
+
     /// <summary>
     /// UC-05 bước 3 — diễn biến từng ngày để vẽ biểu đồ xu hướng.
     ///
@@ -30,6 +32,15 @@ public class DashboardStatisticsResponse
     /// trong khi thực tế là không có gì.
     /// </summary>
     public IReadOnlyList<DailyPoint> Trend { get; set; } = Array.Empty<DailyPoint>();
+}
+
+public class AiModelMetrics
+{
+    public string VersionCode { get; set; } = string.Empty;
+    public decimal? Precision { get; set; }
+    public decimal? Recall { get; set; }
+    public decimal? Map50 { get; set; }
+    public DateTime? LastEvaluatedAt { get; set; }
 }
 
 /// <summary>Một điểm trên biểu đồ xu hướng.</summary>

@@ -171,6 +171,39 @@ export function DashboardView() {
 
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
             <ChartCard
+              title="Độ chính xác AI (Mô hình đang chạy)"
+              description={`Phiên bản: ${data.activeAiModel.versionCode || "Không có"}`}
+            >
+              <div className="mt-4 flex gap-4 text-center justify-around items-center">
+                <div>
+                  <div className="text-3xl font-bold font-heading text-foreground">
+                    {data.activeAiModel.precision != null ? (data.activeAiModel.precision * 100).toFixed(1) + "%" : <span className="text-xl text-muted-foreground">Chưa có<br/>dữ liệu</span>}
+                  </div>
+                  <div className="text-sm text-muted-foreground font-medium mt-1">Precision</div>
+                </div>
+                <div className="w-[1px] h-12 bg-border"></div>
+                <div>
+                  <div className="text-3xl font-bold font-heading text-foreground">
+                    {data.activeAiModel.recall != null ? (data.activeAiModel.recall * 100).toFixed(1) + "%" : <span className="text-xl text-muted-foreground">Chưa có<br/>dữ liệu</span>}
+                  </div>
+                  <div className="text-sm text-muted-foreground font-medium mt-1">Recall</div>
+                </div>
+                <div className="w-[1px] h-12 bg-border"></div>
+                <div>
+                  <div className="text-3xl font-bold font-heading text-emerald-600">
+                    {data.activeAiModel.map50 != null ? (data.activeAiModel.map50).toFixed(1) + "%" : <span className="text-xl text-muted-foreground">Chưa có<br/>dữ liệu</span>}
+                  </div>
+                  <div className="text-sm text-muted-foreground font-medium mt-1">mAP50</div>
+                </div>
+              </div>
+              {data.activeAiModel.lastEvaluatedAt && (
+                <p className="mt-6 text-xs text-center text-muted-foreground/60 border-t border-border pt-4">
+                  mAP50 tính lần cuối: {new Date(data.activeAiModel.lastEvaluatedAt).toLocaleString('vi-VN')}
+                </p>
+              )}
+            </ChartCard>
+
+            <ChartCard
               title="Tài khoản theo vai trò"
               description="Tính trên toàn hệ thống, không phụ thuộc khoảng thời gian đang chọn."
             >

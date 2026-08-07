@@ -13,6 +13,7 @@ using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using ADSUS_BE.BLL.Common;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -154,6 +155,51 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
                     UpdatedAt = DateTime.UtcNow
                 });
             }
+
+            // Calculate O(1) Metrics for this single image
+            int newTp = 0;
+            int newFp = 0;
+            int newFn = 0;
+
+            var matchedGtIndices = new HashSet<int>();
+
+            foreach (var aiBox in aiBboxes)
+            {
+                decimal maxIou = 0;
+                int bestGtIndex = -1;
+
+                for (int i = 0; i < docBboxes.Count; i++)
+                {
+                    var docBox = docBboxes[i];
+                    var iou = IoUCalculator.Calculate(
+                        aiBox.Xmin, aiBox.Ymin, aiBox.Xmax, aiBox.Ymax,
+                        docBox.Xmin, docBox.Ymin, docBox.Xmax, docBox.Ymax);
+                    
+                    if (iou > maxIou)
+                    {
+                        maxIou = iou;
+                        bestGtIndex = i;
+                    }
+                }
+
+                if (maxIou >= 0.5m && !matchedGtIndices.Contains(bestGtIndex))
+                {
+                    newTp++;
+                    matchedGtIndices.Add(bestGtIndex);
+                }
+                else
+                {
+                    newFp++;
+                }
+            }
+
+            newFn = docBboxes.Count - matchedGtIndices.Count;
+
+            activeModel.LiveTp += newTp;
+            activeModel.LiveFp += newFp;
+            activeModel.LiveFn += newFn;
+            
+            _db.AiModelVersions.Update(activeModel);
 
             await _db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
