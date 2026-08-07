@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Role } from "@/types/api.types";
 
-import { getHomePathForRole, isRoleAllowedOnPath } from "./auth-store";
+import { getHomePathForRole, isRoleAllowedOnPath, useAuthStore } from "./auth-store";
 
 /**
  * Điều hướng và phân quyền theo vai trò.
@@ -86,5 +86,21 @@ describe("isRoleAllowedOnPath — PRD §3.2 Permission Matrix", () => {
     for (const role of ["ADMIN", "DOCTOR", "NURSE", "PATIENT"] satisfies Role[]) {
       expect(isRoleAllowedOnPath(role, "/change-password")).toBe(true);
     }
+  });
+});
+
+describe("AuthUser.userId", () => {
+  it("lưu userId vào phiên khi đăng nhập", () => {
+    // GB-04 — form tạo ca khám cần id của chính người đang đăng nhập để điền sẵn ô Bác sĩ
+    // phụ trách. Backend không suy ra được giá trị này từ token.
+    useAuthStore.getState().signIn("token-abc", {
+      userId: "user-42",
+      fullName: "BS. Nguyễn Văn An",
+      email: "an@example.com",
+      role: "DOCTOR",
+      mustChangePassword: false,
+    });
+
+    expect(useAuthStore.getState().user?.userId).toBe("user-42");
   });
 });

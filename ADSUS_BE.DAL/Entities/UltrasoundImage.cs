@@ -18,7 +18,9 @@ public partial class UltrasoundImage
 
     public string? Note { get; set; }
 
-    public virtual ICollection<AiFinding> AiFindings { get; set; } = new List<AiFinding>();
+    public virtual ICollection<AiPrediction> AiPredictions { get; set; } = new List<AiPrediction>();
 
     public virtual Case Case { get; set; } = null!;
+
+    public virtual ICollection<DoctorAnnotation> DoctorAnnotations { get; set; } = new List<DoctorAnnotation>();
 }

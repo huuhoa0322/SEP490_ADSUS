@@ -62,13 +62,7 @@ public class DashboardRepository : IDashboardRepository
         var caseCount = await _db.Cases.AsNoTracking()
             .CountAsync(c => c.VisitDate >= fromDate && c.VisitDate <= toDate, cancellationToken);
 
-        var aiGroups = await _db.AiResults.AsNoTracking()
-            .Where(r => r.CreatedAt >= fromInclusive && r.CreatedAt < toExclusive)
-            .GroupBy(r => r.Status)
-            .Select(g => new { Status = g.Key, Count = g.Count() })
-            .ToListAsync(cancellationToken);
-
-        int Ai(AiResultStatus status) => aiGroups.FirstOrDefault(g => g.Status == status)?.Count ?? 0;
+        // AI Results logic removed as per UC-19 design.
 
         // Lọc lịch hẹn theo NGÀY KHÁM (SlotDate), không theo ngày đặt.
         //
@@ -110,10 +104,10 @@ public class DashboardRepository : IDashboardRepository
         return BuildActivityCounts(
             newAccounts,
             caseCount,
-            aiGroups.Sum(g => g.Count),
-            Ai(AiResultStatus.Confirmed),
-            Ai(AiResultStatus.Rejected),
-            Ai(AiResultStatus.PendingReview),
+            0, // Total AI (removed)
+            0, // Confirmed AI (removed)
+            0, // Rejected AI (removed)
+            0, // Pending AI (removed)
             Appointments(AppointmentStatus.Booked),
             Appointments(AppointmentStatus.Cancelled),
             slotCount,

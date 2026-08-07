@@ -13,8 +13,9 @@ public class ChangePasswordRequestValidator : AbstractValidator<ChangePasswordRe
 
     public ChangePasswordRequestValidator()
     {
-        RuleFor(x => x.CurrentPassword)
-            .NotEmpty().WithMessage("Current password is required.");
+        // CurrentPassword has no format rule here on purpose (sửa 06/08/2026) — whether it's
+        // required depends on User.MustChangePassword, DB state the validator has no access
+        // to. AuthService.ChangePasswordAsync enforces the conditional requirement.
 
         RuleFor(x => x.NewPassword)
             .NotEmpty().WithMessage("New password is required.")

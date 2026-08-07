@@ -217,6 +217,30 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
+    public async Task GetCasesByPatientProfileId_ReturnsCreatedAt()
+    {
+        // Thêm 06/08/2026 — #24 (StaffCaseSummaryResponse) mang thêm CreatedAt so với #25,
+        // kiểm qua cả pipeline HTTP thật để bắt lỗi serialize (không chỉ ở tầng service).
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Created);
+        _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _cases.Setup(r => r.SearchByPatientAsync(
+                  profile.PatientProfileId, null, "desc", 1, 20, It.IsAny<CancellationToken>()))
+              .ReturnsAsync((new List<Case> { medicalCase }, 1));
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases?patientProfileId={profile.PatientProfileId}");
+
+        // Assert
+        var body = await response.Content
+            .ReadFromJsonAsync<ApiResponse<PagedResult<StaffCaseSummaryResponse>>>();
+        Assert.Equal(medicalCase.CreatedAt, body!.Data!.Items.Single().CreatedAt);
+    }
+
+    [Fact]
     public async Task GetCasesByPatientProfileId_CalledByPatientRole_Returns403Forbidden()
     {
         // Arrange
@@ -381,9 +405,10 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
-    public async Task PostCases_NoImageAttached_Returns422UnprocessableEntity()
+    public async Task PostCases_NoImageAttached_Returns201Created()
     {
-        // Arrange — AF-02: #20 trả 422 (khác #21, xem flag N2).
+        // Arrange — quyết định ghi đè 07/08/2026: #20 không còn bắt buộc ảnh nữa (#21 —
+        // AddUltrasoundImagesAsync — vẫn bắt buộc, xem PostUltrasoundImages_NoImageAttached_Returns400BadRequest).
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
@@ -392,13 +417,29 @@ public class CasesControllerIntegrationTests
         _users.Setup(r => r.GetByIdAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(_doctor);
 
+        Case? createdCase = null;
+        _cases.Setup(r => r.CreateWithImagesAsync(
+                  It.IsAny<Case>(), It.IsAny<IReadOnlyList<UltrasoundImage>>(), It.IsAny<CancellationToken>()))
+              .Callback<Case, IReadOnlyList<UltrasoundImage>, CancellationToken>((c, imgs, _) =>
+              {
+                  createdCase = c;
+                  c.UltrasoundImages = imgs.ToList();
+                  c.PatientProfile = profile;
+                  c.Doctor = _doctor;
+              })
+              .ReturnsAsync((Case c, IReadOnlyList<UltrasoundImage> _, CancellationToken _) => c);
+        _cases.Setup(r => r.GetDetailAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(() => createdCase);
+
         using var form = MakeCreateCaseForm(profile.PatientProfileId, _doctor.UserId, null, imageBytes: null);
 
         // Act
         var response = await client.PostAsync("/api/v1/cases", form);
 
         // Assert
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
+        Assert.Empty(body!.Data!.UltrasoundImages);
     }
 
     [Fact]

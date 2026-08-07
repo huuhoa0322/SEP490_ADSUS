@@ -49,19 +49,6 @@ public static class EnumExtensions
     };
 
     /// <summary>
-    /// Trạng thái kết quả AI — enum <c>ai_result_status</c>. PendingReview → "PENDING_REVIEW":
-    /// nhãn nhiều từ có dấu gạch dưới mà .ToString().ToUpperInvariant() KHÔNG thể tạo ra
-    /// (sẽ ra "PENDINGREVIEW", sai) — đây chính là lý do bắt buộc dùng switch tường minh.
-    /// </summary>
-    public static string ToApiString(this AiResultStatus status) => status switch
-    {
-        AiResultStatus.PendingReview => "PENDING_REVIEW",
-        AiResultStatus.Confirmed => "CONFIRMED",
-        AiResultStatus.Rejected => "REJECTED",
-        _ => throw new ArgumentOutOfRangeException(nameof(status)),
-    };
-
-    /// <summary>
     /// Đọc vai trò từ chuỗi client gửi lên. Trả null nếu không khớp giá trị nào.
     ///
     /// Phải tự đọc thay vì để bộ chuyển đổi JSON làm: mặc định nó biến chuỗi lạ thành phần

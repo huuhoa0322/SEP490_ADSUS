@@ -7,8 +7,10 @@ namespace ADSUS_BE.BLL.MedicalRecord.DTOs;
 /// KHÔNG có Role: luôn cố định PATIENT. Nhận role từ request thì Điều dưỡng tự tạo được tài
 /// khoản Bác sĩ cho mình.
 ///
-/// KHÔNG có mật khẩu: hệ thống sinh mật khẩu tạm rồi gửi email, y hệt UC-04 BR-03. Điều
-/// dưỡng không bao giờ được tự đặt (BR-05).
+/// KHÔNG có mật khẩu: hệ thống sinh mật khẩu tạm (Điều dưỡng không bao giờ tự ĐẶT — vẫn đúng
+/// BR-05 phần này). Khác trước 06/08/2026: mật khẩu đó giờ trả về plaintext MỘT LẦN trong
+/// response của endpoint tạo tài khoản (PatientAccountCreatedResponse) để hiển thị ngay trên
+/// màn hình, KHÔNG còn gửi qua email.
 /// </summary>
 public sealed record CreatePatientAccountRequest(
     string PhoneNumber,
@@ -43,3 +45,18 @@ public sealed record PatientAccountResponse(
     string PhoneNumber,
     DateOnly? DateOfBirth,
     string? Email);
+
+/// <summary>
+/// Trả về SAU KHI TẠO tài khoản Bệnh nhân — DUY NHẤT nơi mật khẩu tạm xuất hiện dưới dạng
+/// plaintext, và chỉ đúng một lần ngay tại thời điểm tạo (quyết định ghi đè 06/08/2026, thay
+/// một phần BR-05 gốc). Điều dưỡng đọc trực tiếp cho bệnh nhân nghe/ghi lại tại chỗ — KHÔNG
+/// còn gửi qua email. Không endpoint nào khác của Module 04 trả plaintext mật khẩu; DB chỉ
+/// lưu bản băm (PasswordHash).
+/// </summary>
+public sealed record PatientAccountCreatedResponse(
+    Guid UserId,
+    string FullName,
+    string PhoneNumber,
+    DateOnly? DateOfBirth,
+    string? Email,
+    string TemporaryPassword);

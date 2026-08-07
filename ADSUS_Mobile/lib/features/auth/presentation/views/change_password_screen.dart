@@ -45,12 +45,19 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   }
 
   Future<void> _submit() async {
+    // Bị ép đổi vì đang dùng mật khẩu tạm (sửa 06/08/2026) — không đòi mật khẩu hiện tại nữa,
+    // người dùng vừa chứng minh biết giá trị đó qua bước đăng nhập ngay trước đây.
+    final mustChange =
+        ref.read(authViewModelProvider).session?.mustChangePassword ?? false;
+
     final current = _currentController.text;
     final newPassword = _newController.text;
     final confirm = _confirmController.text;
 
-    if (current.isEmpty || newPassword.isEmpty || confirm.isEmpty) {
-      setState(() => _errorMessage = 'Vui lòng điền đầy đủ cả ba ô.');
+    if ((!mustChange && current.isEmpty) || newPassword.isEmpty || confirm.isEmpty) {
+      setState(() => _errorMessage = mustChange
+          ? 'Vui lòng điền đầy đủ cả hai ô.'
+          : 'Vui lòng điền đầy đủ cả ba ô.');
       return;
     }
     if (_passwordRules.any((r) => !r.test(newPassword))) {
@@ -70,7 +77,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
     try {
       await ref.read(authRepositoryProvider).changePassword(
-            currentPassword: current,
+            currentPassword: mustChange ? null : current,
             newPassword: newPassword,
             confirmNewPassword: confirm,
           );
@@ -115,8 +122,11 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 const SizedBox(height: 22),
               ],
 
-              _passwordField('MẬT KHẨU HIỆN TẠI', _currentController),
-              const SizedBox(height: 18),
+              // Bị ép đổi vì đang dùng mật khẩu tạm — không hỏi lại giá trị vừa dùng để đăng nhập.
+              if (!mustChange) ...[
+                _passwordField('MẬT KHẨU HIỆN TẠI', _currentController),
+                const SizedBox(height: 18),
+              ],
               _passwordField('MẬT KHẨU MỚI', _newController,
                   onChanged: (_) => setState(() {})),
               const SizedBox(height: 18),

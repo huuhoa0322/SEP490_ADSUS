@@ -18,7 +18,8 @@ public interface ICaseService
     Task<PatientCaseResponse> GetForPatientAsync(
         Guid caseId, Guid callerUserId, CancellationToken ct = default);
 
-    Task<PagedResult<CaseSummaryResponse>> ListByPatientProfileAsync(
+    /// <summary>#24 — cho Bác sĩ/Điều dưỡng (Web SCR-12). Có CreatedAt, xem StaffCaseSummaryResponse.</summary>
+    Task<PagedResult<StaffCaseSummaryResponse>> ListByPatientProfileAsync(
         Guid patientProfileId,
         string? status,
         string sortOrder,

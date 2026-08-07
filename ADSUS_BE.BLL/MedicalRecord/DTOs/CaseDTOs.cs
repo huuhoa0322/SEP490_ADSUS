@@ -12,16 +12,6 @@ public sealed record UltrasoundImageResponse(
     DateTime UploadedAt,
     string? Note);
 
-/// <summary>Tóm tắt kết quả AI nhúng trong #23. Chi tiết thuộc Module 5.</summary>
-/// <remarks>
-/// KHÔNG có confidenceScore: bảng ai_results không có cột nào như vậy — độ tin cậy nằm ở
-/// từng ai_findings.confidence. Xem flag N1 trong tài liệu thiết kế.
-/// </remarks>
-public sealed record AiResultSummary(
-    Guid AiResultId,
-    string Status,
-    int FindingCount);
-
 /// <summary>Tóm tắt đơn thuốc nhúng trong #23. Chi tiết thuộc Module 7.</summary>
 public sealed record PrescriptionSummary(
     Guid PrescriptionId,
@@ -42,7 +32,7 @@ public sealed record CaseResponse(
     string? DoctorConclusion,
     PatientProfileResponse? PatientProfile,
     IReadOnlyList<UltrasoundImageResponse> UltrasoundImages,
-    IReadOnlyList<AiResultSummary> AiResults,
+    // AiResults removed
     PrescriptionSummary? Prescription,
     DateTime CreatedAt,
     DateTime UpdatedAt);
@@ -65,12 +55,27 @@ public sealed record PatientCaseResponse(
     string? DoctorConclusion,
     PrescriptionSummary? Prescription);
 
-/// <summary>#24, #25 — một dòng trong danh sách lần khám.</summary>
+/// <summary>#25 — một dòng trong danh sách lần khám CỦA CHÍNH bệnh nhân (Mobile).</summary>
 public sealed record CaseSummaryResponse(
     Guid CaseId,
     DateOnly VisitDate,
     string Status,
     Guid DoctorId);
+
+/// <summary>
+/// #24 — một dòng trong danh sách lần khám cho Bác sĩ/Điều dưỡng (Web SCR-12).
+///
+/// Tách riêng khỏi CaseSummaryResponse (thêm 06/08/2026) chỉ để có thêm CreatedAt — VisitDate
+/// là DateOnly, không có giờ. KHÔNG dùng chung với #25: PatientCaseResponse (chi tiết 1 ca cho
+/// bệnh nhân) đã cố tình bỏ mọi mốc thời gian, nên danh sách của bệnh nhân cũng không nên có,
+/// tránh lệch giữa hai màn cùng vai trò.
+/// </summary>
+public sealed record StaffCaseSummaryResponse(
+    Guid CaseId,
+    DateOnly VisitDate,
+    string Status,
+    Guid DoctorId,
+    DateTime CreatedAt);
 
 /// <summary>#20 — tạo lần khám mới kèm ít nhất một ảnh siêu âm (UC-07).</summary>
 public sealed record CreateCaseRequest(

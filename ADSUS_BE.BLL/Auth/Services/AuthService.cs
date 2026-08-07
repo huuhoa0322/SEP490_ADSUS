@@ -86,8 +86,16 @@ public class AuthService : IAuthService
             return ChangePasswordResult.AccountNotActive;
         }
 
-        // BR-01: the change is only allowed when the current password is correct.
-        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+        // BR-01: the change is only allowed when the current password is correct — UNLESS the
+        // account is still on an admin/nurse-issued temporary password (MustChangePassword).
+        // In that case the caller already proved they know it by logging in with it moments
+        // ago; the only password anyone could re-type here is the one the UI is about to make
+        // them forget, so re-verification is pure friction, not security (extended 06/08/2026,
+        // same reveal-on-issue decision as UC-06 AF-01/AF-03). The branch is keyed off the
+        // account's own server-side flag, never a client-supplied one.
+        if (!user.MustChangePassword
+            && (string.IsNullOrEmpty(request.CurrentPassword)
+                || !BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash)))
         {
             return ChangePasswordResult.CurrentPasswordIncorrect;
         }

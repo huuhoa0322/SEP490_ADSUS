@@ -15,14 +15,25 @@ namespace ADSUS_BE.BLL.MedicalRecord.Interfaces;
 /// </summary>
 public interface IPatientAccountService
 {
-    /// <summary>AF-01 — tạo tài khoản Bệnh nhân mới, sinh mật khẩu tạm và gửi email.</summary>
-    Task<PatientAccountResponse> CreateAsync(
+    /// <summary>AF-01 — tạo tài khoản Bệnh nhân mới, sinh mật khẩu tạm, trả về plaintext đúng
+    /// một lần để Điều dưỡng đọc cho bệnh nhân (quyết định ghi đè 06/08/2026 — không còn gửi
+    /// email).</summary>
+    Task<PatientAccountCreatedResponse> CreateAsync(
         CreatePatientAccountRequest request, Guid actingNurseId, CancellationToken ct = default);
+
+    /// <summary>AF-02 phần đọc — trả thông tin tài khoản hiện tại, gồm email. PatientProfile
+    /// (#19) không có trường email nên form Sửa thông tin tài khoản cần nguồn riêng để không
+    /// vô tình gửi email rỗng lên UpdateContactAsync (full-replace, xem BR-04).</summary>
+    Task<PatientAccountResponse> GetAccountAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>AF-02 — sửa 4 trường liên hệ. Không đụng role/status.</summary>
     Task<PatientAccountResponse> UpdateContactAsync(
         Guid userId, UpdatePatientAccountRequest request, Guid actingNurseId, CancellationToken ct = default);
 
-    /// <summary>AF-03 — sinh mật khẩu tạm mới và gửi email. Không trả mật khẩu về (BR-05).</summary>
-    Task ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default);
+    /// <summary>
+    /// AF-03 — sinh mật khẩu tạm mới, luôn trả plaintext MỘT LẦN để Điều dưỡng đọc trực tiếp
+    /// cho bệnh nhân, bất kể tài khoản có email hay không (quyết định ghi đè 06/08/2026, mở
+    /// rộng lần 2, thay một phần BR-05). Không còn gửi email ở đường này nữa.
+    /// </summary>
+    Task<string> ResetPasswordAsync(Guid userId, Guid actingNurseId, CancellationToken ct = default);
 }
