@@ -347,6 +347,7 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IPatientProfileService, PatientProfileService>();
             builder.Services.AddScoped<ICaseService, CaseService>();
             builder.Services.AddScoped<ICaseDiagnosisService, CaseDiagnosisService>();
+            builder.Services.AddScoped<IAiMetricsService, AiMetricsService>();
             builder.Services.AddScoped<ICaseReportService, CaseReportService>();
             builder.Services.AddScoped<IDoctorDirectoryService, DoctorDirectoryService>();
             builder.Services.AddScoped<IPatientAccountService, PatientAccountService>();

@@ -48,3 +48,7 @@ export async function activateAiModel(id: string): Promise<void> {
   const payload: ActivateVersionRequest = { status: "ACTIVE" };
   await apiClient.patch<ApiResponse<null>>(`${BASE}/${id}`, payload);
 }
+
+export async function calculateMap50(id: string): Promise<void> {
+  await apiClient.post<ApiResponse<null>>(`${BASE}/${id}/calculate-map50`);
+}

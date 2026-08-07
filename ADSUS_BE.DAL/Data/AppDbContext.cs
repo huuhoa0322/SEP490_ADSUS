@@ -126,6 +126,19 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.HfRepoId)
                 .HasMaxLength(255)
                 .HasColumnName("hf_repo_id");
+            entity.Property(e => e.LastEvaluatedAt).HasColumnName("last_evaluated_at");
+            entity.Property(e => e.LiveFn)
+                .HasDefaultValue(0)
+                .HasColumnName("live_fn");
+            entity.Property(e => e.LiveFp)
+                .HasDefaultValue(0)
+                .HasColumnName("live_fp");
+            entity.Property(e => e.LiveMap50)
+                .HasPrecision(5, 2)
+                .HasColumnName("live_map50");
+            entity.Property(e => e.LiveTp)
+                .HasDefaultValue(0)
+                .HasColumnName("live_tp");
             entity.Property(e => e.MetricsMap50)
                 .HasPrecision(5, 2)
                 .HasComment("Đơn vị %. Ngưỡng KPI: > 85%.")

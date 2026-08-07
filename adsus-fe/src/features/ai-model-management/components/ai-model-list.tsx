@@ -4,14 +4,20 @@ import { AlertCircle, BrainCircuit, Eye, Loader2, Pencil, PlayCircle, Plus, Sear
 import Link from "next/link";
 import { useState } from "react";
 
-import { getApiErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/features/users/lib/user-labels";
 import { ConfirmDialog } from "@/features/users/components/confirm-dialog";
+import { getApiErrorMessage } from "@/lib/api-client";
+import toast from "react-hot-toast";
 
-import { useActivateAiModel, useAiModelList } from "../hooks/use-ai-models";
+import { useActivateAiModel, useAiModelList, useCalculateMap50 } from "../hooks/use-ai-models";
 import type { AiModelVersion } from "../types/ai-model.types";
 import { AiModelDetailDialog } from "./ai-model-detail-dialog";
 import { AiModelFormDialog } from "./ai-model-form";
+
+const formatPercent = (val?: number | null) => {
+  if (val === undefined || val === null) return "Chưa có dữ liệu";
+  return (val * 100).toFixed(1) + "%";
+};
 
 function PagerButton({
   children,
@@ -43,6 +49,7 @@ export function AiModelList() {
   const models = data?.items;
   
   const { mutate: activateModel, isPending: isActivating, error: activateError, reset: resetActivate } = useActivateAiModel();
+  const { mutate: calculateMap50, isPending: isCalculatingMap50 } = useCalculateMap50();
 
   // Dialog states
   const [selectedModel, setSelectedModel] = useState<AiModelVersion | null>(null);
@@ -63,6 +70,18 @@ export function AiModelList() {
         setModelToActivate(null);
         setPage(1);
       },
+    });
+  };
+
+  const handleCalculateMap50 = (modelId: string) => {
+    const p = toast.loading("Đang quét Database tính toán mAP50...");
+    calculateMap50(modelId, {
+      onSuccess: () => {
+        toast.success("Đã quét Database và tính toán xong mAP50!", { id: p });
+      },
+      onError: (err) => {
+        toast.error(getApiErrorMessage(err, "Lỗi tính toán mAP50"), { id: p });
+      }
     });
   };
 
@@ -134,7 +153,8 @@ export function AiModelList() {
             <tr className="border-b border-border bg-secondary/40">
               <th className="px-5 py-4 font-600 text-muted-foreground">Version Code</th>
               <th className="px-5 py-4 font-600 text-muted-foreground">HuggingFace File</th>
-              <th className="px-5 py-4 font-600 text-muted-foreground">Metrics (P/R)</th>
+              <th className="px-5 py-4 font-600 text-muted-foreground">P / R (Live)</th>
+              <th className="px-5 py-4 font-600 text-muted-foreground">mAP50</th>
               <th className="px-5 py-4 font-600 text-muted-foreground">Ngày tạo</th>
               <th className="px-5 py-4 font-600 text-muted-foreground">Trạng thái</th>
               <th className="px-5 py-4 text-right font-600 text-muted-foreground">Thao tác</th>
@@ -166,7 +186,15 @@ export function AiModelList() {
                   {model.hfFilename}
                 </td>
                 <td className="px-5 py-4 text-muted-foreground">
-                  {model.metricsPrecision ?? "—"} / {model.metricsRecall ?? "—"}
+                  {formatPercent(model.livePrecision)} / {formatPercent(model.liveRecall)}
+                </td>
+                <td className="px-5 py-4 text-muted-foreground">
+                  {formatPercent(model.liveMap50 != null ? model.liveMap50 / 100 : null)}
+                  {model.lastEvaluatedAt && (
+                    <div className="text-[10px] text-muted-foreground/60 mt-1">
+                      (Cập nhật: {formatDateTime(model.lastEvaluatedAt)})
+                    </div>
+                  )}
                 </td>
                 <td className="px-5 py-4 text-muted-foreground">
                   {formatDateTime(model.registeredAt)}
@@ -184,6 +212,14 @@ export function AiModelList() {
                 </td>
                 <td className="px-5 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => handleCalculateMap50(model.modelVersionId)}
+                      disabled={isCalculatingMap50}
+                      title="Tính lại mAP50"
+                      className="flex size-9 items-center justify-center rounded-full text-indigo-500 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-50"
+                    >
+                      {isCalculatingMap50 ? <Loader2 className="size-4 animate-spin" /> : <PlayCircle className="size-4" />}
+                    </button>
                     <button
                       onClick={() => handleOpenDetail(model)}
                       title="Xem chi tiết"

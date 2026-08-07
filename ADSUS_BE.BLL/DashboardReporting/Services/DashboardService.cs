@@ -26,8 +26,13 @@ public class DashboardService : IDashboardService
     private const int MaxRangeDays = 366;
 
     private readonly IDashboardRepository _dashboard;
+    private readonly IAiModelVersionRepository _aiModelRepo;
 
-    public DashboardService(IDashboardRepository dashboard) => _dashboard = dashboard;
+    public DashboardService(IDashboardRepository dashboard, IAiModelVersionRepository aiModelRepo)
+    {
+        _dashboard = dashboard;
+        _aiModelRepo = aiModelRepo;
+    }
 
     public async Task<DashboardStatisticsResponse> GetStatisticsAsync(
         string? fromDate,
@@ -41,6 +46,7 @@ public class DashboardService : IDashboardService
         var accounts = await _dashboard.GetAccountCountsAsync(cancellationToken);
         var activity = await _dashboard.GetActivityCountsAsync(from, to, cancellationToken);
         var daily = await _dashboard.GetDailyActivityAsync(from, to, cancellationToken);
+        var activeModel = await _aiModelRepo.GetActiveVersionAsync(cancellationToken);
 
         return new DashboardStatisticsResponse
         {
@@ -89,6 +95,15 @@ public class DashboardService : IDashboardService
                 ScheduledDoseCount = activity.MedicationDoseCount,
                 TakenDoseCount = activity.MedicationTakenCount,
                 AdherenceRate = Percent(activity.MedicationTakenCount, activity.MedicationDoseCount),
+            },
+
+            ActiveAiModel = activeModel == null ? new AiModelMetrics() : new AiModelMetrics
+            {
+                VersionCode = activeModel.VersionCode,
+                Precision = (activeModel.LiveTp + activeModel.LiveFp) > 0 ? (decimal)activeModel.LiveTp / (activeModel.LiveTp + activeModel.LiveFp) : null,
+                Recall = (activeModel.LiveTp + activeModel.LiveFn) > 0 ? (decimal)activeModel.LiveTp / (activeModel.LiveTp + activeModel.LiveFn) : null,
+                Map50 = activeModel.LiveMap50,
+                LastEvaluatedAt = activeModel.LastEvaluatedAt
             },
 
             Trend = BuildTrend(from, to, daily),

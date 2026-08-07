@@ -37,6 +37,16 @@ public partial class AiModelVersion
 
     public string HfFilename { get; set; } = null!;
 
+    public int LiveTp { get; set; }
+
+    public int LiveFp { get; set; }
+
+    public int LiveFn { get; set; }
+
+    public decimal? LiveMap50 { get; set; }
+
+    public DateTime? LastEvaluatedAt { get; set; }
+
     public virtual ICollection<AiPrediction> AiPredictions { get; set; } = new List<AiPrediction>();
 
     public virtual User RegisteredByNavigation { get; set; } = null!;
