@@ -346,6 +346,7 @@ namespace ADSUS_BE
             // BLL — Module 4: Medical Record
             builder.Services.AddScoped<IPatientProfileService, PatientProfileService>();
             builder.Services.AddScoped<ICaseService, CaseService>();
+            builder.Services.AddScoped<ICaseDiagnosisService, CaseDiagnosisService>();
             builder.Services.AddScoped<ICaseReportService, CaseReportService>();
             builder.Services.AddScoped<IDoctorDirectoryService, DoctorDirectoryService>();
             builder.Services.AddScoped<IPatientAccountService, PatientAccountService>();
