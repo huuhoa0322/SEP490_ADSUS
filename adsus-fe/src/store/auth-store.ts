@@ -136,6 +136,9 @@ const ROUTE_ROLES: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
   // UC-04 (SCR-06, SCR-07): "Create", "Lock / Deactivate" và "Assign role" đều là No cho
   // Doctor/Nurse/Patient. Đây là chỗ đầu tiên NURSE khác DOCTOR.
   { prefix: "/admin", roles: ["ADMIN"] },
+  // UC-18: Doctor kê đơn thuốc (Module 7 Task 8 / SCR-17). Nurse có thể xem danh sách
+  // tuân thủ nhưng không được kê đơn — kê đơn là hành vi y khoa chỉ Doctor được phép.
+  { prefix: "/doctor/prescriptions", roles: ["DOCTOR"] },
 ];
 
 /**
