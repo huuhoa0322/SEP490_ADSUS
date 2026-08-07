@@ -224,6 +224,74 @@ public sealed class CaseService : ICaseService
             .ToList();
     }
 
+    public async Task<CaseResponse> SaveConclusionAsync(
+        Guid caseId,
+        Guid actingDoctorId,
+        CaseConclusionRequest request,
+        CancellationToken ct = default)
+    {
+        var medicalCase = await LoadForConclusionUpdateAsync(caseId, actingDoctorId, ct);
+
+        medicalCase.FinalDiagnosis = request.FinalDiagnosis.Trim();
+        medicalCase.DoctorConclusion = request.DoctorConclusion.Trim();
+        medicalCase.UpdatedAt = DateTime.UtcNow;
+        // Trạng thái CỐ Ý không đổi — đây là lưu nháp, sửa lại được nhiều lần cho tới khi
+        // Bác sĩ bấm "Kết thúc ca khám" (ConfirmAsync).
+
+        await _cases.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Case {CaseId} conclusion saved by doctor {DoctorId}", caseId, actingDoctorId);
+
+        return await GetForStaffAsync(caseId, ct);
+    }
+
+    public async Task<CaseResponse> ConfirmAsync(
+        Guid caseId,
+        Guid actingDoctorId,
+        CaseConclusionRequest request,
+        CancellationToken ct = default)
+    {
+        var medicalCase = await LoadForConclusionUpdateAsync(caseId, actingDoctorId, ct);
+
+        medicalCase.FinalDiagnosis = request.FinalDiagnosis.Trim();
+        medicalCase.DoctorConclusion = request.DoctorConclusion.Trim();
+        medicalCase.Status = CaseStatus.Confirmed;
+        medicalCase.UpdatedAt = DateTime.UtcNow;
+
+        await _cases.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Case {CaseId} confirmed by doctor {DoctorId}", caseId, actingDoctorId);
+
+        return await GetForStaffAsync(caseId, ct);
+    }
+
+    /// <summary>
+    /// Tải ca (có theo dõi) và kiểm hai điều kiện dùng chung cho cả SaveConclusionAsync lẫn
+    /// ConfirmAsync — tách ra một chỗ để hai hành động không bao giờ lệch luật với nhau.
+    /// </summary>
+    private async Task<Case> LoadForConclusionUpdateAsync(
+        Guid caseId, Guid actingDoctorId, CancellationToken ct)
+    {
+        var medicalCase = await _cases.GetForUpdateAsync(caseId, ct)
+            ?? throw new ResourceNotFoundException("Case not found.");
+
+        // P2/GB-01 — CONFIRMED là trạng thái cuối, không có đường lùi. Ca đã khoá thì không
+        // sửa được nữa dưới bất kỳ hình thức nào, kể cả chỉ lưu nháp lại đúng nội dung cũ.
+        if (medicalCase.Status == CaseStatus.Confirmed)
+        {
+            throw new BusinessException("This case has already been confirmed and cannot be changed.");
+        }
+
+        // GB-04 — chỉ đúng bác sĩ chịu trách nhiệm của CA NÀY mới được sửa/chốt kết luận,
+        // không phải bác sĩ bất kỳ đang đăng nhập.
+        if (medicalCase.DoctorId != actingDoctorId)
+        {
+            throw new BusinessException("Only the responsible doctor can change this case's conclusion.");
+        }
+
+        return medicalCase;
+    }
+
     /// <summary>
     /// Kiểm rồi đẩy từng file lên Storage. Hỏng giữa chừng thì dọn sạch những file đã lên
     /// trước khi ném tiếp — không để lại rác nửa vời.

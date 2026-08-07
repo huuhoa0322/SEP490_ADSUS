@@ -4,13 +4,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   addUltrasoundImages,
+  confirmCase,
   createCase,
   getCaseDetail,
   listCasesByPatient,
   listUltrasoundImages,
+  saveCaseConclusion,
 } from "../api/cases.api";
 import type {
   AddUltrasoundImagesInput,
+  CaseConclusionInput,
   CaseListQuery,
   CreateCaseInput,
 } from "../types/medical-record.types";
@@ -72,6 +75,37 @@ export function useAddUltrasoundImages(caseId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
       queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.images(caseId) });
+    },
+  });
+}
+
+/**
+ * Thêm 07/08/2026 — "Lưu kết luận". KHÔNG đổi trạng thái ca, chỉ làm mới chi tiết ca này (badge
+ * trạng thái ở SCR-12 không đổi nên không cần invalidate danh sách).
+ */
+export function useSaveCaseConclusion(caseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: CaseConclusionInput) => saveCaseConclusion(caseId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
+    },
+  });
+}
+
+/**
+ * Thêm 07/08/2026 — "Kết thúc ca khám". Bác sĩ phụ trách khoá ca, ca chuyển CONFIRMED. Làm
+ * mới cả danh sách lần khám (SCR-12 badge trạng thái đổi) lẫn chi tiết ca này.
+ */
+export function useConfirmCase(caseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: CaseConclusionInput) => confirmCase(caseId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
+      queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.all });
     },
   });
 }

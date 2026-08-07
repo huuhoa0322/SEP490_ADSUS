@@ -209,3 +209,14 @@ export interface AddUltrasoundImagesInput {
   images: File[];
   note: string | null;
 }
+
+/**
+ * Thêm 07/08/2026, sửa lại cùng ngày (tách Lưu/Kết thúc) — Bác sĩ phụ trách nhập/sửa kết luận
+ * ngay tại màn chi tiết ca. Cả hai trường bắt buộc (validator backend), không giống
+ * ClinicalInfo (#20) vốn tùy chọn. Dùng chung cho cả "Lưu kết luận" (không đổi trạng thái) và
+ * "Kết thúc ca khám" (khoá ca) — hai hành động khác nhau, cùng hình dạng dữ liệu gửi lên.
+ */
+export interface CaseConclusionInput {
+  finalDiagnosis: string;
+  doctorConclusion: string;
+}

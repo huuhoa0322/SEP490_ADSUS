@@ -88,3 +88,16 @@ public sealed record CreateCaseRequest(
 public sealed record AddUltrasoundImagesRequest(
     IReadOnlyList<UploadedFile> Images,
     string? Note);
+
+/// <summary>
+/// Thêm 07/08/2026, sửa lại cùng ngày (tách Lưu/Kết thúc) — Bác sĩ phụ trách nhập/sửa kết
+/// luận cho ca khám ngay tại màn chi tiết ca (Module 04), không đợi màn duyệt kết quả AI
+/// riêng (UC-19, đang được xây song song bởi một luồng công việc khác).
+///
+/// Dùng chung cho HAI hành động khác nhau, xem ICaseService:
+///   SaveConclusionAsync — chỉ lưu nội dung, KHÔNG đổi trạng thái, sửa lại được nhiều lần.
+///   ConfirmAsync        — lưu VÀ khoá ca (CONFIRMED), không có đường lùi (GB-01/P2).
+/// </summary>
+public sealed record CaseConclusionRequest(
+    string FinalDiagnosis,
+    string DoctorConclusion);

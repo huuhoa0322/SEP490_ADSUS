@@ -38,3 +38,21 @@ public sealed class AddUltrasoundImagesRequestValidator : AbstractValidator<AddU
             .MaximumLength(1000).WithMessage("Note must be 1000 characters or fewer.");
     }
 }
+
+/// <summary>
+/// Thêm 07/08/2026 — cả hai trường bắt buộc, dùng chung cho cả Lưu kết luận và Kết thúc ca
+/// khám (xem CaseConclusionRequest): không cho lưu/kết thúc với kết luận bỏ trống.
+/// </summary>
+public sealed class CaseConclusionRequestValidator : AbstractValidator<CaseConclusionRequest>
+{
+    public CaseConclusionRequestValidator()
+    {
+        RuleFor(x => x.FinalDiagnosis)
+            .NotEmpty().WithMessage("Final diagnosis is required.")
+            .MaximumLength(5000).WithMessage("Final diagnosis must be 5000 characters or fewer.");
+
+        RuleFor(x => x.DoctorConclusion)
+            .NotEmpty().WithMessage("Doctor conclusion is required.")
+            .MaximumLength(5000).WithMessage("Doctor conclusion must be 5000 characters or fewer.");
+    }
+}

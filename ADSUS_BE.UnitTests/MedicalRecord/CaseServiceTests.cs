@@ -584,4 +584,153 @@ public class CaseServiceTests
             () => _sut.AddImagesAsync(medicalCase.CaseId, request));
         Assert.Equal("loi DB goc", ex.Message);
     }
+
+    // ---------- ConfirmAsync (thêm 07/08/2026) ----------
+
+    private static ADSUS_BE.BLL.MedicalRecord.DTOs.CaseConclusionRequest MakeConfirmRequest() => new(
+        FinalDiagnosis: "Nhân xơ tử cung", DoctorConclusion: "Theo dõi định kỳ sau 6 tháng");
+
+    [Fact]
+    public async Task ConfirmAsync_ValidRequestByResponsibleDoctor_SetsConfirmedStatusAndFields()
+    {
+        // Arrange
+        var doctor = MedicalRecordTestData.MakeDoctor();
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.Analyzed);
+        var request = MakeConfirmRequest();
+
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await _sut.ConfirmAsync(medicalCase.CaseId, doctor.UserId, request);
+
+        // Assert
+        Assert.Equal("CONFIRMED", response.Status);
+        Assert.Equal(CaseStatus.Confirmed, medicalCase.Status);
+        Assert.Equal("Nhân xơ tử cung", medicalCase.FinalDiagnosis);
+        Assert.Equal("Theo dõi định kỳ sau 6 tháng", medicalCase.DoctorConclusion);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ConfirmAsync_CaseAlreadyConfirmed_ThrowsBusinessExceptionWithoutSaving()
+    {
+        // Arrange — P2/GB-01: CONFIRMED là trạng thái cuối, chốt lần hai bị từ chối kể cả
+        // bởi chính bác sĩ phụ trách và kể cả gửi lại đúng nội dung cũ.
+        var doctor = MedicalRecordTestData.MakeDoctor();
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.Confirmed);
+
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.ConfirmAsync(medicalCase.CaseId, doctor.UserId, MakeConfirmRequest()));
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ConfirmAsync_ActingDoctorIsNotResponsibleDoctor_ThrowsBusinessExceptionWithoutSaving()
+    {
+        // Arrange — GB-04: chỉ đúng bác sĩ phụ trách CA NÀY mới chốt được, không phải bác sĩ
+        // bất kỳ đang đăng nhập.
+        var responsibleDoctor = MedicalRecordTestData.MakeDoctor("BS. Lê Minh Hoàng");
+        var otherDoctor = MedicalRecordTestData.MakeDoctor("BS. Nguyễn Văn An");
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: responsibleDoctor, status: CaseStatus.Analyzed);
+
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.ConfirmAsync(medicalCase.CaseId, otherDoctor.UserId, MakeConfirmRequest()));
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ConfirmAsync_CaseNotFound_ThrowsResourceNotFoundException()
+    {
+        // Arrange
+        _cases.Setup(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((Case?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ResourceNotFoundException>(
+            () => _sut.ConfirmAsync(Guid.NewGuid(), Guid.NewGuid(), MakeConfirmRequest()));
+    }
+
+    // ---------- SaveConclusionAsync (sửa lại 07/08/2026, tách khỏi ConfirmAsync) ----------
+
+    [Fact]
+    public async Task SaveConclusionAsync_ValidRequestByResponsibleDoctor_SavesFieldsWithoutChangingStatus()
+    {
+        // Arrange — "Lưu kết luận" KHÔNG đổi trạng thái, khác hẳn ConfirmAsync ("Kết thúc ca
+        // khám"). Bác sĩ có thể lưu nháp nhiều lần trước khi bấm Kết thúc.
+        var doctor = MedicalRecordTestData.MakeDoctor();
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.Analyzed);
+        var request = MakeConfirmRequest();
+
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await _sut.SaveConclusionAsync(medicalCase.CaseId, doctor.UserId, request);
+
+        // Assert
+        Assert.Equal("ANALYZED", response.Status);
+        Assert.Equal(CaseStatus.Analyzed, medicalCase.Status);
+        Assert.Equal("Nhân xơ tử cung", medicalCase.FinalDiagnosis);
+        Assert.Equal("Theo dõi định kỳ sau 6 tháng", medicalCase.DoctorConclusion);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SaveConclusionAsync_CaseAlreadyConfirmed_ThrowsBusinessExceptionWithoutSaving()
+    {
+        // Arrange — P2/GB-01: ca đã khoá thì không sửa được nữa dưới bất kỳ hình thức nào,
+        // kể cả chỉ lưu nháp lại đúng nội dung cũ.
+        var doctor = MedicalRecordTestData.MakeDoctor();
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.Confirmed);
+
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.SaveConclusionAsync(medicalCase.CaseId, doctor.UserId, MakeConfirmRequest()));
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SaveConclusionAsync_ActingDoctorIsNotResponsibleDoctor_ThrowsBusinessExceptionWithoutSaving()
+    {
+        // Arrange — GB-04, cùng luật với ConfirmAsync.
+        var responsibleDoctor = MedicalRecordTestData.MakeDoctor("BS. Lê Minh Hoàng");
+        var otherDoctor = MedicalRecordTestData.MakeDoctor("BS. Nguyễn Văn An");
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: responsibleDoctor, status: CaseStatus.Created);
+
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.SaveConclusionAsync(medicalCase.CaseId, otherDoctor.UserId, MakeConfirmRequest()));
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SaveConclusionAsync_CaseNotFound_ThrowsResourceNotFoundException()
+    {
+        // Arrange
+        _cases.Setup(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((Case?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ResourceNotFoundException>(
+            () => _sut.SaveConclusionAsync(Guid.NewGuid(), Guid.NewGuid(), MakeConfirmRequest()));
+    }
 }
