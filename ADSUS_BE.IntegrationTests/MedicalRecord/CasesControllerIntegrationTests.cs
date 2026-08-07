@@ -37,6 +37,13 @@ public class CasesControllerIntegrationTests
         CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
     };
 
+    private readonly User _nurse = new()
+    {
+        UserId = Guid.NewGuid(), FullName = "ĐD. Võ Thị Thu Hà", Phone = "0915678901",
+        PasswordHash = "x", Role = UserRole.Nurse, Status = UserStatus.Active,
+        CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+    };
+
     private PatientProfile MakePatientProfile() => new()
     {
         PatientProfileId = Guid.NewGuid(), UserId = _patientUser.UserId, User = _patientUser,
@@ -643,5 +650,183 @@ public class CasesControllerIntegrationTests
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
         Assert.Equal(404, body!.Code);
+    }
+
+    // ---------- PUT /cases/{id}/conclusion và /confirm (sửa lại 07/08/2026) ----------
+
+    private static CaseConclusionRequest ValidConfirmBody() => new(
+        FinalDiagnosis: "Nhân xơ tử cung", DoctorConclusion: "Theo dõi định kỳ sau 6 tháng");
+
+    [Fact]
+    public async Task PutConfirm_ValidRequestByResponsibleDoctor_Returns200WithConfirmedStatus()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Analyzed);
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/confirm", ValidConfirmBody());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
+        Assert.Equal("CONFIRMED", body!.Data!.Status);
+        Assert.Equal("Nhân xơ tử cung", body.Data.FinalDiagnosis);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task PutConfirm_CalledByNurse_Returns403Forbidden()
+    {
+        // Arrange — CHỈ Bác sĩ mới chốt được kết luận, Điều dưỡng không có quyền này.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _nurse);
+
+        // Act
+        var response = await client.PutAsJsonAsync(
+            $"/api/v1/cases/{Guid.NewGuid()}/confirm", ValidConfirmBody());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task PutConfirm_ActingDoctorIsNotResponsibleDoctor_Returns422UnprocessableEntity()
+    {
+        // Arrange — GB-04: bác sĩ khác không phải người phụ trách ca này.
+        var otherDoctor = new User
+        {
+            UserId = Guid.NewGuid(), FullName = "BS. Nguyễn Văn An", Phone = "0913456700",
+            PasswordHash = "x", Role = UserRole.Doctor, Status = UserStatus.Active,
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        };
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, otherDoctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Analyzed);
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/confirm", ValidConfirmBody());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PutConfirm_CaseAlreadyConfirmed_Returns422UnprocessableEntity()
+    {
+        // Arrange — P2/GB-01: trạng thái cuối, không có đường lùi, kể cả chốt lại đúng nội dung cũ.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Confirmed);
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/confirm", ValidConfirmBody());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PutConfirm_EmptyConclusion_Returns400BadRequest()
+    {
+        // Arrange — validator chặn trước khi chạm tới service.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var body = new CaseConclusionRequest(FinalDiagnosis: "", DoctorConclusion: "");
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/confirm", body);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        _cases.Verify(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task PutConclusion_ValidRequestByResponsibleDoctor_Returns200WithoutChangingStatus()
+    {
+        // Arrange — "Lưu kết luận" (sửa lại 07/08/2026, tách khỏi /confirm): lưu nội dung,
+        // KHÔNG đổi trạng thái ca, khác hẳn /confirm ("Kết thúc ca khám").
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Analyzed);
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/conclusion", ValidConfirmBody());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
+        Assert.Equal("ANALYZED", body!.Data!.Status);
+        Assert.Equal("Nhân xơ tử cung", body.Data.FinalDiagnosis);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task PutConclusion_CalledByNurse_Returns403Forbidden()
+    {
+        // Arrange — CHỈ Bác sĩ, cùng luật với /confirm.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _nurse);
+
+        // Act
+        var response = await client.PutAsJsonAsync(
+            $"/api/v1/cases/{Guid.NewGuid()}/conclusion", ValidConfirmBody());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task PutConclusion_CaseAlreadyConfirmed_Returns422UnprocessableEntity()
+    {
+        // Arrange — P2/GB-01: ca đã khoá thì "Lưu kết luận" cũng bị từ chối, không chỉ /confirm.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Confirmed);
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/conclusion", ValidConfirmBody());
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PutConclusion_EmptyConclusion_Returns400BadRequest()
+    {
+        // Arrange — validator chặn trước khi chạm tới service.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var body = new CaseConclusionRequest(FinalDiagnosis: "", DoctorConclusion: "");
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/conclusion", body);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        _cases.Verify(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

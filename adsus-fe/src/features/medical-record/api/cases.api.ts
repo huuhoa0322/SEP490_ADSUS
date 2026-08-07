@@ -5,6 +5,7 @@ import type { ApiResponse } from "@/types/api.types";
 
 import type {
   AddUltrasoundImagesInput,
+  CaseConclusionInput,
   CaseDetail,
   CaseListQuery,
   CaseSummary,
@@ -98,6 +99,40 @@ export async function addUltrasoundImages(
   );
 
   if (!data.data) throw new Error(data.message || "Tải ảnh bổ sung thất bại.");
+
+  return data.data;
+}
+
+/**
+ * Thêm 07/08/2026 — "Lưu kết luận". Chỉ lưu nội dung, KHÔNG đổi trạng thái ca — sửa lại được
+ * nhiều lần cho tới khi bấm "Kết thúc ca khám" (confirmCase). Backend chặn cả vai trò (CHỈ
+ * Doctor) lẫn đúng-bác-sĩ-phụ-trách (GB-04) và trạng thái chưa CONFIRMED (P2/GB-01).
+ */
+export async function saveCaseConclusion(
+  caseId: string,
+  input: CaseConclusionInput,
+): Promise<CaseDetail> {
+  const { data } = await apiClient.put<ApiResponse<CaseDetail>>(`${BASE}/${caseId}/conclusion`, {
+    finalDiagnosis: input.finalDiagnosis,
+    doctorConclusion: input.doctorConclusion,
+  });
+
+  if (!data.data) throw new Error(data.message || "Lưu kết luận thất bại.");
+
+  return data.data;
+}
+
+/**
+ * Thêm 07/08/2026 — "Kết thúc ca khám". Lưu VÀ khoá ca (CONFIRMED) trong cùng một lần gọi,
+ * không có đường lùi. Cùng hai điều kiện chặn với saveCaseConclusion (422 nếu vi phạm).
+ */
+export async function confirmCase(caseId: string, input: CaseConclusionInput): Promise<CaseDetail> {
+  const { data } = await apiClient.put<ApiResponse<CaseDetail>>(`${BASE}/${caseId}/confirm`, {
+    finalDiagnosis: input.finalDiagnosis,
+    doctorConclusion: input.doctorConclusion,
+  });
+
+  if (!data.data) throw new Error(data.message || "Kết thúc ca khám thất bại.");
 
   return data.data;
 }
