@@ -26,7 +26,8 @@ const PrescriptionItemSchema = z.object({
 });
 
 export const PrescriptionFormSchema = z.object({
-  caseId: z.string().min(1, "Chọn bệnh nhân / ca khám"),
+  // caseId chỉ bắt buộc khi KHÔNG có prefilledPatient
+  caseId: z.string().optional(),
   items: z.array(PrescriptionItemSchema).min(1, "Thêm ít nhất 1 loại thuốc"),
   generalNote: z.string().max(2000, "Tối đa 2000 ký tự"),
 });
@@ -36,9 +37,17 @@ export type ScheduleSlot = z.infer<typeof ScheduleSlotEnum>;
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
 
+interface PrefilledPatient {
+  caseId: string;
+  patientName: string;
+  patientCode?: string;
+}
+
 interface PrescriptionFormProps {
-  /** Danh sách ca khám đang Confirmed của doctor (để chọn bệnh nhân). */
-  cases: Array<{ caseId: string; patientName: string; patientCode: string }>;
+  /** Thông tin bệnh nhân đã prefilled (từ case detail - Module 7 Phương án A). */
+  prefilledPatient?: PrefilledPatient;
+  /** Danh sách ca khám để chọn (mode cũ - dropdown). */
+  cases?: Array<{ caseId: string; patientName: string; patientCode: string }>;
   /** Danh mục thuốc (GET /api/v1/medication-catalog). */
   medications: Array<{ medicineId: string; name: string }>;
   /** Gọi khi submit hợp lệ. */
@@ -48,6 +57,7 @@ interface PrescriptionFormProps {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function PrescriptionForm({
+  prefilledPatient,
   cases,
   medications,
   onSubmit,
@@ -98,19 +108,29 @@ export function PrescriptionForm({
         <label className="mb-1.5 block text-sm font-semibold text-navy">
           Bệnh nhân / Ca khám <span className="text-red-500">*</span>
         </label>
-        <select
-          {...register("caseId")}
-          className="w-full rounded-full border border-border bg-surface px-5 py-3 text-sm focus:border-teal focus:outline-none"
-        >
-          <option value="">— Chọn bệnh nhân —</option>
-          {cases.map((c) => (
-            <option key={c.caseId} value={c.caseId}>
-              {c.patientName} ({c.patientCode})
-            </option>
-          ))}
-        </select>
-        {errors.caseId && (
-          <p className="mt-1 text-xs text-red-500">{errors.caseId.message}</p>
+        {prefilledPatient ? (
+          // Module 7 Phương án A: hiển thị thông tin bệnh nhân cố định
+          <div className="flex items-center gap-4 rounded-full border border-border bg-surface px-5 py-3">
+            <span className="font-semibold text-navy">
+              {prefilledPatient.patientName}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              ({prefilledPatient.patientCode})
+            </span>
+          </div>
+        ) : (
+          // Mode cũ: dropdown chọn bệnh nhân
+          <select
+            {...register("caseId")}
+            className="w-full rounded-full border border-border bg-surface px-5 py-3 text-sm focus:border-teal focus:outline-none"
+          >
+            <option value="">— Chọn bệnh nhân —</option>
+            {cases?.map((c) => (
+              <option key={c.caseId} value={c.caseId}>
+                {c.patientName} ({c.patientCode})
+              </option>
+            ))}
+          </select>
         )}
       </section>
 

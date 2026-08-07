@@ -1,41 +1,51 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 
 import {
   createPrescription,
-  listMyCases,
+  getMedicationCatalog,
 } from "@/features/prescriptions/api/prescriptions.api";
 import { PrescriptionForm } from "@/features/prescriptions/components/prescription-form";
 import type { PrescriptionFormData } from "@/features/prescriptions/components/prescription-form";
+import { useCaseDetail } from "@/features/medical-record/hooks/use-cases";
+import type { CaseDetail } from "@/features/medical-record/types/medical-record.types";
 
 export default function NewPrescriptionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const caseId = searchParams.get("caseId") ?? undefined;
 
-  // Load cases (Confirmed) + medication catalog in parallel
-  const casesQuery = useQuery({
-    queryKey: ["prescriptions", "my-cases"],
-    queryFn: listMyCases,
-    staleTime: 5 * 60 * 1000, // 5 phút — danh sách ca khám ít thay đổi
-  });
+  // Fetch case detail if caseId is provided (Module 7 Phương án A)
+  const { data: medicalCase, isLoading: isLoadingCase } = useCaseDetail(caseId);
 
+  // Load medication catalog
   const medicationsQuery = useQuery({
     queryKey: ["medication-catalog"],
-    queryFn: async () => {
-      const { getMedicationCatalog } = await import(
-        "@/features/prescriptions/api/prescriptions.api"
-      );
-      return getMedicationCatalog();
-    },
+    queryFn: getMedicationCatalog,
     staleTime: 30 * 60 * 1000, // 30 phút — danh mục thuốc hiếm thay đổi
   });
 
+  // Transform case to prefilled patient for form
+  const prefilledPatient = useMemo(() => {
+    if (!medicalCase?.patientProfile) return undefined;
+    return {
+      caseId: medicalCase.caseId,
+      patientName: medicalCase.patientProfile.fullName,
+    };
+  }, [medicalCase]);
+
   async function handleSubmit(data: PrescriptionFormData) {
-    // Map form data → CreatePrescriptionRequest (backend expects PascalCase)
+    // Use prefilled caseId if available, otherwise from form data
+    const targetCaseId = caseId ?? data.caseId;
+    if (!targetCaseId) {
+      throw new Error("Không xác định được ca khám");
+    }
+
     const request = {
-      caseId: data.caseId,
+      caseId: targetCaseId,
       items: data.items.map((item) => ({
         medicineId: item.medicineId,
         dosage: item.dosage,
@@ -51,7 +61,7 @@ export default function NewPrescriptionPage() {
     router.push(`/doctor/prescriptions/${result.prescriptionId}`);
   }
 
-  const isLoading = casesQuery.isLoading || medicationsQuery.isLoading;
+  const isLoading = isLoadingCase || medicationsQuery.isLoading;
 
   return (
     <div className="container mx-auto max-w-4xl py-8">
@@ -64,7 +74,7 @@ export default function NewPrescriptionPage() {
           ← Quay lại
         </button>
         <h1 className="font-exo text-2xl font-semibold text-navy">
-          Kê đơn thuốc mới
+          {caseId ? "Kê đơn thuốc" : "Kê đơn thuốc mới"}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Chỉ bác sĩ mới được kê đơn cho ca khám đang Confirmed của mình (GB-04)
@@ -75,19 +85,21 @@ export default function NewPrescriptionPage() {
         <div className="flex h-64 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal border-t-transparent" />
         </div>
-      ) : casesQuery.isError || medicationsQuery.isError ? (
+      ) : caseId && (isLoadingCase || !medicalCase) ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-600">
-          Không tải được dữ liệu. Vui lòng tải lại trang.
+          Không tìm thấy ca khám. Vui lòng kiểm tra lại.
+        </div>
+      ) : medicationsQuery.isError ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-600">
+          Không tải được danh mục thuốc. Vui lòng tải lại trang.
         </div>
       ) : (
         <PrescriptionForm
-          cases={casesQuery.data ?? []}
-          medications={
-            (medicationsQuery.data ?? []).map((m) => ({
-              medicineId: m.medicineId,
-              name: m.name,
-            }))
-          }
+          prefilledPatient={prefilledPatient}
+          medications={(medicationsQuery.data ?? []).map((m) => ({
+            medicineId: m.medicineId,
+            name: m.name,
+          }))}
           onSubmit={handleSubmit}
         />
       )}

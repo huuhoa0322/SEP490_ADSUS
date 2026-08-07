@@ -192,6 +192,16 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
               </span>
             ) : null}
           </div>
+
+          {/* Module 7 — Kê đơn thuốc: chỉ hiện khi ca đã CONFIRMED và đúng Bác sĩ phụ trách */}
+          {isConfirmed && isResponsibleDoctor ? (
+            <Link
+              href={`/doctor/prescriptions/new?caseId=${caseId}`}
+              className="mt-2 rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white hover:bg-teal/90"
+            >
+              Kê đơn thuốc
+            </Link>
+          ) : null}
         </div>
       </header>
 
