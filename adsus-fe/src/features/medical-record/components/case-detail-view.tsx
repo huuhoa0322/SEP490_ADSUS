@@ -195,12 +195,14 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
 
           {/* Module 7 — Kê đơn thuốc: chỉ hiện khi ca đã CONFIRMED và đúng Bác sĩ phụ trách */}
           {isConfirmed && isResponsibleDoctor ? (
-            <Link
-              href={`/doctor/prescriptions/new?caseId=${caseId}`}
-              className="mt-2 rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white hover:bg-teal/90"
-            >
-              Kê đơn thuốc
-            </Link>
+            <div className="mt-2 flex flex-col items-end gap-1">
+              <Link
+                href={`/prescriptions/new?caseId=${caseId}`}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Kê đơn thuốc
+              </Link>
+            </div>
           ) : null}
         </div>
       </header>
