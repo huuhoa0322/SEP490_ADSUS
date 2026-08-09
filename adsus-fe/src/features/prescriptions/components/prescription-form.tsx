@@ -2,7 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
-import { useFieldArray, useForm, useFormContext } from "react-hook-form";
+import {
+  Controller,
+  FormProvider,
+  useFieldArray,
+  useForm,
+  useFormContext,
+} from "react-hook-form";
 import toast from "react-hot-toast";
 import { z } from "zod";
 
@@ -62,12 +68,7 @@ export function PrescriptionForm({
   medications,
   onSubmit,
 }: PrescriptionFormProps) {
-  const {
-    register,
-    handleSubmit,
-    control,
-    formState: { errors, isSubmitting },
-  } = useForm<PrescriptionFormData>({
+  const methods = useForm<PrescriptionFormData>({
     resolver: zodResolver(PrescriptionFormSchema),
     defaultValues: {
       caseId: "",
@@ -84,6 +85,13 @@ export function PrescriptionForm({
       generalNote: "",
     },
   });
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors, isSubmitting },
+  } = methods;
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -102,127 +110,134 @@ export function PrescriptionForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onValid)} noValidate>
-      {/* ── Bệnh nhân ─────────────────────────────────────────── */}
-      <section className="mb-6">
-        <label className="mb-1.5 block text-sm font-semibold text-navy">
-          Bệnh nhân / Ca khám <span className="text-red-500">*</span>
-        </label>
-        {prefilledPatient ? (
-          // Module 7 Phương án A: hiển thị thông tin bệnh nhân cố định
-          <div className="flex items-center gap-4 rounded-full border border-border bg-surface px-5 py-3">
-            <span className="font-semibold text-navy">
-              {prefilledPatient.patientName}
-            </span>
-            <span className="text-sm text-muted-foreground">
-              ({prefilledPatient.patientCode})
-            </span>
-          </div>
-        ) : (
-          // Mode cũ: dropdown chọn bệnh nhân
-          <select
-            {...register("caseId")}
-            className="w-full rounded-full border border-border bg-surface px-5 py-3 text-sm focus:border-teal focus:outline-none"
-          >
-            <option value="">— Chọn bệnh nhân —</option>
-            {cases?.map((c) => (
-              <option key={c.caseId} value={c.caseId}>
-                {c.patientName} ({c.patientCode})
-              </option>
-            ))}
-          </select>
-        )}
-      </section>
+    <FormProvider {...methods}>
+      <form onSubmit={handleSubmit(onValid)} noValidate>
+        {/* ── Bệnh nhân ─────────────────────────────────────────── */}
+        <section className="mb-6">
+          <label className="mb-1.5 block text-sm font-semibold text-navy">
+            Bệnh nhân / Ca khám <span className="text-red-500">*</span>
+          </label>
+          {prefilledPatient ? (
+            // Module 7 Phương án A: hiển thị thông tin bệnh nhân cố định
+            <div className="flex items-center gap-4 rounded-full border border-border bg-surface px-5 py-3">
+              <span className="font-semibold text-navy">
+                {prefilledPatient.patientName}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                ({prefilledPatient.patientCode})
+              </span>
+            </div>
+          ) : (
+            // Mode cũ: dropdown chọn bệnh nhân
+            <select
+              {...register("caseId")}
+              className="w-full rounded-full border border-border bg-surface px-5 py-3 text-sm focus:border-teal focus:outline-none"
+            >
+              <option value="">— Chọn bệnh nhân —</option>
+              {cases?.map((c) => (
+                <option key={c.caseId} value={c.caseId}>
+                  {c.patientName} ({c.patientCode})
+                </option>
+              ))}
+            </select>
+          )}
+        </section>
 
-      {/* ── Bảng thuốc ─────────────────────────────────────────── */}
-      <section className="mb-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-exo text-base font-semibold text-navy">
-            Bảng Kê Đơn thuốc Điều trị Nội khoa
-          </h3>
+        {/* ── Bảng thuốc ─────────────────────────────────────────── */}
+        <section className="mb-6">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="font-exo text-base font-semibold text-navy">
+              Bảng Kê Đơn thuốc Điều trị Nội khoa
+            </h3>
+            <button
+              type="button"
+              onClick={() =>
+                append({
+                  medicineId: "",
+                  dosage: "",
+                  scheduleSlots: [] as ScheduleSlot[],
+                  durationDays: 30,
+                  startDate: new Date().toISOString().split("T")[0],
+                  instructions: "",
+                })
+              }
+              className="flex items-center gap-1.5 rounded-full border border-teal px-4 py-1.5 text-xs font-semibold text-teal transition hover:bg-teal/5"
+            >
+              <Plus className="size-3.5" />
+              THÊM THUỐC
+            </button>
+          </div>
+
+          {/* Header */}
+          <div className="mb-1 grid grid-cols-12 gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="col-span-3">Tên thuốc</div>
+            <div className="col-span-2">Liều dùng</div>
+            <div className="col-span-3">Khung giờ</div>
+            <div className="col-span-1 text-center">Ngày</div>
+            <div className="col-span-2">Cách dùng</div>
+            <div className="col-span-1" />
+          </div>
+
+          {/* Rows */}
+          <div className="space-y-3">
+            {fields.map((field, index) => (
+              <MedicationRow
+                key={field.id}
+                index={index}
+                medications={medications}
+                allSlots={allSlots}
+                register={register}
+                control={control}
+                errors={errors?.items?.[index]}
+                onRemove={fields.length > 1 ? () => remove(index) : undefined}
+              />
+            ))}
+          </div>
+
+          {errors.items?.root && (
+            <p className="mt-2 text-xs text-red-500">
+              {errors.items.root.message}
+            </p>
+          )}
+        </section>
+
+        {/* ── Ghi chú ─────────────────────────────────────────── */}
+        <section className="mb-8">
+          <label className="mb-1.5 block text-sm font-semibold text-navy">
+            Ghi chú Chuyên môn & Lời dặn Bác sĩ
+          </label>
+          <input
+            type="text"
+            {...register("generalNote")}
+            placeholder="Ví dụ: Theo dõi lượng máu kinh hàng ngày trên App Mobile..."
+            className="w-full rounded-full border border-border bg-surface px-5 py-3 text-sm focus:border-teal focus:outline-none"
+          />
+          {errors.generalNote && (
+            <p className="mt-1 text-xs text-red-500">
+              {errors.generalNote.message}
+            </p>
+          )}
+        </section>
+
+        {/* ── Submit ─────────────────────────────────────────────── */}
+        <div className="flex justify-end">
           <button
-            type="button"
-            onClick={() =>
-              append({
-                medicineId: "",
-                dosage: "",
-                scheduleSlots: [] as ScheduleSlot[],
-                durationDays: 30,
-                startDate: new Date().toISOString().split("T")[0],
-                instructions: "",
-              })
-            }
-            className="flex items-center gap-1.5 rounded-full border border-teal px-4 py-1.5 text-xs font-semibold text-teal transition hover:bg-teal/5"
+            type="submit"
+            disabled={isSubmitting}
+            className="flex items-center gap-2 rounded-full bg-teal px-8 py-3.5 font-semibold text-white transition hover:bg-teal/90 disabled:opacity-60"
           >
-            <Plus className="size-3.5" />
-            THÊM THUỐC
+            {isSubmitting ? (
+              <span>Đang gửi…</span>
+            ) : (
+              <>
+                <span>✓</span>
+                <span>XÁC NHẬN KÊ ĐƠN & GỬI ĐẾN APP MOBILE</span>
+              </>
+            )}
           </button>
         </div>
-
-        {/* Header */}
-        <div className="mb-1 grid grid-cols-12 gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <div className="col-span-3">Tên thuốc</div>
-          <div className="col-span-2">Liều dùng</div>
-          <div className="col-span-3">Khung giờ</div>
-          <div className="col-span-1 text-center">Ngày</div>
-          <div className="col-span-2">Cách dùng</div>
-          <div className="col-span-1" />
-        </div>
-
-        {/* Rows */}
-        <div className="space-y-3">
-          {fields.map((field, index) => (
-            <MedicationRow
-              key={field.id}
-              index={index}
-              medications={medications}
-              allSlots={allSlots}
-              register={register}
-              errors={errors?.items?.[index]}
-              onRemove={fields.length > 1 ? () => remove(index) : undefined}
-            />
-          ))}
-        </div>
-
-        {errors.items?.root && (
-          <p className="mt-2 text-xs text-red-500">{errors.items.root.message}</p>
-        )}
-      </section>
-
-      {/* ── Ghi chú ─────────────────────────────────────────── */}
-      <section className="mb-8">
-        <label className="mb-1.5 block text-sm font-semibold text-navy">
-          Ghi chú Chuyên môn & Lời dặn Bác sĩ
-        </label>
-        <input
-          type="text"
-          {...register("generalNote")}
-          placeholder="Ví dụ: Theo dõi lượng máu kinh hàng ngày trên App Mobile..."
-          className="w-full rounded-full border border-border bg-surface px-5 py-3 text-sm focus:border-teal focus:outline-none"
-        />
-        {errors.generalNote && (
-          <p className="mt-1 text-xs text-red-500">{errors.generalNote.message}</p>
-        )}
-      </section>
-
-      {/* ── Submit ─────────────────────────────────────────────── */}
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="flex items-center gap-2 rounded-full bg-teal px-8 py-3.5 font-semibold text-white transition hover:bg-teal/90 disabled:opacity-60"
-        >
-          {isSubmitting ? (
-            <span>Đang gửi…</span>
-          ) : (
-            <>
-              <span>✓</span>
-              <span>XÁC NHẬN KÊ ĐƠN & GỬI ĐẾN APP MOBILE</span>
-            </>
-          )}
-        </button>
-      </div>
-    </form>
+      </form>
+    </FormProvider>
   );
 }
 
@@ -242,15 +257,19 @@ interface MedicationRowProps {
     startDate?: { message?: string };
   };
   onRemove?: () => void;
+  /** Dùng cho Controller checkbox slots. */
+  control: ReturnType<typeof useForm<PrescriptionFormData>>["control"];
 }
 
-/** MedicationRow dùng useFormContext để truy cập watch() mà không cần prop drilling. */
+/** MedicationRow dùng useFormContext để truy cập watch() mà không cần prop drilling.
+ *  Yêu cầu: component cha (PrescriptionForm) phải bọc <FormProvider {...methods}>. */
 
 function MedicationRow({
   index,
   medications,
   allSlots,
   register,
+  control,
   errors,
   onRemove,
 }: MedicationRowProps) {
@@ -295,22 +314,38 @@ function MedicationRow({
         {allSlots.map((slot) => {
           const slotKey = `items.${index}.scheduleSlots` as const;
           return (
-            <label
+            <Controller
               key={slot}
-              className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition ${
-                watchedSlots?.includes(slot)
-                  ? "border-teal bg-teal/10 text-teal"
-                  : "border-border text-muted-foreground"
-              }`}
-            >
-              <input
-                type="checkbox"
-                value={slot}
-                className="sr-only"
-                {...register(slotKey)}
-              />
-              {slot === "Morning" ? "Sáng" : slot === "Noon" ? "Trưa" : "Tối"}
-            </label>
+              name={slotKey}
+              control={control}
+              render={({ field }) => {
+                const checked = (field.value as ScheduleSlot[] | undefined)?.includes(slot);
+                return (
+                  <label
+                    className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition cursor-pointer ${
+                      checked
+                        ? "border-teal bg-teal/10 text-teal"
+                        : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={!!checked}
+                      onChange={(e) => {
+                        const current = (field.value as ScheduleSlot[]) ?? [];
+                        if (e.target.checked) {
+                          field.onChange([...current, slot]);
+                        } else {
+                          field.onChange(current.filter((s) => s !== slot));
+                        }
+                      }}
+                    />
+                    {slot === "Morning" ? "Sáng" : slot === "Noon" ? "Trưa" : "Tối"}
+                  </label>
+                );
+              }}
+            />
           );
         })}
         {errors?.scheduleSlots && (
