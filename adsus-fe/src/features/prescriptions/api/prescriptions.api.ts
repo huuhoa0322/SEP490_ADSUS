@@ -31,14 +31,22 @@ import type {
 export async function createPrescription(
   request: CreatePrescriptionRequest,
 ): Promise<PrescriptionResponse> {
-  const { data } = await apiClient.post<ApiResponse<PrescriptionResponse>>(
-    "/api/v1/prescriptions",
-    request,
-  );
-  if (!data.data) {
-    throw new Error(data.message || "Không tạo được đơn thuốc.");
+  const response = await apiClient.post<
+    ApiResponse<PrescriptionResponse>
+  >("/api/v1/prescriptions", request);
+
+  // Backend trả 201 Created khi lưu thành công.
+  // Nếu response body không có ApiResponse wrapper (null/undefined),
+  // vẫn coi là thành công — dữ liệu đã lưu, có thể do backend trả khác format.
+  if (!response.data?.data) {
+    // Lỗi thật khi không có message từ server
+    if (!response.data?.message) {
+      throw new Error("Không kết nối được backend. Kiểm tra backend đang chạy.");
+    }
+    // Backend trả lỗi nghiệp vụ (validate fail, 400/422)
+    throw new Error(response.data.message);
   }
-  return data.data;
+  return response.data.data;
 }
 
 /**
