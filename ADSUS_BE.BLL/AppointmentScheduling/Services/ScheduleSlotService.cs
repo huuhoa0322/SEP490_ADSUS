@@ -12,16 +12,32 @@ namespace ADSUS_BE.BLL.AppointmentScheduling.Services;
 /// <summary>
 /// Service cho ScheduleSlot (Module 8 — UC-15).
 /// BR-01: VisitDate + StartTime > now (UTC); range > 15 phút; không overlap.
-/// BR-02: Closed là terminal.
-/// Doctor tự quản lý lịch của chính mình; hệ thống tự sinh ca mặc định T2-T6 8h-12h &amp; 13h-17h.
+/// BR-02: Closed có thể mở lại (ReopenSlotAsync).
+/// Doctor tự quản lý lịch của chính mình; hệ thống tự sinh ca mặc định T2-CN 8h-12h &amp; 13h-17h.
 /// </summary>
 public sealed class ScheduleSlotService : IScheduleSlotService
 {
-    /// <summary>2 ca mặc định mỗi ngày T2-T6.</summary>
+    /// <summary>16 ca 30 phút mỗi ngày T2-CN: 8h-12h (8 ca) + 13h-17h (8 ca).</summary>
     private static readonly (TimeOnly Start, TimeOnly End)[] DefaultRanges =
     {
-        (new TimeOnly(8, 0), new TimeOnly(12, 0)),
-        (new TimeOnly(13, 0), new TimeOnly(17, 0)),
+        // Buổi sáng
+        (new TimeOnly(8, 0),  new TimeOnly(8, 30)),
+        (new TimeOnly(8, 30), new TimeOnly(9, 0)),
+        (new TimeOnly(9, 0),  new TimeOnly(9, 30)),
+        (new TimeOnly(9, 30), new TimeOnly(10, 0)),
+        (new TimeOnly(10, 0), new TimeOnly(10, 30)),
+        (new TimeOnly(10, 30),new TimeOnly(11, 0)),
+        (new TimeOnly(11, 0), new TimeOnly(11, 30)),
+        (new TimeOnly(11, 30),new TimeOnly(12, 0)),
+        // Buổi chiều
+        (new TimeOnly(13, 0), new TimeOnly(13, 30)),
+        (new TimeOnly(13, 30),new TimeOnly(14, 0)),
+        (new TimeOnly(14, 0), new TimeOnly(14, 30)),
+        (new TimeOnly(14, 30),new TimeOnly(15, 0)),
+        (new TimeOnly(15, 0), new TimeOnly(15, 30)),
+        (new TimeOnly(15, 30),new TimeOnly(16, 0)),
+        (new TimeOnly(16, 0), new TimeOnly(16, 30)),
+        (new TimeOnly(16, 30),new TimeOnly(17, 0)),
     };
 
     private readonly IScheduleSlotRepository _repo;
@@ -38,21 +54,144 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         _validator = validator;
     }
 
-    public async Task<IReadOnlyList<ScheduleSlotResponse>> ListSlotsAsync(
+    public async Task<(IReadOnlyList<ScheduleSlotResponse> Items, int TotalCount)> ListSlotsAsync(
         DateOnly? fromDate = null,
         DateOnly? toDate = null,
         Guid? doctorId = null,
         SlotStatus? statusFilter = null,
+        int page = 1,
+        int pageSize = 200, // 14 ngày × 16 slots = 224 max, lấy 200 đủ cho hầu hết case
         CancellationToken ct = default)
     {
+        if (!doctorId.HasValue || doctorId.Value == Guid.Empty)
+            throw new InvalidOperationException("doctorId is required.");
+
         var from = fromDate ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
-        var to = toDate ?? from.AddDays(30);
+        var to = toDate ?? from.AddDays(21); // 3 tuần = 21 ngày
 
         if (to < from)
             throw new InvalidOperationException("toDate must not be before fromDate.");
 
+        // Auto-sinh dựa trên data đã có (1 query duy nhất)
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var targetEndDate = today.AddDays(20); // 21 ngày (today..today+20)
+        var allSlots = await _repo.ListByRangeAsync(today, targetEndDate, doctorId, null, ct);
+        await EnsureMissingSlotsAsync(doctorId.Value, today, targetEndDate, allSlots, ct);
+
+        // Lấy data trong range user yêu cầu (sau khi auto-sinh)
         var slots = await _repo.ListByRangeAsync(from, to, doctorId, statusFilter, ct);
-        return slots.Select(MapToResponse).ToList();
+
+        // Apply pagination
+        var totalCount = slots.Count;
+        var skipCount = (page - 1) * pageSize;
+        var pagedSlots = slots
+            .Skip(skipCount)
+            .Take(pageSize)
+            .Select(MapToResponse)
+            .ToList();
+
+        return (pagedSlots, totalCount);
+    }
+
+    /// <summary>
+    /// Tự sinh các ca mặc định còn thiếu trong range (in-memory check dựa trên existingSlots).
+    /// Tối ưu: 1 query ListByRange (thay vì 42 queries HasOverlap).
+    /// Idempotent: nếu slot đã tồn tại sẽ bị catch 23505/23P01.
+    /// </summary>
+    private async Task EnsureMissingSlotsAsync(
+        Guid doctorId,
+        DateOnly fromDate,
+        DateOnly toDate,
+        IReadOnlyList<ScheduleSlot> existingSlots,
+        CancellationToken ct = default)
+    {
+        if (doctorId == Guid.Empty)
+            throw new InvalidOperationException("doctorId is required.");
+
+        // Build lookup dict: DateOnly → list slots của ngày đó
+        var slotsByDay = new Dictionary<DateOnly, List<ScheduleSlot>>();
+        foreach (var s in existingSlots)
+        {
+            if (!slotsByDay.TryGetValue(s.SlotDate, out var list))
+            {
+                list = new List<ScheduleSlot>();
+                slotsByDay[s.SlotDate] = list;
+            }
+            list.Add(s);
+        }
+
+        var now = DateTime.UtcNow;
+        var newSlots = new List<ScheduleSlot>();
+
+        for (var day = fromDate; day <= toDate; day = day.AddDays(1))
+        {
+            var daySlots = slotsByDay.GetValueOrDefault(day) ?? new List<ScheduleSlot>();
+
+            foreach (var (start, end) in DefaultRanges)
+            {
+                var startDateTime = day.ToDateTime(start, DateTimeKind.Utc);
+                if (startDateTime <= now) continue;
+
+                // Check overlap in-memory (không cần query DB)
+                var hasOverlap = daySlots.Any(s => s.StartTime < end && start < s.EndTime);
+                if (hasOverlap) continue;
+
+                newSlots.Add(new ScheduleSlot
+                {
+                    SlotId = Guid.NewGuid(),
+                    DoctorId = doctorId,
+                    SlotDate = day,
+                    StartTime = start,
+                    EndTime = end,
+                    Status = SlotStatus.Open,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                });
+            }
+        }
+
+        // Insert từng slot, idempotent catch
+        foreach (var s in newSlots)
+        {
+            try
+            {
+                await _repo.AddAsync(s, ct);
+                // Track slot vừa insert để check overlap cho các slot tiếp theo (cùng request)
+                if (!slotsByDay.TryGetValue(s.SlotDate, out var list))
+                {
+                    list = new List<ScheduleSlot>();
+                    slotsByDay[s.SlotDate] = list;
+                }
+                list.Add(s);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx
+                && (pgEx.SqlState == "23505" || pgEx.SqlState == "23P01"))
+            {
+                // 23505: Unique constraint; 23P01: EXCLUDE constraint → slot đã tồn tại (idempotent)
+            }
+        }
+    }
+
+    /// <summary>
+    /// Backward-compatible wrapper. Gọi 1 query ListByRange rồi pass cho EnsureMissingSlotsAsync.
+    /// </summary>
+    public async Task EnsureUpcomingSlotsAsync(
+        Guid doctorId,
+        CancellationToken ct = default)
+    {
+        if (doctorId == Guid.Empty)
+            throw new InvalidOperationException("doctorId is required.");
+
+        // Doctor phải tồn tại và là Doctor.
+        var doctor = await _userRepo.GetByIdAsync(doctorId, ct);
+        if (doctor is null || doctor.Role != UserRole.Doctor)
+            throw new InvalidOperationException($"User '{doctorId}' is not a valid Doctor.");
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var targetEndDate = today.AddDays(20);
+        var existingSlots = await _repo.ListByRangeAsync(today, targetEndDate, doctorId, null, ct);
+
+        await EnsureMissingSlotsAsync(doctorId, today, targetEndDate, existingSlots, ct);
     }
 
     public async Task<ScheduleSlotResponse?> GetSlotAsync(Guid slotId, CancellationToken ct = default)
@@ -180,6 +319,21 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         };
     }
 
+    public async Task<ScheduleSlotResponse> ReopenSlotAsync(Guid slotId, CancellationToken ct = default)
+    {
+        var slot = await _repo.GetByIdForUpdateAsync(slotId, ct);
+        if (slot is null)
+            throw new InvalidOperationException($"Slot '{slotId}' not found.");
+
+        if (slot.Status == SlotStatus.Open)
+            throw new InvalidOperationException("Slot is already open.");
+
+        slot.Status = SlotStatus.Open;
+        slot.UpdatedAt = DateTime.UtcNow;
+        await _repo.UpdateAsync(slot, ct);
+        return MapToResponse(slot);
+    }
+
     public async Task EnsureDefaultSlotsAsync(
         Guid doctorId,
         DateOnly weekStart,
@@ -198,8 +352,8 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         var now = DateTime.UtcNow;
         var newSlots = new List<ScheduleSlot>();
 
-        // 5 ngày T2-T6.
-        for (var d = 0; d < 5; d++)
+        // 14 ngày T2-CN (Thứ 2 đến Chủ nhật, 2 tuần).
+        for (var d = 0; d < 14; d++)
         {
             var day = weekStart.AddDays(d);
 
@@ -236,16 +390,30 @@ public sealed class ScheduleSlotService : IScheduleSlotService
                 await _repo.AddAsync(s, ct);
             }
             catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx
-                && pgEx.SqlState == "23505")
+                && (pgEx.SqlState == "23505" || pgEx.SqlState == "23P01"))
             {
-                // Unique constraint "uq_schedule_slots_start" bị vi phạm = slot đã có
-                // (do request song song hoặc user bấm 2 lần). Bỏ qua để giữ idempotent.
+                // 23505: Unique constraint (uq_schedule_slots_start) bị vi phạm
+                // 23P01: EXCLUDE constraint (ex_schedule_slots_no_overlap) bị vi phạm
+                // → slot đã tồn tại. Bỏ qua để giữ idempotent.
             }
         }
     }
 
     private static ScheduleSlotResponse MapToResponse(ScheduleSlot slot)
     {
+        // Lấy các booking đang ACTIVE (BOOKED, không phải CANCELLED)
+        var bookedAppointments = slot.Appointments?
+            .Where(a => a.Status == AppointmentStatus.Booked)
+            .Select(a => new BookedAppointmentInfo
+            {
+                AppointmentId = a.AppointmentId,
+                PatientProfileId = a.PatientProfileId,
+                PatientFullName = a.PatientProfile?.User?.FullName ?? "Unknown",
+                Reason = a.Reason,
+                Status = a.Status,
+            })
+            .ToList() ?? new List<BookedAppointmentInfo>();
+
         return new ScheduleSlotResponse
         {
             SlotId = slot.SlotId,
@@ -255,8 +423,8 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             StartTime = slot.StartTime,
             EndTime = slot.EndTime,
             Status = slot.Status,
-            ActiveAppointmentsCount = slot.Appointments?
-                .Count(a => a.Status == AppointmentStatus.Booked) ?? 0,
+            ActiveAppointmentsCount = bookedAppointments.Count,
+            BookedAppointments = bookedAppointments,
             CreatedAt = slot.CreatedAt,
             UpdatedAt = slot.UpdatedAt,
         };

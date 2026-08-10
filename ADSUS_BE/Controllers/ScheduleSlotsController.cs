@@ -12,10 +12,10 @@ namespace ADSUS_BE.Controllers;
 
 /// <summary>
 /// UC-15 — Manage Clinic Schedule (Module 8 — Appointment Scheduling).
-/// Allowed roles: Doctor (Doctor tự quản lý lịch của chính mình).
+/// Allowed roles: Doctor only (Nurse không có quyền quản lý lịch).
 /// BR-01: VisitDate + StartTime > now (UTC); range > 15 phút; không overlap.
-/// BR-02: Closed là terminal.
-/// Hệ thống tự sinh ca mặc định T2-T6 (8h-12h, 13h-17h) khi Doctor mở trang lần đầu.
+/// BR-02: Closed có thể mở lại.
+/// Hệ thống tự sinh ca mặc định T2-CN (8h-12h, 13h-17h) khi Doctor mở trang lần đầu.
 /// </summary>
 [ApiController]
 [Route("api/v1/schedule-slots")]
@@ -37,17 +37,22 @@ public sealed class ScheduleSlotsController : ControllerBase
 
     /// <summary>GET /api/v1/schedule-slots — Danh sách slot của Doctor đang đăng nhập.</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<ScheduleSlotResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PagedResult<ScheduleSlotResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> List(
         [FromQuery] DateOnly? fromDate = null,
         [FromQuery] DateOnly? toDate = null,
         [FromQuery] SlotStatus? status = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 200, // 14 ngày × 16 slots = 224 max
         CancellationToken ct = default)
     {
         // R5: Doctor chỉ xem được lịch của chính mình, bỏ qua doctorId query.
-        var slots = await _slots.ListSlotsAsync(
-            fromDate, toDate, CurrentDoctorId, status, ct);
-        return Ok(ApiResponse<IReadOnlyList<ScheduleSlotResponse>>.Ok(slots));
+        var (items, totalItems) = await _slots.ListSlotsAsync(
+            fromDate, toDate, CurrentDoctorId, status, page, pageSize, ct);
+
+        var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+        var result = new PagedResult<ScheduleSlotResponse>(items.ToList(), page, pageSize, totalItems, totalPages);
+        return Ok(ApiResponse<PagedResult<ScheduleSlotResponse>>.Ok(result));
     }
 
     /// <summary>GET /api/v1/schedule-slots/{id}</summary>
@@ -162,7 +167,7 @@ public sealed class ScheduleSlotsController : ControllerBase
     }
 
     /// <summary>
-    /// POST /api/v1/schedule-slots/ensure-default — Tự sinh ca mặc định T2-T6 (8h-12h, 13h-17h)
+    /// POST /api/v1/schedule-slots/ensure-default — Tự sinh ca mặc định T2-CN (8h-12h, 13h-17h)
     /// cho tuần bắt đầu weekStart. Idempotent. Doctor gọi khi mở trang lần đầu.
     /// </summary>
     [HttpPost("ensure-default")]
@@ -179,6 +184,32 @@ public sealed class ScheduleSlotsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
+    }
+
+    /// <summary>PUT /api/v1/schedule-slots/{id}/reopen — Mở lại slot đã đóng.</summary>
+    [HttpPut("{id:guid}/reopen")]
+    [ProducesResponseType(typeof(ApiResponse<ScheduleSlotResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Reopen(Guid id, CancellationToken ct = default)
+    {
+        try
+        {
+            var existing = await _slots.GetSlotAsync(id, ct);
+            if (existing is null)
+                return NotFound(ApiResponse<object>.Fail(404, $"Slot '{id}' not found."));
+            if (existing.DoctorId != CurrentDoctorId)
+                return StatusCode(403, ApiResponse<object>.Fail(403, "Not your slot."));
+
+            var slot = await _slots.ReopenSlotAsync(id, ct);
+            return Ok(ApiResponse<ScheduleSlotResponse>.Ok(slot));
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                return NotFound(ApiResponse<object>.Fail(404, ex.Message));
             return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
         }
     }

@@ -480,6 +480,25 @@ namespace ADSUS_BE
             builder.Services.AddQuartzHostedService(q => q
                 .WaitForJobsToComplete = true);
 
+            // ---------- Quartz JOB-02: Slot Generator ----------
+            builder.Services.AddQuartz(q =>
+            {
+                // Chạy lúc 00:05 sáng mỗi ngày
+                // "0 5 0 * * ?" = "At 00:05:00 every day"
+                var cronExpression = "0 5 0 * * ?";
+
+                var jobKey = new Quartz.JobKey("SlotGeneratorJob", "schedule");
+
+                q.AddJob<SlotGeneratorJob>(opts => opts
+                    .WithIdentity(jobKey)
+                    .StoreDurably());
+
+                q.AddTrigger(opts => opts
+                    .ForJob(jobKey)
+                    .WithIdentity("SlotGeneratorTrigger", "schedule")
+                    .WithCronSchedule(cronExpression));
+            });
+
             // Scans the whole BLL assembly, so validators added by other modules are picked
             // up automatically.
             builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();

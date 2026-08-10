@@ -95,8 +95,10 @@ public enum IntakeStatus
 }
 
 /// <summary>
-/// Trạng thái khung giờ khám — enum <c>slot_status</c> trong DB (Module 6).
-/// Không có "Full" — số Appointment/slot không giới hạn (quyết định UCS 3.1, 23/07/2026).
+/// Trạng thái khung giờ khám — enum <c>slot_status</c> trong DB (Module 8).
+/// - OPEN: Bác sĩ tạo ca, chưa có bệnh nhân book
+/// - BOOKED: Bệnh nhân đã book ca này (1 slot = 1 lịch hẹn)
+/// - CLOSED: Bác sĩ đóng ca (không nhận thêm booking)
 /// </summary>
 public enum SlotStatus
 {

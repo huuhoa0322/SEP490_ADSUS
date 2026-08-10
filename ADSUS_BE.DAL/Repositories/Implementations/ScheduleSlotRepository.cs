@@ -21,6 +21,8 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
             .AsNoTracking()
             .Include(s => s.Doctor)
             .Include(s => s.Appointments)
+                .ThenInclude(a => a.PatientProfile)
+                    .ThenInclude(p => p.User)
             .FirstOrDefaultAsync(s => s.SlotId == id, ct);
     }
 
@@ -63,6 +65,9 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
         IQueryable<ScheduleSlot> query = _db.ScheduleSlots
             .AsNoTracking()
             .Include(s => s.Doctor)
+            .Include(s => s.Appointments)
+                .ThenInclude(a => a.PatientProfile)
+                    .ThenInclude(p => p.User)
             .Where(s => s.SlotDate >= from && s.SlotDate <= to);
 
         if (doctorId.HasValue)
@@ -86,11 +91,13 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
         CancellationToken ct = default)
     {
         // Overlap: hai khoảng (a, b) và (c, d) giao nhau khi a < d && c < b.
-        // Điều kiện thêm: status = OPEN (slot đã Closed không tính overlap).
+        // Lưu ý: KHÔNG filter theo status — DB EXCLUDE constraint
+        // `ex_schedule_slots_no_overlap` cũng không filter status, nên
+        // nếu đã có slot CLOSED cùng giờ, insert slot OPEN mới sẽ violate
+        // constraint tại DB. Phải check overlap cho MỌI status.
         IQueryable<ScheduleSlot> query = _db.ScheduleSlots
             .Where(s => s.DoctorId == doctorId
                      && s.SlotDate == slotDate
-                     && s.Status == SlotStatus.Open
                      && s.StartTime < endTime
                      && startTime < s.EndTime);
 

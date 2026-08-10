@@ -8,6 +8,7 @@ import {
   ensureDefaultSlots,
   getScheduleSlot,
   getScheduleSlots,
+  reopenScheduleSlot,
   updateScheduleSlot,
 } from "../api/schedule-slot.api";
 import type {
@@ -68,5 +69,14 @@ export function useEnsureDefaultSlots() {
   return useMutation({
     mutationFn: (weekStart: string) => ensureDefaultSlots(weekStart),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["schedule-slots", "list"] }),
+  });
+}
+
+/** Mở lại slot đã đóng. */
+export function useReopenScheduleSlot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => reopenScheduleSlot(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["schedule-slots"] }),
   });
 }
