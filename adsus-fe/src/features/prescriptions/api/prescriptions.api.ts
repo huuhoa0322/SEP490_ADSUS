@@ -32,21 +32,30 @@ export async function createPrescription(
   request: CreatePrescriptionRequest,
 ): Promise<PrescriptionResponse> {
   const response = await apiClient.post<
-    ApiResponse<PrescriptionResponse>
+    ApiResponse<PrescriptionResponse> | PrescriptionResponse
   >("/api/v1/prescriptions", request);
 
-  // Backend trả 201 Created khi lưu thành công.
-  // Nếu response body không có ApiResponse wrapper (null/undefined),
-  // vẫn coi là thành công — dữ liệu đã lưu, có thể do backend trả khác format.
-  if (!response.data?.data) {
-    // Lỗi thật khi không có message từ server
-    if (!response.data?.message) {
-      throw new Error("Không kết nối được backend. Kiểm tra backend đang chạy.");
-    }
-    // Backend trả lỗi nghiệp vụ (validate fail, 400/422)
-    throw new Error(response.data.message);
+  const body = response.data;
+
+  // Bug backend PrescriptionsController.Create trả raw PrescriptionResponse
+  // (không wrap trong ApiResponse<T>). Nếu body có field `data` → wrap, lấy
+  // .data. Nếu body có trực tiếp field `prescriptionId` → raw, trả luôn.
+  // Fix thủ công này chỉ để tránh phải restart BE. Khi backend wrap chuẩn,
+  // đoạn fallback này vẫn hoạt động (defensive).
+  if (body && typeof body === "object" && "prescriptionId" in body) {
+    return body as PrescriptionResponse;
   }
-  return response.data.data;
+
+  const wrapped = body as ApiResponse<PrescriptionResponse> | undefined;
+  if (wrapped?.data) {
+    return wrapped.data;
+  }
+
+  if (wrapped?.message) {
+    throw new Error(wrapped.message);
+  }
+
+  throw new Error("Không tạo được đơn thuốc. Kiểm tra backend đang chạy.");
 }
 
 /**
