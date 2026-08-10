@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import type { ApiResponse } from "@/types/api.types";
+import type { ApiResponse, PagedResult } from "@/types/api.types";
 
 import type {
   CloseSlotImpactResponse,
@@ -14,12 +14,17 @@ import type {
  * Roles: Doctor only. Doctor tự quản lý lịch của chính mình (DoctorId lấy từ JWT).
  */
 
-function normalizeStatus(status: unknown): "OPEN" | "CLOSED" {
+function normalizeStatus(status: unknown): "OPEN" | "BOOKED" | "CLOSED" {
   if (typeof status === "string") {
     const upper = status.toUpperCase();
-    if (upper === "OPEN" || upper === "CLOSED") return upper;
+    if (upper === "OPEN" || upper === "BOOKED" || upper === "CLOSED") return upper as "OPEN" | "BOOKED" | "CLOSED";
   }
-  if (typeof status === "number") return status === 0 ? "OPEN" : "CLOSED";
+  if (typeof status === "number") {
+    // SlotStatus enum: OPEN=0, BOOKED=1, CLOSED=2
+    if (status === 0) return "OPEN";
+    if (status === 1) return "BOOKED";
+    if (status === 2) return "CLOSED";
+  }
   return "OPEN";
 }
 
@@ -31,16 +36,18 @@ export async function getScheduleSlots(
   if (params.fromDate) cleanParams.fromDate = params.fromDate;
   if (params.toDate) cleanParams.toDate = params.toDate;
   if (params.status) cleanParams.status = params.status;
+  if (params.pageSize) cleanParams.pageSize = String(params.pageSize);
 
-  const { data } = await apiClient.get<ApiResponse<ScheduleSlotResponse[]>>(
+  // Backend trả về paginated format: { items: [], page, pageSize, totalItems, totalPages }
+  const { data } = await apiClient.get<ApiResponse<PagedResult<ScheduleSlotResponse>>>(
     "/api/v1/schedule-slots",
     { params: cleanParams },
   );
 
-  if (!data.data) {
+  if (!data.data?.items) {
     throw new Error(data.message || "Không tải được danh sách khung giờ.");
   }
-  return data.data.map((s) => ({ ...s, status: normalizeStatus(s.status) }));
+  return data.data.items.map((s) => ({ ...s, status: normalizeStatus(s.status) }));
 }
 
 /** GET /api/v1/schedule-slots/{id} */
@@ -106,4 +113,15 @@ export async function ensureDefaultSlots(weekStart: string): Promise<void> {
     null,
     { params: { weekStart } },
   );
+}
+
+/** PUT /api/v1/schedule-slots/{id}/reopen — Mở lại slot đã đóng. */
+export async function reopenScheduleSlot(id: string): Promise<ScheduleSlotResponse> {
+  const { data } = await apiClient.put<ApiResponse<ScheduleSlotResponse>>(
+    `/api/v1/schedule-slots/${id}/reopen`,
+  );
+  if (!data.data) {
+    throw new Error(data.message || "Không mở lại được khung giờ.");
+  }
+  return { ...data.data, status: normalizeStatus(data.data.status) };
 }

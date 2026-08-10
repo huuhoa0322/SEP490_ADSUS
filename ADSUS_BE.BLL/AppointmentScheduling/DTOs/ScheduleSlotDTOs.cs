@@ -24,6 +24,19 @@ public sealed class UpdateScheduleSlotRequest
 }
 
 /// <summary>
+/// Thông tin booking bên trong ScheduleSlotResponse.
+/// Hiển thị patient name khi slot đã được book.
+/// </summary>
+public sealed class BookedAppointmentInfo
+{
+    public Guid AppointmentId { get; init; }
+    public Guid PatientProfileId { get; init; }
+    public string PatientFullName { get; init; } = string.Empty;
+    public string? Reason { get; init; }
+    public AppointmentStatus Status { get; init; }
+}
+
+/// <summary>
 /// Response cho schedule slot (UC-15).
 /// </summary>
 public sealed class ScheduleSlotResponse
@@ -36,6 +49,10 @@ public sealed class ScheduleSlotResponse
     public TimeOnly EndTime { get; init; }
     public SlotStatus Status { get; init; }
     public int ActiveAppointmentsCount { get; init; }
+
+    /// <summary>Danh sách booking chi tiết (chỉ có BOOKED appointments).</summary>
+    public IReadOnlyList<BookedAppointmentInfo> BookedAppointments { get; init; } = Array.Empty<BookedAppointmentInfo>();
+
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
 }

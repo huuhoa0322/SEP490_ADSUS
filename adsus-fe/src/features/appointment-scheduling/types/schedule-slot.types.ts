@@ -4,7 +4,18 @@
  * BR-02: Closed là terminal; không thể reopen.
  */
 
-export type SlotStatus = "OPEN" | "CLOSED";
+export type SlotStatus = "OPEN" | "BOOKED" | "CLOSED";
+
+export type AppointmentStatus = "BOOKED" | "CANCELLED";
+
+/** Thông tin booking bên trong ScheduleSlotResponse */
+export interface BookedAppointmentInfo {
+  appointmentId: string;
+  patientProfileId: string;
+  patientFullName: string;
+  reason: string | null;
+  status: AppointmentStatus;
+}
 
 export interface ScheduleSlotResponse {
   slotId: string;
@@ -15,6 +26,7 @@ export interface ScheduleSlotResponse {
   endTime: string;
   status: SlotStatus;
   activeAppointmentsCount: number;
+  bookedAppointments: BookedAppointmentInfo[]; // Chi tiết bệnh nhân đã book
   createdAt: string;
   updatedAt: string;
 }
@@ -39,4 +51,5 @@ export interface ListSlotsParams {
   fromDate?: string;
   toDate?: string;
   status?: SlotStatus;
+  pageSize?: number; // Mặc định 200 để lấy đủ 14 ngày × 16 slots
 }

@@ -608,6 +608,9 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("status")
                 .HasColumnType("slot_status");
             entity.Property(e => e.StartTime).HasColumnName("start_time");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("slot_status");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
