@@ -22,8 +22,7 @@ public class CreatePrescriptionRequestValidatorTests
         Items: new[]
         {
             new CreatePrescriptionItemDto(
-                MedicineId: Guid.NewGuid(),
-                MedicineName: null,
+                MedicineName: "Paracetamol 500mg",
                 Dosage: "1 viên/lần",
                 DurationDays: 7,
                 StartDate: new DateOnly(2026, 7, 28),

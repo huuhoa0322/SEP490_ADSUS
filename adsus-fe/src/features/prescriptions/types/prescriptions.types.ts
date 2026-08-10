@@ -21,10 +21,8 @@ export type IntakeStatus = "PENDING" | "TAKEN";
 
 /** 1 dòng thuốc trong đơn kê (POST /api/v1/prescriptions body). */
 export interface CreatePrescriptionItemDto {
-  /** Chọn từ catalog (Guid). Nullable — nếu bác sĩ nhập text tự do sẽ là null. */
-  medicineId?: string;
-  /** Tên thuốc nhập tự do (khi medicineId là undefined). */
-  medicineName?: string;
+  /** Tên thuốc nhập bởi bác sĩ. Backend tự tìm hoặc tạo mới trong bảng medicines (Option A). */
+  medicineName: string;
   /** Required string — vd: "1 viên", "2 gói", "bôi ngoài da". */
   dosage: string;
   /** 1..365 — backend validate [Range(1, 365)]. */
@@ -48,10 +46,10 @@ export interface CreatePrescriptionRequest {
   items: CreatePrescriptionItemDto[];
 }
 
-/** 1 dòng thuốc trong response (include MedicineName). */
+/** 1 dòng thuốc trong response. */
 export interface PrescriptionItemResponse {
   prescriptionItemId: string;
-  medicineId: string | null;
+  medicineId: string;
   medicineName: string;
   dosage: string;
   durationDays: number;

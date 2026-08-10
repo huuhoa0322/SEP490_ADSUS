@@ -17,12 +17,11 @@ public sealed record CreatePrescriptionRequest(
 
 /// <summary>
 /// 1 dòng thuốc trong đơn kê.
-/// MedicineId: chọn từ catalog (Guid). MedicineName: nhập text tự do khi không có trong catalog.
-/// Backend chấp nhận ít nhất 1 trong 2; nếu cả 2 có → ưu tiên MedicineId.
+/// MedicineName: tên thuốc nhập bởi bác sĩ. Backend tự tìm hoặc tạo mới trong bảng medicines.
+/// (Option A: tự động quản lý danh mục thuốc).
 /// </summary>
 public sealed record CreatePrescriptionItemDto(
-    Guid? MedicineId,
-    string? MedicineName,
+    [Required][MinLength(1)] string MedicineName,
     [Required] string Dosage,
     [Range(1, 365)] short DurationDays,
     DateOnly StartDate,
