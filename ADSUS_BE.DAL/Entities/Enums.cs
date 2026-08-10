@@ -101,6 +101,7 @@ public enum IntakeStatus
 public enum SlotStatus
 {
     [PgName("OPEN")] Open,
+    [PgName("BOOKED")] Booked,
     [PgName("CLOSED")] Closed,
 }
 

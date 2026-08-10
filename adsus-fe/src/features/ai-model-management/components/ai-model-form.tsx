@@ -124,6 +124,7 @@ export function AiModelFormDialog({ id, open, onClose, onSuccess }: AiModelFormD
         },
         {
           onSuccess: () => {
+            toast.success("Cập nhật mô hình AI thành công!");
             onSuccess();
             onClose();
           },
@@ -133,6 +134,7 @@ export function AiModelFormDialog({ id, open, onClose, onSuccess }: AiModelFormD
     } else {
       register(formData, {
         onSuccess: () => {
+          toast.success("Đăng ký mô hình AI thành công!");
           onSuccess();
           onClose();
         },
