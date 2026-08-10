@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronDown, Plus, Trash2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   Controller,
   FormProvider,
@@ -54,7 +55,8 @@ interface PrescriptionFormProps {
   cases?: Array<{ caseId: string; patientName: string; patientCode: string }>;
   /** Danh mục thuốc (GET /api/v1/medication-catalog) — dùng cho autocomplete. */
   medications: Array<{ medicineId: string; name: string }>;
-  onSubmit: (data: PrescriptionFormData) => Promise<void>;
+  /** Gọi khi submit hợp lệ. Trả về prescriptionId để form tự điều hướng. */
+  onSubmit: (data: PrescriptionFormData) => Promise<{ prescriptionId: string } | void>;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -65,6 +67,7 @@ export function PrescriptionForm({
   medications,
   onSubmit,
 }: PrescriptionFormProps) {
+  const router = useRouter();
   const methods = useForm<PrescriptionFormData>({
     resolver: zodResolver(PrescriptionFormSchema),
     defaultValues: {
@@ -99,8 +102,12 @@ export function PrescriptionForm({
 
   async function onValid(data: PrescriptionFormData) {
     try {
-      await onSubmit(data);
+      const result = await onSubmit(data);
       toast.success("Đơn thuốc đã được gửi đến bệnh nhân");
+      // Navigate sau khi toast đã render — tránh race với Next.js abort.
+      if (result && "prescriptionId" in result) {
+        router.push(`/prescriptions/${result.prescriptionId}`);
+      }
     } catch {
       toast.error("Không thể lưu đơn thuốc. Vui lòng thử lại.");
     }
@@ -218,14 +225,14 @@ export function PrescriptionForm({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="flex items-center gap-2 rounded-full bg-teal px-8 py-3.5 font-semibold text-white transition hover:bg-teal/90 disabled:opacity-60"
+            className="flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-base font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-60"
           >
             {isSubmitting ? (
               <span>Đang gửi…</span>
             ) : (
               <>
                 <span>✓</span>
-                <span>XÁC NHẬN KÊ ĐƠN & GỬI ĐẾN APP MOBILE</span>
+                <span>Xác nhận kê đơn & gửi đến App Mobile</span>
               </>
             )}
           </button>
@@ -350,6 +357,7 @@ interface MedicationRowProps {
     scheduleSlots?: { message?: string };
     durationDays?: { message?: string };
     startDate?: { message?: string };
+    instructions?: { message?: string };
   };
   onRemove?: () => void;
   control: ReturnType<typeof useForm<PrescriptionFormData>>["control"];
