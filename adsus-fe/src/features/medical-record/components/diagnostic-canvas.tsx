@@ -424,7 +424,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         x1: pair[0].x, y1: pair[0].y, x2: pair[1].x, y2: pair[1].y,
         stroke: 'transparent', 'stroke-width': 16,
       });
-      (lineHit as HTMLElement).style.cursor = 'move';
+      (lineHit as unknown as HTMLElement).style.cursor = 'move';
       svg.appendChild(lineHit);
 
       const pointEls = pair.map((pt: any) => {
