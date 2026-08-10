@@ -29,7 +29,8 @@ public sealed class MedicineRepository : IMedicineRepository
         var trimmed = name.Trim();
         return await _db.Medicines
             .AsNoTracking()
-            .FirstOrDefaultAsync(m => m.Name == trimmed, ct);
+            .FirstOrDefaultAsync(m =>
+                EF.Functions.ILike(m.Name, trimmed), ct);
     }
 
     public async Task AddAsync(Medicine medicine, CancellationToken ct = default)

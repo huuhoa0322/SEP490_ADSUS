@@ -105,7 +105,20 @@ namespace ADSUS_BE
             builder.Host.UseSerilog((context, configuration) =>
                 configuration.ReadFrom.Configuration(context.Configuration));
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.PropertyNamingPolicy =
+                        System.Text.Json.JsonNamingPolicy.CamelCase;
+                    options.JsonSerializerOptions.DictionaryKeyPolicy =
+                        System.Text.Json.JsonNamingPolicy.CamelCase;
+                    // Cho phép map camelCase JSON sang PascalCase property khi deserialize.
+                    // Không có cờ này thì request gửi "doctorId" không khớp property "DoctorId".
+                    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+                    // Cho phép enum parse từ cả string ("Morning") lẫn integer (0)
+                    options.JsonSerializerOptions.Converters.Add(
+                        new System.Text.Json.Serialization.JsonStringEnumConverter());
+                });
             builder.Services.AddEndpointsApiExplorer();
 
             // ---------- Swagger: token input so protected endpoints can be tried out ----------
@@ -170,13 +183,13 @@ namespace ADSUS_BE
             dataSourceBuilder.MapEnum<UserStatus>("user_status");
             dataSourceBuilder.MapEnum<GenderType>("gender_type");
             dataSourceBuilder.MapEnum<BlogPostStatus>("blog_status");
-            dataSourceBuilder.MapEnum<AiResultStatus>("ai_result_status");
             dataSourceBuilder.MapEnum<AppointmentStatus>("appointment_status");
             dataSourceBuilder.MapEnum<CaseStatus>("case_status");
             dataSourceBuilder.MapEnum<ModelVersionStatus>("model_version_status");
             dataSourceBuilder.MapEnum<PrescriptionStatus>("prescription_status");
             dataSourceBuilder.MapEnum<IntakeStatus>("intake_status");
             dataSourceBuilder.MapEnum<SlotStatus>("slot_status");
+            dataSourceBuilder.MapEnum<ReminderSlot>("reminder_slot");
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);
@@ -323,6 +336,9 @@ namespace ADSUS_BE
             // BLL — Module 2: User & Role Management
             builder.Services.AddScoped<IUserAccountService, UserAccountService>();
             builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
+            // Ghi và đọc nhật ký thao tác quản trị tài khoản (UC-04).
+            builder.Services.AddScoped<AccountAuditTrail>();
+            builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
             // BLL — Module 3: Dashboard & Reporting
             builder.Services.AddScoped<IDashboardService, DashboardService>();
@@ -330,6 +346,8 @@ namespace ADSUS_BE
             // BLL — Module 4: Medical Record
             builder.Services.AddScoped<IPatientProfileService, PatientProfileService>();
             builder.Services.AddScoped<ICaseService, CaseService>();
+            builder.Services.AddScoped<ICaseDiagnosisService, CaseDiagnosisService>();
+            builder.Services.AddScoped<IAiMetricsService, AiMetricsService>();
             builder.Services.AddScoped<ICaseReportService, CaseReportService>();
             builder.Services.AddScoped<IDoctorDirectoryService, DoctorDirectoryService>();
             builder.Services.AddScoped<IPatientAccountService, PatientAccountService>();

@@ -35,14 +35,18 @@ public interface IUserAccountService
     /// FT-07 — tạo tài khoản mới. Sinh mật khẩu tạm, đặt cờ buộc đổi mật khẩu, gửi email.
     /// Mật khẩu tạm KHÔNG nằm trong giá trị trả về (PRD §6.2).
     /// </summary>
+    /// <param name="actingAdminId">Admin đang thao tác, để ghi nhật ký.</param>
     Task<(AccountOperationResult Result, UserAccountResponse? Account)> CreateAsync(
         CreateUserAccountRequest request,
+        Guid actingAdminId,
         CancellationToken cancellationToken = default);
 
     /// <summary>FT-09 — sửa thông tin và phân lại vai trò.</summary>
+    /// <param name="actingAdminId">Admin đang thao tác, để ghi nhật ký.</param>
     Task<AccountOperationResult> UpdateAsync(
         Guid userId,
         UpdateUserAccountRequest request,
+        Guid actingAdminId,
         CancellationToken cancellationToken = default);
 
     /// <summary>

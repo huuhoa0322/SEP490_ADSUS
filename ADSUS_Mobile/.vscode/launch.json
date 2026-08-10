@@ -1,0 +1,29 @@
+{
+  // Gắn sẵn cờ --dart-define-from-file để không ai phải nhớ gõ tay.
+  //
+  // Flutter khác Next.js: trình biên dịch cần giá trị cấu hình NGAY LÚC BUILD, nên không có
+  // cách nào tự đọc .env như `next dev`. Cờ này là chỗ gần nhất — và đặt ở đây thì bấm F5
+  // là xong.
+  //
+  // Chạy bằng dòng lệnh thì tự thêm:
+  //   flutter run --dart-define-from-file=.env
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ADSUS Mobile (debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": ["--dart-define-from-file", ".env"]
+    },
+    {
+      // Bản profile để đo hiệu năng. Vẫn cần .env vì địa chỉ backend là hằng số lúc build.
+      "name": "ADSUS Mobile (profile)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile",
+      "program": "lib/main.dart",
+      "toolArgs": ["--dart-define-from-file", ".env"]
+    }
+  ]
+}

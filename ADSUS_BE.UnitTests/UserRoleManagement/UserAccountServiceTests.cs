@@ -17,12 +17,23 @@ public class UserAccountServiceTests
 {
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IEmailService> _email = new();
+    private readonly Mock<IAuditLogRepository> _auditLogs = new();
     private readonly UserAccountService _sut;
 
     private readonly List<User> _saved = new();
 
+    /// <summary>Các dòng nhật ký đã được xếp vào hàng chờ trong bài test.</summary>
+    private readonly List<AuditLog> _audited = new();
+
+    /// <summary>Admin đang thao tác. Là actor được ghi vào nhật ký.</summary>
+    private readonly Guid _adminId = Guid.NewGuid();
+
     public UserAccountServiceTests()
     {
+        _auditLogs.Setup(r => r.AddAsync(It.IsAny<AuditLog>(), It.IsAny<CancellationToken>()))
+                  .Callback<AuditLog, CancellationToken>((l, _) => _audited.Add(l))
+                  .Returns(Task.CompletedTask);
+
         _users.Setup(r => r.PhoneExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(false);
         _users.Setup(r => r.IsEmailUsedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -38,7 +49,8 @@ public class UserAccountServiceTests
                   It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(true);
 
-        _sut = new UserAccountService(_users.Object, _email.Object);
+        _sut = new UserAccountService(
+            _users.Object, _email.Object, new AccountAuditTrail(_auditLogs.Object));
     }
 
     // ---------- FT-07: tạo tài khoản ----------
@@ -46,7 +58,7 @@ public class UserAccountServiceTests
     [Fact]
     public async Task Tao_BacSi_ThanhCong_TaiKhoanActive_VaBiEpDoiMatKhau()
     {
-        var (result, account) = await _sut.CreateAsync(YeuCauTao("DOCTOR"));
+        var (result, account) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal("ACTIVE", account!.Status);
@@ -61,7 +73,7 @@ public class UserAccountServiceTests
     [Fact]
     public async Task Tao_MatKhauTam_DuocBAM_KhongLuuThoVaKhongTraVe()
     {
-        var (_, account) = await _sut.CreateAsync(YeuCauTao("DOCTOR"));
+        var (_, account) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
 
         var user = Assert.Single(_saved);
 
@@ -92,7 +104,7 @@ public class UserAccountServiceTests
     [Fact]
     public async Task Tao_GuiMatKhauTamQuaEmail_KhiCoEmail()
     {
-        await _sut.CreateAsync(YeuCauTao("DOCTOR"));
+        await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
 
         _email.Verify(e => e.SendTemporaryPasswordAsync(
             "bs.b@example.com", "BS. Trần Văn B", It.IsAny<string>(), It.IsAny<CancellationToken>()),
@@ -108,7 +120,7 @@ public class UserAccountServiceTests
         var request = YeuCauTao("DOCTOR");
         request.Email = null;
 
-        var (result, account) = await _sut.CreateAsync(request);
+        var (result, account) = await _sut.CreateAsync(request, _adminId);
 
         Assert.Equal(AccountOperationResult.CreatedWithoutEmail, result);
 
@@ -130,7 +142,7 @@ public class UserAccountServiceTests
                   It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(false);
 
-        var (result, account) = await _sut.CreateAsync(YeuCauTao("DOCTOR"));
+        var (result, account) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
 
         Assert.Equal(AccountOperationResult.CreatedButEmailNotSent, result);
         Assert.NotNull(account);
@@ -145,7 +157,7 @@ public class UserAccountServiceTests
         _users.Setup(r => r.PhoneExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(true);
 
-        var (result, account) = await _sut.CreateAsync(YeuCauTao("DOCTOR"));
+        var (result, account) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
 
         Assert.Equal(AccountOperationResult.PhoneAlreadyUsed, result);
         Assert.Null(account);
@@ -159,7 +171,7 @@ public class UserAccountServiceTests
     public async Task Tao_VaiTroKhongHopLe_BiTuChoi(string vaiTro)
     {
         // UC-04: tài khoản ADMIN được cấp lúc dựng hệ thống, KHÔNG tạo qua màn này.
-        var (result, _) = await _sut.CreateAsync(YeuCauTao(vaiTro));
+        var (result, _) = await _sut.CreateAsync(YeuCauTao(vaiTro), _adminId);
 
         Assert.Equal(AccountOperationResult.InvalidRole, result);
         Assert.Empty(_saved);
@@ -175,7 +187,7 @@ public class UserAccountServiceTests
         var request = YeuCauTao("PATIENT");
         request.DateOfBirth = "1990-05-20";
 
-        var (result, account) = await _sut.CreateAsync(request);
+        var (result, account) = await _sut.CreateAsync(request, _adminId);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Null(Assert.Single(_saved).DateOfBirth);
@@ -189,7 +201,7 @@ public class UserAccountServiceTests
         var request = YeuCauTao("DOCTOR");
         request.DateOfBirth = "1985-03-10";
 
-        var (_, account) = await _sut.CreateAsync(request);
+        var (_, account) = await _sut.CreateAsync(request, _adminId);
 
         Assert.Equal(new DateOnly(1985, 3, 10), Assert.Single(_saved).DateOfBirth);
         Assert.Equal("1985-03-10", account!.DateOfBirth);
@@ -350,7 +362,7 @@ public class UserAccountServiceTests
         {
             FullName = "Vũ Thị Cẩm Tú",
             Role = "NURSE",
-        });
+        }, _adminId);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal(UserRole.Nurse, user.Role);
@@ -369,17 +381,17 @@ public class UserAccountServiceTests
         {
             FullName = "Tên Mới",
             Role = "DOCTOR",
-        });
+        }, _adminId);
 
         Assert.Equal(soCu, user.Phone);
         Assert.Equal(UserStatus.Locked, user.Status);
     }
 
     [Fact]
-    public async Task PhanQuyen_DoiSangBenhNhan_ThiXOA_NgaySinh()
+    public async Task PhanQuyen_DoiSangBenhNhan_GIU_NGUYEN_NgaySinh_NhungKHONG_TRA_VE()
     {
-        // Đổi vai trò sang PATIENT thì ngày sinh đang có phải bị xoá, nếu không Admin vẫn
-        // đọc được dữ liệu y tế của tài khoản đó (BR-01).
+        // BR-01 nói Admin không được THẤY ngày sinh bệnh nhân — không nói phải XOÁ nó.
+        // Hai việc khác nhau, và trước đây code làm nhầm sang việc thứ hai.
         var user = TaoUserTrongDb(UserRole.Doctor);
         user.DateOfBirth = new DateOnly(1985, 3, 10);
         SetupGetById(user);
@@ -389,9 +401,37 @@ public class UserAccountServiceTests
             FullName = "Nguyễn Văn A",
             Role = "PATIENT",
             DateOfBirth = "1985-03-10",
-        });
+        }, _adminId);
 
-        Assert.Null(user.DateOfBirth);
+        // Dữ liệu còn nguyên trong database...
+        Assert.Equal(new DateOnly(1985, 3, 10), user.DateOfBirth);
+
+        // ...nhưng Admin vẫn không đọc được. Đó mới là chỗ BR-01 được thi hành.
+        var response = await _sut.GetByIdAsync(user.UserId, _adminId);
+        Assert.Null(response!.DateOfBirth);
+    }
+
+    [Fact]
+    public async Task PhanQuyen_SuaTenBenhNhan_KHONG_DUOC_XOA_NGAY_SINH_DIEU_DUONG_DA_NHAP()
+    {
+        // Lỗi thật, xuất hiện khi UC-06 (Điều dưỡng tạo hồ sơ bệnh nhân) bắt đầu ghi ngày
+        // sinh: Admin chỉ vào sửa lại cái tên cho đúng chính tả, mà ngày sinh Điều dưỡng vừa
+        // nhập bị xoá sạch. Admin không nhìn thấy ô đó nên không hề biết mình vừa xoá gì, và
+        // cũng không ai khôi phục lại được.
+        var user = TaoUserTrongDb(UserRole.Patient);
+        user.DateOfBirth = new DateOnly(1992, 7, 15);
+        SetupGetById(user);
+
+        await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
+        {
+            FullName = "Nguyễn Thị Hoa",
+            Role = "PATIENT",
+            // Form của Admin ẩn hẳn ô ngày sinh nên luôn gửi lên null.
+            DateOfBirth = null,
+        }, _adminId);
+
+        Assert.Equal(new DateOnly(1992, 7, 15), user.DateOfBirth);
+        Assert.Equal("Nguyễn Thị Hoa", user.FullName);
     }
 
     [Theory]
@@ -411,7 +451,7 @@ public class UserAccountServiceTests
         {
             FullName = "Quản trị viên",
             Role = vaiTroMoi,
-        });
+        }, _adminId);
 
         Assert.Equal(AccountOperationResult.CannotChangeAdminRole, result);
         Assert.Equal(UserRole.Admin, user.Role);
@@ -430,7 +470,7 @@ public class UserAccountServiceTests
         {
             FullName = "Nguyễn Văn A",
             Role = "ADMIN",
-        });
+        }, _adminId);
 
         Assert.Equal(AccountOperationResult.CannotChangeAdminRole, result);
         Assert.Equal(UserRole.Doctor, user.Role);
@@ -449,12 +489,110 @@ public class UserAccountServiceTests
             FullName = "Nguyễn Quý Hiếu",
             Role = "ADMIN",
             Email = "admin@example.com",
-        });
+        }, _adminId);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal("Nguyễn Quý Hiếu", user.FullName);
         Assert.Equal("admin@example.com", user.Email);
         Assert.Equal(UserRole.Admin, user.Role);
+    }
+
+    // ---------- Nhật ký thao tác ----------
+
+    [Fact]
+    public async Task Tao_GHI_NHAT_KY_VaGhiDungNguoiThucHien()
+    {
+        await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
+
+        var log = Assert.Single(_audited);
+        Assert.Equal("CREATE_ACCOUNT", log.Action);
+
+        // Người thực hiện lấy từ token, KHÔNG phải người bị tác động — ghi nhầm chỗ này thì
+        // nhật ký nói ngược hẳn ai đã làm gì.
+        Assert.Equal(_adminId, log.ActorId);
+        Assert.Contains("BS. Trần Văn B", log.Detail);
+        Assert.Contains("0988776655", log.Detail);
+    }
+
+    [Fact]
+    public async Task Khoa_VaMoKhoa_GHI_HAI_HANH_DONG_KHAC_NHAU()
+    {
+        var user = TaoUserTrongDb(UserRole.Doctor);
+        SetupGetById(user);
+
+        await _sut.SetLockedAsync(user.UserId, locked: true, _adminId);
+        await _sut.SetLockedAsync(user.UserId, locked: false, _adminId);
+
+        Assert.Equal(2, _audited.Count);
+        Assert.Equal("LOCK_ACCOUNT", _audited[0].Action);
+        Assert.Equal("UNLOCK_ACCOUNT", _audited[1].Action);
+    }
+
+    [Fact]
+    public async Task VoHieuHoa_GHI_NHAT_KY_KemTrangThaiTruocDo()
+    {
+        // Thao tác một chiều, không hoàn tác được (BR-05) — nhật ký là thứ duy nhất còn lại
+        // để biết tài khoản đó trước khi bị vô hiệu hoá đang ở trạng thái nào.
+        var user = TaoUserTrongDb(UserRole.Doctor);
+        user.Status = UserStatus.Locked;
+        SetupGetById(user);
+
+        await _sut.DeactivateAsync(user.UserId, _adminId);
+
+        var log = Assert.Single(_audited);
+        Assert.Equal("DEACTIVATE_ACCOUNT", log.Action);
+        Assert.Contains("LOCKED", log.Detail);
+    }
+
+    [Fact]
+    public async Task PhanQuyen_NHAT_KY_GHI_RO_DOI_TU_VAI_TRO_NAO_SANG_VAI_TRO_NAO()
+    {
+        var user = TaoUserTrongDb(UserRole.Doctor);
+        SetupGetById(user);
+
+        await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
+        {
+            FullName = "Vũ Thị Cẩm Tú",
+            Role = "NURSE",
+        }, _adminId);
+
+        var log = Assert.Single(_audited);
+        Assert.Equal("UPDATE_ACCOUNT", log.Action);
+        Assert.Contains("DOCTOR", log.Detail);
+        Assert.Contains("NURSE", log.Detail);
+    }
+
+    [Fact]
+    public async Task ThaoTacBiTuChoi_KHONG_DUOC_GHI_NHAT_KY()
+    {
+        // Nhật ký chỉ ghi việc ĐÃ XẢY RA. Ghi cả những lần bị từ chối thì đọc lại sẽ tưởng
+        // tài khoản đã bị khoá thật, trong khi thực tế không có gì thay đổi.
+        var user = TaoUserTrongDb(UserRole.Admin);
+        SetupGetById(user);
+
+        await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
+        {
+            FullName = "Quản trị viên",
+            Role = "DOCTOR",
+        }, _adminId);
+
+        await _sut.SetLockedAsync(_adminId, locked: true, _adminId);
+
+        Assert.Empty(_audited);
+    }
+
+    [Fact]
+    public async Task NhatKy_KHONG_DUOC_CHUA_NGAY_SINH()
+    {
+        // BR-01 — Admin không được xem ngày sinh của bệnh nhân. Chặn ở API rồi mà để rò qua
+        // nhật ký thì cũng như không chặn.
+        var request = YeuCauTao("DOCTOR");
+        request.DateOfBirth = "1985-03-10";
+
+        await _sut.CreateAsync(request, _adminId);
+
+        var log = Assert.Single(_audited);
+        Assert.DoesNotContain("1985", log.Detail);
     }
 
     // ---------- helpers ----------

@@ -15,10 +15,12 @@ namespace ADSUS_BE.Controllers;
 public class AiModelsController : ControllerBase
 {
     private readonly IAiModelService _aiModelService;
+    private readonly ADSUS_BE.BLL.MedicalRecord.Interfaces.IAiMetricsService _aiMetricsService;
 
-    public AiModelsController(IAiModelService aiModelService)
+    public AiModelsController(IAiModelService aiModelService, ADSUS_BE.BLL.MedicalRecord.Interfaces.IAiMetricsService aiMetricsService)
     {
         _aiModelService = aiModelService;
+        _aiMetricsService = aiMetricsService;
     }
 
     [HttpGet]
@@ -83,6 +85,15 @@ public class AiModelsController : ControllerBase
         await _aiModelService.ActivateVersionAsync(id, adminId, cancellationToken);
         
         return Ok(ApiResponse<object>.Ok(new { Message = "Kích hoạt phiên bản thành công." }));
+    }
+
+    [HttpPost("{id}/calculate-map50")]
+    public async Task<ActionResult<ApiResponse<object>>> CalculateMap50(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        await _aiMetricsService.CalculateMap50Async(id, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { Message = "Tính toán mAP50 thành công." }));
     }
 
     private Guid GetUserId()

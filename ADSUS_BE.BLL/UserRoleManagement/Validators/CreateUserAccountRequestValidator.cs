@@ -1,4 +1,5 @@
 using System.Globalization;
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using ADSUS_BE.DAL.Data;
 using FluentValidation;
@@ -23,11 +24,10 @@ public class CreateUserAccountRequestValidator : AbstractValidator<CreateUserAcc
 
     public CreateUserAccountRequestValidator()
     {
+        // Luật khai ở PhoneNumberRule, dùng chung với màn quên mật khẩu — xem chú thích ở đó.
         RuleFor(x => x.PhoneNumber)
             .NotEmpty().WithMessage("Phone number is required.")
-            .MaximumLength(15).WithMessage("Phone number must not exceed 15 characters.")
-            .Matches(@"^0\d{8,10}$")
-            .WithMessage("Phone number must start with 0 and contain 9 to 11 digits.");
+            .Matches(PhoneNumberRule.Pattern).WithMessage(PhoneNumberRule.Message);
 
         RuleFor(x => x.FullName)
             .NotEmpty().WithMessage("Full name is required.")

@@ -99,7 +99,13 @@ public class AdminUsersController : ControllerBase
                 StatusCodes.Status400BadRequest, message));
         }
 
-        var (result, account) = await _accounts.CreateAsync(request, cancellationToken);
+        if (!TryGetActingAdminId(out var adminId))
+        {
+            return Unauthorized(ApiResponse<UserAccountResponse>.Fail(
+                StatusCodes.Status401Unauthorized, "Invalid access token."));
+        }
+
+        var (result, account) = await _accounts.CreateAsync(request, adminId, cancellationToken);
 
         // Ba kết quả dưới đây đều là ĐÃ TẠO XONG, chỉ khác nhau ở chỗ mật khẩu tạm có tới
         // tay chủ tài khoản không. Trả 4xx cho hai trường hợp sau là nói dối — bản ghi đã
@@ -149,7 +155,13 @@ public class AdminUsersController : ControllerBase
             return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
         }
 
-        var result = await _accounts.UpdateAsync(userId, request, cancellationToken);
+        if (!TryGetActingAdminId(out var adminId))
+        {
+            return Unauthorized(ApiResponse<object>.Fail(
+                StatusCodes.Status401Unauthorized, "Invalid access token."));
+        }
+
+        var result = await _accounts.UpdateAsync(userId, request, adminId, cancellationToken);
 
         return result == AccountOperationResult.Success
             ? Ok(ApiResponse<object>.Ok(null!, "Account updated."))
@@ -194,11 +206,13 @@ public class AdminUsersController : ControllerBase
     /// <summary>
     /// UC-03 AF-02 — Admin cấp lại mật khẩu hộ, dùng khi chủ tài khoản không vào được email.
     ///
-    /// BR-03: mật khẩu tạm chỉ đi qua email, KHÔNG BAO GIỜ nằm trong phản hồi này. Admin
-    /// cũng không được thấy — cùng nguyên tắc "không ai đọc được mật khẩu" ở PRD §6.2.
+    /// BR-03 sửa lại 06/08/2026, mở rộng lần 2 — KHÔNG còn phân biệt có/không có email nữa,
+    /// KHÔNG BAO GIỜ gửi email ở đường này nữa. Phản hồi luôn mang plaintext (xem
+    /// AdminResetOutcome) — nhưng trang quản trị (FE Module 2, `features/users/`) CHƯA có UI
+    /// hiện trường này; đó là việc của task riêng sau, backend đã sẵn sàng.
     /// </summary>
     [HttpPut("{userId:guid}/reset-password")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ResetPassword(Guid userId, CancellationToken cancellationToken)
@@ -209,12 +223,16 @@ public class AdminUsersController : ControllerBase
                 StatusCodes.Status401Unauthorized, "Invalid access token."));
         }
 
-        var result = await _passwordReset.AdminResetAsync(userId, adminId, cancellationToken);
+        var outcome = await _passwordReset.AdminResetAsync(userId, adminId, cancellationToken);
 
-        return result == AccountOperationResult.Success
-            ? Ok(ApiResponse<object>.Ok(
-                null!, "A temporary password has been emailed to the account holder."))
-            : MapFailure<object>(result);
+        if (outcome.Result != AccountOperationResult.Success)
+        {
+            return MapFailure<object>(outcome.Result);
+        }
+
+        // outcome.TemporaryPassword luôn có giá trị khi Result là Success — xem AdminResetAsync.
+        return Ok(ApiResponse<string>.Ok(
+            outcome.TemporaryPassword!, "Temporary password generated — communicate it to the account holder directly."));
     }
 
     // ---- helpers ----

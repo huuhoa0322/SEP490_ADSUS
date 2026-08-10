@@ -1,3 +1,4 @@
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using FluentValidation;
 
@@ -13,9 +14,16 @@ public class ForgotPasswordRequestValidator : AbstractValidator<ForgotPasswordRe
 {
     public ForgotPasswordRequestValidator()
     {
+        // Cùng luật định dạng với màn tạo tài khoản (PhoneNumberRule).
+        //
+        // Kiểm định dạng ở đây KHÔNG vi phạm AF-01: nó chỉ nói "chuỗi này không thể là số
+        // điện thoại", đúng với mọi giá trị sai dạng, chứ không hé lộ số đó có tài khoản hay
+        // không. Trước đây thiếu, nên gõ thiếu một chữ số là lời gọi vẫn xuống tới database
+        // rồi im lặng không làm gì — người dùng ngồi chờ mail mãi không tới mà không hiểu vì
+        // sao, trong khi thực ra chỉ gõ nhầm.
         RuleFor(x => x.PhoneNumber)
             .NotEmpty().WithMessage("Phone number is required.")
-            .MaximumLength(15).WithMessage("Phone number must not exceed 15 characters.");
+            .Matches(PhoneNumberRule.Pattern).WithMessage(PhoneNumberRule.Message);
 
         RuleFor(x => x.Email)
             .NotEmpty().WithMessage("Email is required.")

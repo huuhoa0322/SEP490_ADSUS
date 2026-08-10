@@ -1,3 +1,4 @@
+using ADSUS_BE.BLL.DashboardReporting.DTOs;
 using ADSUS_BE.BLL.DashboardReporting.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Repositories.Interfaces;
@@ -39,7 +40,8 @@ public class DashboardServiceTests
                  It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(Array.Empty<DailyActivity>());
 
-        _sut = new DashboardService(_repo.Object);
+        var aiModelRepo = new Mock<IAiModelVersionRepository>();
+        _sut = new DashboardService(_repo.Object, aiModelRepo.Object);
     }
 
     // ---------- AF-01: không bao giờ vỡ ----------
@@ -54,7 +56,7 @@ public class DashboardServiceTests
         Assert.Equal(0, result.Clinical.CaseCount);
         Assert.Equal(0, result.Clinical.AiConfirmRate);
         Assert.Equal(0, result.Appointments.CancellationRate);
-        Assert.Equal(0, result.Appointments.AverageBookingsPerSlot);
+        Assert.Equal(0, result.Appointments.SlotCount);
         Assert.Equal(0, result.Adherence.AdherenceRate);
     }
 
@@ -189,18 +191,25 @@ public class DashboardServiceTests
 
         // 10 huỷ trên tổng 40 lượt đặt.
         Assert.Equal(25.0, result.Appointments.CancellationRate);
-        // 40 lượt đặt trên 20 khung giờ.
-        Assert.Equal(2.0, result.Appointments.AverageBookingsPerSlot);
+
+        // Số khung giờ đã mở là con số đếm thuần, đưa nguyên xi lên màn hình.
+        Assert.Equal(20, result.Appointments.SlotCount);
     }
 
     [Fact]
-    public async Task KhongCoKhungGioNao_TraVe0_KhongChiaCho0()
+    public async Task KHONG_CON_CHI_SO_TI_LE_LAP_DAY_KHUNG_GIO()
     {
-        SetupHoatDong(booked: 5, cancelled: 0, slots: 0);
+        // ScheduleSlot không có cột Capacity, và chính entity ghi rõ "không giới hạn số
+        // Appointment/slot" (quyết định UCS 3.1 ngày 23/07/2026). Không có mẫu số thì không
+        // có tỉ lệ lấp đầy, nên chỉ số đó đã bị bỏ hẳn thay vì thay bằng một con số khác
+        // nghĩa mà người đọc dễ tưởng là tỉ lệ.
+        //
+        // Bài test này canh chừng việc ai đó thêm lại: nếu có ngày ScheduleSlot có Capacity
+        // thật thì cứ xoá bài test này đi và tính tỉ lệ cho đúng.
+        var thuocTinh = typeof(AppointmentStatistics).GetProperties().Select(p => p.Name);
 
-        var result = await _sut.GetStatisticsAsync(null, null);
-
-        Assert.Equal(0, result.Appointments.AverageBookingsPerSlot);
+        Assert.DoesNotContain("AverageBookingsPerSlot", thuocTinh);
+        Assert.DoesNotContain("UtilizationRate", thuocTinh);
     }
 
     [Fact]

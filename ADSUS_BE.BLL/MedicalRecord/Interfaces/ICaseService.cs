@@ -18,7 +18,8 @@ public interface ICaseService
     Task<PatientCaseResponse> GetForPatientAsync(
         Guid caseId, Guid callerUserId, CancellationToken ct = default);
 
-    Task<PagedResult<CaseSummaryResponse>> ListByPatientProfileAsync(
+    /// <summary>#24 — cho Bác sĩ/Điều dưỡng (Web SCR-12). Có CreatedAt, xem StaffCaseSummaryResponse.</summary>
+    Task<PagedResult<StaffCaseSummaryResponse>> ListByPatientProfileAsync(
         Guid patientProfileId,
         string? status,
         string sortOrder,
@@ -35,4 +36,20 @@ public interface ICaseService
 
     Task<IReadOnlyList<UltrasoundImageResponse>> AddImagesAsync(
         Guid caseId, AddUltrasoundImagesRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Thêm 07/08/2026 — "Lưu kết luận". Chỉ lưu nội dung, KHÔNG đổi trạng thái ca — sửa lại
+    /// được nhiều lần. Cùng hai điều kiện với ConfirmAsync: chỉ Bác sĩ phụ trách CA NÀY (GB-04),
+    /// và ca chưa CONFIRMED (GB-01/P2 — ca đã khoá thì không sửa được nữa, kể cả chỉ lưu nháp).
+    /// </summary>
+    Task<CaseResponse> SaveConclusionAsync(
+        Guid caseId, Guid actingDoctorId, CaseConclusionRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Thêm 07/08/2026 — "Kết thúc ca khám". Lưu VÀ khoá ca (CONFIRMED) trong cùng một lần gọi.
+    /// Chỉ đúng Bác sĩ phụ trách của ca này mới làm được (GB-04), và chỉ làm được MỘT LẦN — ca
+    /// đã CONFIRMED thì từ chối luôn (GB-01/P2, không có đường lùi).
+    /// </summary>
+    Task<CaseResponse> ConfirmAsync(
+        Guid caseId, Guid actingDoctorId, CaseConclusionRequest request, CancellationToken ct = default);
 }

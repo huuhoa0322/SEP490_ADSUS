@@ -15,6 +15,13 @@ class AppColors {
   static const Color blue = Color(0xFF558DCA);
   static const Color danger = Color(0xFFF13A66);
 
+  /// Màu trạng thái tuân thủ (Module 7 AdherencePill).
+  /// Hex khớp với web --status-good/--status-warning trong globals.css.
+  /// KHÔNG dùng [danger] cho adherence thấp — đỏ chỉ dành cho safety card / validation
+  /// error (xem CLAUDE.md §11.3.4).
+  static const Color success = Color(0xFF1CBA9F); // adherence ≥80%
+  static const Color amberWarn = Color(0xFFE0912F); // adherence <80%
+
   static const Color background = Color(0xFFF7F9FB);
   static const Color border = Color(0xFFDDE5EF);
   static const Color muted = Color(0xFF5B6B85);

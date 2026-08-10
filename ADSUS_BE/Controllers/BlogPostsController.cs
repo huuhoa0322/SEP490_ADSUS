@@ -7,14 +7,14 @@ using Microsoft.AspNetCore.Mvc;
 namespace ADSUS_BE.Controllers;
 
 /// <summary>
-/// UC-23 — Blog Sức khỏe PUBLIC endpoints.
-/// GB-05: bệnh nhân chỉ thấy Published; endpoint này không có [Authorize]
-/// nên cả Guest (không login) cũng xem được — phù hợp với Blog content marketing
-/// (Google index được, share được trên social media).
+/// UC-23 — Blog Sức khỏe endpoints.
+/// GB-05: bệnh nhân chỉ thấy Published.
+/// BR-02 (UC-23): Patient phải đăng nhập mới xem được blog.
+/// UC-23 reversal 2026-08-09: bỏ [AllowAnonymous], yêu cầu PATIENT sign-in.
 /// </summary>
 [ApiController]
 [Route("api/v1/blog-posts")]
-[AllowAnonymous]
+[Authorize(Roles = "PATIENT")]
 [Produces("application/json")]
 public sealed class BlogPostsController : ControllerBase
 {
@@ -27,7 +27,7 @@ public sealed class BlogPostsController : ControllerBase
 
     /// <summary>
     /// GET /api/v1/blog-posts — Danh sách bài viết đã xuất bản, phân trang.
-    /// Không cần đăng nhập (GB-05 + SEO).
+    /// BR-02 (UC-23): yêu cầu Patient đăng nhập.
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<BlogPostListItemResponse>>), StatusCodes.Status200OK)]
@@ -47,7 +47,7 @@ public sealed class BlogPostsController : ControllerBase
     /// <summary>
     /// GET /api/v1/blog-posts/{id} — Chi tiết bài viết.
     /// GB-05: trả 404 nếu Draft hoặc không tồn tại (không trả 403 để không leak status).
-    /// Không cần đăng nhập (GB-05 + SEO).
+    /// BR-02 (UC-23): yêu cầu Patient đăng nhập.
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse<BlogPostDetailResponse>), StatusCodes.Status200OK)]

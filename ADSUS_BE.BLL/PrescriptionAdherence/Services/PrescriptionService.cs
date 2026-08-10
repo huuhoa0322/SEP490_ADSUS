@@ -73,13 +73,9 @@ public sealed class PrescriptionService : IPrescriptionService
         if (caseEntity.DoctorId != actorId)
             throw new BusinessException("Bác sĩ không có quyền kê đơn cho ca khám này.");
 
-        // Validate all medicines exist
-        foreach (var item in request.Items)
-        {
-            var medicine = await _medicineRepo.GetByIdAsync(item.MedicineId, ct);
-            if (medicine is null)
-                throw new ResourceNotFoundException($"Thuốc '{item.MedicineId}' không tồn tại trong danh mục.");
-        }
+        // Option A: lookup-or-create medicine by name (case-insensitive).
+        // Handles both: doctor picks from catalog OR types a new name.
+        var medicineCache = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
 
         // Get patient reminder preferences
         var patientProfile = await _db.PatientProfiles
@@ -121,15 +117,42 @@ public sealed class PrescriptionService : IPrescriptionService
         foreach (var itemDto in request.Items)
         {
             var itemId = Guid.NewGuid();
+
+            // Lookup or create medicine by name
+            if (!medicineCache.TryGetValue(itemDto.MedicineName, out var medicineId))
+            {
+                var existing = await _medicineRepo.FindByNameAsync(itemDto.MedicineName, ct);
+                if (existing is not null)
+                {
+                    medicineId = existing.MedicineId;
+                }
+                else
+                {
+                    // Create new medicine
+                    medicineId = Guid.NewGuid();
+                    var newMedicine = new Medicine
+                    {
+                        MedicineId = medicineId,
+                        Name = itemDto.MedicineName.Trim(),
+                        CreatedAt = DateTime.UtcNow,
+                    };
+                    await _medicineRepo.AddAsync(newMedicine, ct);
+                }
+                medicineCache[itemDto.MedicineName] = medicineId;
+            }
+
             var prescriptionItem = new PrescriptionItem
             {
                 PrescriptionItemId = itemId,
                 PrescriptionId = prescription.PrescriptionId,
-                MedicineId = itemDto.MedicineId,
+                MedicineId = medicineId,
                 Dosage = itemDto.Dosage,
                 DurationDays = itemDto.DurationDays,
                 StartDate = itemDto.StartDate,
                 Instructions = itemDto.Instructions,
+                ScheduleSlots = itemDto.ScheduleSlots
+                    .Select(s => (ReminderSlot)(int)s)
+                    .ToArray(),
             };
             await _itemRepo.AddAsync(prescriptionItem, ct);
 

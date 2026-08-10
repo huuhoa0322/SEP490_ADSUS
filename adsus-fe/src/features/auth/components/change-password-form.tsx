@@ -38,8 +38,14 @@ export function ChangePasswordForm() {
     event.preventDefault();
     setClientError(null);
 
-    if (!currentPassword || !newPassword || !confirmNewPassword) {
+    // Bị ép đổi vì đang dùng mật khẩu tạm (sửa 06/08/2026) — không đòi mật khẩu hiện tại nữa,
+    // người dùng vừa chứng minh biết giá trị đó qua bước đăng nhập ngay trước đây.
+    if (!mustChangePassword && !currentPassword) {
       setClientError("Vui lòng điền đầy đủ cả ba ô.");
+      return;
+    }
+    if (!newPassword || !confirmNewPassword) {
+      setClientError(mustChangePassword ? "Vui lòng điền đầy đủ cả hai ô." : "Vui lòng điền đầy đủ cả ba ô.");
       return;
     }
     if (policyChecks.some((c) => !c.passed)) {
@@ -51,7 +57,11 @@ export function ChangePasswordForm() {
       return;
     }
 
-    changePassword.mutate({ currentPassword, newPassword, confirmNewPassword });
+    changePassword.mutate({
+      currentPassword: mustChangePassword ? null : currentPassword,
+      newPassword,
+      confirmNewPassword,
+    });
   }
 
   const errorMessage =
@@ -130,11 +140,15 @@ export function ChangePasswordForm() {
         Đổi mật khẩu
       </h1>
       <p className="mt-2 text-[15px] text-muted-foreground">
-        Nhập mật khẩu hiện tại và mật khẩu mới bạn muốn dùng.
+        {mustChangePassword
+          ? "Nhập mật khẩu mới bạn muốn dùng."
+          : "Nhập mật khẩu hiện tại và mật khẩu mới bạn muốn dùng."}
       </p>
 
       <form onSubmit={handleSubmit} noValidate className="mt-8 flex flex-col gap-5">
-        {renderField("currentPassword", "Mật khẩu hiện tại", currentPassword, setCurrentPassword, "current-password")}
+        {/* Bị ép đổi vì đang dùng mật khẩu tạm — không hỏi lại giá trị vừa dùng để đăng nhập. */}
+        {!mustChangePassword &&
+          renderField("currentPassword", "Mật khẩu hiện tại", currentPassword, setCurrentPassword, "current-password")}
         {renderField("newPassword", "Mật khẩu mới", newPassword, setNewPassword, "new-password")}
         {renderField("confirmNewPassword", "Xác nhận mật khẩu mới", confirmNewPassword, setConfirmNewPassword, "new-password")}
 

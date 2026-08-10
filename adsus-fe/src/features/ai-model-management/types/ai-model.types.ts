@@ -12,6 +12,15 @@ export interface AiModelVersion {
   status: ModelVersionStatus;
   registeredAt: string; // ISO DateTime
   registeredBy?: string; // GUID
+  
+  // Live Metrics
+  liveTp?: number;
+  liveFp?: number;
+  liveFn?: number;
+  liveMap50?: number;
+  lastEvaluatedAt?: string;
+  livePrecision?: number;
+  liveRecall?: number;
 }
 
 export interface RegisterModelVersionRequest {

@@ -11,8 +11,17 @@ export interface DashboardStatistics {
   clinical: ClinicalStatistics;
   appointments: AppointmentStatistics;
   adherence: AdherenceStatistics;
+  activeAiModel: AiModelMetrics;
   /** Luôn đủ mọi ngày trong khoảng, ngày không phát sinh có giá trị 0. */
   trend: DailyPoint[];
+}
+
+export interface AiModelMetrics {
+  versionCode: string;
+  precision?: number;
+  recall?: number;
+  map50?: number;
+  lastEvaluatedAt?: string;
 }
 
 /** Một điểm trên biểu đồ xu hướng (UC-05 bước 3). */
@@ -51,7 +60,11 @@ export interface AppointmentStatistics {
   cancelledCount: number;
   slotCount: number;
   cancellationRate: number;
-  averageBookingsPerSlot: number;
+  /*
+   * ĐÃ BỎ averageBookingsPerSlot — xem chú thích ở AppointmentStatistics phía backend.
+   * Tóm tắt: ScheduleSlot không có Capacity nên không tính được tỉ lệ lấp đầy, mà số trung
+   * bình thì dễ bị đọc nhầm thành tỉ lệ đó.
+   */
 }
 
 export interface AdherenceStatistics {

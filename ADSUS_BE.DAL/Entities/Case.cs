@@ -32,9 +32,11 @@ public partial class Case
 
     public DateTime UpdatedAt { get; set; }
 
-    public virtual ICollection<AiResult> AiResults { get; set; } = new List<AiResult>();
+    public virtual ICollection<AiPrediction> AiPredictions { get; set; } = new List<AiPrediction>();
 
     public virtual User Doctor { get; set; } = null!;
+
+    public virtual ICollection<DoctorAnnotation> DoctorAnnotations { get; set; } = new List<DoctorAnnotation>();
 
     public virtual PatientProfile PatientProfile { get; set; } = null!;
 

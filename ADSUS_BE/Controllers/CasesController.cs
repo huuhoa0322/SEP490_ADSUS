@@ -23,17 +23,20 @@ public sealed class CasesController : ControllerBase
     private readonly ICaseReportService _reports;
     private readonly IValidator<CreateCaseRequest> _createValidator;
     private readonly IValidator<AddUltrasoundImagesRequest> _addImagesValidator;
+    private readonly IValidator<CaseConclusionRequest> _conclusionValidator;
 
     public CasesController(
         ICaseService cases,
         ICaseReportService reports,
         IValidator<CreateCaseRequest> createValidator,
-        IValidator<AddUltrasoundImagesRequest> addImagesValidator)
+        IValidator<AddUltrasoundImagesRequest> addImagesValidator,
+        IValidator<CaseConclusionRequest> conclusionValidator)
     {
         _cases = cases;
         _reports = reports;
         _createValidator = createValidator;
         _addImagesValidator = addImagesValidator;
+        _conclusionValidator = conclusionValidator;
     }
 
     /// <summary>Danh sách ảnh siêu âm thô của một ca (UC-07, UC-08).</summary>
@@ -52,7 +55,7 @@ public sealed class CasesController : ControllerBase
     /// </summary>
     [HttpGet]
     [Authorize(Roles = "DOCTOR,NURSE")]
-    [ProducesResponseType(typeof(ApiResponse<PagedResult<CaseSummaryResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PagedResult<StaffCaseSummaryResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ListByPatient(
         [FromQuery] Guid patientProfileId,
@@ -75,7 +78,7 @@ public sealed class CasesController : ControllerBase
         var result = await _cases.ListByPatientProfileAsync(
             patientProfileId, status, sortOrder, page, pageSize, ct);
 
-        return Ok(ApiResponse<PagedResult<CaseSummaryResponse>>.Ok(result, "Cases retrieved successfully"));
+        return Ok(ApiResponse<PagedResult<StaffCaseSummaryResponse>>.Ok(result, "Cases retrieved successfully"));
     }
 
     /// <summary>
@@ -124,7 +127,8 @@ public sealed class CasesController : ControllerBase
     }
 
     /// <summary>
-    /// Tạo lần khám mới kèm ảnh siêu âm, trong một request multipart (UC-07).
+    /// Tạo lần khám mới (UC-07), request multipart. Ảnh siêu âm tùy chọn (quyết định ghi đè
+    /// 07/08/2026) — bỏ trống được, bổ sung sau qua AddImages (`#21`, vẫn bắt buộc ≥1 ảnh).
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "DOCTOR,NURSE")]
@@ -191,6 +195,63 @@ public sealed class CasesController : ControllerBase
             StatusCodes.Status201Created,
             ApiResponse<IReadOnlyList<UltrasoundImageResponse>>.Ok(
                 result, "Ultrasound image(s) uploaded successfully"));
+    }
+
+    /// <summary>
+    /// Thêm 07/08/2026 — "Lưu kết luận". Bác sĩ phụ trách nhập/sửa kết luận nhiều lần, KHÔNG
+    /// đổi trạng thái ca. CHỈ Bác sĩ, và CHỈ đúng bác sĩ phụ trách của ca này (GB-04). Ca đã
+    /// CONFIRMED thì từ chối luôn (GB-01/P2 — không sửa hồ sơ đã khoá).
+    /// </summary>
+    [HttpPut("{caseId:guid}/conclusion")]
+    [Authorize(Roles = "DOCTOR")]
+    [ProducesResponseType(typeof(ApiResponse<CaseResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> SaveConclusion(
+        Guid caseId,
+        [FromBody] CaseConclusionRequest request,
+        CancellationToken ct)
+    {
+        var validation = await _conclusionValidator.ValidateAsync(request, ct);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
+        }
+
+        var result = await _cases.SaveConclusionAsync(caseId, GetCallerUserId(), request, ct);
+
+        return Ok(ApiResponse<CaseResponse>.Ok(result, "Case conclusion saved successfully"));
+    }
+
+    /// <summary>
+    /// Thêm 07/08/2026 — "Kết thúc ca khám". Lưu VÀ khoá ca (CONFIRMED) trong cùng một lần
+    /// gọi, thay vì đợi màn duyệt kết quả AI riêng (UC-19, đang được một luồng công việc khác
+    /// xây song song). CHỈ Bác sĩ, và CHỈ đúng bác sĩ phụ trách của ca này (GB-04). Lưu thành
+    /// công là ca chuyển CONFIRMED — trạng thái cuối, không có đường lùi (GB-01/P2).
+    /// </summary>
+    [HttpPut("{caseId:guid}/confirm")]
+    [Authorize(Roles = "DOCTOR")]
+    [ProducesResponseType(typeof(ApiResponse<CaseResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> Confirm(
+        Guid caseId,
+        [FromBody] CaseConclusionRequest request,
+        CancellationToken ct)
+    {
+        var validation = await _conclusionValidator.ValidateAsync(request, ct);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
+        }
+
+        var result = await _cases.ConfirmAsync(caseId, GetCallerUserId(), request, ct);
+
+        return Ok(ApiResponse<CaseResponse>.Ok(result, "Case confirmed successfully"));
     }
 
     /// <summary>

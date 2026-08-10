@@ -24,7 +24,6 @@ public sealed class CaseRepository : ICaseRepository
             .Include(c => c.PatientProfile).ThenInclude(p => p.User)
             .Include(c => c.Doctor)
             .Include(c => c.UltrasoundImages)
-            .Include(c => c.AiResults).ThenInclude(r => r.AiFindings)
             .Include(c => c.Prescriptions).ThenInclude(p => p.PrescriptionItems).ThenInclude(i => i.Medicine)
             .FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
 
@@ -32,6 +31,12 @@ public sealed class CaseRepository : ICaseRepository
         _db.Cases
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
+
+    public Task<Case?> GetForUpdateAsync(Guid caseId, CancellationToken ct = default) =>
+        _db.Cases.FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
+
+    public Task SaveChangesAsync(CancellationToken ct = default) =>
+        _db.SaveChangesAsync(ct);
 
     public async Task<(IReadOnlyList<Case> Items, int TotalCount)> SearchByPatientAsync(
         Guid patientProfileId,

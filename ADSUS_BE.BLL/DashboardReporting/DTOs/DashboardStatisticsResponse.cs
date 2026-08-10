@@ -22,6 +22,8 @@ public class DashboardStatisticsResponse
 
     public AdherenceStatistics Adherence { get; set; } = new();
 
+    public AiModelMetrics ActiveAiModel { get; set; } = new();
+
     /// <summary>
     /// UC-05 bước 3 — diễn biến từng ngày để vẽ biểu đồ xu hướng.
     ///
@@ -30,6 +32,15 @@ public class DashboardStatisticsResponse
     /// trong khi thực tế là không có gì.
     /// </summary>
     public IReadOnlyList<DailyPoint> Trend { get; set; } = Array.Empty<DailyPoint>();
+}
+
+public class AiModelMetrics
+{
+    public string VersionCode { get; set; } = string.Empty;
+    public decimal? Precision { get; set; }
+    public decimal? Recall { get; set; }
+    public decimal? Map50 { get; set; }
+    public DateTime? LastEvaluatedAt { get; set; }
 }
 
 /// <summary>Một điểm trên biểu đồ xu hướng.</summary>
@@ -91,15 +102,20 @@ public class AppointmentStatistics
     /// <summary>Tỉ lệ huỷ trên tổng số lượt đặt.</summary>
     public double CancellationRate { get; set; }
 
-    /// <summary>
-    /// Số lượt đặt trung bình trên mỗi khung giờ mở.
-    ///
-    /// UCS ghi rõ "Schedule Slot Utilization Rate" là chỉ số TỰ SUY RA, PRD không định nghĩa
-    /// ở đâu. Một khung giờ không giới hạn số lượt đặt (không có thuộc tính Capacity), nên
-    /// không tính được "phần trăm lấp đầy" — ở đây trả về số trung bình, là thứ duy nhất có
-    /// nghĩa với mô hình dữ liệu hiện tại.
-    /// </summary>
-    public double AverageBookingsPerSlot { get; set; }
+    // ĐÃ BỎ: "Schedule Slot Utilization Rate %" và số lượt đặt trung bình mỗi khung giờ.
+    //
+    // UCS gọi tên chỉ số "Schedule Slot Utilization Rate %" nhưng tự gắn cờ là TỰ SUY RA,
+    // PRD không định nghĩa ở đâu. Mà tính tỉ lệ lấp đầy thì cần biết một khung giờ nhận
+    // được tối đa bao nhiêu lượt — ScheduleSlot KHÔNG có cột Capacity, và chú thích ngay
+    // trong entity ghi rõ "không giới hạn số Appointment/slot" (quyết định UCS 3.1 ngày
+    // 23/07/2026). Không có mẫu số thì không có tỉ lệ.
+    //
+    // Trước đây chỗ này trả về số lượt đặt TRUNG BÌNH mỗi khung giờ để lấp chỗ trống, nhưng
+    // đó là một đại lượng khác hẳn thứ tài liệu gọi tên. Để lại thì người đọc báo cáo tưởng
+    // đang xem tỉ lệ lấp đầy, mà con số ấy không nói lên điều đó — bỏ hẳn còn hơn hiển thị
+    // một số dễ hiểu nhầm. Số khung giờ đã mở vẫn giữ ở SlotCount.
+    //
+    // Nếu sau này nhóm thêm Capacity cho ScheduleSlot thì mới tính được tỉ lệ thật.
 }
 
 /// <summary>Tuân thủ uống thuốc, tính trên toàn phòng khám.</summary>

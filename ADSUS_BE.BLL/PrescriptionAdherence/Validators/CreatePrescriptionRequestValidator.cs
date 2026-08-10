@@ -37,8 +37,9 @@ public sealed class CreatePrescriptionItemDtoValidator : AbstractValidator<Creat
 {
     public CreatePrescriptionItemDtoValidator()
     {
-        RuleFor(i => i.MedicineId)
-            .NotEmpty().WithMessage("Mỗi dòng thuốc phải chỉ định MedicineId.");
+        RuleFor(i => i.MedicineName)
+            .NotEmpty().WithMessage("Tên thuốc không được để trống.")
+            .MaximumLength(200).WithMessage("Tên thuốc tối đa 200 ký tự.");
 
         RuleFor(i => i.Dosage)
             .NotEmpty().WithMessage("Liều lượng không được để trống.")

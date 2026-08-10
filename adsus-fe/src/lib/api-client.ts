@@ -20,10 +20,14 @@ export const API_BASE_URL =
 
 const baseURL = API_BASE_URL;
 
+// KHÔNG đặt "Content-Type": "application/json" mặc định ở đây. axios đã tự set header đó
+// cho payload là object thường (defaults/index.js: setContentType nếu chưa có). Nếu đặt cứng
+// ở đây, mọi request FormData (#20/#21 — tải ảnh siêu âm) sẽ bị hasJSONContentType=true,
+// khiến axios âm thầm JSON.stringify() FormData thay vì giữ nguyên multipart, trong khi
+// header vẫn ghi application/json — backend nhận sai định dạng, không phải lỗi chỉ ở test.
 export const apiClient = axios.create({
   baseURL,
-  headers: { "Content-Type": "application/json" },
-  timeout: 15_000,
+  timeout: 60_000,
 });
 
 /** Storage key for the access token, shared by the store and the interceptor below. */
@@ -34,7 +38,9 @@ export const ACCESS_TOKEN_KEY = "adsus.accessToken";
  * exactly "Authorization: Bearer <token>".
  */
 apiClient.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
+  // window.localStorage luôn tồn tại trên trình duyệt thật; kiểm tra thêm ở đây chỉ để
+  // không crash trong môi trường test (jsdom) khi localStorage chưa sẵn sàng.
+  if (typeof window !== "undefined" && window.localStorage) {
     const token = window.localStorage.getItem(ACCESS_TOKEN_KEY);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -70,7 +76,7 @@ apiClient.interceptors.response.use(
       error instanceof AxiosError && error.config?.headers?.Authorization,
     );
 
-    if (isUnauthorized && hadToken && typeof window !== "undefined") {
+    if (isUnauthorized && hadToken && typeof window !== "undefined" && window.localStorage) {
       window.localStorage.removeItem(ACCESS_TOKEN_KEY);
       window.localStorage.removeItem(AUTH_STORE_KEY);
 

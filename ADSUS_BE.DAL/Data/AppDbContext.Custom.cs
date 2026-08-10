@@ -26,15 +26,7 @@ public partial class AppDbContext
 
         // Hai enum của module khác, khai ở đây vì Dashboard (UC-05) cần đếm theo trạng thái.
         // Xem chú thích trong Enums.cs. Ai làm Module 5 / Module 8 dùng lại, đừng khai lại.
-        modelBuilder.HasPostgresEnum<AiResultStatus>("public", "ai_result_status");
         modelBuilder.HasPostgresEnum<AppointmentStatus>("public", "appointment_status");
-
-        modelBuilder.Entity<AiResult>(entity =>
-        {
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasDefaultValue(AiResultStatus.PendingReview);
-        });
 
         modelBuilder.Entity<Appointment>(entity =>
         {
@@ -81,6 +73,24 @@ public partial class AppDbContext
             entity.Property(e => e.Status)
                 .HasColumnName("status")
                 .HasDefaultValue(PrescriptionStatus.Active);
+        });
+
+        // ---------- Module 7: Medication Intake ----------
+        modelBuilder.HasPostgresEnum<IntakeStatus>("public", "intake_status");
+        modelBuilder.HasPostgresEnum<ReminderSlot>("public", "reminder_slot");
+
+        modelBuilder.Entity<MedicationIntakeLog>(entity =>
+        {
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasDefaultValue(IntakeStatus.Pending);
+        });
+
+        modelBuilder.Entity<PrescriptionItem>(entity =>
+        {
+            entity.Property(e => e.ScheduleSlots)
+                .HasColumnName("schedule_slots")
+                .HasColumnType("reminder_slot[]");
         });
     }
 }

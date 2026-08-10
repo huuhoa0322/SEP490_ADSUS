@@ -77,8 +77,9 @@ public class PatientAccountsControllerIntegrationTests
     public async Task PostPatientAccount_CalledByNurse_Returns201()
     {
         // Arrange
-        var created = new PatientAccountResponse(
-            Guid.NewGuid(), "Lê Thị Hoa", "0981234567", new DateOnly(1984, 3, 12), "hoa@example.com");
+        var created = new PatientAccountCreatedResponse(
+            Guid.NewGuid(), "Lê Thị Hoa", "0981234567", new DateOnly(1984, 3, 12), "hoa@example.com",
+            TemporaryPassword: "Ab3xyz9pqr");
         _accounts.Setup(s => s.CreateAsync(
                      It.IsAny<CreatePatientAccountRequest>(), _nurse.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(created);
@@ -93,9 +94,10 @@ public class PatientAccountsControllerIntegrationTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         // ApiResponse.Ok hard-code Code = 200 bất kể HTTP status thật — quy ước toàn repo.
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientAccountResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientAccountCreatedResponse>>();
         Assert.Equal(200, body!.Code);
         Assert.Equal(new DateOnly(1984, 3, 12), body.Data!.DateOfBirth);
+        Assert.Equal("Ab3xyz9pqr", body.Data!.TemporaryPassword);
     }
 
     [Fact]
@@ -115,6 +117,45 @@ public class PatientAccountsControllerIntegrationTests
     }
 
     [Fact]
+    public async Task GetPatientAccount_CalledByNurse_Returns200WithEmail()
+    {
+        // Arrange — thêm 06/08/2026 (review Task C11): endpoint đọc riêng để FE nạp email
+        // thật trước khi cho sửa, PatientProfile không có trường này.
+        var targetId = Guid.NewGuid();
+        var account = new PatientAccountResponse(
+            targetId, "Lê Thị Hoa", "0981234567", new DateOnly(1984, 3, 12), "hoa@example.com");
+        _accounts.Setup(s => s.GetAccountAsync(targetId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(account);
+
+        await using var app = CreateApp();
+        var client = MakeClientWithToken(app, _nurse);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/patients/{targetId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientAccountResponse>>();
+        Assert.Equal("hoa@example.com", body!.Data!.Email);
+    }
+
+    [Fact]
+    public async Task GetPatientAccount_CalledByDoctor_Returns403Forbidden()
+    {
+        // Arrange — BR-03, cùng luật với 3 endpoint UC-06 còn lại.
+        await using var app = CreateApp();
+        var client = MakeClientWithToken(app, _doctor);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/patients/{Guid.NewGuid()}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        _accounts.Verify(s => s.GetAccountAsync(
+            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task PutPatientAccount_CalledByDoctor_Returns403Forbidden()
     {
         // Arrange
@@ -129,12 +170,12 @@ public class PatientAccountsControllerIntegrationTests
     }
 
     [Fact]
-    public async Task PutResetPassword_CalledByNurse_Returns200()
+    public async Task PutResetPassword_CalledByNurse_Returns200WithPlaintextPassword()
     {
-        // Arrange
+        // Arrange — sửa lại 06/08/2026, mở rộng lần 2: luôn trả plaintext, không còn nullable.
         var targetId = Guid.NewGuid();
         _accounts.Setup(s => s.ResetPasswordAsync(targetId, _nurse.UserId, It.IsAny<CancellationToken>()))
-                 .Returns(Task.CompletedTask);
+                 .ReturnsAsync("Ab3xyz9pqr2K");
 
         await using var app = CreateApp();
         var client = MakeClientWithToken(app, _nurse);
@@ -144,6 +185,8 @@ public class PatientAccountsControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<string>>();
+        Assert.Equal("Ab3xyz9pqr2K", body!.Data);
         _accounts.Verify(s => s.ResetPasswordAsync(
             targetId, _nurse.UserId, It.IsAny<CancellationToken>()), Times.Once);
     }

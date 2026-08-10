@@ -2,6 +2,7 @@
 
 import { AlertCircle, Loader2, Save, Upload, X } from "lucide-react";
 import { type FormEvent, useEffect, useState, useRef } from "react";
+import toast from "react-hot-toast";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 import {
@@ -93,7 +94,7 @@ export function AiModelFormDialog({ id, open, onClose, onSuccess }: AiModelFormD
         if (fileInputRef.current) fileInputRef.current.value = '';
       } catch (err) {
         console.error("Error parsing file", err);
-        alert("File không đúng định dạng. Vui lòng dùng JSON hoặc chuẩn Key=Value");
+        toast.error("File không đúng định dạng. Vui lòng dùng JSON hoặc chuẩn Key=Value");
       }
     };
     reader.readAsText(file);
@@ -123,6 +124,7 @@ export function AiModelFormDialog({ id, open, onClose, onSuccess }: AiModelFormD
         },
         {
           onSuccess: () => {
+            toast.success("Cập nhật mô hình AI thành công!");
             onSuccess();
             onClose();
           },
@@ -132,6 +134,7 @@ export function AiModelFormDialog({ id, open, onClose, onSuccess }: AiModelFormD
     } else {
       register(formData, {
         onSuccess: () => {
+          toast.success("Đăng ký mô hình AI thành công!");
           onSuccess();
           onClose();
         },

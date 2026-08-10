@@ -14,11 +14,9 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<AiChatMessage> AiChatMessages { get; set; }
 
-    public virtual DbSet<AiFinding> AiFindings { get; set; }
-
     public virtual DbSet<AiModelVersion> AiModelVersions { get; set; }
 
-    public virtual DbSet<AiResult> AiResults { get; set; }
+    public virtual DbSet<AiPrediction> AiPredictions { get; set; }
 
     public virtual DbSet<Appointment> Appointments { get; set; }
 
@@ -27,6 +25,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<BlogPost> BlogPosts { get; set; }
 
     public virtual DbSet<Case> Cases { get; set; }
+
+    public virtual DbSet<DoctorAnnotation> DoctorAnnotations { get; set; }
 
     public virtual DbSet<HealthLog> HealthLogs { get; set; }
 
@@ -108,45 +108,6 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("fk_ai_chat_messages_user");
         });
 
-        modelBuilder.Entity<AiFinding>(entity =>
-        {
-            entity.HasKey(e => e.FindingId).HasName("pk_ai_findings");
-
-            entity.ToTable("ai_findings", tb => tb.HasComment("1 lần chạy AI phát hiện 0..n vùng bất thường (FT-19 \"regions\" số nhiều) — mỗi vùng có mask/phân loại/độ tin riêng nên bắt buộc tách bảng. CASCADE theo ai_results vì là con-thành-phần."));
-
-            entity.HasIndex(e => e.ImageId, "idx_ai_findings_image");
-
-            entity.HasIndex(e => e.AiResultId, "idx_ai_findings_result");
-
-            entity.Property(e => e.FindingId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("finding_id");
-            entity.Property(e => e.AiResultId).HasColumnName("ai_result_id");
-            entity.Property(e => e.Confidence)
-                .HasPrecision(5, 4)
-                .HasColumnName("confidence");
-            entity.Property(e => e.ImageId).HasColumnName("image_id");
-            entity.Property(e => e.LesionType)
-                .HasMaxLength(100)
-                .HasColumnName("lesion_type");
-            entity.Property(e => e.MaskRef)
-                .HasMaxLength(500)
-                .HasColumnName("mask_ref");
-            entity.Property(e => e.SizeMm)
-                .HasPrecision(6, 2)
-                .HasComment("Kích thước vùng bất thường — nguyên liệu cho theo dõi tiến triển (FT-22): so size qua các lượt khám.")
-                .HasColumnName("size_mm");
-
-            entity.HasOne(d => d.AiResult).WithMany(p => p.AiFindings)
-                .HasForeignKey(d => d.AiResultId)
-                .HasConstraintName("fk_ai_findings_result");
-
-            entity.HasOne(d => d.Image).WithMany(p => p.AiFindings)
-                .HasForeignKey(d => d.ImageId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_ai_findings_image");
-        });
-
         modelBuilder.Entity<AiModelVersion>(entity =>
         {
             entity.HasKey(e => e.ModelVersionId).HasName("pk_ai_model_versions");
@@ -165,6 +126,19 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.HfRepoId)
                 .HasMaxLength(255)
                 .HasColumnName("hf_repo_id");
+            entity.Property(e => e.LastEvaluatedAt).HasColumnName("last_evaluated_at");
+            entity.Property(e => e.LiveFn)
+                .HasDefaultValue(0)
+                .HasColumnName("live_fn");
+            entity.Property(e => e.LiveFp)
+                .HasDefaultValue(0)
+                .HasColumnName("live_fp");
+            entity.Property(e => e.LiveMap50)
+                .HasPrecision(5, 2)
+                .HasColumnName("live_map50");
+            entity.Property(e => e.LiveTp)
+                .HasDefaultValue(0)
+                .HasColumnName("live_tp");
             entity.Property(e => e.MetricsMap50)
                 .HasPrecision(5, 2)
                 .HasComment("Đơn vị %. Ngưỡng KPI: > 85%.")
@@ -184,9 +158,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.VersionCode)
                 .HasMaxLength(50)
                 .HasColumnName("version_code");
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasColumnType("model_version_status");
 
             entity.HasOne(d => d.RegisteredByNavigation).WithMany(p => p.AiModelVersions)
                 .HasForeignKey(d => d.RegisteredBy)
@@ -194,50 +165,43 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("fk_ai_model_versions_registered_by");
         });
 
-        modelBuilder.Entity<AiResult>(entity =>
+        modelBuilder.Entity<AiPrediction>(entity =>
         {
-            entity.HasKey(e => e.AiResultId).HasName("pk_ai_results");
+            entity.HasKey(e => e.PredictionId).HasName("ai_predictions_pkey");
 
-            entity.ToTable("ai_results", tb => tb.HasComment("Kết quả 1 lần chạy AI (FT-18). Vòng đời PENDING_REVIEW → CONFIRMED/REJECTED là hiện thân của quy tắc \"AI hỗ trợ, KHÔNG thay thế bác sĩ\": bệnh nhân chỉ thấy kết quả CONFIRMED (§3.2 Restricted ²). ck_ai_results_review_state khóa cứng tính nhất quán của bước duyệt."));
+            entity.ToTable("ai_predictions");
 
-            entity.HasIndex(e => e.CaseId, "idx_ai_results_case");
+            entity.HasIndex(e => new { e.CaseId, e.ImageId }, "idx_ai_preds_case_image");
 
-            entity.HasIndex(e => e.CreatedAt, "idx_ai_results_pending").HasFilter("(status = 'PENDING_REVIEW'::ai_result_status)");
+            entity.HasIndex(e => e.Confidence, "idx_ai_preds_confidence").IsDescending();
 
-            entity.Property(e => e.AiResultId)
+            entity.Property(e => e.PredictionId)
                 .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("ai_result_id");
+                .HasColumnName("prediction_id");
+            entity.Property(e => e.BboxXmax).HasColumnName("bbox_xmax");
+            entity.Property(e => e.BboxXmin).HasColumnName("bbox_xmin");
+            entity.Property(e => e.BboxYmax).HasColumnName("bbox_ymax");
+            entity.Property(e => e.BboxYmin).HasColumnName("bbox_ymin");
             entity.Property(e => e.CaseId).HasColumnName("case_id");
-            entity.Property(e => e.ConfirmedAt).HasColumnName("confirmed_at");
-            entity.Property(e => e.ConfirmedBy).HasColumnName("confirmed_by");
+            entity.Property(e => e.Confidence).HasColumnName("confidence");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
-            entity.Property(e => e.DoctorNote).HasColumnName("doctor_note");
-            entity.Property(e => e.ModelVersionId)
-                .HasComment("Truy vết bắt buộc của AI y tế: kết quả này do phiên bản mô hình nào sinh ra — không mất dấu khi rollback (FT-24).")
-                .HasColumnName("model_version_id");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("updated_at");
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasColumnType("ai_result_status");
+            entity.Property(e => e.ImageId).HasColumnName("image_id");
+            entity.Property(e => e.ModelVersionId).HasColumnName("model_version_id");
 
-            entity.HasOne(d => d.Case).WithMany(p => p.AiResults)
+            entity.HasOne(d => d.Case).WithMany(p => p.AiPredictions)
                 .HasForeignKey(d => d.CaseId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_ai_results_case");
+                .HasConstraintName("fk_ai_preds_case");
 
-            entity.HasOne(d => d.ConfirmedByNavigation).WithMany(p => p.AiResults)
-                .HasForeignKey(d => d.ConfirmedBy)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_ai_results_confirmed_by");
+            entity.HasOne(d => d.Image).WithMany(p => p.AiPredictions)
+                .HasForeignKey(d => d.ImageId)
+                .HasConstraintName("fk_ai_preds_image");
 
-            entity.HasOne(d => d.ModelVersion).WithMany(p => p.AiResults)
+            entity.HasOne(d => d.ModelVersion).WithMany(p => p.AiPredictions)
                 .HasForeignKey(d => d.ModelVersionId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("fk_ai_results_model_version");
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("fk_ai_preds_model");
         });
 
         modelBuilder.Entity<Appointment>(entity =>
@@ -267,9 +231,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
             entity.Property(e => e.Reason).HasColumnName("reason");
             entity.Property(e => e.SlotId).HasColumnName("slot_id");
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasColumnType("appointment_status");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
@@ -334,9 +295,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasColumnType("blog_status");
 
             entity.HasOne(d => d.Author).WithMany(p => p.BlogPosts)
                 .HasForeignKey(d => d.AuthorId)
@@ -375,9 +333,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.VisitDate)
                 .HasDefaultValueSql("CURRENT_DATE")
                 .HasColumnName("visit_date");
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasColumnType("case_status");
 
             entity.HasOne(d => d.Doctor).WithMany(p => p.Cases)
                 .HasForeignKey(d => d.DoctorId)
@@ -388,6 +343,42 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.PatientProfileId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_cases_patient_profile");
+        });
+
+        modelBuilder.Entity<DoctorAnnotation>(entity =>
+        {
+            entity.HasKey(e => e.AnnotationId).HasName("doctor_annotations_pkey");
+
+            entity.ToTable("doctor_annotations");
+
+            entity.HasIndex(e => new { e.CaseId, e.ImageId }, "idx_doc_annots_case_image");
+
+            entity.Property(e => e.AnnotationId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("annotation_id");
+            entity.Property(e => e.BboxXmax).HasColumnName("bbox_xmax");
+            entity.Property(e => e.BboxXmin).HasColumnName("bbox_xmin");
+            entity.Property(e => e.BboxYmax).HasColumnName("bbox_ymax");
+            entity.Property(e => e.BboxYmin).HasColumnName("bbox_ymin");
+            entity.Property(e => e.CaseId).HasColumnName("case_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.ImageId).HasColumnName("image_id");
+            entity.Property(e => e.Source)
+                .HasColumnType("character varying")
+                .HasColumnName("source");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.DoctorAnnotations)
+                .HasForeignKey(d => d.CaseId)
+                .HasConstraintName("fk_doc_annots_case");
+
+            entity.HasOne(d => d.Image).WithMany(p => p.DoctorAnnotations)
+                .HasForeignKey(d => d.ImageId)
+                .HasConstraintName("fk_doc_annots_image");
         });
 
         modelBuilder.Entity<HealthLog>(entity =>
@@ -432,9 +423,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.ConfirmedAt).HasColumnName("confirmed_at");
             entity.Property(e => e.PrescriptionItemId).HasColumnName("prescription_item_id");
             entity.Property(e => e.ScheduledTime).HasColumnName("scheduled_time");
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasColumnType("intake_status");
 
             entity.HasOne(d => d.PrescriptionItem).WithMany(p => p.MedicationIntakeLogs)
                 .HasForeignKey(d => d.PrescriptionItemId)
@@ -534,9 +522,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasColumnType("prescription_status");
 
             entity.HasOne(d => d.Case).WithMany(p => p.Prescriptions)
                 .HasForeignKey(d => d.CaseId)
@@ -604,9 +589,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.DoctorId).HasColumnName("doctor_id");
             entity.Property(e => e.EndTime).HasColumnName("end_time");
             entity.Property(e => e.SlotDate).HasColumnName("slot_date");
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasColumnType("slot_status");
             entity.Property(e => e.StartTime).HasColumnName("start_time");
             entity.Property(e => e.Status)
                 .HasColumnName("status")
@@ -711,9 +693,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasColumnType("user_status");
         });
 
         OnModelCreatingPartial(modelBuilder);

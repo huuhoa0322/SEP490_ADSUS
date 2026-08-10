@@ -47,8 +47,6 @@ public partial class User
 
     public virtual ICollection<AiModelVersion> AiModelVersions { get; set; } = new List<AiModelVersion>();
 
-    public virtual ICollection<AiResult> AiResults { get; set; } = new List<AiResult>();
-
     public virtual ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
 
     public virtual ICollection<BlogPost> BlogPosts { get; set; } = new List<BlogPost>();
