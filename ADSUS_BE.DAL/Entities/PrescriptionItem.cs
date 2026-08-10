@@ -15,7 +15,12 @@ public partial class PrescriptionItem
     /// <summary>
     /// Tra danh mục medicines qua ô tìm kiếm khi kê đơn; tự thêm mới vào danh mục nếu bác sĩ gõ tên chưa có (thay cho nhập tự do trước đây).
     /// </summary>
-    public Guid MedicineId { get; set; }
+    public Guid? MedicineId { get; set; }
+
+    /// <summary>
+    /// Tên thuốc nhập tự do (khi MedicineId là null). Cho phép bác sĩ kê thuốc không có trong danh mục.
+    /// </summary>
+    public string? MedicineName { get; set; }
 
     public string Dosage { get; set; } = null!;
 

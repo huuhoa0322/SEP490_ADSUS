@@ -23,6 +23,7 @@ public class CreatePrescriptionRequestValidatorTests
         {
             new CreatePrescriptionItemDto(
                 MedicineId: Guid.NewGuid(),
+                MedicineName: null,
                 Dosage: "1 viên/lần",
                 DurationDays: 7,
                 StartDate: new DateOnly(2026, 7, 28),

@@ -73,12 +73,16 @@ public sealed class PrescriptionService : IPrescriptionService
         if (caseEntity.DoctorId != actorId)
             throw new BusinessException("Bác sĩ không có quyền kê đơn cho ca khám này.");
 
-        // Validate all medicines exist
+        // Validate medicine: if MedicineId is provided, check catalog exists.
+        // If MedicineId is null, doctor typed a free-text name — skip catalog validation.
         foreach (var item in request.Items)
         {
-            var medicine = await _medicineRepo.GetByIdAsync(item.MedicineId, ct);
-            if (medicine is null)
-                throw new ResourceNotFoundException($"Thuốc '{item.MedicineId}' không tồn tại trong danh mục.");
+            if (item.MedicineId.HasValue)
+            {
+                var medicine = await _medicineRepo.GetByIdAsync(item.MedicineId.Value, ct);
+                if (medicine is null)
+                    throw new ResourceNotFoundException($"Thuốc '{item.MedicineId}' không tồn tại trong danh mục.");
+            }
         }
 
         // Get patient reminder preferences
@@ -126,6 +130,7 @@ public sealed class PrescriptionService : IPrescriptionService
                 PrescriptionItemId = itemId,
                 PrescriptionId = prescription.PrescriptionId,
                 MedicineId = itemDto.MedicineId,
+                MedicineName = itemDto.MedicineName,
                 Dosage = itemDto.Dosage,
                 DurationDays = itemDto.DurationDays,
                 StartDate = itemDto.StartDate,

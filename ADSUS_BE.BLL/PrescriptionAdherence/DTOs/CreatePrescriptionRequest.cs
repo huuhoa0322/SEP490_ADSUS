@@ -15,9 +15,14 @@ public sealed record CreatePrescriptionRequest(
     [MaxLength(2000)] string? GeneralNote,
     [Required][MinLength(1)] IReadOnlyList<CreatePrescriptionItemDto> Items);
 
-/// <summary>1 dòng thuốc trong đơn kê.</summary>
+/// <summary>
+/// 1 dòng thuốc trong đơn kê.
+/// MedicineId: chọn từ catalog (Guid). MedicineName: nhập text tự do khi không có trong catalog.
+/// Backend chấp nhận ít nhất 1 trong 2; nếu cả 2 có → ưu tiên MedicineId.
+/// </summary>
 public sealed record CreatePrescriptionItemDto(
-    [Required] Guid MedicineId,
+    Guid? MedicineId,
+    string? MedicineName,
     [Required] string Dosage,
     [Range(1, 365)] short DurationDays,
     DateOnly StartDate,

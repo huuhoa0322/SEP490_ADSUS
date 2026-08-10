@@ -20,7 +20,7 @@ public sealed record PrescriptionResponse(
 
 public sealed record PrescriptionItemResponse(
     Guid PrescriptionItemId,
-    Guid MedicineId,
+    Guid? MedicineId,
     string MedicineName,
     string Dosage,
     short DurationDays,
@@ -45,7 +45,8 @@ public static class PrescriptionResponseMapper
         => new(
             pi.PrescriptionItemId,
             pi.MedicineId,
-            pi.Medicine?.Name ?? string.Empty,
+            // Ưu tiên tên từ catalog, fallback về text tự do nhập bởi bác sĩ
+            pi.Medicine?.Name ?? pi.MedicineName ?? string.Empty,
             pi.Dosage,
             pi.DurationDays,
             pi.StartDate,

@@ -11,24 +11,20 @@ import {
 import { PrescriptionForm } from "@/features/prescriptions/components/prescription-form";
 import type { PrescriptionFormData } from "@/features/prescriptions/components/prescription-form";
 import { useCaseDetail } from "@/features/medical-record/hooks/use-cases";
-import type { CaseDetail } from "@/features/medical-record/types/medical-record.types";
 
 export default function NewPrescriptionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const caseId = searchParams.get("caseId") ?? undefined;
 
-  // Fetch case detail if caseId is provided (Module 7 Phương án A)
   const { data: medicalCase, isLoading: isLoadingCase } = useCaseDetail(caseId);
 
-  // Load medication catalog
   const medicationsQuery = useQuery({
     queryKey: ["medication-catalog"],
     queryFn: getMedicationCatalog,
-    staleTime: 30 * 60 * 1000, // 30 phút — danh mục thuốc hiếm thay đổi
+    staleTime: 30 * 60 * 1000,
   });
 
-  // Transform case to prefilled patient for form
   const prefilledPatient = useMemo(() => {
     if (!medicalCase?.patientProfile) return undefined;
     return {
@@ -38,7 +34,6 @@ export default function NewPrescriptionPage() {
   }, [medicalCase]);
 
   async function handleSubmit(data: PrescriptionFormData) {
-    // Use prefilled caseId if available, otherwise from form data
     const targetCaseId = caseId ?? data.caseId;
     if (!targetCaseId) {
       throw new Error("Không xác định được ca khám");
@@ -47,7 +42,7 @@ export default function NewPrescriptionPage() {
     const request = {
       caseId: targetCaseId,
       items: data.items.map((item) => ({
-        medicineId: item.medicineId,
+        medicineName: item.medicineName,
         dosage: item.dosage,
         scheduleSlots: item.scheduleSlots,
         durationDays: item.durationDays,
@@ -58,7 +53,7 @@ export default function NewPrescriptionPage() {
     };
 
     const result = await createPrescription(request);
-    router.push(`/doctor/prescriptions/${result.prescriptionId}`);
+    router.push(`/prescriptions/${result.prescriptionId}`);
   }
 
   const isLoading = isLoadingCase || medicationsQuery.isLoading;

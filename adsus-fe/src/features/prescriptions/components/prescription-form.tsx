@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Trash2, X } from "lucide-react";
 import {
   Controller,
   FormProvider,
@@ -10,6 +10,7 @@ import {
   useFormContext,
 } from "react-hook-form";
 import toast from "react-hot-toast";
+import { useRef, useState } from "react";
 import { z } from "zod";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
@@ -17,8 +18,8 @@ import { z } from "zod";
 const ScheduleSlotEnum = z.enum(["Morning", "Noon", "Evening"]);
 
 const PrescriptionItemSchema = z.object({
-  medicineId: z.string().min(1, "Chọn thuốc"),
-  dosage: z.string().min(1, "Nhập liều dùng (vd: 1 viên)"),
+  medicineName: z.string().min(1, "Nhập tên thuốc"),
+  dosage: z.string().min(1, "Nhập liều dùng (vd: 1 viên/1 gói)"),
   scheduleSlots: z
     .array(ScheduleSlotEnum)
     .min(1, "Chọn ít nhất 1 khung giờ uống"),
@@ -32,7 +33,6 @@ const PrescriptionItemSchema = z.object({
 });
 
 export const PrescriptionFormSchema = z.object({
-  // caseId chỉ bắt buộc khi KHÔNG có prefilledPatient
   caseId: z.string().optional(),
   items: z.array(PrescriptionItemSchema).min(1, "Thêm ít nhất 1 loại thuốc"),
   generalNote: z.string().max(2000, "Tối đa 2000 ký tự"),
@@ -50,13 +50,10 @@ interface PrefilledPatient {
 }
 
 interface PrescriptionFormProps {
-  /** Thông tin bệnh nhân đã prefilled (từ case detail - Module 7 Phương án A). */
   prefilledPatient?: PrefilledPatient;
-  /** Danh sách ca khám để chọn (mode cũ - dropdown). */
   cases?: Array<{ caseId: string; patientName: string; patientCode: string }>;
-  /** Danh mục thuốc (GET /api/v1/medication-catalog). */
+  /** Danh mục thuốc (GET /api/v1/medication-catalog) — dùng cho autocomplete. */
   medications: Array<{ medicineId: string; name: string }>;
-  /** Gọi khi submit hợp lệ. */
   onSubmit: (data: PrescriptionFormData) => Promise<void>;
 }
 
@@ -74,7 +71,7 @@ export function PrescriptionForm({
       caseId: "",
       items: [
         {
-          medicineId: "",
+          medicineName: "",
           dosage: "",
           scheduleSlots: [] as ScheduleSlot[],
           durationDays: 30,
@@ -118,7 +115,6 @@ export function PrescriptionForm({
             Bệnh nhân / Ca khám <span className="text-red-500">*</span>
           </label>
           {prefilledPatient ? (
-            // Module 7 Phương án A: hiển thị thông tin bệnh nhân cố định
             <div className="flex items-center gap-4 rounded-full border border-border bg-surface px-5 py-3">
               <span className="font-semibold text-navy">
                 {prefilledPatient.patientName}
@@ -128,7 +124,6 @@ export function PrescriptionForm({
               </span>
             </div>
           ) : (
-            // Mode cũ: dropdown chọn bệnh nhân
             <select
               {...register("caseId")}
               className="w-full rounded-full border border-border bg-surface px-5 py-3 text-sm focus:border-teal focus:outline-none"
@@ -153,7 +148,7 @@ export function PrescriptionForm({
               type="button"
               onClick={() =>
                 append({
-                  medicineId: "",
+                  medicineName: "",
                   dosage: "",
                   scheduleSlots: [] as ScheduleSlot[],
                   durationDays: 30,
@@ -170,15 +165,14 @@ export function PrescriptionForm({
 
           {/* Header */}
           <div className="mb-1 grid grid-cols-12 gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <div className="col-span-3">Tên thuốc</div>
+            <div className="col-span-4">Tên thuốc</div>
             <div className="col-span-2">Liều dùng</div>
             <div className="col-span-3">Khung giờ</div>
             <div className="col-span-1 text-center">Ngày</div>
             <div className="col-span-2">Cách dùng</div>
-            <div className="col-span-1" />
           </div>
 
-          {/* Rows */}
+          {/* rows */}
           <div className="space-y-3">
             {fields.map((field, index) => (
               <MedicationRow
@@ -241,6 +235,108 @@ export function PrescriptionForm({
   );
 }
 
+// ─── MedicineCombobox ───────────────────────────────────────────────────────────
+
+interface MedicineComboboxProps {
+  value: string;
+  onChange: (value: string) => void;
+  medications: Array<{ medicineId: string; name: string }>;
+  error?: string;
+}
+
+function MedicineCombobox({
+  value,
+  onChange,
+  medications,
+  error,
+}: MedicineComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const [inputValue, setInputValue] = useState(value);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const filtered = inputValue.length === 0
+    ? medications.slice(0, 10)
+    : medications.filter((m) =>
+        m.name.toLowerCase().includes(inputValue.toLowerCase()),
+      );
+
+  function handleSelect(name: string) {
+    onChange(name);
+    setInputValue(name);
+    setOpen(false);
+  }
+
+  function handleClear() {
+    onChange("");
+    setInputValue("");
+    setOpen(false);
+  }
+
+  // Close on outside click
+  if (typeof window !== "undefined") {
+    // Client-side only event listener handled below
+  }
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <div className="flex items-center gap-1">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            onChange(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder="Nhập tên thuốc..."
+          className="w-full rounded-full border border-border bg-white px-3 py-2 text-xs focus:border-teal focus:outline-none"
+        />
+        {inputValue && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-red-50 hover:text-red-400"
+          >
+            <X className="size-3" />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="shrink-0 rounded-full border border-border p-1.5 text-muted-foreground hover:bg-gray-50"
+        >
+          <ChevronDown className="size-3" />
+        </button>
+      </div>
+
+      {open && (
+        <ul className="absolute left-0 top-full z-50 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-border bg-white shadow-lg">
+          {filtered.length === 0 ? (
+            <li className="px-3 py-2 text-xs text-muted-foreground">
+              Không tìm thấy thuốc nào
+            </li>
+          ) : (
+            filtered.map((m) => (
+              <li key={m.medicineId}>
+                <button
+                  type="button"
+                  onClick={() => handleSelect(m.name)}
+                  className="w-full px-3 py-2 text-left text-xs hover:bg-teal/5"
+                >
+                  {m.name}
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+
+      {error && <p className="mt-0.5 text-xs text-red-500">{error}</p>}
+    </div>
+  );
+}
+
 // ─── MedicationRow ───────────────────────────────────────────────────────────
 
 interface MedicationRowProps {
@@ -248,21 +344,16 @@ interface MedicationRowProps {
   medications: Array<{ medicineId: string; name: string }>;
   allSlots: ScheduleSlot[];
   register: ReturnType<typeof useForm<PrescriptionFormData>>["register"];
-  /** Errors flatten từ useFormState.errors.items[index]. */
   errors?: {
-    medicineId?: { message?: string };
+    medicineName?: { message?: string };
     dosage?: { message?: string };
     scheduleSlots?: { message?: string };
     durationDays?: { message?: string };
     startDate?: { message?: string };
   };
   onRemove?: () => void;
-  /** Dùng cho Controller checkbox slots. */
   control: ReturnType<typeof useForm<PrescriptionFormData>>["control"];
 }
-
-/** MedicationRow dùng useFormContext để truy cập watch() mà không cần prop drilling.
- *  Yêu cầu: component cha (PrescriptionForm) phải bọc <FormProvider {...methods}>. */
 
 function MedicationRow({
   index,
@@ -275,33 +366,31 @@ function MedicationRow({
 }: MedicationRowProps) {
   const { watch } = useFormContext<PrescriptionFormData>();
   const watchedSlots = watch(`items.${index}.scheduleSlots`) as ScheduleSlot[];
+  const watchedMedicineName = watch(`items.${index}.medicineName`) ?? "";
 
   return (
     <div className="grid grid-cols-12 items-start gap-2 rounded-2xl border border-border bg-surface p-3">
-      {/* Medicine select */}
-      <div className="col-span-3">
-        <select
-          {...register(`items.${index}.medicineId`)}
-          className="w-full rounded-full border border-border bg-white px-3 py-2 text-xs focus:border-teal focus:outline-none"
-        >
-          <option value="">— Chọn thuốc —</option>
-          {medications.map((m) => (
-            <option key={m.medicineId} value={m.medicineId}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-        {errors?.medicineId && (
-          <p className="mt-0.5 text-xs text-red-500">{errors.medicineId.message}</p>
-        )}
+      {/* Medicine name — autocomplete combobox */}
+      <div className="col-span-4">
+        <MedicineCombobox
+          value={watchedMedicineName}
+          onChange={(v) => {
+            const event = {
+              target: { name: `items.${index}.medicineName`, value: v },
+            } as React.ChangeEvent<HTMLInputElement>;
+            register(`items.${index}.medicineName`).onChange(event);
+          }}
+          medications={medications}
+          error={errors?.medicineName?.message}
+        />
       </div>
 
-      {/* Dosage */}
+      {/* Dosage — free text input */}
       <div className="col-span-2">
         <input
           type="text"
           {...register(`items.${index}.dosage`)}
-          placeholder="1 viên"
+          placeholder="VD: 1 viên, 1 gói"
           className="w-full rounded-full border border-border bg-white px-3 py-2 text-xs focus:border-teal focus:outline-none"
         />
         {errors?.dosage && (
@@ -371,27 +460,31 @@ function MedicationRow({
         )}
       </div>
 
-      {/* Start date */}
+      {/* Instructions — textarea */}
       <div className="col-span-2">
-        <input
-          type="date"
-          {...register(`items.${index}.startDate`)}
-          className="w-full rounded-full border border-border bg-white px-2 py-2 text-xs focus:border-teal focus:outline-none"
+        <textarea
+          {...register(`items.${index}.instructions`)}
+          rows={2}
+          placeholder="VD: Uống sau ăn 30 phút"
+          className="w-full resize-none rounded-xl border border-border bg-white px-2 py-1.5 text-xs focus:border-teal focus:outline-none"
         />
-        {errors?.startDate && (
-          <p className="mt-0.5 text-xs text-red-500">{errors.startDate.message}</p>
+        {errors?.instructions && (
+          <p className="mt-0.5 text-xs text-red-500">
+            {errors.instructions.message}
+          </p>
         )}
       </div>
 
-      {/* Instructions */}
-      <div className="col-span-1 flex items-start justify-center pt-2">
+      {/* Remove button */}
+      <div className="col-span-12 flex justify-end">
         {onRemove && (
           <button
             type="button"
             onClick={onRemove}
-            className="rounded-full p-1 text-muted-foreground transition hover:bg-red-50 hover:text-red-500"
+            className="flex items-center gap-1 rounded-full px-3 py-1 text-xs text-muted-foreground transition hover:bg-red-50 hover:text-red-400"
           >
-            <Trash2 className="size-4" />
+            <Trash2 className="size-3.5" />
+            Xóa
           </button>
         )}
       </div>
