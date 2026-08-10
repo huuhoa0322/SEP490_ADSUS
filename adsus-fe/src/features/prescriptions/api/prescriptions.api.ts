@@ -31,14 +31,31 @@ import type {
 export async function createPrescription(
   request: CreatePrescriptionRequest,
 ): Promise<PrescriptionResponse> {
-  const { data } = await apiClient.post<ApiResponse<PrescriptionResponse>>(
-    "/api/v1/prescriptions",
-    request,
-  );
-  if (!data.data) {
-    throw new Error(data.message || "Không tạo được đơn thuốc.");
+  const response = await apiClient.post<
+    ApiResponse<PrescriptionResponse> | PrescriptionResponse
+  >("/api/v1/prescriptions", request);
+
+  const body = response.data;
+
+  // Bug backend PrescriptionsController.Create trả raw PrescriptionResponse
+  // (không wrap trong ApiResponse<T>). Nếu body có field `data` → wrap, lấy
+  // .data. Nếu body có trực tiếp field `prescriptionId` → raw, trả luôn.
+  // Fix thủ công này chỉ để tránh phải restart BE. Khi backend wrap chuẩn,
+  // đoạn fallback này vẫn hoạt động (defensive).
+  if (body && typeof body === "object" && "prescriptionId" in body) {
+    return body as PrescriptionResponse;
   }
-  return data.data;
+
+  const wrapped = body as ApiResponse<PrescriptionResponse> | undefined;
+  if (wrapped?.data) {
+    return wrapped.data;
+  }
+
+  if (wrapped?.message) {
+    throw new Error(wrapped.message);
+  }
+
+  throw new Error("Không tạo được đơn thuốc. Kiểm tra backend đang chạy.");
 }
 
 /**

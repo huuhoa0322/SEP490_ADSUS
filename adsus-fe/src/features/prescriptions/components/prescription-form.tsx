@@ -104,9 +104,10 @@ export function PrescriptionForm({
     try {
       const result = await onSubmit(data);
       toast.success("Đơn thuốc đã được gửi đến bệnh nhân");
-      // Navigate sau khi toast đã render — tránh race với Next.js abort.
+      // TODO(capstone-extension): route /prescriptions/[id] chưa có (UC-17 §22.6 B).
+      // Tạm thời KHÔNG navigate để tránh race với Next.js abort axios request.
       if (result && "prescriptionId" in result) {
-        router.push(`/prescriptions/${result.prescriptionId}`);
+        console.log("prescriptionId:", result.prescriptionId);
       }
     } catch {
       toast.error("Không thể lưu đơn thuốc. Vui lòng thử lại.");

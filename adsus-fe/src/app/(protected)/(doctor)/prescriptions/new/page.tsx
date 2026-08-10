@@ -53,9 +53,8 @@ export default function NewPrescriptionPage() {
     };
 
     const result = await createPrescription(request);
-    // router.push có thể gây race với toast success/error — trả prescriptionId
-    // về cho form component xử lý navigation sau khi toast đã render xong.
-    return result;
+    // Trả về prescriptionId để form biết đã lưu thành công.
+    return { prescriptionId: result.prescriptionId };
   }
 
   const isLoading = isLoadingCase || medicationsQuery.isLoading;

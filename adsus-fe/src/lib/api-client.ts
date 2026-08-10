@@ -27,7 +27,7 @@ const baseURL = API_BASE_URL;
 // header vẫn ghi application/json — backend nhận sai định dạng, không phải lỗi chỉ ở test.
 export const apiClient = axios.create({
   baseURL,
-  timeout: 15_000,
+  timeout: 60_000,
 });
 
 /** Storage key for the access token, shared by the store and the interceptor below. */
