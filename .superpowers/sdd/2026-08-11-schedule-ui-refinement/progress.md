@@ -10,7 +10,9 @@ Refine schedule slot management UI at `/schedule`:
 - [x] Task 1: Remove Edit Feature (commits f2b3e8f..7306ff0, review clean)
 - [x] Task 2: Add ConfirmModal Component (commits 7306ff0..3a7dc1b, review clean)
 - [x] Task 3: Add Confirmation State and Replace confirm() Calls (commits 3a7dc1b..56bfa30, review clean)
-- [ ] Task 4: Scale Up UI Components
+- [x] Task 4: Scale Up UI Components (commits 56bfa30..57fdb55, review clean)
+- [x] Task 5: Cleanup Unused Props (done in Task 1 - onEdit already removed)
+- [x] Task 6: Test and Verify (TypeScript clean, review approved)
 - [ ] Task 3: Add Confirmation State and Replace confirm() Calls
 - [ ] Task 4: Scale Up UI Components
 - [ ] Task 5: Cleanup Unused Props

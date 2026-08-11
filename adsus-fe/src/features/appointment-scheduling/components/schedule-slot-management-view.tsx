@@ -335,54 +335,50 @@ function SlotCard({
   onClose: () => void;
   onReopen: () => void;
 }) {
+  const patientName = slot.bookedAppointments?.[0]?.patientFullName;
+  const hasBooking = !!patientName;
+
   return (
-    <div className={`rounded border p-2 text-xs ${slot.status === "CLOSED" ? "border-slate-300 bg-slate-50" : "border-slate-200 bg-white"}`}>
+    <div className={`flex flex-col rounded border p-2 text-xs ${slot.status === "CLOSED" ? "border-slate-300 bg-slate-50" : "border-slate-200 bg-white"}`}>
+      {/* Header: Time range + Status badge */}
       <div className="flex items-start justify-between gap-0.5">
-        <span className="font-mono text-sm font-medium text-slate-700">
+        <span className="font-mono text-xs font-medium text-slate-600">
           {slot.startTime.slice(0, 5)}–{slot.endTime.slice(0, 5)}
         </span>
-        <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] ${STATUS_STYLES[slot.status]}`}>
+        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] ${STATUS_STYLES[slot.status]}`}>
           {STATUS_LABELS[slot.status]}
         </span>
       </div>
 
-      {/* Hiển thị tên bệnh nhân đã book */}
-      {slot.bookedAppointments && slot.bookedAppointments.length > 0 && (
-        <div className="mt-0.5 space-y-0.5">
-          {slot.bookedAppointments.map((apt) => (
-            <div key={apt.appointmentId} className="text-blue-700 truncate text-xs" title={apt.reason ?? undefined}>
-              👤 {apt.patientFullName}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Patient name - primary action for BOOKED */}
+      <div className="mt-1 flex items-center justify-between gap-1">
+        <span className={`flex-1 truncate text-xs ${hasBooking ? "text-blue-700 font-medium" : "text-slate-400"}`}>
+          {hasBooking ? patientName : "—"}
+        </span>
 
-      <div className="mt-1 flex gap-0.5">
-        {slot.status === "BOOKED" && (
-          <span className="flex-1 rounded border border-blue-200 bg-blue-50 px-2 py-1 text-center text-xs text-blue-600">
-            Đã đặt
-          </span>
-        )}
-        {slot.status === "OPEN" && (
+        {/* Close button - small X icon */}
+        {slot.status !== "CLOSED" && (
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100"
-            title="Đóng"
+            className="shrink-0 rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
+            title="Đóng ca"
           >
-            Đóng ca
-          </button>
-        )}
-        {slot.status === "CLOSED" && (
-          <button
-            type="button"
-            onClick={onReopen}
-            className="flex-1 rounded border border-green-200 bg-green-50 px-2 py-1 text-xs text-green-600 hover:bg-green-100"
-          >
-            Mở lại
+            <X className="h-3 w-3" />
           </button>
         )}
       </div>
+
+      {/* Status indicator / Reopen button */}
+      {slot.status === "CLOSED" && (
+        <button
+          type="button"
+          onClick={onReopen}
+          className="mt-1 w-full rounded border border-green-200 bg-green-50 px-2 py-1 text-xs text-green-600 hover:bg-green-100"
+        >
+          Mở lại
+        </button>
+      )}
     </div>
   );
 }
