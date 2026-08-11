@@ -284,21 +284,24 @@ function DayColumn({
   onClose: (s: ScheduleSlotResponse, force: boolean) => void | Promise<void>;
   onReopen: (s: ScheduleSlotResponse) => void | Promise<void>;
 }) {
-  // Highlight T7, CN
   const isWeekend = weekdayLabel === "T7" || weekdayLabel === "CN";
-  const dayNum = Number(dateIso.slice(8, 10));
+
+  // Parse date for display: "10/08" format
+  const date = new Date(dateIso);
+  const dayOfMonth = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
 
   return (
-    <div className={`min-h-[280px] rounded border p-2 ${isWeekend ? "border-amber-200 bg-amber-50/30" : "border-slate-200 bg-white"}`}>
+    <div className={`flex min-h-[280px] flex-col rounded border p-2 ${isWeekend ? "border-amber-200 bg-amber-50/30" : "border-slate-200 bg-white"}`}>
+      {/* Header with weekday + date */}
       <div className="mb-1 text-center">
         <div className={`text-xs font-semibold ${isWeekend ? "text-amber-600" : "text-slate-500"}`}>
-          {weekdayLabel}
-        </div>
-        <div className={`text-base ${isPast ? "text-slate-400" : "text-slate-700"}`}>
-          {dayNum}
+          {weekdayLabel} ({dayOfMonth}/{month})
         </div>
       </div>
-      <div className="space-y-1">
+
+      {/* Slots container - fixed height, scrollable if needed */}
+      <div className="flex-1 space-y-1">
         {slots.length === 0 && (
           <div className={`rounded border border-dashed p-2 text-center text-xs ${isWeekend ? "border-amber-200 text-amber-400" : "border-slate-200 text-slate-400"}`}>
             {isPast ? "Qua" : "—"}
@@ -313,11 +316,13 @@ function DayColumn({
           />
         ))}
       </div>
+
+      {/* Add button - always at bottom */}
       {!isPast && (
         <button
           type="button"
           onClick={() => onAddClick(dateIso)}
-          className="mt-1 w-full rounded border border-dashed border-slate-300 p-1 text-xs text-slate-400 hover:border-blue-400 hover:text-blue-500"
+          className="mt-2 w-full rounded border border-dashed border-slate-300 p-1 text-xs text-slate-400 hover:border-blue-400 hover:text-blue-500"
         >
           + Thêm
         </button>
