@@ -42,7 +42,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         _aiBackendUrl = configuration["AiBackend:WebhookUrl"] ?? "http://localhost:8000";
     }
 
-    public async Task<JsonElement> AnalyzeImageAsync(Guid caseId, Guid modelVersionId, Stream imageStream, string fileName, string contentType, CancellationToken ct = default)
+    public async Task<JsonElement> AnalyzeImageAsync(Guid caseId, Stream imageStream, string fileName, string contentType, CancellationToken ct = default)
     {
         // Ignore the modelVersionId passed from frontend and fetch the true ACTIVE model
         var activeModel = await _aiModelVersionRepo.GetActiveVersionAsync(ct);

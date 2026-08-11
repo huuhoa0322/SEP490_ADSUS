@@ -6,9 +6,12 @@ import Link from "next/link";
 import { useDiagnosticStore } from "@/features/medical-record/stores/use-diagnostic-store";
 import { useCaseDetail } from "@/features/medical-record/hooks/use-cases";
 import { DiagnosticCanvas } from "@/features/medical-record/components/diagnostic-canvas";
+import { useQueryClient } from "@tanstack/react-query";
+import { medicalRecordQueryKeys } from "@/features/medical-record/hooks/query-keys";
 
 export default function DiagnosticPage({ params }: { params: Promise<{ caseId: string }> }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { caseId } = use(params);
   const { data: medicalCase, isLoading } = useCaseDetail(caseId);
   const { images, currentIndex, nextImage, clearSession } = useDiagnosticStore();
@@ -34,6 +37,10 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
   }
 
   function handleNext() {
+    // Invalidate the cache for the case and its images so the UI is fresh when we return
+    queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
+    queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.images(caseId) });
+
     if (isLastImage) {
       clearSession();
       router.push(`/cases/${caseId}`);
