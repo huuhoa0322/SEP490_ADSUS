@@ -244,7 +244,7 @@ function WeekView({
   onReopen: (s: ScheduleSlotResponse) => void | Promise<void>;
 }) {
   return (
-    <div className="grid grid-cols-7 gap-3">
+    <div className="grid min-h-[600px] grid-cols-7 gap-3">
       {Array.from({ length: 7 }).map((_, i) => {
         const date = addDays(weekStart, i);
         const dateIso = isoDate(date);
