@@ -7,7 +7,7 @@ Refine schedule slot management UI at `/schedule`:
 - Replace browser `confirm()` with custom modal UI
 
 ## Tasks
-- [ ] Task 1: Remove Edit Feature
+- [x] Task 1: Remove Edit Feature (commits f2b3e8f..7306ff0, review clean)
 - [ ] Task 2: Add ConfirmModal Component
 - [ ] Task 3: Add Confirmation State and Replace confirm() Calls
 - [ ] Task 4: Scale Up UI Components
