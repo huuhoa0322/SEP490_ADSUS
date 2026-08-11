@@ -20,9 +20,9 @@ import type { CaseStatus } from "../types/medical-record.types";
 function statusBadgeClass(status: CaseStatus): string {
   switch (status) {
     case "CONFIRMED":
-      return "bg-emerald-50 text-emerald-700";
-    case "ANALYZED":
       return "bg-violet-50 text-violet-700";
+    case "END":
+      return "bg-emerald-50 text-emerald-700";
     default:
       return "bg-amber-50 text-amber-700";
   }
