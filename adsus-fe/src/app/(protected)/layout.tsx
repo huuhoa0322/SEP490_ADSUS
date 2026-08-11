@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { AppHeader } from "@/components/shared/app-header";
+import { AppSidebar } from "@/components/shared/app-sidebar";
 import { AuthGuard } from "@/features/auth/components/auth-guard";
 
 /**
@@ -13,7 +14,10 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
     <AuthGuard>
       <div className="flex min-h-screen flex-col bg-muted/30">
         <AppHeader />
-        <main className="flex-1">{children}</main>
+        <div className="flex flex-1">
+          <AppSidebar />
+          <main className="flex-1 min-w-0">{children}</main>
+        </div>
       </div>
     </AuthGuard>
   );
