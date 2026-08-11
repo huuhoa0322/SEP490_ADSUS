@@ -18,6 +18,9 @@ public interface IPrescriptionRepository
     /// <summary>Lấy tất cả đơn của 1 bác sĩ đã kê.</summary>
     Task<IReadOnlyList<Prescription>> ListByDoctorAsync(Guid doctorId, CancellationToken ct = default);
 
+    /// <summary>Lấy đơn mới nhất của 1 ca (dùng khi case detail cần hiển thị đơn).</summary>
+    Task<Prescription?> GetByCaseIdAsync(Guid caseId, CancellationToken ct = default);
+
     /// <summary>Thêm 1 đơn (chưa bao gồm items) vào change tracker. Controller gọi SaveChangesAsync.</summary>
     Task AddAsync(Prescription prescription, CancellationToken ct = default);
 }

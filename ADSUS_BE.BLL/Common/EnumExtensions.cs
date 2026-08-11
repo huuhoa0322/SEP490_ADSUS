@@ -22,7 +22,7 @@ public static class EnumExtensions
     public static string ToApiString(this CaseStatus status) => status switch
     {
         CaseStatus.Created => "CREATED",
-        CaseStatus.Analyzed => "ANALYZED",
+        CaseStatus.End => "END",
         CaseStatus.Confirmed => "CONFIRMED",
         _ => throw new ArgumentOutOfRangeException(nameof(status)),
     };

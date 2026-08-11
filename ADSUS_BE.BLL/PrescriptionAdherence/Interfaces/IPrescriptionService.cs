@@ -19,4 +19,7 @@ public interface IPrescriptionService
         Guid actorId,
         CreatePrescriptionRequest request,
         CancellationToken ct = default);
+
+    /// <summary>Lấy đơn thuốc mới nhất của một ca khám (dùng cho GET /api/v1/cases/{caseId}/prescription).</summary>
+    Task<PrescriptionResponse?> GetByCaseIdAsync(Guid caseId, CancellationToken ct = default);
 }

@@ -139,6 +139,19 @@ export async function listMyCases() {
 }
 
 /**
+ * GET /api/v1/cases/{caseId}/prescription — Lấy đơn thuốc của một ca (case detail hiển thị).
+ * Trả null nếu ca chưa kê đơn.
+ */
+export async function getCasePrescription(
+  caseId: string,
+): Promise<PrescriptionResponse | null> {
+  const { data } = await apiClient.get<ApiResponse<PrescriptionResponse | null>>(
+    `/api/v1/cases/${caseId}/prescription`,
+  );
+  return data.data ?? null;
+}
+
+/**
  * GET /api/v1/medication-catalog — Danh mục thuốc (Doctor chọn thuốc khi kê đơn).
  * Trả về array trực tiếp, không paginate.
  */

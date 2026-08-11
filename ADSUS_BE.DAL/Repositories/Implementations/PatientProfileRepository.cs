@@ -130,7 +130,7 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
         if (string.Equals(visitStatus, "Pending", StringComparison.OrdinalIgnoreCase))
         {
             merged = merged.Where(x => x.LatestCase != null
-                && (x.LatestCase.Status == CaseStatus.Created || x.LatestCase.Status == CaseStatus.Analyzed));
+                && (x.LatestCase.Status == CaseStatus.Created || x.LatestCase.Status == CaseStatus.End));
         }
         else if (string.Equals(visitStatus, "Confirmed", StringComparison.OrdinalIgnoreCase))
         {

@@ -56,6 +56,8 @@ export interface PrescriptionItemResponse {
   /** ISO yyyy-MM-dd. */
   startDate: string;
   instructions?: string;
+  /** Khung giờ uống (Morning/Noon/Evening). */
+  scheduleSlots?: string[];
 }
 
 /** Response POST /api/v1/prescriptions + GET /api/v1/prescriptions/{id}. */

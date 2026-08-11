@@ -25,7 +25,8 @@ public sealed record PrescriptionItemResponse(
     string Dosage,
     short DurationDays,
     DateOnly StartDate,
-    string? Instructions);
+    string? Instructions,
+    IReadOnlyList<string>? ScheduleSlots);
 
 /// <summary>Map entity → response DTO.</summary>
 public static class PrescriptionResponseMapper
@@ -49,5 +50,6 @@ public static class PrescriptionResponseMapper
             pi.Dosage,
             pi.DurationDays,
             pi.StartDate,
-            pi.Instructions);
+            pi.Instructions,
+            pi.ScheduleSlots?.Select(s => s.ToString()).ToList());
 }

@@ -102,13 +102,8 @@ export function PrescriptionForm({
 
   async function onValid(data: PrescriptionFormData) {
     try {
-      const result = await onSubmit(data);
-      toast.success("Đơn thuốc đã được gửi đến bệnh nhân");
-      // TODO(capstone-extension): route /prescriptions/[id] chưa có (UC-17 §22.6 B).
-      // Tạm thời KHÔNG navigate để tránh race với Next.js abort axios request.
-      if (result && "prescriptionId" in result) {
-        console.log("prescriptionId:", result.prescriptionId);
-      }
+      await onSubmit(data);
+      toast.success("Kê đơn thuốc và kết thúc ca khám thành công");
     } catch {
       toast.error("Không thể lưu đơn thuốc. Vui lòng thử lại.");
     }
@@ -222,21 +217,26 @@ export function PrescriptionForm({
         </section>
 
         {/* ── Submit ─────────────────────────────────────────────── */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-base font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-60"
-          >
-            {isSubmitting ? (
-              <span>Đang gửi…</span>
-            ) : (
-              <>
-                <span>✓</span>
-                <span>Xác nhận kê đơn & gửi đến App Mobile</span>
-              </>
-            )}
-          </button>
+        <div className="flex flex-col gap-2">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+            ⚠ Đơn thuốc chỉ được tạo <strong>một lần duy nhất</strong>. Vui lòng kiểm tra kỹ trước khi bấm xác nhận.
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-base font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-60"
+            >
+              {isSubmitting ? (
+                <span>Đang gửi…</span>
+              ) : (
+                <>
+                  <span>✓</span>
+                  <span>Kê đơn thuốc và kết thúc ca khám</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </form>
     </FormProvider>

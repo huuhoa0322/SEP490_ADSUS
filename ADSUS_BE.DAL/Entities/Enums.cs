@@ -54,12 +54,14 @@ public enum AppointmentStatus
 
 /// <summary>
 /// Trạng thái ca khám — enum <c>case_status</c> trong DB (Module 4, lõi đề tài).
-/// Vòng đời một chiều: Created → Analyzed (có kết quả AI) → Confirmed (bác sĩ đã duyệt).
+/// Vòng đời một chiều:
+///   Created → Confirmed (bác sĩ kết luận, chưa kê đơn) → END (bác sĩ đã kê đơn thuốc).
+/// END là trạng thái cuối — không có đường lùi (GB-01).
 /// </summary>
 public enum CaseStatus
 {
     [PgName("CREATED")] Created,
-    [PgName("ANALYZED")] Analyzed,
+    [PgName("END")] End,
     [PgName("CONFIRMED")] Confirmed,
 }
 

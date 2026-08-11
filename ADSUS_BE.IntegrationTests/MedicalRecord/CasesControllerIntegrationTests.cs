@@ -664,7 +664,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
-        var medicalCase = MakeCase(profile, CaseStatus.Analyzed);
+        var medicalCase = MakeCase(profile, CaseStatus.End);
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
@@ -710,7 +710,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, otherDoctor);
         var profile = MakePatientProfile();
-        var medicalCase = MakeCase(profile, CaseStatus.Analyzed);
+        var medicalCase = MakeCase(profile, CaseStatus.End);
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
 
@@ -763,7 +763,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
-        var medicalCase = MakeCase(profile, CaseStatus.Analyzed);
+        var medicalCase = MakeCase(profile, CaseStatus.End);
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))

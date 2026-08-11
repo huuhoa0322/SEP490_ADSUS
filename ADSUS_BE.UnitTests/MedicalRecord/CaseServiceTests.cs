@@ -595,7 +595,7 @@ public class CaseServiceTests
     {
         // Arrange
         var doctor = MedicalRecordTestData.MakeDoctor();
-        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.Analyzed);
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.End);
         var request = MakeConfirmRequest();
 
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
@@ -638,7 +638,7 @@ public class CaseServiceTests
         // bất kỳ đang đăng nhập.
         var responsibleDoctor = MedicalRecordTestData.MakeDoctor("BS. Lê Minh Hoàng");
         var otherDoctor = MedicalRecordTestData.MakeDoctor("BS. Nguyễn Văn An");
-        var medicalCase = MedicalRecordTestData.MakeCase(doctor: responsibleDoctor, status: CaseStatus.Analyzed);
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: responsibleDoctor, status: CaseStatus.End);
 
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
@@ -669,7 +669,7 @@ public class CaseServiceTests
         // Arrange — "Lưu kết luận" KHÔNG đổi trạng thái, khác hẳn ConfirmAsync ("Kết thúc ca
         // khám"). Bác sĩ có thể lưu nháp nhiều lần trước khi bấm Kết thúc.
         var doctor = MedicalRecordTestData.MakeDoctor();
-        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.Analyzed);
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.End);
         var request = MakeConfirmRequest();
 
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
@@ -682,7 +682,7 @@ public class CaseServiceTests
 
         // Assert
         Assert.Equal("ANALYZED", response.Status);
-        Assert.Equal(CaseStatus.Analyzed, medicalCase.Status);
+        Assert.Equal(CaseStatus.End, medicalCase.Status);
         Assert.Equal("Nhân xơ tử cung", medicalCase.FinalDiagnosis);
         Assert.Equal("Theo dõi định kỳ sau 6 tháng", medicalCase.DoctorConclusion);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
