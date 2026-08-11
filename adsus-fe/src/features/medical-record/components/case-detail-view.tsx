@@ -26,12 +26,13 @@ import { useDiagnosticStore } from "../stores/use-diagnostic-store";
 
 import { UltrasoundImageGallery } from "./ultrasound-image-gallery";
 import { UltrasoundUploadField } from "./ultrasound-upload-field";
+import { PrescriptionSection } from "@/features/prescriptions/components/prescription-section";
 
 function statusBadgeClass(status: CaseStatus): string {
   switch (status) {
     case "CONFIRMED":
       return "bg-emerald-50 text-emerald-700";
-    case "ANALYZED":
+    case "END":
       return "bg-violet-50 text-violet-700";
     default:
       return "bg-amber-50 text-amber-700";
@@ -95,7 +96,8 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
     );
   }
 
-  const isConfirmed = medicalCase.status === "CONFIRMED";
+  // CONFIRMED hoặc END đều cho phép xem (END = ca đã kê đơn, không bổ sung được nữa).
+  const isConfirmedOrEnd = medicalCase.status === "CONFIRMED" || medicalCase.status === "END";
   // GB-04 — chỉ hiện form kết luận cho ĐÚNG Bác sĩ phụ trách ca này, không phải Bác sĩ bất kỳ
   // hay Điều dưỡng. Đây chỉ là lớp trải nghiệm; backend chặn thật ở SaveConclusionAsync/ConfirmAsync.
   const isResponsibleDoctor =
@@ -181,20 +183,21 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
               type="button"
               onClick={report.exportReport}
               // UC-12 BR-01.
-              disabled={!isConfirmed || report.isPending}
+              disabled={!isConfirmedOrEnd || report.isPending}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
             >
               {report.isPending ? "Đang tạo file..." : "Xuất báo cáo PDF"}
             </button>
-            {!isConfirmed ? (
+            {!isConfirmedOrEnd ? (
               <span className="text-xs italic text-muted-foreground">
                 Chỉ xuất được khi ca đã kết luận
               </span>
             ) : null}
           </div>
 
-          {/* Module 7 — Kê đơn thuốc: chỉ hiện khi ca đã CONFIRMED và đúng Bác sĩ phụ trách */}
-          {isConfirmed && isResponsibleDoctor ? (
+          {/* Module 7 — Kê đơn thuốc: chỉ hiện khi ca CONFIRMED (chưa kê) và đúng Bác sĩ phụ trách.
+              END thì ẩn vì đã kê đơn rồi, chỉ hiện prescription section. */}
+          {medicalCase.status === "CONFIRMED" && isResponsibleDoctor ? (
             <div className="mt-2 flex flex-col items-end gap-1">
               <Link
                 href={`/prescriptions/new?caseId=${caseId}`}
@@ -240,6 +243,11 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         </section>
       ) : null}
 
+      {/* Module 7 — Đơn thuốc: hiện khi ca ở trạng thái END (đã kê đơn) */}
+      {medicalCase.status === "END" ? (
+        <PrescriptionSection caseId={caseId} />
+      ) : null}
+
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.7fr_1fr]">
         <section className="rounded-xl border border-border p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -254,12 +262,12 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                 type="button"
                 onClick={() => setShowUpload((open) => !open)}
                 // GB-01 — ca đã chốt không nhận thêm ảnh. isLocked — khoá tạm sau "Lưu kết luận".
-                disabled={isConfirmed || isLocked}
+                disabled={isConfirmedOrEnd || isLocked}
                 className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
               >
                 Bổ sung ảnh siêu âm
               </button>
-              {isConfirmed ? (
+              {isConfirmedOrEnd ? (
                 <span className="text-xs italic text-muted-foreground">
                   Ca đã kết luận nên không nhận thêm ảnh
                 </span>
@@ -271,7 +279,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             </div>
           </div>
 
-          {showUpload && !isConfirmed && !isLocked ? (
+          {showUpload && !isConfirmedOrEnd && !isLocked ? (
             <div className="mb-5 space-y-4 rounded-lg border border-dashed border-border p-4">
               <UltrasoundUploadField
                 files={pendingImages}
@@ -332,7 +340,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
               Kết luận của bác sĩ
             </h2>
 
-            {isConfirmed ? (
+            {isConfirmedOrEnd ? (
               <dl className="space-y-4">
                 {/* DTO thật tách hai trường; API Spec v0.1 gộp thành một `conclusion`. */}
                 <div>

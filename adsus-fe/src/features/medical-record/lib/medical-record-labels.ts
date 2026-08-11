@@ -2,7 +2,7 @@ import type { CaseStatus, Gender, VisitStatusFilter } from "../types/medical-rec
 
 const CASE_STATUS_LABELS: Record<CaseStatus, string> = {
   CREATED: "Mới tạo",
-  ANALYZED: "Đã phân tích",
+  END: "Đã kết thúc ca",
   CONFIRMED: "Đã kết luận",
 };
 

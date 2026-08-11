@@ -65,7 +65,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("auth", "oauth_response_type", new[] { "code" })
             .HasPostgresEnum("auth", "one_time_token_type", new[] { "confirmation_token", "reauthentication_token", "recovery_token", "email_change_token_new", "email_change_token_current", "phone_change_token" })
             .HasPostgresEnum("blog_status", new[] { "DRAFT", "PUBLISHED" })
-            .HasPostgresEnum("case_status", new[] { "CREATED", "ANALYZED", "CONFIRMED" })
+            .HasPostgresEnum("case_status", new[] { "CREATED", "END", "CONFIRMED" })
             .HasPostgresEnum("chat_role", new[] { "USER", "ASSISTANT" })
             .HasPostgresEnum("gender_type", new[] { "FEMALE", "MALE", "OTHER" })
             .HasPostgresEnum("health_log_type", new[] { "EXERCISE", "DIET" })

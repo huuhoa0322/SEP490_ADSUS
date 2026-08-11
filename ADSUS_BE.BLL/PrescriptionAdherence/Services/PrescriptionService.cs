@@ -191,6 +191,13 @@ public sealed class PrescriptionService : IPrescriptionService
         if (allLogs.Count > 0)
             await _intakeLogRepo.AddRangeAsync(allLogs, ct);
 
+        // Sau khi tạo đơn thuốc → tự động chuyển ca sang END (trạng thái cuối).
+        // Dùng GetForUpdateAsync để lấy entity có theo dõi thay đổi.
+        var trackedCase = await _caseRepo.GetForUpdateAsync(request.CaseId, ct)
+            ?? throw new ResourceNotFoundException($"Ca '{request.CaseId}' not found.");
+        trackedCase.Status = CaseStatus.End;
+        trackedCase.UpdatedAt = DateTime.UtcNow;
+
         await _db.SaveChangesAsync(ct);
 
         // Reload with navigation for response
@@ -198,5 +205,11 @@ public sealed class PrescriptionService : IPrescriptionService
             ?? throw new InvalidOperationException("Prescription not found after save.");
 
         return PrescriptionResponseMapper.FromEntity(response);
+    }
+
+    public async Task<PrescriptionResponse?> GetByCaseIdAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var prescription = await _prescriptionRepo.GetByCaseIdAsync(caseId, ct);
+        return prescription is null ? null : PrescriptionResponseMapper.FromEntity(prescription);
     }
 }

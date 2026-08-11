@@ -20,7 +20,7 @@ export interface PagedResult<T> {
 }
 
 export type Gender = "FEMALE" | "MALE" | "OTHER";
-export type CaseStatus = "CREATED" | "ANALYZED" | "CONFIRMED";
+export type CaseStatus = "CREATED" | "END" | "CONFIRMED";
 
 /** Bộ lọc của #26. "Pending" gộp cả CREATED lẫn ANALYZED. */
 export type VisitStatusFilter = "All" | "Pending" | "Confirmed";

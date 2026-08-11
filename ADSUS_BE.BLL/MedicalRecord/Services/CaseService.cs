@@ -78,7 +78,7 @@ public sealed class CaseService : ICaseService
         // tiếp xác nhận "có tồn tại một ca như vậy" — đúng thứ GB-05 không cho lộ.
         if (medicalCase is null
             || medicalCase.PatientProfileId != profile.PatientProfileId
-            || medicalCase.Status != CaseStatus.Confirmed)
+            || (medicalCase.Status != CaseStatus.Confirmed && medicalCase.Status != CaseStatus.End))
         {
             throw new ResourceNotFoundException("Case not found.");
         }
@@ -102,7 +102,7 @@ public sealed class CaseService : ICaseService
         {
             if (!Enum.TryParse<CaseStatus>(status, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
             {
-                throw new BusinessException("Status must be CREATED, ANALYZED or CONFIRMED.");
+                throw new BusinessException("Status must be CREATED, END or CONFIRMED.");
             }
 
             statusFilter = parsed;

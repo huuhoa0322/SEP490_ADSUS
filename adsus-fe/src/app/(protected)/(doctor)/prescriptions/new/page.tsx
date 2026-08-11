@@ -52,9 +52,9 @@ export default function NewPrescriptionPage() {
       generalNote: data.generalNote ?? "",
     };
 
-    const result = await createPrescription(request);
-    // Trả về prescriptionId để form biết đã lưu thành công.
-    return { prescriptionId: result.prescriptionId };
+    await createPrescription(request);
+    // Sau khi lưu thành công → redirect về trang chi tiết ca.
+    router.push(`/cases/${targetCaseId}`);
   }
 
   const isLoading = isLoadingCase || medicationsQuery.isLoading;

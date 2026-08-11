@@ -2,6 +2,8 @@ using System.Security.Claims;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
+using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
+using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,6 +23,7 @@ public sealed class CasesController : ControllerBase
 {
     private readonly ICaseService _cases;
     private readonly ICaseReportService _reports;
+    private readonly IPrescriptionService _prescriptions;
     private readonly IValidator<CreateCaseRequest> _createValidator;
     private readonly IValidator<AddUltrasoundImagesRequest> _addImagesValidator;
     private readonly IValidator<CaseConclusionRequest> _conclusionValidator;
@@ -28,12 +31,14 @@ public sealed class CasesController : ControllerBase
     public CasesController(
         ICaseService cases,
         ICaseReportService reports,
+        IPrescriptionService prescriptions,
         IValidator<CreateCaseRequest> createValidator,
         IValidator<AddUltrasoundImagesRequest> addImagesValidator,
         IValidator<CaseConclusionRequest> conclusionValidator)
     {
         _cases = cases;
         _reports = reports;
+        _prescriptions = prescriptions;
         _createValidator = createValidator;
         _addImagesValidator = addImagesValidator;
         _conclusionValidator = conclusionValidator;
@@ -274,6 +279,20 @@ public sealed class CasesController : ControllerBase
     {
         var pdf = await _reports.GenerateReportAsync(id, ct);
         return File(pdf, "application/pdf", $"visit-report-{id}.pdf");
+    }
+
+    /// <summary>
+    /// Lấy đơn thuốc mới nhất của một ca (Module 7 — case detail hiển thị đơn sau khi kê).
+    /// </summary>
+    [HttpGet("{caseId:guid}/prescription")]
+    [Authorize(Roles = "DOCTOR,NURSE")]
+    [ProducesResponseType(typeof(ApiResponse<PrescriptionResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCasePrescription(Guid caseId, CancellationToken ct)
+    {
+        var prescription = await _prescriptions.GetByCaseIdAsync(caseId, ct);
+        if (prescription is null)
+            return Ok(ApiResponse<object>.Ok(null, "No prescription for this case."));
+        return Ok(ApiResponse<PrescriptionResponse>.Ok(prescription));
     }
 
     /// <summary>

@@ -141,7 +141,7 @@ public class CaseMapperTests
     public void ToSummary_MapsCoreFieldsOnly()
     {
         // Arrange
-        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Analyzed);
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.End);
 
         // Act
         var summary = CaseMapper.ToSummary(medicalCase);
