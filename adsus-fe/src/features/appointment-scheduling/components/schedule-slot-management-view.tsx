@@ -45,6 +45,10 @@ export function ScheduleSlotManagementView() {
   const [weekAnchor, setWeekAnchor] = useState<Date>(() => mondayOfWeek(new Date()));
   const [showCreate, setShowCreate] = useState(false);
   const [defaultDate, setDefaultDate] = useState<string>(todayIso);
+  const [confirmAction, setConfirmAction] = useState<{
+    type: "close" | "forceClose" | "reopen";
+    slot: ScheduleSlotResponse;
+  } | null>(null);
 
   // Tính range: 1 tuần = 7 ngày từ weekAnchor (T2)
   const { fromDate, toDate, rangeLabel } = useMemo(() => {
@@ -140,50 +144,14 @@ export function ScheduleSlotManagementView() {
             setDefaultDate(dateIso);
             setShowCreate(true);
           }}
-          onClose={async (s, force) => {
+          onClose={(s, force) => {
             if (!force) {
-              const msg =
-                s.activeAppointmentsCount > 0
-                  ? `Khung giờ này có ${s.activeAppointmentsCount} lịch hẹn đang BOOKED. ` +
-                    "Bạn có chắc muốn đóng? Sau khi đóng, có thể mở lại."
-                  : `Bạn có chắc muốn đóng khung giờ ${s.startTime.slice(0, 5)}–${s.endTime.slice(0, 5)} ` +
-                    `ngày ${s.slotDate}? Sau khi đóng, có thể mở lại.`;
-              if (!confirm(msg)) return;
+              setConfirmAction({ type: "close", slot: s });
+              return;
             }
-            try {
-              await closeMutation.mutateAsync({ id: s.slotId, force });
-              await listQuery.refetch();
-              toast.success(`Đã đóng khung giờ ${s.startTime.slice(0, 5)}–${s.endTime.slice(0, 5)}.`);
-            } catch (err) {
-              const apiErr = err as {
-                response?: { data?: { data?: { affectedBookingsCount?: number } } };
-              };
-              const bookings = apiErr?.response?.data?.data?.affectedBookingsCount;
-              if (bookings && bookings > 0) {
-                const ok = confirm(
-                  `Khung giờ này có ${bookings} lịch hẹn đang BOOKED. Bạn có chắc muốn đóng? ` +
-                    `(Các booking hiện tại vẫn giữ nguyên, nhưng bệnh nhân không đặt thêm được.)`,
-                );
-                if (ok) {
-                  await closeMutation.mutateAsync({ id: s.slotId, force: true });
-                  await listQuery.refetch();
-                  toast.success(`Đã đóng khung giờ ${s.startTime.slice(0, 5)}–${s.endTime.slice(0, 5)}.`);
-                }
-              } else {
-                toast.error(getApiErrorMessage(err, "Không đóng được khung giờ."));
-              }
-            }
+            setConfirmAction({ type: "forceClose", slot: s });
           }}
-          onReopen={async (s) => {
-            if (!confirm(`Mở lại khung giờ ${s.startTime.slice(0, 5)}–${s.endTime.slice(0, 5)} ngày ${s.slotDate}?`)) return;
-            try {
-              await reopenMutation.mutateAsync(s.slotId);
-              await listQuery.refetch();
-              toast.success(`Đã mở lại khung giờ ${s.startTime.slice(0, 5)}–${s.endTime.slice(0, 5)}.`);
-            } catch (err) {
-              toast.error(getApiErrorMessage(err, "Không mở lại được khung giờ."));
-            }
-          }}
+          onReopen={(s) => setConfirmAction({ type: "reopen", slot: s })}
         />
       )}
 
@@ -202,6 +170,55 @@ export function ScheduleSlotManagementView() {
             }
           }}
           submitting={createMutation.isPending}
+        />
+      )}
+
+      {confirmAction && (
+        <ConfirmModal
+          title={
+            confirmAction.type === "close"
+              ? "Xác nhận đóng ca"
+              : confirmAction.type === "forceClose"
+              ? "Xác nhận đóng ca (có booking)"
+              : "Xác nhận mở lại ca"
+          }
+          message={
+            confirmAction.type === "close"
+              ? confirmAction.slot.activeAppointmentsCount > 0
+                ? `Ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)} ngày ${confirmAction.slot.slotDate} có ${confirmAction.slot.activeAppointmentsCount} lịch hẹn đang đặt. Bạn có chắc muốn đóng?`
+                : `Bạn có chắc muốn đóng ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)} ngày ${confirmAction.slot.slotDate}?`
+              : confirmAction.type === "forceClose"
+              ? `Khung giờ này có ${confirmAction.slot.activeAppointmentsCount} lịch hẹn đang BOOKED. Các booking hiện tại vẫn giữ nguyên, nhưng bệnh nhân không đặt thêm được.`
+              : `Mở lại ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)} ngày ${confirmAction.slot.slotDate}?`
+          }
+          variant={confirmAction.type === "reopen" ? "info" : confirmAction.type === "forceClose" ? "warning" : "danger"}
+          confirmLabel={
+            confirmAction.type === "close" ? "Đóng ca"
+            : confirmAction.type === "forceClose" ? "Đóng ca"
+            : "Mở lại"
+          }
+          onConfirm={async () => {
+            try {
+              if (confirmAction.type === "close") {
+                await closeMutation.mutateAsync({ id: confirmAction.slot.slotId, force: false });
+              } else if (confirmAction.type === "forceClose") {
+                await closeMutation.mutateAsync({ id: confirmAction.slot.slotId, force: true });
+              } else {
+                await reopenMutation.mutateAsync(confirmAction.slot.slotId);
+              }
+              setConfirmAction(null);
+              await listQuery.refetch();
+              toast.success(
+                confirmAction.type === "reopen"
+                  ? `Đã mở lại ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)}.`
+                  : `Đã đóng ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)}.`
+              );
+            } catch (err) {
+              setConfirmAction(null);
+              toast.error(getApiErrorMessage(err, "Thao tác thất bại."));
+            }
+          }}
+          onCancel={() => setConfirmAction(null)}
         />
       )}
     </div>
