@@ -11,13 +11,11 @@ import {
   useCreateScheduleSlot,
   useReopenScheduleSlot,
   useScheduleSlots,
-  useUpdateScheduleSlot,
 } from "../hooks/use-schedule-slot";
 import type {
   CreateScheduleSlotRequest,
   ScheduleSlotResponse,
   SlotStatus,
-  UpdateScheduleSlotRequest,
 } from "../types/schedule-slot.types";
 
 const STATUS_LABELS: Record<SlotStatus, string> = {
@@ -47,7 +45,6 @@ export function ScheduleSlotManagementView() {
   const [weekAnchor, setWeekAnchor] = useState<Date>(() => mondayOfWeek(new Date()));
   const [showCreate, setShowCreate] = useState(false);
   const [defaultDate, setDefaultDate] = useState<string>(todayIso);
-  const [editingSlot, setEditingSlot] = useState<ScheduleSlotResponse | null>(null);
 
   // Tính range: 1 tuần = 7 ngày từ weekAnchor (T2)
   const { fromDate, toDate, rangeLabel } = useMemo(() => {
@@ -62,7 +59,6 @@ export function ScheduleSlotManagementView() {
 
   const listQuery = useScheduleSlots({ fromDate, toDate, pageSize: 200 });
   const createMutation = useCreateScheduleSlot();
-  const updateMutation = useUpdateScheduleSlot();
   const closeMutation = useCloseScheduleSlot();
   const reopenMutation = useReopenScheduleSlot();
 
@@ -144,7 +140,6 @@ export function ScheduleSlotManagementView() {
             setDefaultDate(dateIso);
             setShowCreate(true);
           }}
-          onEdit={(s) => setEditingSlot(s)}
           onClose={async (s, force) => {
             if (!force) {
               const msg =
@@ -209,24 +204,6 @@ export function ScheduleSlotManagementView() {
           submitting={createMutation.isPending}
         />
       )}
-
-      {editingSlot && (
-        <EditSlotModal
-          slot={editingSlot}
-          onClose={() => setEditingSlot(null)}
-          onSubmit={async (payload) => {
-            try {
-              await updateMutation.mutateAsync({ id: editingSlot.slotId, payload });
-              setEditingSlot(null);
-              await listQuery.refetch();
-              toast.success("Đã cập nhật khung giờ.");
-            } catch (err) {
-              toast.error(getApiErrorMessage(err, "Không cập nhật được khung giờ."));
-            }
-          }}
-          submitting={updateMutation.isPending}
-        />
-      )}
     </div>
   );
 }
@@ -239,7 +216,6 @@ function WeekView({
   todayIso,
   slotsByDay,
   onAddClick,
-  onEdit,
   onClose,
   onReopen,
 }: {
@@ -247,7 +223,6 @@ function WeekView({
   todayIso: string;
   slotsByDay: Map<string, ScheduleSlotResponse[]>;
   onAddClick: (dateIso: string) => void;
-  onEdit: (s: ScheduleSlotResponse) => void;
   onClose: (s: ScheduleSlotResponse, force: boolean) => void | Promise<void>;
   onReopen: (s: ScheduleSlotResponse) => void | Promise<void>;
 }) {
@@ -266,7 +241,6 @@ function WeekView({
             slots={daySlots}
             isPast={isPast}
             onAddClick={onAddClick}
-            onEdit={onEdit}
             onClose={onClose}
             onReopen={onReopen}
           />
@@ -282,7 +256,6 @@ function DayColumn({
   slots,
   isPast,
   onAddClick,
-  onEdit,
   onClose,
   onReopen,
 }: {
@@ -291,7 +264,6 @@ function DayColumn({
   slots: ScheduleSlotResponse[];
   isPast: boolean;
   onAddClick: (dateIso: string) => void;
-  onEdit: (s: ScheduleSlotResponse) => void;
   onClose: (s: ScheduleSlotResponse, force: boolean) => void | Promise<void>;
   onReopen: (s: ScheduleSlotResponse) => void | Promise<void>;
 }) {
@@ -319,7 +291,6 @@ function DayColumn({
           <SlotCard
             key={s.slotId}
             slot={s}
-            onEdit={() => onEdit(s)}
             onClose={() => void onClose(s, false)}
             onReopen={() => void onReopen(s)}
           />
@@ -340,12 +311,10 @@ function DayColumn({
 
 function SlotCard({
   slot,
-  onEdit,
   onClose,
   onReopen,
 }: {
   slot: ScheduleSlotResponse;
-  onEdit: () => void;
   onClose: () => void;
   onReopen: () => void;
 }) {
@@ -378,23 +347,14 @@ function SlotCard({
           </span>
         )}
         {slot.status === "OPEN" && (
-          <>
-            <button
-              type="button"
-              onClick={onEdit}
-              className="flex-1 rounded border border-slate-300 bg-white px-1 py-0.5 hover:bg-slate-50"
-            >
-              Sửa
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded border border-red-200 bg-red-50 px-1 py-0.5 text-red-600 hover:bg-red-100"
-              title="Đóng"
-            >
-              ✕
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded border border-red-200 bg-red-50 px-1 py-0.5 text-red-600 hover:bg-red-100"
+            title="Đóng"
+          >
+            ✕
+          </button>
         )}
         {slot.status === "CLOSED" && (
           <button
@@ -454,44 +414,6 @@ function CreateSlotModal({
           Range &gt; 15 phút, ngày + giờ &gt; hiện tại, không trùng.
         </p>
         <ModalActions submitting={submitting} onClose={onClose} submitLabel="Tạo khung giờ" />
-      </form>
-    </ModalShell>
-  );
-}
-
-function EditSlotModal({
-  slot,
-  onClose,
-  onSubmit,
-  submitting,
-}: {
-  slot: ScheduleSlotResponse;
-  onClose: () => void;
-  onSubmit: (payload: UpdateScheduleSlotRequest) => void | Promise<void>;
-  submitting: boolean;
-}) {
-  const [startTime, setStartTime] = useState(slot.startTime);
-  const [endTime, setEndTime] = useState(slot.endTime);
-
-  return (
-    <ModalShell title={`Sửa khung giờ ${slot.slotDate}`} onClose={onClose}>
-      <form
-        className="space-y-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void onSubmit({ startTime, endTime });
-        }}
-      >
-        <TimeInputs
-          startTime={startTime}
-          endTime={endTime}
-          onStartChange={setStartTime}
-          onEndChange={setEndTime}
-        />
-        <p className="text-xs text-slate-500">
-          Dùng để tách ca (vd 8h-12h → 8h-10h + 10h-12h). Booking vẫn giữ nguyên.
-        </p>
-        <ModalActions submitting={submitting} onClose={onClose} submitLabel="Lưu" />
       </form>
     </ModalShell>
   );

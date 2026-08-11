@@ -1,0 +1,15 @@
+# SDD ledger — plan: docs/superpowers/plans/2026-08-11-schedule-ui-refinement.md
+
+## Plan Overview
+Refine schedule slot management UI at `/schedule`:
+- Remove edit feature (no more "Sửa" button)
+- Increase component sizes for better visibility
+- Replace browser `confirm()` with custom modal UI
+
+## Tasks
+- [ ] Task 1: Remove Edit Feature
+- [ ] Task 2: Add ConfirmModal Component
+- [ ] Task 3: Add Confirmation State and Replace confirm() Calls
+- [ ] Task 4: Scale Up UI Components
+- [ ] Task 5: Cleanup Unused Props
+- [ ] Task 6: Test and Verify
