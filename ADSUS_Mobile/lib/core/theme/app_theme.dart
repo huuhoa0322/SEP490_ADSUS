@@ -12,6 +12,8 @@ class AppColors {
 
   static const Color navy = Color(0xFF223A66);
   static const Color teal = Color(0xFF1CBA9F);
+  static const Color primary = Color(0xFF1CBA9F); // teal alias
+  static const Color accent = Color(0xFF558DCA);  // blue accent
   static const Color blue = Color(0xFF558DCA);
   static const Color danger = Color(0xFFF13A66);
 
