@@ -11,13 +11,11 @@ import {
   useCreateScheduleSlot,
   useReopenScheduleSlot,
   useScheduleSlots,
-  useUpdateScheduleSlot,
 } from "../hooks/use-schedule-slot";
 import type {
   CreateScheduleSlotRequest,
   ScheduleSlotResponse,
   SlotStatus,
-  UpdateScheduleSlotRequest,
 } from "../types/schedule-slot.types";
 
 const STATUS_LABELS: Record<SlotStatus, string> = {
@@ -47,7 +45,10 @@ export function ScheduleSlotManagementView() {
   const [weekAnchor, setWeekAnchor] = useState<Date>(() => mondayOfWeek(new Date()));
   const [showCreate, setShowCreate] = useState(false);
   const [defaultDate, setDefaultDate] = useState<string>(todayIso);
-  const [editingSlot, setEditingSlot] = useState<ScheduleSlotResponse | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    type: "close" | "forceClose" | "reopen";
+    slot: ScheduleSlotResponse;
+  } | null>(null);
 
   // Tính range: 1 tuần = 7 ngày từ weekAnchor (T2)
   const { fromDate, toDate, rangeLabel } = useMemo(() => {
@@ -62,7 +63,6 @@ export function ScheduleSlotManagementView() {
 
   const listQuery = useScheduleSlots({ fromDate, toDate, pageSize: 200 });
   const createMutation = useCreateScheduleSlot();
-  const updateMutation = useUpdateScheduleSlot();
   const closeMutation = useCloseScheduleSlot();
   const reopenMutation = useReopenScheduleSlot();
 
@@ -144,51 +144,14 @@ export function ScheduleSlotManagementView() {
             setDefaultDate(dateIso);
             setShowCreate(true);
           }}
-          onEdit={(s) => setEditingSlot(s)}
-          onClose={async (s, force) => {
+          onClose={(s, force) => {
             if (!force) {
-              const msg =
-                s.activeAppointmentsCount > 0
-                  ? `Khung giờ này có ${s.activeAppointmentsCount} lịch hẹn đang BOOKED. ` +
-                    "Bạn có chắc muốn đóng? Sau khi đóng, có thể mở lại."
-                  : `Bạn có chắc muốn đóng khung giờ ${s.startTime.slice(0, 5)}–${s.endTime.slice(0, 5)} ` +
-                    `ngày ${s.slotDate}? Sau khi đóng, có thể mở lại.`;
-              if (!confirm(msg)) return;
+              setConfirmAction({ type: "close", slot: s });
+              return;
             }
-            try {
-              await closeMutation.mutateAsync({ id: s.slotId, force });
-              await listQuery.refetch();
-              toast.success(`Đã đóng khung giờ ${s.startTime.slice(0, 5)}–${s.endTime.slice(0, 5)}.`);
-            } catch (err) {
-              const apiErr = err as {
-                response?: { data?: { data?: { affectedBookingsCount?: number } } };
-              };
-              const bookings = apiErr?.response?.data?.data?.affectedBookingsCount;
-              if (bookings && bookings > 0) {
-                const ok = confirm(
-                  `Khung giờ này có ${bookings} lịch hẹn đang BOOKED. Bạn có chắc muốn đóng? ` +
-                    `(Các booking hiện tại vẫn giữ nguyên, nhưng bệnh nhân không đặt thêm được.)`,
-                );
-                if (ok) {
-                  await closeMutation.mutateAsync({ id: s.slotId, force: true });
-                  await listQuery.refetch();
-                  toast.success(`Đã đóng khung giờ ${s.startTime.slice(0, 5)}–${s.endTime.slice(0, 5)}.`);
-                }
-              } else {
-                toast.error(getApiErrorMessage(err, "Không đóng được khung giờ."));
-              }
-            }
+            setConfirmAction({ type: "forceClose", slot: s });
           }}
-          onReopen={async (s) => {
-            if (!confirm(`Mở lại khung giờ ${s.startTime.slice(0, 5)}–${s.endTime.slice(0, 5)} ngày ${s.slotDate}?`)) return;
-            try {
-              await reopenMutation.mutateAsync(s.slotId);
-              await listQuery.refetch();
-              toast.success(`Đã mở lại khung giờ ${s.startTime.slice(0, 5)}–${s.endTime.slice(0, 5)}.`);
-            } catch (err) {
-              toast.error(getApiErrorMessage(err, "Không mở lại được khung giờ."));
-            }
-          }}
+          onReopen={(s) => setConfirmAction({ type: "reopen", slot: s })}
         />
       )}
 
@@ -210,21 +173,52 @@ export function ScheduleSlotManagementView() {
         />
       )}
 
-      {editingSlot && (
-        <EditSlotModal
-          slot={editingSlot}
-          onClose={() => setEditingSlot(null)}
-          onSubmit={async (payload) => {
+      {confirmAction && (
+        <ConfirmModal
+          title={
+            confirmAction.type === "close"
+              ? "Xác nhận đóng ca"
+              : confirmAction.type === "forceClose"
+              ? "Xác nhận đóng ca (có booking)"
+              : "Xác nhận mở lại ca"
+          }
+          message={
+            confirmAction.type === "close"
+              ? confirmAction.slot.activeAppointmentsCount > 0
+                ? `Ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)} ngày ${confirmAction.slot.slotDate} có ${confirmAction.slot.activeAppointmentsCount} lịch hẹn đang đặt. Bạn có chắc muốn đóng?`
+                : `Bạn có chắc muốn đóng ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)} ngày ${confirmAction.slot.slotDate}?`
+              : confirmAction.type === "forceClose"
+              ? `Khung giờ này có ${confirmAction.slot.activeAppointmentsCount} lịch hẹn đang BOOKED. Các booking hiện tại vẫn giữ nguyên, nhưng bệnh nhân không đặt thêm được.`
+              : `Mở lại ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)} ngày ${confirmAction.slot.slotDate}?`
+          }
+          variant={confirmAction.type === "reopen" ? "info" : confirmAction.type === "forceClose" ? "warning" : "danger"}
+          confirmLabel={
+            confirmAction.type === "close" ? "Đóng ca"
+            : confirmAction.type === "forceClose" ? "Đóng ca"
+            : "Mở lại"
+          }
+          onConfirm={async () => {
             try {
-              await updateMutation.mutateAsync({ id: editingSlot.slotId, payload });
-              setEditingSlot(null);
+              if (confirmAction.type === "close") {
+                await closeMutation.mutateAsync({ id: confirmAction.slot.slotId, force: false });
+              } else if (confirmAction.type === "forceClose") {
+                await closeMutation.mutateAsync({ id: confirmAction.slot.slotId, force: true });
+              } else {
+                await reopenMutation.mutateAsync(confirmAction.slot.slotId);
+              }
+              setConfirmAction(null);
               await listQuery.refetch();
-              toast.success("Đã cập nhật khung giờ.");
+              toast.success(
+                confirmAction.type === "reopen"
+                  ? `Đã mở lại ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)}.`
+                  : `Đã đóng ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)}.`
+              );
             } catch (err) {
-              toast.error(getApiErrorMessage(err, "Không cập nhật được khung giờ."));
+              setConfirmAction(null);
+              toast.error(getApiErrorMessage(err, "Thao tác thất bại."));
             }
           }}
-          submitting={updateMutation.isPending}
+          onCancel={() => setConfirmAction(null)}
         />
       )}
     </div>
@@ -239,7 +233,6 @@ function WeekView({
   todayIso,
   slotsByDay,
   onAddClick,
-  onEdit,
   onClose,
   onReopen,
 }: {
@@ -247,12 +240,11 @@ function WeekView({
   todayIso: string;
   slotsByDay: Map<string, ScheduleSlotResponse[]>;
   onAddClick: (dateIso: string) => void;
-  onEdit: (s: ScheduleSlotResponse) => void;
   onClose: (s: ScheduleSlotResponse, force: boolean) => void | Promise<void>;
   onReopen: (s: ScheduleSlotResponse) => void | Promise<void>;
 }) {
   return (
-    <div className="grid grid-cols-7 gap-2">
+    <div className="grid grid-cols-7 gap-3">
       {Array.from({ length: 7 }).map((_, i) => {
         const date = addDays(weekStart, i);
         const dateIso = isoDate(date);
@@ -266,7 +258,6 @@ function WeekView({
             slots={daySlots}
             isPast={isPast}
             onAddClick={onAddClick}
-            onEdit={onEdit}
             onClose={onClose}
             onReopen={onReopen}
           />
@@ -282,7 +273,6 @@ function DayColumn({
   slots,
   isPast,
   onAddClick,
-  onEdit,
   onClose,
   onReopen,
 }: {
@@ -291,7 +281,6 @@ function DayColumn({
   slots: ScheduleSlotResponse[];
   isPast: boolean;
   onAddClick: (dateIso: string) => void;
-  onEdit: (s: ScheduleSlotResponse) => void;
   onClose: (s: ScheduleSlotResponse, force: boolean) => void | Promise<void>;
   onReopen: (s: ScheduleSlotResponse) => void | Promise<void>;
 }) {
@@ -300,18 +289,18 @@ function DayColumn({
   const dayNum = Number(dateIso.slice(8, 10));
 
   return (
-    <div className={`min-h-[200px] rounded border p-1 ${isWeekend ? "border-amber-200 bg-amber-50/30" : "border-slate-200 bg-white"}`}>
+    <div className={`min-h-[280px] rounded border p-2 ${isWeekend ? "border-amber-200 bg-amber-50/30" : "border-slate-200 bg-white"}`}>
       <div className="mb-1 text-center">
-        <div className={`text-[10px] font-semibold ${isWeekend ? "text-amber-600" : "text-slate-500"}`}>
+        <div className={`text-xs font-semibold ${isWeekend ? "text-amber-600" : "text-slate-500"}`}>
           {weekdayLabel}
         </div>
-        <div className={`text-sm ${isPast ? "text-slate-400" : "text-slate-700"}`}>
+        <div className={`text-base ${isPast ? "text-slate-400" : "text-slate-700"}`}>
           {dayNum}
         </div>
       </div>
       <div className="space-y-1">
         {slots.length === 0 && (
-          <div className={`rounded border border-dashed p-1 text-center text-[9px] ${isWeekend ? "border-amber-200 text-amber-400" : "border-slate-200 text-slate-400"}`}>
+          <div className={`rounded border border-dashed p-2 text-center text-xs ${isWeekend ? "border-amber-200 text-amber-400" : "border-slate-200 text-slate-400"}`}>
             {isPast ? "Qua" : "—"}
           </div>
         )}
@@ -319,7 +308,6 @@ function DayColumn({
           <SlotCard
             key={s.slotId}
             slot={s}
-            onEdit={() => onEdit(s)}
             onClose={() => void onClose(s, false)}
             onReopen={() => void onReopen(s)}
           />
@@ -329,7 +317,7 @@ function DayColumn({
         <button
           type="button"
           onClick={() => onAddClick(dateIso)}
-          className="mt-1 w-full rounded border border-dashed border-slate-300 p-0.5 text-[9px] text-slate-400 hover:border-blue-400 hover:text-blue-500"
+          className="mt-1 w-full rounded border border-dashed border-slate-300 p-1 text-xs text-slate-400 hover:border-blue-400 hover:text-blue-500"
         >
           + Thêm
         </button>
@@ -340,22 +328,20 @@ function DayColumn({
 
 function SlotCard({
   slot,
-  onEdit,
   onClose,
   onReopen,
 }: {
   slot: ScheduleSlotResponse;
-  onEdit: () => void;
   onClose: () => void;
   onReopen: () => void;
 }) {
   return (
-    <div className={`rounded border p-1 text-[9px] ${slot.status === "CLOSED" ? "border-slate-300 bg-slate-50" : "border-slate-200 bg-white"}`}>
+    <div className={`rounded border p-2 text-xs ${slot.status === "CLOSED" ? "border-slate-300 bg-slate-50" : "border-slate-200 bg-white"}`}>
       <div className="flex items-start justify-between gap-0.5">
-        <span className="font-mono text-slate-700">
+        <span className="font-mono text-sm font-medium text-slate-700">
           {slot.startTime.slice(0, 5)}–{slot.endTime.slice(0, 5)}
         </span>
-        <span className={`shrink-0 rounded-full px-1 py-0.5 text-[8px] ${STATUS_STYLES[slot.status]}`}>
+        <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] ${STATUS_STYLES[slot.status]}`}>
           {STATUS_LABELS[slot.status]}
         </span>
       </div>
@@ -364,7 +350,7 @@ function SlotCard({
       {slot.bookedAppointments && slot.bookedAppointments.length > 0 && (
         <div className="mt-0.5 space-y-0.5">
           {slot.bookedAppointments.map((apt) => (
-            <div key={apt.appointmentId} className="text-blue-700 truncate" title={apt.reason ?? undefined}>
+            <div key={apt.appointmentId} className="text-blue-700 truncate text-xs" title={apt.reason ?? undefined}>
               👤 {apt.patientFullName}
             </div>
           ))}
@@ -373,34 +359,25 @@ function SlotCard({
 
       <div className="mt-1 flex gap-0.5">
         {slot.status === "BOOKED" && (
-          <span className="flex-1 rounded border border-blue-200 bg-blue-50 px-1 py-0.5 text-center text-blue-600">
+          <span className="flex-1 rounded border border-blue-200 bg-blue-50 px-2 py-1 text-center text-xs text-blue-600">
             Đã đặt
           </span>
         )}
         {slot.status === "OPEN" && (
-          <>
-            <button
-              type="button"
-              onClick={onEdit}
-              className="flex-1 rounded border border-slate-300 bg-white px-1 py-0.5 hover:bg-slate-50"
-            >
-              Sửa
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded border border-red-200 bg-red-50 px-1 py-0.5 text-red-600 hover:bg-red-100"
-              title="Đóng"
-            >
-              ✕
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100"
+            title="Đóng"
+          >
+            Đóng ca
+          </button>
         )}
         {slot.status === "CLOSED" && (
           <button
             type="button"
             onClick={onReopen}
-            className="flex-1 rounded border border-green-200 bg-green-50 px-1 py-0.5 text-green-600 hover:bg-green-100"
+            className="flex-1 rounded border border-green-200 bg-green-50 px-2 py-1 text-xs text-green-600 hover:bg-green-100"
           >
             Mở lại
           </button>
@@ -454,44 +431,6 @@ function CreateSlotModal({
           Range &gt; 15 phút, ngày + giờ &gt; hiện tại, không trùng.
         </p>
         <ModalActions submitting={submitting} onClose={onClose} submitLabel="Tạo khung giờ" />
-      </form>
-    </ModalShell>
-  );
-}
-
-function EditSlotModal({
-  slot,
-  onClose,
-  onSubmit,
-  submitting,
-}: {
-  slot: ScheduleSlotResponse;
-  onClose: () => void;
-  onSubmit: (payload: UpdateScheduleSlotRequest) => void | Promise<void>;
-  submitting: boolean;
-}) {
-  const [startTime, setStartTime] = useState(slot.startTime);
-  const [endTime, setEndTime] = useState(slot.endTime);
-
-  return (
-    <ModalShell title={`Sửa khung giờ ${slot.slotDate}`} onClose={onClose}>
-      <form
-        className="space-y-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void onSubmit({ startTime, endTime });
-        }}
-      >
-        <TimeInputs
-          startTime={startTime}
-          endTime={endTime}
-          onStartChange={setStartTime}
-          onEndChange={setEndTime}
-        />
-        <p className="text-xs text-slate-500">
-          Dùng để tách ca (vd 8h-12h → 8h-10h + 10h-12h). Booking vẫn giữ nguyên.
-        </p>
-        <ModalActions submitting={submitting} onClose={onClose} submitLabel="Lưu" />
       </form>
     </ModalShell>
   );
@@ -552,6 +491,87 @@ function ModalActions({
         {submitLabel}
       </button>
     </div>
+  );
+}
+
+function ConfirmModal({
+  title,
+  message,
+  confirmLabel = "Xác nhận",
+  cancelLabel = "Hủy",
+  variant = "danger", // "danger" | "warning" | "info"
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: "danger" | "warning" | "info";
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const variantStyles = {
+    danger: {
+      icon: "text-red-500",
+      iconBg: "bg-red-100",
+      confirmBtn: "bg-red-600 hover:bg-red-700",
+    },
+    warning: {
+      icon: "text-amber-500",
+      iconBg: "bg-amber-100",
+      confirmBtn: "bg-amber-600 hover:bg-amber-700",
+    },
+    info: {
+      icon: "text-blue-500",
+      iconBg: "bg-blue-100",
+      confirmBtn: "bg-blue-600 hover:bg-blue-700",
+    },
+  };
+  const styles = variantStyles[variant];
+
+  return (
+    <ModalShell title="" onClose={onCancel}>
+      <div className="flex items-start gap-4">
+        <div className={`shrink-0 rounded-full p-3 ${styles.iconBg}`}>
+          {variant === "danger" && (
+            <svg className={`h-6 w-6 ${styles.icon}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          )}
+          {variant === "warning" && (
+            <svg className={`h-6 w-6 ${styles.icon}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          )}
+          {variant === "info" && (
+            <svg className={`h-6 w-6 ${styles.icon}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          )}
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+          <p className="mt-2 text-sm text-slate-600">{message}</p>
+        </div>
+      </div>
+      <div className="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          {cancelLabel}
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          className={`rounded-md px-4 py-2 text-sm font-medium text-white ${styles.confirmBtn}`}
+        >
+          {confirmLabel}
+        </button>
+      </div>
+    </ModalShell>
   );
 }
 
