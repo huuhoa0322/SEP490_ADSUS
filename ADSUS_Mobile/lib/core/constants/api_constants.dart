@@ -35,6 +35,13 @@ class ApiConstants {
   static const String myProfile = '/api/v1/users/me';
   static const String myBiometric = '/api/v1/users/me/biometric';
 
+  // Module 08 — Appointment Scheduling (UC-13, UC-14)
+  // Lưu ý: /api/v1/schedule-slots chỉ dành cho DOCTOR (quản lý lịch).
+  // Patient đặt lịch phải dùng /api/v1/appointments/slots (lấy slots OPEN).
+  static const String appointmentSlots = '/api/v1/appointments/slots';
+  static const String appointments = '/api/v1/appointments';
+  static String cancelAppointment(String id) => '/api/v1/appointments/$id/cancel';
+
   /// Quá thời gian này coi như không kết nối được.
   static const Duration timeout = Duration(seconds: 15);
 }
