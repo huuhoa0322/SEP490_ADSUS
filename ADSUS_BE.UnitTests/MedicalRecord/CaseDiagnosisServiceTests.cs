@@ -74,7 +74,7 @@ public class CaseDiagnosisServiceTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.AnalyzeImageAsync(_caseId, Guid.NewGuid(), MakeFakeImageStream(), "test.png", "image/png"));
+            () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png"));
         Assert.Contains("Hệ thống chưa có phiên bản AI nào được kích hoạt", ex.Message);
     }
 
@@ -100,7 +100,7 @@ public class CaseDiagnosisServiceTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.AnalyzeImageAsync(_caseId, Guid.NewGuid(), MakeFakeImageStream(), "test.png", "image/png"));
+            () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png"));
         Assert.Contains("AI Backend Error: Model Server Down", ex.Message);
     }
 
@@ -126,7 +126,7 @@ public class CaseDiagnosisServiceTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAnyAsync<JsonException>(
-            () => _sut.AnalyzeImageAsync(_caseId, Guid.NewGuid(), MakeFakeImageStream(), "test.png", "image/png"));
+            () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png"));
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public class CaseDiagnosisServiceTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<TaskCanceledException>(
-            () => _sut.AnalyzeImageAsync(_caseId, Guid.NewGuid(), MakeFakeImageStream(), "test.png", "image/png"));
+            () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png"));
     }
 
     [Fact]
@@ -172,7 +172,7 @@ public class CaseDiagnosisServiceTests : IDisposable
             });
 
         // Act
-        var result = await _sut.AnalyzeImageAsync(_caseId, Guid.NewGuid(), MakeFakeImageStream(), "test.png", "image/png");
+        var result = await _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png");
 
         // Assert
         Assert.Equal(JsonValueKind.Array, result.ValueKind);
@@ -197,7 +197,6 @@ public class CaseDiagnosisServiceTests : IDisposable
             BurntImageContentType = "image/png",
             AiPredictionsJson = aiJson,
             DoctorAnnotationsJson = docJson,
-            ModelVersionId = _activeModelId,
             Note = "Test note"
         };
     }

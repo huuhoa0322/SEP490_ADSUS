@@ -68,7 +68,7 @@ public class CaseDiagnosisControllerIntegrationTests
     private MultipartFormDataContent MakeAnalyzePayload(bool withImage)
     {
         var form = new MultipartFormDataContent();
-        form.Add(new StringContent(Guid.NewGuid().ToString()), "ModelVersionId");
+
         
         if (withImage)
         {
@@ -82,7 +82,7 @@ public class CaseDiagnosisControllerIntegrationTests
     private MultipartFormDataContent MakeConfirmPayload(bool missingOrig, bool missingBurnt)
     {
         var form = new MultipartFormDataContent();
-        form.Add(new StringContent(Guid.NewGuid().ToString()), "ModelVersionId");
+
         form.Add(new StringContent("[]"), "AiPredictionsJson");
         form.Add(new StringContent("[]"), "DoctorAnnotationsJson");
         
@@ -169,7 +169,7 @@ public class CaseDiagnosisControllerIntegrationTests
         var caseId = Guid.NewGuid();
 
         var mockJson = JsonDocument.Parse("[]").RootElement;
-        _diagnosisService.Setup(s => s.AnalyzeImageAsync(caseId, It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _diagnosisService.Setup(s => s.AnalyzeImageAsync(caseId, It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockJson);
 
         var response = await client.PostAsync($"/api/v1/cases/{caseId}/analyze", MakeAnalyzePayload(true));
@@ -178,7 +178,7 @@ public class CaseDiagnosisControllerIntegrationTests
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
         Assert.Equal(200, body!.Code);
         
-        _diagnosisService.Verify(s => s.AnalyzeImageAsync(caseId, It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        _diagnosisService.Verify(s => s.AnalyzeImageAsync(caseId, It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -189,7 +189,7 @@ public class CaseDiagnosisControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctor);
         var caseId = Guid.NewGuid();
 
-        _diagnosisService.Setup(s => s.AnalyzeImageAsync(caseId, It.IsAny<Guid>(), It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _diagnosisService.Setup(s => s.AnalyzeImageAsync(caseId, It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new TaskCanceledException("Timeout from HttpClient"));
 
         var response = await client.PostAsync($"/api/v1/cases/{caseId}/analyze", MakeAnalyzePayload(true));

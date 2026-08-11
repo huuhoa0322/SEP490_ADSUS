@@ -12,7 +12,6 @@ namespace ADSUS_BE.Controllers;
 
 public class AnalyzeImageRequest
 {
-    public Guid ModelVersionId { get; set; }
     public IFormFile Image { get; set; } = null!;
 }
 
@@ -22,7 +21,6 @@ public class ConfirmAnalysisApiRequest
     public IFormFile BurntImage { get; set; } = null!;
     public string AiPredictionsJson { get; set; } = "[]";
     public string DoctorAnnotationsJson { get; set; } = "[]";
-    public Guid ModelVersionId { get; set; }
     public string? Note { get; set; }
 }
 
@@ -48,7 +46,7 @@ public sealed class CaseDiagnosisController : ControllerBase
     {
         if (request.Image == null) return BadRequest("Image is required");
         using var stream = request.Image.OpenReadStream();
-        var result = await _diagnosisService.AnalyzeImageAsync(caseId, request.ModelVersionId, stream, request.Image.FileName, request.Image.ContentType, ct);
+        var result = await _diagnosisService.AnalyzeImageAsync(caseId, stream, request.Image.FileName, request.Image.ContentType, ct);
         return Ok(ApiResponse<object>.Ok(result, "Analysis complete"));
     }
 
@@ -75,7 +73,6 @@ public sealed class CaseDiagnosisController : ControllerBase
             BurntImageFileName = request.BurntImage.FileName,
             AiPredictionsJson = request.AiPredictionsJson,
             DoctorAnnotationsJson = request.DoctorAnnotationsJson,
-            ModelVersionId = request.ModelVersionId,
             Note = request.Note
         };
 

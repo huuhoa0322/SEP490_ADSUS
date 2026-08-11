@@ -24,6 +24,5 @@ public class ConfirmAnalysisRequest
     public string BurntImageFileName { get; set; } = null!;
     public string AiPredictionsJson { get; set; } = "[]";
     public string DoctorAnnotationsJson { get; set; } = "[]";
-    public Guid ModelVersionId { get; set; }
     public string? Note { get; set; }
 }

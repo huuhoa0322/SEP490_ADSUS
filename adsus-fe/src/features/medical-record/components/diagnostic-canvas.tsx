@@ -86,7 +86,6 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
     try {
       const formData = new FormData();
       formData.append("image", file);
-      formData.append("modelVersionId", "00000000-0000-0000-0000-000000000000");
 
       const res = await apiClient.post(`/api/v1/cases/${caseId}/analyze`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
