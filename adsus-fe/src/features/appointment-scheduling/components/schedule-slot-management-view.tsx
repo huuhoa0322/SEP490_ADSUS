@@ -244,7 +244,7 @@ function WeekView({
   onReopen: (s: ScheduleSlotResponse) => void | Promise<void>;
 }) {
   return (
-    <div className="grid grid-cols-7 gap-3">
+    <div className="grid min-h-[600px] grid-cols-7 gap-3">
       {Array.from({ length: 7 }).map((_, i) => {
         const date = addDays(weekStart, i);
         const dateIso = isoDate(date);
@@ -284,21 +284,24 @@ function DayColumn({
   onClose: (s: ScheduleSlotResponse, force: boolean) => void | Promise<void>;
   onReopen: (s: ScheduleSlotResponse) => void | Promise<void>;
 }) {
-  // Highlight T7, CN
   const isWeekend = weekdayLabel === "T7" || weekdayLabel === "CN";
-  const dayNum = Number(dateIso.slice(8, 10));
+
+  // Parse date for display: "10/08" format
+  const date = new Date(dateIso);
+  const dayOfMonth = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
 
   return (
-    <div className={`min-h-[280px] rounded border p-2 ${isWeekend ? "border-amber-200 bg-amber-50/30" : "border-slate-200 bg-white"}`}>
+    <div className={`flex min-h-[280px] flex-col rounded border p-2 ${isWeekend ? "border-amber-200 bg-amber-50/30" : "border-slate-200 bg-white"}`}>
+      {/* Header with weekday + date */}
       <div className="mb-1 text-center">
         <div className={`text-xs font-semibold ${isWeekend ? "text-amber-600" : "text-slate-500"}`}>
-          {weekdayLabel}
-        </div>
-        <div className={`text-base ${isPast ? "text-slate-400" : "text-slate-700"}`}>
-          {dayNum}
+          {weekdayLabel} ({dayOfMonth}/{month})
         </div>
       </div>
-      <div className="space-y-1">
+
+      {/* Slots container - fixed height, scrollable if needed */}
+      <div className="flex-1 space-y-1">
         {slots.length === 0 && (
           <div className={`rounded border border-dashed p-2 text-center text-xs ${isWeekend ? "border-amber-200 text-amber-400" : "border-slate-200 text-slate-400"}`}>
             {isPast ? "Qua" : "—"}
@@ -313,11 +316,13 @@ function DayColumn({
           />
         ))}
       </div>
+
+      {/* Add button - always at bottom */}
       {!isPast && (
         <button
           type="button"
           onClick={() => onAddClick(dateIso)}
-          className="mt-1 w-full rounded border border-dashed border-slate-300 p-1 text-xs text-slate-400 hover:border-blue-400 hover:text-blue-500"
+          className="mt-2 w-full rounded border border-dashed border-slate-300 p-1 text-xs text-slate-400 hover:border-blue-400 hover:text-blue-500"
         >
           + Thêm
         </button>
@@ -335,54 +340,50 @@ function SlotCard({
   onClose: () => void;
   onReopen: () => void;
 }) {
+  const patientName = slot.bookedAppointments?.[0]?.patientFullName;
+  const hasBooking = !!patientName;
+
   return (
-    <div className={`rounded border p-2 text-xs ${slot.status === "CLOSED" ? "border-slate-300 bg-slate-50" : "border-slate-200 bg-white"}`}>
+    <div className={`flex flex-col rounded border p-2 text-xs ${slot.status === "CLOSED" ? "border-slate-300 bg-slate-50" : "border-slate-200 bg-white"}`}>
+      {/* Header: Time range + Status badge */}
       <div className="flex items-start justify-between gap-0.5">
-        <span className="font-mono text-sm font-medium text-slate-700">
+        <span className="font-mono text-xs font-medium text-slate-600">
           {slot.startTime.slice(0, 5)}–{slot.endTime.slice(0, 5)}
         </span>
-        <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] ${STATUS_STYLES[slot.status]}`}>
+        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] ${STATUS_STYLES[slot.status]}`}>
           {STATUS_LABELS[slot.status]}
         </span>
       </div>
 
-      {/* Hiển thị tên bệnh nhân đã book */}
-      {slot.bookedAppointments && slot.bookedAppointments.length > 0 && (
-        <div className="mt-0.5 space-y-0.5">
-          {slot.bookedAppointments.map((apt) => (
-            <div key={apt.appointmentId} className="text-blue-700 truncate text-xs" title={apt.reason ?? undefined}>
-              👤 {apt.patientFullName}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Patient name - primary action for BOOKED */}
+      <div className="mt-1 flex items-center justify-between gap-1">
+        <span className={`flex-1 truncate text-xs ${hasBooking ? "text-blue-700 font-medium" : "text-slate-400"}`}>
+          {hasBooking ? patientName : "—"}
+        </span>
 
-      <div className="mt-1 flex gap-0.5">
-        {slot.status === "BOOKED" && (
-          <span className="flex-1 rounded border border-blue-200 bg-blue-50 px-2 py-1 text-center text-xs text-blue-600">
-            Đã đặt
-          </span>
-        )}
-        {slot.status === "OPEN" && (
+        {/* Close button - small X icon */}
+        {slot.status !== "CLOSED" && (
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100"
-            title="Đóng"
+            className="shrink-0 rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
+            title="Đóng ca"
           >
-            Đóng ca
-          </button>
-        )}
-        {slot.status === "CLOSED" && (
-          <button
-            type="button"
-            onClick={onReopen}
-            className="flex-1 rounded border border-green-200 bg-green-50 px-2 py-1 text-xs text-green-600 hover:bg-green-100"
-          >
-            Mở lại
+            <X className="h-3 w-3" />
           </button>
         )}
       </div>
+
+      {/* Status indicator / Reopen button */}
+      {slot.status === "CLOSED" && (
+        <button
+          type="button"
+          onClick={onReopen}
+          className="mt-1 w-full rounded border border-green-200 bg-green-50 px-2 py-1 text-xs text-green-600 hover:bg-green-100"
+        >
+          Mở lại
+        </button>
+      )}
     </div>
   );
 }
