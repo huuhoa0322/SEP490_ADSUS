@@ -59,8 +59,9 @@ class _MedicationBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final pending = logs.where((l) => l.status.name == 'pending').toList();
-    final taken = logs.where((l) => l.status.name == 'taken').toList();
+    final pending = logs.where((l) => l.status == IntakeStatus.pending).toList();
+    final taken = logs.where((l) => l.status == IntakeStatus.taken).toList();
+    final overtime = logs.where((l) => l.status == IntakeStatus.overtime).toList();
 
     final pendingToday = pending
         .where((l) => _isSameDay(l.scheduledTimeUtc.toLocal(), now))
@@ -70,10 +71,13 @@ class _MedicationBody extends ConsumerWidget {
             l.confirmedAtUtc != null &&
             _isSameDay(l.confirmedAtUtc!.toLocal(), now))
         .toList();
+    final overtimeToday = overtime
+        .where((l) => _isSameDay(l.scheduledTimeUtc.toLocal(), now))
+        .toList();
 
-    final totalToday = pendingToday.length + takenToday.length;
-    final adherencePct = totalToday > 0
-        ? (takenToday.length / totalToday * 100).round()
+    // Adherence = taken / (taken + pending) — OVERTIME excluded from denominator (still pending)
+    final adherencePct = (pendingToday.length + takenToday.length) > 0
+        ? (takenToday.length / (pendingToday.length + takenToday.length) * 100).round()
         : null;
 
     final pref = prefAsync.valueOrNull ?? const ReminderPreference();
@@ -137,6 +141,7 @@ class _MedicationBody extends ConsumerWidget {
                   markers: markers,
                   takenToday: takenToday,
                   pendingToday: pendingToday,
+                  overtimeToday: overtimeToday,
                 ),
                 const SizedBox(height: 12),
                 _AdherenceSummaryCard(
@@ -144,6 +149,7 @@ class _MedicationBody extends ConsumerWidget {
                   nextSlotLabel: nextSlotLabel,
                   takenToday: takenToday.length,
                   pendingToday: pendingToday.length,
+                  overtimeToday: overtimeToday.length,
                 ),
                 const SizedBox(height: 16),
               ],
@@ -172,6 +178,37 @@ class _MedicationBody extends ConsumerWidget {
                 child: _IntakePendingCard(log: pendingToday[index]),
               ),
               childCount: pendingToday.length,
+            ),
+          ),
+        ],
+        if (overtimeToday.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber, size: 14, color: AppColors.danger),
+                  const SizedBox(width: 4),
+                  Text(
+                    'QUÁ GIỜ — CẦN UỐNG NGAY',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.danger,
+                      letterSpacing: 0.06,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: _IntakeOvertimeCard(log: overtimeToday[index]),
+              ),
+              childCount: overtimeToday.length,
             ),
           ),
         ],
@@ -247,6 +284,33 @@ class _MarkerData {
   final int hour;
 }
 
+class _LegendDot extends StatelessWidget {
+  const _LegendDot({required this.color, required this.label});
+  final Color color;
+  final String label;
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(fontSize: 10, color: AppColors.muted),
+        ),
+      ],
+    );
+  }
+}
+
 class _DayAxisCard extends StatelessWidget {
   const _DayAxisCard({
     required this.now,
@@ -254,6 +318,7 @@ class _DayAxisCard extends StatelessWidget {
     required this.markers,
     required this.takenToday,
     required this.pendingToday,
+    required this.overtimeToday,
   });
 
   final DateTime now;
@@ -261,6 +326,7 @@ class _DayAxisCard extends StatelessWidget {
   final List<_MarkerData> markers;
   final List<IntakeLog> takenToday;
   final List<IntakeLog> pendingToday;
+  final List<IntakeLog> overtimeToday;
 
   @override
   Widget build(BuildContext context) {
@@ -368,10 +434,12 @@ class _DayAxisCard extends StatelessWidget {
                       final frac = m.hour / 24;
                       final taken = takenToday.any((l) => l.scheduledTimeUtc.toLocal().hour == m.hour);
                       final pending = pendingToday.any((l) => l.scheduledTimeUtc.toLocal().hour == m.hour);
+                      final overtime = overtimeToday.any((l) => l.scheduledTimeUtc.toLocal().hour == m.hour);
                       Color color = AppColors.teal;
                       double opacity = 1.0;
                       if (taken) { color = AppColors.success; opacity = 0.55; }
-                      if (pending) { color = AppColors.amberWarn; }
+                      if (overtime) { color = AppColors.danger; }
+                      if (pending && !overtime) { color = AppColors.amberWarn; }
                       return Positioned(
                         left: frac * w - 11,
                         top: 2,
@@ -411,6 +479,17 @@ class _DayAxisCard extends StatelessWidget {
               Text('24', style: TextStyle(fontSize: 10, fontFamily: 'monospace', color: AppColors.muted)),
             ],
           ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _LegendDot(color: AppColors.success, label: 'Đã uống'),
+              const SizedBox(width: 16),
+              _LegendDot(color: AppColors.amberWarn, label: 'Chưa đến giờ'),
+              const SizedBox(width: 16),
+              _LegendDot(color: AppColors.danger, label: 'Quá giờ'),
+            ],
+          ),
         ],
       ),
     );
@@ -423,23 +502,29 @@ class _AdherenceSummaryCard extends StatelessWidget {
     required this.nextSlotLabel,
     required this.takenToday,
     required this.pendingToday,
+    required this.overtimeToday,
   });
 
   final int? adherencePct;
   final String nextSlotLabel;
   final int takenToday;
   final int pendingToday;
+  final int overtimeToday;
 
   @override
   Widget build(BuildContext context) {
-    final allDone = pendingToday == 0 && takenToday > 0;
+    final hasOvertime = overtimeToday > 0;
+    final allDone = pendingToday == 0 && takenToday > 0 && !hasOvertime;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: hasOvertime ? AppColors.danger.withValues(alpha: 0.5) : AppColors.border,
+          width: hasOvertime ? 1.5 : 1,
+        ),
       ),
       child: Row(
         children: [
@@ -447,18 +532,39 @@ class _AdherenceSummaryCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (hasOvertime) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.warning_amber, size: 16, color: AppColors.danger),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '$overtimeToday liều đã quá giờ!',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                ],
                 Text(
                   allDone
                       ? 'Tất cả liều đã được ghi nhận!'
-                      : pendingToday > 0
-                          ? 'Còn $pendingToday liều chưa uống hôm nay.'
-                          : takenToday > 0
-                              ? '$takenToday liều đã uống hôm nay.'
-                              : 'Chưa có lịch uống thuốc hôm nay.',
+                      : hasOvertime
+                          ? 'Còn ${pendingToday > 0 ? "$pendingToday " : ""}liều chưa uống.'
+                          : pendingToday > 0
+                              ? 'Còn $pendingToday liều chưa uống hôm nay.'
+                              : takenToday > 0
+                                  ? '$takenToday liều đã uống hôm nay.'
+                                  : 'Chưa có lịch uống thuốc hôm nay.',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: allDone ? AppColors.success : AppColors.navy,
+                    color: hasOvertime ? AppColors.navy : (allDone ? AppColors.success : AppColors.navy),
                   ),
                 ),
                 if (nextSlotLabel != '—') ...[
@@ -621,6 +727,146 @@ class _IntakePendingCard extends ConsumerWidget {
   }
 }
 
+class _IntakeOvertimeCard extends ConsumerWidget {
+  const _IntakeOvertimeCard({required this.log});
+
+  final IntakeLog log;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vmState = ref.watch(intakeListViewModelProvider);
+    final viewModel = ref.read(intakeListViewModelProvider.notifier);
+    final localTime = log.scheduledTimeUtc.toLocal();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: const Border(
+          left: BorderSide(color: AppColors.danger, width: 4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _slotTimeLabel(localTime),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.danger,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Thuốc #${log.intakeId.substring(0, 8)}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(Icons.schedule, size: 14, color: AppColors.danger),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Quá giờ',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.danger,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: !vmState.isSubmitting
+                    ? () => _confirm(context, ref, viewModel)
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  disabledBackgroundColor: AppColors.muted.withValues(alpha: 0.2),
+                  minimumSize: const Size.fromHeight(44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: vmState.isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        '✓ ĐÃ UỐNG',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirm(
+    BuildContext context,
+    WidgetRef ref,
+    IntakeListViewModel viewModel,
+  ) async {
+    final ok = await viewModel.confirmIntake(log.intakeId);
+    if (!ok && context.mounted) {
+      final msg = ref.read(intakeListViewModelProvider).errorMessage;
+      if (msg != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: AppColors.danger),
+        );
+        viewModel.clearError();
+      }
+    }
+  }
+}
+
 class _IntakeTakenCard extends StatelessWidget {
   const _IntakeTakenCard({required this.log});
 
@@ -721,7 +967,7 @@ class _ReminderSettingsCard extends ConsumerWidget {
           padding: EdgeInsets.all(16),
           child: Center(child: CircularProgressIndicator()),
         ),
-        error: (_, __) => const SizedBox.shrink(),
+        error: (e, st) => const SizedBox.shrink(),
         data: (pref) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
