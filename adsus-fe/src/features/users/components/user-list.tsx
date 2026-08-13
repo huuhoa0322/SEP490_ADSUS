@@ -107,7 +107,7 @@ export function UserList({ initialCreateNotice }: UserListProps) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-10">
+    <div className="mx-auto w-full max-w-screen-2xl px-6 py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">
