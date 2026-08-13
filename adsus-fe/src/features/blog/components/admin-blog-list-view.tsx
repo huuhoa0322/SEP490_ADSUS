@@ -48,7 +48,7 @@ export function AdminBlogListView() {
     <div className="min-h-screen bg-[var(--muted)]">
       {/* Header */}
       <div className="bg-white border-b border-border">
-        <div className="mx-auto max-w-6xl px-6 py-6">
+        <div className="mx-auto w-full max-w-screen-2xl px-6 py-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="font-heading text-2xl font-bold text-[var(--primary)]">
@@ -70,7 +70,7 @@ export function AdminBlogListView() {
       </div>
 
       {/* Content */}
-      <div className="mx-auto max-w-6xl px-6 py-6">
+      <div className="mx-auto w-full max-w-screen-2xl px-6 py-6">
         {/* Filters */}
         <div className="mb-6 flex items-center gap-2">
           <FilterButton active={statusFilter === undefined} onClick={() => { setStatusFilter(undefined); setPage(1); }}>

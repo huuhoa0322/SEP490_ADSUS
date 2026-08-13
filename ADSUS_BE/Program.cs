@@ -360,6 +360,9 @@ namespace ADSUS_BE
             // BLL — Module 8: Appointment Scheduling (UC-15)
             builder.Services.AddScoped<IScheduleSlotRepository, ScheduleSlotRepository>();
             builder.Services.AddScoped<IScheduleSlotService, ScheduleSlotService>();
+            // UC-13, UC-14
+            builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+            builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 
             // ---------- Cấu hình AI Backend ----------
             builder.Services.Configure<AiBackendSettings>(

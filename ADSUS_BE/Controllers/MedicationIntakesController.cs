@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -20,19 +21,19 @@ public class MedicationIntakesController : ControllerBase
 
     /// <summary>UC-11 — Danh sách liều thuốc sắp tới của bệnh nhân.</summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<IntakeLogResponse>>> ListUpcoming(
+    public async Task<IActionResult> ListUpcoming(
         CancellationToken ct)
     {
         if (!TryGetUserId(out var userId))
             return Unauthorized();
 
         var result = await _intakeService.ListUpcomingAsync(userId, ct);
-        return Ok(result);
+        return Ok(ApiResponse<IReadOnlyList<IntakeLogResponse>>.Ok(result));
     }
 
     /// <summary>UC-11 — Danh sách liều thuốc của 1 đơn cụ thể.</summary>
     [HttpGet("prescription/{prescriptionId:guid}")]
-    public async Task<ActionResult<IReadOnlyList<IntakeLogResponse>>> ListByPrescription(
+    public async Task<IActionResult> ListByPrescription(
         Guid prescriptionId,
         CancellationToken ct)
     {
@@ -40,13 +41,13 @@ public class MedicationIntakesController : ControllerBase
             return Unauthorized();
 
         var result = await _intakeService.ListByPrescriptionAsync(userId, prescriptionId, ct);
-        return Ok(result);
+        return Ok(ApiResponse<IReadOnlyList<IntakeLogResponse>>.Ok(result));
     }
 
     /// <summary>
     /// UC-17 — Xác nhận đã uống.
     /// GB-01: trạng thái một chiều PENDING → TAKEN.
-    /// Idempotent: nếu đã TAKEN trả 204.
+    /// Idempotent: nếu đã TAKEN trả 200 (không lỗi).
     /// </summary>
     [HttpPost("{id:guid}/confirm")]
     public async Task<IActionResult> ConfirmTaken(
@@ -57,7 +58,7 @@ public class MedicationIntakesController : ControllerBase
             return Unauthorized();
 
         await _intakeService.ConfirmTakenAsync(userId, id, ct);
-        return NoContent();
+        return Ok(ApiResponse<object>.Ok(null!, "Xác nhận đã uống thuốc thành công."));
     }
 
     private bool TryGetUserId(out Guid userId) =>

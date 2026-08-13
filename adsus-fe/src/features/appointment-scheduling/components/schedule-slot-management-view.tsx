@@ -8,6 +8,7 @@ import { getApiErrorMessage } from "@/lib/api-client";
 
 import {
   useCloseScheduleSlot,
+  useCreateOvertimeSlots,
   useCreateScheduleSlot,
   useReopenScheduleSlot,
   useScheduleSlots,
@@ -65,6 +66,7 @@ export function ScheduleSlotManagementView() {
   const createMutation = useCreateScheduleSlot();
   const closeMutation = useCloseScheduleSlot();
   const reopenMutation = useReopenScheduleSlot();
+  const createOvertimeMutation = useCreateOvertimeSlots();
 
   const slots = listQuery.data ?? [];
 
@@ -95,16 +97,7 @@ export function ScheduleSlotManagementView() {
             Hiện 1 tuần (T2-CN). Hệ thống tự sinh ca mặc định cho 3 tuần tới.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setDefaultDate(todayIso);
-            setShowCreate(true);
-          }}
-          className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" /> Thêm khung giờ
-        </button>
+
       </header>
 
       <div className="flex items-center justify-between rounded-md border border-slate-200 bg-white p-3">
@@ -156,20 +149,25 @@ export function ScheduleSlotManagementView() {
       )}
 
       {showCreate && (
-        <CreateSlotModal
+        <CreateOvertimeModal
           defaultDate={defaultDate}
           onClose={() => setShowCreate(false)}
-          onSubmit={async (payload) => {
+          onSubmit={async (visitDate) => {
             try {
-              await createMutation.mutateAsync(payload);
+              const res = await createOvertimeMutation.mutateAsync(visitDate);
               setShowCreate(false);
               await listQuery.refetch();
-              toast.success("Đã tạo khung giờ mới.");
+              if (res.successCount > 0) {
+                toast.success(`Đã tạo thành công ${res.successCount} ca khám ngoài giờ.`);
+              }
+              if (res.errorCount > 0) {
+                toast.error(`${res.errorCount} ca bị lỗi (có thể do trùng lặp hoặc đã qua giờ).`);
+              }
             } catch (err) {
-              toast.error(getApiErrorMessage(err, "Không tạo được khung giờ."));
+              toast.error(getApiErrorMessage(err, "Không tạo được ca khám ngoài giờ."));
             }
           }}
-          submitting={createMutation.isPending}
+          submitting={createOvertimeMutation.isPending}
         />
       )}
 
@@ -179,8 +177,8 @@ export function ScheduleSlotManagementView() {
             confirmAction.type === "close"
               ? "Xác nhận đóng ca"
               : confirmAction.type === "forceClose"
-              ? "Xác nhận đóng ca (có booking)"
-              : "Xác nhận mở lại ca"
+                ? "Xác nhận đóng ca (có booking)"
+                : "Xác nhận mở lại ca"
           }
           message={
             confirmAction.type === "close"
@@ -188,14 +186,14 @@ export function ScheduleSlotManagementView() {
                 ? `Ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)} ngày ${confirmAction.slot.slotDate} có ${confirmAction.slot.activeAppointmentsCount} lịch hẹn đang đặt. Bạn có chắc muốn đóng?`
                 : `Bạn có chắc muốn đóng ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)} ngày ${confirmAction.slot.slotDate}?`
               : confirmAction.type === "forceClose"
-              ? `Khung giờ này có ${confirmAction.slot.activeAppointmentsCount} lịch hẹn đang BOOKED. Các booking hiện tại vẫn giữ nguyên, nhưng bệnh nhân không đặt thêm được.`
-              : `Mở lại ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)} ngày ${confirmAction.slot.slotDate}?`
+                ? `Khung giờ này có ${confirmAction.slot.activeAppointmentsCount} lịch hẹn đang BOOKED. Các booking hiện tại vẫn giữ nguyên, nhưng bệnh nhân không đặt thêm được.`
+                : `Mở lại ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)} ngày ${confirmAction.slot.slotDate}?`
           }
           variant={confirmAction.type === "reopen" ? "info" : confirmAction.type === "forceClose" ? "warning" : "danger"}
           confirmLabel={
             confirmAction.type === "close" ? "Đóng ca"
-            : confirmAction.type === "forceClose" ? "Đóng ca"
-            : "Mở lại"
+              : confirmAction.type === "forceClose" ? "Đóng ca"
+                : "Mở lại"
           }
           onConfirm={async () => {
             try {
@@ -256,7 +254,7 @@ function WeekView({
             dateIso={dateIso}
             weekdayLabel={WEEKDAY_LABELS_VI[i % 7]}
             slots={daySlots}
-            isPast={isPast}
+            isPastDay={isPast}
             onAddClick={onAddClick}
             onClose={onClose}
             onReopen={onReopen}
@@ -271,7 +269,7 @@ function DayColumn({
   dateIso,
   weekdayLabel,
   slots,
-  isPast,
+  isPastDay,
   onAddClick,
   onClose,
   onReopen,
@@ -279,23 +277,30 @@ function DayColumn({
   dateIso: string;
   weekdayLabel: string;
   slots: ScheduleSlotResponse[];
-  isPast: boolean;
+  isPastDay: boolean;
   onAddClick: (dateIso: string) => void;
   onClose: (s: ScheduleSlotResponse, force: boolean) => void | Promise<void>;
   onReopen: (s: ScheduleSlotResponse) => void | Promise<void>;
 }) {
   const isWeekend = weekdayLabel === "T7" || weekdayLabel === "CN";
 
-  // Parse date for display: "10/08" format
   const date = new Date(dateIso);
   const dayOfMonth = date.getDate().toString().padStart(2, "0");
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
 
+  const now = new Date();
+  const currentIsoDate = isoDate(now);
+  const currentTimeStr = now.toTimeString().slice(0, 8);
+  const isToday = dateIso === currentIsoDate;
+
+  // Check if this day already has overtime slots (starts at or after 17:00)
+  const hasOvertime = slots.some((s) => s.startTime >= "17:00:00" || s.startTime >= "17:00");
+
   return (
     <div className={`flex min-h-[280px] flex-col rounded border p-2 ${isWeekend ? "border-amber-200 bg-amber-50/30" : "border-slate-200 bg-white"}`}>
       {/* Header with weekday + date */}
-      <div className="mb-1 text-center">
-        <div className={`text-xs font-semibold ${isWeekend ? "text-amber-600" : "text-slate-500"}`}>
+      <div className="mb-2 text-center">
+        <div className={`text-sm font-semibold ${isWeekend ? "text-amber-600" : "text-slate-500"}`}>
           {weekdayLabel} ({dayOfMonth}/{month})
         </div>
       </div>
@@ -304,27 +309,31 @@ function DayColumn({
       <div className="flex-1 space-y-1">
         {slots.length === 0 && (
           <div className={`rounded border border-dashed p-2 text-center text-xs ${isWeekend ? "border-amber-200 text-amber-400" : "border-slate-200 text-slate-400"}`}>
-            {isPast ? "Qua" : "—"}
+            {isPastDay ? "Qua" : "—"}
           </div>
         )}
-        {slots.map((s) => (
-          <SlotCard
-            key={s.slotId}
-            slot={s}
-            onClose={() => void onClose(s, false)}
-            onReopen={() => void onReopen(s)}
-          />
-        ))}
+        {slots.map((s) => {
+          const isPastSlot = isPastDay || (isToday && s.startTime < currentTimeStr);
+          return (
+            <SlotCard
+              key={s.slotId}
+              slot={s}
+              isPast={isPastSlot}
+              onClose={() => void onClose(s, false)}
+              onReopen={() => void onReopen(s)}
+            />
+          );
+        })}
       </div>
 
       {/* Add button - always at bottom */}
-      {!isPast && (
+      {!isPastDay && !hasOvertime && (
         <button
           type="button"
           onClick={() => onAddClick(dateIso)}
-          className="mt-2 w-full rounded border border-dashed border-slate-300 p-1 text-xs text-slate-400 hover:border-blue-400 hover:text-blue-500"
+          className="mt-2 w-full rounded bg-blue-50 border border-blue-200 p-2 text-sm font-semibold text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-colors shadow-sm"
         >
-          + Thêm
+          + Tăng ca
         </button>
       )}
     </div>
@@ -333,62 +342,65 @@ function DayColumn({
 
 function SlotCard({
   slot,
+  isPast,
   onClose,
   onReopen,
 }: {
   slot: ScheduleSlotResponse;
+  isPast: boolean;
   onClose: () => void;
   onReopen: () => void;
 }) {
   const patientName = slot.bookedAppointments?.[0]?.patientFullName;
   const hasBooking = !!patientName;
 
+  const displayStatusLabel = isPast && slot.status === "OPEN" ? "Đã qua" : STATUS_LABELS[slot.status];
+  const displayStatusStyle = isPast ? "bg-slate-100 text-slate-500" : STATUS_STYLES[slot.status];
+
   return (
-    <div className={`flex flex-col rounded border p-2 text-xs ${slot.status === "CLOSED" ? "border-slate-300 bg-slate-50" : "border-slate-200 bg-white"}`}>
+    <div className={`flex flex-col rounded border p-2.5 text-sm ${slot.status === "CLOSED" || isPast ? "border-slate-300 bg-slate-50 opacity-80" : "border-slate-200 bg-white"}`}>
       {/* Header: Time range + Status badge */}
-      <div className="flex items-start justify-between gap-0.5">
-        <span className="font-mono text-xs font-medium text-slate-600">
+      <div className="flex items-start justify-between gap-1">
+        <span className="font-mono text-sm font-medium text-slate-600">
           {slot.startTime.slice(0, 5)}–{slot.endTime.slice(0, 5)}
         </span>
-        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] ${STATUS_STYLES[slot.status]}`}>
-          {STATUS_LABELS[slot.status]}
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${displayStatusStyle}`}>
+          {displayStatusLabel}
         </span>
       </div>
 
       {/* Patient name - primary action for BOOKED */}
-      <div className="mt-1 flex items-center justify-between gap-1">
-        <span className={`flex-1 truncate text-xs ${hasBooking ? "text-blue-700 font-medium" : "text-slate-400"}`}>
+      <div className="mt-2 flex items-center justify-between gap-1">
+        <span className={`flex-1 truncate text-sm ${hasBooking ? "text-blue-700 font-medium" : "text-slate-400"}`}>
           {hasBooking ? patientName : "—"}
         </span>
 
-        {/* Close button - small X icon */}
-        {slot.status !== "CLOSED" && (
+        {slot.status !== "CLOSED" ? (
           <button
             type="button"
+            disabled={isPast}
             onClick={onClose}
-            className="shrink-0 rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
+            className={`shrink-0 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors ${isPast ? "invisible" : ""}`}
             title="Đóng ca"
           >
-            <X className="h-3 w-3" />
+            <X className="h-4 w-4" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={isPast}
+            onClick={onReopen}
+            className={`shrink-0 rounded px-2 py-0.5 text-xs font-semibold text-green-600 hover:bg-green-100 transition-colors border border-transparent hover:border-green-200 ${isPast ? "invisible" : ""}`}
+          >
+            Mở lại
           </button>
         )}
       </div>
-
-      {/* Status indicator / Reopen button */}
-      {slot.status === "CLOSED" && (
-        <button
-          type="button"
-          onClick={onReopen}
-          className="mt-1 w-full rounded border border-green-200 bg-green-50 px-2 py-1 text-xs text-green-600 hover:bg-green-100"
-        >
-          Mở lại
-        </button>
-      )}
     </div>
   );
 }
 
-function CreateSlotModal({
+function CreateOvertimeModal({
   defaultDate,
   onClose,
   onSubmit,
@@ -396,42 +408,51 @@ function CreateSlotModal({
 }: {
   defaultDate: string;
   onClose: () => void;
-  onSubmit: (payload: CreateScheduleSlotRequest) => void | Promise<void>;
+  onSubmit: (visitDate: string) => void | Promise<void>;
   submitting: boolean;
 }) {
   const [visitDate, setVisitDate] = useState(defaultDate);
-  const [startTime, setStartTime] = useState("08:00:00");
-  const [endTime, setEndTime] = useState("09:00:00");
+
+  const overtimeSlots = [
+    { startTime: "17:00:00", endTime: "17:30:00" },
+    { startTime: "17:30:00", endTime: "18:00:00" },
+    { startTime: "18:00:00", endTime: "18:30:00" },
+    { startTime: "18:30:00", endTime: "19:00:00" },
+    { startTime: "19:00:00", endTime: "19:30:00" },
+    { startTime: "19:30:00", endTime: "20:00:00" },
+  ];
 
   return (
-    <ModalShell title="Thêm khung giờ mới" onClose={onClose}>
+    <ModalShell title="Đăng ký khám ngoài giờ" onClose={onClose}>
       <form
-        className="space-y-3"
+        className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
-          void onSubmit({ visitDate, startTime, endTime });
+          void onSubmit(visitDate);
         }}
       >
         <label className="block text-sm">
           <span className="text-slate-600">Ngày khám</span>
           <input
-            required
+            readOnly
             type="date"
             value={visitDate}
-            onChange={(e) => setVisitDate(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="mt-1 w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-slate-500 cursor-not-allowed"
           />
         </label>
-        <TimeInputs
-          startTime={startTime}
-          endTime={endTime}
-          onStartChange={setStartTime}
-          onEndChange={setEndTime}
-        />
-        <p className="text-xs text-slate-500">
-          Range &gt; 15 phút, ngày + giờ &gt; hiện tại, không trùng.
-        </p>
-        <ModalActions submitting={submitting} onClose={onClose} submitLabel="Tạo khung giờ" />
+
+        <div>
+          <p className="text-sm font-medium text-slate-700">Các ca sẽ được tạo (17:00 - 20:00):</p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {overtimeSlots.map((s, idx) => (
+              <div key={idx} className="rounded border border-slate-200 bg-slate-50 p-2 text-center text-xs font-mono text-slate-600">
+                {s.startTime.slice(0, 5)} - {s.endTime.slice(0, 5)}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <ModalActions submitting={submitting} onClose={onClose} submitLabel="Xác nhận tăng ca" />
       </form>
     </ModalShell>
   );
@@ -576,46 +597,7 @@ function ConfirmModal({
   );
 }
 
-function TimeInputs({
-  startTime,
-  endTime,
-  onStartChange,
-  onEndChange,
-}: {
-  startTime: string;
-  endTime: string;
-  onStartChange: (v: string) => void;
-  onEndChange: (v: string) => void;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      <label className="block text-sm">
-        <span className="text-slate-600">Bắt đầu (HH:mm:ss, 24h)</span>
-        <input
-          required
-          type="text"
-          pattern="^\d{2}:\d{2}:\d{2}$"
-          placeholder="08:00:00"
-          value={startTime}
-          onChange={(e) => onStartChange(e.target.value)}
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono"
-        />
-      </label>
-      <label className="block text-sm">
-        <span className="text-slate-600">Kết thúc (HH:mm:ss, 24h)</span>
-        <input
-          required
-          type="text"
-          pattern="^\d{2}:\d{2}:\d{2}$"
-          placeholder="09:00:00"
-          value={endTime}
-          onChange={(e) => onEndChange(e.target.value)}
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono"
-        />
-      </label>
-    </div>
-  );
-}
+
 
 function isoDate(d: Date): string {
   const yyyy = d.getFullYear();

@@ -31,9 +31,12 @@ class IntakeListState {
       );
 }
 
-/// Cho widget SCR-19 lấy danh sách intake log. Riverpod tự cache + tự refetch khi
-/// `invalidate` được gọi sau khi confirm thành công.
-final intakeLogsProvider = FutureProvider<List<IntakeLog>>((ref) async {
+/// Cho widget SCR-19 lấy danh sách intake log.
+///
+/// `autoDispose` để provider bị dispose khi không còn widget listening (logout / navigate
+/// away), đảm bảo user mới login luôn trigger refetch thay vì dùng cache user cũ.
+/// Xác nhận uống thành công → `invalidate` gọi refetch bình thường.
+final intakeLogsProvider = FutureProvider.autoDispose<List<IntakeLog>>((ref) async {
   return ref.watch(medicationIntakeRepositoryProvider).getMyIntakeLogs();
 });
 

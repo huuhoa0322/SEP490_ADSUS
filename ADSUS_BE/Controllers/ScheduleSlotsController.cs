@@ -129,6 +129,23 @@ public sealed class ScheduleSlotsController : ControllerBase
         }
     }
 
+    /// <summary>POST /api/v1/schedule-slots/overtime — Tạo 6 ca tăng ca (17:00-20:00).</summary>
+    [HttpPost("overtime")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateOvertime([FromBody] CreateOvertimeSlotsRequest request, CancellationToken ct = default)
+    {
+        try
+        {
+            var (successCount, errorCount) = await _slots.CreateOvertimeSlotsAsync(request, CurrentDoctorId, ct);
+            return Ok(ApiResponse<object>.Ok(new { successCount, errorCount }, "Overtime slots created."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
+    }
+
     /// <summary>PUT /api/v1/schedule-slots/{id}/close — Đóng slot (xin nghỉ/bận).</summary>
     [HttpPut("{id:guid}/close")]
     [ProducesResponseType(typeof(ApiResponse<CloseSlotImpactResponse>), StatusCodes.Status200OK)]

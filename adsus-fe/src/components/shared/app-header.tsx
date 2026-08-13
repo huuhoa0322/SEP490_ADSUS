@@ -1,7 +1,8 @@
 "use client";
 
-import { Menu, ScanLine } from "lucide-react";
+import { BrainCircuit, CalendarClock, FileText, LayoutDashboard, Menu, ScanLine, Users, ClipboardList } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { getHomePathForRole, useAuthStore } from "@/store/auth-store";
 import { useUiStore } from "@/store/ui-store";
@@ -17,6 +18,7 @@ const ROLE_LABEL: Record<Role, string> = {
 export function AppHeader() {
   const user = useAuthStore((s) => s.user);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
+  const pathname = usePathname();
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
@@ -42,17 +44,53 @@ export function AppHeader() {
           </Link>
         </div>
 
+        {/* Navigation Items in Header */}
+        <div className="hidden flex-1 items-center justify-end gap-1 mr-6 xl:flex border-r border-border pr-6">
+          {user?.role === "ADMIN" && (
+            <>
+              <HeaderNav href="/dashboard" icon={<LayoutDashboard className="size-4" />} label="Dashboard" active={pathname.startsWith("/dashboard")} />
+              <HeaderNav href="/admin/users" icon={<Users className="size-4" />} label="Tài khoản" active={pathname.startsWith("/admin/users")} />
+              <HeaderNav href="/admin/ai-models" icon={<BrainCircuit className="size-4" />} label="Mô hình AI" active={pathname.startsWith("/admin/ai-models")} />
+              <HeaderNav href="/admin/blog" icon={<FileText className="size-4" />} label="Blog" active={pathname.startsWith("/admin/blog")} />
+            </>
+          )}
+
+          {(user?.role === "DOCTOR" || user?.role === "NURSE") && (
+            <HeaderNav href="/patients" icon={<ClipboardList className="size-4" />} label="Danh sách bệnh nhân" active={pathname.startsWith("/patients")} />
+          )}
+
+          {user?.role === "DOCTOR" && (
+            <HeaderNav href="/schedule" icon={<CalendarClock className="size-4" />} label="Quản lý lịch" active={pathname.startsWith("/schedule")} />
+          )}
+        </div>
+
         {user && (
-          <div className="flex items-center text-right">
+          <div className="flex shrink-0 items-center text-right">
             <div>
-              <p className="font-heading text-sm font-bold leading-tight text-foreground">
+              <p className="font-heading text-base font-bold leading-tight text-foreground">
                 {user.fullName}
               </p>
-              <p className="text-xs text-muted-foreground">{ROLE_LABEL[user.role]}</p>
+              <p className="text-sm font-medium text-muted-foreground">{ROLE_LABEL[user.role]}</p>
             </div>
           </div>
         )}
       </div>
     </header>
+  );
+}
+
+function HeaderNav({ href, icon, label, active }: { href: string; icon: React.ReactNode; label: string; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition-colors ${
+        active 
+          ? "bg-primary/10 text-primary" 
+          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+    </Link>
   );
 }

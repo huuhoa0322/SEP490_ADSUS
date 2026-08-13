@@ -4,6 +4,7 @@ import '../../../../core/network/api_exception.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../data/repositories/biometric_service.dart';
 import '../../domain/entities/auth_session.dart';
+import '../../../medication_reminder/presentation/viewmodels/intake_view_model.dart';
 import 'profile_view_model.dart';
 
 /// Trạng thái phiên đăng nhập của toàn ứng dụng.
@@ -180,6 +181,7 @@ class AuthViewModel extends StateNotifier<AuthState> {
 
     await _ref.read(authRepositoryProvider).signOut();
     _ref.invalidate(profileViewModelProvider);
+    _ref.invalidate(intakeLogsProvider);
 
     if (!mounted) return;
     state = const AuthState(
@@ -194,6 +196,10 @@ class AuthViewModel extends StateNotifier<AuthState> {
     // Hồ sơ cá nhân phải bị vứt cùng phiên. Nếu không, người đăng nhập kế tiếp trên cùng
     // máy sẽ thấy tên, email và ngày sinh của người trước hiện sẵn trong ô nhập.
     _ref.invalidate(profileViewModelProvider);
+    // Lịch thuốc cũng phải bị vứt. MainShell dùng IndexedStack — screen Thuốc không unmount
+    // khi đăng xuất, nên autoDispose trên intakeLogsProvider không kích hoạt. Invalidating ở
+    // đây đảm bảo user mới luôn nhận đúng dữ liệu riêng, không phải cache user trước.
+    _ref.invalidate(intakeLogsProvider);
 
     state = const AuthState();
     await _loadBiometricStatus();

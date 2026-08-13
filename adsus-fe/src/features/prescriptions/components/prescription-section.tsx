@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getCasePrescription } from "../api/prescriptions.api";
 import type { PrescriptionResponse } from "../types/prescriptions.types";
@@ -25,86 +24,11 @@ const SLOT_LABEL: Record<string, string> = {
   Evening: "Tối",
 };
 
-function PrescriptionDetailModal({
-  prescription,
-  onClose,
-}: {
-  prescription: PrescriptionResponse;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-exo text-lg font-semibold text-navy">Chi tiết đơn thuốc</h2>
-          <button
-            onClick={onClose}
-            className="rounded-full px-3 py-1 text-sm text-muted-foreground hover:bg-gray-100"
-          >
-            ✕ Đóng
-          </button>
-        </div>
-
-        <div className="mb-4 rounded-xl border border-border p-4 text-sm">
-          <p>
-            <strong className="text-navy">Ngày kê:</strong>{" "}
-            {formatDate(prescription.prescribedDate)}
-          </p>
-          {prescription.generalNote && (
-            <p className="mt-1">
-              <strong className="text-navy">Ghi chú:</strong> {prescription.generalNote}
-            </p>
-          )}
-        </div>
-
-        <div className="overflow-hidden rounded-xl border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-teal/5">
-              <tr>
-                <th className="px-3 py-2 text-left font-semibold text-navy">Tên thuốc</th>
-                <th className="px-3 py-2 text-left font-semibold text-navy">Liều dùng</th>
-                <th className="px-3 py-2 text-left font-semibold text-navy">Khung giờ</th>
-                <th className="px-3 py-2 text-center font-semibold text-navy">Thời gian</th>
-                <th className="px-3 py-2 text-left font-semibold text-navy">Cách dùng</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {prescription.items.map((item) => (
-                <tr key={item.prescriptionItemId}>
-                  <td className="px-3 py-2 font-medium text-foreground">{item.medicineName}</td>
-                  <td className="px-3 py-2 text-foreground">{item.dosage}</td>
-                  <td className="px-3 py-2 text-foreground">
-                    {item.scheduleSlots?.map((s) => SLOT_LABEL[s] ?? s).join(", ") ?? "—"}
-                  </td>
-                  <td className="px-3 py-2 text-center text-foreground">
-                    {formatDate(item.startDate)} → {formatDate(calcEndDate(item.startDate, item.durationDays))}
-                    <br />
-                    <span className="text-xs text-muted-foreground">{item.durationDays} ngày</span>
-                  </td>
-                  <td className="px-3 py-2 text-foreground">{item.instructions || "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 interface PrescriptionSectionProps {
   caseId: string;
 }
 
 export function PrescriptionSection({ caseId }: PrescriptionSectionProps) {
-  const [showModal, setShowModal] = useState(false);
-
   const { data: prescription, isLoading } = useQuery({
     queryKey: ["case-prescription", caseId],
     queryFn: () => getCasePrescription(caseId),
@@ -123,58 +47,64 @@ export function PrescriptionSection({ caseId }: PrescriptionSectionProps) {
     return null;
   }
 
-  return (
-    <>
-      {showModal && (
-        <PrescriptionDetailModal
-          prescription={prescription}
-          onClose={() => setShowModal(false)}
-        />
-      )}
+  return <PrescriptionTable prescription={prescription} />;
+}
 
-      <section className="mt-5 rounded-xl border border-border p-6">
-        <h2 className="mb-3 font-heading text-lg font-semibold text-foreground">
+function PrescriptionTable({
+  prescription,
+}: {
+  prescription: PrescriptionResponse;
+}) {
+  return (
+    <section className="mt-5 rounded-xl border border-border p-6">
+      <div className="mb-3 flex flex-wrap items-baseline gap-3">
+        <h2 className="font-heading text-lg font-semibold text-foreground">
           Đơn thuốc
         </h2>
+        <span className="text-sm text-muted-foreground">
+          Ngày kê:{" "}
+          <span className="font-medium text-foreground">
+            {formatDate(prescription.prescribedDate)}
+          </span>
+        </span>
+      </div>
 
-        <div className="mb-4 overflow-hidden rounded-xl border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-teal/5">
-              <tr>
-                <th className="px-3 py-2 text-left font-semibold text-navy">Tên thuốc</th>
-                <th className="px-3 py-2 text-left font-semibold text-navy">Liều dùng</th>
-                <th className="px-3 py-2 text-left font-semibold text-navy">Khung giờ</th>
-                <th className="px-3 py-2 text-left font-semibold text-navy">Thời gian</th>
+      <div className="mb-4 overflow-hidden rounded-xl border border-border">
+        <table className="w-full text-sm">
+          <thead className="bg-teal/5">
+            <tr>
+              <th className="px-3 py-2 text-left font-semibold text-navy">Tên thuốc</th>
+              <th className="px-3 py-2 text-left font-semibold text-navy">Liều dùng</th>
+              <th className="px-3 py-2 text-left font-semibold text-navy">Khung giờ</th>
+              <th className="px-3 py-2 text-left font-semibold text-navy">Thời gian</th>
+              <th className="px-3 py-2 text-left font-semibold text-navy">Cách dùng</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {prescription.items.map((item) => (
+              <tr key={item.prescriptionItemId}>
+                <td className="px-3 py-2 font-medium text-foreground">{item.medicineName}</td>
+                <td className="px-3 py-2 text-foreground">{item.dosage}</td>
+                <td className="px-3 py-2 text-foreground">
+                  {item.scheduleSlots?.map((s) => SLOT_LABEL[s] ?? s).join(", ") ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-foreground">
+                  {formatDate(item.startDate)} → {formatDate(calcEndDate(item.startDate, item.durationDays))}{" "}
+                  <span className="text-xs text-muted-foreground">({item.durationDays} ngày)</span>
+                </td>
+                <td className="px-3 py-2 text-foreground">{item.instructions || "—"}</td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {prescription.items.map((item) => (
-                <tr key={item.prescriptionItemId}>
-                  <td className="px-3 py-2 font-medium text-foreground">{item.medicineName}</td>
-                  <td className="px-3 py-2 text-foreground">{item.dosage}</td>
-                  <td className="px-3 py-2 text-foreground">
-                    {item.scheduleSlots?.map((s) => SLOT_LABEL[s] ?? s).join(", ") ?? "—"}
-                  </td>
-                  <td className="px-3 py-2 text-foreground">
-                    {formatDate(item.startDate)} → {formatDate(calcEndDate(item.startDate, item.durationDays))}{" "}
-                    <span className="text-xs text-muted-foreground">({item.durationDays} ngày)</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => setShowModal(true)}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
-          >
-            Xem chi tiết đầy đủ
-          </button>
+      {prescription.generalNote && (
+        <div className="rounded-xl border border-border bg-surface p-3 text-sm">
+          <span className="font-semibold text-navy">Ghi chú: </span>
+          <span className="text-foreground">{prescription.generalNote}</span>
         </div>
-      </section>
-    </>
+      )}
+    </section>
   );
 }

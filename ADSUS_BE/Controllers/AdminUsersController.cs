@@ -178,8 +178,8 @@ public class AdminUsersController : ControllerBase
     ///
     /// BR-03 sửa lại 06/08/2026, mở rộng lần 2 — KHÔNG còn phân biệt có/không có email nữa,
     /// KHÔNG BAO GIỜ gửi email ở đường này nữa. Phản hồi luôn mang plaintext (xem
-    /// AdminResetOutcome) — nhưng trang quản trị (FE Module 2, `features/users/`) CHƯA có UI
-    /// hiện trường này; đó là việc của task riêng sau, backend đã sẵn sàng.
+    /// AdminResetOutcome) — nhưng trang quản trị (FE Module 2, `features/user-role-management/`)
+    /// CHƯA có UI hiện trường này; đó là việc của task riêng sau, backend đã sẵn sàng.
     /// </summary>
     [HttpPut("{userId:guid}/reset-password")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]

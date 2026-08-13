@@ -21,9 +21,9 @@ const VISIT_FILTERS: VisitStatusFilter[] = ["All", "Pending", "Confirmed"];
 function statusBadgeClass(status: CaseStatus): string {
   switch (status) {
     case "CONFIRMED":
-      return "bg-emerald-50 text-emerald-700";
-    case "ANALYZED":
       return "bg-violet-50 text-violet-700";
+    case "END":
+      return "bg-emerald-50 text-emerald-700";
     default:
       return "bg-amber-50 text-amber-700";
   }
@@ -52,7 +52,7 @@ export function PatientListView() {
   });
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-10">
+    <div className="mx-auto w-full max-w-screen-2xl px-6 py-10">
       <header className="mb-6">
         <h1 className="font-heading text-[28px] font-bold tracking-[-0.02em] text-foreground">
           Danh sách Bệnh nhân

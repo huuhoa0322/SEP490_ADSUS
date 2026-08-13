@@ -15,6 +15,14 @@ public sealed class CreateScheduleSlotRequest
 }
 
 /// <summary>
+/// Request để tạo hàng loạt ca tăng ca (17:00-20:00).
+/// </summary>
+public sealed class CreateOvertimeSlotsRequest
+{
+    public DateOnly VisitDate { get; init; }
+}
+
+/// <summary>
 /// Request để update slot (tách ca, đổi giờ).
 /// </summary>
 public sealed class UpdateScheduleSlotRequest

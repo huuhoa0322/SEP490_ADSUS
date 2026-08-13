@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../viewmodels/auth_view_model.dart';
 import 'change_password_screen.dart';
-import 'home_screen.dart';
 import 'sign_in_screen.dart';
+import '../../../../shared/main_shell.dart';
 
 /// Quyết định màn hình nào được hiển thị, dựa trên trạng thái phiên đăng nhập.
 ///
@@ -26,6 +26,6 @@ class AuthGate extends ConsumerWidget {
 
     if (state.session!.mustChangePassword) return const ChangePasswordScreen();
 
-    return const HomeScreen();
+    return const MainShell();
   }
 }
