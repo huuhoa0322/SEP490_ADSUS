@@ -62,13 +62,4 @@ public interface IUserAccountService
         bool locked,
         Guid actingAdminId,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// FT-08 AF-02 — vô hiệu hoá vĩnh viễn. Một chiều, không có đường quay lại (BR-05).
-    /// Không bao giờ xoá cứng bản ghi; dữ liệu liên quan vẫn phải truy cập được.
-    /// </summary>
-    Task<AccountOperationResult> DeactivateAsync(
-        Guid userId,
-        Guid actingAdminId,
-        CancellationToken cancellationToken = default);
 }

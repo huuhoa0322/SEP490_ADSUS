@@ -20,7 +20,6 @@ import { getApiErrorMessage } from "@/lib/api-client";
 import type { Role } from "@/types/api.types";
 
 import {
-  useDeactivateUser,
   useResetUserPassword,
   useSetUserLocked,
   useUserList,
@@ -37,13 +36,13 @@ import { ConfirmDialog } from "./confirm-dialog";
 
 /** Hành động đang chờ người dùng xác nhận. */
 type PendingAction =
-  | { kind: "lock" | "unlock" | "deactivate" | "reset"; user: UserAccount }
+  | { kind: "lock" | "unlock" | "reset"; user: UserAccount }
   | null;
 
 /**
  * SCR-06 — danh sách tài khoản (UC-04).
  *
- * Admin tìm kiếm, lọc, và thực hiện FT-08 (khoá / mở khoá / vô hiệu hoá) ngay tại đây.
+ * Admin tìm kiếm, lọc, và thực hiện vô hiệu hoá / mở khoá ngay tại đây.
  * Tạo mới và sửa nằm ở SCR-07.
  */
 interface UserListProps {
@@ -73,10 +72,9 @@ export function UserList({ initialCreateNotice }: UserListProps) {
   const { data, isLoading, isError, error } = useUserList(query);
 
   const setLocked = useSetUserLocked();
-  const deactivate = useDeactivateUser();
   const resetPassword = useResetUserPassword();
 
-  const actionError = setLocked.error ?? deactivate.error ?? resetPassword.error;
+  const actionError = setLocked.error ?? resetPassword.error;
 
   /** Đổi bộ lọc thì phải quay về trang 1, không thì đang ở trang 5 mà kết quả chỉ có 1 trang. */
   function changeFilter(apply: () => void) {
@@ -86,11 +84,6 @@ export function UserList({ initialCreateNotice }: UserListProps) {
 
   function runPendingAction() {
     if (!pending) return;
-
-    if (pending.kind === "deactivate") {
-      deactivate.mutate(pending.user.userId, { onSettled: () => setPending(null) });
-      return;
-    }
 
     if (pending.kind === "reset") {
       resetPassword.mutate(pending.user.userId, {
@@ -258,12 +251,10 @@ export function UserList({ initialCreateNotice }: UserListProps) {
                       <Pencil className="size-4" />
                     </Link>
 
-                    {/* Không bày nút khoá / vô hiệu hoá / cấp lại mật khẩu trên dòng của
+                    {/* Không bày nút vô hiệu hoá / cấp lại mật khẩu trên dòng của
                         chính mình: backend chặn hết (UC-04 AF-04), bấm vào chỉ nhận lỗi.
-                        Vẫn giữ nút sửa, vì Admin đổi được tên và email của chính mình.
-
-                        Tài khoản đã vô hiệu hoá cũng không còn thao tác nào — BR-05, một chiều. */}
-                    {user.status !== "DEACTIVATED" && !user.isCurrentUser && (
+                        Vẫn giữ nút sửa, vì Admin đổi được tên và email của chính mình. */}
+                    {!user.isCurrentUser && (
                       <>
                         {/* UC-03 AF-02 — cấp lại mật khẩu hộ. Chỉ hiện khi tài khoản có
                             email, vì mật khẩu tạm chỉ giao qua email (BR-03). */}
@@ -280,29 +271,20 @@ export function UserList({ initialCreateNotice }: UserListProps) {
 
                         <button
                           type="button"
-                          title={user.status === "LOCKED" ? "Mở khoá" : "Khoá tài khoản"}
+                          title={user.status === "DEACTIVATED" ? "Mở khoá" : "Vô hiệu hoá"}
                           onClick={() =>
                             setPending({
-                              kind: user.status === "LOCKED" ? "unlock" : "lock",
+                              kind: user.status === "DEACTIVATED" ? "unlock" : "lock",
                               user,
                             })
                           }
                           className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
                         >
-                          {user.status === "LOCKED" ? (
+                          {user.status === "DEACTIVATED" ? (
                             <UnlockKeyhole className="size-4" />
                           ) : (
-                            <Lock className="size-4" />
+                            <Ban className="size-4" />
                           )}
-                        </button>
-
-                        <button
-                          type="button"
-                          title="Vô hiệu hoá vĩnh viễn"
-                          onClick={() => setPending({ kind: "deactivate", user })}
-                          className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <Ban className="size-4" />
                         </button>
                       </>
                     )}
@@ -339,8 +321,8 @@ export function UserList({ initialCreateNotice }: UserListProps) {
 
       <ConfirmDialog
         open={pending !== null}
-        destructive={pending?.kind === "deactivate"}
-        isPending={setLocked.isPending || deactivate.isPending || resetPassword.isPending}
+        destructive={pending?.kind === "lock"}
+        isPending={setLocked.isPending || resetPassword.isPending}
         title={CONFIRM_TITLE[pending?.kind ?? "lock"]}
         message={pending ? buildConfirmMessage(pending) : ""}
         confirmLabel={CONFIRM_LABEL[pending?.kind ?? "lock"]}
@@ -369,16 +351,14 @@ export function UserList({ initialCreateNotice }: UserListProps) {
 }
 
 const CONFIRM_TITLE: Record<NonNullable<PendingAction>["kind"], string> = {
-  lock: "Khoá tài khoản?",
+  lock: "Vô hiệu hoá tài khoản?",
   unlock: "Mở khoá tài khoản?",
-  deactivate: "Vô hiệu hoá tài khoản?",
   reset: "Cấp lại mật khẩu?",
 };
 
 const CONFIRM_LABEL: Record<NonNullable<PendingAction>["kind"], string> = {
-  lock: "Khoá",
+  lock: "Vô hiệu hoá",
   unlock: "Mở khoá",
-  deactivate: "Vô hiệu hoá",
   reset: "Cấp lại",
 };
 
@@ -386,12 +366,8 @@ function buildConfirmMessage(pending: NonNullable<PendingAction>): string {
   const name = pending.user.fullName;
 
   switch (pending.kind) {
-    case "deactivate":
-      // AF-02 yêu cầu cảnh báo rõ đây là hành động một chiều.
-      return `Tài khoản "${name}" sẽ không bao giờ đăng nhập lại được. Đây là hành động MỘT CHIỀU, không có cách hoàn tác. Dữ liệu cũ vẫn được giữ nguyên, không bị xoá.`;
     case "lock":
-      // BR-04 — không có job tự mở khoá, phải nói rõ để Admin không ngồi chờ.
-      return `Tài khoản "${name}" sẽ không đăng nhập được cho tới khi bạn tự mở khoá. Hệ thống không tự mở khoá.`;
+      return `Tài khoản "${name}" sẽ bị vô hiệu hoá và không thể đăng nhập. Hệ thống sẽ không tự mở khoá, bạn có thể tự mở khoá lại sau này.`;
     case "unlock":
       return `Tài khoản "${name}" sẽ đăng nhập lại được ngay.`;
     case "reset":

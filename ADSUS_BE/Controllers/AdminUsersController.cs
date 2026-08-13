@@ -182,26 +182,7 @@ public class AdminUsersController : ControllerBase
     public Task<IActionResult> Unlock(Guid userId, CancellationToken cancellationToken) =>
         SetLocked(userId, locked: false, "Account unlocked.", cancellationToken);
 
-    /// <summary>
-    /// FT-08 AF-02 — vô hiệu hoá vĩnh viễn. MỘT CHIỀU, không có đường quay lại (BR-05).
-    /// Giao diện phải hỏi xác nhận trước khi gọi tới đây.
-    /// </summary>
-    [HttpPut("{userId:guid}/deactivate")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Deactivate(Guid userId, CancellationToken cancellationToken)
-    {
-        if (!TryGetActingAdminId(out var adminId))
-        {
-            return Unauthorized(ApiResponse<object>.Fail(
-                StatusCodes.Status401Unauthorized, "Invalid access token."));
-        }
 
-        var result = await _accounts.DeactivateAsync(userId, adminId, cancellationToken);
-
-        return result == AccountOperationResult.Success
-            ? Ok(ApiResponse<object>.Ok(null!, "Account deactivated permanently."))
-            : MapFailure<object>(result);
-    }
 
     /// <summary>
     /// UC-03 AF-02 — Admin cấp lại mật khẩu hộ, dùng khi chủ tài khoản không vào được email.

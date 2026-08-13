@@ -247,7 +247,7 @@ public class UserAccountServiceTests
         var result = await _sut.SetLockedAsync(user.UserId, locked: true, Guid.NewGuid());
 
         Assert.Equal(AccountOperationResult.Success, result);
-        Assert.Equal(UserStatus.Locked, user.Status);
+        Assert.Equal(UserStatus.Deactivated, user.Status);
     }
 
     [Fact]
@@ -255,7 +255,7 @@ public class UserAccountServiceTests
     {
         // BR-04 — đây là đường DUY NHẤT từ Locked về Active, và phải do Admin bấm tay.
         var user = TaoUserTrongDb(UserRole.Doctor);
-        user.Status = UserStatus.Locked;
+        user.Status = UserStatus.Deactivated;
         SetupGetById(user);
 
         var result = await _sut.SetLockedAsync(user.UserId, locked: false, Guid.NewGuid());
@@ -271,7 +271,7 @@ public class UserAccountServiceTests
         var user = TaoUserTrongDb(UserRole.Patient);
         SetupGetById(user);
 
-        var result = await _sut.DeactivateAsync(user.UserId, Guid.NewGuid());
+        var result = await _sut.SetLockedAsync(user.UserId, true, Guid.NewGuid());
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal(UserStatus.Deactivated, user.Status);
@@ -312,7 +312,7 @@ public class UserAccountServiceTests
         var adminKhac = TaoUserTrongDb(UserRole.Admin);
         SetupGetById(adminKhac);
 
-        var result = await _sut.DeactivateAsync(adminKhac.UserId, Guid.NewGuid());
+        var result = await _sut.SetLockedAsync(adminKhac.UserId, true, Guid.NewGuid());
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal(UserStatus.Deactivated, adminKhac.Status);
@@ -327,7 +327,7 @@ public class UserAccountServiceTests
         var result = await _sut.SetLockedAsync(adminKhac.UserId, locked: true, Guid.NewGuid());
 
         Assert.Equal(AccountOperationResult.Success, result);
-        Assert.Equal(UserStatus.Locked, adminKhac.Status);
+        Assert.Equal(UserStatus.Deactivated, adminKhac.Status);
     }
 
     [Fact]
@@ -335,7 +335,7 @@ public class UserAccountServiceTests
     {
         var adminId = Guid.NewGuid();
 
-        var result = await _sut.DeactivateAsync(adminId, adminId);
+        var result = await _sut.SetLockedAsync(adminId, true, adminId);
 
         Assert.Equal(AccountOperationResult.CannotTargetSelf, result);
     }
@@ -373,7 +373,7 @@ public class UserAccountServiceTests
     {
         // BR-02 — số điện thoại là định danh đăng nhập. Trạng thái đi qua endpoint riêng.
         var user = TaoUserTrongDb(UserRole.Doctor);
-        user.Status = UserStatus.Locked;
+        user.Status = UserStatus.Deactivated;
         var soCu = user.Phone;
         SetupGetById(user);
 
@@ -384,7 +384,7 @@ public class UserAccountServiceTests
         }, _adminId);
 
         Assert.Equal(soCu, user.Phone);
-        Assert.Equal(UserStatus.Locked, user.Status);
+        Assert.Equal(UserStatus.Deactivated, user.Status);
     }
 
     [Fact]
@@ -534,10 +534,10 @@ public class UserAccountServiceTests
         // Thao tác một chiều, không hoàn tác được (BR-05) — nhật ký là thứ duy nhất còn lại
         // để biết tài khoản đó trước khi bị vô hiệu hoá đang ở trạng thái nào.
         var user = TaoUserTrongDb(UserRole.Doctor);
-        user.Status = UserStatus.Locked;
+        user.Status = UserStatus.Deactivated;
         SetupGetById(user);
 
-        await _sut.DeactivateAsync(user.UserId, _adminId);
+        await _sut.SetLockedAsync(user.UserId, true, _adminId);
 
         var log = Assert.Single(_audited);
         Assert.Equal("DEACTIVATE_ACCOUNT", log.Action);

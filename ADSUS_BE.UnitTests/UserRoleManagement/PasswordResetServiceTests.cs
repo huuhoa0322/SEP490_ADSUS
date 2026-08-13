@@ -102,7 +102,7 @@ public class PasswordResetServiceTests
     }
 
     [Theory]
-    [InlineData(UserStatus.Locked)]
+    [InlineData(UserStatus.Deactivated)]
     [InlineData(UserStatus.Deactivated)]
     public async Task TuCapLai_TaiKhoanKhongConHieuLuc_KHONG_LAM_GI(UserStatus trangThai)
     {

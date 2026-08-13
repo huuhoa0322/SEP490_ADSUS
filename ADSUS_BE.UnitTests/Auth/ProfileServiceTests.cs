@@ -66,7 +66,7 @@ public class ProfileServiceTests
     }
 
     [Theory]
-    [InlineData(UserStatus.Locked)]
+    [InlineData(UserStatus.Deactivated)]
     [InlineData(UserStatus.Deactivated)]
     public async Task LayHoSo_TaiKhoanKhongConHieuLuc_TraVeNull(UserStatus trangThai)
     {
@@ -178,7 +178,7 @@ public class ProfileServiceTests
     }
 
     [Theory]
-    [InlineData(UserStatus.Locked)]
+    [InlineData(UserStatus.Deactivated)]
     [InlineData(UserStatus.Deactivated)]
     public async Task CapNhat_TaiKhoanKhongActive_BiTuChoi(UserStatus status)
     {
@@ -211,7 +211,7 @@ public class ProfileServiceTests
     }
 
     [Theory]
-    [InlineData(UserStatus.Locked)]
+    [InlineData(UserStatus.Deactivated)]
     [InlineData(UserStatus.Deactivated)]
     public async Task SinhTracHoc_TaiKhoanKhongActive_BiTuChoi(UserStatus status)
     {
