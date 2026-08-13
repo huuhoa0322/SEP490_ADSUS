@@ -6,12 +6,15 @@ using Microsoft.EntityFrameworkCore;
 namespace ADSUS_BE.UnitTests.PrescriptionAdherence;
 
 /// <summary>
-/// Tests cho MedicationIntakeLogRepository. 5 case:
+/// Tests cho MedicationIntakeLogRepository. 8 case:
 /// - FindByItemAndTimeAsync tìm đúng (item, time) (idempotency check cho Quartz re-fire)
 /// - FindByItemAndTimeAsync returns null khi không có
 /// - ListByItemAsync sắp xếp theo ScheduledTime tăng dần
 /// - ListByPatientRangeAsync lọc theo range
 /// - AddRangeAsync add nhiều rows cùng lúc
+/// - ListUpcomingAsync trả về hết logs hôm nay (không filter ConfirmedAt)
+/// - ListUpcomingAsync range là [00:00 hôm nay, 00:00 ngày mai) UTC
+/// - ListUpcomingAsync loại trừ logs ngày khác
 /// </summary>
 public class MedicationIntakeLogRepositoryTests
 {
@@ -118,5 +121,112 @@ public class MedicationIntakeLogRepositoryTests
 
         var fetched = await db.MedicationIntakeLogs.Where(l => l.PrescriptionItemId == itemId).ToListAsync();
         Assert.Equal(3, fetched.Count);
+    }
+
+    // Helper: tạo full navigation chain PatientProfile → Case → Prescription → PrescriptionItem → log
+    private async Task<(MedicationIntakeLogRepository repo, Guid patientProfileId)> CreateRepoWithNavChain(
+        AppDbContext db,
+        params MedicationIntakeLog[] logs)
+    {
+        var patientProfileId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
+        var prescriptionId = Guid.NewGuid();
+        var medicineId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+
+        db.PatientProfiles.Add(new PatientProfile
+        {
+            PatientProfileId = patientProfileId,
+            UserId = Guid.NewGuid(),
+        });
+        db.Cases.Add(new Case
+        {
+            CaseId = caseId,
+            PatientProfileId = patientProfileId,
+            DoctorId = Guid.NewGuid(),
+            VisitDate = DateOnly.FromDateTime(DateTime.UtcNow),
+        });
+        db.Medicines.Add(new Medicine
+        {
+            MedicineId = medicineId,
+            Name = "Thuốc test",
+            CreatedAt = DateTime.UtcNow,
+        });
+        db.Prescriptions.Add(new Prescription
+        {
+            PrescriptionId = prescriptionId,
+            CaseId = caseId,
+            DoctorId = Guid.NewGuid(),
+            PrescribedDate = DateOnly.FromDateTime(DateTime.UtcNow),
+        });
+        db.PrescriptionItems.Add(new PrescriptionItem
+        {
+            PrescriptionItemId = itemId,
+            PrescriptionId = prescriptionId,
+            MedicineId = medicineId,
+            Dosage = "1 viên",
+            DurationDays = 7,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+        });
+        foreach (var log in logs)
+        {
+            log.PrescriptionItemId = itemId;
+            db.MedicationIntakeLogs.Add(log);
+        }
+        await db.SaveChangesAsync();
+
+        return (new MedicationIntakeLogRepository(db), patientProfileId);
+    }
+
+    [Fact]
+    public async Task ListUpcomingAsync_ReturnsAllTodayIncludingTaken()
+    {
+        using var db = CreateContext();
+        var today = DateTime.UtcNow.Date;
+        var tomorrow = today.AddDays(1);
+        var todayLog1 = NewLog(Guid.Empty, today.AddHours(8), DateTime.UtcNow); // TAKEN
+        var todayLog2 = NewLog(Guid.Empty, today.AddHours(13), null);           // PENDING
+        var tomorrowLog = NewLog(Guid.Empty, tomorrow.AddHours(8), null);       // ngày mai
+
+        var (repo, patientProfileId) = await CreateRepoWithNavChain(db, todayLog1, todayLog2, tomorrowLog);
+
+        var result = await repo.ListUpcomingAsync(patientProfileId);
+
+        Assert.Equal(2, result.Count);
+        Assert.All(result, l => Assert.Equal(today, l.ScheduledTime.Date));
+    }
+
+    [Fact]
+    public async Task ListUpcomingAsync_ExcludesYesterday()
+    {
+        using var db = CreateContext();
+        var today = DateTime.UtcNow.Date;
+        var yesterday = today.AddDays(-1);
+        var yesterdayLog = NewLog(Guid.Empty, yesterday.AddHours(8), null);
+        var todayLog = NewLog(Guid.Empty, today.AddHours(8), null);
+
+        var (repo, patientProfileId) = await CreateRepoWithNavChain(db, yesterdayLog, todayLog);
+
+        var result = await repo.ListUpcomingAsync(patientProfileId);
+
+        Assert.Single(result);
+        Assert.Equal(today.AddHours(8), result[0].ScheduledTime);
+    }
+
+    [Fact]
+    public async Task ListUpcomingAsync_ExcludesTomorrow()
+    {
+        using var db = CreateContext();
+        var today = DateTime.UtcNow.Date;
+        var tomorrow = today.AddDays(1);
+        var todayLog = NewLog(Guid.Empty, today.AddHours(8), null);
+        var tomorrowLog = NewLog(Guid.Empty, tomorrow.AddHours(8), null);
+
+        var (repo, patientProfileId) = await CreateRepoWithNavChain(db, todayLog, tomorrowLog);
+
+        var result = await repo.ListUpcomingAsync(patientProfileId);
+
+        Assert.Single(result);
+        Assert.Equal(today.AddHours(8), result[0].ScheduledTime);
     }
 }

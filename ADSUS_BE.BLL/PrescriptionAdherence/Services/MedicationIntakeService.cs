@@ -48,7 +48,8 @@ public sealed class MedicationIntakeService : IMedicationIntakeService
             throw new UnauthorizedAccessException("Bạn không có quyền xem đơn thuốc này.");
 
         var logs = await _intakeLogRepo.ListByPrescriptionAsync(prescriptionId, ct);
-        return logs.Select(IntakeLogResponseMapper.FromEntity).ToList();
+        var now = DateTime.UtcNow;
+        return logs.Select(log => IntakeLogResponseMapper.FromEntity(log, now)).ToList();
     }
 
     public async Task<IReadOnlyList<IntakeLogResponse>> ListUpcomingAsync(
@@ -61,7 +62,8 @@ public sealed class MedicationIntakeService : IMedicationIntakeService
             ?? throw new ResourceNotFoundException("Hồ sơ bệnh nhân không tồn tại.");
 
         var logs = await _intakeLogRepo.ListUpcomingAsync(patientProfile.PatientProfileId, ct);
-        return logs.Select(IntakeLogResponseMapper.FromEntity).ToList();
+        var now = DateTime.UtcNow;
+        return logs.Select(log => IntakeLogResponseMapper.FromEntity(log, now)).ToList();
     }
 
     public async Task ConfirmTakenAsync(
