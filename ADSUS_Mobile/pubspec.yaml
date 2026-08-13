@@ -51,7 +51,6 @@ dependencies:
 
   # Lưu cờ "đã sync vào lịch" cho mỗi appointment — xem CalendarSyncServiceImpl.
   # Không dùng secure storage vì đây là UI bookkeeping, không phải thông tin nhạy cảm.
-  shared_preferences: ^2.3.0
 
 # Ghim tạm để build Android chạy được.
 #

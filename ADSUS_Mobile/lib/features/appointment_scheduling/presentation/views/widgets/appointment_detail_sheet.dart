@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../../../core/theme/app_theme.dart';
 import '../../../domain/entities/appointment.dart';
 
-/// Bottom sheet hiển thị chi tiết lịch hẹn.
+/// Bottom sheet hiển thị chi tiết lịch khám.
 ///
 /// Hiện thông tin đầy đủ và các action: Đặt lại lịch, Hủy lịch.
 class AppointmentDetailSheet extends StatelessWidget {
@@ -48,7 +48,7 @@ class AppointmentDetailSheet extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Chi tiết lịch hẹn',
+                  'Chi tiết lịch khám',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: AppColors.navy,
@@ -60,7 +60,7 @@ class AppointmentDetailSheet extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Thông tin lịch hẹn
+          // Thông tin lịch khám
           _InfoRow(
             icon: Icons.calendar_today,
             label: 'Ngày khám',

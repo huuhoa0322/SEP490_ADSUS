@@ -49,7 +49,7 @@ class Appointment {
   bool get isBooked => status == AppointmentStatus.booked;
   bool get isCancelled => status == AppointmentStatus.cancelled;
 
-  /// Kiểm tra xem lịch hẹn đã qua chưa (so với giờ hiện tại).
+  /// Kiểm tra xem lịch khám đã qua chưa (so với giờ hiện tại).
   bool get isExpired {
     if (slotDate == null || startTime == null) return false;
     final parts = startTime!.split(':');
