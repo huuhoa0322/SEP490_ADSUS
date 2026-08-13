@@ -57,7 +57,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
   const cases = caseListQuery.data;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto w-full max-w-screen-xl px-6 py-10">
       <header className="rounded-xl border border-border bg-card p-6">
         <h1 className="font-heading text-[28px] font-bold tracking-[-0.02em] text-foreground">
           {profile.fullName}
