@@ -97,16 +97,7 @@ export function ScheduleSlotManagementView() {
             Hiện 1 tuần (T2-CN). Hệ thống tự sinh ca mặc định cho 3 tuần tới.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setDefaultDate(todayIso);
-            setShowCreate(true);
-          }}
-          className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" /> Đăng ký tăng ca
-        </button>
+
       </header>
 
       <div className="flex items-center justify-between rounded-md border border-slate-200 bg-white p-3">
@@ -340,7 +331,7 @@ function DayColumn({
         <button
           type="button"
           onClick={() => onAddClick(dateIso)}
-          className="mt-2 w-full rounded border border-dashed border-slate-300 p-1.5 text-sm text-slate-400 hover:border-blue-400 hover:text-blue-500"
+          className="mt-2 w-full rounded bg-blue-50 border border-blue-200 p-2 text-sm font-semibold text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-colors shadow-sm"
         >
           + Tăng ca
         </button>
@@ -384,31 +375,27 @@ function SlotCard({
           {hasBooking ? patientName : "—"}
         </span>
 
-        {/* Close button - small X icon */}
-        {slot.status !== "CLOSED" && (
+        {slot.status !== "CLOSED" ? (
           <button
             type="button"
             disabled={isPast}
             onClick={onClose}
-            className={`shrink-0 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 ${isPast ? "invisible" : ""}`}
+            className={`shrink-0 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors ${isPast ? "invisible" : ""}`}
             title="Đóng ca"
           >
             <X className="h-4 w-4" />
           </button>
+        ) : (
+          <button
+            type="button"
+            disabled={isPast}
+            onClick={onReopen}
+            className={`shrink-0 rounded px-2 py-0.5 text-xs font-semibold text-green-600 hover:bg-green-100 transition-colors border border-transparent hover:border-green-200 ${isPast ? "invisible" : ""}`}
+          >
+            Mở lại
+          </button>
         )}
       </div>
-
-      {/* Status indicator / Reopen button */}
-      {slot.status === "CLOSED" && (
-        <button
-          type="button"
-          disabled={isPast}
-          onClick={onReopen}
-          className={`mt-2 w-full rounded border border-green-200 bg-green-50 px-2 py-1.5 text-sm font-medium text-green-600 hover:bg-green-100 ${isPast ? "invisible" : ""}`}
-        >
-          Mở lại
-        </button>
-      )}
     </div>
   );
 }

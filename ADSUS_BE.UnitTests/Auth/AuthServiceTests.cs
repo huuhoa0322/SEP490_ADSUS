@@ -71,7 +71,7 @@ public class AuthServiceTests
     public async Task LoginAsync_LockedAccount_ReturnsNullEvenWithCorrectPassword()
     {
         // BR-01: a correct password is not enough — status must be Active.
-        SetupUser(BuildUser(UserStatus.Locked, UserRole.Doctor));
+        SetupUser(BuildUser(UserStatus.Deactivated, UserRole.Doctor));
 
         var result = await _sut.LoginAsync(Request(CorrectPassword));
 
@@ -92,7 +92,7 @@ public class AuthServiceTests
     public async Task LoginAsync_NoTokenIsIssuedWhenSignInFails()
     {
         // A token must never be minted for a rejected sign-in.
-        SetupUser(BuildUser(UserStatus.Locked, UserRole.Doctor));
+        SetupUser(BuildUser(UserStatus.Deactivated, UserRole.Doctor));
 
         await _sut.LoginAsync(Request(CorrectPassword));
 

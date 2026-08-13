@@ -27,7 +27,6 @@ public enum UserRole
 public enum UserStatus
 {
     [PgName("ACTIVE")] Active,
-    [PgName("LOCKED")] Locked,
     [PgName("DEACTIVATED")] Deactivated,
 }
 

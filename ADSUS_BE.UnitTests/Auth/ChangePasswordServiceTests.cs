@@ -161,7 +161,7 @@ public class ChangePasswordServiceTests
     }
 
     [Theory]
-    [InlineData(UserStatus.Locked)]
+    [InlineData(UserStatus.Deactivated)]
     [InlineData(UserStatus.Deactivated)]
     public async Task ChangePasswordAsync_AccountNotActive_IsRejected(UserStatus status)
     {

@@ -40,7 +40,7 @@ public class DashboardRepository : IDashboardRepository
             NurseCount: ByRole(UserRole.Nurse),
             PatientCount: ByRole(UserRole.Patient),
             ActiveCount: ByStatus(UserStatus.Active),
-            LockedCount: ByStatus(UserStatus.Locked),
+            LockedCount: 0,
             DeactivatedCount: ByStatus(UserStatus.Deactivated));
     }
 

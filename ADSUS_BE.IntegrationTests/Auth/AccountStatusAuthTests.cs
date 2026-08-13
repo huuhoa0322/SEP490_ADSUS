@@ -51,7 +51,7 @@ public class AccountStatusAuthTests
     }
 
     [Theory]
-    [InlineData(UserStatus.Locked)]
+    [InlineData(UserStatus.Deactivated)]
     [InlineData(UserStatus.Deactivated)]
     public async Task TokenConHan_NhungTaiKhoanBiKhoa_TraVe401(UserStatus trangThai)
     {
