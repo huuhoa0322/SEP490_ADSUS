@@ -28,13 +28,11 @@ public class UserAccountService : IUserAccountService
         { UserRole.Doctor, UserRole.Nurse, UserRole.Patient };
 
     private readonly IUserRepository _users;
-    private readonly IEmailService _email;
     private readonly AccountAuditTrail _audit;
 
-    public UserAccountService(IUserRepository users, IEmailService email, AccountAuditTrail audit)
+    public UserAccountService(IUserRepository users, AccountAuditTrail audit)
     {
         _users = users;
-        _email = email;
         _audit = audit;
     }
 
@@ -77,7 +75,7 @@ public class UserAccountService : IUserAccountService
         return user is null ? null : ToResponse(user, actingAdminId);
     }
 
-    public async Task<(AccountOperationResult Result, UserAccountResponse? Account)> CreateAsync(
+    public async Task<(AccountOperationResult Result, UserAccountResponse? Account, string? TemporaryPassword)> CreateAsync(
         CreateUserAccountRequest request,
         Guid actingAdminId,
         CancellationToken cancellationToken = default)
@@ -85,7 +83,7 @@ public class UserAccountService : IUserAccountService
         var role = EnumExtensions.ParseUserRole(request.Role);
         if (role is null || !AssignableRoles.Contains(role.Value))
         {
-            return (AccountOperationResult.InvalidRole, null);
+            return (AccountOperationResult.InvalidRole, null, null);
         }
 
         var phone = request.PhoneNumber.Trim();
@@ -93,13 +91,13 @@ public class UserAccountService : IUserAccountService
         // BR-02 — số điện thoại là định danh đăng nhập duy nhất.
         if (await _users.PhoneExistsAsync(phone, cancellationToken))
         {
-            return (AccountOperationResult.PhoneAlreadyUsed, null);
+            return (AccountOperationResult.PhoneAlreadyUsed, null, null);
         }
 
         var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
         if (email is not null && await _users.IsEmailUsedAsync(email, cancellationToken))
         {
-            return (AccountOperationResult.EmailAlreadyUsed, null);
+            return (AccountOperationResult.EmailAlreadyUsed, null, null);
         }
 
         // BR-03 — mật khẩu tạm do hệ thống sinh, lưu dạng băm, và buộc đổi ở lần đăng nhập đầu.
@@ -132,32 +130,19 @@ public class UserAccountService : IUserAccountService
 
         await _users.SaveChangesAsync(cancellationToken);
 
-        // Gửi email SAU khi lưu, và cố ý KHÔNG để lỗi gửi mail làm hỏng cả thao tác: tài
-        // khoản đã tồn tại rồi, huỷ vì máy chủ mail trục trặc thì Admin phải tạo lại từ đầu
-        // mà số điện thoại thì đã bị chiếm. Gửi lại được qua chức năng cấp lại mật khẩu (UC-03).
+        // Sửa 12/08/2026 — không còn gửi email nữa, thống nhất với UC-03 AF-02/UC-06
+        // AF-01/AF-03: mật khẩu tạm trả plaintext MỘT LẦN ngay tại đây để Admin đọc trực
+        // tiếp cho chủ tài khoản, không phụ thuộc tài khoản có khai email hay không. Email
+        // giờ CHỈ còn dùng cho tự phục vụ quên mật khẩu (RequestSelfServiceResetAsync,
+        // UC-03) — không còn vai trò gì ở luồng tạo tài khoản.
         //
-        // Ngược hẳn với đường CẤP LẠI mật khẩu bên PasswordResetService: ở đó phải gửi thư
-        // trước rồi mới lưu, vì lỡ hỏng thì mật khẩu cũ vẫn còn dùng được. Ở đây không có
-        // mật khẩu cũ nào để giữ.
-        //
-        // Giá trị trả về KHÔNG chứa mật khẩu tạm — PRD §6.2, không ai được thấy nó dạng đọc
-        // được. Tài khoản vừa tạo chắc chắn không phải Admin đang thao tác, nên cờ
+        // response (UserAccountResponse) KHÔNG chứa mật khẩu tạm dưới bất kỳ hình thức nào
+        // (PRD §6.2) — giá trị plaintext chỉ ra khỏi lớp này qua phần tử thứ ba của tuple,
+        // đúng một lần. Tài khoản vừa tạo chắc chắn không phải Admin đang thao tác, nên cờ
         // IsCurrentUser luôn là false ở đây.
         var response = ToResponse(user, Guid.Empty);
 
-        if (email is null)
-        {
-            // Tài khoản đã có nhưng mật khẩu tạm không đi đâu được. Im lặng báo thành công là
-            // Admin tưởng xong việc, rồi vài ngày sau mới có người kêu không đăng nhập được.
-            return (AccountOperationResult.CreatedWithoutEmail, response);
-        }
-
-        var daGui = await _email.SendTemporaryPasswordAsync(
-            email, user.FullName, temporaryPassword, cancellationToken);
-
-        return daGui
-            ? (AccountOperationResult.Success, response)
-            : (AccountOperationResult.CreatedButEmailNotSent, response);
+        return (AccountOperationResult.Success, response, temporaryPassword);
     }
 
     public async Task<AccountOperationResult> UpdateAsync(

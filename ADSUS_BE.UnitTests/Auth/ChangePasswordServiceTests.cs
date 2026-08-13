@@ -97,10 +97,12 @@ public class ChangePasswordServiceTests
     [Fact]
     public async Task ChangePasswordAsync_MustChangePassword_WrongCurrentPassword_StillSucceeds()
     {
-        // Sửa 06/08/2026 — tài khoản còn đang dùng mật khẩu tạm (do Admin/Điều dưỡng cấp) thì
-        // không cần xác thực CurrentPassword nữa: người dùng vừa chứng minh biết giá trị đó
-        // qua bước đăng nhập ngay trước đây. Cố tình gửi CurrentPassword SAI vẫn phải thành
-        // công, để không ai có thể "khoá" luồng này bằng cách âm thầm gửi giá trị đúng thật.
+        // Xác nhận 12/08/2026 — NGOẠI LỆ DUY NHẤT của BR-01 (UC-25 BR-01/AF-03, UCS v1.24): tài
+        // khoản đang dùng mật khẩu tạm thì bỏ qua hoàn toàn xác thực CurrentPassword. Rào chắn
+        // thật ở đây là access token, không phải CurrentPassword — bỏ bước này không tăng rủi ro
+        // so với các endpoint khác (vẫn chỉ dựa access token), nhưng cũng không thêm lớp bảo vệ
+        // nào: ai cầm token hợp lệ là đổi được mật khẩu. Đánh đổi có chủ đích (giảm ma sát), không
+        // phải khẳng định an toàn hơn.
         var user = BuildUser(UserStatus.Active);
         user.MustChangePassword = true;
         SetupUser(user);

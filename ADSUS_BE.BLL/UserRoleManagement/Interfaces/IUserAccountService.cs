@@ -32,11 +32,13 @@ public interface IUserAccountService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// FT-07 — tạo tài khoản mới. Sinh mật khẩu tạm, đặt cờ buộc đổi mật khẩu, gửi email.
-    /// Mật khẩu tạm KHÔNG nằm trong giá trị trả về (PRD §6.2).
+    /// FT-07 — tạo tài khoản mới. Sinh mật khẩu tạm, đặt cờ buộc đổi mật khẩu, trả về plaintext
+    /// MỘT LẦN để Admin đọc trực tiếp cho chủ tài khoản — không còn gửi qua email (sửa
+    /// 12/08/2026, thống nhất với UC-03 AF-02/UC-06 AF-01/AF-03). UserAccountResponse
+    /// (Account) không chứa mật khẩu dưới bất kỳ hình thức nào (PRD §6.2).
     /// </summary>
     /// <param name="actingAdminId">Admin đang thao tác, để ghi nhật ký.</param>
-    Task<(AccountOperationResult Result, UserAccountResponse? Account)> CreateAsync(
+    Task<(AccountOperationResult Result, UserAccountResponse? Account, string? TemporaryPassword)> CreateAsync(
         CreateUserAccountRequest request,
         Guid actingAdminId,
         CancellationToken cancellationToken = default);

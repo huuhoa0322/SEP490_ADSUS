@@ -16,7 +16,6 @@ namespace ADSUS_BE.UnitTests.UserRoleManagement;
 public class UserAccountServiceTests
 {
     private readonly Mock<IUserRepository> _users = new();
-    private readonly Mock<IEmailService> _email = new();
     private readonly Mock<IAuditLogRepository> _auditLogs = new();
     private readonly UserAccountService _sut;
 
@@ -45,12 +44,7 @@ public class UserAccountServiceTests
               .Callback<User, CancellationToken>((u, _) => _saved.Add(u))
               .Returns(Task.CompletedTask);
 
-        _email.Setup(e => e.SendTemporaryPasswordAsync(
-                  It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(true);
-
-        _sut = new UserAccountService(
-            _users.Object, _email.Object, new AccountAuditTrail(_auditLogs.Object));
+        _sut = new UserAccountService(_users.Object, new AccountAuditTrail(_auditLogs.Object));
     }
 
     // ---------- FT-07: tạo tài khoản ----------
@@ -58,7 +52,7 @@ public class UserAccountServiceTests
     [Fact]
     public async Task Tao_BacSi_ThanhCong_TaiKhoanActive_VaBiEpDoiMatKhau()
     {
-        var (result, account) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
+        var (result, account, _) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal("ACTIVE", account!.Status);
@@ -71,17 +65,23 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task Tao_MatKhauTam_DuocBAM_KhongLuuThoVaKhongTraVe()
+    public async Task Tao_MatKhauTam_DuocBAM_TraVeDungMotLan_KhongNamTrongAccountResponse()
     {
-        var (_, account) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
+        // Sửa 12/08/2026 — thống nhất với UC-03 AF-02/UC-06 AF-01/AF-03: mật khẩu tạm không
+        // còn gửi email, mà trả plaintext MỘT LẦN qua phần tử thứ ba của tuple.
+        var (_, account, temporaryPassword) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
 
         var user = Assert.Single(_saved);
 
-        // PRD §6.2 — không ai được thấy mật khẩu dạng đọc được. Chỉ có bản băm trong DB.
+        // PRD §6.2 — DB chỉ lưu bản băm.
         Assert.StartsWith("$2", user.PasswordHash);
 
-        // Và phản hồi trả cho Admin cũng không được kèm mật khẩu — DTO không có trường nào
-        // chứa nó, nên chỉ cần khẳng định các trường công khai là đủ.
+        // Trả về đúng một lần, và khớp với bản băm đã lưu.
+        Assert.False(string.IsNullOrEmpty(temporaryPassword));
+        Assert.True(BCrypt.Net.BCrypt.Verify(temporaryPassword, user.PasswordHash));
+
+        // account (UserAccountResponse) không có trường nào chứa mật khẩu — DTO không định
+        // nghĩa trường đó, nên chỉ cần khẳng định các trường công khai là đủ.
         Assert.NotNull(account);
         Assert.Equal("0988776655", account!.PhoneNumber);
     }
@@ -102,52 +102,20 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task Tao_GuiMatKhauTamQuaEmail_KhiCoEmail()
+    public async Task Tao_KhongCoEmail_VanTaoThanhCong_MatKhauVanTraVeTrucTiep()
     {
-        await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
-
-        _email.Verify(e => e.SendTemporaryPasswordAsync(
-            "bs.b@example.com", "BS. Trần Văn B", It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task Tao_KhongCoEmail_VanTaoDuoc_NhungPhaiBaoLaCHUA_GUI_DUOC()
-    {
-        // UCS ghi Email là Optional nên vẫn phải cho tạo. Nhưng mật khẩu tạm chỉ đi qua
-        // email, nên tài khoản này chưa ai đăng nhập được — báo Success là Admin tưởng xong
-        // việc rồi vài ngày sau mới có người kêu không vào được.
+        // UCS ghi Email là Optional. Từ 12/08/2026, mật khẩu tạm không còn phụ thuộc email —
+        // luôn trả về trực tiếp cho Admin đọc, nên việc có/không khai email không còn ảnh
+        // hưởng gì tới việc tài khoản đăng nhập được hay không.
         var request = YeuCauTao("DOCTOR");
         request.Email = null;
 
-        var (result, account) = await _sut.CreateAsync(request, _adminId);
+        var (result, account, temporaryPassword) = await _sut.CreateAsync(request, _adminId);
 
-        Assert.Equal(AccountOperationResult.CreatedWithoutEmail, result);
-
-        // Vẫn phải tạo thật, không được nuốt mất.
+        Assert.Equal(AccountOperationResult.Success, result);
         Assert.NotNull(account);
+        Assert.False(string.IsNullOrEmpty(temporaryPassword));
         Assert.Single(_saved);
-
-        _email.Verify(e => e.SendTemporaryPasswordAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Fact]
-    public async Task Tao_GuiMailThatBai_TAI_KHOAN_VAN_TON_TAI_VaBaoDungSuThat()
-    {
-        // Máy chủ mail hỏng thì KHÔNG được huỷ tài khoản: số điện thoại đã bị chiếm, Admin
-        // bấm tạo lại chỉ nhận được "số điện thoại đã tồn tại" rồi không hiểu chuyện gì.
-        _email.Setup(e => e.SendTemporaryPasswordAsync(
-                  It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(false);
-
-        var (result, account) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
-
-        Assert.Equal(AccountOperationResult.CreatedButEmailNotSent, result);
-        Assert.NotNull(account);
-        Assert.Single(_saved);
-        _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -157,10 +125,11 @@ public class UserAccountServiceTests
         _users.Setup(r => r.PhoneExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(true);
 
-        var (result, account) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
+        var (result, account, temporaryPassword) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
 
         Assert.Equal(AccountOperationResult.PhoneAlreadyUsed, result);
         Assert.Null(account);
+        Assert.Null(temporaryPassword);
         Assert.Empty(_saved);
     }
 
@@ -171,7 +140,7 @@ public class UserAccountServiceTests
     public async Task Tao_VaiTroKhongHopLe_BiTuChoi(string vaiTro)
     {
         // UC-04: tài khoản ADMIN được cấp lúc dựng hệ thống, KHÔNG tạo qua màn này.
-        var (result, _) = await _sut.CreateAsync(YeuCauTao(vaiTro), _adminId);
+        var (result, _, _) = await _sut.CreateAsync(YeuCauTao(vaiTro), _adminId);
 
         Assert.Equal(AccountOperationResult.InvalidRole, result);
         Assert.Empty(_saved);
@@ -187,7 +156,7 @@ public class UserAccountServiceTests
         var request = YeuCauTao("PATIENT");
         request.DateOfBirth = "1990-05-20";
 
-        var (result, account) = await _sut.CreateAsync(request, _adminId);
+        var (result, account, _) = await _sut.CreateAsync(request, _adminId);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Null(Assert.Single(_saved).DateOfBirth);
@@ -201,7 +170,7 @@ public class UserAccountServiceTests
         var request = YeuCauTao("DOCTOR");
         request.DateOfBirth = "1985-03-10";
 
-        var (_, account) = await _sut.CreateAsync(request, _adminId);
+        var (_, account, _) = await _sut.CreateAsync(request, _adminId);
 
         Assert.Equal(new DateOnly(1985, 3, 10), Assert.Single(_saved).DateOfBirth);
         Assert.Equal("1985-03-10", account!.DateOfBirth);

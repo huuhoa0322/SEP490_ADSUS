@@ -60,25 +60,6 @@ public enum AccountOperationResult
     CannotChangeAdminRole,
 
     /// <summary>
-    /// Tài khoản đã tạo xong nhưng máy chủ mail từ chối, KHÔNG gửi được mật khẩu tạm.
-    ///
-    /// Không phải lỗi hoàn toàn: bản ghi đã nằm trong database và số điện thoại đã bị chiếm,
-    /// nên không được coi như thất bại rồi bảo Admin làm lại — làm lại chỉ nhận được "số điện
-    /// thoại đã tồn tại". Phải nói đúng sự thật để Admin biết còn phải cấp lại mật khẩu.
-    /// </summary>
-    CreatedButEmailNotSent,
-
-    /// <summary>
-    /// Tài khoản đã tạo xong nhưng KHÔNG KHAI EMAIL nên chẳng có chỗ nào để gửi mật khẩu tạm.
-    ///
-    /// UC-04 ghi Email là Optional, cùng lúc lại ghi mật khẩu tạm chỉ đi qua email — hai câu
-    /// đó cộng lại thành một tài khoản không ai đăng nhập được. Code làm đúng tài liệu (vẫn
-    /// cho tạo) nhưng phải nói rõ để Admin biết còn việc phải làm: bổ sung email rồi cấp lại
-    /// mật khẩu. Nhóm nên chốt lại xem Email có nên thành bắt buộc không.
-    /// </summary>
-    CreatedWithoutEmail,
-
-    /// <summary>
     /// Không gửi được mật khẩu tạm, và mật khẩu cũ ĐƯỢC GIỮ NGUYÊN.
     ///
     /// KHÔNG còn được AdminResetAsync trả về nữa kể từ quyết định ghi đè 06/08/2026 mở rộng

@@ -40,7 +40,10 @@ export interface UserAccount {
   isCurrentUser: boolean;
 }
 
-/** UC-04 FT-07. Không có trường mật khẩu: hệ thống tự sinh rồi gửi email. */
+/**
+ * UC-04 FT-07. Không có trường mật khẩu: hệ thống tự sinh, rồi hiện một lần trên màn hình sau
+ * khi tạo — không gửi email (sửa 12/08/2026, thống nhất với UC-03 AF-02/UC-06 AF-01/AF-03).
+ */
 export interface CreateUserAccountRequest {
   phoneNumber: string;
   fullName: string;
@@ -49,10 +52,13 @@ export interface CreateUserAccountRequest {
   dateOfBirth?: string | null;
 }
 
-/** Kết quả tạo tài khoản gồm dữ liệu mới và thông báo giao mật khẩu tạm của API. */
+/**
+ * Kết quả tạo tài khoản — DUY NHẤT nơi mật khẩu tạm xuất hiện dưới dạng plaintext, đúng một
+ * lần tại thời điểm tạo. Không lưu lại, không hiện lần thứ hai.
+ */
 export interface CreateUserResult {
   account: UserAccount;
-  message: string;
+  temporaryPassword: string;
 }
 
 /**

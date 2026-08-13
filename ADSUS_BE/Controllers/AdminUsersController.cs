@@ -81,12 +81,13 @@ public class AdminUsersController : ControllerBase
     }
 
     /// <summary>
-    /// FT-07 — tạo tài khoản mới. Mật khẩu tạm do hệ thống sinh và gửi qua email,
-    /// KHÔNG nằm trong phản hồi (PRD §6.2).
+    /// FT-07 — tạo tài khoản mới. Mật khẩu tạm do hệ thống sinh, trả về plaintext MỘT LẦN
+    /// trong phản hồi để Admin đọc trực tiếp cho chủ tài khoản — không còn gửi qua email (sửa
+    /// 12/08/2026, thống nhất với UC-03 AF-02/UC-06 AF-01/AF-03).
     /// </summary>
     [HttpPost]
-    [ProducesResponseType(typeof(ApiResponse<UserAccountResponse>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ApiResponse<UserAccountResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<CreatedUserAccountResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<CreatedUserAccountResponse>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create(
         [FromBody] CreateUserAccountRequest request,
         CancellationToken cancellationToken)
@@ -95,47 +96,30 @@ public class AdminUsersController : ControllerBase
         if (!validation.IsValid)
         {
             var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
-            return BadRequest(ApiResponse<UserAccountResponse>.Fail(
+            return BadRequest(ApiResponse<CreatedUserAccountResponse>.Fail(
                 StatusCodes.Status400BadRequest, message));
         }
 
         if (!TryGetActingAdminId(out var adminId))
         {
-            return Unauthorized(ApiResponse<UserAccountResponse>.Fail(
+            return Unauthorized(ApiResponse<CreatedUserAccountResponse>.Fail(
                 StatusCodes.Status401Unauthorized, "Invalid access token."));
         }
 
-        var (result, account) = await _accounts.CreateAsync(request, adminId, cancellationToken);
+        var (result, account, temporaryPassword) =
+            await _accounts.CreateAsync(request, adminId, cancellationToken);
 
-        // Ba kết quả dưới đây đều là ĐÃ TẠO XONG, chỉ khác nhau ở chỗ mật khẩu tạm có tới
-        // tay chủ tài khoản không. Trả 4xx cho hai trường hợp sau là nói dối — bản ghi đã
-        // nằm trong database và số điện thoại đã bị chiếm, Admin bấm lại chỉ nhận được
-        // "số điện thoại đã tồn tại" rồi không hiểu chuyện gì đang xảy ra.
-        var successMessage = result switch
+        if (result != AccountOperationResult.Success)
         {
-            AccountOperationResult.Success =>
-                "Account created. A temporary password has been emailed.",
-
-            AccountOperationResult.CreatedWithoutEmail =>
-                "Account created, but it has no email address so no temporary password could be "
-                + "delivered. Add an email address, then use Reset password.",
-
-            AccountOperationResult.CreatedButEmailNotSent =>
-                "Account created, but the temporary password could not be emailed. "
-                + "Use Reset password to try sending it again.",
-
-            _ => null,
-        };
-
-        if (successMessage is null)
-        {
-            return MapFailure<UserAccountResponse>(result);
+            return MapFailure<CreatedUserAccountResponse>(result);
         }
 
         return CreatedAtAction(
             nameof(GetById),
             new { userId = account!.UserId },
-            ApiResponse<UserAccountResponse>.Ok(account, successMessage));
+            ApiResponse<CreatedUserAccountResponse>.Ok(
+                new CreatedUserAccountResponse { Account = account, TemporaryPassword = temporaryPassword! },
+                "Account created. Temporary password generated — communicate it to the account holder directly."));
     }
 
     /// <summary>FT-09 — sửa thông tin và phân lại vai trò.</summary>

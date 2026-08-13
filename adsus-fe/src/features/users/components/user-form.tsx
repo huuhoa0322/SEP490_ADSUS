@@ -17,6 +17,7 @@ import { ROLE_LABEL } from "../lib/user-labels";
 import {
   ASSIGNABLE_ROLES,
   type AssignableRole,
+  type CreateUserResult,
   type UserAccount,
 } from "../types/user.types";
 
@@ -111,6 +112,8 @@ function UserFormFields({
   const [email, setEmail] = useState(initial?.email ?? "");
   const [dateOfBirth, setDateOfBirth] = useState(initial?.dateOfBirth ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
+  /** Kết quả sau khi tạo — mật khẩu tạm chỉ hiện được đúng một lần, ngay tại đây. */
+  const [createdResult, setCreatedResult] = useState<CreateUserResult | null>(null);
 
   const create = useCreateUser();
   const update = useUpdateUser(userId ?? "");
@@ -164,12 +167,42 @@ function UserFormFields({
     // giá trị gán được.
     create.mutate(
       { ...payload, role, phoneNumber: phoneNumber.trim() },
-      {
-        onSuccess: ({ message }) => {
-          const params = new URLSearchParams({ created: message });
-          router.push(`/admin/users?${params.toString()}`);
-        },
-      },
+      { onSuccess: (result) => setCreatedResult(result) },
+    );
+  }
+
+  // Đã tạo xong — hiện mật khẩu tạm đúng một lần (UC-04 FT-07, thống nhất với UC-03
+  // AF-02/UC-06 AF-01/AF-03). Không còn đường nào khác xem lại được sau khi rời trang này.
+  if (createdResult) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-10">
+        <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">
+          Đã tạo tài khoản cho {createdResult.account.fullName}
+        </h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+          Đọc mật khẩu tạm dưới đây cho họ nghe hoặc ghi lại — mật khẩu chỉ hiện được đúng một
+          lần ở đây, sẽ không hiện lại được nữa. Họ bắt buộc phải đổi mật khẩu ngay khi đăng
+          nhập lần đầu.
+        </p>
+
+        <div className="mt-6 rounded-2xl border border-dashed border-accent bg-accent/5 px-5 py-4">
+          <div className="font-heading text-xs font-600 uppercase tracking-wider text-muted-foreground">
+            Mật khẩu tạm
+          </div>
+          <div className="mt-1 select-all break-all font-mono text-xl font-bold tracking-wider text-foreground">
+            {createdResult.temporaryPassword}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => router.push("/admin/users")}
+          className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90"
+        >
+          <CheckCircle2 className="size-4" />
+          Đã đọc cho họ — Xong
+        </button>
+      </div>
     );
   }
 
@@ -187,8 +220,9 @@ function UserFormFields({
 
       {!isEdit && (
         <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-          Hệ thống sẽ tự sinh mật khẩu tạm và gửi tới email của người dùng. Họ phải đổi mật
-          khẩu ngay ở lần đăng nhập đầu tiên.
+          Hệ thống sẽ tự sinh mật khẩu tạm và hiện một lần trên màn hình ngay sau khi tạo xong,
+          để bạn đọc trực tiếp cho người dùng. Họ phải đổi mật khẩu ngay ở lần đăng nhập đầu
+          tiên.
         </p>
       )}
 
@@ -250,7 +284,7 @@ function UserFormFields({
           )}
         </Field>
 
-        <Field label="Email" hint="Không bắt buộc, nhưng thiếu thì không gửi được mật khẩu tạm">
+        <Field label="Email" hint="Không bắt buộc — chỉ dùng để tự khôi phục mật khẩu sau này (UC-03)">
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
