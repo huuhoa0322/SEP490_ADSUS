@@ -98,6 +98,8 @@ public sealed class AppointmentService : IAppointmentService
             DoctorName = a.Slot.Doctor.FullName,
             Status = a.Status,
             CreatedAt = a.CreatedAt,
+            Reason = a.Reason,
+            CancellationReason = a.CancelledReason,
         }).ToList();
     }
 

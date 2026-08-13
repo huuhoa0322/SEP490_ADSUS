@@ -21,6 +21,8 @@ using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Services;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.AppointmentScheduling.Services;
+using ADSUS_BE.BLL.HealthMonitoring.Interfaces;
+using ADSUS_BE.BLL.HealthMonitoring.Services;
 using ADSUS_BE.BLL.MedicalRecord.Validators;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
@@ -363,6 +365,11 @@ namespace ADSUS_BE
             // UC-13, UC-14
             builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
             builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+
+            // BLL — Module 9: Health Monitoring (UC-21)
+            builder.Services.AddScoped<IHealthLogRepository, HealthLogRepository>();
+            builder.Services.AddScoped<IHealthLogService, HealthLogService>();
+            builder.Services.AddScoped<IValidator<BLL.HealthMonitoring.DTOs.LogHealthDataRequest>, BLL.HealthMonitoring.Validators.LogHealthDataRequestValidator>();
 
             // ---------- Cấu hình AI Backend ----------
             builder.Services.Configure<AiBackendSettings>(

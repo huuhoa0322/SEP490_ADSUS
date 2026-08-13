@@ -91,8 +91,10 @@ class AppointmentDetailSheet extends StatelessWidget {
             ),
           ],
 
-          // Lý do hủy (nếu đã hủy)
+          // Lý do hủy (nếu đã hủy và chưa hết hạn)
+          // Đã qua thì không hiện lý do hủy vì cuộc hẹn đã kết thúc
           if (appointment.isCancelled &&
+              !appointment.isExpired &&
               appointment.cancelledReason != null &&
               appointment.cancelledReason!.isNotEmpty) ...[
             const SizedBox(height: 12),

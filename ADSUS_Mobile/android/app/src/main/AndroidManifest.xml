@@ -10,6 +10,12 @@
          nó thì hệ điều hành không bật được hộp thoại quét sinh trắc học. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
 
+    <!-- UC-16 — đồng bộ lịch hẹn vào Calendar hệ thống. Quyền giúp intent hoạt động
+         ổn định hơn trên một số thiết bị. Với Android 6.0+, OS sẽ yêu cầu quyền runtime
+         nếu cần — plugin dùng Intent.ACTION_INSERT nên hầu hết trường hợp không cần. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR"/>
+    <uses-permission android:name="android.permission.WRITE_CALENDAR"/>
+
     <application
         android:label="adsus_mobile"
         android:name="${applicationName}"
@@ -52,6 +58,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- UC-16 — cho phép mở Calendar app để thêm sự kiện -->
+        <intent>
+            <action android:name="android.intent.action.INSERT"/>
+            <data android:mimeType="vnd.android.cursor.item/event"/>
         </intent>
     </queries>
 </manifest>

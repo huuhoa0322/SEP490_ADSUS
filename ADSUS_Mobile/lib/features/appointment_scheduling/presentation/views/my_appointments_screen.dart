@@ -257,8 +257,9 @@ class _MyAppointmentsScreenState
             .markSynced(ap.id);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Đã mở ứng dụng Lịch — vui lòng xác nhận thêm.'),
+            content: Text('Đã mở ứng dụng Lịch — xác nhận để thêm lịch khám và 2 lời nhắc (24h, 1h).'),
             backgroundColor: AppColors.teal,
+            duration: Duration(seconds: 4),
           ),
         );
       } else {
