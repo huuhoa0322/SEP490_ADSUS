@@ -6,7 +6,7 @@ import '../../../../shared/providers/app_providers.dart';
 import '../../domain/entities/appointment.dart';
 import '../../domain/services/calendar_sync_service.dart';
 
-/// Trạng thái màn Lịch hẹn của tôi (SCR-22, UC-14).
+/// Trạng thái màn Lịch khám của tôi (SCR-22, UC-14).
 ///
 /// Hai luồng chính: xem danh sách (load) và hủy / đổi lịch (cancel). Đổi lịch về bản
 /// chất là hủy với lý do cố định "Reschedule" rồi nhảy về màn Đặt lịch — flow đó UI

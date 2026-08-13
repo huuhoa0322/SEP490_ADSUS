@@ -3,11 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
-import '../../../medication_reminder/presentation/viewmodels/intake_view_model.dart';
-import '../../../medication_reminder/presentation/widgets/adherence_pill_badge.dart';
 import '../../../appointment_scheduling/presentation/views/book_appointment_screen.dart';
 import '../../../appointment_scheduling/presentation/views/my_appointments_screen.dart';
-import '../../../medication_reminder/presentation/views/medication_reminder_screen.dart';
+import '../../../medication_reminder/presentation/viewmodels/intake_view_model.dart';
+import '../../../medication_reminder/presentation/widgets/adherence_pill_badge.dart';
 import '../viewmodels/auth_view_model.dart';
 import 'profile_screen.dart';
 
@@ -100,8 +99,8 @@ class HomeScreen extends ConsumerWidget {
               const _SectionTitle('Tiện ích'),
               const SizedBox(height: 12),
               _ShortcutGrid(
-                shortcuts: const [
-                  _ShortcutItem(
+                shortcuts: [
+                  const _ShortcutItem(
                     icon: Icons.book_outlined,
                     label: 'Nhật ký sức khoẻ',
                     stub: true,
@@ -109,14 +108,19 @@ class HomeScreen extends ConsumerWidget {
                   _ShortcutItem(
                     icon: Icons.calendar_today_outlined,
                     label: 'Đặt lịch khám',
-                    stub: true,
+                    stub: false,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const BookAppointmentScreen(),
+                      ),
+                    ),
                   ),
-                  _ShortcutItem(
+                  const _ShortcutItem(
                     icon: Icons.history_outlined,
                     label: 'Lịch sử khám',
                     stub: true,
                   ),
-                  _ShortcutItem(
+                  const _ShortcutItem(
                     icon: Icons.article_outlined,
                     label: 'Bài viết sức khoẻ',
                     stub: true,
@@ -124,37 +128,14 @@ class HomeScreen extends ConsumerWidget {
                   _ShortcutItem(
                     icon: Icons.event_note_outlined,
                     label: 'Lịch khám của tôi',
-                    stub: true,
+                    stub: false,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const MyAppointmentsScreen(),
+                      ),
+                    ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 16),
-
-              // UC-13 — Đặt lịch hẹn.
-              _QuickActionCard(
-                icon: Icons.calendar_today,
-                title: 'Đặt lịch hẹn',
-                subtitle: 'Chọn bác sĩ và khung giờ khám',
-                color: AppColors.primary,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const BookAppointmentScreen(),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // UC-14 — Lịch hẹn của tôi.
-              _QuickActionCard(
-                icon: Icons.event_note,
-                title: 'Lịch hẹn của tôi',
-                subtitle: 'Xem và huỷ lịch hẹn đã đặt',
-                color: AppColors.accent,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const MyAppointmentsScreen(),
-                  ),
-                ),
               ),
             ],
           ),
@@ -267,11 +248,13 @@ class _ShortcutItem {
     required this.icon,
     required this.label,
     this.stub = false,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool stub;
+  final VoidCallback? onTap;
 }
 
 class _ShortcutGrid extends StatelessWidget {
@@ -297,6 +280,7 @@ class _ShortcutGrid extends StatelessWidget {
           icon: item.icon,
           label: item.label,
           stub: item.stub,
+          onTap: item.onTap,
         );
       },
     );
@@ -308,17 +292,21 @@ class _ShortcutCard extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.stub,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool stub;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
-        if (stub) {
+        if (onTap != null) {
+          onTap!();
+        } else if (stub) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Tính năng sắp ra mắt'),

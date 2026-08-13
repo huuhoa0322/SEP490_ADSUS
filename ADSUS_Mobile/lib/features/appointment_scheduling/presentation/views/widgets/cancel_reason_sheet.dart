@@ -62,7 +62,7 @@ class _CancelReasonSheetState extends State<CancelReasonSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Hủy lịch hẹn khám',
+              'Hủy lịch khám',
               style: TextStyle(
                 fontFamily: 'serif',
                 fontSize: 18,

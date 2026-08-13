@@ -91,7 +91,7 @@ class CalendarSyncServiceImpl implements CalendarSyncService {
     if (appointment.reason != null && appointment.reason!.isNotEmpty) {
       return 'Lý do khám: ${appointment.reason}';
     }
-    return 'Lịch hẹn khám bệnh qua ứng dụng ADSUS';
+    return 'Lịch khám bệnh qua ứng dụng ADSUS';
   }
 
   String _formatDateTime(DateTime dt) {
