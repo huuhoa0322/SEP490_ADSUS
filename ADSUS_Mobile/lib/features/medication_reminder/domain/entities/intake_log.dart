@@ -1,11 +1,20 @@
-/// Trạng thái 1 intake log — derive từ ConfirmedAt ở backend.
-/// Map từ IntakeLogResponse.Status (string "PENDING" / "TAKEN").
+/// Trạng thái 1 intake log — derive từ ConfirmedAt + ScheduledTime vs now ở backend (Opt-X).
+/// Map từ IntakeLogResponse.Status (string "PENDING" / "TAKEN" / "OVERTIME").
 enum IntakeStatus {
   pending,
-  taken;
+  taken,
+  overtime;
 
-  static IntakeStatus fromWire(String value) =>
-      value.toUpperCase() == 'TAKEN' ? IntakeStatus.taken : IntakeStatus.pending;
+  static IntakeStatus fromWire(String value) {
+    switch (value.toUpperCase()) {
+      case 'TAKEN':
+        return IntakeStatus.taken;
+      case 'OVERTIME':
+        return IntakeStatus.overtime;
+      default:
+        return IntakeStatus.pending;
+    }
+  }
 }
 
 /// 1 lịch uống thuốc cho bệnh nhân (SCR-19).
@@ -42,9 +51,10 @@ class IntakeLog {
         status: status ?? this.status,
       );
 
-  /// True nếu intake log đã tới giờ uống (scheduledTime <= now) — dùng để bật nút "Đã uống".
-  /// Backend đã validate (xem CLAUDE.md §22.2 fix #7) nhưng UI vẫn nên ẩn nút nếu quá sớm,
+  /// True nếu intake log đã tới giờ uống (PENDING hoặc OVERTIME, scheduledTime <= now).
+  /// Backend đã validate GB-01 nhưng UI vẫn nên ẩn nút nếu quá sớm,
   /// tránh user bấm rồi nhận 400 từ server.
   bool isReady(DateTime nowUtc) =>
-      !scheduledTimeUtc.isAfter(nowUtc) && status == IntakeStatus.pending;
+      !scheduledTimeUtc.isAfter(nowUtc) &&
+      (status == IntakeStatus.pending || status == IntakeStatus.overtime);
 }

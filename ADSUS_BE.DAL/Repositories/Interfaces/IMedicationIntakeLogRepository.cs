@@ -3,11 +3,12 @@ using ADSUS_BE.DAL.Entities;
 namespace ADSUS_BE.DAL.Repositories.Interfaces;
 
 /// <summary>
-/// Repository cho MedicationIntakeLog (mỗi liều thuốc 1 dòng). Status = "PENDING" /
-/// "TAKEN" được derive từ ConfirmedAt — KHÔNG có column status (master convention,
-/// xem AppDbContext.OnModelCreating). Idempotency nhờ UNIQUE constraint
-/// trên (prescription_item_id, scheduled_time) tầng DB — handler có thể bắt
-/// PostgresException 23505 để skip duplicate khi Quartz re-fire job.
+/// Repository cho MedicationIntakeLog (mỗi liều thuốc 1 dòng). Status "PENDING" /
+/// "TAKEN" / "OVERTIME" được derive từ ConfirmedAt + ScheduledTime vs now tại tầng
+/// API (master convention, xem IntakeLogResponseMapper). Không filter/derive status
+/// trong repo. Idempotency nhờ UNIQUE constraint trên (prescription_item_id,
+/// scheduled_time) tầng DB — handler bắt PostgresException 23505 để skip duplicate
+/// khi Quartz re-fire job.
 /// </summary>
 public interface IMedicationIntakeLogRepository
 {
@@ -43,7 +44,7 @@ public interface IMedicationIntakeLogRepository
         Guid prescriptionId,
         CancellationToken ct = default);
 
-    /// <summary>Lấy logs sắp tới (scheduled_time > now) của 1 bệnh nhân.</summary>
+    /// <summary>Lấy logs hôm nay (UTC 00:00 → 00:00 ngày mai) của 1 bệnh nhân. Không filter ConfirmedAt — FE derive status.</summary>
     Task<IReadOnlyList<MedicationIntakeLog>> ListUpcomingAsync(
         Guid patientProfileId,
         CancellationToken ct = default);

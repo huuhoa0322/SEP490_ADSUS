@@ -18,9 +18,10 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services;
 /// </summary>
 public static class AdherenceCalculator
 {
-    /// <summary>Status constants — phải khớp Postgres enum intake_status.</summary>
+    /// <summary>Status constants — derive từ ConfirmedAt + ScheduledTime vs nowUtc (master convention Opt-X).</summary>
     public const string StatusPending = "PENDING";
     public const string StatusTaken = "TAKEN";
+    public const string StatusOvertime = "OVERTIME";
 
     /// <summary>Tính tỉ lệ tuân thủ (% 0..100, làm tròn 2 chữ số).</summary>
     /// <param name="logs">Tất cả intake logs của 1 PrescriptionItem (bất kỳ order).</param>
@@ -37,7 +38,7 @@ public static class AdherenceCalculator
         return Math.Round(ratio * 100m, 2);
     }
 
-    /// <summary>Trả về status string theo convention master.</summary>
+    /// <summary>Trả về status string (TAKEN / PENDING) từ ConfirmedAt. Dùng cho AdherenceCalculator.</summary>
     public static string StatusOf(MedicationIntakeLog log)
         => log.ConfirmedAt.HasValue ? StatusTaken : StatusPending;
 }

@@ -2,74 +2,131 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../auth/presentation/viewmodels/auth_view_model.dart';
+import '../../../medication_reminder/presentation/viewmodels/intake_view_model.dart';
+import '../../../medication_reminder/presentation/widgets/adherence_pill_badge.dart';
 import '../../../appointment_scheduling/presentation/views/book_appointment_screen.dart';
 import '../../../appointment_scheduling/presentation/views/my_appointments_screen.dart';
 import '../../../medication_reminder/presentation/views/medication_reminder_screen.dart';
 import '../viewmodels/auth_view_model.dart';
 import 'profile_screen.dart';
 
-/// Màn hình chính của bệnh nhân sau khi đăng nhập.
+/// Màn hình Trang chủ của bệnh nhân sau khi đăng nhập.
 ///
-/// Đây là trang tạm để luồng đăng nhập có đích đến. Nội dung thật (lịch hẹn, đơn thuốc,
-/// nhật ký sức khoẻ...) thuộc về các module khác.
+/// Chứa:
+///   - Header: lời chào + tên
+///   - Card "Thuốc hôm nay": tổng tuân thủ hôm nay + số liều còn lại
+///   - Grid 2 cột × 5 lối tắt: Nhật ký, Đặt lịch khám, Lịch sử khám, Bài viết sức khoẻ, Lịch khám của tôi
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(authViewModelProvider).session;
+    final intakeLogsAsync = ref.watch(intakeLogsProvider);
+    final now = DateTime.now().toLocal();
+
+    final intakeLogs = intakeLogsAsync.valueOrNull ?? [];
+
+    // Gom nhóm PENDING + TAKEN của hôm nay.
+    final pendingToday = intakeLogs
+        .where((l) => l.status.name == 'pending')
+        .where((l) => _isSameDay(l.scheduledTimeUtc.toLocal(), now))
+        .toList();
+    final takenToday = intakeLogs
+        .where((l) => l.status.name == 'taken')
+        .where((l) => l.confirmedAtUtc != null)
+        .where((l) => _isSameDay(l.confirmedAtUtc!.toLocal(), now))
+        .toList();
+
+    final totalToday = pendingToday.length + takenToday.length;
+    final adherencePct = totalToday > 0
+        ? (takenToday.length / totalToday * 100).round()
+        : null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ADSUS'),
-        actions: [
-          IconButton(
-            tooltip: 'Hồ sơ cá nhân',
-            icon: const Icon(Icons.person_outline),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
-            ),
-          ),
-          // UC-01 bước 4: đăng xuất phải với tới được ngay từ màn chính, không bắt người
-          // dùng đi vòng qua màn hồ sơ mới tìm thấy.
-          IconButton(
-            tooltip: 'Đăng xuất',
-            icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authViewModelProvider.notifier).signOut(),
-          ),
-        ],
-      ),
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Xin chào,',
-                style: TextStyle(fontSize: 15, color: AppColors.muted),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                session?.fullName ?? '',
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
-                ),
-              ),
-              const SizedBox(height: 28),
-              // Module 7 SCR-19 — Nhắc uống thuốc.
-              _QuickActionCard(
-                icon: Icons.medication,
-                title: 'Nhắc uống thuốc',
-                subtitle: 'Xem lịch uống & ghi nhận đã uống',
-                color: AppColors.teal,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const MedicationReminderScreen(),
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Xin chào,',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        session?.fullName ?? '',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                  IconButton(
+                    icon: const Icon(Icons.person_outline),
+                    color: AppColors.navy,
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Card "Thuốc hôm nay"
+              _TodayMedicationCard(
+                adherencePct: adherencePct,
+                pendingCount: pendingToday.length,
+                takenCount: takenToday.length,
+              ),
+              const SizedBox(height: 20),
+
+              // Grid lối tắt
+              const _SectionTitle('Tiện ích'),
+              const SizedBox(height: 12),
+              _ShortcutGrid(
+                shortcuts: const [
+                  _ShortcutItem(
+                    icon: Icons.book_outlined,
+                    label: 'Nhật ký sức khoẻ',
+                    stub: true,
+                  ),
+                  _ShortcutItem(
+                    icon: Icons.calendar_today_outlined,
+                    label: 'Đặt lịch khám',
+                    stub: true,
+                  ),
+                  _ShortcutItem(
+                    icon: Icons.history_outlined,
+                    label: 'Lịch sử khám',
+                    stub: true,
+                  ),
+                  _ShortcutItem(
+                    icon: Icons.article_outlined,
+                    label: 'Bài viết sức khoẻ',
+                    stub: true,
+                  ),
+                  _ShortcutItem(
+                    icon: Icons.event_note_outlined,
+                    label: 'Lịch khám của tôi',
+                    stub: true,
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
 
@@ -105,65 +162,195 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
-/// Card hành động nhanh cho HomeScreen.
-class _QuickActionCard extends StatelessWidget {
-  const _QuickActionCard({
+/// Card hiển thị tổng tuân thủ hôm nay.
+class _TodayMedicationCard extends StatelessWidget {
+  const _TodayMedicationCard({
+    required this.adherencePct,
+    required this.pendingCount,
+    required this.takenCount,
+  });
+
+  final int? adherencePct;
+  final int pendingCount;
+  final int takenCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final allDone = pendingCount == 0 && takenCount > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Thuốc hôm nay',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.navy,
+                ),
+              ),
+              if (adherencePct != null)
+                AdherencePillBadge(percent: adherencePct!.toDouble()),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (allDone)
+            Text(
+              'Tất cả liều đã được ghi nhận!',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.success,
+                fontWeight: FontWeight.w500,
+              ),
+            )
+          else
+            Text(
+              pendingCount > 0
+                  ? 'Còn $pendingCount liều chưa uống hôm nay.'
+                  : 'Chưa có lịch uống thuốc hôm nay.',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.muted,
+              ),
+            ),
+          if (takenCount > 0) ...[
+            const SizedBox(height: 4),
+            Text(
+              '$takenCount liều đã uống.',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.success,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: AppColors.muted,
+      ),
+    );
+  }
+}
+
+class _ShortcutItem {
+  const _ShortcutItem({
     required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
+    required this.label,
+    this.stub = false,
   });
 
   final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
+  final String label;
+  final bool stub;
+}
+
+class _ShortcutGrid extends StatelessWidget {
+  const _ShortcutGrid({required this.shortcuts});
+
+  final List<_ShortcutItem> shortcuts;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 1.5,
+      ),
+      itemCount: shortcuts.length,
+      itemBuilder: (context, index) {
+        final item = shortcuts[index];
+        return _ShortcutCard(
+          icon: item.icon,
+          label: item.label,
+          stub: item.stub,
+        );
+      },
+    );
+  }
+}
+
+class _ShortcutCard extends StatelessWidget {
+  const _ShortcutCard({
+    required this.icon,
+    required this.label,
+    required this.stub,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool stub;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      onTap: () {
+        if (stub) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tính năng sắp ra mắt'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      },
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(20),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                ],
+            Icon(icon, color: AppColors.teal, size: 26),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.navy,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            Icon(Icons.chevron_right, color: color.withValues(alpha: 0.5)),
           ],
         ),
       ),

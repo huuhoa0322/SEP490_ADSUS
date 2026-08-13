@@ -6,11 +6,13 @@ using Microsoft.EntityFrameworkCore;
 namespace ADSUS_BE.DAL.Repositories.Implementations;
 
 /// <summary>
-/// EF Core implementation của IMedicationIntakeLogRepository. Cột status (intake_status
-/// enum) tồn tại trong DB và được cập nhật song song với ConfirmedAt để query/list
-/// có thể filter trực tiếp (không phải derive). UNIQUE constraint
-/// uq_medication_intake_logs_dose ở DB sẽ reject duplicate (item, scheduled_time);
-/// handler bắt PostgresException 23505 khi Quartz re-fire.
+/// EF Core implementation của IMedicationIntakeLogRepository.
+/// Status "PENDING" / "TAKEN" / "OVERTIME" được derive từ ConfirmedAt + ScheduledTime
+/// vs now tại tầng API — không filter trực tiếp trong repo (master convention,
+/// xem IntakeLogResponseMapper). Cột status int trong DB chỉ dùng cho ghi
+/// ConfirmTakenAsync; không dùng trong query path.
+/// UNIQUE constraint uq_medication_intake_logs_dose ở DB reject duplicate
+/// (item, scheduled_time); handler bắt PostgresException 23505 khi Quartz re-fire.
 /// </summary>
 public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogRepository
 {
@@ -107,6 +109,8 @@ public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogReposito
         CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
+        var todayUtc = now.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
 
         return await _db.MedicationIntakeLogs
             .AsNoTracking()
@@ -116,8 +120,8 @@ public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogReposito
                 .ThenInclude(i => i!.Prescription)
                     .ThenInclude(p => p!.Case)
             .Where(l => l.PrescriptionItem!.Prescription!.Case!.PatientProfileId == patientProfileId
-                     && l.ScheduledTime >= now
-                     && l.ConfirmedAt == null)
+                     && l.ScheduledTime >= todayUtc
+                     && l.ScheduledTime < tomorrowUtc)
             .OrderBy(l => l.ScheduledTime)
             .ToListAsync(ct);
     }
