@@ -63,8 +63,8 @@ export function ConfirmDialog({
           </div>
         </div>
 
-        {/* Dùng "? :" chứ KHÔNG dùng "&&": prop error có kiểu unknown (để nhận thẳng lỗi
-            của axios), mà "unknown && ..." cho ra kiểu unknown — React không dựng được. */}
+        {/* Use "? :" not "&&": error is typed unknown (so it can take a raw axios error
+            as-is), and "unknown && ..." evaluates to unknown — React can't render that. */}
         {error ? (
           <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />

@@ -153,21 +153,7 @@ public class AdminUsersController : ControllerBase
     }
 
     /// <summary>
-    /// FT-08 AF-01 — khoá tài khoản. Thủ công hoàn toàn, không có job tự mở khoá (BR-04).
-    /// </summary>
-    [HttpPut("{userId:guid}/lock")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    public Task<IActionResult> Lock(Guid userId, CancellationToken cancellationToken) =>
-        SetLocked(userId, locked: true, "Account locked.", cancellationToken);
-
-    /// <summary>FT-08 AF-01 — mở khoá. Đây là đường DUY NHẤT đi từ Locked về Active (BR-04).</summary>
-    [HttpPut("{userId:guid}/unlock")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    public Task<IActionResult> Unlock(Guid userId, CancellationToken cancellationToken) =>
-        SetLocked(userId, locked: false, "Account unlocked.", cancellationToken);
-
-    /// <summary>
-    /// FT-08 AF-02 — vô hiệu hoá vĩnh viễn. MỘT CHIỀU, không có đường quay lại (BR-05).
+    /// FT-08 — vô hiệu hoá vĩnh viễn. MỘT CHIỀU, không có đường quay lại (BR-05).
     /// Giao diện phải hỏi xác nhận trước khi gọi tới đây.
     /// </summary>
     [HttpPut("{userId:guid}/deactivate")]
@@ -220,25 +206,6 @@ public class AdminUsersController : ControllerBase
     }
 
     // ---- helpers ----
-
-    private async Task<IActionResult> SetLocked(
-        Guid userId,
-        bool locked,
-        string successMessage,
-        CancellationToken cancellationToken)
-    {
-        if (!TryGetActingAdminId(out var adminId))
-        {
-            return Unauthorized(ApiResponse<object>.Fail(
-                StatusCodes.Status401Unauthorized, "Invalid access token."));
-        }
-
-        var result = await _accounts.SetLockedAsync(userId, locked, adminId, cancellationToken);
-
-        return result == AccountOperationResult.Success
-            ? Ok(ApiResponse<object>.Ok(null!, successMessage))
-            : MapFailure<object>(result);
-    }
 
     /// <summary>
     /// Id của Admin đang thao tác, lấy từ claim trong token — KHÔNG bao giờ nhận từ request,

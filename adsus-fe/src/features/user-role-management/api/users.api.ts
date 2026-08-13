@@ -58,11 +58,6 @@ export async function updateUser(
   await apiClient.put<ApiResponse<null>>(`${BASE}/${userId}`, payload);
 }
 
-/** FT-08 — khoá và mở khoá đều thủ công, không có job tự mở (UC-04 BR-04). */
-export async function setUserLocked(userId: string, locked: boolean): Promise<void> {
-  await apiClient.put<ApiResponse<null>>(`${BASE}/${userId}/${locked ? "lock" : "unlock"}`);
-}
-
 /** FT-08 AF-02 — MỘT CHIỀU, không có đường quay lại (BR-05). Phải hỏi xác nhận trước khi gọi. */
 export async function deactivateUser(userId: string): Promise<void> {
   await apiClient.put<ApiResponse<null>>(`${BASE}/${userId}/deactivate`);

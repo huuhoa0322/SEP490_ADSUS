@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { UserList } from "@/features/users/components/user-list";
+import { UserList } from "@/features/user-role-management/components/user-list";
 
 export const metadata: Metadata = {
   title: "Quản lý tài khoản | ADSUS",

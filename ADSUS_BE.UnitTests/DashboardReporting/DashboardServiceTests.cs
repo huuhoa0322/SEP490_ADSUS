@@ -25,7 +25,7 @@ public class DashboardServiceTests
     public DashboardServiceTests()
     {
         _repo.Setup(r => r.GetAccountCountsAsync(It.IsAny<CancellationToken>()))
-             .ReturnsAsync(new AccountCounts(0, 0, 0, 0, 0, 0, 0, 0));
+             .ReturnsAsync(new AccountCounts(0, 0, 0, 0, 0, 0, 0));
 
         _repo.Setup(r => r.GetActivityCountsAsync(
                  It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
@@ -150,7 +150,7 @@ public class DashboardServiceTests
         _repo.Setup(r => r.GetAccountCountsAsync(It.IsAny<CancellationToken>()))
              .ReturnsAsync(new AccountCounts(
                  Total: 10, AdminCount: 1, DoctorCount: 3, NurseCount: 2, PatientCount: 4,
-                 ActiveCount: 8, LockedCount: 1, DeactivatedCount: 1));
+                 ActiveCount: 8, DeactivatedCount: 1));
 
         var result = await _sut.GetStatisticsAsync(null, null);
 

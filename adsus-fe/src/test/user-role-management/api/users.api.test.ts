@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { API_BASE_URL } from "@/lib/api-client";
 import { server } from "@/test/mocks/server";
 
-import { createUser } from "./users.api";
+import { createUser } from "@/features/user-role-management/api/users.api";
 
 describe("createUser", () => {
   it("trả về tài khoản kèm mật khẩu tạm — sửa 12/08/2026, không còn gửi qua email", async () => {

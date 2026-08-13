@@ -1,6 +1,5 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
 import { AlertCircle, ArrowLeft, Loader2, Mail, MailCheck, Phone } from "lucide-react";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
@@ -12,7 +11,7 @@ import {
   isValidPhoneNumber,
 } from "@/lib/phone-number";
 
-import { forgotPassword } from "../api/auth.api";
+import { useForgotPassword } from "../hooks/use-forgot-password";
 
 /**
  * UC-03 FT-06 — người dùng tự yêu cầu cấp lại mật khẩu.
@@ -29,10 +28,7 @@ export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [clientError, setClientError] = useState<string | null>(null);
 
-  const request = useMutation({
-    mutationFn: () =>
-      forgotPassword({ phoneNumber: phoneNumber.trim(), email: email.trim() }),
-  });
+  const request = useForgotPassword();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,7 +48,7 @@ export function ForgotPasswordForm() {
       return;
     }
 
-    request.mutate();
+    request.mutate({ phoneNumber: phoneNumber.trim(), email: email.trim() });
   }
 
   // Gửi xong thì thay hẳn form bằng lời nhắn, để không ai bấm gửi liên tục.

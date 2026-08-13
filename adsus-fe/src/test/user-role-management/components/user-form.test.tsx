@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { UserForm } from "./user-form";
+import { UserForm } from "@/features/user-role-management/components/user-form";
 
 const { createMutateMock } = vi.hoisted(() => ({
   createMutateMock: vi.fn(),
@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-vi.mock("../hooks/use-users", () => ({
+vi.mock("@/features/user-role-management/hooks/use-users", () => ({
   useUserDetail: () => ({
     data: undefined,
     isLoading: false,

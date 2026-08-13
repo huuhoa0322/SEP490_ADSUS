@@ -12,7 +12,7 @@ public class UserAccountRequestValidatorTests
     private readonly UpdateUserAccountRequestValidator _update = new();
 
     [Fact]
-    public void Tao_NgaySinhLaHomNay_BiTuChoi()
+    public void Validate_DateOfBirthIsToday_IsRejected()
     {
         var result = _create.Validate(CreateRequest(ClinicClock.Today()));
 
@@ -22,7 +22,7 @@ public class UserAccountRequestValidatorTests
     }
 
     [Fact]
-    public void Tao_ChuaDu18TuoiMotNgay_BiTuChoi()
+    public void Validate_OneDayShortOfEighteenYears_IsRejected()
     {
         var dateOfBirth = ClinicClock.Today().AddYears(-18).AddDays(1);
 
@@ -32,7 +32,7 @@ public class UserAccountRequestValidatorTests
     }
 
     [Fact]
-    public void Tao_VuaTron18Tuoi_DuocChapNhan()
+    public void Validate_ExactlyEighteenYears_IsAccepted()
     {
         var dateOfBirth = ClinicClock.Today().AddYears(-18);
 
@@ -42,7 +42,7 @@ public class UserAccountRequestValidatorTests
     }
 
     [Fact]
-    public void Sua_NgaySinhKhongDu18Tuoi_BiTuChoi()
+    public void UpdateValidate_DateOfBirthUnder18_IsRejected()
     {
         var request = new UpdateUserAccountRequest
         {
@@ -61,7 +61,7 @@ public class UserAccountRequestValidatorTests
     [Theory]
     [InlineData("0900000001")]
     [InlineData("0987654321")]
-    public void Tao_SoDienThoaiDung10ChuSo_DuocChapNhan(string soDienThoai)
+    public void Validate_TenDigitPhoneNumber_IsAccepted(string soDienThoai)
     {
         var request = CreateRequest(ClinicClock.Today().AddYears(-30));
         request.PhoneNumber = soDienThoai;
@@ -76,7 +76,7 @@ public class UserAccountRequestValidatorTests
     [InlineData("090000000a", "có chữ cái")]
     [InlineData("0900 000 001", "có khoảng trắng")]
     [InlineData("+84900000001", "dạng quốc tế")]
-    public void Tao_SoDienThoaiSaiDinhDang_BiTuChoi(string soDienThoai, string lyDo)
+    public void Validate_MalformedPhoneNumber_IsRejected(string soDienThoai, string lyDo)
     {
         // Khoảng cũ là 9–11 chữ số, quá rộng: gõ thiếu hoặc thừa một số vẫn lọt qua, mà số
         // điện thoại là ĐỊNH DANH ĐĂNG NHẬP (BR-02) — sai một chữ số là tạo ra một tài khoản
@@ -91,7 +91,7 @@ public class UserAccountRequestValidatorTests
     [InlineData("090000001")]
     [InlineData("09000000012")]
     [InlineData("khong-phai-so")]
-    public void QuenMatKhau_SoDienThoaiSaiDinhDang_BiTuChoi(string soDienThoai)
+    public void ForgotPasswordValidate_MalformedPhoneNumber_IsRejected(string soDienThoai)
     {
         // Chỗ này TRƯỚC ĐÂY không kiểm định dạng, chỉ kiểm độ dài tối đa — nên cùng một số
         // sai bị chặn ở màn tạo tài khoản lại đi lọt tới tận database ở màn quên mật khẩu.
@@ -105,7 +105,7 @@ public class UserAccountRequestValidatorTests
     }
 
     [Fact]
-    public void DangNhap_KHONG_kiem_dinh_dang_so_dien_thoai()
+    public void LoginValidate_DoesNotEnforcePhoneNumberFormat()
     {
         // Cố ý khác hai màn kia. Đăng nhập là ĐỐI CHIẾU chứ không phải nhập liệu: số sai định
         // dạng thì đằng nào cũng không khớp tài khoản nào, cứ để GB-06 trả về đúng một câu.

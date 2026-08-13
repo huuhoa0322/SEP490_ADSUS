@@ -1,8 +1,10 @@
 using ADSUS_BE.BLL.Auth.DTOs;
 using ADSUS_BE.BLL.Auth.Interfaces;
+using ADSUS_BE.BLL.Auth.Mappers;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.Auth.Services;
 
@@ -10,6 +12,7 @@ public class AuthService : IAuthService
 {
     private readonly IUserRepository _users;
     private readonly IJwtTokenService _tokens;
+    private readonly ILogger<AuthService> _logger;
 
     /// <summary>
     /// Dummy hash compared against when no account matches the phone number.
@@ -22,10 +25,11 @@ public class AuthService : IAuthService
     /// </summary>
     private static readonly string DummyHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString());
 
-    public AuthService(IUserRepository users, IJwtTokenService tokens)
+    public AuthService(IUserRepository users, IJwtTokenService tokens, ILogger<AuthService> logger)
     {
         _users = users;
         _tokens = tokens;
+        _logger = logger;
     }
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
@@ -37,7 +41,7 @@ public class AuthService : IAuthService
             user?.PasswordHash ?? DummyHash);
 
         // BR-01: sign-in succeeds only when the phone number exists, the password is correct
-        // AND the status is Active. Locked and Deactivated are rejected even with the right
+        // AND the status is Active. A Deactivated account is rejected even with the right
         // password.
         if (user is null || !passwordMatches || user.Status != UserStatus.Active)
         {
@@ -57,15 +61,11 @@ public class AuthService : IAuthService
             return null;
         }
 
-        return new LoginResponse
-        {
-            UserId = user.UserId,
-            AccessToken = _tokens.GenerateAccessToken(user),
-            Role = user.Role.ToApiString(),
-            FullName = user.FullName,
-            Email = user.Email,
-            MustChangePassword = user.MustChangePassword,
-        };
+        _logger.LogInformation(
+            "User {UserId} signed in successfully with role {Role}", user.UserId, user.Role);
+
+        var accessToken = _tokens.GenerateAccessToken(user);
+        return UserMapper.ToLoginResponse(user, accessToken);
     }
 
     public async Task<ChangePasswordResult> ChangePasswordAsync(
@@ -73,7 +73,9 @@ public class AuthService : IAuthService
         ChangePasswordRequest request,
         CancellationToken cancellationToken = default)
     {
-        var user = await _users.GetByIdAsync(userId, cancellationToken);
+        // GetForUpdateAsync (có tracking) — hàm này sửa PasswordHash rồi SaveChangesAsync, khác
+        // các nơi chỉ đọc để hiển thị (P11 review Module 1, 12/08/2026).
+        var user = await _users.GetForUpdateAsync(userId, cancellationToken);
 
         if (user is null)
         {
@@ -108,6 +110,8 @@ public class AuthService : IAuthService
         user.UpdatedAt = DateTime.UtcNow;
 
         await _users.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("User {UserId} changed their password successfully", user.UserId);
 
         return ChangePasswordResult.Success;
     }

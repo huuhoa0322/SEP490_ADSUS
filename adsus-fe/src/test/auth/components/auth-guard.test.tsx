@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAuthStore } from "@/store/auth-store";
 
-import { AuthGuard } from "./auth-guard";
+import { AuthGuard } from "@/features/auth/components/auth-guard";
 
 const { replaceMock } = vi.hoisted(() => ({ replaceMock: vi.fn() }));
 

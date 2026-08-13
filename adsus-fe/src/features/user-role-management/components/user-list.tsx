@@ -6,10 +6,8 @@ import {
   CheckCircle2,
   KeyRound,
   Loader2,
-  Lock,
   Pencil,
   Search,
-  UnlockKeyhole,
   UserPlus,
 } from "lucide-react";
 import Link from "next/link";
@@ -21,7 +19,6 @@ import type { Role } from "@/types/api.types";
 import {
   useDeactivateUser,
   useResetUserPassword,
-  useSetUserLocked,
   useUserList,
 } from "../hooks/use-users";
 import {
@@ -35,14 +32,13 @@ import type { AccountStatus, UserAccount } from "../types/user.types";
 import { ConfirmDialog } from "./confirm-dialog";
 
 /** Hành động đang chờ người dùng xác nhận. */
-type PendingAction =
-  | { kind: "lock" | "unlock" | "deactivate" | "reset"; user: UserAccount }
-  | null;
+type PendingAction = { kind: "deactivate" | "reset"; user: UserAccount } | null;
 
 /**
  * SCR-06 — danh sách tài khoản (UC-04).
  *
- * Admin tìm kiếm, lọc, và thực hiện FT-08 (khoá / mở khoá / vô hiệu hoá) ngay tại đây.
+ * Admin tìm kiếm, lọc, và thực hiện FT-08 (vô hiệu hoá) ngay tại đây — Lock/Unlock đã bỏ khỏi
+ * hệ thống (quyết định 13/08/2026), chỉ còn Active/Deactivated.
  * Tạo mới và sửa nằm ở SCR-07. Thông báo "đã tạo" không còn đi qua trang này nữa — SCR-07 tự
  * hiện mật khẩu tạm ngay tại chỗ (sửa 12/08/2026, xem UserForm).
  */
@@ -64,11 +60,10 @@ export function UserList() {
   const query = { keyword, role, status, page, pageSize: 20 };
   const { data, isLoading, isError, error } = useUserList(query);
 
-  const setLocked = useSetUserLocked();
   const deactivate = useDeactivateUser();
   const resetPassword = useResetUserPassword();
 
-  const actionError = setLocked.error ?? deactivate.error ?? resetPassword.error;
+  const actionError = deactivate.error ?? resetPassword.error;
 
   /** Đổi bộ lọc thì phải quay về trang 1, không thì đang ở trang 5 mà kết quả chỉ có 1 trang. */
   function changeFilter(apply: () => void) {
@@ -84,19 +79,11 @@ export function UserList() {
       return;
     }
 
-    if (pending.kind === "reset") {
-      resetPassword.mutate(pending.user.userId, {
-        onSuccess: (temporaryPassword) =>
-          setResetResult({ fullName: pending.user.fullName, temporaryPassword }),
-        onSettled: () => setPending(null),
-      });
-      return;
-    }
-
-    setLocked.mutate(
-      { userId: pending.user.userId, locked: pending.kind === "lock" },
-      { onSettled: () => setPending(null) },
-    );
+    resetPassword.mutate(pending.user.userId, {
+      onSuccess: (temporaryPassword) =>
+        setResetResult({ fullName: pending.user.fullName, temporaryPassword }),
+      onSettled: () => setPending(null),
+    });
   }
 
   return (
@@ -107,7 +94,7 @@ export function UserList() {
             Quản lý tài khoản
           </h1>
           <p className="mt-1.5 text-[15px] text-muted-foreground">
-            Tạo tài khoản, phân quyền, khoá hoặc vô hiệu hoá.
+            Tạo tài khoản, phân quyền, vô hiệu hoá.
           </p>
         </div>
 
@@ -157,7 +144,6 @@ export function UserList() {
         >
           <option value="">Tất cả trạng thái</option>
           <option value="ACTIVE">Đang hoạt động</option>
-          <option value="LOCKED">Đã khoá</option>
           <option value="DEACTIVATED">Đã vô hiệu hoá</option>
         </select>
       </div>
@@ -241,7 +227,7 @@ export function UserList() {
                       <Pencil className="size-4" />
                     </Link>
 
-                    {/* Không bày nút khoá / vô hiệu hoá / cấp lại mật khẩu trên dòng của
+                    {/* Không bày nút vô hiệu hoá / cấp lại mật khẩu trên dòng của
                         chính mình: backend chặn hết (UC-04 AF-04), bấm vào chỉ nhận lỗi.
                         Vẫn giữ nút sửa, vì Admin đổi được tên và email của chính mình.
 
@@ -258,24 +244,6 @@ export function UserList() {
                           className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
                         >
                           <KeyRound className="size-4" />
-                        </button>
-
-                        <button
-                          type="button"
-                          title={user.status === "LOCKED" ? "Mở khoá" : "Khoá tài khoản"}
-                          onClick={() =>
-                            setPending({
-                              kind: user.status === "LOCKED" ? "unlock" : "lock",
-                              user,
-                            })
-                          }
-                          className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
-                        >
-                          {user.status === "LOCKED" ? (
-                            <UnlockKeyhole className="size-4" />
-                          ) : (
-                            <Lock className="size-4" />
-                          )}
                         </button>
 
                         <button
@@ -322,10 +290,10 @@ export function UserList() {
       <ConfirmDialog
         open={pending !== null}
         destructive={pending?.kind === "deactivate"}
-        isPending={setLocked.isPending || deactivate.isPending || resetPassword.isPending}
-        title={CONFIRM_TITLE[pending?.kind ?? "lock"]}
+        isPending={deactivate.isPending || resetPassword.isPending}
+        title={CONFIRM_TITLE[pending?.kind ?? "deactivate"]}
         message={pending ? buildConfirmMessage(pending) : ""}
-        confirmLabel={CONFIRM_LABEL[pending?.kind ?? "lock"]}
+        confirmLabel={CONFIRM_LABEL[pending?.kind ?? "deactivate"]}
         onConfirm={runPendingAction}
         onCancel={() => setPending(null)}
       />
@@ -378,15 +346,11 @@ export function UserList() {
 }
 
 const CONFIRM_TITLE: Record<NonNullable<PendingAction>["kind"], string> = {
-  lock: "Khoá tài khoản?",
-  unlock: "Mở khoá tài khoản?",
   deactivate: "Vô hiệu hoá tài khoản?",
   reset: "Cấp lại mật khẩu?",
 };
 
 const CONFIRM_LABEL: Record<NonNullable<PendingAction>["kind"], string> = {
-  lock: "Khoá",
-  unlock: "Mở khoá",
   deactivate: "Vô hiệu hoá",
   reset: "Cấp lại",
 };
@@ -398,11 +362,6 @@ function buildConfirmMessage(pending: NonNullable<PendingAction>): string {
     case "deactivate":
       // AF-02 yêu cầu cảnh báo rõ đây là hành động một chiều.
       return `Tài khoản "${name}" sẽ không bao giờ đăng nhập lại được. Đây là hành động MỘT CHIỀU, không có cách hoàn tác. Dữ liệu cũ vẫn được giữ nguyên, không bị xoá.`;
-    case "lock":
-      // BR-04 — không có job tự mở khoá, phải nói rõ để Admin không ngồi chờ.
-      return `Tài khoản "${name}" sẽ không đăng nhập được cho tới khi bạn tự mở khoá. Hệ thống không tự mở khoá.`;
-    case "unlock":
-      return `Tài khoản "${name}" sẽ đăng nhập lại được ngay.`;
     case "reset":
       // Sửa 12/08/2026 — không còn gửi email, mật khẩu hiện ngay trên màn hình sau khi xác nhận.
       return `Hệ thống sẽ sinh mật khẩu mới và hiện ngay tại đây để bạn đọc trực tiếp cho "${name}". Mật khẩu cũ sẽ hết hiệu lực ngay.`;

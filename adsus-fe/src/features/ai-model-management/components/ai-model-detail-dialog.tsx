@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import type { AiModelVersion } from "../types/ai-model.types";
-import { formatDateTime } from "@/features/users/lib/user-labels";
+import { formatDateTime } from "@/features/user-role-management/lib/user-labels";
 
 interface AiModelDetailDialogProps {
   open: boolean;

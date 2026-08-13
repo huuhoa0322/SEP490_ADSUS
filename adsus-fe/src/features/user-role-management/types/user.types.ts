@@ -1,7 +1,7 @@
 import type { Role } from "@/types/api.types";
 
 /** Trạng thái tài khoản — khớp enum user_status trong database. */
-export type AccountStatus = "ACTIVE" | "LOCKED" | "DEACTIVATED";
+export type AccountStatus = "ACTIVE" | "DEACTIVATED";
 
 /**
  * Vai trò Admin gán được ở SCR-07.

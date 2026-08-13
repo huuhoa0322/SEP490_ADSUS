@@ -4,8 +4,8 @@ import { AlertCircle, BrainCircuit, Eye, Loader2, Pencil, PlayCircle, Plus, Sear
 import Link from "next/link";
 import { useState } from "react";
 
-import { formatDateTime } from "@/features/users/lib/user-labels";
-import { ConfirmDialog } from "@/features/users/components/confirm-dialog";
+import { formatDateTime } from "@/features/user-role-management/lib/user-labels";
+import { ConfirmDialog } from "@/features/user-role-management/components/confirm-dialog";
 import { getApiErrorMessage } from "@/lib/api-client";
 import toast from "react-hot-toast";
 

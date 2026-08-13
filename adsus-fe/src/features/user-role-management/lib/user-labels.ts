@@ -18,14 +18,12 @@ export const ROLE_LABEL: Record<Role, string> = {
 
 export const STATUS_LABEL: Record<AccountStatus, string> = {
   ACTIVE: "Đang hoạt động",
-  LOCKED: "Đã khoá",
   DEACTIVATED: "Đã vô hiệu hoá",
 };
 
 /** Màu hiển thị theo trạng thái — dùng token màu của nhóm trong globals.css. */
 export const STATUS_CLASS: Record<AccountStatus, string> = {
   ACTIVE: "bg-accent/12 text-accent",
-  LOCKED: "bg-amber-500/15 text-amber-700",
   // Vô hiệu hoá là một chiều nên dùng màu cảnh báo mạnh nhất của bộ nhận diện.
   DEACTIVATED: "bg-destructive/12 text-destructive",
 };

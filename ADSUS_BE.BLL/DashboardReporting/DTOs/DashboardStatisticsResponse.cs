@@ -63,7 +63,6 @@ public class AccountStatistics
     public int NurseCount { get; set; }
     public int PatientCount { get; set; }
     public int ActiveCount { get; set; }
-    public int LockedCount { get; set; }
     public int DeactivatedCount { get; set; }
 
     /// <summary>Số tài khoản mới tạo trong khoảng đang xem.</summary>

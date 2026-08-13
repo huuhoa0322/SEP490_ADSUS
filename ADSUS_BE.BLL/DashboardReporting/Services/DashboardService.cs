@@ -61,7 +61,6 @@ public class DashboardService : IDashboardService
                 NurseCount = accounts.NurseCount,
                 PatientCount = accounts.PatientCount,
                 ActiveCount = accounts.ActiveCount,
-                LockedCount = accounts.LockedCount,
                 DeactivatedCount = accounts.DeactivatedCount,
                 NewInRange = activity.NewAccounts,
                 ActiveRate = Percent(accounts.ActiveCount, accounts.Total),

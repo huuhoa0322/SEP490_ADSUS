@@ -3,6 +3,7 @@ using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -29,7 +30,7 @@ public class ChangePasswordServiceTests
 
     public ChangePasswordServiceTests()
     {
-        _sut = new AuthService(_users.Object, _tokens.Object);
+        _sut = new AuthService(_users.Object, _tokens.Object, new Mock<ILogger<AuthService>>().Object);
     }
 
     [Fact]
@@ -163,7 +164,6 @@ public class ChangePasswordServiceTests
     }
 
     [Theory]
-    [InlineData(UserStatus.Locked)]
     [InlineData(UserStatus.Deactivated)]
     public async Task ChangePasswordAsync_AccountNotActive_IsRejected(UserStatus status)
     {
@@ -179,7 +179,7 @@ public class ChangePasswordServiceTests
     // ---- helpers ----
 
     private void SetupUser(User? user) =>
-        _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _users.Setup(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(user);
 
     private static ChangePasswordRequest Request(string currentPassword) => new()

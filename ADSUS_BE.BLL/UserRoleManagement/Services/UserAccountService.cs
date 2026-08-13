@@ -2,8 +2,10 @@ using System.Globalization;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
+using ADSUS_BE.BLL.UserRoleManagement.Mappers;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 using PagedResult = ADSUS_BE.BLL.UserRoleManagement.DTOs.PagedResult<ADSUS_BE.BLL.UserRoleManagement.DTOs.UserAccountResponse>;
 
 namespace ADSUS_BE.BLL.UserRoleManagement.Services;
@@ -29,11 +31,14 @@ public class UserAccountService : IUserAccountService
 
     private readonly IUserRepository _users;
     private readonly AccountAuditTrail _audit;
+    private readonly ILogger<UserAccountService> _logger;
 
-    public UserAccountService(IUserRepository users, AccountAuditTrail audit)
+    public UserAccountService(
+        IUserRepository users, AccountAuditTrail audit, ILogger<UserAccountService> logger)
     {
         _users = users;
         _audit = audit;
+        _logger = logger;
     }
 
     public async Task<PagedResult> SearchAsync(
@@ -59,7 +64,7 @@ public class UserAccountService : IUserAccountService
 
         return new PagedResult
         {
-            Items = items.Select(u => ToResponse(u, actingAdminId)).ToList(),
+            Items = items.Select(u => UserAccountMapper.ToResponse(u, actingAdminId)).ToList(),
             Page = page,
             PageSize = pageSize,
             TotalCount = total,
@@ -71,8 +76,10 @@ public class UserAccountService : IUserAccountService
         Guid actingAdminId,
         CancellationToken cancellationToken = default)
     {
-        var user = await _users.GetByIdAsync(userId, cancellationToken);
-        return user is null ? null : ToResponse(user, actingAdminId);
+        // Chỉ đọc để đổ vào form sửa (SCR-07), không lưu gì ở đây — dùng bản AsNoTracking
+        // (P11 review Module 2, 12/08/2026).
+        var user = await _users.GetByIdReadOnlyAsync(userId, cancellationToken);
+        return user is null ? null : UserAccountMapper.ToResponse(user, actingAdminId);
     }
 
     public async Task<(AccountOperationResult Result, UserAccountResponse? Account, string? TemporaryPassword)> CreateAsync(
@@ -140,7 +147,11 @@ public class UserAccountService : IUserAccountService
         // (PRD §6.2) — giá trị plaintext chỉ ra khỏi lớp này qua phần tử thứ ba của tuple,
         // đúng một lần. Tài khoản vừa tạo chắc chắn không phải Admin đang thao tác, nên cờ
         // IsCurrentUser luôn là false ở đây.
-        var response = ToResponse(user, Guid.Empty);
+        var response = UserAccountMapper.ToResponse(user, Guid.Empty);
+
+        _logger.LogInformation(
+            "Admin {ActingAdminId} created account {UserId} with role {Role}",
+            actingAdminId, user.UserId, role.Value);
 
         return (AccountOperationResult.Success, response, temporaryPassword);
     }
@@ -157,7 +168,8 @@ public class UserAccountService : IUserAccountService
             return AccountOperationResult.InvalidRole;
         }
 
-        var user = await _users.GetByIdAsync(userId, cancellationToken);
+        // Sửa-rồi-lưu — dùng GetForUpdateAsync (P11 review Module 2, 12/08/2026).
+        var user = await _users.GetForUpdateAsync(userId, cancellationToken);
         if (user is null) return AccountOperationResult.NotFound;
 
         // Vai trò ADMIN bị đóng băng ở CẢ HAI CHIỀU.
@@ -226,34 +238,9 @@ public class UserAccountService : IUserAccountService
 
         await _users.SaveChangesAsync(cancellationToken);
 
-        return AccountOperationResult.Success;
-    }
-
-    public async Task<AccountOperationResult> SetLockedAsync(
-        Guid userId,
-        bool locked,
-        Guid actingAdminId,
-        CancellationToken cancellationToken = default)
-    {
-        if (userId == actingAdminId) return AccountOperationResult.CannotTargetSelf;
-
-        var user = await _users.GetByIdAsync(userId, cancellationToken);
-        if (user is null) return AccountOperationResult.NotFound;
-
-        // BR-05 — đã vô hiệu hoá thì không quay lại được, kể cả sang Locked hay Active.
-        if (user.Status == UserStatus.Deactivated) return AccountOperationResult.AccountIsDeactivated;
-
-        // BR-04 — chuyển Active ⇄ Locked hoàn toàn thủ công, không có job tự mở khoá.
-        user.Status = locked ? UserStatus.Locked : UserStatus.Active;
-        user.UpdatedAt = DateTime.UtcNow;
-
-        await _audit.RecordAsync(
-            actingAdminId,
-            locked ? AccountAuditTrail.LockAccount : AccountAuditTrail.UnlockAccount,
-            user,
-            cancellationToken: cancellationToken);
-
-        await _users.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation(
+            "Admin {ActingAdminId} updated account {UserId} ({Detail})",
+            actingAdminId, user.UserId, doiVaiTro);
 
         return AccountOperationResult.Success;
     }
@@ -265,7 +252,8 @@ public class UserAccountService : IUserAccountService
     {
         if (userId == actingAdminId) return AccountOperationResult.CannotTargetSelf;
 
-        var user = await _users.GetByIdAsync(userId, cancellationToken);
+        // Sửa-rồi-lưu — dùng GetForUpdateAsync (P11 review Module 2, 12/08/2026).
+        var user = await _users.GetForUpdateAsync(userId, cancellationToken);
         if (user is null) return AccountOperationResult.NotFound;
 
         // BR-05 — chỉ đổi trạng thái, TUYỆT ĐỐI không xoá bản ghi. Dữ liệu y tế gắn với tài
@@ -285,27 +273,14 @@ public class UserAccountService : IUserAccountService
 
         await _users.SaveChangesAsync(cancellationToken);
 
+        _logger.LogInformation(
+            "Admin {ActingAdminId} deactivated account {UserId} (was {PreviousStatus})",
+            actingAdminId, user.UserId, trangThaiCu);
+
         return AccountOperationResult.Success;
     }
 
     // ---- helpers ----
-
-    private static UserAccountResponse ToResponse(User user, Guid actingAdminId) => new()
-    {
-        IsCurrentUser = user.UserId == actingAdminId,
-        UserId = user.UserId,
-        PhoneNumber = user.Phone,
-        FullName = user.FullName,
-        Email = user.Email,
-        Role = user.Role.ToApiString(),
-        Status = user.Status.ToApiString(),
-        // BR-01 — không trả ngày sinh của bệnh nhân cho giao diện quản trị.
-        DateOfBirth = user.Role == UserRole.Patient
-            ? null
-            : user.DateOfBirth?.ToString(DateFormat, CultureInfo.InvariantCulture),
-        MustChangePassword = user.MustChangePassword,
-        CreatedAt = user.CreatedAt,
-    };
 
     private static DateOnly? ParseDateOrNull(string? value) =>
         DateOnly.TryParseExact(value, DateFormat, CultureInfo.InvariantCulture,

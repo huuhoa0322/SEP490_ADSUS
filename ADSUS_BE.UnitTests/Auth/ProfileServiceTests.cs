@@ -2,6 +2,7 @@ using ADSUS_BE.BLL.Auth.DTOs;
 using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -21,7 +22,7 @@ public class ProfileServiceTests
 
     public ProfileServiceTests()
     {
-        _sut = new ProfileService(_users.Object);
+        _sut = new ProfileService(_users.Object, new Mock<ILogger<ProfileService>>().Object);
     }
 
     [Fact]
@@ -66,7 +67,6 @@ public class ProfileServiceTests
     }
 
     [Theory]
-    [InlineData(UserStatus.Locked)]
     [InlineData(UserStatus.Deactivated)]
     public async Task GetOwnProfileAsync_AccountNotActive_ReturnsNull(UserStatus status)
     {
@@ -178,7 +178,6 @@ public class ProfileServiceTests
     }
 
     [Theory]
-    [InlineData(UserStatus.Locked)]
     [InlineData(UserStatus.Deactivated)]
     public async Task UpdateOwnProfileAsync_AccountNotActive_Rejected(UserStatus status)
     {
@@ -211,7 +210,6 @@ public class ProfileServiceTests
     }
 
     [Theory]
-    [InlineData(UserStatus.Locked)]
     [InlineData(UserStatus.Deactivated)]
     public async Task SetBiometricEnabledAsync_AccountNotActive_Rejected(UserStatus status)
     {
@@ -227,9 +225,16 @@ public class ProfileServiceTests
 
     // ---- helpers ----
 
-    private void SetupUser(User? user) =>
-        _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+    private void SetupUser(User? user)
+    {
+        // GetOwnProfileAsync đọc qua GetByIdReadOnlyAsync; UpdateOwnProfileAsync/
+        // SetBiometricEnabledAsync sửa-rồi-lưu qua GetForUpdateAsync — set cả hai để test
+        // không cần biết SUT gọi method nào (P11 review Module 1, 12/08/2026).
+        _users.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(user);
+        _users.Setup(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(user);
+    }
 
     private void SetupEmailFree() =>
         _users.Setup(r => r.IsEmailUsedByAnotherUserAsync(

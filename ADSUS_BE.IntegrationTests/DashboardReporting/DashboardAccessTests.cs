@@ -76,7 +76,7 @@ public class DashboardAccessTests
     private WebApplicationFactory<Program> TaoApp()
     {
         _dashboard.Setup(r => r.GetAccountCountsAsync(It.IsAny<CancellationToken>()))
-                  .ReturnsAsync(new AccountCounts(0, 0, 0, 0, 0, 0, 0, 0));
+                  .ReturnsAsync(new AccountCounts(0, 0, 0, 0, 0, 0, 0));
         _dashboard.Setup(r => r.GetActivityCountsAsync(
                       It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(new ActivityCounts(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));

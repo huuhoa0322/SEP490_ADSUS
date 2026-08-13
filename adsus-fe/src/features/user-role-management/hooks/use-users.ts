@@ -8,7 +8,6 @@ import {
   getUserById,
   resetUserPassword,
   searchUsers,
-  setUserLocked,
   updateUser,
 } from "../api/users.api";
 import type {
@@ -62,19 +61,6 @@ export function useUpdateUser(userId: string) {
 
   return useMutation({
     mutationFn: (payload: UpdateUserAccountRequest) => updateUser(userId, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: usersQueryKeys.all });
-    },
-  });
-}
-
-/** FT-08 — khoá / mở khoá. Đổi trạng thái xong phải nạp lại danh sách để thấy nhãn mới. */
-export function useSetUserLocked() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ userId, locked }: { userId: string; locked: boolean }) =>
-      setUserLocked(userId, locked),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: usersQueryKeys.all });
     },

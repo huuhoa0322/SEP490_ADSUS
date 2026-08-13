@@ -3,7 +3,7 @@ using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 namespace ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 
 /// <summary>
-/// UC-04 — Admin quản lý tài khoản đăng nhập (FT-07 tạo, FT-08 khoá/vô hiệu hoá, FT-09 phân quyền).
+/// UC-04 — Admin quản lý tài khoản đăng nhập (FT-07 tạo, FT-08 vô hiệu hoá, FT-09 phân quyền).
 ///
 /// Chỉ đụng tới TÀI KHOẢN ĐĂNG NHẬP, không chạm dữ liệu y tế.
 /// </summary>
@@ -13,8 +13,8 @@ public interface IUserAccountService
     /// SCR-06 — danh sách tài khoản, tìm theo tên/số điện thoại và lọc theo vai trò, trạng thái.
     /// </summary>
     /// <param name="actingAdminId">
-    /// Admin đang xem. Dùng để đánh dấu dòng của chính họ, cho giao diện ẩn nút khoá và vô
-    /// hiệu hoá ở dòng đó.
+    /// Admin đang xem. Dùng để đánh dấu dòng của chính họ, cho giao diện ẩn nút vô hiệu hoá
+    /// ở dòng đó.
     /// </param>
     Task<PagedResult<UserAccountResponse>> SearchAsync(
         string? keyword,
@@ -52,21 +52,7 @@ public interface IUserAccountService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// FT-08 AF-01 — khoá hoặc mở khoá, hoàn toàn thủ công (BR-04).
-    /// Không có job tự mở khoá; đây là đường duy nhất đi từ Locked về Active.
-    /// </summary>
-    /// <param name="actingAdminId">
-    /// Id của Admin đang thao tác. Dùng để chặn tự khoá chính mình — Admin khoá Admin KHÁC
-    /// thì được (quyết định của nhóm 31/07/2026 cho UC-04 AF-04).
-    /// </param>
-    Task<AccountOperationResult> SetLockedAsync(
-        Guid userId,
-        bool locked,
-        Guid actingAdminId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// FT-08 AF-02 — vô hiệu hoá vĩnh viễn. Một chiều, không có đường quay lại (BR-05).
+    /// FT-08 — vô hiệu hoá vĩnh viễn. Một chiều, không có đường quay lại (BR-05).
     /// Không bao giờ xoá cứng bản ghi; dữ liệu liên quan vẫn phải truy cập được.
     /// </summary>
     Task<AccountOperationResult> DeactivateAsync(

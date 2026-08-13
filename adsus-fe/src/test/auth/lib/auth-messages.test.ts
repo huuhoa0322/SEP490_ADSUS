@@ -1,9 +1,9 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { describe, expect, it } from "vitest";
 
-import { WebNotAvailableForRoleError } from "../types/auth.types";
+import { WebNotAvailableForRoleError } from "@/features/auth/types/auth.types";
 
-import { getSignInErrorMessage } from "./auth-messages";
+import { getSignInErrorMessage } from "@/features/auth/lib/auth-messages";
 
 /** Dựng một lỗi axios đúng mã HTTP cần thử. */
 function loiHttp(status: number, message?: string): AxiosError {

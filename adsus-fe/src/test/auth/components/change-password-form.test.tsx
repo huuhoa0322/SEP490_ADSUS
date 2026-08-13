@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAuthStore } from "@/store/auth-store";
 
-import { ChangePasswordForm } from "./change-password-form";
+import { ChangePasswordForm } from "@/features/auth/components/change-password-form";
 
 const { mutate } = vi.hoisted(() => ({ mutate: vi.fn() }));
 
-vi.mock("../hooks/use-change-password", () => ({
+vi.mock("@/features/auth/hooks/use-change-password", () => ({
   useChangePassword: () => ({
     mutate,
     isPending: false,

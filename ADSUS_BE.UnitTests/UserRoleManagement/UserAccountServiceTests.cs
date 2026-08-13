@@ -3,13 +3,14 @@ using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
 namespace ADSUS_BE.UnitTests.UserRoleManagement;
 
 /// <summary>
-/// UC-04 — Admin quản lý tài khoản (FT-07 tạo, FT-08 khoá/vô hiệu hoá, FT-09 phân quyền).
+/// UC-04 — Admin quản lý tài khoản (FT-07 tạo, FT-08 vô hiệu hoá, FT-09 phân quyền).
 ///
 /// Bám theo phần Verification Criteria của UC-04 trong UCS.
 /// </summary>
@@ -44,15 +45,18 @@ public class UserAccountServiceTests
               .Callback<User, CancellationToken>((u, _) => _saved.Add(u))
               .Returns(Task.CompletedTask);
 
-        _sut = new UserAccountService(_users.Object, new AccountAuditTrail(_auditLogs.Object));
+        _sut = new UserAccountService(
+            _users.Object,
+            new AccountAuditTrail(_auditLogs.Object),
+            new Mock<ILogger<UserAccountService>>().Object);
     }
 
     // ---------- FT-07: tạo tài khoản ----------
 
     [Fact]
-    public async Task Tao_BacSi_ThanhCong_TaiKhoanActive_VaBiEpDoiMatKhau()
+    public async Task CreateAsync_ValidDoctorRequest_CreatesActiveAccountAndForcesPasswordChange()
     {
-        var (result, account, _) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
+        var (result, account, _) = await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal("ACTIVE", account!.Status);
@@ -65,11 +69,11 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task Tao_MatKhauTam_DuocBAM_TraVeDungMotLan_KhongNamTrongAccountResponse()
+    public async Task CreateAsync_TemporaryPassword_IsHashedReturnedOnceAndNeverInResponse()
     {
         // Sửa 12/08/2026 — thống nhất với UC-03 AF-02/UC-06 AF-01/AF-03: mật khẩu tạm không
         // còn gửi email, mà trả plaintext MỘT LẦN qua phần tử thứ ba của tuple.
-        var (_, account, temporaryPassword) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
+        var (_, account, temporaryPassword) = await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId);
 
         var user = Assert.Single(_saved);
 
@@ -87,7 +91,7 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task Tao_MatKhauTam_ThoaChinhSachTDS()
+    public async Task TemporaryPasswordGenerator_Generate_AlwaysMeetsPasswordPolicy()
     {
         // TDS §4.3: 8–72 ký tự, ít nhất 1 chữ hoa, ít nhất 1 chữ số.
         // Sinh nhiều lần vì đây là hàm ngẫu nhiên — chạy một lần không chứng minh được gì.
@@ -102,12 +106,12 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task Tao_KhongCoEmail_VanTaoThanhCong_MatKhauVanTraVeTrucTiep()
+    public async Task CreateAsync_NoEmail_StillSucceedsAndReturnsPasswordDirectly()
     {
         // UCS ghi Email là Optional. Từ 12/08/2026, mật khẩu tạm không còn phụ thuộc email —
         // luôn trả về trực tiếp cho Admin đọc, nên việc có/không khai email không còn ảnh
         // hưởng gì tới việc tài khoản đăng nhập được hay không.
-        var request = YeuCauTao("DOCTOR");
+        var request = BuildCreateRequest("DOCTOR");
         request.Email = null;
 
         var (result, account, temporaryPassword) = await _sut.CreateAsync(request, _adminId);
@@ -119,13 +123,13 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task Tao_SoDienThoaiDaTonTai_BiTuChoi()
+    public async Task CreateAsync_PhoneAlreadyExists_IsRejected()
     {
         // AF-03 / BR-02 — số điện thoại là định danh đăng nhập duy nhất.
         _users.Setup(r => r.PhoneExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(true);
 
-        var (result, account, temporaryPassword) = await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
+        var (result, account, temporaryPassword) = await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId);
 
         Assert.Equal(AccountOperationResult.PhoneAlreadyUsed, result);
         Assert.Null(account);
@@ -137,10 +141,10 @@ public class UserAccountServiceTests
     [InlineData("ADMIN")]
     [InlineData("")]
     [InlineData("SUPERUSER")]
-    public async Task Tao_VaiTroKhongHopLe_BiTuChoi(string vaiTro)
+    public async Task CreateAsync_InvalidRole_IsRejected(string vaiTro)
     {
         // UC-04: tài khoản ADMIN được cấp lúc dựng hệ thống, KHÔNG tạo qua màn này.
-        var (result, _, _) = await _sut.CreateAsync(YeuCauTao(vaiTro), _adminId);
+        var (result, _, _) = await _sut.CreateAsync(BuildCreateRequest(vaiTro), _adminId);
 
         Assert.Equal(AccountOperationResult.InvalidRole, result);
         Assert.Empty(_saved);
@@ -149,11 +153,11 @@ public class UserAccountServiceTests
     // ---------- BR-01: ngày sinh của bệnh nhân ----------
 
     [Fact]
-    public async Task Tao_BenhNhan_NgaySinh_BI_BO_QUA_DuClientCoGuiLen()
+    public async Task CreateAsync_PatientRole_DateOfBirthIsIgnoredEvenIfSent()
     {
         // BR-01 — ngày sinh là dữ liệu y tế, Admin không được chạm. Ẩn ở giao diện là chưa
         // đủ vì gọi thẳng API vẫn gửi lên được, nên tầng nghiệp vụ phải tự loại bỏ.
-        var request = YeuCauTao("PATIENT");
+        var request = BuildCreateRequest("PATIENT");
         request.DateOfBirth = "1990-05-20";
 
         var (result, account, _) = await _sut.CreateAsync(request, _adminId);
@@ -164,10 +168,10 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task Tao_BacSi_NgaySinh_DUOC_LUU()
+    public async Task CreateAsync_DoctorRole_DateOfBirthIsSaved()
     {
         // BR-01 chỉ áp cho PATIENT. Bác sĩ và điều dưỡng vẫn khai ngày sinh bình thường.
-        var request = YeuCauTao("DOCTOR");
+        var request = BuildCreateRequest("DOCTOR");
         request.DateOfBirth = "1985-03-10";
 
         var (_, account, _) = await _sut.CreateAsync(request, _adminId);
@@ -177,11 +181,11 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task LayTheoId_BenhNhan_KHONG_TraVeNgaySinh()
+    public async Task GetByIdAsync_PatientAccount_DoesNotReturnDateOfBirth()
     {
         // Kể cả khi trong DB có sẵn ngày sinh (do dữ liệu cũ, hoặc do vai trò vừa bị đổi),
         // giao diện quản trị vẫn không được thấy.
-        var user = TaoUserTrongDb(UserRole.Patient);
+        var user = BuildDbUser(UserRole.Patient);
         user.DateOfBirth = new DateOnly(1990, 5, 20);
         SetupGetById(user);
 
@@ -191,11 +195,11 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task LayTheoId_DanhDau_Dung_Dong_Cua_Chinh_Admin()
+    public async Task GetByIdAsync_ActingAdminIsTarget_FlagsIsCurrentUserCorrectly()
     {
         // Để giao diện ẩn nút khoá và vô hiệu hoá trên dòng của chính người đang đăng nhập —
         // backend vốn đã chặn (AF-04), bày ra nút chắc chắn báo lỗi chỉ làm người dùng bối rối.
-        var user = TaoUserTrongDb(UserRole.Admin);
+        var user = BuildDbUser(UserRole.Admin);
         SetupGetById(user);
 
         var chinhMinh = await _sut.GetByIdAsync(user.UserId, user.UserId);
@@ -205,39 +209,13 @@ public class UserAccountServiceTests
         Assert.False(nguoiKhac!.IsCurrentUser);
     }
 
-    // ---------- FT-08: khoá / mở khoá / vô hiệu hoá ----------
+    // ---------- FT-08: vô hiệu hoá ----------
 
     [Fact]
-    public async Task Khoa_TaiKhoanDangHoatDong_ChuyenSangLocked()
-    {
-        var user = TaoUserTrongDb(UserRole.Doctor);
-        SetupGetById(user);
-
-        var result = await _sut.SetLockedAsync(user.UserId, locked: true, Guid.NewGuid());
-
-        Assert.Equal(AccountOperationResult.Success, result);
-        Assert.Equal(UserStatus.Locked, user.Status);
-    }
-
-    [Fact]
-    public async Task MoKhoa_TaiKhoanBiKhoa_QuayLaiActive()
-    {
-        // BR-04 — đây là đường DUY NHẤT từ Locked về Active, và phải do Admin bấm tay.
-        var user = TaoUserTrongDb(UserRole.Doctor);
-        user.Status = UserStatus.Locked;
-        SetupGetById(user);
-
-        var result = await _sut.SetLockedAsync(user.UserId, locked: false, Guid.NewGuid());
-
-        Assert.Equal(AccountOperationResult.Success, result);
-        Assert.Equal(UserStatus.Active, user.Status);
-    }
-
-    [Fact]
-    public async Task VoHieuHoa_ChuyenSangDeactivated_VaKHONG_XOA_BanGhi()
+    public async Task DeactivateAsync_ActiveAccount_TransitionsToDeactivatedWithoutDeletingRow()
     {
         // BR-05 — không bao giờ xoá cứng; dữ liệu liên quan phải còn truy cập được.
-        var user = TaoUserTrongDb(UserRole.Patient);
+        var user = BuildDbUser(UserRole.Patient);
         SetupGetById(user);
 
         var result = await _sut.DeactivateAsync(user.UserId, Guid.NewGuid());
@@ -248,37 +226,11 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task VoHieuHoaRoi_KhongMoKhoaLaiDuoc()
-    {
-        // BR-05 — Deactivated là trạng thái cuối, PRD không định nghĩa đường kích hoạt lại.
-        var user = TaoUserTrongDb(UserRole.Doctor);
-        user.Status = UserStatus.Deactivated;
-        SetupGetById(user);
-
-        var result = await _sut.SetLockedAsync(user.UserId, locked: false, Guid.NewGuid());
-
-        Assert.Equal(AccountOperationResult.AccountIsDeactivated, result);
-        Assert.Equal(UserStatus.Deactivated, user.Status);
-    }
-
-    [Fact]
-    public async Task Admin_KhongTuKhoaChinhMinh()
-    {
-        // UC-04 AF-04 để ngỏ trường hợp này. Cho phép thì Admin tự nhốt mình ra ngoài hệ
-        // thống và không còn ai mở ra được.
-        var adminId = Guid.NewGuid();
-
-        var result = await _sut.SetLockedAsync(adminId, locked: true, adminId);
-
-        Assert.Equal(AccountOperationResult.CannotTargetSelf, result);
-    }
-
-    [Fact]
-    public async Task Admin_VO_HIEU_HOA_DUOC_Admin_KHAC()
+    public async Task DeactivateAsync_TargetIsDifferentAdmin_Succeeds()
     {
         // UC-04 AF-04 — nhóm chốt ngày 31/07/2026: Admin được vô hiệu hoá Admin khác.
         // Chỉ cấm thao tác lên chính mình.
-        var adminKhac = TaoUserTrongDb(UserRole.Admin);
+        var adminKhac = BuildDbUser(UserRole.Admin);
         SetupGetById(adminKhac);
 
         var result = await _sut.DeactivateAsync(adminKhac.UserId, Guid.NewGuid());
@@ -288,19 +240,7 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task Admin_KHOA_DUOC_Admin_KHAC()
-    {
-        var adminKhac = TaoUserTrongDb(UserRole.Admin);
-        SetupGetById(adminKhac);
-
-        var result = await _sut.SetLockedAsync(adminKhac.UserId, locked: true, Guid.NewGuid());
-
-        Assert.Equal(AccountOperationResult.Success, result);
-        Assert.Equal(UserStatus.Locked, adminKhac.Status);
-    }
-
-    [Fact]
-    public async Task Admin_KhongTuVoHieuHoaChinhMinh()
+    public async Task DeactivateAsync_TargetIsSelf_ReturnsCannotTargetSelf()
     {
         var adminId = Guid.NewGuid();
 
@@ -310,11 +250,11 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task Khoa_TaiKhoanKhongTonTai_TraVeNotFound()
+    public async Task DeactivateAsync_AccountNotFound_ReturnsNotFound()
     {
         SetupGetById(null);
 
-        var result = await _sut.SetLockedAsync(Guid.NewGuid(), locked: true, Guid.NewGuid());
+        var result = await _sut.DeactivateAsync(Guid.NewGuid(), Guid.NewGuid());
 
         Assert.Equal(AccountOperationResult.NotFound, result);
     }
@@ -322,9 +262,9 @@ public class UserAccountServiceTests
     // ---------- FT-09: phân quyền ----------
 
     [Fact]
-    public async Task PhanQuyen_DoiVaiTroSangDieuDuong()
+    public async Task UpdateAsync_ChangeRoleToNurse_Succeeds()
     {
-        var user = TaoUserTrongDb(UserRole.Doctor);
+        var user = BuildDbUser(UserRole.Doctor);
         SetupGetById(user);
 
         var result = await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
@@ -338,11 +278,12 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task PhanQuyen_KHONG_DOI_SoDienThoaiVaTrangThai()
+    public async Task UpdateAsync_NeverChangesPhoneOrStatus()
     {
-        // BR-02 — số điện thoại là định danh đăng nhập. Trạng thái đi qua endpoint riêng.
-        var user = TaoUserTrongDb(UserRole.Doctor);
-        user.Status = UserStatus.Locked;
+        // BR-02 — số điện thoại là định danh đăng nhập. Trạng thái đi qua endpoint riêng
+        // (Deactivate) — UpdateAsync không được phép chạm vào.
+        var user = BuildDbUser(UserRole.Doctor);
+        user.Status = UserStatus.Deactivated;
         var soCu = user.Phone;
         SetupGetById(user);
 
@@ -353,15 +294,15 @@ public class UserAccountServiceTests
         }, _adminId);
 
         Assert.Equal(soCu, user.Phone);
-        Assert.Equal(UserStatus.Locked, user.Status);
+        Assert.Equal(UserStatus.Deactivated, user.Status);
     }
 
     [Fact]
-    public async Task PhanQuyen_DoiSangBenhNhan_GIU_NGUYEN_NgaySinh_NhungKHONG_TRA_VE()
+    public async Task UpdateAsync_ChangeRoleToPatient_PreservesDateOfBirthButHidesItOnRead()
     {
         // BR-01 nói Admin không được THẤY ngày sinh bệnh nhân — không nói phải XOÁ nó.
         // Hai việc khác nhau, và trước đây code làm nhầm sang việc thứ hai.
-        var user = TaoUserTrongDb(UserRole.Doctor);
+        var user = BuildDbUser(UserRole.Doctor);
         user.DateOfBirth = new DateOnly(1985, 3, 10);
         SetupGetById(user);
 
@@ -381,13 +322,13 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task PhanQuyen_SuaTenBenhNhan_KHONG_DUOC_XOA_NGAY_SINH_DIEU_DUONG_DA_NHAP()
+    public async Task UpdateAsync_EditingPatientName_NeverWipesDateOfBirthEnteredByNurse()
     {
         // Lỗi thật, xuất hiện khi UC-06 (Điều dưỡng tạo hồ sơ bệnh nhân) bắt đầu ghi ngày
         // sinh: Admin chỉ vào sửa lại cái tên cho đúng chính tả, mà ngày sinh Điều dưỡng vừa
         // nhập bị xoá sạch. Admin không nhìn thấy ô đó nên không hề biết mình vừa xoá gì, và
         // cũng không ai khôi phục lại được.
-        var user = TaoUserTrongDb(UserRole.Patient);
+        var user = BuildDbUser(UserRole.Patient);
         user.DateOfBirth = new DateOnly(1992, 7, 15);
         SetupGetById(user);
 
@@ -407,13 +348,13 @@ public class UserAccountServiceTests
     [InlineData("DOCTOR")]
     [InlineData("NURSE")]
     [InlineData("PATIENT")]
-    public async Task PhanQuyen_KHONG_DUOC_HA_QUYEN_ADMIN(string vaiTroMoi)
+    public async Task UpdateAsync_CannotDemoteAdminRole(string vaiTroMoi)
     {
         // Lỗ nguy hiểm nhất của màn này trước khi vá: ô vai trò trên form chỉ có Bác sĩ,
         // Điều dưỡng, Bệnh nhân. Mở một tài khoản Admin ra sửa thì ô đó rơi về giá trị đầu
         // danh sách, chỉ cần bấm Lưu để đổi cái tên là mất luôn quyền quản trị — không cảnh
         // báo, không hoàn tác được. Mất Admin cuối cùng là không còn ai tạo lại được nữa.
-        var user = TaoUserTrongDb(UserRole.Admin);
+        var user = BuildDbUser(UserRole.Admin);
         SetupGetById(user);
 
         var result = await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
@@ -428,11 +369,11 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task PhanQuyen_KHONG_DUOC_PHONG_ADMIN_QuaManNay()
+    public async Task UpdateAsync_CannotPromoteAccountToAdmin()
     {
         // Chiều ngược lại. UC-04 ghi "Admin accounts are not created on this screen" —
         // không cho tạo thì cũng không được đi cửa sau bằng cách sửa vai trò.
-        var user = TaoUserTrongDb(UserRole.Doctor);
+        var user = BuildDbUser(UserRole.Doctor);
         SetupGetById(user);
 
         var result = await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
@@ -446,11 +387,11 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task PhanQuyen_ADMIN_VAN_SUA_DUOC_TEN_VA_EMAIL()
+    public async Task UpdateAsync_AdminAccount_NameAndEmailStillEditable()
     {
         // Khoá vai trò nhưng không được khoá luôn cả form: sửa tên hay email của tài khoản
         // Admin vẫn phải chạy, miễn là vai trò giữ nguyên ADMIN.
-        var user = TaoUserTrongDb(UserRole.Admin);
+        var user = BuildDbUser(UserRole.Admin);
         SetupGetById(user);
 
         var result = await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
@@ -469,9 +410,9 @@ public class UserAccountServiceTests
     // ---------- Nhật ký thao tác ----------
 
     [Fact]
-    public async Task Tao_GHI_NHAT_KY_VaGhiDungNguoiThucHien()
+    public async Task CreateAsync_RecordsAuditLogWithCorrectActor()
     {
-        await _sut.CreateAsync(YeuCauTao("DOCTOR"), _adminId);
+        await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId);
 
         var log = Assert.Single(_audited);
         Assert.Equal("CREATE_ACCOUNT", log.Action);
@@ -484,39 +425,25 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task Khoa_VaMoKhoa_GHI_HAI_HANH_DONG_KHAC_NHAU()
-    {
-        var user = TaoUserTrongDb(UserRole.Doctor);
-        SetupGetById(user);
-
-        await _sut.SetLockedAsync(user.UserId, locked: true, _adminId);
-        await _sut.SetLockedAsync(user.UserId, locked: false, _adminId);
-
-        Assert.Equal(2, _audited.Count);
-        Assert.Equal("LOCK_ACCOUNT", _audited[0].Action);
-        Assert.Equal("UNLOCK_ACCOUNT", _audited[1].Action);
-    }
-
-    [Fact]
-    public async Task VoHieuHoa_GHI_NHAT_KY_KemTrangThaiTruocDo()
+    public async Task DeactivateAsync_RecordsAuditLogWithPriorStatus()
     {
         // Thao tác một chiều, không hoàn tác được (BR-05) — nhật ký là thứ duy nhất còn lại
         // để biết tài khoản đó trước khi bị vô hiệu hoá đang ở trạng thái nào.
-        var user = TaoUserTrongDb(UserRole.Doctor);
-        user.Status = UserStatus.Locked;
+        var user = BuildDbUser(UserRole.Doctor);
+        user.Status = UserStatus.Active;
         SetupGetById(user);
 
         await _sut.DeactivateAsync(user.UserId, _adminId);
 
         var log = Assert.Single(_audited);
         Assert.Equal("DEACTIVATE_ACCOUNT", log.Action);
-        Assert.Contains("LOCKED", log.Detail);
+        Assert.Contains("ACTIVE", log.Detail);
     }
 
     [Fact]
-    public async Task PhanQuyen_NHAT_KY_GHI_RO_DOI_TU_VAI_TRO_NAO_SANG_VAI_TRO_NAO()
+    public async Task UpdateAsync_AuditLogRecordsRoleBeforeAndAfter()
     {
-        var user = TaoUserTrongDb(UserRole.Doctor);
+        var user = BuildDbUser(UserRole.Doctor);
         SetupGetById(user);
 
         await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
@@ -532,11 +459,11 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task ThaoTacBiTuChoi_KHONG_DUOC_GHI_NHAT_KY()
+    public async Task RejectedOperations_AreNeverWrittenToAuditLog()
     {
         // Nhật ký chỉ ghi việc ĐÃ XẢY RA. Ghi cả những lần bị từ chối thì đọc lại sẽ tưởng
-        // tài khoản đã bị khoá thật, trong khi thực tế không có gì thay đổi.
-        var user = TaoUserTrongDb(UserRole.Admin);
+        // tài khoản đã bị thay đổi thật, trong khi thực tế không có gì xảy ra.
+        var user = BuildDbUser(UserRole.Admin);
         SetupGetById(user);
 
         await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
@@ -545,17 +472,17 @@ public class UserAccountServiceTests
             Role = "DOCTOR",
         }, _adminId);
 
-        await _sut.SetLockedAsync(_adminId, locked: true, _adminId);
+        await _sut.DeactivateAsync(_adminId, _adminId);
 
         Assert.Empty(_audited);
     }
 
     [Fact]
-    public async Task NhatKy_KHONG_DUOC_CHUA_NGAY_SINH()
+    public async Task CreateAsync_AuditLogNeverContainsDateOfBirth()
     {
         // BR-01 — Admin không được xem ngày sinh của bệnh nhân. Chặn ở API rồi mà để rò qua
         // nhật ký thì cũng như không chặn.
-        var request = YeuCauTao("DOCTOR");
+        var request = BuildCreateRequest("DOCTOR");
         request.DateOfBirth = "1985-03-10";
 
         await _sut.CreateAsync(request, _adminId);
@@ -566,7 +493,7 @@ public class UserAccountServiceTests
 
     // ---------- helpers ----------
 
-    private static CreateUserAccountRequest YeuCauTao(string vaiTro) => new()
+    private static CreateUserAccountRequest BuildCreateRequest(string vaiTro) => new()
     {
         PhoneNumber = "0988776655",
         FullName = "BS. Trần Văn B",
@@ -574,7 +501,7 @@ public class UserAccountServiceTests
         Email = "bs.b@example.com",
     };
 
-    private static User TaoUserTrongDb(UserRole vaiTro) => new()
+    private static User BuildDbUser(UserRole vaiTro) => new()
     {
         UserId = Guid.NewGuid(),
         Phone = "0912345678",
@@ -584,7 +511,14 @@ public class UserAccountServiceTests
         Status = UserStatus.Active,
     };
 
-    private void SetupGetById(User? user) =>
-        _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+    private void SetupGetById(User? user)
+    {
+        // GetByIdAsync (service) đọc qua GetByIdReadOnlyAsync; Update/SetLocked/Deactivate
+        // sửa-rồi-lưu qua GetForUpdateAsync — set cả hai để test không cần biết SUT gọi
+        // method nào (P11 review Module 2, 12/08/2026).
+        _users.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(user);
+        _users.Setup(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(user);
+    }
 }

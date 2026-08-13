@@ -78,7 +78,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("slot_status", new[] { "OPEN", "CLOSED" })
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
             .HasPostgresEnum("user_role", new[] { "ADMIN", "DOCTOR", "PATIENT", "NURSE" })
-            .HasPostgresEnum("user_status", new[] { "ACTIVE", "LOCKED", "DEACTIVATED" })
+            .HasPostgresEnum("user_status", new[] { "ACTIVE", "DEACTIVATED" })
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
             .HasPostgresExtension("extensions", "uuid-ossp")
