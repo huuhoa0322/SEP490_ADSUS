@@ -400,7 +400,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
     svg.id = 'editSVG';
 
     const MARKER_SIZE = 5;
-    const STROKE_W    = 1.5;
+    const STROKE_W    = 2.5;
     const RING_R      = 7;
     const HIT_R       = 18;
 
@@ -415,7 +415,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
       const line = svgEl('line', {
         x1: pair[0].x, y1: pair[0].y, x2: pair[1].x, y2: pair[1].y,
         stroke: '#00ff00', 'stroke-width': STROKE_W,
-        'stroke-dasharray': '8 6', class: 'caliper-line',
+        'stroke-dasharray': '14 10', class: 'caliper-line',
       });
       svg.appendChild(line);
 
@@ -616,10 +616,28 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
 
     // Draw calipers
     ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 2.0;
-    ctx.setLineDash([8, 6]);
+    ctx.lineWidth = 2.5;
+    
+    const MARKER_SIZE = 5;
+    const drawMarker = (c: CanvasRenderingContext2D, pt: {x: number, y: number}, shape: '+' | 'x') => {
+      c.beginPath();
+      if (shape === '+') {
+        c.moveTo(pt.x - MARKER_SIZE, pt.y);
+        c.lineTo(pt.x + MARKER_SIZE, pt.y);
+        c.moveTo(pt.x, pt.y - MARKER_SIZE);
+        c.lineTo(pt.x, pt.y + MARKER_SIZE);
+      } else {
+        c.moveTo(pt.x - MARKER_SIZE, pt.y - MARKER_SIZE);
+        c.lineTo(pt.x + MARKER_SIZE, pt.y + MARKER_SIZE);
+        c.moveTo(pt.x - MARKER_SIZE, pt.y + MARKER_SIZE);
+        c.lineTo(pt.x + MARKER_SIZE, pt.y - MARKER_SIZE);
+      }
+      c.stroke();
+    };
 
     lesions.filter(l => !l.rejected).forEach(l => {
+      // Draw lines (dashed)
+      ctx.setLineDash([14, 10]);
       ctx.beginPath();
       ctx.moveTo(l.pair_a[0].x, l.pair_a[0].y);
       ctx.lineTo(l.pair_a[1].x, l.pair_a[1].y);
@@ -629,6 +647,13 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
       ctx.moveTo(l.pair_b[0].x, l.pair_b[0].y);
       ctx.lineTo(l.pair_b[1].x, l.pair_b[1].y);
       ctx.stroke();
+
+      // Draw markers (solid)
+      ctx.setLineDash([]);
+      drawMarker(ctx, l.pair_a[0], '+');
+      drawMarker(ctx, l.pair_a[1], '+');
+      drawMarker(ctx, l.pair_b[0], 'x');
+      drawMarker(ctx, l.pair_b[1], 'x');
     });
 
     const blob = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/jpeg', 0.95));
@@ -729,8 +754,16 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
             Chạy AI
           </button>
           
-          <span className="font-mono text-[11px] text-muted-foreground">
-            {aiDetections.length ? `${aiDetections.length} vùng` : '—'}
+          <span 
+            className={`text-[13px] font-bold uppercase tracking-wide ${
+              sessionId 
+                ? (aiDetections.length > 0 ? 'text-red-500' : 'text-green-500') 
+                : 'text-amber-500'
+            }`}
+          >
+            {sessionId 
+              ? (aiDetections.length > 0 ? `Có ${aiDetections.length} vùng abnormal` : 'Không có vùng abnormal')
+              : (isAnalyzing ? 'Đang phân tích...' : 'Chưa phân tích')}
           </span>
           
           <div className="ml-auto flex items-center gap-1">

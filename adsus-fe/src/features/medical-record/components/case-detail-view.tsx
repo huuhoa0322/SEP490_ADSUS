@@ -311,10 +311,10 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                   type="button"
                   onClick={handleAddImages}
                   disabled={pendingImages.length === 0}
-                  className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  className="rounded-xl bg-blue-600 px-6 py-3 text-base font-bold uppercase tracking-wide text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl disabled:opacity-50"
                 >
                   {/* eslint-disable-next-line react/jsx-curly-brace-presence */}
-                  Chẩn đoán AI
+                  Xem kết quả AI
                 </button>
               </div>
             </div>
