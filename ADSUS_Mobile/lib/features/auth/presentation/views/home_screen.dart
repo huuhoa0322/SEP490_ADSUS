@@ -5,6 +5,10 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../medication_reminder/presentation/viewmodels/intake_view_model.dart';
 import '../../../medication_reminder/presentation/widgets/adherence_pill_badge.dart';
+import '../../../appointment_scheduling/presentation/views/book_appointment_screen.dart';
+import '../../../appointment_scheduling/presentation/views/my_appointments_screen.dart';
+import '../../../medication_reminder/presentation/views/medication_reminder_screen.dart';
+import '../viewmodels/auth_view_model.dart';
 import 'profile_screen.dart';
 
 /// Màn hình Trang chủ của bệnh nhân sau khi đăng nhập.
@@ -123,6 +127,34 @@ class HomeScreen extends ConsumerWidget {
                     stub: true,
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+
+              // UC-13 — Đặt lịch hẹn.
+              _QuickActionCard(
+                icon: Icons.calendar_today,
+                title: 'Đặt lịch hẹn',
+                subtitle: 'Chọn bác sĩ và khung giờ khám',
+                color: AppColors.primary,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const BookAppointmentScreen(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // UC-14 — Lịch hẹn của tôi.
+              _QuickActionCard(
+                icon: Icons.event_note,
+                title: 'Lịch hẹn của tôi',
+                subtitle: 'Xem và huỷ lịch hẹn đã đặt',
+                color: AppColors.accent,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const MyAppointmentsScreen(),
+                  ),
+                ),
               ),
             ],
           ),
