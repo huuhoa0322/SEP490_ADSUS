@@ -40,7 +40,7 @@ public sealed class CaseRepository : ICaseRepository
 
     public async Task<(IReadOnlyList<Case> Items, int TotalCount)> SearchByPatientAsync(
         Guid patientProfileId,
-        CaseStatus? status,
+        IReadOnlyCollection<CaseStatus>? statuses,
         string sortOrder,
         int page,
         int pageSize,
@@ -50,9 +50,9 @@ public sealed class CaseRepository : ICaseRepository
             .AsNoTracking()
             .Where(c => c.PatientProfileId == patientProfileId);
 
-        if (status.HasValue)
+        if (statuses is { Count: > 0 })
         {
-            query = query.Where(c => c.Status == status.Value);
+            query = query.Where(c => statuses.Contains(c.Status));
         }
 
         var total = await query.CountAsync(ct);

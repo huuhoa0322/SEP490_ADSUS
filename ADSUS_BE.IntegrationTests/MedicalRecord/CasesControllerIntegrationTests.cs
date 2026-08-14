@@ -160,7 +160,10 @@ public class CasesControllerIntegrationTests
         _profiles.Setup(r => r.GetByUserIdAsync(_patientUser.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
         _cases.Setup(r => r.SearchByPatientAsync(
-                  profile.PatientProfileId, CaseStatus.Confirmed, "desc", 1, 20, It.IsAny<CancellationToken>()))
+                  profile.PatientProfileId,
+                  It.Is<IReadOnlyCollection<CaseStatus>>(s =>
+                      s.SequenceEqual(new[] { CaseStatus.Confirmed, CaseStatus.End })),
+                  "desc", 1, 20, It.IsAny<CancellationToken>()))
               .ReturnsAsync((new List<Case>(), 0));
 
         // Act
@@ -169,7 +172,10 @@ public class CasesControllerIntegrationTests
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         _cases.Verify(r => r.SearchByPatientAsync(
-            profile.PatientProfileId, CaseStatus.Confirmed, "desc", 1, 20, It.IsAny<CancellationToken>()), Times.Once);
+            profile.PatientProfileId,
+            It.Is<IReadOnlyCollection<CaseStatus>>(s =>
+                s.SequenceEqual(new[] { CaseStatus.Confirmed, CaseStatus.End })),
+            "desc", 1, 20, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

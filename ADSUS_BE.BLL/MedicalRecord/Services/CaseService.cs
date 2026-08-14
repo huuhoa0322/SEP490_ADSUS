@@ -109,7 +109,9 @@ public sealed class CaseService : ICaseService
         }
 
         var (items, total) = await _cases.SearchByPatientAsync(
-            patientProfileId, statusFilter, sortOrder, page, pageSize, ct);
+            patientProfileId,
+            statusFilter.HasValue ? new[] { statusFilter.Value } : null,
+            sortOrder, page, pageSize, ct);
 
         return ToPagedResult(items, page, pageSize, total, CaseMapper.ToStaffSummary);
     }
@@ -123,10 +125,16 @@ public sealed class CaseService : ICaseService
         var profile = await _profiles.GetByUserIdAsync(callerUserId, ct)
             ?? throw new ResourceNotFoundException("You do not have a patient profile yet.");
 
-        // CONFIRMED ép cứng ở đây, KHÔNG nhận từ client. Để client chọn trạng thái là mở
-        // đường cho bệnh nhân đọc kết quả AI chưa được bác sĩ duyệt (GB-05).
+        // CONFIRMED + END ép cứng ở đây, KHÔNG nhận từ client. Để client chọn trạng thái là mở
+        // đường cho bệnh nhân đọc kết quả AI chưa được bác sĩ duyệt (GB-05). END là Confirmed
+        // đã được kê đơn thuốc (vẫn là trạng thái "đã duyệt" — patient phải tiếp tục thấy ca
+        // này trong danh sách của mình, không phải mất tích chỉ vì đã có đơn thuốc kèm theo.
+        // Sửa 14/08/2026 — trước đó chỉ lọc Confirmed, khiến ca biến mất khỏi GET /cases/me
+        // ngay khi bác sĩ kê đơn, dù vẫn xem được qua GET /cases/{id} — bất nhất giữa 2 API).
         var (items, total) = await _cases.SearchByPatientAsync(
-            profile.PatientProfileId, CaseStatus.Confirmed, "desc", page, pageSize, ct);
+            profile.PatientProfileId,
+            new[] { CaseStatus.Confirmed, CaseStatus.End },
+            "desc", page, pageSize, ct);
 
         return ToPagedResult(items, page, pageSize, total, CaseMapper.ToSummary);
     }
