@@ -400,8 +400,8 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_DATE")
                 .HasColumnName("log_date");
             entity.Property(e => e.LogType)
-                .HasConversion<int>()
-                .HasColumnName("log_type");
+                .HasColumnName("log_type")
+                .HasColumnType("health_log_type");
             entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
 
             entity.HasOne(d => d.PatientProfile).WithMany(p => p.HealthLogs)

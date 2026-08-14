@@ -5,6 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../appointment_scheduling/presentation/views/book_appointment_screen.dart';
 import '../../../appointment_scheduling/presentation/views/my_appointments_screen.dart';
+import '../../../health_log/presentation/views/health_log_screen.dart';
 import '../../../medication_reminder/presentation/viewmodels/intake_view_model.dart';
 import '../../../medication_reminder/presentation/widgets/adherence_pill_badge.dart';
 import '../viewmodels/auth_view_model.dart';
@@ -100,10 +101,15 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               _ShortcutGrid(
                 shortcuts: [
-                  const _ShortcutItem(
+                  _ShortcutItem(
                     icon: Icons.book_outlined,
                     label: 'Nhật ký sức khoẻ',
-                    stub: true,
+                    stub: false,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const HealthLogScreen(),
+                      ),
+                    ),
                   ),
                   _ShortcutItem(
                     icon: Icons.calendar_today_outlined,

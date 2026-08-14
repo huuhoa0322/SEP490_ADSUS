@@ -130,3 +130,9 @@ public enum ReminderSlot
     [PgName("NOON")] Noon,
     [PgName("EVENING")] Evening,
 }
+
+public enum HealthLogType
+{
+    [PgName("EXERCISE")] Exercise,
+    [PgName("DIET")] Diet,
+}
