@@ -5,6 +5,8 @@ import '../../../../shared/providers/app_providers.dart';
 import '../../data/repositories/biometric_service.dart';
 import '../../domain/entities/auth_session.dart';
 import '../../../medication_reminder/presentation/viewmodels/intake_view_model.dart';
+import '../../../medical_record/presentation/viewmodels/medical_record_detail_viewmodel.dart';
+import '../../../medical_record/presentation/viewmodels/medical_record_list_viewmodel.dart';
 import '../../../../shared/reminder_preference_store.dart';
 import 'profile_view_model.dart';
 
@@ -184,6 +186,9 @@ class AuthViewModel extends StateNotifier<AuthState> {
     _ref.invalidate(profileViewModelProvider);
     _ref.invalidate(intakeLogsProvider);
     _ref.invalidate(reminderPreferenceProvider);
+    // Hồ sơ khám (Module 04) cũng phải bị vứt — cùng lý do intakeLogsProvider ở dưới.
+    _ref.invalidate(medicalRecordListViewModelProvider);
+    _ref.invalidate(medicalRecordDetailViewModelProvider);
 
     if (!mounted) return;
     state = const AuthState(
@@ -203,6 +208,13 @@ class AuthViewModel extends StateNotifier<AuthState> {
     // đây đảm bảo user mới luôn nhận đúng dữ liệu riêng, không phải cache user trước.
     _ref.invalidate(intakeLogsProvider);
     _ref.invalidate(reminderPreferenceProvider);
+    // Hồ sơ khám (Module 04, SCR-13/SCR-14) — cùng lý do: cả 2 ViewModel đều là
+    // NotifierProvider trơn (không .autoDispose), state sống hết vòng đời app. Phát hiện
+    // 14/08/2026 qua smoke test thật: đăng nhập tài khoản B rồi vào "Lịch sử khám" vẫn thấy
+    // dữ liệu của tài khoản A cho tới khi pull-to-refresh — patient B thoáng thấy dữ liệu y
+    // tế của patient A, vi phạm tinh thần GB-05 dù chỉ là dữ liệu của A chứ không phải AI thô.
+    _ref.invalidate(medicalRecordListViewModelProvider);
+    _ref.invalidate(medicalRecordDetailViewModelProvider);
 
     state = const AuthState();
     await _loadBiometricStatus();
