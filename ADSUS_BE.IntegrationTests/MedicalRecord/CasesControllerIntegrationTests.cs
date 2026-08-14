@@ -358,7 +358,7 @@ public class CasesControllerIntegrationTests
     {
         // Pipeline xác thực gọi IUserRepository.GetByIdAsync(callerId) để kiểm tra tài khoản
         // chưa bị khoá (AccountStatusJwtEvents) — PHẢI mock caller ở đây (bài học từ Task 10).
-        _users.Setup(r => r.GetByIdAsync(caller.UserId, It.IsAny<CancellationToken>()))
+        _users.Setup(r => r.GetByIdReadOnlyAsync(caller.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(caller);
 
         using var scope = app.Services.CreateScope();
@@ -600,6 +600,27 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
+    public async Task GetCaseReport_EndCase_Returns200WithPdfContentType()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.End);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}/report");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/pdf", response.Content.Headers.ContentType!.MediaType);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
+    }
+
+    [Fact]
     public async Task GetCaseReport_CaseNotYetConfirmed_Returns422WithJsonEnvelope()
     {
         // Arrange — AF-01: nhánh lỗi vẫn dùng khuôn JSON như mọi endpoint khác.
@@ -775,7 +796,7 @@ public class CasesControllerIntegrationTests
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
-        Assert.Equal("ANALYZED", body!.Data!.Status);
+        Assert.Equal("END", body!.Data!.Status);
         Assert.Equal("Nhân xơ tử cung", body.Data.FinalDiagnosis);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -852,16 +873,6 @@ public class CasesControllerIntegrationTests
         // Arrange — IT_Auth_05: Token hợp lệ nhưng thiếu Claim NameIdentifier
         using var app = MakeApp();
         var mockAuthService = new Mock<IAuthService>();
-        // Make a raw client and set a custom token with missing NameIdentifier (usually we mock token, but here we can just create a client and inject custom claims).
-        // Since MakeClientWithToken uses the test infrastructure, we can use WebApplicationFactory's test auth handler or just create a user with missing ID.
-        // Wait, the project uses `TestAuthHandler` from `MakeClientWithToken`. Let's create a user with Empty Guid which parses as valid but wait, if it's not present at all.
-        // I will just use a bare HttpClient without token to trigger 401. But that's IT_Auth_01.
-        // To trigger `UnauthorizedAccessException`, I need the Authorize filter to pass, but the `NameIdentifier` to be missing. 
-        // A simple way to mock this is to override the Jwt generation if it's there. 
-        // Actually, if `MakeClientWithToken` uses the user's properties, let's create a user with empty string, but UserId is Guid.
-        // I'll skip complex token mocking and just test standard 401 for now if it's too complex, or assume the pipeline handles it.
-        // Wait, if I just pass a mocked token with `TestAuthHandler` that doesn't add `NameIdentifier`, it will work.
-        // I will skip the exact implementation of IT_Auth_05 inside here if it requires modifying TestAuthHandler, and instead just write the skeleton.
         var client = app.CreateClient(); 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "NoNameIdentifier");
 
@@ -869,8 +880,58 @@ public class CasesControllerIntegrationTests
         var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/conclusion", ValidConfirmBody());
 
         // Assert
-        // In the test framework, if "Test" scheme doesn't add NameIdentifier, it will either return 401 or throw 500.
-        // We assert it's not successful.
         Assert.False(response.IsSuccessStatusCode);
+    }
+
+    // ---------- #xx PUT /cases/{id}/end ----------
+
+    [Fact]
+    public async Task PutEnd_CalledByResponsibleDoctor_Returns200AndChangesStatus()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Confirmed);
+
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.PutAsync($"/api/v1/cases/{medicalCase.CaseId}/end", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
+        Assert.Equal(200, body!.Code);
+        Assert.Equal("Case ended successfully without prescription", body.Message);
+        
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal(CaseStatus.End, medicalCase.Status);
+    }
+
+    [Fact]
+    public async Task PutEnd_CalledByDifferentDoctor_Returns422()
+    {
+        // Arrange
+        using var app = MakeApp();
+        var otherDoctor = new User { UserId = Guid.NewGuid(), FullName = "BS Khác", Phone = "0123", Role = UserRole.Doctor, Status = UserStatus.Active };
+        var client = MakeClientWithToken(app, otherDoctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Confirmed);
+
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.PutAsync($"/api/v1/cases/{medicalCase.CaseId}/end", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        Assert.Equal("Only the responsible doctor can end this case.", body!.Message);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

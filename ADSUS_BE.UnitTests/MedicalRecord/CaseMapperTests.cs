@@ -149,7 +149,7 @@ public class CaseMapperTests
         // Assert
         Assert.Equal(medicalCase.CaseId, summary.CaseId);
         Assert.Equal(medicalCase.VisitDate, summary.VisitDate);
-        Assert.Equal("ANALYZED", summary.Status);
+        Assert.Equal("END", summary.Status);
         Assert.Equal(medicalCase.DoctorId, summary.DoctorId);
     }
 }

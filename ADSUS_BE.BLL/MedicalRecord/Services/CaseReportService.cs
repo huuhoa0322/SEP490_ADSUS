@@ -5,7 +5,9 @@ using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Mappers;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using ADSUS_BE.DAL.ExternalServices;
 using Microsoft.Extensions.Logging;
+using System.Net.Http;
 using QuestPDF.Drawing;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -28,6 +30,8 @@ public sealed class CaseReportService : ICaseReportService
     private const string VietnameseFontFamily = "Noto Sans";
 
     private readonly ICaseRepository _cases;
+    private readonly IFileStorageService _storage;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<CaseReportService> _logger;
 
     /// <summary>
@@ -46,9 +50,11 @@ public sealed class CaseReportService : ICaseReportService
         FontManager.RegisterFont(fontStream);
     }
 
-    public CaseReportService(ICaseRepository cases, ILogger<CaseReportService> logger)
+    public CaseReportService(ICaseRepository cases, IFileStorageService storage, IHttpClientFactory httpClientFactory, ILogger<CaseReportService> logger)
     {
         _cases = cases;
+        _storage = storage;
+        _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
 
@@ -57,20 +63,40 @@ public sealed class CaseReportService : ICaseReportService
         var medicalCase = await _cases.GetDetailAsync(caseId, ct)
             ?? throw new ResourceNotFoundException("Case not found.");
 
-        // BR-01 / AF-01: chỉ xuất được báo cáo của ca đã duyệt.
-        if (medicalCase.Status != CaseStatus.Confirmed)
+        // BR-01 / AF-01: chỉ xuất được báo cáo của ca đã duyệt hoặc kết thúc.
+        if (medicalCase.Status != CaseStatus.Confirmed && medicalCase.Status != CaseStatus.End)
         {
             throw new BusinessException("Cannot export a report for an incomplete case.");
         }
 
-        var bytes = BuildPdf(medicalCase);
+        var imageBytesList = new List<(byte[] Bytes, string? Note)>();
+        using var client = _httpClientFactory.CreateClient();
+
+        foreach (var image in medicalCase.UltrasoundImages)
+        {
+            var signedUrl = await _storage.CreateSignedUrlAsync(image.FileRef, ct);
+            if (signedUrl != null)
+            {
+                try
+                {
+                    var imgBytes = await client.GetByteArrayAsync(signedUrl, ct);
+                    imageBytesList.Add((imgBytes, image.Note));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to download image {FileRef} for PDF export.", image.FileRef);
+                }
+            }
+        }
+
+        var bytes = BuildPdf(medicalCase, imageBytesList);
 
         _logger.LogInformation("Generated PDF report for case {CaseId}", caseId);
 
         return bytes;
     }
 
-    private static byte[] BuildPdf(Case medicalCase)
+    private static byte[] BuildPdf(Case medicalCase, List<(byte[] Bytes, string? Note)> images)
     {
         var patient = medicalCase.PatientProfile?.User;
         // Cùng logic chọn "đơn thuốc hiện hành" với #23 (GET /cases/{id}) — xem
@@ -180,6 +206,29 @@ public sealed class CaseReportService : ICaseReportService
                                 text.Span("Ghi chú: ").SemiBold();
                                 text.Span(prescription.GeneralNote);
                             });
+                        }
+                    }
+
+                    if (images.Count > 0)
+                    {
+                        column.Item().PaddingTop(15).Text("ẢNH SIÊU ÂM").SemiBold().FontSize(13);
+                        
+                        foreach (var img in images)
+                        {
+                            column.Item().PaddingBottom(5).Image(img.Bytes);
+                            
+                            if (!string.IsNullOrWhiteSpace(img.Note))
+                            {
+                                column.Item().PaddingBottom(10).Text(text =>
+                                {
+                                    text.Span("Ghi chú ảnh: ").SemiBold().FontSize(11).Italic();
+                                    text.Span(img.Note).FontSize(11).Italic();
+                                });
+                            }
+                            else
+                            {
+                                column.Item().PaddingBottom(10);
+                            }
                         }
                     }
                 });

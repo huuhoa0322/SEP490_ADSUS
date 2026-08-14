@@ -681,7 +681,7 @@ public class CaseServiceTests
         var response = await _sut.SaveConclusionAsync(medicalCase.CaseId, doctor.UserId, request);
 
         // Assert
-        Assert.Equal("ANALYZED", response.Status);
+        Assert.Equal("END", response.Status);
         Assert.Equal(CaseStatus.End, medicalCase.Status);
         Assert.Equal("Nhân xơ tử cung", medicalCase.FinalDiagnosis);
         Assert.Equal("Theo dõi định kỳ sau 6 tháng", medicalCase.DoctorConclusion);
@@ -732,5 +732,62 @@ public class CaseServiceTests
         // Act & Assert
         await Assert.ThrowsAsync<ResourceNotFoundException>(
             () => _sut.SaveConclusionAsync(Guid.NewGuid(), Guid.NewGuid(), MakeConfirmRequest()));
+    }
+
+    // ---------- EndWithoutPrescriptionAsync ----------
+
+    [Fact]
+    public async Task EndWithoutPrescriptionAsync_ValidConfirmedCase_ChangesStatusToEnd()
+    {
+        // Arrange
+        var doctor = MedicalRecordTestData.MakeDoctor();
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.Confirmed);
+
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase); // GetForStaffAsync internally calls GetDetailAsync
+
+        // Act
+        var response = await _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, doctor.UserId);
+
+        // Assert
+        Assert.Equal(CaseStatus.End, medicalCase.Status);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task EndWithoutPrescriptionAsync_NotResponsibleDoctor_ThrowsBusinessException()
+    {
+        // Arrange
+        var responsibleDoctor = MedicalRecordTestData.MakeDoctor("BS. Lê Minh Hoàng");
+        var otherDoctor = MedicalRecordTestData.MakeDoctor("BS. Nguyễn Văn An");
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: responsibleDoctor, status: CaseStatus.Confirmed);
+
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, otherDoctor.UserId));
+        Assert.Equal("Only the responsible doctor can end this case.", ex.Message);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task EndWithoutPrescriptionAsync_CaseNotConfirmed_ThrowsBusinessException()
+    {
+        // Arrange
+        var doctor = MedicalRecordTestData.MakeDoctor();
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.Created);
+
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, doctor.UserId));
+        Assert.Equal("Only confirmed cases can be ended without prescription.", ex.Message);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }
