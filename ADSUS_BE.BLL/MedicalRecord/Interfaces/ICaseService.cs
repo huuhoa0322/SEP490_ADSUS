@@ -52,4 +52,10 @@ public interface ICaseService
     /// </summary>
     Task<CaseResponse> ConfirmAsync(
         Guid caseId, Guid actingDoctorId, CaseConclusionRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Chuyển thẳng ca từ CONFIRMED sang END đối với những ca không kê đơn thuốc.
+    /// </summary>
+    Task<CaseResponse> EndWithoutPrescriptionAsync(
+        Guid caseId, Guid actingDoctorId, CancellationToken ct = default);
 }

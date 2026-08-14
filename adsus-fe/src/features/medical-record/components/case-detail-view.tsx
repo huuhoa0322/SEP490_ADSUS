@@ -7,11 +7,21 @@ import { useState } from "react";
 import { getApiErrorMessage } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 import {
   useAddUltrasoundImages,
   useCaseDetail,
   useConfirmCase,
+  useEndCaseWithoutPrescription,
   useSaveCaseConclusion,
 } from "../hooks/use-cases";
 import { useExportCaseReport } from "../hooks/use-case-report";
@@ -82,7 +92,10 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const addImagesMutation = useAddUltrasoundImages(caseId);
   const saveConclusionMutation = useSaveCaseConclusion(caseId);
   const confirmMutation = useConfirmCase(caseId);
+  const endCaseMutation = useEndCaseWithoutPrescription(caseId);
   const report = useExportCaseReport(caseId);
+
+  const [isEndCaseModalOpen, setIsEndCaseModalOpen] = useState(false);
 
   if (isLoading) {
     return <p className="p-10 text-sm text-muted-foreground">Đang tải ca khám...</p>;
@@ -198,13 +211,53 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           {/* Module 7 — Kê đơn thuốc: chỉ hiện khi ca CONFIRMED (chưa kê) và đúng Bác sĩ phụ trách.
               END thì ẩn vì đã kê đơn rồi, chỉ hiện prescription section. */}
           {medicalCase.status === "CONFIRMED" && isResponsibleDoctor ? (
-            <div className="mt-2 flex flex-col items-end gap-1">
+            <div className="mt-2 flex flex-col items-end gap-2">
               <Link
                 href={`/prescriptions/new?caseId=${caseId}`}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                className="w-full text-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 Kê đơn thuốc
               </Link>
+              <Dialog open={isEndCaseModalOpen} onOpenChange={setIsEndCaseModalOpen}>
+                <DialogTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={endCaseMutation.isPending}
+                    className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {endCaseMutation.isPending ? "Đang xử lý..." : "Kết thúc ca bệnh"}
+                  </button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="text-xl">Xác nhận kết thúc ca bệnh</DialogTitle>
+                    <DialogDescription className="text-base text-foreground mt-2">
+                      Chắc chắn muốn kết thúc ca bệnh mà không có đơn thuốc?
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter className="mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsEndCaseModalOpen(false)}
+                      className="rounded-lg border border-border px-6 py-2 text-base font-medium hover:bg-accent"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        endCaseMutation.mutate(undefined, {
+                          onSuccess: () => setIsEndCaseModalOpen(false),
+                        });
+                      }}
+                      disabled={endCaseMutation.isPending}
+                      className="rounded-lg bg-primary px-6 py-2 text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {endCaseMutation.isPending ? "Đang xử lý..." : "Kết thúc"}
+                    </button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           ) : null}
         </div>
@@ -441,7 +494,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                     disabled={saveConclusionMutation.isPending || confirmMutation.isPending}
                     className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                   >
-                    {confirmMutation.isPending ? "Đang lưu..." : "Kết thúc ca khám"}
+                    {confirmMutation.isPending ? "Đang lưu..." : "Xác nhận kết luận"}
                   </button>
                 </div>
               </div>
@@ -451,8 +504,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                   Ca khám chưa được kết luận
                 </p>
                 <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                  Chỉ Bác sĩ phụ trách ca này mới chốt được kết luận. Sau khi chốt, phần này
-                  hiện nội dung và nút xuất PDF được bật.
+                  Chỉ Bác sĩ phụ trách ca này mới chốt được kết luận.
                 </p>
               </div>
             )}

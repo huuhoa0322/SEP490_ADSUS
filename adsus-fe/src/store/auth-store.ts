@@ -138,7 +138,9 @@ const ROUTE_ROLES: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
   { prefix: "/admin", roles: ["ADMIN"] },
   // UC-18: Doctor kê đơn thuốc (Module 7 Task 8 / SCR-17). Nurse có thể xem danh sách
   // tuân thủ nhưng không được kê đơn — kê đơn là hành vi y khoa chỉ Doctor được phép.
-  { prefix: "/doctor/prescriptions", roles: ["DOCTOR"] },
+  { prefix: "/prescriptions", roles: ["DOCTOR"] },
+  // UC-15: Chỉ Bác sĩ mới được quyền quản lý lịch khám của mình, Admin và Nurse không được vào.
+  { prefix: "/schedule", roles: ["DOCTOR"] },
 ];
 
 /**
