@@ -37,7 +37,11 @@ public class AccountStatusJwtEvents : JwtBearerEvents
         }
 
         var users = context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
-        var user = await users.GetByIdAsync(userId, context.HttpContext.RequestAborted);
+
+        // Chỉ đọc để kiểm tra trạng thái, không sửa/lưu gì ở đây — dùng bản AsNoTracking. Chạy
+        // trên MỌI request có token nên đáng để tránh tracking không cần thiết (P11 review
+        // Module 1, 14/08/2026).
+        var user = await users.GetByIdReadOnlyAsync(userId, context.HttpContext.RequestAborted);
 
         // GB-06: không phân biệt tài khoản không tồn tại, bị khoá hay bị vô hiệu hoá —
         // mọi trường hợp đều trả 401 giống hệt nhau.

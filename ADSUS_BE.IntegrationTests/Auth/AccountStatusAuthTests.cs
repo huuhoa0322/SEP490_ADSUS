@@ -73,11 +73,9 @@ public class AccountStatusAuthTests
         using var app = TaoApp();
         var client = TaoClientCoToken(app);
 
-        // AccountStatusJwtEvents đọc qua GetByIdAsync, còn ProfileService.GetOwnProfileAsync
-        // (chạy sau đó trong action /users/me) đọc qua GetByIdReadOnlyAsync — phải null cả hai
-        // để mô phỏng đúng "tài khoản không còn tồn tại" xuyên suốt request.
-        _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync((User?)null);
+        // Cả AccountStatusJwtEvents (chặn ở tầng xác thực) lẫn ProfileService.GetOwnProfileAsync
+        // (chạy sau đó trong action /users/me) đều đọc qua GetByIdReadOnlyAsync kể từ 14/08/2026
+        // (P11 review Module 1) — null nó là đủ để mô phỏng "tài khoản không còn tồn tại".
         _users.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync((User?)null);
 
@@ -94,12 +92,9 @@ public class AccountStatusAuthTests
     /// </summary>
     private WebApplicationFactory<Program> TaoApp()
     {
-        // AccountStatusJwtEvents (chặn ở tầng xác thực) đọc qua GetByIdAsync; action /users/me
-        // bên trong (ProfileService.GetOwnProfileAsync) lại đọc qua GetByIdReadOnlyAsync — phải
-        // mock cả hai để một request thật sự đi trọn qua request pipeline (P11 review Module 1,
-        // 12/08/2026, đổi ProfileService sang dùng bản AsNoTracking).
-        _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(() => _taiKhoan);
+        // Cả AccountStatusJwtEvents (chặn ở tầng xác thực) lẫn ProfileService.GetOwnProfileAsync
+        // (chạy sau đó trong action /users/me) đều đọc qua GetByIdReadOnlyAsync kể từ 14/08/2026
+        // (P11 review Module 1) — mock đúng một method là đủ cho cả request đi trọn pipeline.
         _users.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(() => _taiKhoan);
 

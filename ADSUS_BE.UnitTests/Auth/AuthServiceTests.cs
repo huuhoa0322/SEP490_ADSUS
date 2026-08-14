@@ -121,7 +121,7 @@ public class AuthServiceTests
     // ---- helpers ----
 
     private void SetupUser(User? user) =>
-        _users.Setup(r => r.GetByPhoneAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _users.Setup(r => r.GetByPhoneReadOnlyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(user);
 
     private static LoginRequest Request(string password) =>

@@ -7,8 +7,20 @@ public interface IUserRepository
     /// <summary>
     /// Tìm tài khoản theo số điện thoại — định danh đăng nhập duy nhất của hệ thống (BR-02).
     /// Trả về null nếu không tồn tại; tầng nghiệp vụ tự quyết cách phản hồi.
+    ///
+    /// LƯU Ý (14/08/2026, P11 review Module 1): CÓ tracking. Dùng cho
+    /// PasswordResetService.RequestSelfServiceResetAsync (sửa-rồi-lưu PasswordHash cùng
+    /// entity vừa đọc). Chỗ nào chỉ ĐỌC (ví dụ AuthService.LoginAsync — không bao giờ gọi
+    /// SaveChangesAsync), dùng <see cref="GetByPhoneReadOnlyAsync"/> thay vì method này.
     /// </summary>
     Task<User?> GetByPhoneAsync(string phone, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tìm tài khoản theo số điện thoại CHỈ ĐỂ ĐỌC — AsNoTracking thật sự (thêm 14/08/2026,
+    /// P11 review Module 1). Dùng cho AuthService.LoginAsync: chỉ so mật khẩu và phát token,
+    /// không bao giờ sửa-rồi-lưu lại entity vừa đọc.
+    /// </summary>
+    Task<User?> GetByPhoneReadOnlyAsync(string phone, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Tìm tài khoản theo khoá chính. Dùng khi đã biết người gọi là ai qua claim trong JWT.

@@ -34,7 +34,9 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await _users.GetByPhoneAsync(request.PhoneNumber, cancellationToken);
+        // Chỉ đọc để so mật khẩu và phát token, không sửa/lưu gì ở đây — dùng bản AsNoTracking
+        // (P11 review Module 1, 14/08/2026).
+        var user = await _users.GetByPhoneReadOnlyAsync(request.PhoneNumber, cancellationToken);
 
         var passwordMatches = BCrypt.Net.BCrypt.Verify(
             request.Password,

@@ -30,7 +30,7 @@ public class LoginResponseUserIdTests
             MustChangePassword = false,
         };
 
-        users.Setup(r => r.GetByPhoneAsync(doctor.Phone, It.IsAny<CancellationToken>()))
+        users.Setup(r => r.GetByPhoneReadOnlyAsync(doctor.Phone, It.IsAny<CancellationToken>()))
              .ReturnsAsync(doctor);
         tokens.Setup(t => t.GenerateAccessToken(It.IsAny<User>())).Returns("fake-token");
 
