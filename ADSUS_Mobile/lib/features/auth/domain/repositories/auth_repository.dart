@@ -54,4 +54,7 @@ abstract interface class AuthRepository {
   /// UC-02 BR-01 — máy này đã từng đăng nhập bằng mật khẩu thành công chưa,
   /// và người dùng có bật sinh trắc học không.
   Future<bool> isBiometricPaired();
+
+  /// Số điện thoại đã ghép đôi, hoặc null nếu chưa đăng nhập lần nào.
+  Future<String?> readPairedPhone();
 }
