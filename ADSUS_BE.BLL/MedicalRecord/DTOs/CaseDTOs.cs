@@ -43,7 +43,13 @@ public sealed record CaseResponse(
 /// Là một KIỂU RIÊNG chứ không phải CaseResponse với vài field để null: quy tắc dữ liệu nhạy
 /// cảm nói field mà người gọi không có quyền thì không được KHAI BÁO, mà class C# thì không
 /// ẩn field được — null vẫn serialize ra. Tách kiểu là cách duy nhất để trình biên dịch bảo
-/// đảm clinicalInfo / ultrasoundImages / aiResults không bao giờ tới tay bệnh nhân (GB-05).
+/// đảm clinicalInfo / patientProfile / aiResults không bao giờ tới tay bệnh nhân (GB-05).
+///
+/// Đính chính 15/08/2026: trước đây comment này còn liệt cả ultrasoundImages vào danh sách bị
+/// cấm — SAI theo quyết định UCS 01/08/2026 (xem CasesController.cs's ExportReport doc comment
+/// + design spec 2026-08-15): Patient CÓ xem được ảnh siêu âm gốc một khi ca đã Confirmed/End,
+/// giống hệt nội dung PDF export (trừ chức năng xuất file). Chỉ dữ liệu nội bộ thuần Staff
+/// (ClinicalInfo, PatientProfile, AiResults, các mốc CreatedAt/UpdatedAt) mới còn bị cấm.
 /// </summary>
 public sealed record PatientCaseResponse(
     Guid CaseId,
@@ -53,7 +59,8 @@ public sealed record PatientCaseResponse(
     string Status,
     string? FinalDiagnosis,
     string? DoctorConclusion,
-    PrescriptionSummary? Prescription);
+    PrescriptionSummary? Prescription,
+    IReadOnlyList<UltrasoundImageResponse> UltrasoundImages);
 
 /// <summary>#25 — một dòng trong danh sách lần khám CỦA CHÍNH bệnh nhân (Mobile).</summary>
 public sealed record CaseSummaryResponse(

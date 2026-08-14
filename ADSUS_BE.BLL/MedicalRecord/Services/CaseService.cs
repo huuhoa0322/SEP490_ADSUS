@@ -86,7 +86,8 @@ public sealed class CaseService : ICaseService
             throw new ResourceNotFoundException("Case not found.");
         }
 
-        return CaseMapper.ToPatientResponse(medicalCase);
+        var urls = await BuildImageUrlsAsync(medicalCase.UltrasoundImages.ToList(), ct);
+        return CaseMapper.ToPatientResponse(medicalCase, urls);
     }
 
     public async Task<PagedResult<StaffCaseSummaryResponse>> ListByPatientProfileAsync(

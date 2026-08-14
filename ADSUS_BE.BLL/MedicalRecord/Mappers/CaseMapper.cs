@@ -46,10 +46,13 @@ public static class CaseMapper
         UpdatedAt: medicalCase.UpdatedAt);
 
     /// <summary>
-    /// Bản cho bệnh nhân. So với ToStaffResponse thì thiếu hẳn clinicalInfo, patientProfile,
-    /// ultrasoundImages, aiResults và các mốc thời gian — đó là chủ đích (GB-05).
+    /// Bản cho bệnh nhân. So với ToStaffResponse thì thiếu clinicalInfo, patientProfile, aiResults
+    /// và các mốc thời gian — đó là chủ đích (GB-05). Ultrasound images ĐƯỢC bao gồm (đính chính
+    /// 15/08/2026, xem PatientCaseResponse's doc comment).
     /// </summary>
-    public static PatientCaseResponse ToPatientResponse(Case medicalCase) => new(
+    public static PatientCaseResponse ToPatientResponse(
+        Case medicalCase,
+        IReadOnlyDictionary<Guid, string?> imageUrls) => new(
         CaseId: medicalCase.CaseId,
         DoctorId: medicalCase.DoctorId,
         DoctorName: medicalCase.Doctor?.FullName ?? string.Empty,
@@ -57,7 +60,11 @@ public static class CaseMapper
         Status: medicalCase.Status.ToApiString(),
         FinalDiagnosis: medicalCase.FinalDiagnosis,
         DoctorConclusion: medicalCase.DoctorConclusion,
-        Prescription: ToPrescriptionSummary(medicalCase));
+        Prescription: ToPrescriptionSummary(medicalCase),
+        UltrasoundImages: medicalCase.UltrasoundImages
+            .OrderBy(i => i.UploadedAt)
+            .Select(i => ToImageResponse(i, imageUrls.GetValueOrDefault(i.ImageId)))
+            .ToList());
 
     public static CaseSummaryResponse ToSummary(Case medicalCase) => new(
         CaseId: medicalCase.CaseId,
