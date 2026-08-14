@@ -138,6 +138,17 @@ export async function confirmCase(caseId: string, input: CaseConclusionInput): P
 }
 
 /**
+ * Kết thúc ca bệnh trực tiếp (chuyển CONFIRMED sang END) cho bệnh nhân không lấy thuốc.
+ */
+export async function endCaseWithoutPrescription(caseId: string): Promise<CaseDetail> {
+  const { data } = await apiClient.put<ApiResponse<CaseDetail>>(`${BASE}/${caseId}/end`, {});
+
+  if (!data.data) throw new Error(data.message || "Kết thúc ca bệnh thất bại.");
+
+  return data.data;
+}
+
+/**
  * #27 — endpoint DUY NHẤT không bọc trong khuôn {code, message, data}: thân phản hồi là byte
  * của file PDF.
  *

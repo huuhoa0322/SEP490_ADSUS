@@ -265,6 +265,34 @@ public sealed class CaseService : ICaseService
         return await GetForStaffAsync(caseId, ct);
     }
 
+    public async Task<CaseResponse> EndWithoutPrescriptionAsync(
+        Guid caseId,
+        Guid actingDoctorId,
+        CancellationToken ct = default)
+    {
+        var medicalCase = await _cases.GetForUpdateAsync(caseId, ct)
+            ?? throw new ResourceNotFoundException("Case not found.");
+
+        if (medicalCase.DoctorId != actingDoctorId)
+        {
+            throw new BusinessException("Only the responsible doctor can end this case.");
+        }
+
+        if (medicalCase.Status != CaseStatus.Confirmed)
+        {
+            throw new BusinessException("Only confirmed cases can be ended without prescription.");
+        }
+
+        medicalCase.Status = CaseStatus.End;
+        medicalCase.UpdatedAt = DateTime.UtcNow;
+
+        await _cases.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Case {CaseId} ended without prescription by doctor {DoctorId}", caseId, actingDoctorId);
+
+        return await GetForStaffAsync(caseId, ct);
+    }
+
     /// <summary>
     /// Tải ca (có theo dõi) và kiểm hai điều kiện dùng chung cho cả SaveConclusionAsync lẫn
     /// ConfirmAsync — tách ra một chỗ để hai hành động không bao giờ lệch luật với nhau.

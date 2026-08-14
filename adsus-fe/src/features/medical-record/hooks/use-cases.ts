@@ -6,6 +6,7 @@ import {
   addUltrasoundImages,
   confirmCase,
   createCase,
+  endCaseWithoutPrescription,
   getCaseDetail,
   listCasesByPatient,
   listUltrasoundImages,
@@ -103,6 +104,21 @@ export function useConfirmCase(caseId: string) {
 
   return useMutation({
     mutationFn: (input: CaseConclusionInput) => confirmCase(caseId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
+      queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.all });
+    },
+  });
+}
+
+/**
+ * Kết thúc ca bệnh trực tiếp (chuyển CONFIRMED sang END) cho bệnh nhân không lấy thuốc.
+ */
+export function useEndCaseWithoutPrescription(caseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => endCaseWithoutPrescription(caseId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
       queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.all });

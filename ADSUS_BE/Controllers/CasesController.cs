@@ -260,6 +260,23 @@ public sealed class CasesController : ControllerBase
     }
 
     /// <summary>
+    /// Chuyển thẳng ca từ CONFIRMED sang END đối với những ca không kê đơn thuốc.
+    /// </summary>
+    [HttpPut("{caseId:guid}/end")]
+    [Authorize(Roles = "DOCTOR")]
+    [ProducesResponseType(typeof(ApiResponse<CaseResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> End(
+        Guid caseId,
+        CancellationToken ct)
+    {
+        var result = await _cases.EndWithoutPrescriptionAsync(caseId, GetCallerUserId(), ct);
+
+        return Ok(ApiResponse<CaseResponse>.Ok(result, "Case ended successfully without prescription"));
+    }
+
+    /// <summary>
     /// Xuất báo cáo PDF của một lần khám đã duyệt (UC-12).
     ///
     /// Đây là endpoint DUY NHẤT không bọc trong khuôn {code, message, data} — thân phản hồi
