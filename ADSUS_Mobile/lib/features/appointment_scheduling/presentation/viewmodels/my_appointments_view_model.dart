@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../../../../shared/providers/app_providers.dart';
+import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../domain/entities/appointment.dart';
 import '../../domain/services/calendar_sync_service.dart';
 
@@ -62,6 +63,14 @@ class MyAppointmentsState {
 class MyAppointmentsViewModel extends Notifier<MyAppointmentsState> {
   @override
   MyAppointmentsState build() {
+    // Watch auth state to reload when user changes (login/logout)
+    ref.listen(authViewModelProvider, (previous, next) {
+      // When session changes (user A -> user B), reload appointments
+      if (previous?.session?.accessToken != next.session?.accessToken) {
+        Future.microtask(load);
+      }
+    });
+
     Future.microtask(load);
     return const MyAppointmentsState(isLoading: true);
   }
