@@ -6,6 +6,7 @@ import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../appointment_scheduling/presentation/views/book_appointment_screen.dart';
 import '../../../appointment_scheduling/presentation/views/my_appointments_screen.dart';
 import '../../../health_log/presentation/views/health_log_screen.dart';
+import '../../../medical_record/presentation/views/medical_record_list_screen.dart';
 import '../../../medication_reminder/presentation/viewmodels/intake_view_model.dart';
 import '../../../medication_reminder/presentation/widgets/adherence_pill_badge.dart';
 import '../viewmodels/auth_view_model.dart';
@@ -121,10 +122,15 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  const _ShortcutItem(
+                  _ShortcutItem(
                     icon: Icons.history_outlined,
                     label: 'Lịch sử khám',
-                    stub: true,
+                    stub: false,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const MedicalRecordListScreen(),
+                      ),
+                    ),
                   ),
                   const _ShortcutItem(
                     icon: Icons.article_outlined,
