@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   closeScheduleSlot,
   createScheduleSlot,
+  createOvertimeSlots,
   ensureDefaultSlots,
   getScheduleSlot,
   getScheduleSlots,
@@ -39,6 +40,15 @@ export function useCreateScheduleSlot() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateScheduleSlotRequest) => createScheduleSlot(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["schedule-slots", "list"] }),
+  });
+}
+
+/** Đăng ký tăng ca hàng loạt (17h-20h). */
+export function useCreateOvertimeSlots() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (visitDate: string) => createOvertimeSlots(visitDate),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["schedule-slots", "list"] }),
   });
 }

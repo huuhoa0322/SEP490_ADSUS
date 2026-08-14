@@ -245,6 +245,63 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         return MapToResponse(slot);
     }
 
+    public async Task<(int SuccessCount, int ErrorCount)> CreateOvertimeSlotsAsync(
+        CreateOvertimeSlotsRequest request,
+        Guid doctorId,
+        CancellationToken ct = default)
+    {
+        var doctor = await _userRepo.GetByIdAsync(doctorId, ct);
+        if (doctor is null || doctor.Role != UserRole.Doctor)
+        {
+            throw new InvalidOperationException($"User '{doctorId}' is not a valid Doctor.");
+        }
+
+        int successCount = 0;
+        int errorCount = 0;
+        var now = DateTime.UtcNow;
+        
+        // 17h đến 20h = 6 ca x 30 phút
+        for (int i = 0; i < 6; i++)
+        {
+            var start = new TimeOnly(17, 0).AddMinutes(i * 30);
+            var end = start.AddMinutes(30);
+            
+            var hasOverlap = await _repo.HasOverlapAsync(
+                doctorId, request.VisitDate, start, end,
+                excludeSlotId: null, ct);
+                
+            if (hasOverlap)
+            {
+                errorCount++;
+                continue;
+            }
+
+            var slot = new ScheduleSlot
+            {
+                SlotId = Guid.NewGuid(),
+                DoctorId = doctorId,
+                SlotDate = request.VisitDate,
+                StartTime = start,
+                EndTime = end,
+                Status = SlotStatus.Open,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+
+            try
+            {
+                await _repo.AddAsync(slot, ct);
+                successCount++;
+            }
+            catch (Exception)
+            {
+                errorCount++;
+            }
+        }
+        
+        return (successCount, errorCount);
+    }
+
     public async Task<ScheduleSlotResponse> UpdateSlotAsync(
         Guid slotId,
         UpdateScheduleSlotRequest request,

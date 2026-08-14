@@ -420,9 +420,8 @@ class _BookAppointmentScreenState
         _sectionLabel('LÝ DO KHÁM (TÙY CHỌN)'),
         TextField(
           controller: _reasonController,
-          onChanged: (v) => ref
-              .read(bookAppointmentViewModelProvider.notifier)
-              .updateReason(v),
+          // KHÔNG gọi updateReason ở đây - tránh rebuild toàn bộ screen
+          // Text được đọc trực tiếp từ controller khi submit
           maxLines: 3,
           minLines: 2,
           decoration: const InputDecoration(
@@ -438,7 +437,9 @@ class _BookAppointmentScreenState
     final enabled = state.selectedSlotId != null && !state.isBooking;
     return ElevatedButton(
       onPressed: enabled
-          ? () => ref.read(bookAppointmentViewModelProvider.notifier).book()
+          ? () => ref.read(bookAppointmentViewModelProvider.notifier).book(
+                reason: _reasonController.text.trim(),
+              )
           : null,
       child: state.isBooking
           ? const SizedBox(

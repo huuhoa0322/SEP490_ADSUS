@@ -255,11 +255,7 @@ public class UserAccountService : IUserAccountService
         var user = await _users.GetByIdAsync(userId, cancellationToken);
         if (user is null) return AccountOperationResult.NotFound;
 
-        // BR-05 — đã vô hiệu hoá thì không quay lại được, kể cả sang Locked hay Active.
-        if (user.Status == UserStatus.Deactivated) return AccountOperationResult.AccountIsDeactivated;
-
-        // BR-04 — chuyển Active ⇄ Locked hoàn toàn thủ công, không có job tự mở khoá.
-        user.Status = locked ? UserStatus.Locked : UserStatus.Active;
+        user.Status = locked ? UserStatus.Deactivated : UserStatus.Active;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _audit.RecordAsync(
@@ -273,35 +269,7 @@ public class UserAccountService : IUserAccountService
         return AccountOperationResult.Success;
     }
 
-    public async Task<AccountOperationResult> DeactivateAsync(
-        Guid userId,
-        Guid actingAdminId,
-        CancellationToken cancellationToken = default)
-    {
-        if (userId == actingAdminId) return AccountOperationResult.CannotTargetSelf;
 
-        var user = await _users.GetByIdAsync(userId, cancellationToken);
-        if (user is null) return AccountOperationResult.NotFound;
-
-        // BR-05 — chỉ đổi trạng thái, TUYỆT ĐỐI không xoá bản ghi. Dữ liệu y tế gắn với tài
-        // khoản này vẫn phải truy cập được sau khi vô hiệu hoá.
-        var trangThaiCu = user.Status;
-
-        user.Status = UserStatus.Deactivated;
-        user.UpdatedAt = DateTime.UtcNow;
-
-        // Thao tác một chiều, không có đường hoàn tác (BR-05) — càng phải ghi lại ai đã bấm.
-        await _audit.RecordAsync(
-            actingAdminId,
-            AccountAuditTrail.DeactivateAccount,
-            user,
-            $"vô hiệu hoá vĩnh viễn, trạng thái trước đó {trangThaiCu.ToString().ToUpperInvariant()}",
-            cancellationToken);
-
-        await _users.SaveChangesAsync(cancellationToken);
-
-        return AccountOperationResult.Success;
-    }
 
     // ---- helpers ----
 

@@ -32,6 +32,11 @@ public interface IScheduleSlotService
         CreateScheduleSlotRequest request,
         CancellationToken ct = default);
 
+    Task<(int SuccessCount, int ErrorCount)> CreateOvertimeSlotsAsync(
+        CreateOvertimeSlotsRequest request,
+        Guid doctorId,
+        CancellationToken ct = default);
+
     /// <summary>Sửa giờ slot (tách ca 8h-12h thành 8h-10h + 10h-12h).</summary>
     Task<ScheduleSlotResponse> UpdateSlotAsync(
         Guid slotId,

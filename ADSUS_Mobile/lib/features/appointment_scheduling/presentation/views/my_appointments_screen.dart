@@ -11,7 +11,7 @@ import 'book_appointment_screen.dart';
 import 'widgets/appointment_card.dart';
 import 'widgets/cancel_reason_sheet.dart';
 
-/// SCR-22 — Màn Lịch hẹn của tôi (UC-14).
+/// SCR-22 — Màn Lịch khám của tôi (UC-14).
 ///
 /// Mỗi thẻ Booked có hai nút:
 ///   - "Đổi lịch" → hủy bản ghi cũ với lý do "Reschedule", chuyển sang Đặt lịch (UC-13).
@@ -47,7 +47,7 @@ class _MyAppointmentsScreenState
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(wasBooked
-                  ? 'Đã hủy lịch hẹn thành công.'
+                  ? 'Đã hủy lịch khám thành công.'
                   : 'Đã hủy lịch cũ. Vui lòng chọn khung giờ mới.'),
               backgroundColor: AppColors.teal,
             ),
@@ -73,7 +73,7 @@ class _MyAppointmentsScreenState
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Lịch hẹn của tôi')),
+      appBar: AppBar(title: const Text('Lịch khám của tôi')),
       body: SafeArea(child: _buildBody(state)),
     );
   }
@@ -129,7 +129,7 @@ class _MyAppointmentsScreenState
               const Icon(Icons.event_busy, size: 64, color: AppColors.muted),
               const SizedBox(height: 16),
               const Text(
-                'Bạn chưa có lịch hẹn nào.',
+                'Bạn chưa có lịch khám nào.',
                 style: TextStyle(fontSize: 15, color: AppColors.muted),
               ),
               const SizedBox(height: 24),
@@ -151,7 +151,7 @@ class _MyAppointmentsScreenState
         Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
-            'Bạn có ${state.appointments.length} lịch hẹn',
+            'Bạn có ${state.appointments.length} lịch khám',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.navy),
           ),
         ),
@@ -200,7 +200,7 @@ class _MyAppointmentsScreenState
         title: const Text('Xác nhận đặt lịch mới'),
         content: const Text(
           'Bạn có muốn đặt lịch mới không?\n'
-          'Lịch hẹn hiện tại sẽ bị hủy.',
+          'Lịch khám hiện tại sẽ bị hủy.',
         ),
         actions: [
           TextButton(
@@ -257,8 +257,9 @@ class _MyAppointmentsScreenState
             .markSynced(ap.id);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Đã mở ứng dụng Lịch — vui lòng xác nhận thêm.'),
+            content: Text('Đã mở ứng dụng Lịch — xác nhận để thêm lịch khám và 2 lời nhắc (24h, 1h).'),
             backgroundColor: AppColors.teal,
+            duration: Duration(seconds: 4),
           ),
         );
       } else {

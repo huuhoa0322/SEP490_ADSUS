@@ -286,14 +286,14 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
     _successShown = false;
   }
 
-  Future<void> book() async {
+  Future<void> book({String? reason}) async {
     final slotId = state.selectedSlotId;
     if (slotId == null) return;
     state = state.copyWith(isBooking: true, clearError: true);
     try {
       final appointment = await ref
           .read(appointmentRepositoryProvider)
-          .bookAppointment(scheduleSlotId: slotId, reason: state.reason);
+          .bookAppointment(scheduleSlotId: slotId, reason: reason);
 
       // Xóa slot đã đặt khỏi danh sách để không hiện lại
       final updatedSlots = state.slots.where((s) => s.id != slotId).toList();

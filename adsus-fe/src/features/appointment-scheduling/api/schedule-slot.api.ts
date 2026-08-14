@@ -75,6 +75,20 @@ export async function createScheduleSlot(
   return { ...data.data, status: normalizeStatus(data.data.status) };
 }
 
+/** POST /api/v1/schedule-slots/overtime — Đăng ký tăng ca hàng loạt (17h-20h). */
+export async function createOvertimeSlots(
+  visitDate: string,
+): Promise<{ successCount: number; errorCount: number }> {
+  const { data } = await apiClient.post<ApiResponse<{ successCount: number; errorCount: number }>>(
+    "/api/v1/schedule-slots/overtime",
+    { visitDate },
+  );
+  if (!data.data) {
+    throw new Error(data.message || "Không tạo được ca tăng ca.");
+  }
+  return data.data;
+}
+
 /** PUT /api/v1/schedule-slots/{id} — Sửa giờ slot (tách ca). */
 export async function updateScheduleSlot(
   id: string,

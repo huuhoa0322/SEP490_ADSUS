@@ -14,6 +14,8 @@ public partial class HealthLog
 
     public DateOnly LogDate { get; set; }
 
+    public HealthLogType LogType { get; set; }
+
     public string Content { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }

@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../features/auth/presentation/viewmodels/auth_view_model.dart';
-import '../features/medication_reminder/domain/repositories/reminder_preference_repository.dart';
+import 'providers/app_providers.dart';
 
 /// Cài đặt nhắc uống thuốc cá nhân.
 ///
@@ -100,10 +99,10 @@ class ReminderPreferenceNotifier extends AsyncNotifier<ReminderPreference> {
 
   @override
   Future<ReminderPreference> build() async {
-    // Lấy patientId từ auth session để phân biệt cache giữa các tài khoản.
+    // Lấy phone từ SecureStorage (pairedPhone) để phân biệt cache giữa các tài khoản.
     // Nếu chưa đăng nhập, dùng placeholder — preferences không hiển thị trước khi login.
-    final authState = ref.watch(authViewModelProvider);
-    final patientId = authState.session?.phoneNumber ?? 'anonymous';
+    final phone = await ref.read(authRepositoryProvider).readPairedPhone();
+    final patientId = phone ?? 'anonymous';
 
     try {
       // Ưu tiên API backend — đây là nguồn chân lý.
@@ -154,8 +153,8 @@ class ReminderPreferenceNotifier extends AsyncNotifier<ReminderPreference> {
   }
 
   Future<void> _upsertApi(ReminderPreference p) async {
-    final authState = ref.read(authViewModelProvider);
-    final patientId = authState.session?.phoneNumber ?? 'anonymous';
+    final phone = await ref.read(authRepositoryProvider).readPairedPhone();
+    final patientId = phone ?? 'anonymous';
 
     try {
       final repo = ref.read(reminderPreferenceRepositoryProvider);

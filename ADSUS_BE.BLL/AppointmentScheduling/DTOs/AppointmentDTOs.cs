@@ -57,6 +57,8 @@ public sealed class AppointmentSummaryResponse
     public string DoctorName { get; init; } = string.Empty;
     public AppointmentStatus Status { get; init; }
     public DateTime CreatedAt { get; init; }
+    public string? Reason { get; init; }
+    public string? CancellationReason { get; init; }
 }
 
 /// <summary>

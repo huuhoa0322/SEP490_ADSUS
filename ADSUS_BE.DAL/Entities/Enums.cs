@@ -27,7 +27,6 @@ public enum UserRole
 public enum UserStatus
 {
     [PgName("ACTIVE")] Active,
-    [PgName("LOCKED")] Locked,
     [PgName("DEACTIVATED")] Deactivated,
 }
 
@@ -130,4 +129,10 @@ public enum ReminderSlot
     [PgName("MORNING")] Morning,
     [PgName("NOON")] Noon,
     [PgName("EVENING")] Evening,
+}
+
+public enum HealthLogType
+{
+    [PgName("EXERCISE")] Exercise,
+    [PgName("DIET")] Diet,
 }

@@ -199,4 +199,8 @@ class AuthRepositoryImpl implements AuthRepository {
         token != null &&
         token.isNotEmpty;
   }
+
+  @override
+  Future<String?> readPairedPhone() =>
+      _storage.read(key: StorageKeys.pairedPhone);
 }
