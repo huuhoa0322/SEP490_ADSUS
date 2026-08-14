@@ -606,7 +606,7 @@ public class CasesControllerIntegrationTests
     // ---------- #27 GET /cases/{id}/report ----------
 
     [Fact]
-    public async Task GetCaseReport_ConfirmedCase_Returns200WithPdfContentType()
+    public async Task GetCaseReport_ConfirmedCase_Returns422WithJsonEnvelope()
     {
         // Arrange
         using var app = MakeApp();
@@ -619,11 +619,10 @@ public class CasesControllerIntegrationTests
         // Act
         var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}/report");
 
-        // Assert — đây là endpoint DUY NHẤT không bọc ApiResponse<T> ở nhánh thành công.
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("application/pdf", response.Content.Headers.ContentType!.MediaType);
-        var bytes = await response.Content.ReadAsByteArrayAsync();
-        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        Assert.Equal(422, body!.Code);
     }
 
     [Fact]
@@ -648,7 +647,7 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
-    public async Task GetCaseReport_CaseNotYetConfirmed_Returns422WithJsonEnvelope()
+    public async Task GetCaseReport_CreatedCase_Returns422WithJsonEnvelope()
     {
         // Arrange — AF-01: nhánh lỗi vẫn dùng khuôn JSON như mọi endpoint khác.
         using var app = MakeApp();

@@ -56,6 +56,9 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
         content.Add(streamContent, "file", fileName);
         
+        content.Add(new StringContent(activeModel.HfRepoId), "repo_id");
+        content.Add(new StringContent(activeModel.HfFilename), "filename");
+        
         // Send to Python backend which uses its currently loaded model
         var response = await client.PostAsync($"{_aiBackendUrl}/api/detect", content, ct);
         if (!response.IsSuccessStatusCode)
