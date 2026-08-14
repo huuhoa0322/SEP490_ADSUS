@@ -196,7 +196,14 @@ namespace ADSUS_BE
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);
-            builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(dataSource));
+            builder.Services.AddDbContext<AppDbContext>(options =>
+            {
+                options.UseNpgsql(dataSource);
+                // The test suite creates a WebApplicationFactory per test method, triggering the
+                // ManyServiceProvidersCreatedWarning (which is configured to throw as error by default in EF 8 if > 20 instances).
+                // We suppress it so integration tests don't crash with 500 InternalServerError.
+                options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.ManyServiceProvidersCreatedWarning));
+            });
 
             // ---------- Configuration read from User Secrets ----------
             builder.Services.Configure<JwtSettings>(
