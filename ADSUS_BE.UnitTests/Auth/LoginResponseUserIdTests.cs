@@ -2,6 +2,7 @@ using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace ADSUS_BE.UnitTests.Auth;
@@ -29,11 +30,11 @@ public class LoginResponseUserIdTests
             MustChangePassword = false,
         };
 
-        users.Setup(r => r.GetByPhoneAsync(doctor.Phone, It.IsAny<CancellationToken>()))
+        users.Setup(r => r.GetByPhoneReadOnlyAsync(doctor.Phone, It.IsAny<CancellationToken>()))
              .ReturnsAsync(doctor);
         tokens.Setup(t => t.GenerateAccessToken(It.IsAny<User>())).Returns("fake-token");
 
-        var sut = new AuthService(users.Object, tokens.Object);
+        var sut = new AuthService(users.Object, tokens.Object, new Mock<ILogger<AuthService>>().Object);
 
         // Act
         var response = await sut.LoginAsync(

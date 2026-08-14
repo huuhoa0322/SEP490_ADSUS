@@ -6,22 +6,19 @@ import {
   CheckCircle2,
   KeyRound,
   Loader2,
-  Lock,
   Pencil,
   Search,
-  UnlockKeyhole,
   UserPlus,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 import type { Role } from "@/types/api.types";
 
 import {
+  useDeactivateUser,
   useResetUserPassword,
-  useSetUserLocked,
   useUserList,
 } from "../hooks/use-users";
 import {
@@ -35,46 +32,38 @@ import type { AccountStatus, UserAccount } from "../types/user.types";
 import { ConfirmDialog } from "./confirm-dialog";
 
 /** Hành động đang chờ người dùng xác nhận. */
-type PendingAction =
-  | { kind: "lock" | "unlock" | "reset"; user: UserAccount }
-  | null;
+type PendingAction = { kind: "deactivate" | "reset"; user: UserAccount } | null;
 
 /**
  * SCR-06 — danh sách tài khoản (UC-04).
  *
- * Admin tìm kiếm, lọc, và thực hiện vô hiệu hoá / mở khoá ngay tại đây.
- * Tạo mới và sửa nằm ở SCR-07.
+ * Admin tìm kiếm, lọc, và thực hiện FT-08 (vô hiệu hoá) ngay tại đây — Lock/Unlock đã bỏ khỏi
+ * hệ thống (quyết định 13/08/2026), chỉ còn Active/Deactivated.
+ * Tạo mới và sửa nằm ở SCR-07. Thông báo "đã tạo" không còn đi qua trang này nữa — SCR-07 tự
+ * hiện mật khẩu tạm ngay tại chỗ (sửa 12/08/2026, xem UserForm).
  */
-interface UserListProps {
-  /** Thông báo tạo tài khoản do API trả về, được trang chuyển tiếp sang để không mất khi điều hướng. */
-  initialCreateNotice?: string;
-}
-
-export function UserList({ initialCreateNotice }: UserListProps) {
-  const router = useRouter();
+export function UserList() {
   const [keyword, setKeyword] = useState("");
   const [role, setRole] = useState<Role | "">("");
   const [status, setStatus] = useState<AccountStatus | "">("");
   const [page, setPage] = useState(1);
   const [pending, setPending] = useState<PendingAction>(null);
-  /** Tên tài khoản vừa được cấp lại mật khẩu, để hiện lời xác nhận. */
-  const [resetSentTo, setResetSentTo] = useState<string | null>(null);
-  const [createNotice] = useState(initialCreateNotice);
-
-  useEffect(() => {
-    if (initialCreateNotice) {
-      // Xoá thông báo khỏi URL để tải lại hoặc mở lại trang không hiện cảnh báo cũ lần thứ hai.
-      router.replace("/admin/users", { scroll: false });
-    }
-  }, [initialCreateNotice, router]);
+  /**
+   * Mật khẩu tạm vừa cấp lại — hiện được đúng một lần ở đây (sửa 12/08/2026, không còn gửi
+   * qua email, thống nhất với UC-04/UC-06).
+   */
+  const [resetResult, setResetResult] = useState<{
+    fullName: string;
+    temporaryPassword: string;
+  } | null>(null);
 
   const query = { keyword, role, status, page, pageSize: 20 };
   const { data, isLoading, isError, error } = useUserList(query);
 
-  const setLocked = useSetUserLocked();
+  const deactivate = useDeactivateUser();
   const resetPassword = useResetUserPassword();
 
-  const actionError = setLocked.error ?? resetPassword.error;
+  const actionError = deactivate.error ?? resetPassword.error;
 
   /** Đổi bộ lọc thì phải quay về trang 1, không thì đang ở trang 5 mà kết quả chỉ có 1 trang. */
   function changeFilter(apply: () => void) {
@@ -85,29 +74,27 @@ export function UserList({ initialCreateNotice }: UserListProps) {
   function runPendingAction() {
     if (!pending) return;
 
-    if (pending.kind === "reset") {
-      resetPassword.mutate(pending.user.userId, {
-        onSuccess: () => setResetSentTo(pending.user.fullName),
-        onSettled: () => setPending(null),
-      });
+    if (pending.kind === "deactivate") {
+      deactivate.mutate(pending.user.userId, { onSettled: () => setPending(null) });
       return;
     }
 
-    setLocked.mutate(
-      { userId: pending.user.userId, locked: pending.kind === "lock" },
-      { onSettled: () => setPending(null) },
-    );
+    resetPassword.mutate(pending.user.userId, {
+      onSuccess: (temporaryPassword) =>
+        setResetResult({ fullName: pending.user.fullName, temporaryPassword }),
+      onSettled: () => setPending(null),
+    });
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-6 py-10">
+    <div className="mx-auto max-w-7xl px-6 py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">
             Quản lý tài khoản
           </h1>
           <p className="mt-1.5 text-[15px] text-muted-foreground">
-            Tạo tài khoản, phân quyền, khoá hoặc vô hiệu hoá.
+            Tạo tài khoản, phân quyền, vô hiệu hoá.
           </p>
         </div>
 
@@ -119,16 +106,6 @@ export function UserList({ initialCreateNotice }: UserListProps) {
           Tạo tài khoản
         </Link>
       </div>
-
-      {createNotice && (
-        <div
-          role="status"
-          className="mt-6 flex items-start gap-2.5 rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-foreground"
-        >
-          <CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0 text-accent" />
-          <span>{createNotice}</span>
-        </div>
-      )}
 
       {/* ---- Bộ lọc ---- */}
       <div className="mt-8 flex flex-wrap gap-3">
@@ -167,7 +144,6 @@ export function UserList({ initialCreateNotice }: UserListProps) {
         >
           <option value="">Tất cả trạng thái</option>
           <option value="ACTIVE">Đang hoạt động</option>
-          <option value="LOCKED">Đã khoá</option>
           <option value="DEACTIVATED">Đã vô hiệu hoá</option>
         </select>
       </div>
@@ -253,38 +229,30 @@ export function UserList({ initialCreateNotice }: UserListProps) {
 
                     {/* Không bày nút vô hiệu hoá / cấp lại mật khẩu trên dòng của
                         chính mình: backend chặn hết (UC-04 AF-04), bấm vào chỉ nhận lỗi.
-                        Vẫn giữ nút sửa, vì Admin đổi được tên và email của chính mình. */}
-                    {!user.isCurrentUser && (
+                        Vẫn giữ nút sửa, vì Admin đổi được tên và email của chính mình.
+
+                        Tài khoản đã vô hiệu hoá cũng không còn thao tác nào — BR-05, một chiều. */}
+                    {user.status !== "DEACTIVATED" && !user.isCurrentUser && (
                       <>
-                        {/* UC-03 AF-02 — cấp lại mật khẩu hộ. Chỉ hiện khi tài khoản có
-                            email, vì mật khẩu tạm chỉ giao qua email (BR-03). */}
-                        {user.email && (
-                          <button
-                            type="button"
-                            title="Cấp lại mật khẩu (gửi qua email)"
-                            onClick={() => setPending({ kind: "reset", user })}
-                            className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
-                          >
-                            <KeyRound className="size-4" />
-                          </button>
-                        )}
+                        {/* UC-03 AF-02 — cấp lại mật khẩu hộ, hiện ngay trên màn hình sau
+                            khi xác nhận (sửa 12/08/2026, không còn phụ thuộc tài khoản có
+                            khai email hay không). */}
+                        <button
+                          type="button"
+                          title="Cấp lại mật khẩu"
+                          onClick={() => setPending({ kind: "reset", user })}
+                          className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+                        >
+                          <KeyRound className="size-4" />
+                        </button>
 
                         <button
                           type="button"
-                          title={user.status === "DEACTIVATED" ? "Mở khoá" : "Vô hiệu hoá"}
-                          onClick={() =>
-                            setPending({
-                              kind: user.status === "DEACTIVATED" ? "unlock" : "lock",
-                              user,
-                            })
-                          }
-                          className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+                          title="Vô hiệu hoá vĩnh viễn"
+                          onClick={() => setPending({ kind: "deactivate", user })}
+                          className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                         >
-                          {user.status === "DEACTIVATED" ? (
-                            <UnlockKeyhole className="size-4" />
-                          ) : (
-                            <Ban className="size-4" />
-                          )}
+                          <Ban className="size-4" />
                         </button>
                       </>
                     )}
@@ -321,29 +289,56 @@ export function UserList({ initialCreateNotice }: UserListProps) {
 
       <ConfirmDialog
         open={pending !== null}
-        destructive={pending?.kind === "lock"}
-        isPending={setLocked.isPending || resetPassword.isPending}
-        title={CONFIRM_TITLE[pending?.kind ?? "lock"]}
+        destructive={pending?.kind === "deactivate"}
+        isPending={deactivate.isPending || resetPassword.isPending}
+        title={CONFIRM_TITLE[pending?.kind ?? "deactivate"]}
         message={pending ? buildConfirmMessage(pending) : ""}
-        confirmLabel={CONFIRM_LABEL[pending?.kind ?? "lock"]}
+        confirmLabel={CONFIRM_LABEL[pending?.kind ?? "deactivate"]}
         onConfirm={runPendingAction}
         onCancel={() => setPending(null)}
       />
 
-      {/* Xác nhận đã gửi. Cố ý KHÔNG hiện mật khẩu tạm — nó chỉ đi qua email (BR-03). */}
-      {resetSentTo && (
-        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2.5 rounded-full border border-accent/25 bg-background px-5 py-3 text-sm shadow-xl">
-          <CheckCircle2 className="size-4 shrink-0 text-accent" />
-          <span>
-            Đã gửi mật khẩu mới tới email của {resetSentTo}.
-          </span>
-          <button
-            type="button"
-            onClick={() => setResetSentTo(null)}
-            className="ml-1 text-muted-foreground transition-colors hover:text-primary"
-          >
-            Đóng
-          </button>
+      {/* Mật khẩu tạm hiện được đúng một lần ở đây (sửa 12/08/2026, không còn gửi email). */}
+      {resetResult && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reset-result-title"
+        >
+          <div className="w-full max-w-md rounded-3xl bg-background p-7 shadow-2xl">
+            <h2
+              id="reset-result-title"
+              className="font-heading text-lg font-bold text-foreground"
+            >
+              Đã cấp lại mật khẩu cho {resetResult.fullName}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Đọc mật khẩu tạm dưới đây cho họ nghe hoặc ghi lại — mật khẩu chỉ hiện được đúng
+              một lần ở đây, sẽ không hiện lại được nữa. Họ bắt buộc phải đổi mật khẩu ngay khi
+              đăng nhập lần đầu.
+            </p>
+
+            <div className="mt-5 rounded-2xl border border-dashed border-accent bg-accent/5 px-4 py-3">
+              <div className="font-heading text-xs font-600 uppercase tracking-wider text-muted-foreground">
+                Mật khẩu tạm
+              </div>
+              <div className="mt-1 select-all break-all font-mono text-xl font-bold tracking-wider text-foreground">
+                {resetResult.temporaryPassword}
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setResetResult(null)}
+                className="flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground transition-colors hover:bg-accent/90"
+              >
+                <CheckCircle2 className="size-4" />
+                Đã đọc cho họ — Xong
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -351,14 +346,12 @@ export function UserList({ initialCreateNotice }: UserListProps) {
 }
 
 const CONFIRM_TITLE: Record<NonNullable<PendingAction>["kind"], string> = {
-  lock: "Vô hiệu hoá tài khoản?",
-  unlock: "Mở khoá tài khoản?",
+  deactivate: "Vô hiệu hoá tài khoản?",
   reset: "Cấp lại mật khẩu?",
 };
 
 const CONFIRM_LABEL: Record<NonNullable<PendingAction>["kind"], string> = {
-  lock: "Vô hiệu hoá",
-  unlock: "Mở khoá",
+  deactivate: "Vô hiệu hoá",
   reset: "Cấp lại",
 };
 
@@ -366,13 +359,12 @@ function buildConfirmMessage(pending: NonNullable<PendingAction>): string {
   const name = pending.user.fullName;
 
   switch (pending.kind) {
-    case "lock":
-      return `Tài khoản "${name}" sẽ bị vô hiệu hoá và không thể đăng nhập. Hệ thống sẽ không tự mở khoá, bạn có thể tự mở khoá lại sau này.`;
-    case "unlock":
-      return `Tài khoản "${name}" sẽ đăng nhập lại được ngay.`;
+    case "deactivate":
+      // AF-02 yêu cầu cảnh báo rõ đây là hành động một chiều.
+      return `Tài khoản "${name}" sẽ không bao giờ đăng nhập lại được. Đây là hành động MỘT CHIỀU, không có cách hoàn tác. Dữ liệu cũ vẫn được giữ nguyên, không bị xoá.`;
     case "reset":
-      // BR-03 — nói trước rằng mật khẩu chỉ đi qua email, để Admin không chờ nó hiện ra.
-      return `Hệ thống sẽ sinh mật khẩu mới và gửi tới email ${pending.user.email}. Mật khẩu KHÔNG hiển thị ở đây. Mật khẩu cũ của "${name}" sẽ hết hiệu lực ngay.`;
+      // Sửa 12/08/2026 — không còn gửi email, mật khẩu hiện ngay trên màn hình sau khi xác nhận.
+      return `Hệ thống sẽ sinh mật khẩu mới và hiện ngay tại đây để bạn đọc trực tiếp cho "${name}". Mật khẩu cũ sẽ hết hiệu lực ngay.`;
   }
 }
 

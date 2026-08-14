@@ -3,6 +3,7 @@ using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -28,7 +29,7 @@ public class AuthServiceTests
     public AuthServiceTests()
     {
         _tokens.Setup(t => t.GenerateAccessToken(It.IsAny<User>())).Returns("fake.jwt.token");
-        _sut = new AuthService(_users.Object, _tokens.Object);
+        _sut = new AuthService(_users.Object, _tokens.Object, new Mock<ILogger<AuthService>>().Object);
     }
 
     [Fact]
@@ -61,17 +62,6 @@ public class AuthServiceTests
     {
         // Repository returns null — no account with that phone number.
         SetupUser(null);
-
-        var result = await _sut.LoginAsync(Request(CorrectPassword));
-
-        Assert.Null(result);
-    }
-
-    [Fact]
-    public async Task LoginAsync_LockedAccount_ReturnsNullEvenWithCorrectPassword()
-    {
-        // BR-01: a correct password is not enough — status must be Active.
-        SetupUser(BuildUser(UserStatus.Deactivated, UserRole.Doctor));
 
         var result = await _sut.LoginAsync(Request(CorrectPassword));
 
@@ -131,7 +121,7 @@ public class AuthServiceTests
     // ---- helpers ----
 
     private void SetupUser(User? user) =>
-        _users.Setup(r => r.GetByPhoneAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _users.Setup(r => r.GetByPhoneReadOnlyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(user);
 
     private static LoginRequest Request(string password) =>

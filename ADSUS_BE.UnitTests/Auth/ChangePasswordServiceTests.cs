@@ -3,6 +3,7 @@ using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -29,7 +30,7 @@ public class ChangePasswordServiceTests
 
     public ChangePasswordServiceTests()
     {
-        _sut = new AuthService(_users.Object, _tokens.Object);
+        _sut = new AuthService(_users.Object, _tokens.Object, new Mock<ILogger<AuthService>>().Object);
     }
 
     [Fact]
@@ -97,10 +98,12 @@ public class ChangePasswordServiceTests
     [Fact]
     public async Task ChangePasswordAsync_MustChangePassword_WrongCurrentPassword_StillSucceeds()
     {
-        // Sửa 06/08/2026 — tài khoản còn đang dùng mật khẩu tạm (do Admin/Điều dưỡng cấp) thì
-        // không cần xác thực CurrentPassword nữa: người dùng vừa chứng minh biết giá trị đó
-        // qua bước đăng nhập ngay trước đây. Cố tình gửi CurrentPassword SAI vẫn phải thành
-        // công, để không ai có thể "khoá" luồng này bằng cách âm thầm gửi giá trị đúng thật.
+        // Xác nhận 12/08/2026 — NGOẠI LỆ DUY NHẤT của BR-01 (UC-25 BR-01/AF-03, UCS v1.24): tài
+        // khoản đang dùng mật khẩu tạm thì bỏ qua hoàn toàn xác thực CurrentPassword. Rào chắn
+        // thật ở đây là access token, không phải CurrentPassword — bỏ bước này không tăng rủi ro
+        // so với các endpoint khác (vẫn chỉ dựa access token), nhưng cũng không thêm lớp bảo vệ
+        // nào: ai cầm token hợp lệ là đổi được mật khẩu. Đánh đổi có chủ đích (giảm ma sát), không
+        // phải khẳng định an toàn hơn.
         var user = BuildUser(UserStatus.Active);
         user.MustChangePassword = true;
         SetupUser(user);
@@ -162,7 +165,6 @@ public class ChangePasswordServiceTests
 
     [Theory]
     [InlineData(UserStatus.Deactivated)]
-    [InlineData(UserStatus.Deactivated)]
     public async Task ChangePasswordAsync_AccountNotActive_IsRejected(UserStatus status)
     {
         // The token may still be valid while an admin locked the account in the meantime.
@@ -177,7 +179,7 @@ public class ChangePasswordServiceTests
     // ---- helpers ----
 
     private void SetupUser(User? user) =>
-        _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _users.Setup(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(user);
 
     private static ChangePasswordRequest Request(string currentPassword) => new()

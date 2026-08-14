@@ -14,8 +14,14 @@ public class UserRepository : IUserRepository
     public Task<User?> GetByPhoneAsync(string phone, CancellationToken cancellationToken = default) =>
         _db.Users.FirstOrDefaultAsync(u => u.Phone == phone, cancellationToken);
 
+    public Task<User?> GetByPhoneReadOnlyAsync(string phone, CancellationToken cancellationToken = default) =>
+        _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Phone == phone, cancellationToken);
+
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
         _db.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
+
+    public Task<User?> GetByIdReadOnlyAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
 
     public Task<User?> GetForUpdateAsync(Guid userId, CancellationToken cancellationToken = default) =>
         _db.Users.FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);

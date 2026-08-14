@@ -11,15 +11,15 @@ using Moq;
 namespace ADSUS_BE.IntegrationTests.Auth;
 
 /// <summary>
-/// Token còn hạn nhưng tài khoản đã bị khoá thì phải bị chặn NGAY.
+/// Token còn hạn nhưng tài khoản đã bị vô hiệu hoá thì phải bị chặn NGAY.
 ///
 /// Không kiểm được bằng unit test: chỗ chặn nằm trong đường ống xác thực của ASP.NET
 /// (<c>AccountStatusJwtEvents</c>), chỉ chạy khi có một request HTTP thật đi qua.
 ///
 /// Vì sao quan trọng: JWT tự chứng minh, backend không giữ danh sách token đã phát. Nếu
-/// không có lớp chặn này thì Admin khoá tài khoản (UC-04 / FT-08) mà token cũ vẫn gọi API
-/// được cho tới lúc hết hạn — và UC-02 AF-02 (vân tay đúng nhưng tài khoản bị khoá) cũng
-/// không thể thực hiện được.
+/// không có lớp chặn này thì Admin vô hiệu hoá tài khoản (UC-04 / FT-08) mà token cũ vẫn
+/// gọi API được cho tới lúc hết hạn — và UC-02 AF-02 (vân tay đúng nhưng tài khoản đã bị
+/// vô hiệu hoá) cũng không thể thực hiện được.
 ///
 /// Bài test dựng app thật nhưng THAY repository bằng bản giả, nên không đụng gì tới
 /// database của nhóm.
@@ -52,7 +52,6 @@ public class AccountStatusAuthTests
 
     [Theory]
     [InlineData(UserStatus.Deactivated)]
-    [InlineData(UserStatus.Deactivated)]
     public async Task TokenConHan_NhungTaiKhoanBiKhoa_TraVe401(UserStatus trangThai)
     {
         using var app = TaoApp();
@@ -60,7 +59,7 @@ public class AccountStatusAuthTests
         // Token được phát lúc tài khoản còn hiệu lực...
         var client = TaoClientCoToken(app);
 
-        // ...rồi Admin khoá tài khoản. Token trong tay người dùng KHÔNG đổi.
+        // ...rồi Admin vô hiệu hoá tài khoản. Token trong tay người dùng KHÔNG đổi.
         _taiKhoan.Status = trangThai;
 
         var response = await client.GetAsync(DuongDanHoSo);
@@ -74,7 +73,10 @@ public class AccountStatusAuthTests
         using var app = TaoApp();
         var client = TaoClientCoToken(app);
 
-        _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        // Cả AccountStatusJwtEvents (chặn ở tầng xác thực) lẫn ProfileService.GetOwnProfileAsync
+        // (chạy sau đó trong action /users/me) đều đọc qua GetByIdReadOnlyAsync kể từ 14/08/2026
+        // (P11 review Module 1) — null nó là đủ để mô phỏng "tài khoản không còn tồn tại".
+        _users.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync((User?)null);
 
         var response = await client.GetAsync(DuongDanHoSo);
@@ -90,7 +92,10 @@ public class AccountStatusAuthTests
     /// </summary>
     private WebApplicationFactory<Program> TaoApp()
     {
-        _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        // Cả AccountStatusJwtEvents (chặn ở tầng xác thực) lẫn ProfileService.GetOwnProfileAsync
+        // (chạy sau đó trong action /users/me) đều đọc qua GetByIdReadOnlyAsync kể từ 14/08/2026
+        // (P11 review Module 1) — mock đúng một method là đủ cho cả request đi trọn pipeline.
+        _users.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(() => _taiKhoan);
 
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>

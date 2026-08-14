@@ -2,6 +2,7 @@ using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.UserRoleManagement.Services;
 
@@ -13,12 +14,18 @@ public class PasswordResetService : IPasswordResetService
     private readonly IUserRepository _users;
     private readonly IEmailService _email;
     private readonly AccountAuditTrail _audit;
+    private readonly ILogger<PasswordResetService> _logger;
 
-    public PasswordResetService(IUserRepository users, IEmailService email, AccountAuditTrail audit)
+    public PasswordResetService(
+        IUserRepository users,
+        IEmailService email,
+        AccountAuditTrail audit,
+        ILogger<PasswordResetService> logger)
     {
         _users = users;
         _email = email;
         _audit = audit;
+        _logger = logger;
     }
 
     public async Task RequestSelfServiceResetAsync(
@@ -77,6 +84,10 @@ public class PasswordResetService : IPasswordResetService
             "người dùng tự yêu cầu cấp lại mật khẩu", cancellationToken);
 
         await _users.SaveChangesAsync(cancellationToken);
+
+        // KHÔNG log mật khẩu — chỉ log việc đã xảy ra, đúng giới hạn của IEmailService.
+        _logger.LogInformation(
+            "Account {UserId} completed a self-service password reset", user.UserId);
     }
 
     public async Task<AdminResetOutcome> AdminResetAsync(
@@ -89,7 +100,8 @@ public class PasswordResetService : IPasswordResetService
         if (userId == actingAdminId)
             return new AdminResetOutcome(AccountOperationResult.CannotTargetSelf, null);
 
-        var user = await _users.GetByIdAsync(userId, cancellationToken);
+        // Sửa-rồi-lưu — dùng GetForUpdateAsync (P11 review Module 2, 12/08/2026).
+        var user = await _users.GetForUpdateAsync(userId, cancellationToken);
         if (user is null) return new AdminResetOutcome(AccountOperationResult.NotFound, null);
 
         if (user.Status == UserStatus.Deactivated)
@@ -113,6 +125,10 @@ public class PasswordResetService : IPasswordResetService
             "quản trị viên cấp lại mật khẩu hộ", cancellationToken);
 
         await _users.SaveChangesAsync(cancellationToken);
+
+        // KHÔNG log mật khẩu — chỉ log việc đã xảy ra.
+        _logger.LogInformation(
+            "Admin {ActingAdminId} reset the password for account {UserId}", actingAdminId, userId);
 
         return new AdminResetOutcome(AccountOperationResult.Success, temporaryPassword);
     }

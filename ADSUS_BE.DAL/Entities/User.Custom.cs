@@ -12,8 +12,8 @@ public partial class User
     public UserRole Role { get; set; }
 
     /// <summary>
-    /// The <c>status</c> column. Only Active can sign in — Locked and Deactivated are both
-    /// rejected even when the password is correct (UC-01 BR-01).
+    /// The <c>status</c> column. Only Active can sign in — Deactivated is rejected even when
+    /// the password is correct (UC-01 BR-01).
     /// </summary>
     public UserStatus Status { get; set; }
 }

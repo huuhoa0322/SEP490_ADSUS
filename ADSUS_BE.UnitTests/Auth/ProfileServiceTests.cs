@@ -2,6 +2,7 @@ using ADSUS_BE.BLL.Auth.DTOs;
 using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -21,13 +22,13 @@ public class ProfileServiceTests
 
     public ProfileServiceTests()
     {
-        _sut = new ProfileService(_users.Object);
+        _sut = new ProfileService(_users.Object, new Mock<ILogger<ProfileService>>().Object);
     }
 
     [Fact]
-    public async Task LayHoSo_TraVeDayDuThongTin()
+    public async Task GetOwnProfileAsync_ReturnsFullProfile()
     {
-        var user = TaoUser();
+        var user = BuildUser();
         user.DateOfBirth = new DateOnly(1990, 5, 20);
         SetupUser(user);
 
@@ -41,7 +42,7 @@ public class ProfileServiceTests
     }
 
     [Fact]
-    public async Task LayHoSo_TaiKhoanKhongTonTai_TraVeNull()
+    public async Task GetOwnProfileAsync_AccountNotFound_ReturnsNull()
     {
         SetupUser(null);
 
@@ -51,12 +52,12 @@ public class ProfileServiceTests
     }
 
     [Fact]
-    public async Task LayHoSo_TraVeCoEpDoiMatKhau()
+    public async Task GetOwnProfileAsync_ReturnsMustChangePasswordFlag()
     {
         // UC-25: đăng nhập bằng vân tay không đi qua /auth/login nên không nhận được cờ này
         // từ LoginResponse — nó phải có trong hồ sơ. Thiếu thì Admin cấp lại mật khẩu cho
         // tài khoản đã bật vân tay, người dùng quét vân tay là vào thẳng, bỏ qua màn đổi.
-        var user = TaoUser();
+        var user = BuildUser();
         user.MustChangePassword = true;
         SetupUser(user);
 
@@ -67,16 +68,15 @@ public class ProfileServiceTests
 
     [Theory]
     [InlineData(UserStatus.Deactivated)]
-    [InlineData(UserStatus.Deactivated)]
-    public async Task LayHoSo_TaiKhoanKhongConHieuLuc_TraVeNull(UserStatus trangThai)
+    public async Task GetOwnProfileAsync_AccountNotActive_ReturnsNull(UserStatus status)
     {
         // UC-02 AF-02: quét vân tay đúng nhưng tài khoản đã bị Admin khoá thì vẫn không vào
         // được. Ứng dụng di động dựa vào chính lời gọi GET /users/me này để kiểm tra.
         //
         // Trả null y hệt trường hợp không tìm thấy tài khoản (GB-06) — controller vì thế
         // trả về đúng một câu 401 cho cả hai.
-        var user = TaoUser();
-        user.Status = trangThai;
+        var user = BuildUser();
+        user.Status = status;
         SetupUser(user);
 
         var result = await _sut.GetOwnProfileAsync(user.UserId);
@@ -85,9 +85,9 @@ public class ProfileServiceTests
     }
 
     [Fact]
-    public async Task CapNhat_ThanhCong_LuuDungBaTruong()
+    public async Task UpdateOwnProfileAsync_Success_SavesAllThreeFields()
     {
-        var user = TaoUser();
+        var user = BuildUser();
         SetupUser(user);
         SetupEmailFree();
 
@@ -106,11 +106,11 @@ public class ProfileServiceTests
     }
 
     [Fact]
-    public async Task CapNhat_KHONG_DOI_SoDienThoai()
+    public async Task UpdateOwnProfileAsync_NeverChangesPhoneNumber()
     {
         // BR-02: số điện thoại là định danh đăng nhập, chỉ phòng khám đổi được.
-        var user = TaoUser();
-        var soCu = user.Phone;
+        var user = BuildUser();
+        var originalPhone = user.Phone;
         SetupUser(user);
         SetupEmailFree();
 
@@ -119,15 +119,15 @@ public class ProfileServiceTests
             FullName = "Tên Mới",
         });
 
-        Assert.Equal(soCu, user.Phone);
+        Assert.Equal(originalPhone, user.Phone);
     }
 
     [Fact]
-    public async Task CapNhat_KHONG_CHAM_DuLieuKhac()
+    public async Task UpdateOwnProfileAsync_NeverTouchesOtherData()
     {
         // BR-03: chỉ sửa thông tin hành chính. Vai trò, trạng thái, mật khẩu phải nguyên vẹn.
-        var user = TaoUser();
-        var hashCu = user.PasswordHash;
+        var user = BuildUser();
+        var originalPasswordHash = user.PasswordHash;
         SetupUser(user);
         SetupEmailFree();
 
@@ -138,13 +138,13 @@ public class ProfileServiceTests
 
         Assert.Equal(UserRole.Patient, user.Role);
         Assert.Equal(UserStatus.Active, user.Status);
-        Assert.Equal(hashCu, user.PasswordHash);
+        Assert.Equal(originalPasswordHash, user.PasswordHash);
     }
 
     [Fact]
-    public async Task CapNhat_EmailDeTrong_LuuThanhNull()
+    public async Task UpdateOwnProfileAsync_EmailLeftBlank_SavesAsNull()
     {
-        var user = TaoUser();
+        var user = BuildUser();
         user.Email = "cu@example.com";
         SetupUser(user);
 
@@ -159,9 +159,9 @@ public class ProfileServiceTests
     }
 
     [Fact]
-    public async Task CapNhat_EmailDaCoNguoiDung_BiTuChoi()
+    public async Task UpdateOwnProfileAsync_EmailAlreadyUsed_Rejected()
     {
-        var user = TaoUser();
+        var user = BuildUser();
         SetupUser(user);
         _users.Setup(r => r.IsEmailUsedByAnotherUserAsync(
                 It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -179,10 +179,9 @@ public class ProfileServiceTests
 
     [Theory]
     [InlineData(UserStatus.Deactivated)]
-    [InlineData(UserStatus.Deactivated)]
-    public async Task CapNhat_TaiKhoanKhongActive_BiTuChoi(UserStatus status)
+    public async Task UpdateOwnProfileAsync_AccountNotActive_Rejected(UserStatus status)
     {
-        var user = TaoUser();
+        var user = BuildUser();
         user.Status = status;
         SetupUser(user);
 
@@ -198,9 +197,9 @@ public class ProfileServiceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task SinhTracHoc_BatTat_LuuDungCo(bool enabled)
+    public async Task SetBiometricEnabledAsync_TogglesCorrectly(bool enabled)
     {
-        var user = TaoUser();
+        var user = BuildUser();
         user.BiometricEnabled = !enabled;
         SetupUser(user);
 
@@ -212,11 +211,10 @@ public class ProfileServiceTests
 
     [Theory]
     [InlineData(UserStatus.Deactivated)]
-    [InlineData(UserStatus.Deactivated)]
-    public async Task SinhTracHoc_TaiKhoanKhongActive_BiTuChoi(UserStatus status)
+    public async Task SetBiometricEnabledAsync_AccountNotActive_Rejected(UserStatus status)
     {
         // UC-02 AF-02: tài khoản bị khoá thì không bật được sinh trắc học.
-        var user = TaoUser();
+        var user = BuildUser();
         user.Status = status;
         SetupUser(user);
 
@@ -227,16 +225,23 @@ public class ProfileServiceTests
 
     // ---- helpers ----
 
-    private void SetupUser(User? user) =>
-        _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+    private void SetupUser(User? user)
+    {
+        // GetOwnProfileAsync đọc qua GetByIdReadOnlyAsync; UpdateOwnProfileAsync/
+        // SetBiometricEnabledAsync sửa-rồi-lưu qua GetForUpdateAsync — set cả hai để test
+        // không cần biết SUT gọi method nào (P11 review Module 1, 12/08/2026).
+        _users.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(user);
+        _users.Setup(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(user);
+    }
 
     private void SetupEmailFree() =>
         _users.Setup(r => r.IsEmailUsedByAnotherUserAsync(
                 It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-    private static User TaoUser() => new()
+    private static User BuildUser() => new()
     {
         UserId = Guid.NewGuid(),
         Phone = "0912345678",

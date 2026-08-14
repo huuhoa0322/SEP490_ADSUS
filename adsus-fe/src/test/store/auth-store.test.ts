@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { getHomePathForRole, isRoleAllowedOnPath, useAuthStore } from "@/store/auth-store";
 import type { Role } from "@/types/api.types";
-
-import { getHomePathForRole, isRoleAllowedOnPath, useAuthStore } from "./auth-store";
 
 /**
  * Điều hướng và phân quyền theo vai trò.

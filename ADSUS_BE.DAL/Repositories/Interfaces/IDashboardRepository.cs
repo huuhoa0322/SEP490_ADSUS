@@ -51,7 +51,6 @@ public record AccountCounts(
     int NurseCount,
     int PatientCount,
     int ActiveCount,
-    int LockedCount,
     int DeactivatedCount);
 
 /// <summary>Số đếm hoạt động trong một khoảng thời gian.</summary>

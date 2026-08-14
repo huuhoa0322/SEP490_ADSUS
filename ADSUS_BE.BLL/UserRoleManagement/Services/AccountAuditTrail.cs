@@ -30,8 +30,6 @@ public class AccountAuditTrail
     /// <summary>Tên hành động, viết hoa gạch dưới — cùng quy ước với Module 6.</summary>
     public const string CreateAccount = "CREATE_ACCOUNT";
     public const string UpdateAccount = "UPDATE_ACCOUNT";
-    public const string LockAccount = "LOCK_ACCOUNT";
-    public const string UnlockAccount = "UNLOCK_ACCOUNT";
     public const string DeactivateAccount = "DEACTIVATE_ACCOUNT";
     public const string AdminResetPassword = "ADMIN_RESET_PASSWORD";
     public const string SelfServiceResetPassword = "SELF_RESET_PASSWORD";

@@ -13,10 +13,14 @@ namespace ADSUS_BE.Controllers;
 ///
 /// Mọi endpoint ở đây chỉ tác động lên tài khoản của người gọi, lấy từ claim trong JWT —
 /// không nhận userId từ request. Nhờ vậy không ai gọi được để sửa hồ sơ người khác.
+///
+/// CHỈ PATIENT (thêm 12/08/2026, khớp UC-10 — Actor=Patient, Platform=Mobile): Admin/Doctor/
+/// Nurse lấy Full name/Email của chính mình thẳng từ response đăng nhập (AuthService.LoginAsync),
+/// không gọi controller này — đã xác nhận Web FE (adsus-fe) không có lời gọi nào tới /users/me.
 /// </summary>
 [ApiController]
 [Route("api/v1/users")]
-[Authorize]
+[Authorize(Roles = "PATIENT")]
 public class UsersController : ControllerBase
 {
     private readonly IProfileService _profile;

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { UserForm } from "@/features/users/components/user-form";
+import { UserForm } from "@/features/user-role-management/components/user-form";
 
 export const metadata: Metadata = {
   title: "Sửa tài khoản | ADSUS",

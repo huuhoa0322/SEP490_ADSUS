@@ -1,5 +1,4 @@
 import { apiClient } from "@/lib/api-client";
-import { translateApiMessage } from "@/lib/api-messages";
 import type { ApiResponse } from "@/types/api.types";
 
 import type {
@@ -40,15 +39,15 @@ export async function getUserById(userId: string): Promise<UserAccount> {
 }
 
 export async function createUser(payload: CreateUserAccountRequest): Promise<CreateUserResult> {
-  const { data } = await apiClient.post<ApiResponse<UserAccount>>(BASE, payload);
+  const { data } = await apiClient.post<
+    ApiResponse<{ account: UserAccount; temporaryPassword: string }>
+  >(BASE, payload);
 
   if (!data.data) throw new Error(data.message || "Tạo tài khoản thất bại.");
 
   return {
-    account: data.data,
-    message: data.message
-      ? translateApiMessage(data.message)
-      : "Đã tạo tài khoản.",
+    account: data.data.account,
+    temporaryPassword: data.data.temporaryPassword,
   };
 }
 
@@ -59,22 +58,22 @@ export async function updateUser(
   await apiClient.put<ApiResponse<null>>(`${BASE}/${userId}`, payload);
 }
 
-/** FT-08 — khoá và mở khoá đều thủ công, không có job tự mở (UC-04 BR-04). */
-export async function setUserLocked(userId: string, locked: boolean): Promise<void> {
-  await apiClient.put<ApiResponse<null>>(`${BASE}/${userId}/${locked ? "lock" : "unlock"}`);
-}
-
 /** FT-08 AF-02 — MỘT CHIỀU, không có đường quay lại (BR-05). Phải hỏi xác nhận trước khi gọi. */
 export async function deactivateUser(userId: string): Promise<void> {
   await apiClient.put<ApiResponse<null>>(`${BASE}/${userId}/deactivate`);
 }
 
 /**
- * UC-03 AF-02 — Admin cấp lại mật khẩu hộ, dùng khi chủ tài khoản không vào được email.
+ * UC-03 AF-02 — Admin cấp lại mật khẩu hộ.
  *
- * Mật khẩu tạm CHỈ đi qua email; API không trả nó về và giao diện không bao giờ hiển thị
- * (BR-03). Tài khoản chưa khai email thì backend từ chối.
+ * Sửa 12/08/2026 — không còn gửi qua email: mật khẩu tạm trả về plaintext MỘT LẦN để Admin
+ * đọc trực tiếp cho chủ tài khoản (thống nhất với UC-04 tạo tài khoản và UC-06 Điều dưỡng).
+ * Không còn phụ thuộc tài khoản có khai email hay không.
  */
-export async function resetUserPassword(userId: string): Promise<void> {
-  await apiClient.put<ApiResponse<null>>(`${BASE}/${userId}/reset-password`);
+export async function resetUserPassword(userId: string): Promise<string> {
+  const { data } = await apiClient.put<ApiResponse<string>>(`${BASE}/${userId}/reset-password`);
+
+  if (!data.data) throw new Error(data.message || "Cấp lại mật khẩu thất bại.");
+
+  return data.data;
 }

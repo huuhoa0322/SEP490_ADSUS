@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { translateApiMessage } from "./api-messages";
+import { translateApiMessage } from "@/lib/api-messages";
 
 describe("translateApiMessage", () => {
   it("dịch câu khớp nguyên văn", () => {

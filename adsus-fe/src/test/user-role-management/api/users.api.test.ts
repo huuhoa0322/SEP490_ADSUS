@@ -4,12 +4,10 @@ import { describe, expect, it } from "vitest";
 import { API_BASE_URL } from "@/lib/api-client";
 import { server } from "@/test/mocks/server";
 
-import { createUser } from "./users.api";
+import { createUser } from "@/features/user-role-management/api/users.api";
 
 describe("createUser", () => {
-  it("giữ và dịch cảnh báo gửi email của API khi tài khoản vẫn được tạo", async () => {
-    const warning =
-      "Account created, but the temporary password could not be emailed. Use Reset password to try sending it again.";
+  it("trả về tài khoản kèm mật khẩu tạm — sửa 12/08/2026, không còn gửi qua email", async () => {
     const account = {
       userId: "user-123",
       phoneNumber: "0900000123",
@@ -22,14 +20,16 @@ describe("createUser", () => {
       createdAt: "2026-07-31T10:00:00Z",
       isCurrentUser: false,
     };
+    const temporaryPassword = "Aa1b2c3d4e";
 
     server.use(
       http.post(`${API_BASE_URL}/api/v1/admin/users`, () =>
         HttpResponse.json(
           {
             code: "USER_CREATED",
-            message: warning,
-            data: account,
+            message:
+              "Account created. Temporary password generated — communicate it to the account holder directly.",
+            data: { account, temporaryPassword },
           },
           { status: 201 },
         ),
@@ -44,10 +44,6 @@ describe("createUser", () => {
         role: account.role,
         dateOfBirth: account.dateOfBirth,
       }),
-    ).resolves.toEqual({
-      account,
-      message:
-        "Đã tạo tài khoản, nhưng không gửi được email chứa mật khẩu tạm. Hãy bấm Cấp lại mật khẩu để gửi lại.",
-    });
+    ).resolves.toEqual({ account, temporaryPassword });
   });
 });

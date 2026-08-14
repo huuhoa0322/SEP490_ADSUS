@@ -76,12 +76,6 @@ const MESSAGES: Record<string, string> = {
     "Không đổi được vai trò của quản trị viên, và cũng không phong quản trị viên ở màn hình này.",
 
   // ---- Kết quả có hậu quả kèm theo ----
-  "Account created. A temporary password has been emailed.":
-    "Đã tạo tài khoản và gửi mật khẩu tạm qua email.",
-  "Account created, but it has no email address so no temporary password could be delivered. Add an email address, then use Reset password.":
-    "Đã tạo tài khoản, nhưng chưa có email nên không gửi được mật khẩu tạm. Hãy bổ sung email rồi bấm Cấp lại mật khẩu.",
-  "Account created, but the temporary password could not be emailed. Use Reset password to try sending it again.":
-    "Đã tạo tài khoản, nhưng không gửi được email chứa mật khẩu tạm. Hãy bấm Cấp lại mật khẩu để gửi lại.",
   "The temporary password could not be emailed, so the current password was left unchanged. Please try again later.":
     "Không gửi được email nên mật khẩu hiện tại được giữ nguyên. Vui lòng thử lại sau.",
   "Account updated.": "Đã lưu thay đổi.",

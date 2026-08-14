@@ -3,6 +3,7 @@ using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -36,19 +37,22 @@ public class PasswordResetServiceTests
                   .Returns(Task.CompletedTask);
 
         _sut = new PasswordResetService(
-            _users.Object, _email.Object, new AccountAuditTrail(_auditLogs.Object));
+            _users.Object,
+            _email.Object,
+            new AccountAuditTrail(_auditLogs.Object),
+            new Mock<ILogger<PasswordResetService>>().Object);
     }
 
     // ---------- Đường tự phục vụ ----------
 
     [Fact]
-    public async Task TuCapLai_DungSoDienThoaiVaEmail_DoiMatKhauVaGuiMail()
+    public async Task RequestSelfServiceResetAsync_MatchingPhoneAndEmail_ChangesPasswordAndSendsEmail()
     {
-        var user = TaoUser();
+        var user = BuildUser();
         var hashCu = user.PasswordHash;
         SetupGetByPhone(user);
 
-        await _sut.RequestSelfServiceResetAsync(YeuCau());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest());
 
         Assert.NotEqual(hashCu, user.PasswordHash);
         // BR-04 — cấp lại xong là phải đổi ở lần đăng nhập kế tiếp (UC-25).
@@ -59,41 +63,41 @@ public class PasswordResetServiceTests
     }
 
     [Fact]
-    public async Task TuCapLai_SoDienThoaiKhongTonTai_KHONG_LAM_GI()
+    public async Task RequestSelfServiceResetAsync_PhoneNotFound_DoesNothing()
     {
         // AF-01 — không tìm thấy tài khoản thì im lặng, không ghi gì, không gửi gì.
         SetupGetByPhone(null);
 
-        await _sut.RequestSelfServiceResetAsync(YeuCau());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest());
 
-        VerifyKhongCoTacDongNao();
+        VerifyNoSideEffects();
     }
 
     [Fact]
-    public async Task TuCapLai_EmailKhongKhop_KHONG_LAM_GI()
+    public async Task RequestSelfServiceResetAsync_EmailDoesNotMatch_DoesNothing()
     {
         // BR-01 — phải khớp CẢ hai. Chỉ cần biết số điện thoại mà đặt lại được mật khẩu của
         // người khác thì đó là lỗ hổng chiếm tài khoản.
-        var user = TaoUser();
+        var user = BuildUser();
         SetupGetByPhone(user);
 
-        var request = YeuCau();
+        var request = BuildRequest();
         request.Email = "nguoikhac@example.com";
 
         await _sut.RequestSelfServiceResetAsync(request);
 
-        VerifyKhongCoTacDongNao();
+        VerifyNoSideEffects();
     }
 
     [Fact]
-    public async Task TuCapLai_EmailKhacHoaThuong_VAN_KHOP()
+    public async Task RequestSelfServiceResetAsync_EmailDiffersOnlyByCase_StillMatches()
     {
         // Người dùng gõ email in hoa là chuyện thường. DB cũng có unique index trên
         // lower(email) nên so sánh phải bỏ qua hoa thường.
-        var user = TaoUser();
+        var user = BuildUser();
         SetupGetByPhone(user);
 
-        var request = YeuCau();
+        var request = BuildRequest();
         request.Email = "A@ExAmPlE.CoM";
 
         await _sut.RequestSelfServiceResetAsync(request);
@@ -103,29 +107,28 @@ public class PasswordResetServiceTests
 
     [Theory]
     [InlineData(UserStatus.Deactivated)]
-    [InlineData(UserStatus.Deactivated)]
-    public async Task TuCapLai_TaiKhoanKhongConHieuLuc_KHONG_LAM_GI(UserStatus trangThai)
+    public async Task RequestSelfServiceResetAsync_AccountNotActive_DoesNothing(UserStatus trangThai)
     {
-        // AF-01 — tài khoản bị khoá hay vô hiệu hoá cũng không được cấp lại mật khẩu.
-        var user = TaoUser();
+        // AF-01 — tài khoản bị vô hiệu hoá cũng không được cấp lại mật khẩu.
+        var user = BuildUser();
         user.Status = trangThai;
         SetupGetByPhone(user);
 
-        await _sut.RequestSelfServiceResetAsync(YeuCau());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest());
 
-        VerifyKhongCoTacDongNao();
+        VerifyNoSideEffects();
     }
 
     [Fact]
-    public async Task TuCapLai_TaiKhoanChuaKhaiEmail_KHONG_LAM_GI()
+    public async Task RequestSelfServiceResetAsync_AccountHasNoEmail_DoesNothing()
     {
-        var user = TaoUser();
+        var user = BuildUser();
         user.Email = null;
         SetupGetByPhone(user);
 
-        await _sut.RequestSelfServiceResetAsync(YeuCau());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest());
 
-        VerifyKhongCoTacDongNao();
+        VerifyNoSideEffects();
     }
 
     // ---------- Đường Admin cấp lại hộ (AF-02) ----------
@@ -133,12 +136,12 @@ public class PasswordResetServiceTests
     [Theory]
     [InlineData("a@example.com")]
     [InlineData(null)]
-    public async Task AdminCapLai_ThanhCong_LuonTraPlaintextKhongGuiMail(string? email)
+    public async Task AdminResetAsync_Success_AlwaysReturnsPlaintextAndNeverEmails(string? email)
     {
         // Quyết định ghi đè 06/08/2026, mở rộng lần 2 — không còn phân biệt có/không có email
         // nữa: cả hai trường hợp đều đổi mật khẩu thật và trả plaintext đúng một lần để người
         // thao tác đọc trực tiếp cho chủ tài khoản, KHÔNG BAO GIỜ gửi email ở đường này nữa.
-        var user = TaoUser();
+        var user = BuildUser();
         user.Email = email;
         var hashCu = user.PasswordHash;
         SetupGetById(user);
@@ -156,9 +159,9 @@ public class PasswordResetServiceTests
     }
 
     [Fact]
-    public async Task AdminCapLai_TaiKhoanDaVoHieuHoa_BiTuChoi()
+    public async Task AdminResetAsync_AccountDeactivated_IsRejected()
     {
-        var user = TaoUser();
+        var user = BuildUser();
         user.Status = UserStatus.Deactivated;
         SetupGetById(user);
 
@@ -168,7 +171,7 @@ public class PasswordResetServiceTests
     }
 
     [Fact]
-    public async Task AdminCapLai_TaiKhoanKhongTonTai_TraVeNotFound()
+    public async Task AdminResetAsync_AccountNotFound_ReturnsNotFound()
     {
         SetupGetById(null);
 
@@ -178,7 +181,7 @@ public class PasswordResetServiceTests
     }
 
     [Fact]
-    public async Task AdminCapLai_ChoChinhMinh_BiTuChoi()
+    public async Task AdminResetAsync_TargetIsSelf_IsRejected()
     {
         // Admin đổi mật khẩu của chính mình đã có UC-25, không cần đi vòng qua đây.
         var adminId = Guid.NewGuid();
@@ -192,14 +195,14 @@ public class PasswordResetServiceTests
     // AdminResetAsync không còn gửi email nữa kể từ 06/08/2026 mở rộng lần 2, xem Theory phía trên) ----------
 
     [Fact]
-    public async Task TuCapLai_GuiMailThatBai_GIU_NGUYEN_MAT_KHAU_CU()
+    public async Task RequestSelfServiceResetAsync_EmailSendFails_KeepsOldPassword()
     {
-        var user = TaoUser();
+        var user = BuildUser();
         var hashCu = user.PasswordHash;
         SetupGetByPhone(user);
-        SetupGuiMailThatBai();
+        SetupEmailSendFails();
 
-        await _sut.RequestSelfServiceResetAsync(YeuCau());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest());
 
         Assert.Equal(hashCu, user.PasswordHash);
         _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -208,9 +211,9 @@ public class PasswordResetServiceTests
     // ---------- Nhật ký thao tác ----------
 
     [Fact]
-    public async Task AdminCapLai_GHI_NHAT_KY_VoiNguoiThucHienLaAdmin()
+    public async Task AdminResetAsync_RecordsAuditLogWithAdminAsActor()
     {
-        var user = TaoUser();
+        var user = BuildUser();
         var adminId = Guid.NewGuid();
         SetupGetById(user);
 
@@ -222,12 +225,12 @@ public class PasswordResetServiceTests
     }
 
     [Fact]
-    public async Task TuCapLai_GHI_NHAT_KY_VoiNguoiThucHienLaChinhChuTaiKhoan()
+    public async Task RequestSelfServiceResetAsync_RecordsAuditLogWithAccountHolderAsActor()
     {
-        var user = TaoUser();
+        var user = BuildUser();
         SetupGetByPhone(user);
 
-        await _sut.RequestSelfServiceResetAsync(YeuCau());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest());
 
         var log = Assert.Single(_audited);
         Assert.Equal("SELF_RESET_PASSWORD", log.Action);
@@ -235,44 +238,48 @@ public class PasswordResetServiceTests
     }
 
     [Fact]
-    public async Task KhongKhopThongTin_KHONG_GHI_NHAT_KY()
+    public async Task RequestSelfServiceResetAsync_NonMatchingInfo_DoesNotWriteAuditLog()
     {
         // AF-01 — không khớp thì im lặng hoàn toàn. Ghi nhật ký ở đây là biến bảng nhật ký
         // thành chỗ dò xem số điện thoại nào có tài khoản thật.
         SetupGetByPhone(null);
 
-        await _sut.RequestSelfServiceResetAsync(YeuCau());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest());
 
         Assert.Empty(_audited);
     }
 
     [Fact]
-    public async Task GuiMailThatBai_KHONG_GHI_NHAT_KY()
+    public async Task RequestSelfServiceResetAsync_EmailSendFails_DoesNotWriteAuditLog()
     {
-        // Mật khẩu không đổi thì cũng không có việc gì đã xảy ra để mà ghi.
-        var user = TaoUser();
-        SetupGetById(user);
-        SetupGuiMailThatBai();
+        // Sửa 12/08/2026 — test này trước đây gọi nhầm AdminResetAsync, đường đó không còn
+        // gửi email từ 06/08/2026 (mở rộng lần 2) nên kịch bản "gửi thư hỏng" không thể xảy
+        // ra ở đó nữa (xem chú thích ở RequestSelfServiceResetAsync_EmailSendFails_KeepsOldPassword phía
+        // trên) — chỉ còn áp dụng cho đường tự phục vụ. Mật khẩu không đổi thì cũng không có
+        // việc gì đã xảy ra để mà ghi.
+        var user = BuildUser();
+        SetupGetByPhone(user);
+        SetupEmailSendFails();
 
-        await _sut.AdminResetAsync(user.UserId, Guid.NewGuid());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest());
 
         Assert.Empty(_audited);
     }
 
     // ---------- helpers ----------
 
-    private void SetupGuiMailThatBai() =>
+    private void SetupEmailSendFails() =>
         _email.Setup(e => e.SendTemporaryPasswordAsync(
                   It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(false);
 
-    private static ForgotPasswordRequest YeuCau() => new()
+    private static ForgotPasswordRequest BuildRequest() => new()
     {
         PhoneNumber = "0912345678",
         Email = "a@example.com",
     };
 
-    private static User TaoUser() => new()
+    private static User BuildUser() => new()
     {
         UserId = Guid.NewGuid(),
         Phone = "0912345678",
@@ -288,12 +295,13 @@ public class PasswordResetServiceTests
         _users.Setup(r => r.GetByPhoneAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(user);
 
+    // Chỉ dùng cho AdminResetAsync (sửa-rồi-lưu) — GetForUpdateAsync (P11 review Module 2, 12/08/2026).
     private void SetupGetById(User? user) =>
-        _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _users.Setup(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(user);
 
     /// <summary>Không ghi database, không gửi mail — đúng nghĩa "im lặng" của AF-01.</summary>
-    private void VerifyKhongCoTacDongNao()
+    private void VerifyNoSideEffects()
     {
         _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
         _email.Verify(e => e.SendTemporaryPasswordAsync(

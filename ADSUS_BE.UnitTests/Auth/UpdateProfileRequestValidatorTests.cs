@@ -18,7 +18,7 @@ public class UpdateProfileRequestValidatorTests
     private readonly UpdateProfileRequestValidator _sut = new();
 
     [Fact]
-    public void HopLe_DayDuThongTin_Pass()
+    public void Valid_FullInformation_Passes()
     {
         var result = _sut.Validate(new UpdateProfileRequest
         {
@@ -31,7 +31,7 @@ public class UpdateProfileRequestValidatorTests
     }
 
     [Fact]
-    public void HopLe_ChiCoHoTen_Pass()
+    public void Valid_FullNameOnly_Passes()
     {
         // Email và ngày sinh đều không bắt buộc.
         var result = _sut.Validate(new UpdateProfileRequest { FullName = "Nguyễn Văn A" });
@@ -42,7 +42,7 @@ public class UpdateProfileRequestValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void KhongHopLe_ThieuHoTen_Fail(string fullName)
+    public void Invalid_MissingFullName_Fails(string fullName)
     {
         var result = _sut.Validate(new UpdateProfileRequest { FullName = fullName });
 
@@ -52,7 +52,7 @@ public class UpdateProfileRequestValidatorTests
     [Theory]
     [InlineData("khong-phai-email")]
     [InlineData("thieu-cuoi@")]
-    public void KhongHopLe_EmailSaiDinhDang_Fail(string email)
+    public void Invalid_MalformedEmail_Fails(string email)
     {
         var result = _sut.Validate(new UpdateProfileRequest
         {
@@ -64,22 +64,22 @@ public class UpdateProfileRequestValidatorTests
     }
 
     [Fact]
-    public void KhongHopLe_NgaySinhOTuongLai_Fail()
+    public void Invalid_DateOfBirthInFuture_Fails()
     {
         // BR-01. Dùng mốc 1 năm sau để không bị lệch múi giờ làm sai kết quả.
-        var tuongLai = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(1)).ToString("yyyy-MM-dd");
+        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(1)).ToString("yyyy-MM-dd");
 
         var result = _sut.Validate(new UpdateProfileRequest
         {
             FullName = "Nguyễn Văn A",
-            DateOfBirth = tuongLai,
+            DateOfBirth = futureDate,
         });
 
         Assert.False(result.IsValid);
     }
 
     [Fact]
-    public void HopLe_NgaySinhTrongQuaKhu_Pass()
+    public void Valid_DateOfBirthInPast_Passes()
     {
         var result = _sut.Validate(new UpdateProfileRequest
         {
@@ -94,7 +94,7 @@ public class UpdateProfileRequestValidatorTests
     [InlineData("20-05-1990")]
     [InlineData("1990/05/20")]
     [InlineData("khong-phai-ngay")]
-    public void KhongHopLe_NgaySinhSaiDinhDang_Fail(string dateOfBirth)
+    public void Invalid_MalformedDateOfBirth_Fails(string dateOfBirth)
     {
         var result = _sut.Validate(new UpdateProfileRequest
         {

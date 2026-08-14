@@ -1,8 +1,10 @@
 using ADSUS_BE.BLL.Auth.DTOs;
 using ADSUS_BE.BLL.Auth.Interfaces;
+using ADSUS_BE.BLL.Auth.Mappers;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.Auth.Services;
 
@@ -10,6 +12,7 @@ public class AuthService : IAuthService
 {
     private readonly IUserRepository _users;
     private readonly IJwtTokenService _tokens;
+    private readonly ILogger<AuthService> _logger;
 
     /// <summary>
     /// Dummy hash compared against when no account matches the phone number.
@@ -22,22 +25,25 @@ public class AuthService : IAuthService
     /// </summary>
     private static readonly string DummyHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString());
 
-    public AuthService(IUserRepository users, IJwtTokenService tokens)
+    public AuthService(IUserRepository users, IJwtTokenService tokens, ILogger<AuthService> logger)
     {
         _users = users;
         _tokens = tokens;
+        _logger = logger;
     }
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await _users.GetByPhoneAsync(request.PhoneNumber, cancellationToken);
+        // Chỉ đọc để so mật khẩu và phát token, không sửa/lưu gì ở đây — dùng bản AsNoTracking
+        // (P11 review Module 1, 14/08/2026).
+        var user = await _users.GetByPhoneReadOnlyAsync(request.PhoneNumber, cancellationToken);
 
         var passwordMatches = BCrypt.Net.BCrypt.Verify(
             request.Password,
             user?.PasswordHash ?? DummyHash);
 
         // BR-01: sign-in succeeds only when the phone number exists, the password is correct
-        // AND the status is Active. Locked and Deactivated are rejected even with the right
+        // AND the status is Active. A Deactivated account is rejected even with the right
         // password.
         if (user is null || !passwordMatches || user.Status != UserStatus.Active)
         {
@@ -57,15 +63,11 @@ public class AuthService : IAuthService
             return null;
         }
 
-        return new LoginResponse
-        {
-            UserId = user.UserId,
-            AccessToken = _tokens.GenerateAccessToken(user),
-            Role = user.Role.ToApiString(),
-            FullName = user.FullName,
-            Email = user.Email,
-            MustChangePassword = user.MustChangePassword,
-        };
+        _logger.LogInformation(
+            "User {UserId} signed in successfully with role {Role}", user.UserId, user.Role);
+
+        var accessToken = _tokens.GenerateAccessToken(user);
+        return UserMapper.ToLoginResponse(user, accessToken);
     }
 
     public async Task<ChangePasswordResult> ChangePasswordAsync(
@@ -73,7 +75,9 @@ public class AuthService : IAuthService
         ChangePasswordRequest request,
         CancellationToken cancellationToken = default)
     {
-        var user = await _users.GetByIdAsync(userId, cancellationToken);
+        // GetForUpdateAsync (có tracking) — hàm này sửa PasswordHash rồi SaveChangesAsync, khác
+        // các nơi chỉ đọc để hiển thị (P11 review Module 1, 12/08/2026).
+        var user = await _users.GetForUpdateAsync(userId, cancellationToken);
 
         if (user is null)
         {
@@ -86,13 +90,13 @@ public class AuthService : IAuthService
             return ChangePasswordResult.AccountNotActive;
         }
 
-        // BR-01: the change is only allowed when the current password is correct — UNLESS the
-        // account is still on an admin/nurse-issued temporary password (MustChangePassword).
-        // In that case the caller already proved they know it by logging in with it moments
-        // ago; the only password anyone could re-type here is the one the UI is about to make
-        // them forget, so re-verification is pure friction, not security (extended 06/08/2026,
-        // same reveal-on-issue decision as UC-06 AF-01/AF-03). The branch is keyed off the
-        // account's own server-side flag, never a client-supplied one.
+        // BR-01: current password must match — UNLESS the account is still on a temp password
+        // (MustChangePassword), where the UI omits the field and this check is skipped entirely.
+        // The real barrier here is the access token, not CurrentPassword: skipping this check
+        // adds no risk beyond normal bearer-token auth, but adds no second factor either —
+        // anyone holding a valid token while MustChangePassword is set can change the password
+        // without proving anything. Accepted trade-off for less friction, confirmed 12/08/2026 —
+        // the ONLY exception to BR-01, see UC-25 BR-01/AF-03 (`Report_3.1_UCS_ADSUS.md` v1.24).
         if (!user.MustChangePassword
             && (string.IsNullOrEmpty(request.CurrentPassword)
                 || !BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash)))
@@ -108,6 +112,8 @@ public class AuthService : IAuthService
         user.UpdatedAt = DateTime.UtcNow;
 
         await _users.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("User {UserId} changed their password successfully", user.UserId);
 
         return ChangePasswordResult.Success;
     }

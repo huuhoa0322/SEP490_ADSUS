@@ -81,12 +81,13 @@ public class AdminUsersController : ControllerBase
     }
 
     /// <summary>
-    /// FT-07 — tạo tài khoản mới. Mật khẩu tạm do hệ thống sinh và gửi qua email,
-    /// KHÔNG nằm trong phản hồi (PRD §6.2).
+    /// FT-07 — tạo tài khoản mới. Mật khẩu tạm do hệ thống sinh, trả về plaintext MỘT LẦN
+    /// trong phản hồi để Admin đọc trực tiếp cho chủ tài khoản — không còn gửi qua email (sửa
+    /// 12/08/2026, thống nhất với UC-03 AF-02/UC-06 AF-01/AF-03).
     /// </summary>
     [HttpPost]
-    [ProducesResponseType(typeof(ApiResponse<UserAccountResponse>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ApiResponse<UserAccountResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<CreatedUserAccountResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<CreatedUserAccountResponse>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create(
         [FromBody] CreateUserAccountRequest request,
         CancellationToken cancellationToken)
@@ -95,47 +96,30 @@ public class AdminUsersController : ControllerBase
         if (!validation.IsValid)
         {
             var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
-            return BadRequest(ApiResponse<UserAccountResponse>.Fail(
+            return BadRequest(ApiResponse<CreatedUserAccountResponse>.Fail(
                 StatusCodes.Status400BadRequest, message));
         }
 
         if (!TryGetActingAdminId(out var adminId))
         {
-            return Unauthorized(ApiResponse<UserAccountResponse>.Fail(
+            return Unauthorized(ApiResponse<CreatedUserAccountResponse>.Fail(
                 StatusCodes.Status401Unauthorized, "Invalid access token."));
         }
 
-        var (result, account) = await _accounts.CreateAsync(request, adminId, cancellationToken);
+        var (result, account, temporaryPassword) =
+            await _accounts.CreateAsync(request, adminId, cancellationToken);
 
-        // Ba kết quả dưới đây đều là ĐÃ TẠO XONG, chỉ khác nhau ở chỗ mật khẩu tạm có tới
-        // tay chủ tài khoản không. Trả 4xx cho hai trường hợp sau là nói dối — bản ghi đã
-        // nằm trong database và số điện thoại đã bị chiếm, Admin bấm lại chỉ nhận được
-        // "số điện thoại đã tồn tại" rồi không hiểu chuyện gì đang xảy ra.
-        var successMessage = result switch
+        if (result != AccountOperationResult.Success)
         {
-            AccountOperationResult.Success =>
-                "Account created. A temporary password has been emailed.",
-
-            AccountOperationResult.CreatedWithoutEmail =>
-                "Account created, but it has no email address so no temporary password could be "
-                + "delivered. Add an email address, then use Reset password.",
-
-            AccountOperationResult.CreatedButEmailNotSent =>
-                "Account created, but the temporary password could not be emailed. "
-                + "Use Reset password to try sending it again.",
-
-            _ => null,
-        };
-
-        if (successMessage is null)
-        {
-            return MapFailure<UserAccountResponse>(result);
+            return MapFailure<CreatedUserAccountResponse>(result);
         }
 
         return CreatedAtAction(
             nameof(GetById),
             new { userId = account!.UserId },
-            ApiResponse<UserAccountResponse>.Ok(account, successMessage));
+            ApiResponse<CreatedUserAccountResponse>.Ok(
+                new CreatedUserAccountResponse { Account = account, TemporaryPassword = temporaryPassword! },
+                "Account created. Temporary password generated — communicate it to the account holder directly."));
     }
 
     /// <summary>FT-09 — sửa thông tin và phân lại vai trò.</summary>
@@ -169,28 +153,33 @@ public class AdminUsersController : ControllerBase
     }
 
     /// <summary>
-    /// FT-08 AF-01 — khoá tài khoản. Thủ công hoàn toàn, không có job tự mở khoá (BR-04).
+    /// FT-08 — vô hiệu hoá vĩnh viễn. MỘT CHIỀU, không có đường quay lại (BR-05).
+    /// Giao diện phải hỏi xác nhận trước khi gọi tới đây.
     /// </summary>
-    [HttpPut("{userId:guid}/lock")]
+    [HttpPut("{userId:guid}/deactivate")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    public Task<IActionResult> Lock(Guid userId, CancellationToken cancellationToken) =>
-        SetLocked(userId, locked: true, "Account locked.", cancellationToken);
+    public async Task<IActionResult> Deactivate(Guid userId, CancellationToken cancellationToken)
+    {
+        if (!TryGetActingAdminId(out var adminId))
+        {
+            return Unauthorized(ApiResponse<object>.Fail(
+                StatusCodes.Status401Unauthorized, "Invalid access token."));
+        }
 
-    /// <summary>FT-08 AF-01 — mở khoá. Đây là đường DUY NHẤT đi từ Locked về Active (BR-04).</summary>
-    [HttpPut("{userId:guid}/unlock")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    public Task<IActionResult> Unlock(Guid userId, CancellationToken cancellationToken) =>
-        SetLocked(userId, locked: false, "Account unlocked.", cancellationToken);
+        var result = await _accounts.DeactivateAsync(userId, adminId, cancellationToken);
 
-
+        return result == AccountOperationResult.Success
+            ? Ok(ApiResponse<object>.Ok(null!, "Account deactivated permanently."))
+            : MapFailure<object>(result);
+    }
 
     /// <summary>
     /// UC-03 AF-02 — Admin cấp lại mật khẩu hộ, dùng khi chủ tài khoản không vào được email.
     ///
     /// BR-03 sửa lại 06/08/2026, mở rộng lần 2 — KHÔNG còn phân biệt có/không có email nữa,
     /// KHÔNG BAO GIỜ gửi email ở đường này nữa. Phản hồi luôn mang plaintext (xem
-    /// AdminResetOutcome) — nhưng trang quản trị (FE Module 2, `features/users/`) CHƯA có UI
-    /// hiện trường này; đó là việc của task riêng sau, backend đã sẵn sàng.
+    /// AdminResetOutcome) — nhưng trang quản trị (FE Module 2, `features/user-role-management/`)
+    /// CHƯA có UI hiện trường này; đó là việc của task riêng sau, backend đã sẵn sàng.
     /// </summary>
     [HttpPut("{userId:guid}/reset-password")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
@@ -217,25 +206,6 @@ public class AdminUsersController : ControllerBase
     }
 
     // ---- helpers ----
-
-    private async Task<IActionResult> SetLocked(
-        Guid userId,
-        bool locked,
-        string successMessage,
-        CancellationToken cancellationToken)
-    {
-        if (!TryGetActingAdminId(out var adminId))
-        {
-            return Unauthorized(ApiResponse<object>.Fail(
-                StatusCodes.Status401Unauthorized, "Invalid access token."));
-        }
-
-        var result = await _accounts.SetLockedAsync(userId, locked, adminId, cancellationToken);
-
-        return result == AccountOperationResult.Success
-            ? Ok(ApiResponse<object>.Ok(null!, successMessage))
-            : MapFailure<object>(result);
-    }
 
     /// <summary>
     /// Id của Admin đang thao tác, lấy từ claim trong token — KHÔNG bao giờ nhận từ request,
