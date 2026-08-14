@@ -1,8 +1,10 @@
 /// Trạng thái của một ca khám (Case) — theo đúng state machine backend (Module 04).
 ///
-/// Patient (Mobile) chỉ bao giờ thấy `confirmed` — GET /cases/me ép cứng phía server,
-/// GET /cases/{id} trả 404 nếu Case của chính Patient đó chưa Confirmed (UC-08 AF-01).
-enum CaseStatus { created, analyzed, confirmed }
+/// Đính chính 14/08/2026 (sau khi trao đổi lại): Patient (Mobile) CHỈ BAO GIỜ thấy
+/// `end` — GET /cases/me ép cứng phía server chỉ trả ca `end`, GET /cases/{id} trả 404
+/// nếu Case của chính Patient đó chưa `end` (kể cả đã `confirmed` nhưng chưa kê đơn).
+/// `end` = đã Confirmed VÀ đã được kê đơn thuốc — coi là "đã hoàn tất lượt khám".
+enum CaseStatus { created, confirmed, end }
 
 /// Chi tiết đầy đủ 1 lượt khám mà Patient được xem — UC-08, SCR-14.
 ///

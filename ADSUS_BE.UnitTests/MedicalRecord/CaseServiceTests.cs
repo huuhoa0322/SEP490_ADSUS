@@ -62,12 +62,13 @@ public class CaseServiceTests
     // ---------- GetForPatientAsync (GB-05: 3 kịch bản trượt phải trả CÙNG 1 lỗi) ----------
 
     [Fact]
-    public async Task GetForPatientAsync_OwnConfirmedCase_ReturnsPatientResponse()
+    public async Task GetForPatientAsync_OwnEndedCase_ReturnsPatientResponse()
     {
-        // Arrange
+        // Arrange — Quyết định 14/08/2026 (sau khi trao đổi lại): Patient chỉ xem được ca đã
+        // END (Confirmed + đã có đơn thuốc).
         var patientUser = MedicalRecordTestData.MakePatientUser();
         var profile = MedicalRecordTestData.MakePatientProfile(patientUser);
-        var medicalCase = MedicalRecordTestData.MakeCase(profile, status: CaseStatus.Confirmed);
+        var medicalCase = MedicalRecordTestData.MakeCase(profile, status: CaseStatus.End);
 
         _profiles.Setup(r => r.GetByUserIdAsync(patientUser.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
@@ -79,6 +80,27 @@ public class CaseServiceTests
 
         // Assert
         Assert.Equal(medicalCase.CaseId, response.CaseId);
+    }
+
+    [Fact]
+    public async Task GetForPatientAsync_OwnCaseConfirmedButNotYetEnd_ThrowsResourceNotFoundExceptionWithSameMessage()
+    {
+        // Arrange — Quyết định 14/08/2026: ca đã Confirmed nhưng bác sĩ CHƯA kê đơn (chưa
+        // chuyển sang End) vẫn phải bị giấu, kể cả với chính patient sở hữu ca đó và kể cả
+        // khi gọi trực tiếp bằng ID (đảo ngược hành vi cũ chấp nhận cả Confirmed lẫn End).
+        var patientUser = MedicalRecordTestData.MakePatientUser();
+        var profile = MedicalRecordTestData.MakePatientProfile(patientUser);
+        var confirmedNotEndedCase = MedicalRecordTestData.MakeCase(profile, status: CaseStatus.Confirmed);
+
+        _profiles.Setup(r => r.GetByUserIdAsync(patientUser.UserId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _cases.Setup(r => r.GetDetailAsync(confirmedNotEndedCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(confirmedNotEndedCase);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ResourceNotFoundException>(
+            () => _sut.GetForPatientAsync(confirmedNotEndedCase.CaseId, patientUser.UserId));
+        Assert.Equal("Case not found.", ex.Message);
     }
 
     [Fact]
@@ -224,20 +246,19 @@ public class CaseServiceTests
     // ---------- ListMineAsync ----------
 
     [Fact]
-    public async Task ListMineAsync_AlwaysPassesConfirmedAndEndStatusRegardlessOfCaller()
+    public async Task ListMineAsync_AlwaysPassesEndStatusOnlyRegardlessOfCaller()
     {
-        // Arrange — GB-05: server ép cứng {Confirmed, End}, không có tham số nào từ client tới
-        // được đây để đổi giá trị này. Sửa 14/08/2026: trước đó chỉ Confirmed, khiến ca đã kê
-        // đơn (chuyển sang End) biến mất khỏi danh sách của chính patient dù họ vẫn xem được
-        // qua GET /cases/{id} — bất nhất giữa list và detail.
+        // Arrange — GB-05: server ép cứng {End}, không có tham số nào từ client tới được đây
+        // để đổi giá trị này. Quyết định 14/08/2026 (sau khi trao đổi lại): CHỈ End mới coi là
+        // "đã hoàn tất lượt khám" — ca mới Confirmed (chưa kê đơn) không hiện trong danh sách
+        // của chính patient (đảo ngược quyết định {Confirmed, End} chốt cùng ngày trước đó).
         var patientUser = MedicalRecordTestData.MakePatientUser();
         var profile = MedicalRecordTestData.MakePatientProfile(patientUser);
         _profiles.Setup(r => r.GetByUserIdAsync(patientUser.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
         _cases.Setup(r => r.SearchByPatientAsync(
                   profile.PatientProfileId,
-                  It.Is<IReadOnlyCollection<CaseStatus>>(s =>
-                      s.SequenceEqual(new[] { CaseStatus.Confirmed, CaseStatus.End })),
+                  It.Is<IReadOnlyCollection<CaseStatus>>(s => s.SequenceEqual(new[] { CaseStatus.End })),
                   "desc", 1, 20, It.IsAny<CancellationToken>()))
               .ReturnsAsync((new List<Case>(), 0));
 
@@ -247,8 +268,7 @@ public class CaseServiceTests
         // Assert
         _cases.Verify(r => r.SearchByPatientAsync(
             profile.PatientProfileId,
-            It.Is<IReadOnlyCollection<CaseStatus>>(s =>
-                s.SequenceEqual(new[] { CaseStatus.Confirmed, CaseStatus.End })),
+            It.Is<IReadOnlyCollection<CaseStatus>>(s => s.SequenceEqual(new[] { CaseStatus.End })),
             "desc", 1, 20, It.IsAny<CancellationToken>()), Times.Once);
     }
 

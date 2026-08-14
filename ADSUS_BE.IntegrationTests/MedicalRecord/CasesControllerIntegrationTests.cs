@@ -84,13 +84,14 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
-    public async Task GetCaseById_CalledByOwningPatientOnConfirmedCase_Returns200WithPatientShape()
+    public async Task GetCaseById_CalledByOwningPatientOnEndedCase_Returns200WithPatientShape()
     {
-        // Arrange
+        // Arrange — Quyết định 14/08/2026 (sau khi trao đổi lại): Patient chỉ xem được ca đã
+        // END (Confirmed + đã có đơn thuốc).
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _patientUser);
         var profile = MakePatientProfile();
-        var medicalCase = MakeCase(profile, CaseStatus.Confirmed);
+        var medicalCase = MakeCase(profile, CaseStatus.End);
         _profiles.Setup(r => r.GetByUserIdAsync(_patientUser.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
@@ -129,6 +130,28 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
+    public async Task GetCaseById_PatientRequestsOwnConfirmedButNotYetEndedCase_Returns404NotFound()
+    {
+        // Arrange — Quyết định 14/08/2026: ca đã Confirmed nhưng bác sĩ CHƯA kê đơn (chưa
+        // chuyển sang End) vẫn phải bị giấu, kể cả với chính patient sở hữu ca đó khi gọi
+        // trực tiếp bằng ID (đảo ngược hành vi cũ chấp nhận cả Confirmed lẫn End).
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _patientUser);
+        var profile = MakePatientProfile();
+        var confirmedNotEndedCase = MakeCase(profile, CaseStatus.Confirmed);
+        _profiles.Setup(r => r.GetByUserIdAsync(_patientUser.UserId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _cases.Setup(r => r.GetDetailAsync(confirmedNotEndedCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(confirmedNotEndedCase);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{confirmedNotEndedCase.CaseId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetCaseById_PatientRequestsAnotherPatientsConfirmedCase_Returns404NotFound()
     {
         // Arrange
@@ -161,8 +184,7 @@ public class CasesControllerIntegrationTests
                  .ReturnsAsync(profile);
         _cases.Setup(r => r.SearchByPatientAsync(
                   profile.PatientProfileId,
-                  It.Is<IReadOnlyCollection<CaseStatus>>(s =>
-                      s.SequenceEqual(new[] { CaseStatus.Confirmed, CaseStatus.End })),
+                  It.Is<IReadOnlyCollection<CaseStatus>>(s => s.SequenceEqual(new[] { CaseStatus.End })),
                   "desc", 1, 20, It.IsAny<CancellationToken>()))
               .ReturnsAsync((new List<Case>(), 0));
 
@@ -173,8 +195,7 @@ public class CasesControllerIntegrationTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         _cases.Verify(r => r.SearchByPatientAsync(
             profile.PatientProfileId,
-            It.Is<IReadOnlyCollection<CaseStatus>>(s =>
-                s.SequenceEqual(new[] { CaseStatus.Confirmed, CaseStatus.End })),
+            It.Is<IReadOnlyCollection<CaseStatus>>(s => s.SequenceEqual(new[] { CaseStatus.End })),
             "desc", 1, 20, It.IsAny<CancellationToken>()), Times.Once);
     }
 
