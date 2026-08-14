@@ -191,22 +191,19 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             {caseStatusLabel(medicalCase.status)}
           </span>
 
-          <div className="flex flex-col items-end gap-1">
-            <button
-              type="button"
-              onClick={report.exportReport}
-              // UC-12 BR-01.
-              disabled={!isConfirmedOrEnd || report.isPending}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
-            >
-              {report.isPending ? "Đang tạo file..." : "Xuất báo cáo PDF"}
-            </button>
-            {!isConfirmedOrEnd ? (
-              <span className="text-xs italic text-muted-foreground">
-                Chỉ xuất được khi ca đã kết luận
-              </span>
-            ) : null}
-          </div>
+          {medicalCase.status === "END" ? (
+            <div className="flex flex-col items-end gap-1">
+              <button
+                type="button"
+                onClick={report.exportReport}
+                // UC-12 BR-01.
+                disabled={report.isPending}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
+              >
+                {report.isPending ? "Đang tạo file..." : "Xuất báo cáo PDF"}
+              </button>
+            </div>
+          ) : null}
 
           {/* Module 7 — Kê đơn thuốc: chỉ hiện khi ca CONFIRMED (chưa kê) và đúng Bác sĩ phụ trách.
               END thì ẩn vì đã kê đơn rồi, chỉ hiện prescription section. */}
@@ -265,7 +262,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
 
       {report.error ? (
         <p className="mt-3 rounded-lg bg-destructive/10 p-3 text-sm text-destructive" role="alert">
-          {getApiErrorMessage(report.error, "Không xuất được báo cáo PDF.")}
+          {getApiErrorMessage(report.error, "Ca bệnh chưa kết luận, không thể xuất báo cáo PDF.")}
         </p>
       ) : null}
 
