@@ -14,6 +14,7 @@ import '../../features/appointment_scheduling/domain/repositories/appointment_re
 import '../../features/appointment_scheduling/domain/services/calendar_sync_service.dart';
 import '../../features/medication_reminder/data/repositories/medication_intake_repository_impl.dart';
 import '../../features/medication_reminder/domain/repositories/medication_intake_repository.dart';
+import '../../features/health_log/data/repositories/health_log_repository.dart';
 
 /// Kho lưu trữ được hệ điều hành mã hoá (Keystore/Keychain).
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
@@ -72,4 +73,9 @@ final calendarSyncServiceProvider =
 final medicationIntakeRepositoryProvider =
     Provider<MedicationIntakeRepository>((ref) {
   return MedicationIntakeRepositoryImpl(ref.watch(dioProvider));
+});
+
+/// Module 9 — Health Log (FT-35, FT-40, FT-41).
+final healthLogRepositoryProvider = Provider<HealthLogRepository>((ref) {
+  return HealthLogRepository(ref.watch(dioProvider));
 });

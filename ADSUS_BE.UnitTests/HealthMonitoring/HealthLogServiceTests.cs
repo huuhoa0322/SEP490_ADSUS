@@ -23,7 +23,7 @@ public class HealthLogServiceTests
     private static HealthLog NewHealthLog(
         Guid? id = null,
         Guid? patientId = null,
-        HealthLogType type = HealthLogType.EXERCISE,
+        HealthLogType type = HealthLogType.Exercise,
         DateOnly? date = null,
         string content = "Test content",
         DateTime? createdAt = null)
@@ -66,7 +66,7 @@ public class HealthLogServiceTests
         // Assert
         Assert.NotNull(capturedLog);
         Assert.Equal(patientId, capturedLog!.PatientProfileId);
-        Assert.Equal(HealthLogType.EXERCISE, capturedLog.LogType);
+        Assert.Equal(HealthLogType.Exercise, capturedLog.LogType);
         Assert.Equal("Ran 5km", capturedLog.Content);
         Assert.Equal(DateOnly.FromDateTime(DateTime.UtcNow), capturedLog.LogDate);
         Assert.NotEqual(Guid.Empty, capturedLog.HealthLogId);
@@ -98,7 +98,7 @@ public class HealthLogServiceTests
 
         // Assert
         Assert.NotNull(capturedLog);
-        Assert.Equal(HealthLogType.DIET, capturedLog!.LogType);
+        Assert.Equal(HealthLogType.Diet, capturedLog!.LogType);
     }
 
     [Theory]
@@ -130,7 +130,7 @@ public class HealthLogServiceTests
 
         // Assert
         Assert.NotNull(capturedLog);
-        Assert.Equal(HealthLogType.EXERCISE, capturedLog!.LogType);
+        Assert.Equal(HealthLogType.Exercise, capturedLog!.LogType);
     }
 
     [Fact]

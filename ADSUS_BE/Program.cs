@@ -192,6 +192,7 @@ namespace ADSUS_BE
             dataSourceBuilder.MapEnum<IntakeStatus>("intake_status");
             dataSourceBuilder.MapEnum<SlotStatus>("slot_status");
             dataSourceBuilder.MapEnum<ReminderSlot>("reminder_slot");
+            dataSourceBuilder.MapEnum<HealthLogType>("health_log_type");
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);

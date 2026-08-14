@@ -452,8 +452,8 @@ public class HealthLogsControllerIntegrationTests
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var logs = new List<HealthLog>
         {
-            new() { HealthLogId = Guid.NewGuid(), PatientProfileId = profile.PatientProfileId, LogDate = today, LogType = HealthLogType.EXERCISE, Content = "Morning run", CreatedAt = DateTime.UtcNow },
-            new() { HealthLogId = Guid.NewGuid(), PatientProfileId = profile.PatientProfileId, LogDate = today, LogType = HealthLogType.DIET, Content = "Lunch salad", CreatedAt = DateTime.UtcNow },
+            new() { HealthLogId = Guid.NewGuid(), PatientProfileId = profile.PatientProfileId, LogDate = today, LogType = HealthLogType.Exercise, Content = "Morning run", CreatedAt = DateTime.UtcNow },
+            new() { HealthLogId = Guid.NewGuid(), PatientProfileId = profile.PatientProfileId, LogDate = today, LogType = HealthLogType.Diet, Content = "Lunch salad", CreatedAt = DateTime.UtcNow },
         };
 
         _profiles.Setup(r => r.GetByUserIdAsync(_patientId, It.IsAny<CancellationToken>()))
@@ -481,7 +481,7 @@ public class HealthLogsControllerIntegrationTests
         var specificDate = new DateOnly(2026, 8, 1);
         var logs = new List<HealthLog>
         {
-            new() { HealthLogId = Guid.NewGuid(), PatientProfileId = profile.PatientProfileId, LogDate = specificDate, LogType = HealthLogType.EXERCISE, Content = "Old log", CreatedAt = DateTime.UtcNow },
+            new() { HealthLogId = Guid.NewGuid(), PatientProfileId = profile.PatientProfileId, LogDate = specificDate, LogType = HealthLogType.Exercise, Content = "Old log", CreatedAt = DateTime.UtcNow },
         };
 
         _profiles.Setup(r => r.GetByUserIdAsync(_patientId, It.IsAny<CancellationToken>()))
@@ -557,7 +557,7 @@ public class HealthLogsControllerIntegrationTests
         var createdAt = DateTime.UtcNow;
         var logs = new List<HealthLog>
         {
-            new() { HealthLogId = logId, PatientProfileId = profile.PatientProfileId, LogDate = today, LogType = HealthLogType.EXERCISE, Content = "Test", CreatedAt = createdAt },
+            new() { HealthLogId = logId, PatientProfileId = profile.PatientProfileId, LogDate = today, LogType = HealthLogType.Exercise, Content = "Test", CreatedAt = createdAt },
         };
 
         _profiles.Setup(r => r.GetByUserIdAsync(_patientId, It.IsAny<CancellationToken>()))
