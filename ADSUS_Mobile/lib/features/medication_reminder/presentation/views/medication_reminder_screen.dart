@@ -262,17 +262,6 @@ class _MedicationBody extends ConsumerWidget {
             child: _ReminderSettingsCard(),
           ),
         ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            child: Center(
-              child: Text(
-                'Mỗi liều sẽ được nhắc tự động theo giờ cài đặt',
-                style: TextStyle(fontSize: 12, color: AppColors.muted),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -364,12 +353,6 @@ class _DayAxisCard extends StatelessWidget {
                       fontFamily: 'monospace',
                     ),
                   ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('Khung tiếp theo', style: TextStyle(fontSize: 11, color: AppColors.muted)),
                 ],
               ),
             ],
@@ -570,7 +553,7 @@ class _AdherenceSummaryCard extends StatelessWidget {
                 if (nextSlotLabel != '—') ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Khung tiếp theo: $nextSlotLabel',
+                    'Thông báo tiếp theo: $nextSlotLabel',
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.teal,
@@ -986,7 +969,7 @@ class _ReminderSettingsCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Áp dụng cho mọi thuốc. Mặc định: 07:00 / 12:00 / 20:00.',
+                    'Giờ bật thông báo nhắc nhở. Giờ uống thuốc theo đơn bác sĩ kê.',
                     style: TextStyle(fontSize: 12, color: AppColors.muted),
                   ),
                 ],

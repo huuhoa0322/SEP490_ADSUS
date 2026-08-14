@@ -51,9 +51,6 @@ dependencies:
   # Khi cần tính năng sync calendar, uncomment dòng dưới và chạy `flutter clean`.
   # add_2_calendar: ^3.1.1
 
-  # Lưu cờ "đã sync vào lịch" cho mỗi appointment — xem CalendarSyncServiceImpl.
-  # Không dùng secure storage vì đây là UI bookkeeping, không phải thông tin nhạy cảm.
-  shared_preferences: ^2.3.0
 
 # Ghim tạm để build Android chạy được.
 #
