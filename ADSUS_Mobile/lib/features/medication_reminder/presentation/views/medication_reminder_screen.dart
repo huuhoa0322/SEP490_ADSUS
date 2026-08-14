@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,14 +20,42 @@ import '../widgets/adherence_pill_badge.dart';
 ///
 /// Backend: GET /api/v1/me/medication-intakes → IntakeLog[]
 ///          POST /api/v1/me/medication-intakes/{id}/confirm
-class MedicationReminderScreen extends ConsumerWidget {
+class MedicationReminderScreen extends ConsumerStatefulWidget {
   const MedicationReminderScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MedicationReminderScreen> createState() =>
+      _MedicationReminderScreenState();
+}
+
+class _MedicationReminderScreenState
+    extends ConsumerState<MedicationReminderScreen> {
+  Timer? _timer;
+  late DateTime _now;
+
+  @override
+  void initState() {
+    super.initState();
+    _now = _nowInVn();
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() => _now = _nowInVn());
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  /// Ép timezone UTC+7 (ICT — Indochina Time), không phụ thuộc máy ảo.
+  static DateTime _nowInVn() =>
+      DateTime.now().toUtc().add(const Duration(hours: 7));
+
+  @override
+  Widget build(BuildContext context) {
     final intakeLogsAsync = ref.watch(intakeLogsProvider);
     final prefAsync = ref.watch(reminderPreferenceProvider);
-    final now = DateTime.now().toLocal();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -38,7 +68,7 @@ class MedicationReminderScreen extends ConsumerWidget {
               message: error.toString(),
               onRetry: () => ref.invalidate(intakeLogsProvider),
             ),
-            data: (logs) => _MedicationBody(logs: logs, now: now, prefAsync: prefAsync),
+            data: (logs) => _MedicationBody(logs: logs, now: _now, prefAsync: prefAsync),
           ),
         ),
       ),
@@ -119,16 +149,6 @@ class _MedicationBody extends ConsumerWidget {
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
           automaticallyImplyLeading: false,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              tooltip: 'Cài đặt giờ nhắc',
-              onPressed: () => Scrollable.ensureVisible(
-                context,
-                duration: const Duration(milliseconds: 400),
-              ),
-            ),
-          ],
         ),
         SliverToBoxAdapter(
           child: Padding(

@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../appointment_scheduling/presentation/views/book_appointment_screen.dart';
 import '../../../appointment_scheduling/presentation/views/my_appointments_screen.dart';
 import '../../../health_log/presentation/views/health_log_screen.dart';
 import '../../../medication_reminder/presentation/viewmodels/intake_view_model.dart';
 import '../../../medication_reminder/presentation/widgets/adherence_pill_badge.dart';
 import '../viewmodels/auth_view_model.dart';
-import 'profile_screen.dart';
 
 /// Màn hình Trang chủ của bệnh nhân sau khi đăng nhập.
 ///
@@ -76,13 +74,6 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ),
                     ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.person_outline),
-                    color: AppColors.navy,
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
-                    ),
                   ),
                 ],
               ),
