@@ -34,6 +34,7 @@ class ApiConstants {
   static const String changePassword = '/api/v1/auth/change-password';
   static const String myProfile = '/api/v1/users/me';
   static const String myBiometric = '/api/v1/users/me/biometric';
+  static const String reminderPreference = '/api/v1/me/reminder-preference';
 
   // Module 08 — Appointment Scheduling (UC-13, UC-14)
   // Lưu ý: /api/v1/schedule-slots chỉ dành cho DOCTOR (quản lý lịch).

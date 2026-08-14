@@ -485,13 +485,27 @@ public partial class AppDbContext : DbContext
         {
             entity.HasKey(e => e.PreferenceId).HasName("pk_patient_reminder_preferences");
 
-            entity.ToTable("patient_reminder_preferences", tb => tb.HasComment("Giờ nhắc uống thuốc do bệnh nhân tự chỉnh theo từng khung (MORNING/NOON/EVENING), áp dụng cho MỌI thuốc — không gắn với 1 đơn cụ thể, chỉnh 1 lần dùng mãi về sau. Mặc định hệ thống khi bệnh nhân chưa có dòng tùy chỉnh: Sáng 07:00 / Trưa 12:00 / Tối 20:00 (áp ở tầng ứng dụng, không lưu dòng mặc định vào bảng này). JOB-01 tra bảng này khi sinh scheduled_time cho medication_intake_logs mới."));
+            entity.ToTable("patient_reminder_preferences", tb => tb.HasComment("Giờ nhắc uống thuốc do bệnh nhân tự chỉnh. Áp dụng cho MỌI thuốc — không gắn với 1 đơn cụ thể, chỉnh 1 lần dùng mãi về sau. Mặc định hệ thống khi bệnh nhân chưa có dòng: notifEnabled=true, sáng 07:00/trưa 12:00/tối 20:00 (áp ở tầng ứng dụng, không lưu dòng mặc định vào bảng này). JOB-01 tra bảng này khi sinh scheduled_time cho medication_intake_logs mới."));
+
+            entity.HasIndex(e => e.PatientProfileId, "uq_patient_reminder_preferences_patient")
+                .IsUnique();
 
             entity.Property(e => e.PreferenceId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("preference_id");
-            entity.Property(e => e.CustomTime).HasColumnName("custom_time");
             entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
+            entity.Property(e => e.NotifEnabled)
+                .HasDefaultValue(true)
+                .HasColumnName("notif_enabled");
+            entity.Property(e => e.MorningTime)
+                .HasDefaultValue(new TimeOnly(7, 0))
+                .HasColumnName("morning_time");
+            entity.Property(e => e.MiddayTime)
+                .HasDefaultValue(new TimeOnly(12, 0))
+                .HasColumnName("midday_time");
+            entity.Property(e => e.EveningTime)
+                .HasDefaultValue(new TimeOnly(20, 0))
+                .HasColumnName("evening_time");
 
             entity.HasOne(d => d.PatientProfile).WithMany(p => p.PatientReminderPreferences)
                 .HasForeignKey(d => d.PatientProfileId)

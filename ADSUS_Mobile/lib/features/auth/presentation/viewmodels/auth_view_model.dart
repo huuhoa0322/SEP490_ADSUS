@@ -5,6 +5,7 @@ import '../../../../shared/providers/app_providers.dart';
 import '../../data/repositories/biometric_service.dart';
 import '../../domain/entities/auth_session.dart';
 import '../../../medication_reminder/presentation/viewmodels/intake_view_model.dart';
+import '../../../../shared/reminder_preference_store.dart';
 import 'profile_view_model.dart';
 
 /// Trạng thái phiên đăng nhập của toàn ứng dụng.
@@ -182,6 +183,7 @@ class AuthViewModel extends StateNotifier<AuthState> {
     await _ref.read(authRepositoryProvider).signOut();
     _ref.invalidate(profileViewModelProvider);
     _ref.invalidate(intakeLogsProvider);
+    _ref.invalidate(reminderPreferenceProvider);
 
     if (!mounted) return;
     state = const AuthState(
@@ -200,6 +202,7 @@ class AuthViewModel extends StateNotifier<AuthState> {
     // khi đăng xuất, nên autoDispose trên intakeLogsProvider không kích hoạt. Invalidating ở
     // đây đảm bảo user mới luôn nhận đúng dữ liệu riêng, không phải cache user trước.
     _ref.invalidate(intakeLogsProvider);
+    _ref.invalidate(reminderPreferenceProvider);
 
     state = const AuthState();
     await _loadBiometricStatus();

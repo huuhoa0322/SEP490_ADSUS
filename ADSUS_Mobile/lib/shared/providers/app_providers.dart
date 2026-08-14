@@ -13,7 +13,9 @@ import '../../features/appointment_scheduling/data/services/calendar_sync_servic
 import '../../features/appointment_scheduling/domain/repositories/appointment_repository.dart';
 import '../../features/appointment_scheduling/domain/services/calendar_sync_service.dart';
 import '../../features/medication_reminder/data/repositories/medication_intake_repository_impl.dart';
+import '../../features/medication_reminder/data/repositories/reminder_preference_repository_impl.dart';
 import '../../features/medication_reminder/domain/repositories/medication_intake_repository.dart';
+import '../../features/medication_reminder/domain/repositories/reminder_preference_repository.dart';
 
 /// Kho lưu trữ được hệ điều hành mã hoá (Keystore/Keychain).
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
@@ -72,4 +74,10 @@ final calendarSyncServiceProvider =
 final medicationIntakeRepositoryProvider =
     Provider<MedicationIntakeRepository>((ref) {
   return MedicationIntakeRepositoryImpl(ref.watch(dioProvider));
+});
+
+/// Module 7 — Reminder Preference (SCR-19).
+final reminderPreferenceRepositoryProvider =
+    Provider<ReminderPreferenceRepository>((ref) {
+  return ReminderPreferenceRepositoryImpl(ref.watch(dioProvider));
 });
