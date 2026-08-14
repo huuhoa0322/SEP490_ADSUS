@@ -20,7 +20,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from huggingface_hub import hf_hub_download
 import numpy as np
-from fastapi import FastAPI, File, Header, HTTPException, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from pydantic import BaseModel
@@ -35,8 +35,6 @@ from geometry import (
 
 load_dotenv()
 HF_TOKEN = os.environ.get("HUGGINGFACE_TOKEN")
-
-CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", "0.15"))
 
 CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", "0.15"))
 
@@ -59,9 +57,6 @@ async def add_no_cache_headers(request, call_next):
 
 
 _model = None
-_current_repo_id = "tranqui247/adsus"
-_current_filename = "yolo-efficientNetv2-m1-nbl.pt"
-
 def load_ai_model(repo_id: str, filename: str):
     global _model, _current_repo_id, _current_filename
     print(f"Đang tải model từ HF: {repo_id}/{filename} ...")
@@ -129,7 +124,11 @@ class PointIn(BaseModel):
 # ---------------------------------------------------------------------------
 
 @app.post("/api/detect")
-async def detect(file: UploadFile = File(...)):
+async def detect(
+    file: UploadFile = File(...),
+    repo_id: str | None = Form(default=None),
+    filename: str | None = Form(default=None)
+):
     contents = await file.read()
     try:
         image = Image.open(io.BytesIO(contents)).convert("RGB")
@@ -138,6 +137,10 @@ async def detect(file: UploadFile = File(...)):
 
     img_w, img_h = image.size
     session_id = str(uuid.uuid4())
+
+    if repo_id and filename:
+        if _model is None or _current_repo_id != repo_id or _current_filename != filename:
+            load_ai_model(repo_id, filename)
 
     IOU_THRESHOLD = float(os.environ.get("IOU_THRESHOLD", "0.1"))
     model = get_model()

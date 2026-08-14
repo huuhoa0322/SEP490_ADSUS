@@ -36,24 +36,6 @@ public class CaseReportServiceTests
             Mock.Of<ILogger<CaseReportService>>());
     }
 
-    [Fact]
-    public async Task GenerateReportAsync_ConfirmedCase_ReturnsNonEmptyPdfBytes()
-    {
-        // Arrange
-        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Confirmed);
-        MedicalRecordTestData.MakePrescription(
-            medicalCase, medicalCase.VisitDate, DateTime.UtcNow);
-        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(medicalCase);
-
-        // Act
-        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId);
-
-        // Assert — không parse nội dung PDF ở Unit Test (đã có Integration/manual test làm
-        // việc đó); chỉ khẳng định QuestPDF thực sự sinh ra file PDF hợp lệ, không rỗng.
-        Assert.NotEmpty(pdfBytes);
-        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdfBytes, 0, 4));
-    }
 
     [Fact]
     public async Task GenerateReportAsync_EndCase_ReturnsNonEmptyPdfBytes()
@@ -75,7 +57,7 @@ public class CaseReportServiceTests
     public async Task GenerateReportAsync_WithImages_EmbedsImagesSuccessfully()
     {
         // Arrange
-        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Confirmed);
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.End);
         medicalCase.UltrasoundImages.Add(new UltrasoundImage { FileRef = "image1.jpg", Note = "Gan nhiễm mỡ" });
         medicalCase.UltrasoundImages.Add(new UltrasoundImage { FileRef = "image2.jpg", Note = null });
         
@@ -99,7 +81,7 @@ public class CaseReportServiceTests
     public async Task GenerateReportAsync_ImageSignedUrlIsNull_StillGeneratesPdfWithoutCrashing()
     {
         // Arrange
-        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Confirmed);
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.End);
         medicalCase.UltrasoundImages.Add(new UltrasoundImage { FileRef = "missing.jpg" });
         
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
@@ -121,7 +103,7 @@ public class CaseReportServiceTests
     public async Task GenerateReportAsync_ImageDownloadThrowsException_LogsWarningAndGeneratesPdf()
     {
         // Arrange
-        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Confirmed);
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.End);
         medicalCase.UltrasoundImages.Add(new UltrasoundImage { FileRef = "broken-link.jpg" });
         
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
@@ -150,11 +132,13 @@ public class CaseReportServiceTests
         Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdfBytes, 0, 4));
     }
 
-    [Fact]
-    public async Task GenerateReportAsync_CaseNotYetConfirmed_ThrowsBusinessException()
+    [Theory]
+    [InlineData(CaseStatus.Created)]
+    [InlineData(CaseStatus.Confirmed)]
+    public async Task GenerateReportAsync_CaseNotYetEnded_ThrowsBusinessException(CaseStatus incompleteStatus)
     {
-        // Arrange — AF-01/BR-01: chỉ ca CONFIRMED mới xuất được báo cáo.
-        var pendingCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Created);
+        // Arrange — AF-01/BR-01: chỉ ca END mới xuất được báo cáo.
+        var pendingCase = MedicalRecordTestData.MakeCase(status: incompleteStatus);
         _cases.Setup(r => r.GetDetailAsync(pendingCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(pendingCase);
 
@@ -178,7 +162,7 @@ public class CaseReportServiceTests
     public async Task GenerateReportAsync_CaseWithNoPrescription_StillGeneratesPdfWithoutThrowing()
     {
         // Arrange — nhánh "Không có đơn thuốc cho lần khám này." trong BuildPdf.
-        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Confirmed);
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.End);
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
 
@@ -190,12 +174,12 @@ public class CaseReportServiceTests
     }
 
     [Fact]
-    public async Task GenerateReportAsync_ConfirmedCase_EmbedsVietnameseCapableFontNotArial()
+    public async Task GenerateReportAsync_EndCase_EmbedsVietnameseCapableFontNotArial()
     {
         // Arrange — khoá lại fix rủi ro font đã ghi ở finding #5 review: server thật deploy
         // trên Render (Linux), không có Arial cài sẵn — QuestPDF phải tự nhúng Noto Sans
         // (đăng ký qua FontManager.RegisterFont), không phụ thuộc font có sẵn trên OS host.
-        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Confirmed);
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.End);
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
 

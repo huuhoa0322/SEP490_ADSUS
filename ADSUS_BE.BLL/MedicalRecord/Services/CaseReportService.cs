@@ -63,10 +63,10 @@ public sealed class CaseReportService : ICaseReportService
         var medicalCase = await _cases.GetDetailAsync(caseId, ct)
             ?? throw new ResourceNotFoundException("Case not found.");
 
-        // BR-01 / AF-01: chỉ xuất được báo cáo của ca đã duyệt hoặc kết thúc.
-        if (medicalCase.Status != CaseStatus.Confirmed && medicalCase.Status != CaseStatus.End)
+        // BR-01 / AF-01: chỉ xuất được báo cáo của ca đã kết thúc.
+        if (medicalCase.Status != CaseStatus.End)
         {
-            throw new BusinessException("Cannot export a report for an incomplete case.");
+            throw new BusinessException("Ca bệnh chưa kết luận, không thể xuất báo cáo PDF.");
         }
 
         var imageBytesList = new List<(byte[] Bytes, string? Note)>();
@@ -184,18 +184,18 @@ public sealed class CaseReportService : ICaseReportService
 
                             table.Header(header =>
                             {
-                                header.Cell().Text("Thuốc").SemiBold();
-                                header.Cell().Text("Liều dùng").SemiBold();
-                                header.Cell().Text("Số ngày").SemiBold();
-                                header.Cell().Text("Hướng dẫn").SemiBold();
+                                header.Cell().Border(1).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten3).Padding(5).Text("Thuốc").SemiBold();
+                                header.Cell().Border(1).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten3).Padding(5).Text("Liều dùng").SemiBold();
+                                header.Cell().Border(1).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten3).Padding(5).Text("Số ngày").SemiBold();
+                                header.Cell().Border(1).BorderColor(Colors.Grey.Darken1).Background(Colors.Grey.Lighten3).Padding(5).Text("Hướng dẫn").SemiBold();
                             });
 
                             foreach (var item in prescription.PrescriptionItems)
                             {
-                                table.Cell().Text(item.Medicine?.Name ?? "—");
-                                table.Cell().Text(item.Dosage);
-                                table.Cell().Text(item.DurationDays.ToString(CultureInfo.InvariantCulture));
-                                table.Cell().Text(item.Instructions ?? "—");
+                                table.Cell().Border(1).BorderColor(Colors.Grey.Lighten1).Padding(5).Text(item.Medicine?.Name ?? "—");
+                                table.Cell().Border(1).BorderColor(Colors.Grey.Lighten1).Padding(5).Text(item.Dosage);
+                                table.Cell().Border(1).BorderColor(Colors.Grey.Lighten1).Padding(5).Text(item.DurationDays.ToString(CultureInfo.InvariantCulture));
+                                table.Cell().Border(1).BorderColor(Colors.Grey.Lighten1).Padding(5).Text(item.Instructions ?? "—");
                             }
                         });
 
@@ -215,20 +215,24 @@ public sealed class CaseReportService : ICaseReportService
                         
                         foreach (var img in images)
                         {
-                            column.Item().PaddingBottom(5).Image(img.Bytes);
-                            
-                            if (!string.IsNullOrWhiteSpace(img.Note))
+                            column.Item().PaddingBottom(15).Row(row =>
                             {
-                                column.Item().PaddingBottom(10).Text(text =>
+                                // Chiếm 6 phần chiều rộng cho ảnh
+                                row.RelativeItem(6).Image(img.Bytes);
+                                
+                                // Chiếm 4 phần chiều rộng cho ghi chú nằm bên phải ảnh
+                                row.RelativeItem(4).PaddingLeft(15).Column(noteCol =>
                                 {
-                                    text.Span("Ghi chú ảnh: ").SemiBold().FontSize(11).Italic();
-                                    text.Span(img.Note).FontSize(11).Italic();
+                                    if (!string.IsNullOrWhiteSpace(img.Note))
+                                    {
+                                        noteCol.Item().Text(text =>
+                                        {
+                                            text.Span("Ghi chú ảnh:\n").SemiBold().FontSize(11).Italic();
+                                            text.Span(img.Note).FontSize(11).Italic();
+                                        });
+                                    }
                                 });
-                            }
-                            else
-                            {
-                                column.Item().PaddingBottom(10);
-                            }
+                            });
                         }
                     }
                 });
