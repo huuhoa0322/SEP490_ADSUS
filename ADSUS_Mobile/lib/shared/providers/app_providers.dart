@@ -17,6 +17,8 @@ import '../../features/medication_reminder/data/repositories/reminder_preference
 import '../../features/medication_reminder/domain/repositories/medication_intake_repository.dart';
 import '../../features/medication_reminder/domain/repositories/reminder_preference_repository.dart';
 import '../../features/health_log/data/repositories/health_log_repository.dart';
+import '../../features/medical_record/data/repositories/medical_record_repository_impl.dart';
+import '../../features/medical_record/domain/repositories/medical_record_repository.dart';
 /// Kho lưu trữ được hệ điều hành mã hoá (Keystore/Keychain).
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
   // Mặc định thư viện đã dùng Keystore của Android và Keychain của iOS.
@@ -85,4 +87,9 @@ final reminderPreferenceRepositoryProvider =
 /// Module 9 — Health Log (FT-35, FT-40, FT-41).
 final healthLogRepositoryProvider = Provider<HealthLogRepository>((ref) {
   return HealthLogRepository(ref.watch(dioProvider));
+});
+
+/// Module 04 — Medical Record (UC-08).
+final medicalRecordRepositoryProvider = Provider<MedicalRecordRepository>((ref) {
+  return MedicalRecordRepositoryImpl(ref.watch(dioProvider));
 });

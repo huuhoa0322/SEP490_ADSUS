@@ -18,13 +18,6 @@ class ApiException implements Exception {
 class ApiErrorMapper {
   const ApiErrorMapper._();
 
-  /// Câu DUY NHẤT hiển thị cho mọi trường hợp đăng nhập thất bại.
-  ///
-  /// UCS GB-06 bắt buộc sai số điện thoại, sai mật khẩu, tài khoản bị khoá và tài khoản
-  /// vô hiệu hoá đều không phân biệt được với nhau. Ánh xạ theo MÃ HTTP chứ không theo
-  /// câu chữ backend trả — chỉ có một nhánh nên không có gì để lộ.
-  static const String signInFailed = 'Số điện thoại hoặc mật khẩu không đúng.';
-
   static const Map<String, String> _known = {
     'Current password is incorrect.': 'Mật khẩu hiện tại không đúng.',
     'This account is no longer active.': 'Tài khoản này đã ngừng hoạt động.',
@@ -46,24 +39,6 @@ class ApiErrorMapper {
     'Date of birth must be in yyyy-MM-dd format.':
         'Ngày sinh không đúng định dạng.',
   };
-
-  /// Dùng riêng cho màn đăng nhập — luôn trả về đúng một câu khi bị từ chối.
-  static ApiException forSignIn(Object error) {
-    if (error is DioException) {
-      final status = error.response?.statusCode;
-      if (status == 401) {
-        return const ApiException(signInFailed, statusCode: 401);
-      }
-      if (status == 400) {
-        return const ApiException(
-          'Vui lòng nhập đầy đủ số điện thoại và mật khẩu.',
-          statusCode: 400,
-        );
-      }
-      if (error.response == null) return ApiException(_noConnection());
-    }
-    return const ApiException(signInFailed);
-  }
 
   /// Dùng cho các màn khác — ở đó được phép nói rõ nguyên nhân vì người dùng đã đăng nhập.
   static ApiException general(Object error, {String fallback = 'Đã có lỗi xảy ra.'}) {

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
-import 'features/auth/presentation/views/auth_gate.dart';
 
 void main() async {
   // Đảm bảo Flutter engine đã sẵn sàng trước khi gọi plugin channel (SharedPreferences).
@@ -18,17 +18,18 @@ void main() async {
   runApp(const ProviderScope(child: AdsusApp()));
 }
 
-class AdsusApp extends StatelessWidget {
+class AdsusApp extends ConsumerWidget {
   const AdsusApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp.router(
       title: 'ADSUS',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      // AuthGate quyết định hiển thị màn đăng nhập, màn ép đổi mật khẩu, hay màn chính.
-      home: const AuthGate(),
+      // goRouterProvider quyết định hiển thị màn đăng nhập, màn ép đổi mật khẩu, hay màn
+      // chính — xem core/router/app_router.dart.
+      routerConfig: ref.watch(goRouterProvider),
     );
   }
 }

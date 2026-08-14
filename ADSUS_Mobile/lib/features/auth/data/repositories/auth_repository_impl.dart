@@ -8,6 +8,7 @@ import '../../domain/entities/auth_session.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../dtos/auth_dtos.dart';
+import 'auth_error_mapper.dart';
 
 /// Vai trò duy nhất được dùng ứng dụng di động.
 ///
@@ -37,7 +38,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final envelope = ApiEnvelope.fromJson(res.data ?? const {});
       if (envelope.data == null) {
-        throw const ApiException(ApiErrorMapper.signInFailed);
+        throw const ApiException(AuthErrorMapper.signInFailed);
       }
 
       final session = AuthMapper.sessionFromJson(envelope.data!);
@@ -66,7 +67,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
       return session;
     } on DioException catch (e) {
-      throw ApiErrorMapper.forSignIn(e);
+      throw AuthErrorMapper.forSignIn(e);
     }
   }
 

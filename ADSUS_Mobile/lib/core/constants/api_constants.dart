@@ -43,6 +43,10 @@ class ApiConstants {
   static const String appointments = '/api/v1/appointments';
   static String cancelAppointment(String id) => '/api/v1/appointments/$id/cancel';
 
+  // Module 04 — Medical Record (UC-08)
+  static const String myCases = '/api/v1/cases/me';
+  static String caseDetail(String id) => '/api/v1/cases/$id';
+
   /// Quá thời gian này coi như không kết nối được.
   static const Duration timeout = Duration(seconds: 15);
 }

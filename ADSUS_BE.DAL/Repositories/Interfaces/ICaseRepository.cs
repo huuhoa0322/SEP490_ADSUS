@@ -13,9 +13,14 @@ public interface ICaseRepository
     /// <summary>Bản CÓ theo dõi — dùng khi cần sửa entity rồi gọi SaveChangesAsync (vd. ConfirmAsync).</summary>
     Task<Case?> GetForUpdateAsync(Guid caseId, CancellationToken ct = default);
 
+    /// <summary>
+    /// <paramref name="statuses"/> null hoặc rỗng = không lọc trạng thái (mọi Case của patient
+    /// này). Có giá trị = chỉ lấy Case nằm trong tập đó — dùng tập thay vì 1 status đơn vì
+    /// ListMineAsync cần lọc CẢ Confirmed lẫn End cùng lúc (patient vẫn phải thấy ca đã kê đơn).
+    /// </summary>
     Task<(IReadOnlyList<Case> Items, int TotalCount)> SearchByPatientAsync(
         Guid patientProfileId,
-        CaseStatus? status,
+        IReadOnlyCollection<CaseStatus>? statuses,
         string sortOrder,
         int page,
         int pageSize,

@@ -76,9 +76,12 @@ public sealed class CaseService : ICaseService
 
         // Ba điều kiện trượt đều trả về CÙNG một lỗi 404. Trả 403 cho ca chưa duyệt là gián
         // tiếp xác nhận "có tồn tại một ca như vậy" — đúng thứ GB-05 không cho lộ.
+        // Quyết định 14/08/2026 (sau khi trao đổi lại): Patient CHỈ xem được ca đã END (đã
+        // Confirmed VÀ đã có đơn thuốc) — ca mới Confirmed nhưng chưa kê đơn vẫn ẩn, kể cả
+        // khi Patient có ID trực tiếp.
         if (medicalCase is null
             || medicalCase.PatientProfileId != profile.PatientProfileId
-            || (medicalCase.Status != CaseStatus.Confirmed && medicalCase.Status != CaseStatus.End))
+            || medicalCase.Status != CaseStatus.End)
         {
             throw new ResourceNotFoundException("Case not found.");
         }
@@ -109,7 +112,9 @@ public sealed class CaseService : ICaseService
         }
 
         var (items, total) = await _cases.SearchByPatientAsync(
-            patientProfileId, statusFilter, sortOrder, page, pageSize, ct);
+            patientProfileId,
+            statusFilter.HasValue ? new[] { statusFilter.Value } : null,
+            sortOrder, page, pageSize, ct);
 
         return ToPagedResult(items, page, pageSize, total, CaseMapper.ToStaffSummary);
     }
@@ -123,10 +128,16 @@ public sealed class CaseService : ICaseService
         var profile = await _profiles.GetByUserIdAsync(callerUserId, ct)
             ?? throw new ResourceNotFoundException("You do not have a patient profile yet.");
 
-        // CONFIRMED ép cứng ở đây, KHÔNG nhận từ client. Để client chọn trạng thái là mở
-        // đường cho bệnh nhân đọc kết quả AI chưa được bác sĩ duyệt (GB-05).
+        // END ép cứng ở đây, KHÔNG nhận từ client. Để client chọn trạng thái là mở đường cho
+        // bệnh nhân đọc kết quả AI chưa được bác sĩ duyệt (GB-05).
+        // Quyết định 14/08/2026 (sau khi trao đổi lại): Patient CHỈ xem được ca đã END (đã
+        // Confirmed VÀ đã có đơn thuốc) — ca mới Confirmed nhưng bác sĩ chưa kê đơn thì KHÔNG
+        // hiện trong danh sách của chính patient (đảo ngược quyết định Confirmed+End cùng ngày
+        // trước đó — team đã trao đổi lại và chốt: chỉ End mới coi là "đã hoàn tất lượt khám").
         var (items, total) = await _cases.SearchByPatientAsync(
-            profile.PatientProfileId, CaseStatus.Confirmed, "desc", page, pageSize, ct);
+            profile.PatientProfileId,
+            new[] { CaseStatus.End },
+            "desc", page, pageSize, ct);
 
         return ToPagedResult(items, page, pageSize, total, CaseMapper.ToSummary);
     }
