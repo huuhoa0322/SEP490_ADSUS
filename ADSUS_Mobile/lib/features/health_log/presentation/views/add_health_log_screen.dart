@@ -14,7 +14,10 @@ import '../viewmodels/health_log_view_model.dart';
 ///   - Content input: TextFormField với maxLines: 4, maxLength: 500
 ///   - Submit button full width với loading state
 class AddHealthLogScreen extends ConsumerStatefulWidget {
-  const AddHealthLogScreen({super.key});
+  const AddHealthLogScreen({super.key, this.selectedDate});
+
+  /// Ngày được chọn trên calendar - mặc định là hôm nay.
+  final DateTime? selectedDate;
 
   @override
   ConsumerState<AddHealthLogScreen> createState() => _AddHealthLogScreenState();
@@ -41,8 +44,13 @@ class _AddHealthLogScreenState extends ConsumerState<AddHealthLogScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final date = widget.selectedDate ?? DateTime.now();
     final viewModel = ref.read(healthLogViewModelProvider.notifier);
-    final success = await viewModel.createLog(_selectedType, _contentController.text.trim());
+    final success = await viewModel.createLog(
+      _selectedType,
+      _contentController.text.trim(),
+      date,
+    );
 
     if (!mounted) return;
 

@@ -32,7 +32,7 @@ public class HealthLogService : IHealthLogService
         {
             HealthLogId = Guid.NewGuid(),
             PatientProfileId = patientProfileId,
-            LogDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            LogDate = request.LogDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
             LogType = logType,
             Content = request.Content!.Trim(),
             CreatedAt = DateTime.UtcNow,

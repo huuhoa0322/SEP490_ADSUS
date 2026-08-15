@@ -197,11 +197,13 @@ class _MyAppointmentsScreenState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Xác nhận đặt lịch mới'),
+        title: const Text('Đặt lịch mới'),
         content: const Text(
           'Bạn có muốn đặt lịch mới không?\n'
           'Lịch khám hiện tại sẽ bị hủy.',
         ),
+        actionsAlignment: MainAxisAlignment.end,
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -209,7 +211,11 @@ class _MyAppointmentsScreenState
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Xác nhận đặt lịch'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.teal,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Xác nhận'),
           ),
         ],
       ),

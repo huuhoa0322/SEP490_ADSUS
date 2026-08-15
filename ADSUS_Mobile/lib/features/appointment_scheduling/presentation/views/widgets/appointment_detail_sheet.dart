@@ -91,10 +91,8 @@ class AppointmentDetailSheet extends StatelessWidget {
             ),
           ],
 
-          // Lý do hủy (nếu đã hủy và chưa hết hạn)
-          // Đã qua thì không hiện lý do hủy vì cuộc hẹn đã kết thúc
+          // Lý do hủy (luôn hiện nếu có)
           if (appointment.isCancelled &&
-              !appointment.isExpired &&
               appointment.cancelledReason != null &&
               appointment.cancelledReason!.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -112,32 +110,39 @@ class AppointmentDetailSheet extends StatelessWidget {
 
           // Actions - chỉ hiện nếu appointment còn BOOKED và chưa hết hạn
           if (appointment.isBooked && !appointment.isExpired) ...[
-            OutlinedButton.icon(
-              onPressed: () {
-                Navigator.pop(context); // Đóng sheet trước
-                onReschedule?.call();
-              },
-              icon: const Icon(Icons.edit_calendar),
-              label: const Text('Đặt lại lịch'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.teal,
-                side: const BorderSide(color: AppColors.teal),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () {
-                Navigator.pop(context); // Đóng sheet trước
-                onCancel?.call();
-              },
-              icon: const Icon(Icons.close),
-              label: const Text('Hủy lịch'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.danger,
-                side: const BorderSide(color: AppColors.danger),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      onReschedule?.call();
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.navy,
+                      side: const BorderSide(color: AppColors.border),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('Hủy bỏ'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      onReschedule?.call();
+                    },
+                    icon: const Icon(Icons.edit_calendar),
+                    label: const Text('Xác nhận đặt lại lịch'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.teal,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
 

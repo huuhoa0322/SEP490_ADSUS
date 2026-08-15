@@ -356,14 +356,35 @@ class _BookAppointmentScreenState
   }
 
   Widget _slotsSection(BookAppointmentState state) {
-    // LUÔN cần chọn ngày mới hiện slots (theo yêu cầu mới)
-    final needsDateSelection = state.selectedDate == null;
+    // BẮT BUỘC chọn bác sĩ trước
+    final needsDoctorSelection = state.selectedDoctorId == null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionLabel('Khung giờ khả dụng'),
-        if (needsDateSelection)
+        if (needsDoctorSelection)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8E1), // Màu vàng nhạt
+              border: Border.all(color: const Color(0xFFFFB300)),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline, color: Color(0xFFE65100), size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Vui lòng chọn bác sĩ để xem các khung giờ.',
+                    style: TextStyle(color: Color(0xFFE65100), fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (state.selectedDate == null)
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(

@@ -124,17 +124,25 @@ class BookAppointmentState {
   }
 
   /// Slot đã lọc theo bác sĩ + tuần + ngày — danh sách thật sự hiện trong grid.
-  /// Chỉ hiện slots KHI đã chọn ngày cụ thể.
+  /// Chỉ hiện slots KHI đã chọn ngày cụ thể VÀ đã chọn bác sĩ.
   List<ScheduleSlot> get visibleSlots {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    // BẮT BUỘC phải chọn ngày mới hiện slots
+    // BẮT BUỘC phải chọn bác sĩ
+    if (selectedDoctorId == null) return [];
+
+    // BẮT BUỘC phải chọn ngày
     if (selectedDate == null) return [];
 
     return slots.where((s) {
       // Chỉ hiện slot từ hôm nay trở đi
       if (s.slotDate.isBefore(today)) return false;
+
+      // Nếu là slot hôm nay, kiểm tra giờ chưa qua
+      if (_isSameDay(s.slotDate, today)) {
+        if (!_isSlotTimeValid(s.startTime, now)) return false;
+      }
 
       // Giới hạn 2 tuần
       if (s.slotDate.isAfter(maxBookingDate)) return false;
@@ -144,13 +152,24 @@ class BookAppointmentState {
         return false;
       }
 
-      // Lọc theo bác sĩ nếu đã chọn
-      if (selectedDoctorId != null && s.doctorId != selectedDoctorId) {
+      // Lọc theo bác sĩ đã chọn
+      if (s.doctorId != selectedDoctorId) {
         return false;
       }
 
       return true;
     }).toList();
+  }
+
+  /// Kiểm tra giờ slot có hợp lệ (chưa qua giờ hiện tại).
+  bool _isSlotTimeValid(String? startTime, DateTime now) {
+    if (startTime == null) return true;
+    final parts = startTime.split(':');
+    if (parts.length < 2) return true;
+    final hour = int.tryParse(parts[0]) ?? 0;
+    final minute = int.tryParse(parts[1]) ?? 0;
+    final slotDateTime = DateTime(now.year, now.month, now.day, hour, minute);
+    return slotDateTime.isAfter(now);
   }
 
   /// Kiểm tra 2 ngày có cùng ngày/tháng/năm.
