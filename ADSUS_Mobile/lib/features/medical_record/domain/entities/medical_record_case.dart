@@ -1,4 +1,5 @@
 import 'medical_record_image.dart';
+import 'medical_record_prescription.dart';
 
 /// Trạng thái của một ca khám (Case) — theo đúng state machine backend (Module 04).
 ///
@@ -24,8 +25,7 @@ class MedicalRecordCase {
     required this.doctorName,
     this.finalDiagnosis,
     this.doctorConclusion,
-    this.prescriptionId,
-    this.prescriptionStatus,
+    this.prescription,
     this.images = const [],
   });
 
@@ -43,11 +43,9 @@ class MedicalRecordCase {
   /// tránh lặp lại bug lệch tên field từng khiến trường này không bao giờ đọc được.
   final String? doctorConclusion;
 
-  /// Tóm tắt đơn thuốc tối thiểu — chi tiết đầy đủ thuộc Module 07 (chưa có màn để
-  /// điều hướng tới), nên chỉ hiển thị dạng badge tĩnh, không bấm được.
-  final String? prescriptionId;
-  final String? prescriptionStatus;
-
-  /// Ảnh siêu âm gốc (bệnh nhân/nhân viên tải lên lúc khám) — "ẢNH SIÊU ÂM" trong PDF export.
+  /// Đơn thuốc kèm theo lượt khám — đính chính 15/08/2026: trước đây chỉ có
+  /// `prescriptionId`/`prescriptionStatus` (badge tĩnh), giờ có đủ chi tiết vì Module 7
+  /// xác nhận chưa có màn riêng để điều hướng tới.
+  final MedicalRecordPrescription? prescription;
   final List<MedicalRecordImage> images;
 }
