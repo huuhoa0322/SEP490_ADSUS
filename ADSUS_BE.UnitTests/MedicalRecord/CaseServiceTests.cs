@@ -83,6 +83,42 @@ public class CaseServiceTests
     }
 
     [Fact]
+    public async Task GetForPatientAsync_CaseHasImages_ReturnsSignedImageUrls()
+    {
+        // Arrange — quyết định 15/08/2026: Patient xem được ảnh siêu âm gốc của ca đã End,
+        // dùng đúng BuildImageUrlsAsync (helper đã có, GetForStaffAsync đang dùng) — không có
+        // đường tắt nào bỏ qua bước ký URL hay điều kiện sở hữu/trạng thái đã có sẵn ở trên.
+        var patientUser = MedicalRecordTestData.MakePatientUser();
+        var profile = MedicalRecordTestData.MakePatientProfile(patientUser);
+        var medicalCase = MedicalRecordTestData.MakeCase(profile, status: CaseStatus.End);
+        var image = new UltrasoundImage
+        {
+            ImageId = Guid.NewGuid(),
+            CaseId = medicalCase.CaseId,
+            FileRef = "path/anh.png",
+            UploadedAt = DateTime.UtcNow,
+            Note = null,
+        };
+        medicalCase.UltrasoundImages.Add(image);
+
+        _profiles.Setup(r => r.GetByUserIdAsync(patientUser.UserId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(profile);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _storage.Setup(s => s.CreateSignedUrlAsync(image.FileRef, It.IsAny<CancellationToken>()))
+                .ReturnsAsync("https://signed-url.example/anh.png");
+
+        // Act
+        var response = await _sut.GetForPatientAsync(medicalCase.CaseId, patientUser.UserId);
+
+        // Assert
+        var single = Assert.Single(response.UltrasoundImages);
+        Assert.Equal(image.ImageId, single.ImageId);
+        Assert.Equal("https://signed-url.example/anh.png", single.ImageUrl);
+        _storage.Verify(s => s.CreateSignedUrlAsync(image.FileRef, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task GetForPatientAsync_OwnCaseConfirmedButNotYetEnd_ThrowsResourceNotFoundExceptionWithSameMessage()
     {
         // Arrange — Quyết định 14/08/2026: ca đã Confirmed nhưng bác sĩ CHƯA kê đơn (chưa

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/api_envelope.dart';
@@ -40,6 +41,16 @@ class MedicalRecordRepositoryImpl implements MedicalRecordRepository {
       return paged.items.map(MedicalRecordMapper.summaryFromDto).toList();
     } on DioException catch (e) {
       throw ApiErrorMapper.general(e, fallback: 'Không tải được danh sách lượt khám.');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      // Lỗi parse (status enum lạ, DateTime.parse hỏng, thiếu field bắt buộc) không phải
+      // DioException — nếu không bắt ở đây, ViewModel's `on ApiException catch` cũng không
+      // bắt được, màn hình treo loading vĩnh viễn không có cách nào thoát (không cả "Thử lại").
+      // Log lại trước khi ném — nếu đây thực ra là 1 bug lập trình (không phải lỗi parse hợp
+      // lệ) thì vẫn phải có dấu vết, không được biến mất im lặng thành cùng 1 câu thông báo.
+      debugPrint('[MedicalRecordRepo] getMyRecords parse/logic error: $e');
+      throw const ApiException('Không tải được danh sách lượt khám.');
     }
   }
 
@@ -60,6 +71,11 @@ class MedicalRecordRepositoryImpl implements MedicalRecordRepository {
       );
     } on DioException catch (e) {
       throw ApiErrorMapper.general(e, fallback: 'Không tải được chi tiết lượt khám.');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      debugPrint('[MedicalRecordRepo] getRecordDetail parse/logic error: $e');
+      throw const ApiException('Không tải được chi tiết lượt khám.');
     }
   }
 }

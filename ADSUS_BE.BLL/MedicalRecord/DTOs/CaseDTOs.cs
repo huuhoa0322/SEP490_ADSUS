@@ -12,10 +12,25 @@ public sealed record UltrasoundImageResponse(
     DateTime UploadedAt,
     string? Note);
 
-/// <summary>Tóm tắt đơn thuốc nhúng trong #23. Chi tiết thuộc Module 7.</summary>
+/// <summary>1 loại thuốc trong đơn — nhúng trong PrescriptionSummary.</summary>
+public sealed record PrescriptionItemSummary(
+    string MedicineName,
+    string Dosage,
+    short DurationDays,
+    DateOnly StartDate,
+    string? Instructions);
+
+/// <summary>
+/// Đơn thuốc nhúng trong #23. Đính chính 15/08/2026: trước đây chỉ có PrescriptionId+Status
+/// ("chi tiết thuộc Module 7") — Module 7 xác nhận CHƯA có màn nào xem chi tiết đơn thuốc, nên
+/// giờ hiện đầy đủ thẳng ở đây (dùng chung cho cả CaseResponse lẫn PatientCaseResponse).
+/// </summary>
 public sealed record PrescriptionSummary(
     Guid PrescriptionId,
-    string Status);
+    string Status,
+    DateOnly PrescribedDate,
+    string? GeneralNote,
+    IReadOnlyList<PrescriptionItemSummary> Items);
 
 /// <summary>
 /// #20, #23 — bản đầy đủ cho Bác sĩ/Điều dưỡng (Web SCR-12).
@@ -43,7 +58,13 @@ public sealed record CaseResponse(
 /// Là một KIỂU RIÊNG chứ không phải CaseResponse với vài field để null: quy tắc dữ liệu nhạy
 /// cảm nói field mà người gọi không có quyền thì không được KHAI BÁO, mà class C# thì không
 /// ẩn field được — null vẫn serialize ra. Tách kiểu là cách duy nhất để trình biên dịch bảo
-/// đảm clinicalInfo / ultrasoundImages / aiResults không bao giờ tới tay bệnh nhân (GB-05).
+/// đảm clinicalInfo / patientProfile / aiResults không bao giờ tới tay bệnh nhân (GB-05).
+///
+/// Đính chính 15/08/2026: trước đây comment này còn liệt cả ultrasoundImages vào danh sách bị
+/// cấm — SAI theo quyết định UCS 01/08/2026 (xem CasesController.cs's ExportReport doc comment
+/// + design spec 2026-08-15): Patient CÓ xem được ảnh siêu âm gốc một khi ca đã Confirmed/End,
+/// giống hệt nội dung PDF export (trừ chức năng xuất file). Chỉ dữ liệu nội bộ thuần Staff
+/// (ClinicalInfo, PatientProfile, AiResults, các mốc CreatedAt/UpdatedAt) mới còn bị cấm.
 /// </summary>
 public sealed record PatientCaseResponse(
     Guid CaseId,
@@ -53,7 +74,8 @@ public sealed record PatientCaseResponse(
     string Status,
     string? FinalDiagnosis,
     string? DoctorConclusion,
-    PrescriptionSummary? Prescription);
+    PrescriptionSummary? Prescription,
+    IReadOnlyList<UltrasoundImageResponse> UltrasoundImages);
 
 /// <summary>#25 — một dòng trong danh sách lần khám CỦA CHÍNH bệnh nhân (Mobile).</summary>
 public sealed record CaseSummaryResponse(

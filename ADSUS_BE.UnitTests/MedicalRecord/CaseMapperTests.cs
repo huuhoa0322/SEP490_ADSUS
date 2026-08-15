@@ -25,12 +25,13 @@ public class CaseMapperTests
     public void ToPatientResponse_TypeHasNoClinicalOrInternalFields()
     {
         // Arrange — kiểm bằng phản chiếu (reflection): PatientCaseResponse không được có bất
-        // kỳ property nào trong nhóm dữ liệu chỉ dành cho Bác sĩ/Điều dưỡng (GB-05). Đây là
-        // test khoá lại tính chất "2 kiểu tách biệt", không phải test giá trị cụ thể.
+        // kỳ property nào trong nhóm dữ liệu chỉ dành cho Bác sĩ/Điều dưỡng (GB-05).
+        // Sửa 15/08/2026: bỏ "UltrasoundImages" khỏi danh sách cấm — quyết định 01/08/2026
+        // (CasesController.cs comment, xem design spec) là Patient CŨNG xem được ảnh siêu âm
+        // gốc một khi ca đã Confirmed/End; chỉ dữ liệu nội bộ thuần Staff mới còn bị cấm.
         var forbiddenPropertyNames = new[]
         {
-            "ClinicalInfo", "PatientProfileId", "PatientProfile",
-            "UltrasoundImages", "AiResults", "CreatedAt", "UpdatedAt",
+            "ClinicalInfo", "PatientProfileId", "PatientProfile", "AiResults", "CreatedAt", "UpdatedAt",
         };
 
         // Act
@@ -53,13 +54,66 @@ public class CaseMapperTests
         var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Confirmed);
 
         // Act
-        var response = CaseMapper.ToPatientResponse(medicalCase);
+        var response = CaseMapper.ToPatientResponse(medicalCase, imageUrls: new Dictionary<Guid, string?>());
 
         // Assert
         Assert.Equal(medicalCase.CaseId, response.CaseId);
         Assert.Equal(medicalCase.FinalDiagnosis, response.FinalDiagnosis);
         Assert.Equal(medicalCase.DoctorConclusion, response.DoctorConclusion);
         Assert.Equal("CONFIRMED", response.Status);
+    }
+
+    [Fact]
+    public void ToPatientResponse_IncludesUltrasoundImagesWithSignedUrls()
+    {
+        // Arrange — quyết định 15/08/2026: Patient xem được ảnh siêu âm gốc (không phải ảnh
+        // có khoanh vùng AI/bác sĩ, tính năng đó chưa tồn tại) một khi ca đã Confirmed/End,
+        // giống hệt cách ToStaffResponse đã làm — chỉ khác là dùng PatientCaseResponse.
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.End);
+        var image = new UltrasoundImage
+        {
+            ImageId = Guid.NewGuid(),
+            CaseId = medicalCase.CaseId,
+            FileRef = "path/anh.png",
+            UploadedAt = DateTime.UtcNow,
+            Note = "Ghi chu anh",
+        };
+        medicalCase.UltrasoundImages.Add(image);
+        var imageUrls = new Dictionary<Guid, string?> { [image.ImageId] = "https://signed-url.example/anh.png" };
+
+        // Act
+        var response = CaseMapper.ToPatientResponse(medicalCase, imageUrls);
+
+        // Assert
+        var single = Assert.Single(response.UltrasoundImages);
+        Assert.Equal(image.ImageId, single.ImageId);
+        Assert.Equal("https://signed-url.example/anh.png", single.ImageUrl);
+        Assert.Equal("Ghi chu anh", single.Note);
+    }
+
+    [Fact]
+    public void ToPatientResponse_PrescriptionIncludesItemsWithMedicineDosageAndInstructions()
+    {
+        // Arrange — quyết định 15/08/2026: Patient xem được chi tiết đầy đủ đơn thuốc (từng
+        // thuốc + liều + số ngày + hướng dẫn + ghi chú chung), không chỉ badge trạng thái —
+        // Module 7 chưa có màn riêng để điều hướng tới, nên hiện thẳng trên SCR-14.
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.End);
+        var prescription = MedicalRecordTestData.MakePrescription(
+            medicalCase, new DateOnly(2026, 8, 15), createdAt: DateTime.UtcNow);
+
+        // Act
+        var response = CaseMapper.ToPatientResponse(medicalCase, imageUrls: new Dictionary<Guid, string?>());
+
+        // Assert
+        Assert.NotNull(response.Prescription);
+        Assert.Equal(prescription.PrescriptionId, response.Prescription!.PrescriptionId);
+        Assert.Equal(new DateOnly(2026, 8, 15), response.Prescription.PrescribedDate);
+        Assert.Equal("Uống sau ăn", response.Prescription.GeneralNote);
+        var item = Assert.Single(response.Prescription.Items);
+        Assert.Equal("Paracetamol 500mg", item.MedicineName);
+        Assert.Equal("1 viên/lần, 2 lần/ngày", item.Dosage);
+        Assert.Equal((short)5, item.DurationDays);
+        Assert.Equal("Uống sau ăn", item.Instructions);
     }
 
     [Fact]
