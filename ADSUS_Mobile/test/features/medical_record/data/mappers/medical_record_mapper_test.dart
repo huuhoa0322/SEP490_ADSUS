@@ -72,7 +72,9 @@ void main() {
       expect(entity.prescription?.generalNote, 'Uong sau an');
       expect(entity.prescription?.items, hasLength(1));
       expect(entity.prescription?.items.first.medicineName, 'Paracetamol 500mg');
+      expect(entity.prescription?.items.first.dosage, '1 vien/lan, 2 lan/ngay');
       expect(entity.prescription?.items.first.durationDays, 5);
+      expect(entity.prescription?.items.first.instructions, 'Uong sau an');
       expect(
         entity.prescription?.items.first.startDate,
         DateTime.parse('2026-08-15'),

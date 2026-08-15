@@ -54,7 +54,9 @@ void main() {
       expect(dto.prescription?.generalNote, 'Uong sau an');
       expect(dto.prescription?.items, hasLength(1));
       expect(dto.prescription?.items.first.medicineName, 'Paracetamol 500mg');
+      expect(dto.prescription?.items.first.dosage, '1 vien/lan, 2 lan/ngay');
       expect(dto.prescription?.items.first.durationDays, 5);
+      expect(dto.prescription?.items.first.instructions, 'Uong sau an');
     });
 
     test('prescription khong co items thi list rong, khong nem loi', () {
