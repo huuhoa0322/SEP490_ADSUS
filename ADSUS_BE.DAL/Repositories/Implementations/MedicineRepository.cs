@@ -52,6 +52,7 @@ public sealed class MedicineRepository : IMedicineRepository
         {
             return await _db.Medicines
                 .AsNoTracking()
+                .Where(m => m.Status == MedicineStatus.Active)
                 .OrderBy(m => m.Name)
                 .Take(limit)
                 .ToListAsync(ct);
@@ -60,7 +61,7 @@ public sealed class MedicineRepository : IMedicineRepository
         var trimmed = keyword.Trim();
         return await _db.Medicines
             .AsNoTracking()
-            .Where(m => EF.Functions.ILike(m.Name, $"%{trimmed}%"))
+            .Where(m => m.Status == MedicineStatus.Active && EF.Functions.ILike(m.Name, "%${trimmed}%"))
             .OrderBy(m => m.Name)
             .Take(limit)
             .ToListAsync(ct);
@@ -100,3 +101,4 @@ public sealed class MedicineRepository : IMedicineRepository
             .AnyAsync(pi => pi.MedicineId == medicineId, ct);
     }
 }
+

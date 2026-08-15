@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -79,5 +79,36 @@ public class MedicineServiceTests
         var list = result as List<MedicineResponse> ?? new List<MedicineResponse>(result);
         Assert.Single(list);
         Assert.Equal("Aspirin", list[0].Name);
+    }
+    [Fact]
+    public async Task ActivateMedicineAsync_ValidId_SetsStatusToActive()
+    {
+        // Arrange
+        var id = Guid.NewGuid();
+        var existing = new Medicine { MedicineId = id, Status = MedicineStatus.Inactive };
+
+        _medicineRepoMock.Setup(repo => repo.GetByIdAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        // Act
+        await _sut.ActivateMedicineAsync(id, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(MedicineStatus.Active, existing.Status);
+        _medicineRepoMock.Verify(repo => repo.UpdateAsync(existing, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ActivateMedicineAsync_InvalidId_ThrowsResourceNotFoundException()
+    {
+        // Arrange
+        var id = Guid.NewGuid();
+        _medicineRepoMock.Setup(repo => repo.GetByIdAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Medicine)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ADSUS_BE.BLL.Common.Exceptions.ResourceNotFoundException>(
+            () => _sut.ActivateMedicineAsync(id, CancellationToken.None)
+        );
     }
 }
