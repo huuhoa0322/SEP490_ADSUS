@@ -41,6 +41,9 @@ public sealed class AppointmentService : IAppointmentService
             .Include(s => s.Appointments)
             .Where(s => s.Status == statusFilter);
 
+        // Chỉ trả về slot của bác sĩ ACTIVE
+        query = query.Where(s => s.Doctor.Status == UserStatus.Active);
+
         if (doctorId != null && Guid.TryParse(doctorId, out var docGuid))
         {
             query = query.Where(s => s.DoctorId == docGuid);
@@ -68,6 +71,7 @@ public sealed class AppointmentService : IAppointmentService
             SlotId = s.SlotId,
             DoctorId = s.DoctorId,
             DoctorName = s.Doctor.FullName,
+            DoctorStatus = s.Doctor.Status,
             SlotDate = s.SlotDate,
             StartTime = s.StartTime,
             EndTime = s.EndTime,

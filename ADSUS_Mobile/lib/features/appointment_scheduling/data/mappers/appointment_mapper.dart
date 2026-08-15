@@ -48,6 +48,30 @@ class AppointmentMapper {
     }
   }
 
+  static DoctorStatus parseDoctorStatus(dynamic raw) {
+    // Backend trả: "ACTIVE", "INACTIVE", hoặc int (0=ACTIVE, 1=INACTIVE).
+    if (raw is int) {
+      return raw == 0 ? DoctorStatus.active : DoctorStatus.inactive;
+    }
+    switch (raw?.toString()) {
+      case '0':
+        return DoctorStatus.active;
+      case '1':
+        return DoctorStatus.inactive;
+      case 'ACTIVE':
+        return DoctorStatus.active;
+      case 'INACTIVE':
+        return DoctorStatus.inactive;
+      case 'active':
+        return DoctorStatus.active;
+      case 'inactive':
+        return DoctorStatus.inactive;
+      default:
+        // Mặc định coi là active để không block UI
+        return DoctorStatus.active;
+    }
+  }
+
   static AppointmentStatus parseAppointmentStatus(dynamic raw) {
     // Backend trả enum dưới dạng string (JsonStringEnumConverter): "Booked" / "Cancelled" (camelCase)
     // Hoặc int cũ (0=BOOKED, 1=CANCELLED) cho backward compatibility.
@@ -95,6 +119,7 @@ class AppointmentMapper {
         startTime: parseHm(dto.startTime) ?? '',
         endTime: parseHm(dto.endTime) ?? '',
         status: parseSlotStatus(dto.status),
+        doctorStatus: parseDoctorStatus(dto.doctorStatus),
       );
 
   static Appointment appointmentFromDto(AppointmentDto dto) => Appointment(

@@ -1,3 +1,4 @@
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -231,27 +232,37 @@ class _BookAppointmentScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionLabel('BÁC SĨ PHỤ TRÁCH'),
-        DropdownButtonFormField<String?>(
-          value: state.selectedDoctorId,
-          isExpanded: true,
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.person_outline),
-          ),
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text('Tất cả bác sĩ'),
-            ),
-            ...state.doctorOptions.map(
-              (d) => DropdownMenuItem<String?>(
-                value: d.id,
-                child: Text(d.name),
+        DropdownSearch<String>(
+          popupProps: PopupProps.menu(
+            showSearchBox: true,
+            searchFieldProps: TextFieldProps(
+              decoration: const InputDecoration(
+                hintText: 'Tìm kiếm bác sĩ...',
+                prefixIcon: Icon(Icons.search),
               ),
             ),
-          ],
-          onChanged: (v) => ref
-              .read(bookAppointmentViewModelProvider.notifier)
-              .selectDoctor(v),
+            fit: FlexFit.loose,
+          ),
+          items: state.doctorOptions.map((d) => d.name).toList(),
+          selectedItem: state.selectedDoctorId != null
+              ? state.doctorOptions
+                  .firstWhere(
+                    (d) => d.id == state.selectedDoctorId,
+                    orElse: () => state.doctorOptions.first,
+                  )
+                  .name
+              : null,
+          onChanged: (name) {
+            if (name == null) return;
+            final doctor = state.doctorOptions.firstWhere((d) => d.name == name);
+            ref.read(bookAppointmentViewModelProvider.notifier).selectDoctor(doctor.id);
+          },
+          decoratorProps: DropDownDecoratorProps(
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.person_outline),
+              hintText: 'Chọn bác sĩ',
+            ),
+          ),
         ),
       ],
     );
