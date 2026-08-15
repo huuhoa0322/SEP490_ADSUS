@@ -114,22 +114,12 @@ public sealed class PrescriptionService : IPrescriptionService
             if (!medicineCache.TryGetValue(itemDto.MedicineName, out var medicineId))
             {
                 var existing = await _medicineRepo.FindByNameAsync(itemDto.MedicineName, ct);
-                if (existing is not null)
+                if (existing is null || existing.Status == MedicineStatus.Inactive)
                 {
-                    medicineId = existing.MedicineId;
+                    throw new BusinessException($"Thuốc '{itemDto.MedicineName}' không tồn tại trong hệ thống hoặc đã bị ngừng sử dụng. Vui lòng chọn thuốc từ danh sách.");
                 }
-                else
-                {
-                    // Create new medicine
-                    medicineId = Guid.NewGuid();
-                    var newMedicine = new Medicine
-                    {
-                        MedicineId = medicineId,
-                        Name = itemDto.MedicineName.Trim(),
-                        CreatedAt = DateTime.UtcNow,
-                    };
-                    await _medicineRepo.AddAsync(newMedicine, ct);
-                }
+                
+                medicineId = existing.MedicineId;
                 medicineCache[itemDto.MedicineName] = medicineId;
             }
 

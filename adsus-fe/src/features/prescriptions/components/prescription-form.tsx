@@ -105,8 +105,9 @@ export function PrescriptionForm({
     try {
       await onSubmit(data);
       toast.success("Kê đơn thuốc và kết thúc ca khám thành công");
-    } catch {
-      toast.error("Không thể lưu đơn thuốc. Vui lòng thử lại.");
+    } catch (e: any) {
+      const message = e?.response?.data?.message || e?.message || "Không thể lưu đơn thuốc. Vui lòng thử lại.";
+      toast.error(message);
     }
   }
 

@@ -22,4 +22,13 @@ public interface IMedicineRepository
 
     /// <summary>Tìm kiếm danh mục thuốc (dùng cho tính năng autocomplete).</summary>
     Task<IReadOnlyList<Medicine>> SearchByNameAsync(string keyword, int limit = 20, CancellationToken ct = default);
+
+    /// <summary>Update medicine.</summary>
+    Task UpdateAsync(Medicine medicine, CancellationToken ct = default);
+
+    /// <summary>Lấy danh sách phân trang (cho Admin).</summary>
+    Task<(IReadOnlyList<Medicine> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? keyword, CancellationToken ct = default);
+
+    /// <summary>Kiểm tra xem thuốc đã từng được sử dụng trong đơn thuốc nào chưa.</summary>
+    Task<bool> HasBeenPrescribedAsync(Guid medicineId, CancellationToken ct = default);
 }

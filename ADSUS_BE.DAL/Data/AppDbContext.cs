@@ -70,6 +70,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("gender_type", new[] { "FEMALE", "MALE", "OTHER" })
             .HasPostgresEnum("health_log_type", new[] { "EXERCISE", "DIET" })
             .HasPostgresEnum("intake_status", new[] { "PENDING", "TAKEN", "OVERTIME" })
+            .HasPostgresEnum("medicines_status", new[] { "ACTIVE", "INACTIVE" })
             .HasPostgresEnum("model_version_status", new[] { "ACTIVE", "INACTIVE" })
             .HasPostgresEnum("prescription_status", new[] { "ACTIVE", "COMPLETED" })
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })

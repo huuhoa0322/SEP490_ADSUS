@@ -1,11 +1,13 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Services;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
 
@@ -14,12 +16,17 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence;
 public class MedicineServiceTests
 {
     private readonly Mock<IMedicineRepository> _medicineRepoMock;
+    private readonly AppDbContext _db;
     private readonly MedicineService _sut; // System Under Test
 
     public MedicineServiceTests()
     {
         _medicineRepoMock = new Mock<IMedicineRepository>();
-        _sut = new MedicineService(_medicineRepoMock.Object);
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        _db = new AppDbContext(options);
+        _sut = new MedicineService(_medicineRepoMock.Object, _db);
     }
 
     [Fact]
@@ -30,8 +37,8 @@ public class MedicineServiceTests
         var limit = 20;
         var medicines = new List<Medicine>
         {
-            new Medicine { MedicineId = Guid.NewGuid(), Name = "Paracetamol 500mg" },
-            new Medicine { MedicineId = Guid.NewGuid(), Name = "Paralmax" }
+            new Medicine { MedicineId = Guid.NewGuid(), Name = "Paracetamol 500mg", Status = MedicineStatus.Active, CreatedAt = DateTime.UtcNow },
+            new Medicine { MedicineId = Guid.NewGuid(), Name = "Paralmax", Status = MedicineStatus.Active, CreatedAt = DateTime.UtcNow }
         };
 
         _medicineRepoMock.Setup(repo => repo.SearchByNameAsync(keyword, limit, It.IsAny<CancellationToken>()))
@@ -58,7 +65,7 @@ public class MedicineServiceTests
         var limit = 5;
         var medicines = new List<Medicine>
         {
-            new Medicine { MedicineId = Guid.NewGuid(), Name = "Aspirin" }
+            new Medicine { MedicineId = Guid.NewGuid(), Name = "Aspirin", Status = MedicineStatus.Active, CreatedAt = DateTime.UtcNow }
         };
 
         _medicineRepoMock.Setup(repo => repo.SearchByNameAsync(keyword, limit, It.IsAny<CancellationToken>()))

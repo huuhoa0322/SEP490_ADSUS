@@ -42,6 +42,7 @@ type PendingAction = { kind: "deactivate" | "reset"; user: UserAccount } | null;
  * Tạo mới và sửa nằm ở SCR-07. Thông báo "đã tạo" không còn đi qua trang này nữa — SCR-07 tự
  * hiện mật khẩu tạm ngay tại chỗ (sửa 12/08/2026, xem UserForm).
  */
+
 export function UserList() {
   const [keyword, setKeyword] = useState("");
   const [role, setRole] = useState<Role | "">("");
@@ -87,7 +88,7 @@ export function UserList() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-10">
+    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">
@@ -265,18 +266,50 @@ export function UserList() {
       </div>
 
       {/* ---- Phân trang ---- */}
-      {data && data.totalCount > 0 && (
+      {data && data.totalPages > 1 && (
         <div className="mt-5 flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            {data.totalCount} tài khoản · trang {data.page}/{data.totalPages}
+            Đang xem {data.items.length} / {data.totalCount} kết quả
           </span>
           <div className="flex gap-2">
-            <PagerButton
-              disabled={data.page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
+            <PagerButton disabled={data.page <= 1} onClick={() => setPage((p) => p - 1)}>
               Trước
             </PagerButton>
+            
+            <div className="flex gap-1.5 items-center mx-2">
+              {(() => {
+                const total = data.totalPages;
+                const current = data.page;
+                let pages: number[] = [];
+                if (total <= 5) {
+                  pages = Array.from({ length: total }, (_, i) => i + 1);
+                } else if (current <= 3) {
+                  pages = [1, 2, 3, 4, 5];
+                } else if (current >= total - 2) {
+                  pages = [total - 4, total - 3, total - 2, total - 1, total];
+                } else {
+                  pages = [current - 2, current - 1, current, current + 1, current + 2];
+                }
+
+                return pages.map((p) => {
+                  const active = p === current;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`flex h-10 min-w-10 items-center justify-center rounded-full border px-3 text-sm transition-colors ${
+                        active
+                          ? "border-accent bg-accent font-bold text-white shadow-sm"
+                          : "border-border hover:bg-secondary text-foreground"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+
             <PagerButton
               disabled={data.page >= data.totalPages}
               onClick={() => setPage((p) => p + 1)}
