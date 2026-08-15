@@ -16,6 +16,9 @@ class ScheduleSlotDto {
   /// Backend enum: "OPEN" hoặc "CLOSED". Theo UCS, không bao giờ là "FULL".
   final String? status;
 
+  /// Trạng thái tài khoản bác sĩ: "ACTIVE", "INACTIVE", hoặc int (0/1).
+  final String? doctorStatus;
+
   final String? createdAt;
   final String? updatedAt;
 
@@ -27,6 +30,7 @@ class ScheduleSlotDto {
     this.startTime,
     this.endTime,
     this.status,
+    this.doctorStatus,
     this.createdAt,
     this.updatedAt,
   });
@@ -40,6 +44,8 @@ class ScheduleSlotDto {
         endTime: json['endTime'] as String?,
         // Backend trả int (0=OPEN, 1=CLOSED), convert sang string.
         status: json['status']?.toString(),
+        // Backend trả doctorStatus: "ACTIVE"/"INACTIVE" hoặc int (0/1).
+        doctorStatus: json['doctorStatus']?.toString(),
         createdAt: json['createdAt'] as String?,
         updatedAt: json['updatedAt'] as String?,
       );

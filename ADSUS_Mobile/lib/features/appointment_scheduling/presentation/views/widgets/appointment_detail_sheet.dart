@@ -112,16 +112,16 @@ class AppointmentDetailSheet extends StatelessWidget {
 
           // Actions - chỉ hiện nếu appointment còn BOOKED và chưa hết hạn
           if (appointment.isBooked && !appointment.isExpired) ...[
-            ElevatedButton.icon(
+            OutlinedButton.icon(
               onPressed: () {
                 Navigator.pop(context); // Đóng sheet trước
                 onReschedule?.call();
               },
               icon: const Icon(Icons.edit_calendar),
               label: const Text('Đặt lại lịch'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.teal,
-                foregroundColor: Colors.white,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.teal,
+                side: const BorderSide(color: AppColors.teal),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
