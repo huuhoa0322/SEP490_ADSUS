@@ -100,6 +100,16 @@ public static class CaseMapper
             ? null
             : new PrescriptionSummary(
                 PrescriptionId: prescription.PrescriptionId,
-                Status: prescription.Status.ToApiString());
+                Status: prescription.Status.ToApiString(),
+                PrescribedDate: prescription.PrescribedDate,
+                GeneralNote: prescription.GeneralNote,
+                Items: prescription.PrescriptionItems
+                    .Select(i => new PrescriptionItemSummary(
+                        MedicineName: i.Medicine.Name,
+                        Dosage: i.Dosage,
+                        DurationDays: i.DurationDays,
+                        StartDate: i.StartDate,
+                        Instructions: i.Instructions))
+                    .ToList());
     }
 }

@@ -92,6 +92,31 @@ public class CaseMapperTests
     }
 
     [Fact]
+    public void ToPatientResponse_PrescriptionIncludesItemsWithMedicineDosageAndInstructions()
+    {
+        // Arrange — quyết định 15/08/2026: Patient xem được chi tiết đầy đủ đơn thuốc (từng
+        // thuốc + liều + số ngày + hướng dẫn + ghi chú chung), không chỉ badge trạng thái —
+        // Module 7 chưa có màn riêng để điều hướng tới, nên hiện thẳng trên SCR-14.
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.End);
+        var prescription = MedicalRecordTestData.MakePrescription(
+            medicalCase, new DateOnly(2026, 8, 15), createdAt: DateTime.UtcNow);
+
+        // Act
+        var response = CaseMapper.ToPatientResponse(medicalCase, imageUrls: new Dictionary<Guid, string?>());
+
+        // Assert
+        Assert.NotNull(response.Prescription);
+        Assert.Equal(prescription.PrescriptionId, response.Prescription!.PrescriptionId);
+        Assert.Equal(new DateOnly(2026, 8, 15), response.Prescription.PrescribedDate);
+        Assert.Equal("Uống sau ăn", response.Prescription.GeneralNote);
+        var item = Assert.Single(response.Prescription.Items);
+        Assert.Equal("Paracetamol 500mg", item.MedicineName);
+        Assert.Equal("1 viên/lần, 2 lần/ngày", item.Dosage);
+        Assert.Equal((short)5, item.DurationDays);
+        Assert.Equal("Uống sau ăn", item.Instructions);
+    }
+
+    [Fact]
     public void ToImageResponse_NullSignedUrl_MapsToNullImageUrlWithoutThrowing()
     {
         // Arrange — dữ liệu seed có file_ref trỏ vào object không tồn tại, ký thất bại phải

@@ -12,10 +12,25 @@ public sealed record UltrasoundImageResponse(
     DateTime UploadedAt,
     string? Note);
 
-/// <summary>Tóm tắt đơn thuốc nhúng trong #23. Chi tiết thuộc Module 7.</summary>
+/// <summary>1 loại thuốc trong đơn — nhúng trong PrescriptionSummary.</summary>
+public sealed record PrescriptionItemSummary(
+    string MedicineName,
+    string Dosage,
+    short DurationDays,
+    DateOnly StartDate,
+    string? Instructions);
+
+/// <summary>
+/// Đơn thuốc nhúng trong #23. Đính chính 15/08/2026: trước đây chỉ có PrescriptionId+Status
+/// ("chi tiết thuộc Module 7") — Module 7 xác nhận CHƯA có màn nào xem chi tiết đơn thuốc, nên
+/// giờ hiện đầy đủ thẳng ở đây (dùng chung cho cả CaseResponse lẫn PatientCaseResponse).
+/// </summary>
 public sealed record PrescriptionSummary(
     Guid PrescriptionId,
-    string Status);
+    string Status,
+    DateOnly PrescribedDate,
+    string? GeneralNote,
+    IReadOnlyList<PrescriptionItemSummary> Items);
 
 /// <summary>
 /// #20, #23 — bản đầy đủ cho Bác sĩ/Điều dưỡng (Web SCR-12).
