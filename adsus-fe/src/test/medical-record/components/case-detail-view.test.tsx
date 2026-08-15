@@ -43,14 +43,29 @@ vi.mock("@/features/medical-record/hooks/use-cases", () => ({
     isError: false,
     error: null,
   }),
+  useEndCaseWithoutPrescription: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    isSuccess: false,
+    isError: false,
+    error: null,
+  }),
 }));
 
 vi.mock("@/features/medical-record/hooks/use-case-report", () => ({
   useExportCaseReport: () => ({ exportReport: vi.fn(), isPending: false, error: null }),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+vi.mock("@/features/prescriptions/components/prescription-section", () => ({
+  PrescriptionSection: () => <div data-testid="prescription-section" />,
+}));
+
 function makeCase(
-  status: "CREATED" | "ANALYZED" | "CONFIRMED",
+  status: "CREATED" | "ANALYZED" | "CONFIRMED" | "END",
   draft?: { finalDiagnosis: string; doctorConclusion: string },
 ) {
   return {
@@ -111,17 +126,17 @@ describe("CaseDetailView", () => {
     useAuthStore.getState().signOut();
   });
 
-  it("tắt nút xuất PDF khi ca chưa được kết luận", () => {
-    // UC-12 BR-01 — chỉ xuất được báo cáo của ca đã CONFIRMED.
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+  it("không hiển thị nút xuất PDF khi ca chưa kết thúc", () => {
+    // UC-12 BR-01 — chỉ xuất được báo cáo của ca đã END.
+    detailMock.mockReturnValue(makeCase("CONFIRMED"));
 
     render(<CaseDetailView caseId="case-1" />);
 
-    expect(screen.getByRole("button", { name: /xuất báo cáo pdf/i })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /xuất báo cáo pdf/i })).not.toBeInTheDocument();
   });
 
-  it("bật nút xuất PDF khi ca đã kết luận", () => {
-    detailMock.mockReturnValue(makeCase("CONFIRMED"));
+  it("bật nút xuất PDF khi ca đã kết thúc", () => {
+    detailMock.mockReturnValue(makeCase("END"));
 
     render(<CaseDetailView caseId="case-1" />);
 
@@ -193,7 +208,7 @@ describe("CaseDetailView", () => {
 
     expect(screen.getByLabelText(/chẩn đoán cuối cùng/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^lưu kết luận$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /kết thúc ca khám/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /xác nhận kết luận/i })).toBeInTheDocument();
   });
 
   it("KHÔNG hiện form cho Bác sĩ khác (không phải người phụ trách ca này)", () => {
@@ -251,7 +266,7 @@ describe("CaseDetailView", () => {
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
-    await user.click(screen.getByRole("button", { name: /kết thúc ca khám/i }));
+    await user.click(screen.getByRole("button", { name: /xác nhận kết luận/i }));
 
     expect(confirmMutate).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent(/chẩn đoán và kết luận/i);
@@ -282,7 +297,7 @@ describe("CaseDetailView", () => {
     render(<CaseDetailView caseId="case-1" />);
     await user.type(screen.getByLabelText(/chẩn đoán cuối cùng/i), "Nhân xơ tử cung");
     await user.type(screen.getByLabelText(/kết luận \/ hướng xử trí/i), "Theo dõi 6 tháng");
-    await user.click(screen.getByRole("button", { name: /kết thúc ca khám/i }));
+    await user.click(screen.getByRole("button", { name: /xác nhận kết luận/i }));
 
     expect(confirmMutate).toHaveBeenCalledWith({
       finalDiagnosis: "Nhân xơ tử cung",
@@ -337,7 +352,7 @@ describe("CaseDetailView", () => {
     await user.type(screen.getByLabelText(/chẩn đoán cuối cùng/i), "Nhân xơ tử cung");
     await user.type(screen.getByLabelText(/kết luận \/ hướng xử trí/i), "Theo dõi 6 tháng");
     await user.click(screen.getByRole("button", { name: /^lưu kết luận$/i }));
-    await user.click(screen.getByRole("button", { name: /kết thúc ca khám/i }));
+    await user.click(screen.getByRole("button", { name: /xác nhận kết luận/i }));
 
     expect(confirmMutate).toHaveBeenCalledWith({
       finalDiagnosis: "Nhân xơ tử cung",
