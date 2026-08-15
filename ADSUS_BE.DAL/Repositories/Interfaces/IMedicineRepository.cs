@@ -19,4 +19,7 @@ public interface IMedicineRepository
 
     /// <summary>Lấy toàn bộ danh mục thuốc (dùng cho bác sĩ khi kê đơn).</summary>
     Task<IReadOnlyList<Medicine>> ListAllAsync(CancellationToken ct = default);
+
+    /// <summary>Tìm kiếm danh mục thuốc (dùng cho tính năng autocomplete).</summary>
+    Task<IReadOnlyList<Medicine>> SearchByNameAsync(string keyword, int limit = 20, CancellationToken ct = default);
 }
