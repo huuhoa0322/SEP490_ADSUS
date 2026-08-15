@@ -22,10 +22,6 @@ void main() {
     });
 
     test('status END (bac si da ke don) cung map dung, khong throw', () {
-      // Backend GET /cases/me CHI tra ca End (chot 14/08/2026 sau khi trao doi lai, xem
-      // thiet ke spec) - test nay khoa lai gia tri THAT SU se nhan duoc trong production.
-      // Mapper van xu ly duoc ca CONFIRMED (test o tren) de khong throw neu sau nay co
-      // endpoint khac tra ve gia tri do - nhung day moi la case Patient thuc te gap.
       const dto = CaseSummaryDto(
         caseId: 'case-2',
         visitDate: '2026-07-20',
@@ -40,13 +36,15 @@ void main() {
   });
 
   group('MedicalRecordMapper.caseFromDto', () {
-    test('co prescription long thi map day du prescriptionId/Status', () {
+    test('map du doctorName, finalDiagnosis, doctorConclusion, prescription', () {
       const dto = CaseDto(
         caseId: 'case-1',
         visitDate: '2026-07-22',
         status: 'CONFIRMED',
         doctorId: 'doctor-1',
-        conclusion: 'Nhan xo tu cung',
+        doctorName: 'BS. Le Minh Hoang',
+        finalDiagnosis: 'U tuyen xo vu phai',
+        doctorConclusion: 'Theo doi dinh ky',
         prescription: PrescriptionSummaryDto(
           prescriptionId: 'rx-1',
           status: 'ACTIVE',
@@ -55,7 +53,9 @@ void main() {
 
       final entity = MedicalRecordMapper.caseFromDto(dto);
 
-      expect(entity.conclusion, 'Nhan xo tu cung');
+      expect(entity.doctorName, 'BS. Le Minh Hoang');
+      expect(entity.finalDiagnosis, 'U tuyen xo vu phai');
+      expect(entity.doctorConclusion, 'Theo doi dinh ky');
       expect(entity.prescriptionId, 'rx-1');
       expect(entity.prescriptionStatus, 'ACTIVE');
     });
@@ -66,13 +66,53 @@ void main() {
         visitDate: '2026-07-22',
         status: 'CONFIRMED',
         doctorId: 'doctor-1',
-        conclusion: 'Kham dinh ky',
+        doctorName: 'BS. Le Minh Hoang',
+        doctorConclusion: 'Kham dinh ky',
       );
 
       final entity = MedicalRecordMapper.caseFromDto(dto);
 
       expect(entity.prescriptionId, isNull);
       expect(entity.prescriptionStatus, isNull);
+    });
+
+    test('map dung danh sach anh, giu nguyen thu tu tu Dto', () {
+      const dto = CaseDto(
+        caseId: 'case-1',
+        visitDate: '2026-07-22',
+        status: 'END',
+        doctorId: 'doctor-1',
+        doctorName: 'BS. Le Minh Hoang',
+        ultrasoundImages: [
+          UltrasoundImageDto(
+            imageId: 'img-1',
+            uploadedAt: '2026-08-14T10:00:00Z',
+            imageUrl: 'https://signed-url.example/anh.png',
+            note: 'Ghi chu anh',
+          ),
+        ],
+      );
+
+      final entity = MedicalRecordMapper.caseFromDto(dto);
+
+      expect(entity.images, hasLength(1));
+      expect(entity.images.first.imageId, 'img-1');
+      expect(entity.images.first.imageUrl, 'https://signed-url.example/anh.png');
+      expect(entity.images.first.uploadedAt, DateTime.parse('2026-08-14T10:00:00Z'));
+    });
+
+    test('khong co anh thi list rong, khong nem loi', () {
+      const dto = CaseDto(
+        caseId: 'case-1',
+        visitDate: '2026-07-22',
+        status: 'END',
+        doctorId: 'doctor-1',
+        doctorName: 'BS. Le Minh Hoang',
+      );
+
+      final entity = MedicalRecordMapper.caseFromDto(dto);
+
+      expect(entity.images, isEmpty);
     });
   });
 }

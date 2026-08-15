@@ -40,6 +40,13 @@ class MedicalRecordRepositoryImpl implements MedicalRecordRepository {
       return paged.items.map(MedicalRecordMapper.summaryFromDto).toList();
     } on DioException catch (e) {
       throw ApiErrorMapper.general(e, fallback: 'Không tải được danh sách lượt khám.');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      // Lỗi parse (status enum lạ, DateTime.parse hỏng, thiếu field bắt buộc) không phải
+      // DioException — nếu không bắt ở đây, ViewModel's `on ApiException catch` cũng không
+      // bắt được, màn hình treo loading vĩnh viễn không có cách nào thoát (không cả "Thử lại").
+      throw const ApiException('Không tải được danh sách lượt khám.');
     }
   }
 
@@ -60,6 +67,10 @@ class MedicalRecordRepositoryImpl implements MedicalRecordRepository {
       );
     } on DioException catch (e) {
       throw ApiErrorMapper.general(e, fallback: 'Không tải được chi tiết lượt khám.');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw const ApiException('Không tải được chi tiết lượt khám.');
     }
   }
 }

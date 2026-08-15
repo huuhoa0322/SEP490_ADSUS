@@ -1,4 +1,5 @@
 import '../../domain/entities/medical_record_case.dart';
+import '../../domain/entities/medical_record_image.dart';
 import '../../domain/entities/medical_record_summary.dart';
 import '../dtos/case_dtos.dart';
 
@@ -17,8 +18,18 @@ class MedicalRecordMapper {
         visitDate: DateTime.parse(dto.visitDate),
         status: CaseStatus.values.byName(dto.status.toLowerCase()),
         doctorId: dto.doctorId,
-        conclusion: dto.conclusion,
+        doctorName: dto.doctorName,
+        finalDiagnosis: dto.finalDiagnosis,
+        doctorConclusion: dto.doctorConclusion,
         prescriptionId: dto.prescription?.prescriptionId,
         prescriptionStatus: dto.prescription?.status,
+        images: dto.ultrasoundImages.map(_imageFromDto).toList(),
+      );
+
+  static MedicalRecordImage _imageFromDto(UltrasoundImageDto dto) => MedicalRecordImage(
+        imageId: dto.imageId,
+        uploadedAt: DateTime.parse(dto.uploadedAt),
+        imageUrl: dto.imageUrl,
+        note: dto.note,
       );
 }
