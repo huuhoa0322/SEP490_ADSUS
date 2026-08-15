@@ -50,8 +50,15 @@ class MedicalRecordDetailViewModel extends Notifier<MedicalRecordDetailState> {
     try {
       final detail =
           await ref.read(medicalRecordRepositoryProvider).getRecordDetail(caseId);
+      // Trong lúc chờ, 1 lượt loadDetail(case khác) có thể đã ghi đè caseId — nếu request
+      // của LƯỢT NÀY trả lời trễ hơn (out-of-order), không được ghi dữ liệu case cũ đè lên
+      // caseId hiện tại. Phát hiện qua whole-branch review 15/08/2026: check state.caseId
+      // (từ Screen) đủ chặn thoáng hiện nhầm khi bấm liên tiếp, nhưng KHÔNG chặn được data
+      // sai khi 2 request chồng nhau trả lời không đúng thứ tự.
+      if (caseId != state.caseId) return;
       state = state.copyWith(caseDetail: detail, isLoading: false);
     } on ApiException catch (e) {
+      if (caseId != state.caseId) return;
       state = state.copyWith(isLoading: false, errorMessage: e.message);
     }
   }

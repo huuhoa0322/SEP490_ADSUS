@@ -93,4 +93,38 @@ void main() {
     expect(finalState.caseId, 'case-2');
     expect(finalState.caseDetail?.doctorConclusion, 'Ket luan B');
   });
+
+  test(
+    'request cua case cu tra loi TRE (out-of-order) thi khong duoc ghi de len case moi hon',
+    () async {
+      // Khoa lai bug Important tim thay qua whole-branch review 15/08/2026: check
+      // state.caseId o Screen chan duoc "thoang hien" khi bam lien tiep, nhung KHONG chan
+      // duoc truong hop 2 request chong nhau tra loi SAI THU TU — request cua case A (goi
+      // truoc) tra loi SAU request cua case B (goi sau). Neu khong co guard trong
+      // loadDetail(), du lieu cua A se ghi de len state dang mang caseId = 'case-b',
+      // khien man hinh hien nham chan doan/anh cua benh nhan A duoi case cua benh nhan B.
+      final completerA = Completer<MedicalRecordCase>();
+      final completerB = Completer<MedicalRecordCase>();
+      when(() => repo.getRecordDetail('case-a')).thenAnswer((_) => completerA.future);
+      when(() => repo.getRecordDetail('case-b')).thenAnswer((_) => completerB.future);
+
+      final notifier = container.read(medicalRecordDetailViewModelProvider.notifier);
+      final pendingA = notifier.loadDetail('case-a');
+      final pendingB = notifier.loadDetail('case-b');
+
+      // B tra loi TRUOC (dung thu tu voi luc goi), A tra loi SAU (out-of-order).
+      completerB.complete(_makeCase('case-b', doctorConclusion: 'Ket luan B'));
+      await pendingB;
+      completerA.complete(_makeCase('case-a', doctorConclusion: 'Ket luan A'));
+      await pendingA;
+
+      final finalState = container.read(medicalRecordDetailViewModelProvider);
+      expect(finalState.caseId, 'case-b');
+      expect(
+        finalState.caseDetail?.doctorConclusion,
+        'Ket luan B',
+        reason: 'Du lieu cua case-a (goi truoc, tra loi sau) khong duoc ghi de len case-b',
+      );
+    },
+  );
 }
