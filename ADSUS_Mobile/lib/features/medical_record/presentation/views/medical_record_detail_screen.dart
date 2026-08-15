@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/medical_record_image.dart';
+import '../../domain/entities/medical_record_prescription.dart';
 import '../viewmodels/medical_record_detail_viewmodel.dart';
 
 /// SCR-14 (Mobile) — chi tiết 1 lượt khám (UC-08). KHÔNG có nút xuất PDF (Doctor/Nurse
@@ -113,25 +114,9 @@ class _MedicalRecordDetailScreenState
             title: 'Hướng xử trí',
             content: record.doctorConclusion ?? 'Chưa có kết luận.',
           ),
-          if (record.prescriptionId != null) ...[
+          if (record.prescription != null) ...[
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.teal.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.medication_outlined, color: AppColors.teal),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Có đơn thuốc kèm theo (${_prescriptionStatusLabel(record.prescriptionStatus)})',
-                    style: TextStyle(fontSize: 13, color: AppColors.navy),
-                  ),
-                ],
-              ),
-            ),
+            _PrescriptionCard(prescription: record.prescription!),
           ],
           if (record.images.isNotEmpty) ...[
             const SizedBox(height: 20),
@@ -150,14 +135,6 @@ class _MedicalRecordDetailScreenState
       ),
     );
   }
-
-  // Bug Important #5 fix (15/08/2026): backend trả 'ACTIVE'/'COMPLETED' — không được hiện
-  // nguyên văn tiếng Anh cho Patient. 2 giá trị thật, xác nhận qua EnumExtensions.cs.
-  String _prescriptionStatusLabel(String? status) => switch (status) {
-        'ACTIVE' => 'Đang dùng',
-        'COMPLETED' => 'Đã hoàn thành',
-        _ => status ?? '-',
-      };
 }
 
 class _InfoCard extends StatelessWidget {
@@ -211,43 +188,59 @@ class _UltrasoundImageGrid extends StatelessWidget {
         crossAxisCount: 2,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
-        childAspectRatio: 1,
+        childAspectRatio: 0.85,
       ),
       itemCount: images.length,
       itemBuilder: (context, index) {
         final image = images[index];
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: image.imageUrl == null
-              ? Container(
-                  color: AppColors.danger.withValues(alpha: 0.08),
-                  padding: const EdgeInsets.all(8),
-                  child: Center(
-                    child: Text(
-                      'Không tải được ảnh',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 11, color: AppColors.danger),
-                    ),
-                  ),
-                )
-              : InkWell(
-                  onTap: () => _openFullScreen(context, image.imageUrl!),
-                  child: Image.network(
-                    image.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: AppColors.danger.withValues(alpha: 0.08),
-                      padding: const EdgeInsets.all(8),
-                      child: Center(
-                        child: Text(
-                          'Không tải được ảnh',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 11, color: AppColors.danger),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: image.imageUrl == null
+                    ? Container(
+                        color: AppColors.danger.withValues(alpha: 0.08),
+                        padding: const EdgeInsets.all(8),
+                        child: Center(
+                          child: Text(
+                            'Không tải được ảnh',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 11, color: AppColors.danger),
+                          ),
+                        ),
+                      )
+                    : InkWell(
+                        onTap: () => _openFullScreen(context, image.imageUrl!),
+                        child: Image.network(
+                          image.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            color: AppColors.danger.withValues(alpha: 0.08),
+                            padding: const EdgeInsets.all(8),
+                            child: Center(
+                              child: Text(
+                                'Không tải được ảnh',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 11, color: AppColors.danger),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                ),
+              ),
+            ),
+            if (image.note != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                image.note!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 10, color: AppColors.muted),
+              ),
+            ],
+          ],
         );
       },
     );
@@ -267,4 +260,80 @@ class _UltrasoundImageGrid extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PrescriptionCard extends StatelessWidget {
+  const _PrescriptionCard({required this.prescription});
+
+  final MedicalRecordPrescription prescription;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.medication_outlined, color: AppColors.teal),
+              const SizedBox(width: 8),
+              Text(
+                'Đơn thuốc (${_statusLabel(prescription.status)})',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.muted,
+                ),
+              ),
+            ],
+          ),
+          if (prescription.generalNote != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              prescription.generalNote!,
+              style: const TextStyle(fontSize: 13, color: AppColors.navy),
+            ),
+          ],
+          const SizedBox(height: 12),
+          for (final item in prescription.items) ...[
+            Text(
+              item.medicineName,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.navy,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${item.dosage} · ${item.durationDays} ngày',
+              style: TextStyle(fontSize: 12, color: AppColors.muted),
+            ),
+            if (item.instructions != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                item.instructions!,
+                style: TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
+            ],
+            if (item != prescription.items.last) const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // Cùng 2 giá trị thật với _prescriptionStatusLabel (EnumExtensions.cs), tách riêng vì card
+  // này là widget độc lập, không truy cập được method private của _MedicalRecordDetailScreenState.
+  String _statusLabel(String status) => switch (status) {
+        'ACTIVE' => 'Đang dùng',
+        'COMPLETED' => 'Đã hoàn thành',
+        _ => status,
+      };
 }
