@@ -27,11 +27,12 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IAiModelVersionRepository _aiModelVersionRepo;
     private readonly string _aiBackendUrl;
+    private readonly string? _aiBackendToken;
 
     public CaseDiagnosisService(
-        AppDbContext db, 
-        IFileStorageService storage, 
-        IHttpClientFactory httpClientFactory, 
+        AppDbContext db,
+        IFileStorageService storage,
+        IHttpClientFactory httpClientFactory,
         IAiModelVersionRepository aiModelVersionRepo,
         IConfiguration configuration)
     {
@@ -40,6 +41,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         _httpClientFactory = httpClientFactory;
         _aiModelVersionRepo = aiModelVersionRepo;
         _aiBackendUrl = configuration["AiBackend:WebhookUrl"] ?? "http://localhost:8000";
+        _aiBackendToken = configuration["AiBackend:Token"];
     }
 
     public async Task<JsonElement> AnalyzeImageAsync(Guid caseId, Stream imageStream, string fileName, string contentType, CancellationToken ct = default)
@@ -58,7 +60,14 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         
         content.Add(new StringContent(activeModel.HfRepoId), "repo_id");
         content.Add(new StringContent(activeModel.HfFilename), "filename");
-        
+
+        // AI Backend co the co URL public (Render) nen /api/detect doi hoi Bearer token,
+        // giong het cach AiModelService da lam voi /api/reload-model.
+        if (!string.IsNullOrEmpty(_aiBackendToken))
+        {
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _aiBackendToken);
+        }
+
         // Send to Python backend which uses its currently loaded model
         var response = await client.PostAsync($"{_aiBackendUrl}/api/detect", content, ct);
         if (!response.IsSuccessStatusCode)

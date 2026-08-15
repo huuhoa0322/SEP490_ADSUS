@@ -32,6 +32,7 @@ using ADSUS_BE.DAL.Repositories.Interfaces;
 using ADSUS_BE.Middlewares;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -547,6 +548,14 @@ namespace ADSUS_BE
             // kiểm tra token hay dò database làm gì.
             app.UseRateLimiter();
 
+            // Render (và mọi PaaS tương tự) giải mã TLS ở edge rồi forward HTTP thuần vào
+            // container — thiếu dòng này thì UseHttpsRedirection() bên dưới không biết
+            // request gốc là https, dẫn tới redirect loop giữa Render và Kestrel.
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            });
+
             // Chỉ ép HTTPS khi chạy thật.
             //
             // Lúc phát triển mà bật, ai chọn profile "https" trong Visual Studio là API sẽ
@@ -567,6 +576,9 @@ namespace ADSUS_BE
             app.UseAuthorization();
 
             app.MapControllers();
+
+            // Endpoint công khai, không xác thực — dùng cho Health Check Path của Render.
+            app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
             // In ra ngay lúc khởi động để người chạy biết backend đang lắng nghe ở đâu và
             // cho phép origin nào. Không có dòng này thì lúc frontend báo "không kết nối
