@@ -331,9 +331,8 @@ class _PrescriptionCard extends StatelessWidget {
 
   // Cùng 2 giá trị thật với _prescriptionStatusLabel (EnumExtensions.cs), tách riêng vì card
   // này là widget độc lập, không truy cập được method private của _MedicalRecordDetailScreenState.
-  String _statusLabel(String status) => switch (status) {
-        'ACTIVE' => 'Đang dùng',
-        'COMPLETED' => 'Đã hoàn thành',
-        _ => status,
+  String _statusLabel(PrescriptionStatus status) => switch (status) {
+        PrescriptionStatus.active => 'Đang dùng',
+        PrescriptionStatus.completed => 'Đã hoàn thành',
       };
 }

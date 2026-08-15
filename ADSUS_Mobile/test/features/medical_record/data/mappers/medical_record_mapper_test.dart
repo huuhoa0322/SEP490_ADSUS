@@ -1,6 +1,7 @@
 import 'package:adsus_mobile/features/medical_record/data/dtos/case_dtos.dart';
 import 'package:adsus_mobile/features/medical_record/data/mappers/medical_record_mapper.dart';
 import 'package:adsus_mobile/features/medical_record/domain/entities/medical_record_case.dart';
+import 'package:adsus_mobile/features/medical_record/domain/entities/medical_record_prescription.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -68,7 +69,7 @@ void main() {
       expect(entity.finalDiagnosis, 'U tuyen xo vu phai');
       expect(entity.doctorConclusion, 'Theo doi dinh ky');
       expect(entity.prescription?.prescriptionId, 'rx-1');
-      expect(entity.prescription?.status, 'ACTIVE');
+      expect(entity.prescription?.status, PrescriptionStatus.active);
       expect(entity.prescription?.generalNote, 'Uong sau an');
       expect(entity.prescription?.items, hasLength(1));
       expect(entity.prescription?.items.first.medicineName, 'Paracetamol 500mg');
