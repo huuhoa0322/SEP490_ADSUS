@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../../../../shared/providers/app_providers.dart';
-import '../../domain/entities/schedule_slot.dart';
+import '../../domain/entities/schedule_slot.dart' show ScheduleSlot, DoctorStatus;
 
 /// Trạng thái màn hình Đặt lịch (SCR-21, UC-13).
 ///
@@ -28,9 +28,10 @@ class BookAppointmentState {
   final List<ScheduleSlot> slots;
 
   /// Danh sách bác sĩ rút gọn từ [slots] — id + tên — để hiển thị dropdown.
+  /// Chỉ bao gồm bác sĩ có trạng thái active.
   final List<DoctorOption> doctorOptions;
 
-  /// null = "Tất cả bác sĩ".
+  /// null = chưa chọn bác sĩ (placeholder "Chọn bác sĩ").
   final String? selectedDoctorId;
 
   /// null = chưa chọn slot.
@@ -158,9 +159,10 @@ class BookAppointmentState {
 }
 
 class DoctorOption {
-  const DoctorOption({required this.id, required this.name});
+  const DoctorOption({required this.id, required this.name, this.status = DoctorStatus.active});
   final String id;
   final String name;
+  final DoctorStatus status;
 }
 
 class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
@@ -322,7 +324,13 @@ List<DoctorOption> _extractDoctors(List<ScheduleSlot> slots) {
   final seen = <String, DoctorOption>{};
   for (final s in slots) {
     if (s.doctorId.isEmpty) continue;
-    seen.putIfAbsent(s.doctorId, () => DoctorOption(id: s.doctorId, name: s.doctorName));
+    // Chỉ thêm bác sĩ có trạng thái active
+    if (s.doctorStatus != DoctorStatus.active) continue;
+    seen.putIfAbsent(s.doctorId, () => DoctorOption(
+      id: s.doctorId,
+      name: s.doctorName,
+      status: s.doctorStatus,
+    ));
   }
   final list = seen.values.toList()
     ..sort((a, b) => a.name.compareTo(b.name));

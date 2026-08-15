@@ -4,6 +4,9 @@
 /// ở tầng Mapper — không bao giờ để chuỗi UPPERCASE lọt qua tầng data.
 enum SlotStatus { open, closed }
 
+/// Trạng thái tài khoản bác sĩ.
+enum DoctorStatus { active, inactive }
+
 /// Khung giờ khám do Bác sĩ/Điều dưỡng đăng ký (UC-15).
 ///
 /// Bệnh nhân chỉ thấy các khung ở trạng thái [SlotStatus.open] khi đặt lịch (UC-13).
@@ -18,6 +21,7 @@ class ScheduleSlot {
     required this.startTime,
     required this.endTime,
     required this.status,
+    this.doctorStatus = DoctorStatus.active,
   });
 
   final String id;
@@ -26,6 +30,9 @@ class ScheduleSlot {
   /// Tên bác sĩ phụ trách — backend nhúng vào response của mobile để không phải gọi
   /// thêm API tra cứu khi hiển thị.
   final String doctorName;
+
+  /// Trạng thái tài khoản bác sĩ — dùng để filter bác sĩ active trong dropdown.
+  final DoctorStatus doctorStatus;
 
   /// Ngày khám (chỉ giờ phút bằng 0).
   final DateTime slotDate;

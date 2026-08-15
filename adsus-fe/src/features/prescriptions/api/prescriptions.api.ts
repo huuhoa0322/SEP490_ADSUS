@@ -164,3 +164,24 @@ export async function getMedicationCatalog(): Promise<MedicationCatalogItem[]> {
   }
   return data.data;
 }
+
+/**
+ * GET /api/v1/medicines?search={keyword} — Gợi ý thuốc từ DB.
+ */
+export async function searchMedicines(keyword: string): Promise<MedicationCatalogItem[]> {
+  const { data } = await apiClient.get<any>("/api/v1/medicines", {
+    params: { search: keyword, limit: 20 },
+  });
+  
+  if (!data) return [];
+  
+  // Backend có thể trả về array trực tiếp hoặc bọc trong ApiResponse { data: [...] }
+  const items = Array.isArray(data) ? data : (data.data || []);
+  
+  if (!Array.isArray(items)) return [];
+  
+  return items.map((item: any) => ({
+    medicineId: item.medicineId || item.MedicineId,
+    name: item.name || item.Name,
+  }));
+}

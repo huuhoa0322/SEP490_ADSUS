@@ -11,8 +11,10 @@ import {
   useFormContext,
 } from "react-hook-form";
 import toast from "react-hot-toast";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
+import { searchMedicines } from "@/features/prescriptions/api/prescriptions.api";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -64,10 +66,9 @@ interface PrescriptionFormProps {
 export function PrescriptionForm({
   prefilledPatient,
   cases,
-  medications,
+  medications, // Note: kept for backwards compatibility but not used
   onSubmit,
 }: PrescriptionFormProps) {
-  const router = useRouter();
   const methods = useForm<PrescriptionFormData>({
     resolver: zodResolver(PrescriptionFormSchema),
     defaultValues: {
@@ -255,18 +256,34 @@ interface MedicineComboboxProps {
 function MedicineCombobox({
   value,
   onChange,
-  medications,
+  medications, // old static prop, no longer strictly used for filtering, but we'll ignore it
   error,
 }: MedicineComboboxProps) {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value);
+  const [debouncedSearch, setDebouncedSearch] = useState(value);
+  const [prevValue, setPrevValue] = useState(value);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const filtered = inputValue.length === 0
-    ? medications.slice(0, 10)
-    : medications.filter((m) =>
-        m.name.toLowerCase().includes(inputValue.toLowerCase()),
-      );
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setInputValue(value);
+  }
+
+  // Debounce input value for API calls
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(inputValue), 300);
+    return () => clearTimeout(timer);
+  }, [inputValue]);
+
+  const { data: searchResults, isLoading } = useQuery({
+    queryKey: ["search-medicines", debouncedSearch],
+    queryFn: () => searchMedicines(debouncedSearch),
+    enabled: open, // Only fetch when dropdown is open
+    staleTime: 60 * 1000,
+  });
+
+  const filtered = searchResults ?? [];
 
   function handleSelect(name: string) {
     onChange(name);
@@ -281,9 +298,15 @@ function MedicineCombobox({
   }
 
   // Close on outside click
-  if (typeof window !== "undefined") {
-    // Client-side only event listener handled below
-  }
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <div className="relative" ref={wrapperRef}>
@@ -320,13 +343,15 @@ function MedicineCombobox({
 
       {open && (
         <ul className="absolute left-0 top-full z-50 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-border bg-white shadow-lg">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <li className="px-3 py-2 text-xs text-muted-foreground text-center">Đang tìm...</li>
+          ) : filtered.length === 0 ? (
             <li className="px-3 py-2 text-xs text-muted-foreground">
-              Không tìm thấy thuốc nào
+              Chưa có trong danh mục (sẽ tự động thêm mới)
             </li>
           ) : (
             filtered.map((m) => (
-              <li key={m.medicineId}>
+              <li key={m.medicineId ?? m.name}>
                 <button
                   type="button"
                   onClick={() => handleSelect(m.name)}
@@ -371,10 +396,10 @@ function MedicationRow({
   register,
   control,
   errors,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onRemove,
 }: MedicationRowProps) {
   const { watch } = useFormContext<PrescriptionFormData>();
-  const watchedSlots = watch(`items.${index}.scheduleSlots`) as ScheduleSlot[];
   const watchedMedicineName = watch(`items.${index}.medicineName`) ?? "";
 
   return (

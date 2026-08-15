@@ -42,6 +42,8 @@ public static class TestAuthHelper
         // so the mock must return this user.
         userRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
+        userRepo.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
 
         using var scope = app.Services.CreateScope();
         var tokenService = scope.ServiceProvider.GetRequiredService<IJwtTokenService>();

@@ -69,6 +69,13 @@ public sealed class OpenSlotResponse
     public Guid SlotId { get; init; }
     public Guid DoctorId { get; init; }
     public string DoctorName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Trạng thái tài khoản bác sĩ — dùng để mobile filter bác sĩ active.
+    /// Chỉ slot của bác sĩ ACTIVE được trả về cho patient.
+    /// </summary>
+    public UserStatus DoctorStatus { get; init; }
+
     public DateOnly SlotDate { get; init; }
     public TimeOnly StartTime { get; init; }
     public TimeOnly EndTime { get; init; }

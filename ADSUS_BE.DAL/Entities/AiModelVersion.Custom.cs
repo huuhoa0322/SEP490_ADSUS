@@ -1,15 +1,17 @@
+﻿using System.ComponentModel.DataAnnotations.Schema;
 namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
-/// Bổ sung cột <c>status</c> mà scaffold không sinh được (enum PostgreSQL).
+/// Bá»• sung cá»™t <c>status</c> mÃ  scaffold khÃ´ng sinh Ä‘Æ°á»£c (enum PostgreSQL).
 ///
-/// Để trong lớp partial riêng nên chạy lại <c>scaffold --force</c> cũng không mất — file
-/// AiModelVersion.cs sinh tự động sẽ bị ghi đè, file này thì không.
+/// Äá»ƒ trong lá»›p partial riÃªng nÃªn cháº¡y láº¡i <c>scaffold --force</c> cÅ©ng khÃ´ng máº¥t â€” file
+/// AiModelVersion.cs sinh tá»± Ä‘á»™ng sáº½ bá»‹ ghi Ä‘Ã¨, file nÃ y thÃ¬ khÃ´ng.
 ///
-/// Chỉ 1 phiên bản ACTIVE tại một thời điểm (UC-20) — kích hoạt bản mới tự chuyển bản đang
-/// ACTIVE về INACTIVE.
+/// Chá»‰ 1 phiÃªn báº£n ACTIVE táº¡i má»™t thá»i Ä‘iá»ƒm (UC-20) â€” kÃ­ch hoáº¡t báº£n má»›i tá»± chuyá»ƒn báº£n Ä‘ang
+/// ACTIVE vá» INACTIVE.
 /// </summary>
 public partial class AiModelVersion
 {
+    [Column("status")]
     public ModelVersionStatus Status { get; set; } = ModelVersionStatus.Inactive;
 }
