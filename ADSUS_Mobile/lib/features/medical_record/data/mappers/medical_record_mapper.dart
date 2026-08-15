@@ -36,7 +36,7 @@ class MedicalRecordMapper {
   static MedicalRecordPrescription _prescriptionFromDto(PrescriptionSummaryDto dto) =>
       MedicalRecordPrescription(
         prescriptionId: dto.prescriptionId,
-        status: dto.status,
+        status: PrescriptionStatus.values.byName(dto.status.toLowerCase()),
         prescribedDate: DateTime.parse(dto.prescribedDate),
         generalNote: dto.generalNote,
         items: dto.items.map(_prescriptionItemFromDto).toList(),
