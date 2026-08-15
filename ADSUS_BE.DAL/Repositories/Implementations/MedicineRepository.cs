@@ -45,4 +45,24 @@ public sealed class MedicineRepository : IMedicineRepository
             .OrderBy(m => m.Name)
             .ToListAsync(ct);
     }
+
+    public async Task<IReadOnlyList<Medicine>> SearchByNameAsync(string keyword, int limit = 20, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            return await _db.Medicines
+                .AsNoTracking()
+                .OrderBy(m => m.Name)
+                .Take(limit)
+                .ToListAsync(ct);
+        }
+
+        var trimmed = keyword.Trim();
+        return await _db.Medicines
+            .AsNoTracking()
+            .Where(m => EF.Functions.ILike(m.Name, $"%{trimmed}%"))
+            .OrderBy(m => m.Name)
+            .Take(limit)
+            .ToListAsync(ct);
+    }
 }

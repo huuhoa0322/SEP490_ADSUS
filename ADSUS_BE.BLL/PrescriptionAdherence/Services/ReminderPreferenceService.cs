@@ -50,10 +50,10 @@ public sealed class ReminderPreferenceService : IReminderPreferenceService
             return Default;
 
         return new ReminderPreferenceResponse(
-            NotifEnabled: pref.NotifEnabled,
-            MorningTime: ToHHmm(pref.MorningTime),
-            MiddayTime: ToHHmm(pref.MiddayTime),
-            EveningTime: ToHHmm(pref.EveningTime));
+            NotifEnabled: pref.NotifEnabled ?? true,
+            MorningTime: ToHHmm(pref.MorningTime ?? new TimeOnly(7, 0)),
+            MiddayTime: ToHHmm(pref.MiddayTime ?? new TimeOnly(12, 0)),
+            EveningTime: ToHHmm(pref.EveningTime ?? new TimeOnly(20, 0)));
     }
 
     public async Task<ReminderPreferenceResponse> UpsertAsync(
@@ -101,10 +101,10 @@ public sealed class ReminderPreferenceService : IReminderPreferenceService
         await _db.SaveChangesAsync(ct);
 
         return new ReminderPreferenceResponse(
-            NotifEnabled: existing.NotifEnabled,
-            MorningTime: ToHHmm(existing.MorningTime),
-            MiddayTime: ToHHmm(existing.MiddayTime),
-            EveningTime: ToHHmm(existing.EveningTime));
+            NotifEnabled: existing.NotifEnabled ?? true,
+            MorningTime: ToHHmm(existing.MorningTime ?? new TimeOnly(7, 0)),
+            MiddayTime: ToHHmm(existing.MiddayTime ?? new TimeOnly(12, 0)),
+            EveningTime: ToHHmm(existing.EveningTime ?? new TimeOnly(20, 0)));
     }
 
     private static string ToHHmm(TimeOnly t) =>
