@@ -41,7 +41,7 @@ CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", "0.15"))
 app = FastAPI(title="Lesion Annotation Assist API")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Thu hẹp lại đúng domain frontend khi lên production
+    allow_origins=[],  # Chỉ gọi server-to-server (C# Backend) — không bao giờ có trình duyệt gọi thẳng
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -86,21 +86,33 @@ class ReloadModelRequest(BaseModel):
     repo_id: str
     filename: str
 
+
+def verify_webhook_token(authorization: str | None):
+    """
+    Kiểm tra Bearer token dùng chung giữa AI Backend và C# Backend.
+
+    Dùng cho mọi endpoint gọi từ C# Backend (server-to-server) — kể cả /api/detect,
+    vì trên Render endpoint này có URL public, không còn nằm sau mạng nội bộ Docker
+    như lúc chạy VPS nữa.
+    """
+    expected_token = os.environ.get("WEBHOOK_TOKEN")
+    if not expected_token:
+        raise HTTPException(status_code=500, detail="WEBHOOK_TOKEN is not configured on the server")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+
+    token = authorization.split(" ")[1]
+    if token != expected_token:
+        raise HTTPException(status_code=403, detail="Invalid token")
+
+
 @app.post("/api/reload-model")
 async def reload_model(req: ReloadModelRequest, authorization: str | None = Header(default=None)):
     """
     Cập nhật model mới theo repo_id và filename (từ Admin qua C# Backend).
     """
     try:
-        expected_token = os.environ.get("WEBHOOK_TOKEN")
-        if not expected_token:
-            raise HTTPException(status_code=500, detail="WEBHOOK_TOKEN is not configured on the server")
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
-        
-        token = authorization.split(" ")[1]
-        if token != expected_token:
-            raise HTTPException(status_code=403, detail="Invalid token")
+        verify_webhook_token(authorization)
 
         load_ai_model(req.repo_id, req.filename)
         return {"status": "success", "message": f"Đã chuyển sang model {req.filename}"}
@@ -127,8 +139,11 @@ class PointIn(BaseModel):
 async def detect(
     file: UploadFile = File(...),
     repo_id: str | None = Form(default=None),
-    filename: str | None = Form(default=None)
+    filename: str | None = Form(default=None),
+    authorization: str | None = Header(default=None)
 ):
+    verify_webhook_token(authorization)
+
     contents = await file.read()
     try:
         image = Image.open(io.BytesIO(contents)).convert("RGB")
