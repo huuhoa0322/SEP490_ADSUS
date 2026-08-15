@@ -80,6 +80,11 @@ class AuthViewModel extends StateNotifier<AuthState> {
       // Vứt hồ sơ của người đăng nhập trước đi. Không có dòng này thì màn Hồ sơ cá nhân
       // vẫn còn tên, email, ngày sinh của người cũ cho tới khi máy chủ trả về dữ liệu mới.
       _ref.invalidate(profileViewModelProvider);
+      // Hồ sơ khám (Module 04) cũng phải bị vứt — cùng lý do, mở rộng 15/08/2026 từ
+      // signOut()/handleSessionExpired() (đã có sẵn từ 14/08/2026) sang đây: nếu không, patient
+      // B đăng nhập ngay sau patient A vẫn thấy dữ liệu y tế của A cho tới khi tự pull-to-refresh.
+      _ref.invalidate(medicalRecordListViewModelProvider);
+      _ref.invalidate(medicalRecordDetailViewModelProvider);
 
       state = state.copyWith(session: session, isLoading: false);
       // Đăng nhập bằng mật khẩu xong thì máy này đã được ghép đôi (UC-02 BR-01).
