@@ -87,4 +87,24 @@ public class MedicinesControllerIntegrationTests
             });
         });
     }
+    [Fact]
+    public async Task ActivateMedicine_AsAdmin_ReturnsNoContent()
+    {
+        // Arrange
+        using var app = CreateApp();
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Admin);
+
+        var id = Guid.NewGuid();
+        var medicine = new Medicine { MedicineId = id, Status = MedicineStatus.Inactive };
+
+        _medicines.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(medicine);
+
+        // Act
+        var response = await client.PatchAsync($"/api/v1/medicines/{id}/activate", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        _medicines.Verify(r => r.UpdateAsync(It.Is<Medicine>(m => m.Status == MedicineStatus.Active), It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

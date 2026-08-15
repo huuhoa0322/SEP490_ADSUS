@@ -1,6 +1,6 @@
 "use client";
 
-import { BrainCircuit, CalendarClock, FileText, LayoutDashboard, Menu, ScanLine, Users, ClipboardList } from "lucide-react";
+import { BrainCircuit, CalendarClock, FileText, LayoutDashboard, Menu, ScanLine, Users, ClipboardList, Pill } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -50,6 +50,7 @@ export function AppHeader() {
             <>
               <HeaderNav href="/dashboard" icon={<LayoutDashboard className="size-4" />} label="Dashboard" active={pathname.startsWith("/dashboard")} />
               <HeaderNav href="/admin/users" icon={<Users className="size-4" />} label="Tài khoản" active={pathname.startsWith("/admin/users")} />
+              <HeaderNav href="/admin/medicines" icon={<Pill className="size-4" />} label="Danh mục thuốc" active={pathname.startsWith("/admin/medicines")} />
               <HeaderNav href="/admin/ai-models" icon={<BrainCircuit className="size-4" />} label="Mô hình AI" active={pathname.startsWith("/admin/ai-models")} />
               <HeaderNav href="/admin/blog" icon={<FileText className="size-4" />} label="Blog" active={pathname.startsWith("/admin/blog")} />
             </>

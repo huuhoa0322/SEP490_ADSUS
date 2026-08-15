@@ -52,6 +52,7 @@ public sealed class MedicineRepository : IMedicineRepository
         {
             return await _db.Medicines
                 .AsNoTracking()
+                .Where(m => m.Status == MedicineStatus.Active)
                 .OrderBy(m => m.Name)
                 .Take(limit)
                 .ToListAsync(ct);
@@ -60,9 +61,44 @@ public sealed class MedicineRepository : IMedicineRepository
         var trimmed = keyword.Trim();
         return await _db.Medicines
             .AsNoTracking()
-            .Where(m => EF.Functions.ILike(m.Name, $"%{trimmed}%"))
+            .Where(m => m.Status == MedicineStatus.Active && EF.Functions.ILike(m.Name, "%${trimmed}%"))
             .OrderBy(m => m.Name)
             .Take(limit)
             .ToListAsync(ct);
     }
+
+    public Task UpdateAsync(Medicine medicine, CancellationToken ct = default)
+    {
+        _db.Medicines.Update(medicine);
+        return Task.CompletedTask;
+    }
+
+    public async Task<(IReadOnlyList<Medicine> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? keyword, CancellationToken ct = default)
+    {
+        var query = _db.Medicines.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var trimmed = keyword.Trim();
+            query = query.Where(m => EF.Functions.ILike(m.Name, $"%{trimmed}%"));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderBy(m => m.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return (items, totalCount);
+    }
+
+    public async Task<bool> HasBeenPrescribedAsync(Guid medicineId, CancellationToken ct = default)
+    {
+        return await _db.PrescriptionItems
+            .AsNoTracking()
+            .AnyAsync(pi => pi.MedicineId == medicineId, ct);
+    }
 }
+

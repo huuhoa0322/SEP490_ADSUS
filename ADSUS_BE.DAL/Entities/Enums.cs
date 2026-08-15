@@ -136,3 +136,9 @@ public enum HealthLogType
     [PgName("EXERCISE")] Exercise,
     [PgName("DIET")] Diet,
 }
+
+public enum MedicineStatus
+{
+    [PgName("ACTIVE")] Active,
+    [PgName("INACTIVE")] Inactive,
+}
