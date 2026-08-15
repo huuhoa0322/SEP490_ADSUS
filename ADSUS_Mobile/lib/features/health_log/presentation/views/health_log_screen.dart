@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../viewmodels/health_log_view_model.dart';
 import '../widgets/health_log_calendar.dart';
 import '../widgets/health_log_list.dart';
 import 'add_health_log_screen.dart';
@@ -38,18 +39,21 @@ class HealthLogScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _navigateToAdd(context),
+        onPressed: () {
+          final selectedDate = ref.read(selectedDateProvider);
+          _navigateToAdd(context, selectedDate);
+        },
         backgroundColor: AppColors.teal,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
-  void _navigateToAdd(BuildContext context) {
+  void _navigateToAdd(BuildContext context, DateTime selectedDate) {
     Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => const AddHealthLogScreen(),
+        builder: (_) => AddHealthLogScreen(selectedDate: selectedDate),
       ),
     );
   }

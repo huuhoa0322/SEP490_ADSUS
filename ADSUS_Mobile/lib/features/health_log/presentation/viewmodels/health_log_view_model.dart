@@ -52,11 +52,11 @@ class HealthLogViewModel extends StateNotifier<HealthLogState> {
   ///
   /// Nếu thành công, invalidates [healthLogsProvider] để UI đồng bộ.
   /// Trả về `true` nếu tạo thành công, `false` nếu có lỗi.
-  Future<bool> createLog(HealthLogType type, String content) async {
+  Future<bool> createLog(HealthLogType type, String content, DateTime date) async {
     state = state.copyWith(isSubmitting: true, clearError: true);
 
     try {
-      final request = HealthLogRequest(type: type, content: content);
+      final request = HealthLogRequest(type: type, content: content, logDate: date);
       debugPrint('[HealthLog] Creating log with type: ${type.value}, content: $content');
       await _ref.read(healthLogRepositoryProvider).createLog(request);
       debugPrint('[HealthLog] Log created successfully');

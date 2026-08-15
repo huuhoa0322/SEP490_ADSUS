@@ -20,4 +20,10 @@ public class LogHealthDataRequest
     /// </summary>
     [Required(ErrorMessage = "Content is required")]
     public string? Content { get; set; }
+
+    /// <summary>
+    /// Date of the health log (optional - defaults to today if not provided).
+    /// Format: yyyy-MM-dd
+    /// </summary>
+    public DateOnly? LogDate { get; set; }
 }
