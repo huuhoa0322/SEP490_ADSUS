@@ -1,14 +1,16 @@
+﻿using System.ComponentModel.DataAnnotations.Schema;
 namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
-/// Bổ sung cột <c>schedule_slots</c> (reminder_slot[]) mà scaffold không sinh được.
-/// Để trong lớp partial riêng nên chạy lại <c>scaffold --force</c> cũng không mất.
+/// Bá»• sung cá»™t <c>schedule_slots</c> (reminder_slot[]) mÃ  scaffold khÃ´ng sinh Ä‘Æ°á»£c.
+/// Äá»ƒ trong lá»›p partial riÃªng nÃªn cháº¡y láº¡i <c>scaffold --force</c> cÅ©ng khÃ´ng máº¥t.
 /// </summary>
 public partial class PrescriptionItem
 {
     /// <summary>
-    /// Mảng khung giờ uống thuốc cho dòng thuốc này.
-    /// Persisted để JOB-01 đọc khi sinh intake logs.
+    /// Máº£ng khung giá» uá»‘ng thuá»‘c cho dÃ²ng thuá»‘c nÃ y.
+    /// Persisted Ä‘á»ƒ JOB-01 Ä‘á»c khi sinh intake logs.
     /// </summary>
+    [Column("schedule_slots")]
     public ReminderSlot[] ScheduleSlots { get; set; } = Array.Empty<ReminderSlot>();
 }

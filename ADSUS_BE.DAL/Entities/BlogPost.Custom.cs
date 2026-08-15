@@ -1,14 +1,15 @@
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
-/// Bổ sung cột <c>status</c> mà scaffold không sinh được (enum PostgreSQL).
+/// Bá»• sung cá»™t <c>status</c> mÃ  scaffold khÃ´ng sinh Ä‘Æ°á»£c (enum PostgreSQL).
 ///
-/// Để trong lớp partial riêng nên chạy lại <c>scaffold --force</c> cũng không mất — file
-/// BlogPost.cs sinh tự động sẽ bị ghi đè, file này thì không.
+/// Äá»ƒ trong lá»›p partial riÃªng nÃªn cháº¡y láº¡i <c>scaffold --force</c> cÅ©ng khÃ´ng máº¥t â€” file
+/// BlogPost.cs sinh tá»± Ä‘á»™ng sáº½ bá»‹ ghi Ä‘Ã¨, file nÃ y thÃ¬ khÃ´ng.
 ///
-/// GB-01: Draft → Published một chiều (không rollback).
+/// GB-01: Draft â†’ Published má»™t chiá»u (khÃ´ng rollback).
 /// </summary>
 public partial class BlogPost
 {

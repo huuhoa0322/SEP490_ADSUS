@@ -1,14 +1,16 @@
+﻿using System.ComponentModel.DataAnnotations.Schema;
 namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
-/// Bổ sung cột <c>status</c> mà scaffold không sinh được (enum PostgreSQL).
+/// Bá»• sung cá»™t <c>status</c> mÃ  scaffold khÃ´ng sinh Ä‘Æ°á»£c (enum PostgreSQL).
 ///
-/// Để trong lớp partial riêng nên chạy lại <c>scaffold --force</c> cũng không mất — file
-/// MedicationIntakeLog.cs sinh tự động sẽ bị ghi đè, file này thì không.
+/// Äá»ƒ trong lá»›p partial riÃªng nÃªn cháº¡y láº¡i <c>scaffold --force</c> cÅ©ng khÃ´ng máº¥t â€” file
+/// MedicationIntakeLog.cs sinh tá»± Ä‘á»™ng sáº½ bá»‹ ghi Ä‘Ã¨, file nÃ y thÃ¬ khÃ´ng.
 ///
-/// Không có "Missed" — JOB-01 nhắc lặp lại liên tục cho tới khi bệnh nhân xác nhận Taken.
+/// KhÃ´ng cÃ³ "Missed" â€” JOB-01 nháº¯c láº·p láº¡i liÃªn tá»¥c cho tá»›i khi bá»‡nh nhÃ¢n xÃ¡c nháº­n Taken.
 /// </summary>
 public partial class MedicationIntakeLog
 {
+    [Column("status")]
     public IntakeStatus Status { get; set; } = IntakeStatus.Pending;
 }
