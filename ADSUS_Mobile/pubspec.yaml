@@ -50,7 +50,8 @@ dependencies:
   add_2_calendar: ^3.1.1
 
   # Dropdown có search — dùng cho doctor selection ở màn Đặt lịch khám.
-  dropdown_search: ^6.0.2
+  # NOTE: Dùng 5.0.6 thay vì 6.x vì 6.x có breaking change API (items là async callback).
+  dropdown_search: ^5.0.6
 
   # Lưu cờ "đã sync vào lịch" cho mỗi appointment — xem CalendarSyncServiceImpl.
   # Không dùng secure storage vì đây là UI bookkeeping, không phải thông tin nhạy cảm.

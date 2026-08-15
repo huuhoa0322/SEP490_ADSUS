@@ -257,8 +257,8 @@ class _BookAppointmentScreenState
             final doctor = state.doctorOptions.firstWhere((d) => d.name == name);
             ref.read(bookAppointmentViewModelProvider.notifier).selectDoctor(doctor.id);
           },
-          decoratorProps: DropDownDecoratorProps(
-            decoration: const InputDecoration(
+          dropdownDecoratorProps: DropDownDecoratorProps(
+            dropdownSearchDecoration: const InputDecoration(
               prefixIcon: Icon(Icons.person_outline),
               hintText: 'Chọn bác sĩ',
             ),
