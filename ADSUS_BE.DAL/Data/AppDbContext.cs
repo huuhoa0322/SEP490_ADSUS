@@ -54,7 +54,7 @@ public partial class AppDbContext : DbContext
     {
         modelBuilder
             .HasPostgresEnum("ai_result_status", new[] { "PENDING_REVIEW", "CONFIRMED", "REJECTED" })
-            .HasPostgresEnum("appointment_status", new[] { "BOOKED", "CANCELLED" })
+            .HasPostgresEnum("appointment_status", new[] { "BOOKED", "CANCELLED", "COMPLETED" })
             .HasPostgresEnum("auth", "aal_level", new[] { "aal1", "aal2", "aal3" })
             .HasPostgresEnum("auth", "code_challenge_method", new[] { "s256", "plain" })
             .HasPostgresEnum("auth", "factor_status", new[] { "unverified", "verified" })
@@ -69,13 +69,13 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("chat_role", new[] { "USER", "ASSISTANT" })
             .HasPostgresEnum("gender_type", new[] { "FEMALE", "MALE", "OTHER" })
             .HasPostgresEnum("health_log_type", new[] { "EXERCISE", "DIET" })
-            .HasPostgresEnum("intake_status", new[] { "PENDING", "TAKEN" })
+            .HasPostgresEnum("intake_status", new[] { "PENDING", "TAKEN", "OVERTIME" })
             .HasPostgresEnum("model_version_status", new[] { "ACTIVE", "INACTIVE" })
             .HasPostgresEnum("prescription_status", new[] { "ACTIVE", "COMPLETED" })
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in", "like", "ilike", "is", "match", "imatch", "isdistinct" })
             .HasPostgresEnum("reminder_slot", new[] { "MORNING", "NOON", "EVENING" })
-            .HasPostgresEnum("slot_status", new[] { "OPEN", "CLOSED" })
+            .HasPostgresEnum("slot_status", new[] { "OPEN", "CLOSED", "BOOKED" })
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
             .HasPostgresEnum("user_role", new[] { "ADMIN", "DOCTOR", "PATIENT", "NURSE" })
             .HasPostgresEnum("user_status", new[] { "ACTIVE", "DEACTIVATED" })
@@ -399,9 +399,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.LogDate)
                 .HasDefaultValueSql("CURRENT_DATE")
                 .HasColumnName("log_date");
-            entity.Property(e => e.LogType)
-                .HasColumnName("log_type")
-                .HasColumnType("health_log_type");
             entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
 
             entity.HasOne(d => d.PatientProfile).WithMany(p => p.HealthLogs)
@@ -488,30 +485,29 @@ public partial class AppDbContext : DbContext
         {
             entity.HasKey(e => e.PreferenceId).HasName("pk_patient_reminder_preferences");
 
-            entity.ToTable("patient_reminder_preferences", tb => tb.HasComment("Giờ nhắc uống thuốc do bệnh nhân tự chỉnh. Áp dụng cho MỌI thuốc — không gắn với 1 đơn cụ thể, chỉnh 1 lần dùng mãi về sau. Mặc định hệ thống khi bệnh nhân chưa có dòng: notifEnabled=true, sáng 07:00/trưa 12:00/tối 20:00 (áp ở tầng ứng dụng, không lưu dòng mặc định vào bảng này). JOB-01 tra bảng này khi sinh scheduled_time cho medication_intake_logs mới."));
+            entity.ToTable("patient_reminder_preferences", tb => tb.HasComment("Giờ nhắc uống thuốc do bệnh nhân tự chỉnh theo từng khung (MORNING/NOON/EVENING), áp dụng cho MỌI thuốc — không gắn với 1 đơn cụ thể, chỉnh 1 lần dùng mãi về sau. Mặc định hệ thống khi bệnh nhân chưa có dòng tùy chỉnh: Sáng 07:00 / Trưa 12:00 / Tối 20:00 (áp ở tầng ứng dụng, không lưu dòng mặc định vào bảng này). JOB-01 tra bảng này khi sinh scheduled_time cho medication_intake_logs mới."));
 
-            entity.HasIndex(e => e.PatientProfileId, "uq_patient_reminder_preferences_patient")
-                .IsUnique();
+            entity.HasIndex(e => e.PatientProfileId, "uq_patient_reminder_preferences_patient").IsUnique();
 
             entity.Property(e => e.PreferenceId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("preference_id");
-            entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
+            entity.Property(e => e.EveningTime)
+                .HasDefaultValueSql("'20:00:00'::time without time zone")
+                .HasColumnName("evening_time");
+            entity.Property(e => e.MiddayTime)
+                .HasDefaultValueSql("'12:00:00'::time without time zone")
+                .HasColumnName("midday_time");
+            entity.Property(e => e.MorningTime)
+                .HasDefaultValueSql("'07:00:00'::time without time zone")
+                .HasColumnName("morning_time");
             entity.Property(e => e.NotifEnabled)
                 .HasDefaultValue(true)
                 .HasColumnName("notif_enabled");
-            entity.Property(e => e.MorningTime)
-                .HasDefaultValue(new TimeOnly(7, 0))
-                .HasColumnName("morning_time");
-            entity.Property(e => e.MiddayTime)
-                .HasDefaultValue(new TimeOnly(12, 0))
-                .HasColumnName("midday_time");
-            entity.Property(e => e.EveningTime)
-                .HasDefaultValue(new TimeOnly(20, 0))
-                .HasColumnName("evening_time");
+            entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
 
-            entity.HasOne(d => d.PatientProfile).WithMany(p => p.PatientReminderPreferences)
-                .HasForeignKey(d => d.PatientProfileId)
+            entity.HasOne(d => d.PatientProfile).WithOne(p => p.PatientReminderPreference)
+                .HasForeignKey<PatientReminderPreference>(d => d.PatientProfileId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_patient_reminder_preferences_patient");
         });
@@ -607,9 +603,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.EndTime).HasColumnName("end_time");
             entity.Property(e => e.SlotDate).HasColumnName("slot_date");
             entity.Property(e => e.StartTime).HasColumnName("start_time");
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasColumnType("slot_status");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");

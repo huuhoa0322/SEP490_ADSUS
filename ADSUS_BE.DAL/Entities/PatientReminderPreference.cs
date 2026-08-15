@@ -12,7 +12,13 @@ public partial class PatientReminderPreference
 
     public Guid PatientProfileId { get; set; }
 
-    public TimeOnly CustomTime { get; set; }
+    public bool? NotifEnabled { get; set; }
+
+    public TimeOnly? MorningTime { get; set; }
+
+    public TimeOnly? MiddayTime { get; set; }
+
+    public TimeOnly? EveningTime { get; set; }
 
     public virtual PatientProfile PatientProfile { get; set; } = null!;
 }

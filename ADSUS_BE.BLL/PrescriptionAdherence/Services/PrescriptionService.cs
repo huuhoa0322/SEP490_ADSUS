@@ -78,21 +78,13 @@ public sealed class PrescriptionService : IPrescriptionService
         var medicineCache = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
 
         // Get patient reminder preferences
-        var patientProfile = await _db.PatientProfiles
+        var patientPref = await _db.PatientReminderPreferences
             .AsNoTracking()
-            .Include(p => p.PatientReminderPreferences)
             .FirstOrDefaultAsync(p => p.PatientProfileId == caseEntity.PatientProfileId, ct);
 
-        var morningPref = patientProfile?.PatientReminderPreferences
-            .FirstOrDefault(p => p.CustomTime.Hour < 12);
-        var middayPref = patientProfile?.PatientReminderPreferences
-            .FirstOrDefault(p => p.CustomTime.Hour is >= 11 and <= 14);
-        var eveningPref = patientProfile?.PatientReminderPreferences
-            .FirstOrDefault(p => p.CustomTime.Hour >= 18);
-
-        var morningTime = morningPref?.CustomTime ?? new TimeOnly(7, 0);
-        var middayTime  = middayPref?.CustomTime  ?? new TimeOnly(12, 0);
-        var eveningTime = eveningPref?.CustomTime  ?? new TimeOnly(20, 0);
+        var morningTime = patientPref?.MorningTime ?? new TimeOnly(7, 0);
+        var middayTime  = patientPref?.MiddayTime ?? new TimeOnly(12, 0);
+        var eveningTime = patientPref?.EveningTime ?? new TimeOnly(20, 0);
 
         var now = DateTime.UtcNow;
 
