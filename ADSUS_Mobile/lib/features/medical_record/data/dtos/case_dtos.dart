@@ -20,17 +20,58 @@ class CaseSummaryDto {
       );
 }
 
-/// DTO khớp 1:1 `PrescriptionSummary` lồng trong `CaseResponse` — API Spec #23.
+/// DTO khớp 1:1 `PrescriptionItemSummary` lồng trong `PrescriptionSummaryDto`.
+class PrescriptionItemDto {
+  const PrescriptionItemDto({
+    required this.medicineName,
+    required this.dosage,
+    required this.durationDays,
+    required this.startDate,
+    this.instructions,
+  });
+
+  final String medicineName;
+  final String dosage;
+  final int durationDays;
+  final String startDate;
+  final String? instructions;
+
+  factory PrescriptionItemDto.fromJson(Map<String, dynamic> json) => PrescriptionItemDto(
+        medicineName: json['medicineName'] as String,
+        dosage: json['dosage'] as String,
+        durationDays: json['durationDays'] as int,
+        startDate: json['startDate'] as String,
+        instructions: json['instructions'] as String?,
+      );
+}
+
+/// DTO khớp 1:1 `PrescriptionSummary` lồng trong `CaseResponse`/`PatientCaseResponse` — API
+/// Spec #23. Đính chính 15/08/2026: thêm prescribedDate/generalNote/items (backend đã trả sẵn,
+/// Mobile trước đó không đọc — chỉ có prescriptionId/status).
 class PrescriptionSummaryDto {
-  const PrescriptionSummaryDto({required this.prescriptionId, required this.status});
+  const PrescriptionSummaryDto({
+    required this.prescriptionId,
+    required this.status,
+    required this.prescribedDate,
+    this.generalNote,
+    this.items = const [],
+  });
 
   final String prescriptionId;
   final String status;
+  final String prescribedDate;
+  final String? generalNote;
+  final List<PrescriptionItemDto> items;
 
   factory PrescriptionSummaryDto.fromJson(Map<String, dynamic> json) =>
       PrescriptionSummaryDto(
         prescriptionId: json['prescriptionId'] as String,
         status: json['status'] as String,
+        prescribedDate: json['prescribedDate'] as String,
+        generalNote: json['generalNote'] as String?,
+        items: (json['items'] as List<dynamic>? ?? const [])
+            .map((e) => PrescriptionItemDto.fromJson(e as Map<String, dynamic>))
+            .toList(),
       );
 }
 

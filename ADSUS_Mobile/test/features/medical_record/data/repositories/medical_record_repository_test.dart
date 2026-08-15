@@ -98,7 +98,11 @@ void main() {
                 'doctorName': 'BS. Le Minh Hoang',
                 'finalDiagnosis': 'U tuyen xo vu phai',
                 'doctorConclusion': 'Nhan xo tu cung',
-                'prescription': {'prescriptionId': 'rx-1', 'status': 'ACTIVE'},
+                'prescription': {
+                  'prescriptionId': 'rx-1',
+                  'status': 'ACTIVE',
+                  'prescribedDate': '2026-08-15',
+                },
                 'ultrasoundImages': [
                   {
                     'imageId': 'img-1',
@@ -114,7 +118,7 @@ void main() {
       expect(detail.doctorConclusion, 'Nhan xo tu cung');
       expect(detail.finalDiagnosis, 'U tuyen xo vu phai');
       expect(detail.doctorName, 'BS. Le Minh Hoang');
-      expect(detail.prescriptionId, 'rx-1');
+      expect(detail.prescription?.prescriptionId, 'rx-1');
       expect(detail.images, hasLength(1));
       expect(detail.images.first.imageUrl, 'https://signed-url.example/anh.png');
     });

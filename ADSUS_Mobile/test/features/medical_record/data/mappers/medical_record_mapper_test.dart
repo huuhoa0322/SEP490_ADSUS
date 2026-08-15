@@ -36,7 +36,7 @@ void main() {
   });
 
   group('MedicalRecordMapper.caseFromDto', () {
-    test('map du doctorName, finalDiagnosis, doctorConclusion, prescription', () {
+    test('map du doctorName, finalDiagnosis, doctorConclusion, prescription voi items', () {
       const dto = CaseDto(
         caseId: 'case-1',
         visitDate: '2026-07-22',
@@ -48,6 +48,17 @@ void main() {
         prescription: PrescriptionSummaryDto(
           prescriptionId: 'rx-1',
           status: 'ACTIVE',
+          prescribedDate: '2026-08-15',
+          generalNote: 'Uong sau an',
+          items: [
+            PrescriptionItemDto(
+              medicineName: 'Paracetamol 500mg',
+              dosage: '1 vien/lan, 2 lan/ngay',
+              durationDays: 5,
+              startDate: '2026-08-15',
+              instructions: 'Uong sau an',
+            ),
+          ],
         ),
       );
 
@@ -56,11 +67,19 @@ void main() {
       expect(entity.doctorName, 'BS. Le Minh Hoang');
       expect(entity.finalDiagnosis, 'U tuyen xo vu phai');
       expect(entity.doctorConclusion, 'Theo doi dinh ky');
-      expect(entity.prescriptionId, 'rx-1');
-      expect(entity.prescriptionStatus, 'ACTIVE');
+      expect(entity.prescription?.prescriptionId, 'rx-1');
+      expect(entity.prescription?.status, 'ACTIVE');
+      expect(entity.prescription?.generalNote, 'Uong sau an');
+      expect(entity.prescription?.items, hasLength(1));
+      expect(entity.prescription?.items.first.medicineName, 'Paracetamol 500mg');
+      expect(entity.prescription?.items.first.durationDays, 5);
+      expect(
+        entity.prescription?.items.first.startDate,
+        DateTime.parse('2026-08-15'),
+      );
     });
 
-    test('khong co prescription thi 2 field lien quan la null, khong nem loi', () {
+    test('khong co prescription thi field la null, khong nem loi', () {
       const dto = CaseDto(
         caseId: 'case-1',
         visitDate: '2026-07-22',
@@ -72,8 +91,7 @@ void main() {
 
       final entity = MedicalRecordMapper.caseFromDto(dto);
 
-      expect(entity.prescriptionId, isNull);
-      expect(entity.prescriptionStatus, isNull);
+      expect(entity.prescription, isNull);
     });
 
     test('map dung danh sach anh, giu nguyen thu tu tu Dto', () {

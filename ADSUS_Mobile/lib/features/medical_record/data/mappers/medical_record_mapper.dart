@@ -1,5 +1,6 @@
 import '../../domain/entities/medical_record_case.dart';
 import '../../domain/entities/medical_record_image.dart';
+import '../../domain/entities/medical_record_prescription.dart';
 import '../../domain/entities/medical_record_summary.dart';
 import '../dtos/case_dtos.dart';
 
@@ -21,8 +22,7 @@ class MedicalRecordMapper {
         doctorName: dto.doctorName,
         finalDiagnosis: dto.finalDiagnosis,
         doctorConclusion: dto.doctorConclusion,
-        prescriptionId: dto.prescription?.prescriptionId,
-        prescriptionStatus: dto.prescription?.status,
+        prescription: dto.prescription == null ? null : _prescriptionFromDto(dto.prescription!),
         images: dto.ultrasoundImages.map(_imageFromDto).toList(),
       );
 
@@ -31,5 +31,23 @@ class MedicalRecordMapper {
         uploadedAt: DateTime.parse(dto.uploadedAt),
         imageUrl: dto.imageUrl,
         note: dto.note,
+      );
+
+  static MedicalRecordPrescription _prescriptionFromDto(PrescriptionSummaryDto dto) =>
+      MedicalRecordPrescription(
+        prescriptionId: dto.prescriptionId,
+        status: dto.status,
+        prescribedDate: DateTime.parse(dto.prescribedDate),
+        generalNote: dto.generalNote,
+        items: dto.items.map(_prescriptionItemFromDto).toList(),
+      );
+
+  static MedicalRecordPrescriptionItem _prescriptionItemFromDto(PrescriptionItemDto dto) =>
+      MedicalRecordPrescriptionItem(
+        medicineName: dto.medicineName,
+        dosage: dto.dosage,
+        durationDays: dto.durationDays,
+        startDate: DateTime.parse(dto.startDate),
+        instructions: dto.instructions,
       );
 }

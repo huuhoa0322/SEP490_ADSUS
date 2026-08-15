@@ -20,8 +20,6 @@ void main() {
 
   group('CaseDto.fromJson', () {
     test('parse dung doctorName, finalDiagnosis, doctorConclusion (fix key, khong con conclusion)', () {
-      // Khoa lai bug Critical da fix 15/08/2026: backend tra 'doctorConclusion', khong phai
-      // 'conclusion' - truoc do CaseDto doc sai key nen field nay luon null trong production.
       final dto = CaseDto.fromJson({
         'caseId': 'case-1',
         'visitDate': '2026-07-22',
@@ -30,7 +28,21 @@ void main() {
         'doctorName': 'BS. Le Minh Hoang',
         'finalDiagnosis': 'U tuyen xo vu phai',
         'doctorConclusion': 'Theo doi dinh ky sau 6 thang',
-        'prescription': {'prescriptionId': 'rx-1', 'status': 'ACTIVE'},
+        'prescription': {
+          'prescriptionId': 'rx-1',
+          'status': 'ACTIVE',
+          'prescribedDate': '2026-08-15',
+          'generalNote': 'Uong sau an',
+          'items': [
+            {
+              'medicineName': 'Paracetamol 500mg',
+              'dosage': '1 vien/lan, 2 lan/ngay',
+              'durationDays': 5,
+              'startDate': '2026-08-15',
+              'instructions': 'Uong sau an',
+            },
+          ],
+        },
         'ultrasoundImages': [],
       });
 
@@ -38,6 +50,31 @@ void main() {
       expect(dto.finalDiagnosis, 'U tuyen xo vu phai');
       expect(dto.doctorConclusion, 'Theo doi dinh ky sau 6 thang');
       expect(dto.prescription?.prescriptionId, 'rx-1');
+      expect(dto.prescription?.prescribedDate, '2026-08-15');
+      expect(dto.prescription?.generalNote, 'Uong sau an');
+      expect(dto.prescription?.items, hasLength(1));
+      expect(dto.prescription?.items.first.medicineName, 'Paracetamol 500mg');
+      expect(dto.prescription?.items.first.durationDays, 5);
+    });
+
+    test('prescription khong co items thi list rong, khong nem loi', () {
+      final dto = CaseDto.fromJson({
+        'caseId': 'case-1',
+        'visitDate': '2026-07-22',
+        'status': 'CONFIRMED',
+        'doctorId': 'doctor-1',
+        'doctorName': 'BS. Le Minh Hoang',
+        'doctorConclusion': 'Kham dinh ky',
+        'prescription': {
+          'prescriptionId': 'rx-1',
+          'status': 'ACTIVE',
+          'prescribedDate': '2026-08-15',
+          'generalNote': null,
+        },
+      });
+
+      expect(dto.prescription?.items, isEmpty);
+      expect(dto.prescription?.generalNote, isNull);
     });
 
     test('prescription null trong JSON thi field cung null, khong nem loi', () {
