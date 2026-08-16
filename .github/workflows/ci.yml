@@ -58,8 +58,12 @@ jobs:
                   # jsdom ^30's bundled undici needs a newer Node webidl implementation
                   # (webidl.util.markAsUncloneable) than Node 20 has — vitest's worker pool
                   # can't even load jsdom on Node 20, failing every test file except the one
-                  # using @vitest-environment node.
-                  node-version: 22
+                  # using @vitest-environment node. Node 22 loads jsdom fine but msw@2.15.0's
+                  # Blob/Response handling (used by downloadCaseReport's tests) breaks on
+                  # Node 22's undici with "object.stream is not a function" — confirmed fixed
+                  # on Node 26 (user's local machine), no newer msw release available to fix
+                  # it on 22 instead.
+                  node-version: 26
                   cache: npm
                   cache-dependency-path: adsus-fe/package-lock.json
             - run: npm ci
