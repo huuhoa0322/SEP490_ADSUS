@@ -24,7 +24,6 @@ class BookAppointmentScreen extends ConsumerStatefulWidget {
 class _BookAppointmentScreenState
     extends ConsumerState<BookAppointmentScreen> {
   final _reasonController = TextEditingController();
-  bool _bookingSuccessHandled = false;
 
   @override
   void initState() {
@@ -32,7 +31,6 @@ class _BookAppointmentScreenState
     // Reset state khi màn hình được mở lại
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(bookAppointmentViewModelProvider.notifier).resetScreenState();
-      _bookingSuccessHandled = false;
     });
   }
 
@@ -51,7 +49,6 @@ class _BookAppointmentScreenState
     ref.listen<BookAppointmentState>(bookAppointmentViewModelProvider, (prev, next) {
       if (prev?.bookingSuccess == null && next.bookingSuccess != null) {
         if (!mounted) return;
-        _bookingSuccessHandled = true;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Đặt lịch thành công. Bạn sẽ nhận nhắc nhở trước giờ khám.'),
@@ -284,7 +281,7 @@ class _BookAppointmentScreenState
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: displayDates.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final d = displayDates[index];
               return _dateChip(

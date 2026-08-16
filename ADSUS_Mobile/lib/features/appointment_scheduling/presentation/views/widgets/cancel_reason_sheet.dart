@@ -77,14 +77,20 @@ class _CancelReasonSheetState extends State<CancelReasonSheet> {
               style: TextStyle(fontSize: 13, color: AppColors.muted),
             ),
             const SizedBox(height: 16),
-            ...CancelReasonSheet._presetReasons.map(
-              (reason) => RadioListTile<String>(
-                value: reason,
-                groupValue: _selectedReason,
-                title: Text(reason, style: const TextStyle(fontSize: 14)),
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                onChanged: (v) => setState(() => _selectedReason = v),
+            RadioGroup<String>(
+              groupValue: _selectedReason,
+              onChanged: (v) => setState(() => _selectedReason = v),
+              child: Column(
+                children: CancelReasonSheet._presetReasons
+                    .map(
+                      (reason) => RadioListTile<String>(
+                        value: reason,
+                        title: Text(reason, style: const TextStyle(fontSize: 14)),
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                      ),
+                    )
+                    .toList(),
               ),
             ),
             if (_selectedReason == 'Lý do khác') ...[
