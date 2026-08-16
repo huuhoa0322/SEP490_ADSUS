@@ -12,7 +12,10 @@ public sealed record IntakeLogResponse(
     Guid PrescriptionItemId,
     DateTime ScheduledTime,
     DateTime? ConfirmedAt,
-    string Status);
+    string Status,
+    string MedicineName,
+    string Dosage,
+    string? Instructions);
 
 public static class IntakeLogResponseMapper
 {
@@ -32,5 +35,8 @@ public static class IntakeLogResponseMapper
                 ? AdherenceCalculator.StatusTaken
                 : (log.ScheduledTime <= nowUtc
                     ? AdherenceCalculator.StatusOvertime
-                    : AdherenceCalculator.StatusPending));
+                    : AdherenceCalculator.StatusPending),
+            log.PrescriptionItem?.Medicine?.Name ?? string.Empty,
+            log.PrescriptionItem?.Dosage ?? string.Empty,
+            log.PrescriptionItem?.Instructions);
 }
