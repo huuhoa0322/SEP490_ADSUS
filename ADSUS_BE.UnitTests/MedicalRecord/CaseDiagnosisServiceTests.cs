@@ -83,7 +83,7 @@ public class CaseDiagnosisServiceTests : IDisposable
     {
         // Arrange
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId });
+            .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId, HfRepoId = "repo", HfFilename = "file.pt" });
 
         _httpMessageHandlerMock
             .Protected()
@@ -109,7 +109,7 @@ public class CaseDiagnosisServiceTests : IDisposable
     {
         // Arrange
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId });
+            .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId, HfRepoId = "repo", HfFilename = "file.pt" });
 
         _httpMessageHandlerMock
             .Protected()
@@ -134,7 +134,7 @@ public class CaseDiagnosisServiceTests : IDisposable
     {
         // Arrange - Bao phủ ngoại lệ Timeout/Network lỗi từ HttpClient
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId });
+            .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId, HfRepoId = "repo", HfFilename = "file.pt" });
 
         _httpMessageHandlerMock
             .Protected()
@@ -155,7 +155,7 @@ public class CaseDiagnosisServiceTests : IDisposable
     {
         // Arrange
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId });
+            .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId, HfRepoId = "repo", HfFilename = "file.pt" });
 
         var validJson = "[{\"xmin\":1,\"ymin\":2,\"xmax\":3,\"ymax\":4,\"confidence\":0.9}]";
         _httpMessageHandlerMock

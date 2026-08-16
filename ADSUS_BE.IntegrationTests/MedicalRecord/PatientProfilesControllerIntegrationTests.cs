@@ -46,6 +46,12 @@ public class PatientProfilesControllerIntegrationTests
 
         _users.Setup(r => r.GetByIdAsync(_patient.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(_patient);
+
+        _users.Setup(r => r.GetByIdReadOnlyAsync(_patient.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_patient);
+
+        _users.Setup(r => r.GetByIdReadOnlyAsync(_patient.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_patient);
         _profiles.Setup(r => r.ExistsForUserAsync(_patient.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(false);
 
@@ -80,6 +86,12 @@ public class PatientProfilesControllerIntegrationTests
 
         _users.Setup(r => r.GetByIdAsync(_patient.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(_patient);
+
+        _users.Setup(r => r.GetByIdReadOnlyAsync(_patient.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_patient);
+
+        _users.Setup(r => r.GetByIdReadOnlyAsync(_patient.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_patient);
         _profiles.Setup(r => r.ExistsForUserAsync(_patient.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
 
@@ -102,6 +114,12 @@ public class PatientProfilesControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctor);
 
         _users.Setup(r => r.GetByIdAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_doctor);
+
+        _users.Setup(r => r.GetByIdReadOnlyAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_doctor);
+
+        _users.Setup(r => r.GetByIdReadOnlyAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(_doctor);
 
         var request = new CreatePatientProfileRequest(_doctor.UserId, "FEMALE", null, null);
@@ -233,6 +251,11 @@ public class PatientProfilesControllerIntegrationTests
         // chưa bị khoá (AccountStatusJwtEvents) — PHẢI mock caller ở đây, không chỉ mock các
         // UserId liên quan nghiệp vụ trong từng test, nếu không mọi request có token đều 401.
         _users.Setup(r => r.GetByIdAsync(caller.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(caller);
+
+        _users.Setup(r => r.GetByIdReadOnlyAsync(caller.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(caller);
+        _users.Setup(r => r.GetByIdReadOnlyAsync(caller.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(caller);
 
         using var scope = app.Services.CreateScope();

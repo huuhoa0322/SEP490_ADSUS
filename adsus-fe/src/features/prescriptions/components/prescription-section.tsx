@@ -73,11 +73,11 @@ function PrescriptionTable({
         <table className="w-full text-sm">
           <thead className="bg-teal/5">
             <tr>
-              <th className="px-3 py-2 text-left font-semibold text-navy">Tên thuốc</th>
-              <th className="px-3 py-2 text-left font-semibold text-navy">Liều dùng</th>
-              <th className="px-3 py-2 text-left font-semibold text-navy">Khung giờ</th>
-              <th className="px-3 py-2 text-left font-semibold text-navy">Thời gian</th>
-              <th className="px-3 py-2 text-left font-semibold text-navy">Cách dùng</th>
+              <th className="px-3 py-2 text-left font-semibold text-primary">Tên thuốc</th>
+              <th className="px-3 py-2 text-left font-semibold text-primary">Liều dùng</th>
+              <th className="px-3 py-2 text-left font-semibold text-primary">Khung giờ</th>
+              <th className="px-3 py-2 text-left font-semibold text-primary">Thời gian</th>
+              <th className="px-3 py-2 text-left font-semibold text-primary">Cách dùng</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -101,10 +101,11 @@ function PrescriptionTable({
 
       {prescription.generalNote && (
         <div className="rounded-xl border border-border bg-surface p-3 text-sm">
-          <span className="font-semibold text-navy">Ghi chú: </span>
+          <span className="font-semibold text-primary">Ghi chú: </span>
           <span className="text-foreground">{prescription.generalNote}</span>
         </div>
       )}
     </section>
   );
 }
+

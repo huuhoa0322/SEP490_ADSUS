@@ -69,7 +69,7 @@ export default function NewPrescriptionPage() {
         >
           ← Quay lại
         </button>
-        <h1 className="font-exo text-2xl font-semibold text-navy">
+        <h1 className="font-heading text-2xl font-semibold text-primary">
           {caseId ? "Kê đơn thuốc" : "Kê đơn thuốc mới"}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -102,3 +102,4 @@ export default function NewPrescriptionPage() {
     </div>
   );
 }
+

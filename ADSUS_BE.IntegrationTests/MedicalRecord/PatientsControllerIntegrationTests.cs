@@ -137,6 +137,11 @@ public class PatientsControllerIntegrationTests
         _users.Setup(r => r.GetByIdAsync(caller.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(caller);
 
+        _users.Setup(r => r.GetByIdReadOnlyAsync(caller.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(caller);
+        _users.Setup(r => r.GetByIdReadOnlyAsync(caller.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(caller);
+
         using var scope = app.Services.CreateScope();
         var token = scope.ServiceProvider.GetRequiredService<IJwtTokenService>().GenerateAccessToken(caller);
         var client = app.CreateClient();

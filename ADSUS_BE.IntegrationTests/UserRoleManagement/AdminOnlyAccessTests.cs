@@ -122,6 +122,9 @@ public class AdminOnlyAccessTests
         _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(nguoiDung);
 
+        _users.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(nguoiDung);
+
         using var scope = app.Services.CreateScope();
         var token = scope.ServiceProvider
             .GetRequiredService<IJwtTokenService>()

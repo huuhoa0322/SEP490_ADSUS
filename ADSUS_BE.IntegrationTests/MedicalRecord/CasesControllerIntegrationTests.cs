@@ -106,7 +106,7 @@ public class CasesControllerIntegrationTests
         var json = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonDocument>();
         var data = json!.RootElement.GetProperty("data");
         Assert.False(data.TryGetProperty("clinicalInfo", out _));
-        Assert.False(data.TryGetProperty("ultrasoundImages", out _));
+        Assert.True(data.TryGetProperty("ultrasoundImages", out _));
     }
 
     [Fact]
@@ -407,7 +407,13 @@ public class CasesControllerIntegrationTests
 
         _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
+
         _users.Setup(r => r.GetByIdAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_doctor);
+
+        _users.Setup(r => r.GetByIdReadOnlyAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_doctor);
+        _users.Setup(r => r.GetByIdReadOnlyAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(_doctor);
         _storage.Setup(s => s.UploadAsync(
                     It.IsAny<Stream>(), It.IsAny<string>(), "image/png", It.IsAny<CancellationToken>()))
@@ -451,6 +457,11 @@ public class CasesControllerIntegrationTests
         _users.Setup(r => r.GetByIdAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(_doctor);
 
+        _users.Setup(r => r.GetByIdReadOnlyAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_doctor);
+        _users.Setup(r => r.GetByIdReadOnlyAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_doctor);
+
         Case? createdCase = null;
         _cases.Setup(r => r.CreateWithImagesAsync(
                   It.IsAny<Case>(), It.IsAny<IReadOnlyList<UltrasoundImage>>(), It.IsAny<CancellationToken>()))
@@ -492,6 +503,11 @@ public class CasesControllerIntegrationTests
         _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
         _users.Setup(r => r.GetByIdAsync(nurse.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(nurse);
+
+        _users.Setup(r => r.GetByIdReadOnlyAsync(nurse.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(nurse);
+        _users.Setup(r => r.GetByIdReadOnlyAsync(nurse.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(nurse);
 
         using var form = MakeCreateCaseForm(profile.PatientProfileId, nurse.UserId, null, ValidPngBytes);

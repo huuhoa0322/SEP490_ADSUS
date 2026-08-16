@@ -56,7 +56,7 @@ public class ScheduleSlotsControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ScheduleSlotResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ScheduleSlotResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
         Assert.Equal(201, body!.Code);
         Assert.Equal(SlotStatus.Open, body.Data!.Status);
     }
@@ -131,7 +131,7 @@ public class ScheduleSlotsControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
         Assert.Contains("overlap", body!.Message!, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -208,10 +208,7 @@ public class ScheduleSlotsControllerIntegrationTests
         using var app = CreateApp();
         var client = CreateDoctorClient(app);
 
-        _slots.Setup(r => r.ListByRangeAsync(
-                It.IsAny<DateOnly>(), It.IsAny<DateOnly>(),
-                It.IsAny<Guid>(), It.IsAny<SlotStatus?>(),
-                It.IsAny<CancellationToken>()))
+        _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ScheduleSlot>());
 
         // Act
@@ -232,10 +229,7 @@ public class ScheduleSlotsControllerIntegrationTests
         var fromDate = DateOnly.FromDateTime(DateTime.UtcNow);
         var toDate = fromDate.AddDays(7);
 
-        _slots.Setup(r => r.ListByRangeAsync(
-                It.IsAny<DateOnly>(), It.IsAny<DateOnly>(),
-                It.IsAny<Guid>(), It.IsAny<SlotStatus?>(),
-                It.IsAny<CancellationToken>()))
+        _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ScheduleSlot>());
 
         // Act
@@ -253,10 +247,7 @@ public class ScheduleSlotsControllerIntegrationTests
         using var app = CreateApp();
         var client = CreateDoctorClient(app);
 
-        _slots.Setup(r => r.ListByRangeAsync(
-                It.IsAny<DateOnly>(), It.IsAny<DateOnly>(),
-                It.IsAny<Guid>(), SlotStatus.Open,
-                It.IsAny<CancellationToken>()))
+        _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ScheduleSlot>());
 
         // Act
@@ -264,10 +255,7 @@ public class ScheduleSlotsControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        _slots.Verify(r => r.ListByRangeAsync(
-            It.IsAny<DateOnly>(), It.IsAny<DateOnly>(),
-            It.IsAny<Guid>(), SlotStatus.Open,
-            It.IsAny<CancellationToken>()), Times.Once);
+        _slots.Verify(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion
@@ -306,7 +294,7 @@ public class ScheduleSlotsControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CloseSlotImpactResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CloseSlotImpactResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
         Assert.Equal(200, body!.Code);
         Assert.Equal(0, body.Data!.AffectedBookingsCount);
     }
@@ -350,7 +338,7 @@ public class ScheduleSlotsControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CloseSlotImpactResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CloseSlotImpactResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
         Assert.Equal(409, body!.Code);
         Assert.Equal(1, body.Data!.AffectedBookingsCount);
     }
@@ -396,7 +384,7 @@ public class ScheduleSlotsControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CloseSlotImpactResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CloseSlotImpactResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
         Assert.Equal(200, body!.Code);
         Assert.Equal(SlotStatus.Closed, slot.Status);
     }
@@ -468,7 +456,7 @@ public class ScheduleSlotsControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ScheduleSlotResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ScheduleSlotResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
         Assert.Equal(200, body!.Code);
         Assert.Equal(SlotStatus.Open, body.Data!.Status);
     }
@@ -570,7 +558,7 @@ public class ScheduleSlotsControllerIntegrationTests
         // Arrange
         using var app = CreateApp();
         var client = CreateDoctorClient(app);
-        var notMonday = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)); // Ensure it's not Monday
+        var notMonday = DateOnly.FromDateTime(DateTime.UtcNow); while(notMonday.DayOfWeek == DayOfWeek.Monday) notMonday = notMonday.AddDays(1);
 
         // Act
         var response = await client.PostAsync(
@@ -614,8 +602,8 @@ public class ScheduleSlotsControllerIntegrationTests
             Status = UserStatus.Active,
         };
 
-        _users.Setup(r => r.GetByIdAsync(_doctorId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(doctor);
+        _users.Setup(r => r.GetByIdAsync(_doctorId, It.IsAny<CancellationToken>())).ReturnsAsync(doctor);
+        _users.Setup(r => r.GetByIdReadOnlyAsync(_doctorId, It.IsAny<CancellationToken>())).ReturnsAsync(doctor);
 
         using var scope = app.Services.CreateScope();
         var token = scope.ServiceProvider.GetRequiredService<IJwtTokenService>()
@@ -640,8 +628,8 @@ public class ScheduleSlotsControllerIntegrationTests
             Status = UserStatus.Active,
         };
 
-        _users.Setup(r => r.GetByIdAsync(patientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(patient);
+        _users.Setup(r => r.GetByIdAsync(patientId, It.IsAny<CancellationToken>())).ReturnsAsync(patient);
+        _users.Setup(r => r.GetByIdReadOnlyAsync(patientId, It.IsAny<CancellationToken>())).ReturnsAsync(patient);
 
         using var scope = app.Services.CreateScope();
         var token = scope.ServiceProvider.GetRequiredService<IJwtTokenService>()
@@ -666,8 +654,8 @@ public class ScheduleSlotsControllerIntegrationTests
             Status = UserStatus.Active,
         };
 
-        _users.Setup(r => r.GetByIdAsync(nurseId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(nurse);
+        _users.Setup(r => r.GetByIdAsync(nurseId, It.IsAny<CancellationToken>())).ReturnsAsync(nurse);
+        _users.Setup(r => r.GetByIdReadOnlyAsync(nurseId, It.IsAny<CancellationToken>())).ReturnsAsync(nurse);
 
         using var scope = app.Services.CreateScope();
         var token = scope.ServiceProvider.GetRequiredService<IJwtTokenService>()

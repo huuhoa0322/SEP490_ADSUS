@@ -177,21 +177,21 @@ export function DashboardView() {
               <div className="mt-4 flex gap-4 text-center justify-around items-center">
                 <div>
                   <div className="text-3xl font-bold font-heading text-foreground">
-                    {data.activeAiModel.precision != null ? (data.activeAiModel.precision * 100).toFixed(1) + "%" : <span className="text-xl text-muted-foreground">Chưa có<br/>dữ liệu</span>}
+                    {data.activeAiModel.precision != null ? (data.activeAiModel.precision * 100).toFixed(1) + "%" : <span className="text-xl text-muted-foreground">Chưa có<br />dữ liệu</span>}
                   </div>
                   <div className="text-sm text-muted-foreground font-medium mt-1">Precision</div>
                 </div>
                 <div className="w-[1px] h-12 bg-border"></div>
                 <div>
                   <div className="text-3xl font-bold font-heading text-foreground">
-                    {data.activeAiModel.recall != null ? (data.activeAiModel.recall * 100).toFixed(1) + "%" : <span className="text-xl text-muted-foreground">Chưa có<br/>dữ liệu</span>}
+                    {data.activeAiModel.recall != null ? (data.activeAiModel.recall * 100).toFixed(1) + "%" : <span className="text-xl text-muted-foreground">Chưa có<br />dữ liệu</span>}
                   </div>
                   <div className="text-sm text-muted-foreground font-medium mt-1">Recall</div>
                 </div>
                 <div className="w-[1px] h-12 bg-border"></div>
                 <div>
                   <div className="text-3xl font-bold font-heading text-emerald-600">
-                    {data.activeAiModel.map50 != null ? (data.activeAiModel.map50).toFixed(1) + "%" : <span className="text-xl text-muted-foreground">Chưa có<br/>dữ liệu</span>}
+                    {data.activeAiModel.map50 != null ? (data.activeAiModel.map50).toFixed(1) + "%" : <span className="text-xl text-muted-foreground">Chưa có<br />dữ liệu</span>}
                   </div>
                   <div className="text-sm text-muted-foreground font-medium mt-1">mAP50</div>
                 </div>
@@ -217,54 +217,6 @@ export function DashboardView() {
               />
             </ChartCard>
 
-            <ChartCard
-              title="Tình trạng tài khoản"
-              description={`${data.accounts.activeRate}% tài khoản đang hoạt động.`}
-            >
-              <StatusBreakdown
-                segments={[
-                  { label: "Đang hoạt động", value: data.accounts.activeCount, tone: "good" },
-                  { label: "Đã khoá", value: data.accounts.lockedCount, tone: "warning" },
-                  {
-                    label: "Đã vô hiệu hoá",
-                    value: data.accounts.deactivatedCount,
-                    tone: "critical",
-                  },
-                ]}
-              />
-            </ChartCard>
-
-            <ChartCard
-              title="Kết quả AI"
-              description="Bệnh nhân chỉ thấy được kết quả sau khi bác sĩ xác nhận."
-            >
-              <StatusBreakdown
-                segments={[
-                  {
-                    label: "Bác sĩ đã xác nhận",
-                    value: data.clinical.aiConfirmedCount,
-                    tone: "good",
-                  },
-                  {
-                    label: "Chờ bác sĩ duyệt",
-                    value: data.clinical.aiPendingCount,
-                    tone: "neutral",
-                  },
-                  {
-                    label: "Bác sĩ đã từ chối",
-                    value: data.clinical.aiRejectedCount,
-                    tone: "critical",
-                  },
-                ]}
-              />
-              <p className="mt-5 border-t border-border pt-4 text-sm text-muted-foreground">
-                Tỉ lệ xác nhận{" "}
-                <span className="font-600 tabular-nums text-foreground">
-                  {data.clinical.aiConfirmRate}%
-                </span>{" "}
-                — tính trên số kết quả đã duyệt, không tính phần còn đang chờ.
-              </p>
-            </ChartCard>
 
             <ChartCard
               title="Lịch hẹn"
@@ -281,15 +233,7 @@ export function DashboardView() {
                 ]}
               />
             </ChartCard>
-          </div>
 
-          {/* Nhật ký thao tác quản trị (UC-04). Đặt sau các biểu đồ vì nó trả lời câu hỏi
-              khác hẳn: "vừa có ai động vào cái gì" chứ không phải "kỳ này ra sao". */}
-          <div className="mt-5">
-            <AuditLogPanel />
-          </div>
-
-          <div className="mt-5">
             <ChartCard
               title="Tuân thủ uống thuốc"
               description="Tỉ lệ liều thuốc được bệnh nhân xác nhận đã uống, tính chung toàn phòng khám."
@@ -300,6 +244,14 @@ export function DashboardView() {
               />
             </ChartCard>
           </div>
+
+          {/* Nhật ký thao tác quản trị (UC-04). Đặt sau các biểu đồ vì nó trả lời câu hỏi
+              khác hẳn: "vừa có ai động vào cái gì" chứ không phải "kỳ này ra sao". */}
+          <div className="mt-5">
+            <AuditLogPanel />
+          </div>
+
+
 
           <p className="mt-6 text-xs text-muted-foreground">
             Số liệu từ {data.fromDate} đến {data.toDate}. Tài khoản được tính trên toàn hệ
