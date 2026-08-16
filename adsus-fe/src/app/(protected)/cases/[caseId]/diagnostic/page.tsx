@@ -59,7 +59,7 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
           </button>
           <div className="h-6 w-px bg-border" />
           <div>
-            <h1 className="font-semibold text-foreground">
+            <h1 className="font-heading font-semibold text-foreground">
               {medicalCase?.patientProfile?.fullName || "Bệnh nhân ẩn danh"}
             </h1>
             <p className="text-xs text-muted-foreground">

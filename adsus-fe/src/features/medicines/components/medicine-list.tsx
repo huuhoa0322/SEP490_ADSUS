@@ -281,12 +281,12 @@ export function MedicineList() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
-            <h2 className="mb-6 text-xl font-bold text-navy">
+            <h2 className="mb-6 text-xl font-bold text-primary">
               {editingMedicine ? "Sửa thông tin thuốc" : "Thêm thuốc mới"}
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-navy">
+                <label className="mb-1.5 block text-sm font-medium text-primary">
                   Tên thuốc <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -335,3 +335,4 @@ export function MedicineList() {
     </div>
   );
 }
+

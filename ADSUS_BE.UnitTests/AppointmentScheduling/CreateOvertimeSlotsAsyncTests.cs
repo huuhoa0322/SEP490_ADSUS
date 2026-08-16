@@ -42,7 +42,7 @@ public class CreateOvertimeSlotsAsyncTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _sut.CreateOvertimeSlotsAsync(request, doctorId));
         
-        Assert.Equal($"Doctor '{doctorId}' not found.", ex.Message);
+        Assert.Equal($"User '{doctorId}' is not a valid Doctor.", ex.Message);
     }
 
     [Fact]
@@ -50,14 +50,14 @@ public class CreateOvertimeSlotsAsyncTests
     {
         var doctorId = Guid.NewGuid();
         var request = new CreateOvertimeSlotsRequest { VisitDate = DateOnly.FromDateTime(DateTime.UtcNow) };
-        var nonDoctorUser = new User { UserId = doctorId, Role = UserRole.Patient };
+        var patientUser = new User { UserId = doctorId, Role = UserRole.Patient };
 
-        _userRepo.Setup(r => r.GetByIdAsync(doctorId, It.IsAny<CancellationToken>())).ReturnsAsync(nonDoctorUser);
+        _userRepo.Setup(r => r.GetByIdAsync(doctorId, It.IsAny<CancellationToken>())).ReturnsAsync(patientUser);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _sut.CreateOvertimeSlotsAsync(request, doctorId));
         
-        Assert.Equal($"User '{doctorId}' is not a DOCTOR.", ex.Message);
+        Assert.Equal($"User '{doctorId}' is not a valid Doctor.", ex.Message);
     }
 
     [Fact]

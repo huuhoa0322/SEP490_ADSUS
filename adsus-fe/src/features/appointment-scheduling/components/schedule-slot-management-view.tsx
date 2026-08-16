@@ -92,7 +92,7 @@ export function ScheduleSlotManagementView() {
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Quản lý lịch khám</h1>
+          <h1 className="font-heading text-2xl font-semibold">Quản lý lịch khám</h1>
           <p className="text-sm text-slate-500">
             Hiện 1 tuần (T2-CN). Hệ thống tự sinh ca mặc định cho 3 tuần tới.
           </p>
@@ -109,7 +109,7 @@ export function ScheduleSlotManagementView() {
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <h2 className="text-lg font-semibold">{rangeLabel}</h2>
+        <h2 className="font-heading text-lg font-semibold">{rangeLabel}</h2>
         <button
           type="button"
           onClick={goNext}
@@ -471,7 +471,7 @@ function ModalShell({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{title}</h2>
+          <h2 className="font-heading text-lg font-semibold">{title}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -573,7 +573,7 @@ function ConfirmModal({
           )}
         </div>
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+          <h3 className="font-heading text-lg font-semibold text-slate-900">{title}</h3>
           <p className="mt-2 text-sm text-slate-600">{message}</p>
         </div>
       </div>

@@ -306,7 +306,7 @@ export function AiModelFormDialog({ id, open, onClose, onSuccess }: AiModelFormD
           </p>
 
           <div className="pt-2 border-t border-border">
-            <h3 className="mb-4 text-sm font-600 text-foreground">Hiệu năng mô hình (Metrics)</h3>
+            <h3 className="mb-4 font-heading text-sm font-600 text-foreground">Hiệu năng mô hình (Metrics)</h3>
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <label htmlFor="metricsPrecision" className="mb-1.5 block text-xs font-500 text-muted-foreground">

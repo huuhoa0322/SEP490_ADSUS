@@ -49,6 +49,8 @@ public class CreateOvertimeSlotsTests
     {
         using var app = TaoApp();
         var patient = new User { UserId = Guid.NewGuid(), Phone = "0999999999", Role = UserRole.Patient, Status = UserStatus.Active };
+        _users.Setup(r => r.GetByIdReadOnlyAsync(patient.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(patient);
         var client = TaoClientCoToken(app, patient);
 
         var request = new CreateOvertimeSlotsRequest { VisitDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) };
@@ -75,6 +77,11 @@ public class CreateOvertimeSlotsTests
     private WebApplicationFactory<Program> TaoApp()
     {
         _users.Setup(r => r.GetByIdAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_doctor);
+
+        _users.Setup(r => r.GetByIdReadOnlyAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_doctor);
+        _users.Setup(r => r.GetByIdReadOnlyAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(_doctor);
 
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
