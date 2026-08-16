@@ -1,5 +1,6 @@
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
+using ADSUS_BE.DAL.Data;
 
 namespace ADSUS_BE.BLL.PrescriptionAdherence.Services;
 
@@ -45,7 +46,11 @@ public sealed class MedicationIntakeScheduleGenerator : IMedicationIntakeSchedul
                     _ => throw new ArgumentOutOfRangeException(nameof(slot), slot, "Unknown slot.")
                 };
 
-                var scheduledUtc = date.ToDateTime(timeOfDay, DateTimeKind.Utc);
+                // timeOfDay là giờ sinh hoạt bệnh nhân VN. Đổi sang UTC thật trước khi lưu DB
+                // (trừ ClinicClock.Offset = +07:00). Dùng helper có sẵn trong DAL để tránh phụ
+                // thuộc TimeZoneInfo của OS (Linux vs Windows đặt tên khác nhau).
+                var naiveLocal = date.ToDateTime(timeOfDay, DateTimeKind.Unspecified);
+                var scheduledUtc = DateTime.SpecifyKind(naiveLocal - ClinicClock.Offset, DateTimeKind.Utc);
 
                 result.Add(new ScheduledDose(item.PrescriptionItemId, scheduledUtc));
             }
