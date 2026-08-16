@@ -604,6 +604,7 @@ class _IntakePendingCard extends ConsumerWidget {
     final nowUtc = DateTime.now().toUtc();
     final canConfirm = !log.scheduledTimeUtc.isAfter(nowUtc);
     final localTime = log.scheduledTimeUtc.toLocal();
+    final isSubmittingThis = vmState.isSubmittingFor(log.intakeId);
 
     return Container(
       decoration: BoxDecoration(
@@ -686,7 +687,7 @@ class _IntakePendingCard extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: canConfirm && !vmState.isSubmitting
+                onPressed: canConfirm && !isSubmittingThis
                     ? () => _confirm(context, ref, viewModel)
                     : null,
                 style: ElevatedButton.styleFrom(
@@ -697,7 +698,7 @@ class _IntakePendingCard extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: vmState.isSubmitting
+                child: isSubmittingThis
                     ? const SizedBox(
                         width: 18,
                         height: 18,
@@ -750,6 +751,7 @@ class _IntakeOvertimeCard extends ConsumerWidget {
     final vmState = ref.watch(intakeListViewModelProvider);
     final viewModel = ref.read(intakeListViewModelProvider.notifier);
     final localTime = log.scheduledTimeUtc.toLocal();
+    final isSubmittingThis = vmState.isSubmittingFor(log.intakeId);
 
     return Container(
       decoration: BoxDecoration(
@@ -838,7 +840,7 @@ class _IntakeOvertimeCard extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: !vmState.isSubmitting
+                onPressed: !isSubmittingThis
                     ? () => _confirm(context, ref, viewModel)
                     : null,
                 style: ElevatedButton.styleFrom(
@@ -849,7 +851,7 @@ class _IntakeOvertimeCard extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: vmState.isSubmitting
+                child: isSubmittingThis
                     ? const SizedBox(
                         width: 18,
                         height: 18,
