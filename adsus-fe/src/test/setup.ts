@@ -38,8 +38,10 @@ class MemoryStorage implements Storage {
   }
 }
 
+// Some test files opt into the "node" environment (// @vitest-environment node) where
+// `window` doesn't exist at all — this setup file still runs for them, so guard it.
 beforeAll(() => {
-  if (!window.localStorage) {
+  if (typeof window !== "undefined" && !window.localStorage) {
     Object.defineProperty(window, "localStorage", {
       value: new MemoryStorage(),
       configurable: true,
@@ -47,7 +49,9 @@ beforeAll(() => {
   }
 });
 
-beforeEach(() => window.localStorage.clear());
+beforeEach(() => {
+  if (typeof window !== "undefined") window.localStorage.clear();
+});
 
 beforeAll(() => server.listen({ onUnhandledRequest: "warn" }));
 afterEach(() => server.resetHandlers());
