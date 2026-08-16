@@ -57,6 +57,12 @@ async def add_no_cache_headers(request, call_next):
 
 
 _model = None
+_current_repo_id: str | None = None
+_current_filename: str | None = None
+
+DEFAULT_MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "best.pt")
+
+
 def load_ai_model(repo_id: str, filename: str):
     global _model, _current_repo_id, _current_filename
     print(f"Đang tải model từ HF: {repo_id}/{filename} ...")
@@ -64,7 +70,7 @@ def load_ai_model(repo_id: str, filename: str):
         from ultralytics import YOLO
     except ImportError as e:
         raise RuntimeError("Chưa cài ultralytics. Chạy: pip install ultralytics") from e
-    
+
     model_path = hf_hub_download(
         repo_id=repo_id,
         filename=filename,
@@ -75,11 +81,38 @@ def load_ai_model(repo_id: str, filename: str):
     _current_filename = filename
     print("Model đã sẵn sàng!")
 
+
+def load_default_model():
+    """Nạp model YOLO26 nhúng sẵn trong image — chạy 1 lần lúc process khởi động,
+    để /api/detect không còn phụ thuộc Hugging Face cho request đầu tiên."""
+    global _model
+    from ultralytics import YOLO
+    if not os.path.exists(DEFAULT_MODEL_PATH):
+        print(f"CẢNH BÁO: không tìm thấy model mặc định tại {DEFAULT_MODEL_PATH} — "
+              f"/api/detect sẽ lỗi cho tới khi có ai gọi /api/reload-model.")
+        return
+    try:
+        _model = YOLO(DEFAULT_MODEL_PATH)
+    except Exception as e:
+        print(f"CẢNH BÁO: model mặc định tại {DEFAULT_MODEL_PATH} bị lỗi khi nạp ({e}) — "
+              f"/api/detect sẽ lỗi cho tới khi có ai gọi /api/reload-model.")
+        return
+    print(f"Model mặc định đã sẵn sàng: {DEFAULT_MODEL_PATH}")
+
+
+load_default_model()
+
 def get_model():
     """Lazy-load model — chỉ nạp 1 lần, dùng lại cho mọi request."""
     global _model
     if _model is None:
-        load_ai_model(_current_repo_id, _current_filename)
+        if _current_repo_id and _current_filename:
+            load_ai_model(_current_repo_id, _current_filename)
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail="No AI model loaded — default model file missing and no /api/reload-model call yet."
+            )
     return _model
 
 class ReloadModelRequest(BaseModel):
