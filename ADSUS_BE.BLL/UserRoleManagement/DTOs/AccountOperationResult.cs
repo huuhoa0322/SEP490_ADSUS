@@ -1,4 +1,4 @@
-namespace ADSUS_BE.BLL.UserRoleManagement.DTOs;
+﻿namespace ADSUS_BE.BLL.UserRoleManagement.DTOs;
 
 /// <summary>
 /// Kết quả của một thao tác quản lý tài khoản.
@@ -28,13 +28,13 @@ public enum AccountOperationResult
     /// UC-04 AF-04 để ngỏ trường hợp này; nhóm đã chốt ngày 31/07/2026:
     ///   - Admin ĐƯỢC khoá và vô hiệu hoá Admin khác.
     ///   - Admin KHÔNG được thao tác lên chính mình — làm được thì tự nhốt mình ra ngoài
-    ///     hệ thống, và vì không có đường kích hoạt lại (BR-05) nên không ai cứu được.
+    ///     hệ thống.
     /// </summary>
     CannotTargetSelf,
 
     /// <summary>
-    /// BR-05 — tài khoản đã bị vô hiệu hoá thì không quay lại được nữa.
-    /// Deactivated là trạng thái cuối, PRD không định nghĩa đường kích hoạt lại.
+    /// Tài khoản đã bị vô hiệu hoá.
+    /// Tài khoản Deactivated có thể được Admin khôi phục lại (Reactivate).
     /// </summary>
     AccountIsDeactivated,
 

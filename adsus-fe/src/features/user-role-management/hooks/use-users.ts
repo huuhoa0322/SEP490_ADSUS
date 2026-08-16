@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createUser,
   deactivateUser,
+  reactivateUser,
   getUserById,
   resetUserPassword,
   searchUsers,
@@ -80,6 +81,17 @@ export function useResetUserPassword() {
 }
 
 /** FT-08 AF-02 — vô hiệu hoá vĩnh viễn. Màn hình phải hỏi xác nhận TRƯỚC khi gọi hook này. */
+export function useReactivateUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => reactivateUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: usersQueryKeys.all });
+    },
+  });
+}
+
 export function useDeactivateUser() {
   const queryClient = useQueryClient();
 

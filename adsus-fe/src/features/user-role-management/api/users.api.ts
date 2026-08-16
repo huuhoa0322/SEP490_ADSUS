@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api-client";
+﻿import { apiClient } from "@/lib/api-client";
 import type { ApiResponse } from "@/types/api.types";
 
 import type {
@@ -58,7 +58,11 @@ export async function updateUser(
   await apiClient.put<ApiResponse<null>>(`${BASE}/${userId}`, payload);
 }
 
-/** FT-08 AF-02 — MỘT CHIỀU, không có đường quay lại (BR-05). Phải hỏi xác nhận trước khi gọi. */
+/** FT-08 AF-02 — Vô hiệu hóa tài khoản. Phải hỏi xác nhận trước khi gọi. */
+export async function reactivateUser(userId: string): Promise<void> {
+  await apiClient.put<ApiResponse<null>>(`${BASE}/${userId}/reactivate`);
+}
+
 export async function deactivateUser(userId: string): Promise<void> {
   await apiClient.put<ApiResponse<null>>(`${BASE}/${userId}/deactivate`);
 }
