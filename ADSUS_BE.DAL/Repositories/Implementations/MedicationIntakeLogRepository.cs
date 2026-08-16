@@ -1,5 +1,7 @@
+using System.Collections.Immutable;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.PrescriptionAdherence;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -156,5 +158,49 @@ public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogReposito
                      && l.ScheduledTime <= now
                      && l.ConfirmedAt == null)
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, IntakeStats>> GetIntakeStatsByPrescriptionAsync(
+        IReadOnlyList<Guid> prescriptionItemIds,
+        CancellationToken ct = default)
+    {
+        if (prescriptionItemIds.Count == 0)
+            return ImmutableDictionary<Guid, IntakeStats>.Empty;
+
+        var stats = await _db.MedicationIntakeLogs
+            .Where(l => prescriptionItemIds.Contains(l.PrescriptionItemId))
+            .GroupBy(l => l.PrescriptionItemId)
+            .Select(g => new
+            {
+                PrescriptionItemId = g.Key,
+                TotalDoses = g.Count(),
+                TakenDoses = g.Count(l => l.Status == IntakeStatus.Taken),
+                PendingDoses = g.Count(l => l.Status == IntakeStatus.Pending),
+            })
+            .ToListAsync(ct);
+
+        var statsMap = stats.ToDictionary(s => s.PrescriptionItemId);
+
+        var result = new Dictionary<Guid, IntakeStats>();
+        foreach (var itemId in prescriptionItemIds)
+        {
+            if (statsMap.TryGetValue(itemId, out var s))
+            {
+                result[itemId] = new IntakeStats(
+                    itemId,
+                    s.TotalDoses,
+                    s.TakenDoses,
+                    s.PendingDoses,
+                    s.TotalDoses == 0
+                        ? 0
+                        : Math.Round(s.TakenDoses * 100.0 / s.TotalDoses, 1));
+            }
+            else
+            {
+                result[itemId] = new IntakeStats(itemId, 0, 0, 0, 0);
+            }
+        }
+
+        return result;
     }
 }
