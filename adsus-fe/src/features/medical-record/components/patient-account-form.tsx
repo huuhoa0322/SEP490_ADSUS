@@ -43,7 +43,7 @@ export function PatientAccountForm() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [email, setEmail] = useState("");
-  const [gender, setGender] = useState<Gender>("FEMALE");
+  const [gender, setGender] = useState<Gender | "">("");
   const [medicalHistory, setMedicalHistory] = useState("");
   const [allergies, setAllergies] = useState("");
   const [clientError, setClientError] = useState<string | null>(null);
@@ -227,7 +227,24 @@ export function PatientAccountForm() {
       <div className="mt-6 space-y-5 border-t border-border pt-5">
         <h3 className="text-xs font-semibold uppercase text-muted-foreground">Hồ sơ nền</h3>
 
-
+        <div>
+          <label htmlFor="gender" className="mb-1.5 block text-sm font-medium">
+            Giới tính
+          </label>
+          <select
+            id="gender"
+            value={gender}
+            onChange={(event) => setGender(event.target.value as Gender | "")}
+            className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="">— Chưa chọn —</option>
+            {GENDERS.map((g) => (
+              <option key={g} value={g}>
+                {genderLabel(g)}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div>
           <label htmlFor="allergies" className="mb-1.5 block text-sm font-medium">
