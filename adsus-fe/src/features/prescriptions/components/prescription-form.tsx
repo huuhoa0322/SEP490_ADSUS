@@ -116,12 +116,12 @@ export function PrescriptionForm({
       <form onSubmit={handleSubmit(onValid)} noValidate>
         {/* ── Bệnh nhân ─────────────────────────────────────────── */}
         <section className="mb-6">
-          <label className="mb-1.5 block text-sm font-semibold text-navy">
+          <label className="mb-1.5 block text-sm font-semibold text-primary">
             Bệnh nhân / Ca khám <span className="text-red-500">*</span>
           </label>
           {prefilledPatient ? (
             <div className="flex items-center gap-4 rounded-full border border-border bg-surface px-5 py-3">
-              <span className="font-semibold text-navy">
+              <span className="font-semibold text-primary">
                 {prefilledPatient.patientName}
               </span>
               <span className="text-sm text-muted-foreground">
@@ -146,7 +146,7 @@ export function PrescriptionForm({
         {/* ── Bảng thuốc ─────────────────────────────────────────── */}
         <section className="mb-6">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-exo text-base font-semibold text-navy">
+            <h3 className="font-heading text-base font-semibold text-primary">
               Bảng Kê Đơn thuốc Điều trị Nội khoa
             </h3>
             <button
@@ -202,7 +202,7 @@ export function PrescriptionForm({
 
         {/* ── Ghi chú ─────────────────────────────────────────── */}
         <section className="mb-8">
-          <label className="mb-1.5 block text-sm font-semibold text-navy">
+          <label className="mb-1.5 block text-sm font-semibold text-primary">
             Ghi chú Chuyên môn & Lời dặn Bác sĩ
           </label>
           <input
@@ -526,3 +526,4 @@ function MedicationRow({
     </div>
   );
 }
+

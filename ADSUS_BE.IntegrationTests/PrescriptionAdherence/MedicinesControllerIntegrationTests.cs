@@ -100,6 +100,7 @@ public class MedicinesControllerIntegrationTests
         _medicines.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(medicine);
 
+
         // Act
         var response = await client.PatchAsync($"/api/v1/medicines/{id}/activate", null);
 

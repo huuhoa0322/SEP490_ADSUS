@@ -250,6 +250,9 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         Guid doctorId,
         CancellationToken ct = default)
     {
+        if (doctorId == Guid.Empty)
+            throw new InvalidOperationException("doctorId is required.");
+
         var doctor = await _userRepo.GetByIdAsync(doctorId, ct);
         if (doctor is null || doctor.Role != UserRole.Doctor)
         {
@@ -260,15 +263,23 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         int errorCount = 0;
         var now = DateTime.UtcNow;
         
+        var existingSlotsEnum = await _repo.ListByRangeAsync(request.VisitDate, request.VisitDate, doctorId, null, ct);
+        var existingSlots = new System.Collections.Generic.List<ScheduleSlot>(existingSlotsEnum);
+        
         // 17h đến 20h = 6 ca x 30 phút
         for (int i = 0; i < 6; i++)
         {
             var start = new TimeOnly(17, 0).AddMinutes(i * 30);
             var end = start.AddMinutes(30);
             
-            var hasOverlap = await _repo.HasOverlapAsync(
-                doctorId, request.VisitDate, start, end,
-                excludeSlotId: null, ct);
+            var startDateTime = request.VisitDate.ToDateTime(start, DateTimeKind.Utc);
+            if (startDateTime <= now)
+            {
+                errorCount++;
+                continue;
+            }
+
+            var hasOverlap = existingSlots.Any(s => s.StartTime < end && start < s.EndTime);
                 
             if (hasOverlap)
             {
@@ -288,15 +299,9 @@ public sealed class ScheduleSlotService : IScheduleSlotService
                 UpdatedAt = now,
             };
 
-            try
-            {
-                await _repo.AddAsync(slot, ct);
-                successCount++;
-            }
-            catch (Exception)
-            {
-                errorCount++;
-            }
+            await _repo.AddAsync(slot, ct);
+            existingSlots.Add(slot);
+            successCount++;
         }
         
         return (successCount, errorCount);
