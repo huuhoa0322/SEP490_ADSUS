@@ -28,6 +28,9 @@ class IntakeLog {
     required this.scheduledTimeUtc,
     required this.status,
     this.confirmedAtUtc,
+    required this.medicineName,
+    required this.dosage,
+    this.instructions,
   });
 
   final String intakeId;
@@ -42,6 +45,15 @@ class IntakeLog {
 
   final IntakeStatus status;
 
+  /// Enrich từ `PrescriptionItem.Medicine.Name` ở backend — tránh client phải join lại.
+  final String medicineName;
+
+  /// Liều dùng (vd "1 viên", "5ml") từ `PrescriptionItem.Dosage`.
+  final String dosage;
+
+  /// Hướng dẫn cách dùng (vd "Sau ăn", "Trước ngủ") từ `PrescriptionItem.Instructions`.
+  final String? instructions;
+
   IntakeLog copyWith({IntakeStatus? status, DateTime? confirmedAtUtc}) =>
       IntakeLog(
         intakeId: intakeId,
@@ -49,6 +61,9 @@ class IntakeLog {
         scheduledTimeUtc: scheduledTimeUtc,
         confirmedAtUtc: confirmedAtUtc ?? this.confirmedAtUtc,
         status: status ?? this.status,
+        medicineName: medicineName,
+        dosage: dosage,
+        instructions: instructions,
       );
 
   /// True nếu intake log đã tới giờ uống (PENDING hoặc OVERTIME, scheduledTime <= now).

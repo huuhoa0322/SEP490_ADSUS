@@ -652,11 +652,21 @@ class _IntakePendingCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Thuốc #${log.intakeId.substring(0, 8)}',
+                        log.medicineName,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: AppColors.navy,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        log.instructions != null
+                            ? '${log.dosage} · ${log.instructions}'
+                            : log.dosage,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.muted,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -785,7 +795,7 @@ class _IntakeOvertimeCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Thuốc #${log.intakeId.substring(0, 8)}',
+                        log.medicineName,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -798,11 +808,23 @@ class _IntakeOvertimeCard extends ConsumerWidget {
                           const Icon(Icons.schedule, size: 14, color: AppColors.danger),
                           const SizedBox(width: 4),
                           Text(
-                            'Quá giờ',
+                            'Quá giờ · ',
                             style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.danger,
                               fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Flexible(
+                            child: Text(
+                              log.instructions != null
+                                  ? '${log.dosage} · ${log.instructions}'
+                                  : log.dosage,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.muted,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -920,11 +942,21 @@ class _IntakeTakenCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Thuốc #${log.intakeId.substring(0, 8)}',
+                    log.medicineName,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppColors.navy,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    log.instructions != null
+                        ? '${log.dosage} · ${log.instructions}'
+                        : log.dosage,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.muted,
                     ),
                   ),
                   const SizedBox(height: 2),
