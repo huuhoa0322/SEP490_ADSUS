@@ -64,6 +64,9 @@ class MedicationIntakeRepositoryImpl implements MedicationIntakeRepository {
       scheduledTimeUtc: DateTime.parse(scheduledRaw).toUtc(),
       confirmedAtUtc: confirmedRaw == null ? null : DateTime.parse(confirmedRaw).toUtc(),
       status: IntakeStatus.fromWire(json['status'] as String),
+      medicineName: json['medicineName'] as String,
+      dosage: json['dosage'] as String,
+      instructions: json['instructions'] as String?,
     );
   }
 }
