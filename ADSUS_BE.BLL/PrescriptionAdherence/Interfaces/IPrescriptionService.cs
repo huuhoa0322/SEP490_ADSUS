@@ -22,4 +22,14 @@ public interface IPrescriptionService
 
     /// <summary>Lấy đơn thuốc mới nhất của một ca khám (dùng cho GET /api/v1/cases/{caseId}/prescription).</summary>
     Task<PrescriptionResponse?> GetByCaseIdAsync(Guid caseId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lấy đơn của một ca kèm % tuân thủ.
+    /// Chỉ đơn do actor kê mới có AdherencePercent; đơn bác sĩ khác → null (GB guard).
+    /// Trả empty list nếu không có đơn.
+    /// </summary>
+    Task<IReadOnlyList<PrescriptionWithComplianceResponse>> GetCasePrescriptionsWithComplianceAsync(
+        Guid actorId,
+        Guid caseId,
+        CancellationToken ct = default);
 }

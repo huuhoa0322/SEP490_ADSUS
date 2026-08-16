@@ -229,4 +229,99 @@ public class MedicationIntakeLogRepositoryTests
         Assert.Single(result);
         Assert.Equal(today.AddHours(8), result[0].ScheduledTime);
     }
+
+    [Fact]
+    public async Task GetIntakeStatsByPrescriptionAsync_TwoItemsMixed_ReturnsCorrectStats()
+    {
+        // Arrange: create full chain → 1 prescription with 2 items → known TAKEN/PENDING mix
+        using var db = CreateContext();
+        var patientProfileId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
+        var prescriptionId = Guid.NewGuid();
+        var medicineId = Guid.NewGuid();
+        var item1Id = Guid.NewGuid();
+        var item2Id = Guid.NewGuid();
+
+        db.PatientProfiles.Add(new PatientProfile { PatientProfileId = patientProfileId, UserId = Guid.NewGuid() });
+        db.Cases.Add(new Case { CaseId = caseId, PatientProfileId = patientProfileId, DoctorId = Guid.NewGuid(), VisitDate = DateOnly.FromDateTime(DateTime.UtcNow) });
+        db.Medicines.Add(new Medicine { MedicineId = medicineId, Name = "Thuốc A", CreatedAt = DateTime.UtcNow });
+        db.Prescriptions.Add(new Prescription { PrescriptionId = prescriptionId, CaseId = caseId, DoctorId = Guid.NewGuid(), PrescribedDate = DateOnly.FromDateTime(DateTime.UtcNow) });
+        db.PrescriptionItems.Add(new PrescriptionItem { PrescriptionItemId = item1Id, PrescriptionId = prescriptionId, MedicineId = medicineId, Dosage = "1 viên", DurationDays = 3, StartDate = DateOnly.FromDateTime(DateTime.UtcNow) });
+        db.PrescriptionItems.Add(new PrescriptionItem { PrescriptionItemId = item2Id, PrescriptionId = prescriptionId, MedicineId = medicineId, Dosage = "2 viên", DurationDays = 3, StartDate = DateOnly.FromDateTime(DateTime.UtcNow) });
+
+        // Item 1: 2 TAKEN + 1 PENDING = 3 total → 66.7%
+        var log1Taken1 = NewLog(item1Id, new DateTime(2026, 8, 1, 7, 0, 0, DateTimeKind.Utc));
+        log1Taken1.Status = IntakeStatus.Taken;
+        log1Taken1.ConfirmedAt = DateTime.UtcNow;
+        var log1Taken2 = NewLog(item1Id, new DateTime(2026, 8, 1, 12, 0, 0, DateTimeKind.Utc));
+        log1Taken2.Status = IntakeStatus.Taken;
+        log1Taken2.ConfirmedAt = DateTime.UtcNow;
+        var log1Pending = NewLog(item1Id, new DateTime(2026, 8, 1, 19, 0, 0, DateTimeKind.Utc));
+        log1Pending.Status = IntakeStatus.Pending;
+
+        // Item 2: 1 TAKEN + 0 PENDING = 1 total → 100%
+        var log2Taken = NewLog(item2Id, new DateTime(2026, 8, 1, 8, 0, 0, DateTimeKind.Utc));
+        log2Taken.Status = IntakeStatus.Taken;
+        log2Taken.ConfirmedAt = DateTime.UtcNow;
+
+        await db.MedicationIntakeLogs.AddRangeAsync(new[] { log1Taken1, log1Taken2, log1Pending, log2Taken });
+        await db.SaveChangesAsync();
+
+        var repo = new MedicationIntakeLogRepository(db);
+
+        // Act
+        var stats = await repo.GetIntakeStatsByPrescriptionAsync(new[] { item1Id, item2Id }, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(2, stats.Count);
+
+        Assert.Equal(3, stats[item1Id].TotalDoses);
+        Assert.Equal(2, stats[item1Id].TakenDoses);
+        Assert.Equal(1, stats[item1Id].PendingDoses);
+        Assert.Equal(66.7, stats[item1Id].AdherencePercent, 1);
+
+        Assert.Equal(1, stats[item2Id].TotalDoses);
+        Assert.Equal(1, stats[item2Id].TakenDoses);
+        Assert.Equal(0, stats[item2Id].PendingDoses);
+        Assert.Equal(100.0, stats[item2Id].AdherencePercent, 1);
+    }
+
+    [Fact]
+    public async Task GetIntakeStatsByPrescriptionAsync_EmptyList_ReturnsEmptyDictionary()
+    {
+        using var db = CreateContext();
+        var repo = new MedicationIntakeLogRepository(db);
+
+        var stats = await repo.GetIntakeStatsByPrescriptionAsync(Array.Empty<Guid>(), CancellationToken.None);
+
+        Assert.Empty(stats);
+    }
+
+    [Fact]
+    public async Task GetIntakeStatsByPrescriptionAsync_NoLogs_ReturnsZeroStats()
+    {
+        using var db = CreateContext();
+        var patientProfileId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
+        var prescriptionId = Guid.NewGuid();
+        var medicineId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+
+        db.PatientProfiles.Add(new PatientProfile { PatientProfileId = patientProfileId, UserId = Guid.NewGuid() });
+        db.Cases.Add(new Case { CaseId = caseId, PatientProfileId = patientProfileId, DoctorId = Guid.NewGuid(), VisitDate = DateOnly.FromDateTime(DateTime.UtcNow) });
+        db.Medicines.Add(new Medicine { MedicineId = medicineId, Name = "Thuốc A", CreatedAt = DateTime.UtcNow });
+        db.Prescriptions.Add(new Prescription { PrescriptionId = prescriptionId, CaseId = caseId, DoctorId = Guid.NewGuid(), PrescribedDate = DateOnly.FromDateTime(DateTime.UtcNow) });
+        db.PrescriptionItems.Add(new PrescriptionItem { PrescriptionItemId = itemId, PrescriptionId = prescriptionId, MedicineId = medicineId, Dosage = "1 viên", DurationDays = 3, StartDate = DateOnly.FromDateTime(DateTime.UtcNow) });
+        await db.SaveChangesAsync();
+
+        var repo = new MedicationIntakeLogRepository(db);
+
+        var stats = await repo.GetIntakeStatsByPrescriptionAsync(new[] { itemId }, CancellationToken.None);
+
+        Assert.Single(stats);
+        Assert.Equal(0, stats[itemId].TotalDoses);
+        Assert.Equal(0, stats[itemId].TakenDoses);
+        Assert.Equal(0, stats[itemId].PendingDoses);
+        Assert.Equal(0.0, stats[itemId].AdherencePercent);
+    }
 }

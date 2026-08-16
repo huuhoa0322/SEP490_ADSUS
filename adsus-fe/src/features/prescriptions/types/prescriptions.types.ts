@@ -92,5 +92,38 @@ export interface MedicationCatalogItem {
   name: string;
 }
 
+/** 1 dòng thuốc trong response kèm compliance. */
+export interface PrescriptionItemWithComplianceResponse {
+  prescriptionItemId: string;
+  medicineId: string;
+  medicineName: string;
+  dosage: string;
+  durationDays: number;
+  /** ISO yyyy-MM-dd. */
+  startDate: string;
+  instructions?: string;
+  /** Khung giờ uống (Morning/Noon/Evening). */
+  scheduleSlots?: string[];
+  /** % tuân thủ của dòng thuốc này. Null = bác sĩ khác kê (không thuộc về actor). */
+  adherencePercent: number | null;
+}
+
+/** Response GET /api/v1/cases/{caseId}/prescriptions/with-compliance. */
+export interface PrescriptionWithComplianceResponse {
+  prescriptionId: string;
+  caseId: string;
+  doctorId: string;
+  /** ISO yyyy-MM-dd. */
+  prescribedDate: string;
+  generalNote?: string;
+  /** ISO 8601 UTC. */
+  createdAt: string;
+  /** ISO 8601 UTC. */
+  updatedAt: string;
+  /** % tuân thủ toàn đơn. Null = bác sĩ khác kê (GB guard — actor không thấy adherence của đơn người khác). */
+  adherencePercent: number | null;
+  items: PrescriptionItemWithComplianceResponse[];
+}
+
 /** Response của GET /api/v1/medication-catalog (trả về array trực tiếp, không paginate). */
 export type MedicationCatalogResponse = MedicationCatalogItem[];

@@ -313,6 +313,21 @@ public sealed class CasesController : ControllerBase
     }
 
     /// <summary>
+    /// UC-18 + compliance history — lấy toàn bộ đơn của một ca kèm % tuân thủ.
+    /// Chỉ đơn do bác sĩ hiện tại kê mới có AdherencePercent;
+    /// đơn bác sĩ khác → null (GB guard).
+    /// </summary>
+    [HttpGet("{caseId:guid}/prescriptions/with-compliance")]
+    [Authorize(Roles = "DOCTOR,NURSE")]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<PrescriptionWithComplianceResponse>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCasePrescriptionsWithCompliance(Guid caseId, CancellationToken ct)
+    {
+        var result = await _prescriptions.GetCasePrescriptionsWithComplianceAsync(
+            GetCallerUserId(), caseId, ct);
+        return Ok(ApiResponse<IReadOnlyList<PrescriptionWithComplianceResponse>>.Ok(result));
+    }
+
+    /// <summary>
     /// Quy đổi IFormFile (kiểu của tầng web) sang UploadedFile (kiểu trung tính của BLL).
     /// </summary>
     private static List<UploadedFile> ToUploadedFiles(List<IFormFile> files) =>
