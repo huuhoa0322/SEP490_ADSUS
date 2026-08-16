@@ -8,6 +8,7 @@ import { useCaseDetail } from "@/features/medical-record/hooks/use-cases";
 import { DiagnosticCanvas } from "@/features/medical-record/components/diagnostic-canvas";
 import { useQueryClient } from "@tanstack/react-query";
 import { medicalRecordQueryKeys } from "@/features/medical-record/hooks/query-keys";
+import { useAiModelList } from "@/features/ai-model-management/hooks/use-ai-models";
 
 export default function DiagnosticPage({ params }: { params: Promise<{ caseId: string }> }) {
   const router = useRouter();
@@ -16,7 +17,8 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
   const { data: medicalCase, isLoading } = useCaseDetail(caseId);
   const { images, currentIndex, nextImage, clearSession } = useDiagnosticStore();
   
-  const [activeModel, setActiveModel] = useState("yolo-efficientNetv2-m1-nbl.pt"); // Mock model for badge
+  const { data: modelsData } = useAiModelList({});
+  const activeModel = modelsData?.items.find(m => m.status.toLowerCase() === "active")?.versionCode || "Không rõ";
   
   useEffect(() => {
     // If no images in store, redirect back to case details
