@@ -1,4 +1,4 @@
-using ADSUS_BE.BLL.UserRoleManagement.DTOs;
+﻿using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 
 namespace ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 
@@ -52,9 +52,15 @@ public interface IUserAccountService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// FT-08 — vô hiệu hoá vĩnh viễn. Một chiều, không có đường quay lại (BR-05).
+    /// FT-08 — vô hiệu hoá tài khoản.
     /// Không bao giờ xoá cứng bản ghi; dữ liệu liên quan vẫn phải truy cập được.
     /// </summary>
+        Task<AccountOperationResult> ReactivateAsync(
+        Guid actingAdminId,
+        Guid targetUserId,
+        string reason,
+        CancellationToken cancellationToken = default);
+
     Task<AccountOperationResult> DeactivateAsync(
         Guid userId,
         Guid actingAdminId,

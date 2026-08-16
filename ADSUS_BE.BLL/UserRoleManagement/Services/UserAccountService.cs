@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
@@ -245,6 +245,37 @@ public class UserAccountService : IUserAccountService
         return AccountOperationResult.Success;
     }
 
+        public async Task<AccountOperationResult> ReactivateAsync(
+        Guid actingAdminId,
+        Guid targetUserId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        if (targetUserId == actingAdminId) return AccountOperationResult.CannotTargetSelf;
+
+        var user = await _users.GetForUpdateAsync(targetUserId, cancellationToken);
+        if (user is null) return AccountOperationResult.NotFound;
+        if (user.Status != UserStatus.Deactivated) return AccountOperationResult.InvalidRole;
+
+        user.Status = UserStatus.Active;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _audit.RecordAsync(
+            actingAdminId,
+            "REACTIVATE_ACCOUNT",
+            user,
+            $"kh�i ph?c t�i kho?n, l� do: {reason}",
+            cancellationToken);
+
+        await _users.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Admin {ActingAdminId} reactivated account {UserId}",
+            actingAdminId, user.UserId);
+
+        return AccountOperationResult.Success;
+    }
+
     public async Task<AccountOperationResult> DeactivateAsync(
         Guid userId,
         Guid actingAdminId,
@@ -263,7 +294,7 @@ public class UserAccountService : IUserAccountService
         user.Status = UserStatus.Deactivated;
         user.UpdatedAt = DateTime.UtcNow;
 
-        // Thao tác một chiều, không có đường hoàn tác (BR-05) — càng phải ghi lại ai đã bấm.
+        // Thao tác vô hiệu hóa — càng phải ghi lại ai đã bấm.
         await _audit.RecordAsync(
             actingAdminId,
             AccountAuditTrail.DeactivateAccount,

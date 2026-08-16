@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   AlertCircle,
@@ -7,6 +7,7 @@ import {
   KeyRound,
   Loader2,
   Pencil,
+  RefreshCcw,
   Search,
   UserPlus,
 } from "lucide-react";
@@ -18,6 +19,7 @@ import type { Role } from "@/types/api.types";
 
 import {
   useDeactivateUser,
+  useReactivateUser,
   useResetUserPassword,
   useUserList,
 } from "../hooks/use-users";
@@ -32,7 +34,7 @@ import type { AccountStatus, UserAccount } from "../types/user.types";
 import { ConfirmDialog } from "./confirm-dialog";
 
 /** Hành động đang chờ người dùng xác nhận. */
-type PendingAction = { kind: "deactivate" | "reset"; user: UserAccount } | null;
+type PendingAction = { kind: "deactivate" | "reset" | "reactivate"; user: UserAccount } | null;
 
 /**
  * SCR-06 — danh sách tài khoản (UC-04).
@@ -62,9 +64,10 @@ export function UserList() {
   const { data, isLoading, isError, error } = useUserList(query);
 
   const deactivate = useDeactivateUser();
+  const reactivate = useReactivateUser();
   const resetPassword = useResetUserPassword();
 
-  const actionError = deactivate.error ?? resetPassword.error;
+  const actionError = deactivate.error ?? reactivate.error ?? resetPassword.error;
 
   /** Đổi bộ lọc thì phải quay về trang 1, không thì đang ở trang 5 mà kết quả chỉ có 1 trang. */
   function changeFilter(apply: () => void) {
@@ -77,6 +80,11 @@ export function UserList() {
 
     if (pending.kind === "deactivate") {
       deactivate.mutate(pending.user.userId, { onSettled: () => setPending(null) });
+      return;
+    }
+
+    if (pending.kind === "reactivate") {
+      reactivate.mutate(pending.user.userId, { onSettled: () => setPending(null) });
       return;
     }
 
@@ -232,7 +240,7 @@ export function UserList() {
                         chính mình: backend chặn hết (UC-04 AF-04), bấm vào chỉ nhận lỗi.
                         Vẫn giữ nút sửa, vì Admin đổi được tên và email của chính mình.
 
-                        Tài khoản đã vô hiệu hoá cũng không còn thao tác nào — BR-05, một chiều. */}
+                        Tài khoản đã vô hiệu hoá có thể được khôi phục. */}
                     {user.status !== "DEACTIVATED" && !user.isCurrentUser && (
                       <>
                         {/* UC-03 AF-02 — cấp lại mật khẩu hộ, hiện ngay trên màn hình sau
@@ -256,6 +264,17 @@ export function UserList() {
                           <Ban className="size-4" />
                         </button>
                       </>
+                    )}
+
+                    {user.status === "DEACTIVATED" && (
+                      <button
+                        type="button"
+                        title="Khôi phục tài khoản"
+                        onClick={() => setPending({ kind: "reactivate", user })}
+                        className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-emerald-500/10 hover:text-emerald-500"
+                      >
+                        <RefreshCcw className="size-4" />
+                      </button>
                     )}
                   </div>
                 </td>
@@ -323,7 +342,7 @@ export function UserList() {
       <ConfirmDialog
         open={pending !== null}
         destructive={pending?.kind === "deactivate"}
-        isPending={deactivate.isPending || resetPassword.isPending}
+        isPending={deactivate.isPending || reactivate.isPending || resetPassword.isPending}
         title={CONFIRM_TITLE[pending?.kind ?? "deactivate"]}
         message={pending ? buildConfirmMessage(pending) : ""}
         confirmLabel={CONFIRM_LABEL[pending?.kind ?? "deactivate"]}
@@ -381,11 +400,13 @@ export function UserList() {
 const CONFIRM_TITLE: Record<NonNullable<PendingAction>["kind"], string> = {
   deactivate: "Vô hiệu hoá tài khoản?",
   reset: "Cấp lại mật khẩu?",
+  reactivate: "Khôi phục tài khoản?",
 };
 
 const CONFIRM_LABEL: Record<NonNullable<PendingAction>["kind"], string> = {
   deactivate: "Vô hiệu hoá",
   reset: "Cấp lại",
+  reactivate: "Khôi phục",
 };
 
 function buildConfirmMessage(pending: NonNullable<PendingAction>): string {
@@ -393,11 +414,13 @@ function buildConfirmMessage(pending: NonNullable<PendingAction>): string {
 
   switch (pending.kind) {
     case "deactivate":
-      // AF-02 yêu cầu cảnh báo rõ đây là hành động một chiều.
-      return `Tài khoản "${name}" sẽ không bao giờ đăng nhập lại được. Đây là hành động MỘT CHIỀU, không có cách hoàn tác. Dữ liệu cũ vẫn được giữ nguyên, không bị xoá.`;
+      // Cảnh báo trước khi vô hiệu hóa.
+      return `Tài khoản "${name}" sẽ không bao giờ đăng nhập lại được. Dữ liệu cũ vẫn được giữ nguyên, không bị xoá.`;
     case "reset":
       // Sửa 12/08/2026 — không còn gửi email, mật khẩu hiện ngay trên màn hình sau khi xác nhận.
       return `Hệ thống sẽ sinh mật khẩu mới và hiện ngay tại đây để bạn đọc trực tiếp cho "${name}". Mật khẩu cũ sẽ hết hiệu lực ngay.`;
+    case "reactivate":
+      return `Tài khoản "${name}" sẽ được khôi phục hoạt động trở lại và có thể đăng nhập bình thường.`;
   }
 }
 
