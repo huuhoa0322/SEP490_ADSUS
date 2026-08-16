@@ -49,6 +49,16 @@ public static class EnumExtensions
     };
 
     /// <summary>
+    /// Loại nhật ký sức khỏe — enum <c>health_log_type</c>.
+    /// </summary>
+    public static string ToApiString(this HealthLogType type) => type switch
+    {
+        HealthLogType.Exercise => "EXERCISE",
+        HealthLogType.Diet => "DIET",
+        _ => throw new ArgumentOutOfRangeException(nameof(type)),
+    };
+
+    /// <summary>
     /// Đọc vai trò từ chuỗi client gửi lên. Trả null nếu không khớp giá trị nào.
     ///
     /// Phải tự đọc thay vì để bộ chuyển đổi JSON làm: mặc định nó biến chuỗi lạ thành phần
