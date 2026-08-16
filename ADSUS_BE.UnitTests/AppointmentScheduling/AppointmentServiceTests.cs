@@ -51,13 +51,14 @@ public class AppointmentServiceTests : IDisposable
     [Fact]
     public async Task ListOpenSlotsAsync_NoFilters_ReturnsOpenSlotsOnly()
     {
-        // Arrange
+        // Arrange — ListOpenSlotsAsync now delegates the Status=Open + range filtering to
+        // _slotRepo.ListByRangeAsync (repository layer), so the mock returns exactly what a
+        // real Status=Open query would: only the open slot, never the booked one.
         var doctor = CreateDoctor();
         var openSlot = CreateScheduleSlot(SlotStatus.Open, doctor);
-        var bookedSlot = CreateScheduleSlot(SlotStatus.Booked, doctor);
 
-        _db.ScheduleSlots.AddRange(openSlot, bookedSlot);
-        await _db.SaveChangesAsync();
+        _slotRepo.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot> { openSlot });
 
         // Act
         var result = await _sut.ListOpenSlotsAsync();
@@ -70,15 +71,13 @@ public class AppointmentServiceTests : IDisposable
     [Fact]
     public async Task ListOpenSlotsAsync_FilterByDoctorId_ReturnsFilteredSlots()
     {
-        // Arrange
+        // Arrange — mock only matches the exact doctorId the service is expected to pass
+        // through, proving ListOpenSlotsAsync correctly parses and forwards it.
         var doctor1 = CreateDoctor("Dr. Smith", Guid.NewGuid());
-        var doctor2 = CreateDoctor("Dr. Jones", Guid.NewGuid());
         var slot1 = CreateScheduleSlot(SlotStatus.Open, doctor1);
-        var slot2 = CreateScheduleSlot(SlotStatus.Open, doctor2);
 
-        _db.ScheduleSlots.AddRange(slot1, slot2);
-        _db.Users.AddRange(doctor1, doctor2);
-        await _db.SaveChangesAsync();
+        _slotRepo.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), doctor1.UserId, It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot> { slot1 });
 
         // Act
         var result = await _sut.ListOpenSlotsAsync(doctorId: doctor1.UserId.ToString());
@@ -91,14 +90,14 @@ public class AppointmentServiceTests : IDisposable
     [Fact]
     public async Task ListOpenSlotsAsync_FilterByDateRange_ReturnsFilteredSlots()
     {
-        // Arrange
+        // Arrange — mock only matches the exact date range the service is expected to pass
+        // through, proving ListOpenSlotsAsync correctly forwards fromDate/toDate.
         var doctor = CreateDoctor();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var slotToday = CreateScheduleSlot(SlotStatus.Open, doctor, today);
-        var slotTomorrow = CreateScheduleSlot(SlotStatus.Open, doctor, today.AddDays(1));
 
-        _db.ScheduleSlots.AddRange(slotToday, slotTomorrow);
-        await _db.SaveChangesAsync();
+        _slotRepo.Setup(r => r.ListByRangeAsync(today, today, It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot> { slotToday });
 
         // Act
         var result = await _sut.ListOpenSlotsAsync(
@@ -113,7 +112,9 @@ public class AppointmentServiceTests : IDisposable
     [Fact]
     public async Task ListOpenSlotsAsync_SlotWithBookedAppointment_Excluded()
     {
-        // Arrange - slot has BOOKED appointment
+        // Arrange - slot has BOOKED appointment. This exclusion still happens in-memory in
+        // ListOpenSlotsAsync after fetching from the repository, so it's still worth testing
+        // here directly.
         var doctor = CreateDoctor();
         var slot = CreateScheduleSlot(SlotStatus.Open, doctor);
         slot.Appointments = new List<Appointment>
@@ -128,8 +129,8 @@ public class AppointmentServiceTests : IDisposable
             }
         };
 
-        _db.ScheduleSlots.Add(slot);
-        await _db.SaveChangesAsync();
+        _slotRepo.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot> { slot });
 
         // Act
         var result = await _sut.ListOpenSlotsAsync();
