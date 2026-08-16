@@ -68,4 +68,17 @@ public sealed class PrescriptionRepository : IPrescriptionRepository
             .ThenByDescending(p => p.CreatedAt)
             .FirstOrDefaultAsync(ct);
     }
+
+    public async Task<IReadOnlyList<Prescription>> ListByCaseAsync(Guid caseId, CancellationToken ct = default)
+    {
+        return await _db.Prescriptions
+            .AsNoTracking()
+            .Include(p => p.PrescriptionItems)
+                .ThenInclude(pi => pi.Medicine)
+            .Include(p => p.Doctor)
+            .Where(p => p.CaseId == caseId)
+            .OrderByDescending(p => p.PrescribedDate)
+            .ThenByDescending(p => p.CreatedAt)
+            .ToListAsync(ct);
+    }
 }
