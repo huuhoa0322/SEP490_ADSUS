@@ -18,7 +18,10 @@ jobs:
                   dotnet-version: "8.0.x"
 
             - name: Restore
-              run: dotnet restore ADSUS_BE/ADSUS_BE.csproj
+              run: |
+                  dotnet restore ADSUS_BE/ADSUS_BE.csproj
+                  dotnet restore ADSUS_BE.UnitTests/ADSUS_BE.UnitTests.csproj
+                  dotnet restore ADSUS_BE.IntegrationTests/ADSUS_BE.IntegrationTests.csproj
 
             - name: Unit Tests
               run: dotnet test ADSUS_BE.UnitTests/ADSUS_BE.UnitTests.csproj --no-restore --logger trx

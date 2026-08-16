@@ -89,7 +89,7 @@ export function MedicineList() {
         toast.success("Thêm thuốc thành công");
       }
       setIsModalOpen(false);
-    } catch (e: any) {
+    } catch (e) {
       toast.error(getApiErrorMessage(e, "Có lỗi xảy ra"));
     }
   }
@@ -101,7 +101,7 @@ export function MedicineList() {
       await deleteMutation.mutateAsync(pendingDeleteId);
       toast.success("Ngừng sử dụng thuốc thành công");
       setPendingDeleteId(null);
-    } catch (e: any) {
+    } catch (e) {
       toast.error(getApiErrorMessage(e, "Có lỗi xảy ra"));
     }
   }
@@ -110,7 +110,7 @@ export function MedicineList() {
     try {
       await activateMutation.mutateAsync(id);
       toast.success("Kích hoạt thuốc thành công");
-    } catch (e: any) {
+    } catch (e) {
       toast.error(getApiErrorMessage(e, "Có lỗi xảy ra"));
     }
   }

@@ -1,8 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef, use } from "react";
-import Link from "next/link";
+import { useEffect, use } from "react";
 import { useDiagnosticStore } from "@/features/medical-record/stores/use-diagnostic-store";
 import { useCaseDetail } from "@/features/medical-record/hooks/use-cases";
 import { DiagnosticCanvas } from "@/features/medical-record/components/diagnostic-canvas";
@@ -16,7 +15,7 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
   const { data: medicalCase, isLoading } = useCaseDetail(caseId);
   const { images, currentIndex, nextImage, clearSession } = useDiagnosticStore();
   
-  const [activeModel, setActiveModel] = useState("yolo-efficientNetv2-m1-nbl.pt"); // Mock model for badge
+  const activeModel = "yolo-efficientNetv2-m1-nbl.pt"; // Mock model for badge
   
   useEffect(() => {
     // If no images in store, redirect back to case details

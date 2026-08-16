@@ -1,7 +1,7 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Loader2, Plus, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import { getApiErrorMessage } from "@/lib/api-client";
@@ -14,7 +14,6 @@ import {
   useScheduleSlots,
 } from "../hooks/use-schedule-slot";
 import type {
-  CreateScheduleSlotRequest,
   ScheduleSlotResponse,
   SlotStatus,
 } from "../types/schedule-slot.types";

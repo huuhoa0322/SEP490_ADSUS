@@ -41,6 +41,7 @@ export function AiModelFormDialog({ id, open, onClose, onSuccess }: AiModelFormD
 
   useEffect(() => {
     if (detail) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs the form once from the async-fetched edit target, not a render-time derivation
       setFormData({
         versionCode: detail.versionCode,
         description: detail.description || "",
