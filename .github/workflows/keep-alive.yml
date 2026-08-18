@@ -1,0 +1,27 @@
+name: Keep Backend Awake
+
+# Render's Free web service spins down after 15 minutes with no inbound
+# traffic. This workflow pings the health endpoint every 10 minutes so
+# adsus-backend never crosses that threshold, avoiding the ~1min cold
+# start on the next real user request. Deliberately NOT applied to
+# adsus-ai-backend: both services share Render's 750 free instance-hours/
+# month per workspace, and keeping just one always-on already uses
+# nearly all of it (~720-744h/month) — keeping both awake 24/7 would
+# exceed the quota and get every Free service in the workspace suspended
+# for the rest of the month.
+
+on:
+    schedule:
+        # Every 10 minutes, offset 3 min past the hour to avoid GitHub's
+        # top-of-the-hour scheduling congestion (documented in GitHub's
+        # own scheduled-events docs as a source of delayed runs).
+        - cron: "3,13,23,33,43,53 * * * *"
+    workflow_dispatch:
+
+jobs:
+    ping:
+        name: "Ping /api/health"
+        runs-on: ubuntu-latest
+        steps:
+            - name: Ping adsus-backend
+              run: curl --fail --silent --show-error --max-time 30 https://adsus-backend.onrender.com/api/health
