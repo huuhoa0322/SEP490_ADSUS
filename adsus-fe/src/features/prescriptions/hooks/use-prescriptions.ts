@@ -7,6 +7,7 @@ import { getApiErrorMessage } from "@/lib/api-client";
 import {
   confirmIntake,
   createPrescription,
+  getCasePrescriptionWithCompliance,
   getMedicationCatalog,
   getMyIntakeLogs,
   getPrescription,
@@ -16,6 +17,7 @@ import type {
   IntakeLogResponse,
   MedicationCatalogItem,
   PrescriptionResponse,
+  PrescriptionWithComplianceResponse,
 } from "../types/prescriptions.types";
 
 /**
@@ -34,6 +36,7 @@ const keys = {
   detail: (id: string) => ["prescriptions", "detail", id] as const,
   myIntakes: () => ["prescriptions", "my-intakes"] as const,
   catalog: () => ["medication-catalog"] as const,
+  caseCompliance: (caseId: string) => ["prescriptions", "case-compliance", caseId] as const,
 };
 
 /** POST /api/v1/prescriptions — Doctor kê đơn (UC-18). */
@@ -90,6 +93,15 @@ export function useConfirmIntake() {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: keys.myIntakes() });
     },
+  });
+}
+
+/** GET /api/v1/cases/{caseId}/prescriptions/with-compliance — đơn + compliance (Task 4). */
+export function useCasePrescriptionWithCompliance(caseId: string) {
+  return useQuery<PrescriptionWithComplianceResponse[], Error>({
+    queryKey: keys.caseCompliance(caseId),
+    queryFn: () => getCasePrescriptionWithCompliance(caseId),
+    staleTime: 30 * 1000,
   });
 }
 

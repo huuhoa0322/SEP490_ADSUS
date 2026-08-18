@@ -1,8 +1,10 @@
+using System.Collections.Immutable;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.PrescriptionAdherence;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -193,5 +195,90 @@ public sealed class PrescriptionService : IPrescriptionService
     {
         var prescription = await _prescriptionRepo.GetByCaseIdAsync(caseId, ct);
         return prescription is null ? null : PrescriptionResponseMapper.FromEntity(prescription);
+    }
+
+    public async Task<IReadOnlyList<PrescriptionWithComplianceResponse>> GetCasePrescriptionsWithComplianceAsync(
+        Guid actorId,
+        Guid caseId,
+        CancellationToken ct = default)
+    {
+        var prescriptions = await _prescriptionRepo.ListByCaseAsync(caseId, ct);
+
+        if (prescriptions.Count == 0)
+            return Array.Empty<PrescriptionWithComplianceResponse>();
+
+        // Tách đơn của actor và đơn bác sĩ khác
+        var ownPrescriptions = prescriptions.Where(p => p.DoctorId == actorId).ToList();
+        var otherPrescriptions = prescriptions.Where(p => p.DoctorId != actorId).ToList();
+
+        // Lấy stats cho đơn của actor
+        var ownItemIds = ownPrescriptions
+            .SelectMany(p => p.PrescriptionItems)
+            .Select(i => i.PrescriptionItemId)
+            .ToList();
+
+        var stats = ownItemIds.Count > 0
+            ? await _intakeLogRepo.GetIntakeStatsByPrescriptionAsync(ownItemIds, ct)
+            : ImmutableDictionary<Guid, IntakeStats>.Empty;
+
+        var result = new List<PrescriptionWithComplianceResponse>();
+
+        foreach (var p in prescriptions)
+        {
+            var isOwn = p.DoctorId == actorId;
+
+            var items = p.PrescriptionItems.Select(pi =>
+            {
+                double? itemPct = null;
+                if (isOwn && stats.TryGetValue(pi.PrescriptionItemId, out var s))
+                    itemPct = s.AdherencePercent;
+
+                return new PrescriptionItemWithComplianceResponse(
+                    pi.PrescriptionItemId,
+                    pi.MedicineId,
+                    pi.Medicine?.Name ?? string.Empty,
+                    pi.Dosage,
+                    pi.DurationDays,
+                    pi.StartDate,
+                    pi.Instructions,
+                    pi.ScheduleSlots?.Select(s => s.ToString()).ToList(),
+                    itemPct);
+            }).ToList();
+
+            double? prescriptionPct = null;
+            if (isOwn)
+            {
+                // Tính % đơn = tổng taken / tổng doses từ stats dict (trực tiếp, không qua items list
+                // vì items list chỉ chứa stats có trong stats dict, kể cả 0-doses entries)
+                var prescriptionItemIds = items.Select(i => i.PrescriptionItemId).ToHashSet();
+                var totalTaken = 0;
+                var totalDoses = 0;
+                foreach (var itemId in prescriptionItemIds)
+                {
+                    if (stats.TryGetValue(itemId, out var s))
+                    {
+                        totalTaken += s.TakenDoses;
+                        totalDoses += s.TotalDoses;
+                    }
+                }
+                if (totalDoses > 0)
+                    prescriptionPct = Math.Round(totalTaken * 100.0 / totalDoses, 1);
+                else
+                    prescriptionPct = 0; // No logs yet = 0%, not null
+            }
+
+            result.Add(new PrescriptionWithComplianceResponse(
+                p.PrescriptionId,
+                p.CaseId,
+                p.DoctorId,
+                p.PrescribedDate,
+                p.GeneralNote,
+                p.CreatedAt,
+                p.UpdatedAt,
+                prescriptionPct,
+                items));
+        }
+
+        return result;
     }
 }

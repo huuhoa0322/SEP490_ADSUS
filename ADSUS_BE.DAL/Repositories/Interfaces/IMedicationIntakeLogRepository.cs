@@ -1,4 +1,5 @@
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.PrescriptionAdherence;
 
 namespace ADSUS_BE.DAL.Repositories.Interfaces;
 
@@ -61,5 +62,12 @@ public interface IMedicationIntakeLogRepository
     Task<IReadOnlyList<MedicationIntakeLog>> ListDueRemindersAsync(
         DateTime windowStart,
         int reminderWindowMinutes,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Tính adherence stats cho 1 list prescription items.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IntakeStats>> GetIntakeStatsByPrescriptionAsync(
+        IReadOnlyList<Guid> prescriptionItemIds,
         CancellationToken ct = default);
 }

@@ -46,7 +46,7 @@ export function ScheduleSlotManagementView() {
   const [showCreate, setShowCreate] = useState(false);
   const [defaultDate, setDefaultDate] = useState<string>(todayIso);
   const [confirmAction, setConfirmAction] = useState<{
-    type: "close" | "forceClose" | "reopen";
+    type: "close" | "forceClose" | "reopen" | "cannotClose";
     slot: ScheduleSlotResponse;
   } | null>(null);
 
@@ -137,6 +137,10 @@ export function ScheduleSlotManagementView() {
             setShowCreate(true);
           }}
           onClose={(s, force) => {
+            if (s.activeAppointmentsCount > 0) {
+              setConfirmAction({ type: "cannotClose", slot: s });
+              return;
+            }
             if (!force) {
               setConfirmAction({ type: "close", slot: s });
               return;
@@ -173,14 +177,18 @@ export function ScheduleSlotManagementView() {
       {confirmAction && (
         <ConfirmModal
           title={
-            confirmAction.type === "close"
+            confirmAction.type === "cannotClose"
+              ? "Không thể đóng ca"
+              : confirmAction.type === "close"
               ? "Xác nhận đóng ca"
               : confirmAction.type === "forceClose"
                 ? "Xác nhận đóng ca (có booking)"
                 : "Xác nhận mở lại ca"
           }
           message={
-            confirmAction.type === "close"
+            confirmAction.type === "cannotClose"
+              ? "Ca làm này đã có bệnh nhân đặt, không thể đóng"
+              : confirmAction.type === "close"
               ? confirmAction.slot.activeAppointmentsCount > 0
                 ? `Ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)} ngày ${confirmAction.slot.slotDate} có ${confirmAction.slot.activeAppointmentsCount} lịch hẹn đang đặt. Bạn có chắc muốn đóng?`
                 : `Bạn có chắc muốn đóng ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)} ngày ${confirmAction.slot.slotDate}?`
@@ -188,7 +196,9 @@ export function ScheduleSlotManagementView() {
                 ? `Khung giờ này có ${confirmAction.slot.activeAppointmentsCount} lịch hẹn đang BOOKED. Các booking hiện tại vẫn giữ nguyên, nhưng bệnh nhân không đặt thêm được.`
                 : `Mở lại ca khám ${confirmAction.slot.startTime.slice(0, 5)}–${confirmAction.slot.endTime.slice(0, 5)} ngày ${confirmAction.slot.slotDate}?`
           }
-          variant={confirmAction.type === "reopen" ? "info" : confirmAction.type === "forceClose" ? "warning" : "danger"}
+          variant={confirmAction.type === "reopen" ? "info" : confirmAction.type === "cannotClose" ? "warning" : confirmAction.type === "forceClose" ? "warning" : "danger"}
+          hideConfirm={confirmAction.type === "cannotClose"}
+          cancelLabel={confirmAction.type === "cannotClose" ? "Đóng" : "Hủy"}
           confirmLabel={
             confirmAction.type === "close" ? "Đóng ca"
               : confirmAction.type === "forceClose" ? "Đóng ca"
@@ -521,6 +531,7 @@ function ConfirmModal({
   confirmLabel = "Xác nhận",
   cancelLabel = "Hủy",
   variant = "danger", // "danger" | "warning" | "info"
+  hideConfirm = false,
   onConfirm,
   onCancel,
 }: {
@@ -529,6 +540,7 @@ function ConfirmModal({
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "danger" | "warning" | "info";
+  hideConfirm?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -584,13 +596,15 @@ function ConfirmModal({
         >
           {cancelLabel}
         </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          className={`rounded-md px-4 py-2 text-sm font-medium text-white ${styles.confirmBtn}`}
-        >
-          {confirmLabel}
-        </button>
+        {!hideConfirm && (
+          <button
+            type="button"
+            onClick={onConfirm}
+            className={`rounded-md px-4 py-2 text-sm font-medium text-white ${styles.confirmBtn}`}
+          >
+            {confirmLabel}
+          </button>
+        )}
       </div>
     </ModalShell>
   );

@@ -308,28 +308,32 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
               </span>
             </h2>
             <div className="flex flex-col items-end gap-1">
-              <button
-                type="button"
-                onClick={() => setShowUpload((open) => !open)}
-                // GB-01 — ca đã chốt không nhận thêm ảnh. isLocked — khoá tạm sau "Lưu kết luận".
-                disabled={isConfirmedOrEnd || isLocked}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
-              >
-                Bổ sung ảnh siêu âm
-              </button>
-              {isConfirmedOrEnd ? (
-                <span className="text-xs italic text-muted-foreground">
-                  Ca đã kết luận nên không nhận thêm ảnh
-                </span>
-              ) : isLocked ? (
-                <span className="text-xs italic text-muted-foreground">
-                  Bấm &ldquo;Sửa&rdquo; ở mục kết luận để mở lại
-                </span>
+              {isResponsibleDoctor ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowUpload((open) => !open)}
+                    // GB-01 — ca đã chốt không nhận thêm ảnh. isLocked — khoá tạm sau "Lưu kết luận".
+                    disabled={isConfirmedOrEnd || isLocked}
+                    className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+                  >
+                    Bổ sung ảnh siêu âm
+                  </button>
+                  {isConfirmedOrEnd ? (
+                    <span className="text-xs italic text-muted-foreground">
+                      Ca đã kết luận nên không nhận thêm ảnh
+                    </span>
+                  ) : isLocked ? (
+                    <span className="text-xs italic text-muted-foreground">
+                      Bấm &ldquo;Sửa&rdquo; ở mục kết luận để mở lại
+                    </span>
+                  ) : null}
+                </>
               ) : null}
             </div>
           </div>
 
-          {showUpload && !isConfirmedOrEnd && !isLocked ? (
+          {showUpload && isResponsibleDoctor && !isConfirmedOrEnd && !isLocked ? (
             <div className="mb-5 space-y-4 rounded-lg border border-dashed border-border p-4">
               <UltrasoundUploadField
                 files={pendingImages}
@@ -458,8 +462,8 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                 ) : null}
                 {isLocked && saveConclusionMutation.isSuccess && !confirmMutation.isSuccess ? (
                   <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700" role="status">
-                    Đã lưu kết luận. Bấm &ldquo;Sửa&rdquo; nếu muốn chỉnh sửa tiếp, hoặc &ldquo;Kết
-                    thúc ca khám&rdquo; để khoá vĩnh viễn.
+                    Đã lưu kết luận. Bấm &ldquo;Sửa&rdquo; nếu muốn chỉnh sửa tiếp, hoặc &ldquo;Xác
+                    nhận kết luận&rdquo; để khoá vĩnh viễn.
                   </p>
                 ) : null}
 

@@ -11,7 +11,7 @@ namespace ADSUS_BE.Controllers;
 
 [ApiController]
 [Route("api/v1/ai-model-versions")]
-[Authorize(Roles = "ADMIN")]
+[Authorize] // Allow any authenticated user (e.g., Doctor) to view the list of models
 public class AiModelsController : ControllerBase
 {
     private readonly IAiModelService _aiModelService;
@@ -44,6 +44,7 @@ public class AiModelsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "ADMIN")]
     public async Task<ActionResult<ApiResponse<AiModelVersionDto>>> RegisterVersion(
         [FromBody] RegisterModelVersionRequest request,
         CancellationToken cancellationToken)
@@ -59,6 +60,7 @@ public class AiModelsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "ADMIN")]
     public async Task<ActionResult<ApiResponse<object>>> UpdateVersion(
         Guid id,
         [FromBody] UpdateModelVersionRequest request,
@@ -71,6 +73,7 @@ public class AiModelsController : ControllerBase
     }
 
     [HttpPatch("{id}")]
+    [Authorize(Roles = "ADMIN")]
     public async Task<ActionResult<ApiResponse<object>>> ActivateVersion(
         Guid id,
         [FromBody] ActivateVersionRequest request,
@@ -88,6 +91,7 @@ public class AiModelsController : ControllerBase
     }
 
     [HttpPost("{id}/calculate-map50")]
+    [Authorize(Roles = "ADMIN")]
     public async Task<ActionResult<ApiResponse<object>>> CalculateMap50(
         Guid id,
         CancellationToken cancellationToken)

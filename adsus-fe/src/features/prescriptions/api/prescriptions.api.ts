@@ -6,6 +6,7 @@ import type {
   IntakeLogResponse,
   MedicationCatalogItem,
   PrescriptionResponse,
+  PrescriptionWithComplianceResponse,
 } from "../types/prescriptions.types";
 
 /**
@@ -149,6 +150,23 @@ export async function getCasePrescription(
     `/api/v1/cases/${caseId}/prescription`,
   );
   return data.data ?? null;
+}
+
+/**
+ * GET /api/v1/cases/{caseId}/prescriptions/with-compliance — lấy toàn bộ đơn của 1 ca kèm % tuân thủ.
+ *
+ * Business rule (GB guard):
+ *   - Đơn do actor kê → adherencePercent có giá trị.
+ *   - Đơn do bác sĩ khác kê → adherencePercent = null.
+ *   - Null → frontend hiển thị AdherencePill variant "unknown" (—).
+ */
+export async function getCasePrescriptionWithCompliance(
+  caseId: string,
+): Promise<PrescriptionWithComplianceResponse[]> {
+  const { data } = await apiClient.get<
+    ApiResponse<PrescriptionWithComplianceResponse[]>
+  >(`/api/v1/cases/${caseId}/prescriptions/with-compliance`);
+  return data.data ?? [];
 }
 
 /**

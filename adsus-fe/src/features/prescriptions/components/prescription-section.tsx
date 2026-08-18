@@ -1,8 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getCasePrescription } from "../api/prescriptions.api";
-import type { PrescriptionResponse } from "../types/prescriptions.types";
+import { getCasePrescriptionWithCompliance } from "../api/prescriptions.api";
+import type { PrescriptionWithComplianceResponse } from "../types/prescriptions.types";
+
+import { AdherencePill } from "./adherence-pill";
 
 /** Format ngày yyyy-MM-dd → dd/MM/yyyy. */
 function formatDate(value: string | null | undefined): string {
@@ -29,9 +31,9 @@ interface PrescriptionSectionProps {
 }
 
 export function PrescriptionSection({ caseId }: PrescriptionSectionProps) {
-  const { data: prescription, isLoading } = useQuery({
-    queryKey: ["case-prescription", caseId],
-    queryFn: () => getCasePrescription(caseId),
+  const { data: prescriptions, isLoading } = useQuery({
+    queryKey: ["case-prescription-with-compliance", caseId],
+    queryFn: () => getCasePrescriptionWithCompliance(caseId),
     staleTime: 30 * 1000,
   });
 
@@ -43,30 +45,39 @@ export function PrescriptionSection({ caseId }: PrescriptionSectionProps) {
     );
   }
 
-  if (!prescription) {
+  if (!prescriptions || prescriptions.length === 0) {
     return null;
   }
 
-  return <PrescriptionTable prescription={prescription} />;
+  return (
+    <div className="mt-5 space-y-4">
+      {prescriptions.map((prescription) => (
+        <PrescriptionTable key={prescription.prescriptionId} prescription={prescription} />
+      ))}
+    </div>
+  );
 }
 
 function PrescriptionTable({
   prescription,
 }: {
-  prescription: PrescriptionResponse;
+  prescription: PrescriptionWithComplianceResponse;
 }) {
   return (
-    <section className="mt-5 rounded-xl border border-border p-6">
-      <div className="mb-3 flex flex-wrap items-baseline gap-3">
-        <h2 className="font-heading text-lg font-semibold text-foreground">
-          Đơn thuốc
-        </h2>
-        <span className="text-sm text-muted-foreground">
-          Ngày kê:{" "}
-          <span className="font-medium text-foreground">
-            {formatDate(prescription.prescribedDate)}
+    <section className="rounded-xl border border-border p-6">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+        <div className="flex flex-wrap items-baseline gap-3">
+          <h2 className="font-heading text-lg font-semibold text-foreground">
+            Đơn thuốc
+          </h2>
+          <span className="text-sm text-muted-foreground">
+            Ngày kê:{" "}
+            <span className="font-medium text-foreground">
+              {formatDate(prescription.prescribedDate)}
+            </span>
           </span>
-        </span>
+        </div>
+        <AdherencePill percent={prescription.adherencePercent} label="tuân thủ" />
       </div>
 
       <div className="mb-4 overflow-hidden rounded-xl border border-border">
@@ -78,6 +89,7 @@ function PrescriptionTable({
               <th className="px-3 py-2 text-left font-semibold text-primary">Khung giờ</th>
               <th className="px-3 py-2 text-left font-semibold text-primary">Thời gian</th>
               <th className="px-3 py-2 text-left font-semibold text-primary">Cách dùng</th>
+              <th className="px-3 py-2 text-left font-semibold text-primary">Tuân thủ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -93,6 +105,9 @@ function PrescriptionTable({
                   <span className="text-xs text-muted-foreground">({item.durationDays} ngày)</span>
                 </td>
                 <td className="px-3 py-2 text-foreground">{item.instructions || "—"}</td>
+                <td className="px-3 py-2">
+                  <AdherencePill percent={item.adherencePercent} />
+                </td>
               </tr>
             ))}
           </tbody>

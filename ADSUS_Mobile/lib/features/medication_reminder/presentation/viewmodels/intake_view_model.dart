@@ -6,28 +6,34 @@ import '../../domain/entities/intake_log.dart';
 
 /// Trạng thái màn nhắc thuốc (SCR-19).
 ///
-/// Chỉ cần 1 trường [errorMessage] + [isSubmitting] cho nút "Đã uống" — danh sách
-/// intake log lấy qua FutureProvider bên dưới, không lưu ở đây.
+/// [errorMessage] + [isSubmittingIds] (Set) cho nút "Đã uống" — set lưu intakeId
+/// đang được confirm. Trước đây dùng `bool isSubmitting` global → khi user bấm
+/// xác nhận 1 liều thì TẤT CẢ các liều khác cũng vào trạng thái spinner (review
+/// 16/08/2026). Set phân biệt được từng intakeId, mỗi card chỉ quay khi chính nó
+/// được bấm.
 class IntakeListState {
   const IntakeListState({
     this.errorMessage,
-    this.isSubmitting = false,
+    this.isSubmittingIds = const <String>{},
   });
 
   /// Thông báo lỗi tiếng Việt để hiển thị (vd: đã uống thất bại).
   final String? errorMessage;
 
-  /// Đang gọi confirmIntake — disable nút "Đã uống" cho log đó.
-  final bool isSubmitting;
+  /// Tập intakeId đang gọi confirmIntake. Card nào có id trong set → spinner;
+  /// card khác vẫn hiển thị nút "ĐÃ UỐNG" bình thường.
+  final Set<String> isSubmittingIds;
+
+  bool isSubmittingFor(String intakeId) => isSubmittingIds.contains(intakeId);
 
   IntakeListState copyWith({
     String? errorMessage,
-    bool? isSubmitting,
+    Set<String>? isSubmittingIds,
     bool clearError = false,
   }) =>
       IntakeListState(
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-        isSubmitting: isSubmitting ?? this.isSubmitting,
+        isSubmittingIds: isSubmittingIds ?? this.isSubmittingIds,
       );
 }
 
@@ -55,7 +61,8 @@ class IntakeListViewModel extends StateNotifier<IntakeListState> {
   final Ref _ref;
 
   Future<bool> confirmIntake(String intakeId) async {
-    state = state.copyWith(isSubmitting: true, clearError: true);
+    final next = {...state.isSubmittingIds, intakeId};
+    state = state.copyWith(isSubmittingIds: next, clearError: true);
     try {
       await _ref.read(medicationIntakeRepositoryProvider).confirmIntake(intakeId);
       // Server đã chuyển status → TAKEN (§22.2 fix #7). Refetch lại danh sách để UI
@@ -63,14 +70,17 @@ class IntakeListViewModel extends StateNotifier<IntakeListState> {
       _ref.invalidate(intakeLogsProvider);
       // family provider cũng cần invalidate, vì IntakeLog có thể thuộc 1 đơn cụ thể.
       _ref.invalidate(intakeLogsByPrescriptionProvider);
-      state = state.copyWith(isSubmitting: false);
+      final after = {...state.isSubmittingIds}..remove(intakeId);
+      state = state.copyWith(isSubmittingIds: after);
       return true;
     } on ApiException catch (e) {
-      state = state.copyWith(isSubmitting: false, errorMessage: e.message);
+      final after = {...state.isSubmittingIds}..remove(intakeId);
+      state = state.copyWith(isSubmittingIds: after, errorMessage: e.message);
       return false;
     } catch (e) {
+      final after = {...state.isSubmittingIds}..remove(intakeId);
       state = state.copyWith(
-        isSubmitting: false,
+        isSubmittingIds: after,
         errorMessage: 'Không ghi nhận được việc uống thuốc.',
       );
       return false;

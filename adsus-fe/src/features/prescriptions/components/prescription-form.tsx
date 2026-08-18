@@ -124,9 +124,11 @@ export function PrescriptionForm({
               <span className="font-semibold text-primary">
                 {prefilledPatient.patientName}
               </span>
-              <span className="text-sm text-muted-foreground">
-                ({prefilledPatient.patientCode})
-              </span>
+              {prefilledPatient.patientCode ? (
+                <span className="text-sm text-muted-foreground">
+                  ({prefilledPatient.patientCode})
+                </span>
+              ) : null}
             </div>
           ) : (
             <select
@@ -136,7 +138,7 @@ export function PrescriptionForm({
               <option value="">— Chọn bệnh nhân —</option>
               {cases?.map((c) => (
                 <option key={c.caseId} value={c.caseId}>
-                  {c.patientName} ({c.patientCode})
+                  {c.patientName} {c.patientCode ? `(${c.patientCode})` : ""}
                 </option>
               ))}
             </select>
