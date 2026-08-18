@@ -57,6 +57,10 @@ async def add_no_cache_headers(request, call_next):
 
 
 _model = None
+_current_repo_id: str | None = None
+_current_filename: str | None = None
+
+
 def load_ai_model(repo_id: str, filename: str):
     global _model, _current_repo_id, _current_filename
     print(f"Đang tải model từ HF: {repo_id}/{filename} ...")
@@ -64,7 +68,7 @@ def load_ai_model(repo_id: str, filename: str):
         from ultralytics import YOLO
     except ImportError as e:
         raise RuntimeError("Chưa cài ultralytics. Chạy: pip install ultralytics") from e
-    
+
     model_path = hf_hub_download(
         repo_id=repo_id,
         filename=filename,
@@ -75,11 +79,18 @@ def load_ai_model(repo_id: str, filename: str):
     _current_filename = filename
     print("Model đã sẵn sàng!")
 
+
 def get_model():
     """Lazy-load model — chỉ nạp 1 lần, dùng lại cho mọi request."""
     global _model
     if _model is None:
-        load_ai_model(_current_repo_id, _current_filename)
+        if _current_repo_id and _current_filename:
+            load_ai_model(_current_repo_id, _current_filename)
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail="No AI model loaded yet — call /api/reload-model first, or pass repo_id/filename to /api/detect."
+            )
     return _model
 
 class ReloadModelRequest(BaseModel):

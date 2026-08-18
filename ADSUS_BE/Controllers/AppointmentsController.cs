@@ -105,10 +105,7 @@ public sealed class AppointmentsController : ControllerBase
         {
             var patientProfileId = await GetPatientProfileIdAsync(ct);
             var appointment = await _appointmentService.BookAppointmentAsync(patientProfileId, request, ct);
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = appointment.AppointmentId },
-                ApiResponse<AppointmentResponse>.Ok(appointment));
+            return StatusCode(StatusCodes.Status201Created, ApiResponse<AppointmentResponse>.Ok(appointment, code: 201));
         }
         catch (InvalidOperationException ex)
         {

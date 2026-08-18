@@ -255,7 +255,10 @@ public class ScheduleSlotsControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        _slots.Verify(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()), Times.Once);
+        // ListSlotsAsync also makes an internal no-filter call first to auto-provision missing
+        // default slots (see ScheduleSlotService.ListSlotsAsync) — match only the call that
+        // actually carries the requested status filter, not that internal check.
+        _slots.Verify(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid>(), It.Is<SlotStatus?>(s => s == SlotStatus.Open), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion

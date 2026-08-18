@@ -376,3 +376,8 @@ FodyWeavers.xsd
 /Prompt
 /05_APIs
 graphify-out/
+
+# Trọng số model AI (.pt) — không nhúng vào git nữa (quyết định 16/08/2026, xem
+# Plan/2026-08-16-adsus-cicd-render-vercel-plan.md Task 1). AI Backend tải qua
+# Hugging Face lúc runtime, giống hệt trước đây.
+*.pt

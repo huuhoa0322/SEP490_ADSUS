@@ -81,8 +81,7 @@ public sealed class ScheduleSlotsController : ControllerBase
         try
         {
             var slot = await _slots.CreateSlotAsync(CurrentDoctorId, request, ct);
-            return CreatedAtAction(nameof(GetById), new { id = slot.SlotId },
-                ApiResponse<ScheduleSlotResponse>.Ok(slot));
+            return StatusCode(StatusCodes.Status201Created, ApiResponse<ScheduleSlotResponse>.Ok(slot, code: 201));
         }
         catch (ValidationException ex)
         {
@@ -171,7 +170,8 @@ public sealed class ScheduleSlotsController : ControllerBase
                 return Conflict(ApiResponse<CloseSlotImpactResponse>.Fail(
                     409,
                     $"Slot '{id}' has {impact.AffectedBookingsCount} active booking(s). " +
-                    "Pass ?force=true to confirm closing anyway."));
+                    "Pass ?force=true to confirm closing anyway.",
+                    impact));
             }
             return Ok(ApiResponse<CloseSlotImpactResponse>.Ok(impact));
         }

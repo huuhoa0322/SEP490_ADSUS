@@ -158,7 +158,7 @@ public class HealthLogsControllerIntegrationTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<HealthLogResponse>>();
         Assert.Equal(200, body!.Code); // ApiResponse.Code is still 200
-        Assert.Equal("Exercise", body.Data!.Type);
+        Assert.Equal("EXERCISE", body.Data!.Type);
         Assert.Equal("Walked 30 minutes", body.Data!.Content);
         Assert.NotEqual(Guid.Empty, body.Data!.HealthLogId);
     }
@@ -217,7 +217,7 @@ public class HealthLogsControllerIntegrationTests
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<HealthLogResponse>>();
         Assert.NotNull(body!.Data!.HealthLogId);
         Assert.Equal(profile.PatientProfileId, body.Data.PatientProfileId);
-        Assert.Equal("Exercise", body.Data.Type);
+        Assert.Equal("EXERCISE", body.Data.Type);
         Assert.Equal("Running", body.Data.Content);
         Assert.NotEqual(default(DateOnly), body.Data.LogDate);
         Assert.NotEqual(default(DateTime), body.Data.CreatedAt);
@@ -576,7 +576,7 @@ public class HealthLogsControllerIntegrationTests
         Assert.Equal(logId, log.HealthLogId);
         Assert.Equal(profile.PatientProfileId, log.PatientProfileId);
         Assert.Equal(today, log.LogDate);
-        Assert.Equal("Exercise", log.Type);
+        Assert.Equal("EXERCISE", log.Type);
         Assert.Equal("Test", log.Content);
         Assert.Equal(createdAt, log.CreatedAt);
     }

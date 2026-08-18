@@ -15,6 +15,7 @@ import { useRef, useState, useEffect } from "react";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { searchMedicines } from "@/features/prescriptions/api/prescriptions.api";
+import { getApiErrorMessage } from "@/lib/api-client";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -105,9 +106,8 @@ export function PrescriptionForm({
     try {
       await onSubmit(data);
       toast.success("Kê đơn thuốc và kết thúc ca khám thành công");
-    } catch (e: any) {
-      const message = e?.response?.data?.message || e?.message || "Không thể lưu đơn thuốc. Vui lòng thử lại.";
-      toast.error(message);
+    } catch (e) {
+      toast.error(getApiErrorMessage(e, "Không thể lưu đơn thuốc. Vui lòng thử lại."));
     }
   }
 

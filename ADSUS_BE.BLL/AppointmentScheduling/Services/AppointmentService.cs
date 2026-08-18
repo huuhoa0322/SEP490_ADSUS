@@ -32,39 +32,23 @@ public sealed class AppointmentService : IAppointmentService
         DateOnly? toDate = null,
         CancellationToken ct = default)
     {
-        // BR-02: Chỉ trả về slot OPEN
-        var statusFilter = SlotStatus.Open;
+        // Giới hạn: trong vòng 2 tuần (mặc định nếu không truyền from/to).
+        var from = fromDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var to = toDate ?? from.AddDays(14);
 
-        IQueryable<ScheduleSlot> query = _db.ScheduleSlots
-            .AsNoTracking()
-            .Include(s => s.Doctor)
-            .Include(s => s.Appointments)
-            .Where(s => s.Status == statusFilter);
+        Guid? docGuid = doctorId != null && Guid.TryParse(doctorId, out var parsed) ? parsed : null;
 
-        // Chỉ trả về slot của bác sĩ ACTIVE
-        query = query.Where(s => s.Doctor.Status == UserStatus.Active);
+        // BR-02: Chỉ trả về slot OPEN. Đi qua repository (như mọi service khác trong module
+        // này) thay vì query thẳng AppDbContext — query thẳng cần kết nối DB thật, không thể
+        // test bằng mock repository.
+        var rangeSlots = await _slotRepo.ListByRangeAsync(from, to, docGuid, SlotStatus.Open, ct);
 
-        if (doctorId != null && Guid.TryParse(doctorId, out var docGuid))
-        {
-            query = query.Where(s => s.DoctorId == docGuid);
-        }
-
-        if (fromDate.HasValue)
-        {
-            query = query.Where(s => s.SlotDate >= fromDate.Value);
-        }
-
-        if (toDate.HasValue)
-        {
-            query = query.Where(s => s.SlotDate <= toDate.Value);
-        }
-
-        // Filter slots that don't have BOOKED appointments
-        var slots = await query
+        // Chỉ trả về slot của bác sĩ ACTIVE, và loại slot đã có appointment BOOKED.
+        var slots = rangeSlots
+            .Where(s => s.Doctor.Status == UserStatus.Active)
             .Where(s => !s.Appointments.Any(a => a.Status == AppointmentStatus.Booked))
             .OrderBy(s => s.SlotDate)
-            .ThenBy(s => s.StartTime)
-            .ToListAsync(ct);
+            .ThenBy(s => s.StartTime);
 
         return slots.Select(s => new OpenSlotResponse
         {

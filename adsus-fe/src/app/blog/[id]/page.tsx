@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import { BlogDetailView } from "@/features/blog/components/blog-detail-view";
 
@@ -11,10 +10,7 @@ interface BlogDetailPageProps {
  * SCR-26 — Chi tiết Blog Sức khỏe PUBLIC (UC-23).
  * GB-05: trả 404 nếu bài viết không tồn tại hoặc chưa publish.
  */
-export async function generateMetadata({
-  params,
-}: BlogDetailPageProps): Promise<Metadata> {
-  const { id } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `Bài viết | ADSUS`,
     description: "Chi tiết bài viết y tế",

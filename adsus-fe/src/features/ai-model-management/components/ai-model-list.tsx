@@ -1,7 +1,6 @@
 "use client";
 
 import { AlertCircle, BrainCircuit, Eye, Loader2, Pencil, PlayCircle, Plus, Search } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 
 import { formatDateTime } from "@/features/user-role-management/lib/user-labels";

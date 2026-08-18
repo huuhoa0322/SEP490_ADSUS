@@ -216,6 +216,7 @@ function BlogPostModal({ postId, initialMode, onClose }: { postId: string; initi
 
   useEffect(() => {
     if (post) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs the form once from the async-fetched edit target, not a render-time derivation
       setTitle(post.title);
       setContent(post.content);
     }

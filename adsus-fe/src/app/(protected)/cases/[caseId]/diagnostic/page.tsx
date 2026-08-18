@@ -1,8 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef, use } from "react";
-import Link from "next/link";
+import { useEffect, use } from "react";
 import { useDiagnosticStore } from "@/features/medical-record/stores/use-diagnostic-store";
 import { useCaseDetail } from "@/features/medical-record/hooks/use-cases";
 import { DiagnosticCanvas } from "@/features/medical-record/components/diagnostic-canvas";

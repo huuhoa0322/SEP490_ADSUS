@@ -16,8 +16,7 @@ import '../../domain/services/calendar_sync_service.dart';
 /// 2. Reminder 24h: nhắc trước 24 giờ
 /// 3. Reminder 1h: nhắc trước 1 giờ
 class CalendarSyncServiceImpl implements CalendarSyncService {
-  CalendarSyncServiceImpl({required SharedPreferences prefs})
-      : _prefs = prefs;
+  CalendarSyncServiceImpl({required this._prefs});
 
   final SharedPreferences _prefs;
   static const _prefix = 'synced_';

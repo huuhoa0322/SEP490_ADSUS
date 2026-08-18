@@ -45,7 +45,7 @@ export function PatientProfileForm(props: Props) {
 
   const loaded = profileQuery.data;
 
-  const [gender, setGender] = useState<Gender>("FEMALE");
+  const [gender, setGender] = useState<Gender | "">("");
   const [medicalHistory, setMedicalHistory] = useState("");
   const [allergies, setAllergies] = useState("");
   const [clientError, setClientError] = useState<string | null>(null);
@@ -177,7 +177,24 @@ export function PatientProfileForm(props: Props) {
       ) : null}
 
       <section className="mt-6 space-y-5 rounded-xl border border-border p-5">
-
+        <div>
+          <label htmlFor="gender" className="mb-1.5 block text-sm font-medium">
+            Giới tính{props.mode === "edit" ? " *" : ""}
+          </label>
+          <select
+            id="gender"
+            value={gender}
+            onChange={(event) => setGender(event.target.value as Gender | "")}
+            className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="">— Chưa chọn —</option>
+            {GENDERS.map((g) => (
+              <option key={g} value={g}>
+                {genderLabel(g)}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div>
           <label htmlFor="allergies" className="mb-1.5 block text-sm font-medium">

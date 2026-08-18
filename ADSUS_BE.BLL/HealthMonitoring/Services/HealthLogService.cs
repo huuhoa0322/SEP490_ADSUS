@@ -1,3 +1,4 @@
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.HealthMonitoring.DTOs;
 using ADSUS_BE.BLL.HealthMonitoring.Interfaces;
 using ADSUS_BE.DAL.Entities;
@@ -70,7 +71,7 @@ public class HealthLogService : IHealthLogService
             HealthLogId = healthLog.HealthLogId,
             PatientProfileId = healthLog.PatientProfileId,
             LogDate = healthLog.LogDate,
-            Type = healthLog.LogType.ToString(),
+            Type = healthLog.LogType.ToApiString(),
             Content = healthLog.Content,
             CreatedAt = healthLog.CreatedAt,
         };

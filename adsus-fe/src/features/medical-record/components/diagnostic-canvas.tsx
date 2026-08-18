@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { apiClient } from "@/lib/api-client";
 import { Loader2, AlertCircle, CheckCircle2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,41 @@ interface DiagnosticCanvasProps {
   file: File;
   onConfirm: () => void;
 }
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface Lesion {
+  pair_a: Point[];
+  pair_b: Point[];
+  source: "ai" | "doctor_added";
+  ai_detection_index?: number;
+  rejected: boolean;
+  isValid: boolean;
+}
+
+interface AiDetection {
+  confidence: number;
+  class_id?: number;
+  bbox: { xmin: number; ymin: number; xmax: number; ymax: number };
+  suggested_calipers: {
+    pair_a: [number, number][];
+    pair_b: [number, number][];
+  };
+}
+
+interface PanZoomController {
+  fit: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  reset: () => void;
+  destroy: () => void;
+}
+
+const getErrorMessage = (err: unknown): string =>
+  err instanceof Error ? err.message : String(err);
 
 export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -21,11 +56,11 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
 
   // State mimicking the prototype
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [lesions, setLesions] = useState<any[]>([]);
-  const [aiDetections, setAiDetections] = useState<any[]>([]);
-  
+  const [lesions, setLesions] = useState<Lesion[]>([]);
+  const [aiDetections, setAiDetections] = useState<AiDetection[]>([]);
+
   const [addingMode, setAddingMode] = useState(false);
-  const [addingClicks, setAddingClicks] = useState<any[]>([]);
+  const [addingClicks, setAddingClicks] = useState<Point[]>([]);
   const [note, setNote] = useState("");
   
   const [toastMessage, setToastMessage] = useState<{type: 'error' | 'success', text: string} | null>(null);
@@ -45,11 +80,12 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
   const [editZoom, setEditZoom] = useState("—");
   
   // Expose PZ controllers to React scope
-  const aiPzRef = useRef<any>(null);
-  const editPzRef = useRef<any>(null);
+  const aiPzRef = useRef<PanZoomController | null>(null);
+  const editPzRef = useRef<PanZoomController | null>(null);
 
   useEffect(() => {
     // 1. Reset state for new image
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets all local state when the file prop changes, not a render-time derivation
     setAiDetections([]);
     setLesions([]);
     setSessionId(null);
@@ -71,16 +107,6 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  // Automatically run AI when file (or imgDims) changes and we haven't run it yet
-  // We use imgDims.w to ensure image is loaded before running AI if necessary,
-  // but running it when file changes is also fine.
-  useEffect(() => {
-    if (file && imgDims.w > 0 && !sessionId && !isAnalyzing) {
-       handleRunAi();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, imgDims, sessionId, isAnalyzing]);
-
   const handleRunAi = async () => {
     setIsAnalyzing(true);
     try {
@@ -95,9 +121,9 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         const payload = res.data.data;
         setSessionId(payload.session_id || 'completed');
         setAiDetections(payload.detections || []);
-        
+
         // Initialize lesions state
-        const initialLesions = (payload.detections || []).map((d: any, i: number) => ({
+        const initialLesions = (payload.detections || []).map((d: AiDetection, i: number) => ({
           pair_a: d.suggested_calipers.pair_a.map(([x, y]: number[]) => ({ x, y })),
           pair_b: d.suggested_calipers.pair_b.map(([x, y]: number[]) => ({ x, y })),
           source: 'ai',
@@ -109,14 +135,25 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
       } else {
         showToast('error', "Lỗi AI: " + res.data.message);
       }
-    } catch (err: any) {
-      showToast('error', "Lỗi kết nối AI: " + err.message);
+    } catch (err) {
+      showToast('error', "Lỗi kết nối AI: " + getErrorMessage(err));
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  // SVG DOM builder functions 
+  // Automatically run AI when file (or imgDims) changes and we haven't run it yet
+  // We use imgDims.w to ensure image is loaded before running AI if necessary,
+  // but running it when file changes is also fine.
+  useEffect(() => {
+    if (file && imgDims.w > 0 && !sessionId && !isAnalyzing) {
+       // eslint-disable-next-line react-hooks/set-state-in-effect -- triggers the AI run once the image is ready, not a render-time derivation
+       handleRunAi();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file, imgDims, sessionId, isAnalyzing]);
+
+  // SVG DOM builder functions
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
   const svgPoint = (svg: SVGSVGElement, evt: PointerEvent | MouseEvent) => {
@@ -127,9 +164,9 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
     };
   };
 
-  const svgEl = (tag: string, attrs: any) => {
+  const svgEl = (tag: string, attrs: Record<string, string | number>) => {
     const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
-    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v as string);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
     return el;
   };
 
@@ -323,29 +360,37 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
   }, [imgDims, aiDetections, imgUrl]);
 
   // Make elements draggable
-  const makeDraggable = (el: Element, svg: SVGSVGElement, onPointMove: any, onDeltaMove: any) => {
-    let active = false, lastPt: any = null;
-    const pd = (e: any) => {
+  const makeDraggable = (
+    el: Element,
+    svg: SVGSVGElement,
+    onPointMove: ((x: number, y: number) => void) | null,
+    onDeltaMove: ((dx: number, dy: number) => void) | null
+  ) => {
+    let active = false, lastPt: Point | null = null;
+    const pd = (e: PointerEvent) => {
       active = true; lastPt = svgPoint(svg, e);
       el.setPointerCapture(e.pointerId);
       el.classList.add('dragging');
       e.stopPropagation();
     };
-    const pm = (e: any) => {
-      if (!active) return;
+    const pm = (e: PointerEvent) => {
+      if (!active || !lastPt) return;
       const pt = svgPoint(svg, e);
       if (onPointMove) onPointMove(pt.x, pt.y);
       else if (onDeltaMove) { onDeltaMove(pt.x - lastPt.x, pt.y - lastPt.y); lastPt = pt; }
     };
     const end = () => { active = false; el.classList.remove('dragging'); };
-    el.addEventListener('pointerdown', pd);
-    el.addEventListener('pointermove', pm);
-    el.addEventListener('pointerup', end);
-    el.addEventListener('pointercancel', end);
+    // Element's own addEventListener overloads don't include PointerEvent — cast to the
+    // HTMLElement one, which SVG elements satisfy at runtime (they support pointer capture).
+    const elWithPointerEvents = el as unknown as HTMLElement;
+    elWithPointerEvents.addEventListener('pointerdown', pd);
+    elWithPointerEvents.addEventListener('pointermove', pm);
+    elWithPointerEvents.addEventListener('pointerup', end);
+    elWithPointerEvents.addEventListener('pointercancel', end);
   };
 
   // Geometry checks
-  const checkIntersection = (pair_a: any[], pair_b: any[]) => {
+  const checkIntersection = (pair_a: Point[], pair_b: Point[]) => {
     const x1 = pair_a[0].x, y1 = pair_a[0].y, x2 = pair_a[1].x, y2 = pair_a[1].y;
     const x3 = pair_b[0].x, y3 = pair_b[0].y, x4 = pair_b[1].x, y4 = pair_b[1].y;
     const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
@@ -410,7 +455,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         : `M${-sz} ${-sz} L${sz} ${sz} M${-sz} ${sz} L${sz} ${-sz}`;
     };
 
-    const drawPair = (lesion: any, lesionIdx: number, pairKey: string, markerShape: string) => {
+    const drawPair = (lesion: Lesion, lesionIdx: number, pairKey: 'pair_a' | 'pair_b', markerShape: string) => {
       const pair = lesion[pairKey];
       const line = svgEl('line', {
         x1: pair[0].x, y1: pair[0].y, x2: pair[1].x, y2: pair[1].y,
@@ -426,7 +471,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
       (lineHit as unknown as HTMLElement).style.cursor = 'move';
       svg.appendChild(lineHit);
 
-      const pointEls = pair.map((pt: any) => {
+      const pointEls = pair.map((pt: Point) => {
         const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         g.setAttribute('class', 'caliper-point');
         g.setAttribute('transform', `translate(${pt.x},${pt.y})`);
@@ -452,7 +497,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
       });
 
       // Drag point
-      pair.forEach((_: any, ptIdx: number) => {
+      pair.forEach((_: Point, ptIdx: number) => {
         const g = pointEls[ptIdx];
         makeDraggable(g, svg, (rawX: number, rawY: number) => {
           const nx = clamp(rawX, 0, imgDims.w);
@@ -490,22 +535,22 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
       });
     };
 
-    const lesionCentroid = (lesion: any) => {
+    const lesionCentroid = (lesion: Lesion) => {
       const pts = [...lesion.pair_a, ...lesion.pair_b];
       return {
-        cx: pts.reduce((s: number, p: any) => s + p.x, 0) / 4,
-        cy: pts.reduce((s: number, p: any) => s + p.y, 0) / 4,
+        cx: pts.reduce((s: number, p: Point) => s + p.x, 0) / 4,
+        cy: pts.reduce((s: number, p: Point) => s + p.y, 0) / 4,
       };
     };
 
-    const updateRejectBtnPos = (svg: SVGSVGElement, lesion: any, lesionIdx: number) => {
+    const updateRejectBtnPos = (svg: SVGSVGElement, lesion: Lesion, lesionIdx: number) => {
       const g = svg.querySelector(`[data-reject-for="${lesionIdx}"]`);
       if (!g) return;
       const { cx, cy } = lesionCentroid(lesion);
       g.setAttribute('transform', `translate(${cx + 34},${cy - 34})`);
     };
 
-    const drawRejectButton = (svg: SVGSVGElement, lesion: any, lesionIdx: number) => {
+    const drawRejectButton = (svg: SVGSVGElement, lesion: Lesion, lesionIdx: number) => {
       const { cx, cy } = lesionCentroid(lesion);
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('transform', `translate(${cx + 34},${cy - 34})`);
@@ -579,13 +624,13 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
     }
   };
 
-  const handleEditWrapClick = (e: any) => {
+  const handleEditWrapClick = (e: ReactMouseEvent<HTMLDivElement>) => {
     if (!addingMode) return;
     const svg = editWrapRef.current?.querySelector('svg');
     if (!svg) return;
-    if (e.target.closest('[data-reject-for]')) return;
-    
-    const pt = svgPoint(svg, e);
+    if ((e.target as HTMLElement).closest('[data-reject-for]')) return;
+
+    const pt = svgPoint(svg, e as unknown as MouseEvent);
     const newClicks = [...addingClicks, pt];
     setAddingClicks(newClicks);
     
@@ -719,8 +764,8 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
       } else {
         showToast('error', res.data.message);
       }
-    } catch (err: any) {
-      showToast('error', "Lỗi lưu ảnh: " + err.message);
+    } catch (err) {
+      showToast('error', "Lỗi lưu ảnh: " + getErrorMessage(err));
     } finally {
       setIsConfirming(false);
     }

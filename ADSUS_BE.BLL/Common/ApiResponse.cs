@@ -13,9 +13,9 @@ public class ApiResponse<T>
 
     public T? Data { get; set; }
 
-    public static ApiResponse<T> Ok(T data, string message = "Success") =>
-        new() { Code = 200, Message = message, Data = data };
+    public static ApiResponse<T> Ok(T data, string message = "Success", int code = 200) =>
+        new() { Code = code, Message = message, Data = data };
 
-    public static ApiResponse<T> Fail(int code, string message) =>
-        new() { Code = code, Message = message, Data = default };
+    public static ApiResponse<T> Fail(int code, string message, T? data = default) =>
+        new() { Code = code, Message = message, Data = data };
 }

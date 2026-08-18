@@ -221,13 +221,13 @@ class _MyAppointmentsScreenState
       ),
     );
 
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !context.mounted) return;
 
     // Tiến hành hủy lịch cũ và mở màn đặt lịch
     final ok = await ref
         .read(myAppointmentsViewModelProvider.notifier)
         .reschedule(ap);
-    if (!ok || !mounted) return;
+    if (!ok || !context.mounted) return;
 
     _goBook(context);
   }
@@ -244,7 +244,7 @@ class _MyAppointmentsScreenState
       service =
           await ref.read(calendarSyncServiceProvider.future);
     } on Object catch (e) {
-      if (!mounted) return;
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Không khởi tạo được dịch vụ lịch: $e'),
@@ -256,7 +256,7 @@ class _MyAppointmentsScreenState
 
     try {
       final ok = await service.addAppointmentToCalendar(ap);
-      if (!mounted) return;
+      if (!context.mounted) return;
       if (ok) {
         ref
             .read(myAppointmentsViewModelProvider.notifier)
@@ -278,7 +278,7 @@ class _MyAppointmentsScreenState
         );
       }
     } on CalendarSyncException catch (e) {
-      if (!mounted) return;
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.message),

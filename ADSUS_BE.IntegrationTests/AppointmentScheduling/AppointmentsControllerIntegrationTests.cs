@@ -399,6 +399,7 @@ public class AppointmentsControllerIntegrationTests
         var doctorId = Guid.NewGuid();
 
         // Act
+        _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<ScheduleSlot>());
         var response = await client.GetAsync($"/api/v1/appointments/slots?doctorId={doctorId}");
 
         // Assert
@@ -415,6 +416,7 @@ public class AppointmentsControllerIntegrationTests
         var toDate = fromDate.AddDays(7);
 
         // Act
+        _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<ScheduleSlot>());
         var response = await client.GetAsync(
             $"/api/v1/appointments/slots?fromDate={fromDate:yyyy-MM-dd}&toDate={toDate:yyyy-MM-dd}");
 

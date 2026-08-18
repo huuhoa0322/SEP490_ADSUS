@@ -188,7 +188,7 @@ public class HealthLogServiceTests
 
         // Assert
         Assert.Equal(patientId, result.PatientProfileId);
-        Assert.Equal("Diet", result.Type);
+        Assert.Equal("DIET", result.Type);
         Assert.Equal("Breakfast", result.Content);
         Assert.Equal(logDate, result.LogDate);
         Assert.NotEqual(Guid.Empty, result.HealthLogId);

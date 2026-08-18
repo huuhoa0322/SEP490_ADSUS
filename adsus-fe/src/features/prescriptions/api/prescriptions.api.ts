@@ -186,20 +186,27 @@ export async function getMedicationCatalog(): Promise<MedicationCatalogItem[]> {
 /**
  * GET /api/v1/medicines?search={keyword} — Gợi ý thuốc từ DB.
  */
+interface RawMedicineItem {
+  medicineId?: string;
+  MedicineId?: string;
+  name?: string;
+  Name?: string;
+}
+
 export async function searchMedicines(keyword: string): Promise<MedicationCatalogItem[]> {
-  const { data } = await apiClient.get<any>("/api/v1/medicines", {
+  const { data } = await apiClient.get<unknown>("/api/v1/medicines", {
     params: { search: keyword, limit: 20 },
   });
-  
+
   if (!data) return [];
-  
+
   // Backend có thể trả về array trực tiếp hoặc bọc trong ApiResponse { data: [...] }
-  const items = Array.isArray(data) ? data : (data.data || []);
-  
+  const items = Array.isArray(data) ? data : (data as { data?: unknown }).data;
+
   if (!Array.isArray(items)) return [];
-  
-  return items.map((item: any) => ({
-    medicineId: item.medicineId || item.MedicineId,
-    name: item.name || item.Name,
+
+  return (items as RawMedicineItem[]).map((item) => ({
+    medicineId: item.medicineId || item.MedicineId || "",
+    name: item.name || item.Name || "",
   }));
 }

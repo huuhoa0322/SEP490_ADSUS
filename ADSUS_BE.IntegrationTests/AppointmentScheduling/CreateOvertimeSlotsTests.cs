@@ -48,7 +48,7 @@ public class CreateOvertimeSlotsTests
     public async Task CreateOvertimeSlots_PatientRole_ReturnsForbidden()
     {
         using var app = TaoApp();
-        var patient = new User { UserId = Guid.NewGuid(), Phone = "0999999999", Role = UserRole.Patient, Status = UserStatus.Active };
+        var patient = new User { UserId = Guid.NewGuid(), Phone = "0999999999", FullName = "Test Patient", Role = UserRole.Patient, Status = UserStatus.Active };
         _users.Setup(r => r.GetByIdReadOnlyAsync(patient.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(patient);
         var client = TaoClientCoToken(app, patient);
