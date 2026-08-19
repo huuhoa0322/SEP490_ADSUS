@@ -141,7 +141,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
       const initialLesions = cachedResult.detections.map((d: AiDetection, i: number) => ({
         pair_a: d.suggested_calipers.pair_a.map(([x, y]: number[]) => ({ x, y })),
         pair_b: d.suggested_calipers.pair_b.map(([x, y]: number[]) => ({ x, y })),
-        source: 'ai',
+        source: 'ai' as const,
         ai_detection_index: i,
         rejected: false,
         isValid: true,
