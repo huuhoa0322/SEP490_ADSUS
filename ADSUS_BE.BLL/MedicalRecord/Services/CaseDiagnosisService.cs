@@ -14,6 +14,7 @@ using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.Common.Exceptions;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -69,11 +70,20 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         }
 
         // Send to Python backend which uses its currently loaded model
-        var response = await client.PostAsync($"{_aiBackendUrl}/api/detect", content, ct);
+        HttpResponseMessage response;
+        try
+        {
+            response = await client.PostAsync($"{_aiBackendUrl}/api/detect", content, ct);
+        }
+        catch (HttpRequestException)
+        {
+            throw new BusinessException("Hệ thống AI Backend đang tắt hoặc không thể kết nối. Vui lòng bật AI Backend (hoặc cấu hình Ngrok) trước khi tải ảnh.");
+        }
+
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync(ct);
-            throw new InvalidOperationException($"AI Backend Error: {error}");
+            throw new BusinessException($"Lỗi từ hệ thống AI: {error}");
         }
 
         var json = await response.Content.ReadAsStringAsync(ct);
