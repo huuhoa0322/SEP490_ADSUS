@@ -36,6 +36,12 @@ from geometry import (
 load_dotenv()
 HF_TOKEN = os.environ.get("HUGGINGFACE_TOKEN")
 
+WEBHOOK_TOKEN = os.environ.get("WEBHOOK_TOKEN")
+if not WEBHOOK_TOKEN:
+    env_keys = list(os.environ.keys())
+    print(f"DEBUG: Available environment variable keys: {env_keys}", flush=True)
+    raise RuntimeError("CRITICAL ERROR: WEBHOOK_TOKEN is not configured on the server. Please add it to your .env file or environment variables before starting the server.")
+
 CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", "0.15"))
 
 app = FastAPI(title="Lesion Annotation Assist API")
@@ -106,14 +112,11 @@ def verify_webhook_token(authorization: str | None):
     vì trên Render endpoint này có URL public, không còn nằm sau mạng nội bộ Docker
     như lúc chạy VPS nữa.
     """
-    expected_token = os.environ.get("WEBHOOK_TOKEN")
-    if not expected_token:
-        raise HTTPException(status_code=500, detail="WEBHOOK_TOKEN is not configured on the server")
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
 
     token = authorization.split(" ")[1]
-    if token != expected_token:
+    if token != WEBHOOK_TOKEN:
         raise HTTPException(status_code=403, detail="Invalid token")
 
 
