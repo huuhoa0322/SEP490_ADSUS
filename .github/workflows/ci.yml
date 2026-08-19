@@ -107,5 +107,5 @@ jobs:
         needs: [backend-ci, ai-backend-ci]
         steps:
             - uses: actions/checkout@v4
-            - run: docker build -f ADSUS_BE/Dockerfile -t adsus-api:ci .
+            - run: docker build -f ADSUS_BE/Dockerfile -t api-adsus:ci .
             - run: docker build -t adsus-ai:ci ADSUS_AIBE/backend
