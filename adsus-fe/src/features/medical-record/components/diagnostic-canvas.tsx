@@ -2,26 +2,13 @@ import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 
 import { apiClient, getApiErrorMessage } from "@/lib/api-client";
 import { Loader2, AlertCircle, CheckCircle2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useDiagnosticStore } from "../stores/use-diagnostic-store";
+import { useDiagnosticStore, type Lesion, type Point } from "../stores/use-diagnostic-store";
+import { checkIntersection, generateBurntImage } from "../utils/canvas-utils";
 
 interface DiagnosticCanvasProps {
   caseId: string;
   file: File;
   onConfirm: () => void;
-}
-
-interface Point {
-  x: number;
-  y: number;
-}
-
-interface Lesion {
-  pair_a: Point[];
-  pair_b: Point[];
-  source: "ai" | "doctor_added";
-  ai_detection_index?: number;
-  rejected: boolean;
-  isValid: boolean;
 }
 
 interface AiDetection {
@@ -46,7 +33,7 @@ const getErrorMessage = (err: unknown): string =>
   err instanceof Error ? err.message : String(err);
 
 export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasProps) {
-  const { currentIndex, aiResults, isProcessing, setAiResult, setIsProcessing } = useDiagnosticStore();
+  const { currentIndex, aiResults, isProcessing, setAiResult, setIsProcessing, drafts, setDraft } = useDiagnosticStore();
   
   const cachedResult = aiResults[currentIndex];
   const isAnalyzing = isProcessing[currentIndex] || false;
@@ -59,11 +46,21 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
   const [imgUrl, setImgUrl] = useState<string>("");
   const [imgDims, setImgDims] = useState({ w: 0, h: 0 });
 
-  const [lesions, setLesions] = useState<Lesion[]>([]);
+  const currentDraft = drafts[currentIndex] || { lesions: [], note: "" };
+  const lesions = currentDraft.lesions;
+  const note = currentDraft.note;
+
+  const setLesions = (newLesions: Lesion[] | ((prev: Lesion[]) => Lesion[])) => {
+    const resolved = typeof newLesions === 'function' ? newLesions(lesions) : newLesions;
+    setDraft(currentIndex, { ...currentDraft, lesions: resolved });
+  };
+
+  const setNote = (newNote: string) => {
+    setDraft(currentIndex, { ...currentDraft, note: newNote });
+  };
 
   const [addingMode, setAddingMode] = useState(false);
   const [addingClicks, setAddingClicks] = useState<Point[]>([]);
-  const [note, setNote] = useState("");
   
   const [toastMessage, setToastMessage] = useState<{type: 'error' | 'success', text: string} | null>(null);
 
@@ -87,13 +84,10 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
 
   useEffect(() => {
     // 1. Reset state for new image
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLesions([]);
     setAiZoom("Fit");
     setEditZoom("Fit");
     setAddingMode(false);
     setAddingClicks([]);
-    setNote("");
 
     const url = URL.createObjectURL(file);
     setImgUrl(url);
@@ -135,9 +129,9 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
     }
   };
 
-  // Sync lesions when AI result arrives or changes
+  // Sync lesions when AI result arrives and draft doesn't exist yet
   useEffect(() => {
-    if (cachedResult && cachedResult.sessionId !== 'failed' && cachedResult.detections) {
+    if (cachedResult && cachedResult.sessionId !== 'failed' && cachedResult.detections && !drafts[currentIndex]) {
       const initialLesions = cachedResult.detections.map((d: AiDetection, i: number) => ({
         pair_a: d.suggested_calipers.pair_a.map(([x, y]: number[]) => ({ x, y })),
         pair_b: d.suggested_calipers.pair_b.map(([x, y]: number[]) => ({ x, y })),
@@ -146,9 +140,9 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         rejected: false,
         isValid: true,
       }));
-      setLesions(initialLesions);
+      setDraft(currentIndex, { lesions: initialLesions, note: "" });
     }
-  }, [cachedResult]);
+  }, [cachedResult, drafts, currentIndex, setDraft]);
 
   // SVG DOM builder functions
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -384,17 +378,6 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
     elWithPointerEvents.addEventListener('pointermove', pm);
     elWithPointerEvents.addEventListener('pointerup', end);
     elWithPointerEvents.addEventListener('pointercancel', end);
-  };
-
-  // Geometry checks
-  const checkIntersection = (pair_a: Point[], pair_b: Point[]) => {
-    const x1 = pair_a[0].x, y1 = pair_a[0].y, x2 = pair_a[1].x, y2 = pair_a[1].y;
-    const x3 = pair_b[0].x, y3 = pair_b[0].y, x4 = pair_b[1].x, y4 = pair_b[1].y;
-    const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-    if (Math.abs(denom) < 1e-6) return false;
-    const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
-    const s = ((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)) / denom;
-    return t >= 0 && t <= 1 && s >= 0 && s <= 1;
   };
 
   // Re-render Edit Canvas
@@ -643,66 +626,6 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
     }
   };
 
-  const drawBurntImage = async (): Promise<File | null> => {
-    // Generate burnt image by drawing to a canvas
-    const canvas = document.createElement('canvas');
-    canvas.width = imgDims.w;
-    canvas.height = imgDims.h;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-
-    const img = new Image();
-    img.src = imgUrl;
-    await new Promise(r => img.onload = r);
-    ctx.drawImage(img, 0, 0);
-
-    // Draw calipers
-    ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 2.5;
-    
-    const MARKER_SIZE = 5;
-    const drawMarker = (c: CanvasRenderingContext2D, pt: {x: number, y: number}, shape: '+' | 'x') => {
-      c.beginPath();
-      if (shape === '+') {
-        c.moveTo(pt.x - MARKER_SIZE, pt.y);
-        c.lineTo(pt.x + MARKER_SIZE, pt.y);
-        c.moveTo(pt.x, pt.y - MARKER_SIZE);
-        c.lineTo(pt.x, pt.y + MARKER_SIZE);
-      } else {
-        c.moveTo(pt.x - MARKER_SIZE, pt.y - MARKER_SIZE);
-        c.lineTo(pt.x + MARKER_SIZE, pt.y + MARKER_SIZE);
-        c.moveTo(pt.x - MARKER_SIZE, pt.y + MARKER_SIZE);
-        c.lineTo(pt.x + MARKER_SIZE, pt.y - MARKER_SIZE);
-      }
-      c.stroke();
-    };
-
-    lesions.filter(l => !l.rejected).forEach(l => {
-      // Draw lines (dashed)
-      ctx.setLineDash([14, 10]);
-      ctx.beginPath();
-      ctx.moveTo(l.pair_a[0].x, l.pair_a[0].y);
-      ctx.lineTo(l.pair_a[1].x, l.pair_a[1].y);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(l.pair_b[0].x, l.pair_b[0].y);
-      ctx.lineTo(l.pair_b[1].x, l.pair_b[1].y);
-      ctx.stroke();
-
-      // Draw markers (solid)
-      ctx.setLineDash([]);
-      drawMarker(ctx, l.pair_a[0], '+');
-      drawMarker(ctx, l.pair_a[1], '+');
-      drawMarker(ctx, l.pair_b[0], 'x');
-      drawMarker(ctx, l.pair_b[1], 'x');
-    });
-
-    const blob = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/jpeg', 0.95));
-    if (!blob) return null;
-    return new File([blob], `burnt_${file.name}`, { type: "image/jpeg" });
-  };
-
   const handleConfirm = async () => {
     // Validate
     const confirmedLesions = lesions.filter(l => !l.rejected);
@@ -714,7 +637,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
 
     setIsConfirming(true);
     try {
-      const burntFile = await drawBurntImage();
+      const burntFile = await generateBurntImage(file, confirmedLesions);
       if (!burntFile) throw new Error("Không thể tạo burnt image");
 
       // Calculate BBox for C# backend from calipers (normalize to 0-1)
