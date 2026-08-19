@@ -5,6 +5,7 @@ import "react-hot-toast";
 
 import { QueryProvider } from "@/providers/query-provider";
 import { Toaster } from "react-hot-toast";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 // Same fonts as the team's Medizco template:
@@ -63,6 +64,7 @@ export default function RootLayout({
             },
           }}
         />
+        <Analytics />
         <SpeedInsights />
       </body>
     </html>
