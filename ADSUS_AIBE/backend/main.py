@@ -176,8 +176,8 @@ async def detect(
     results = model.predict(np.array(image), conf=CONF_THRESHOLD, verbose=False)
     r = results[0]
 
-    # Hàm tính IoU thủ công
-    def calculate_iou(box1, box2):
+    # Hàm tính độ chồng chéo (IoU và IoMin)
+    def calculate_overlap(box1, box2):
         x_left = max(box1[0], box2[0])
         y_top = max(box1[1], box2[1])
         x_right = min(box1[2], box2[2])
@@ -189,9 +189,14 @@ async def detect(
         intersection_area = (x_right - x_left) * (y_bottom - y_top)
         box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
         box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
+        
         union_area = box1_area + box2_area - intersection_area
-
-        return intersection_area / union_area if union_area > 0 else 0.0
+        iou = intersection_area / union_area if union_area > 0 else 0.0
+        iomin = intersection_area / min(box1_area, box2_area) if min(box1_area, box2_area) > 0 else 0.0
+        
+        # Trả về giá trị lớn nhất giữa IoU và IoMin
+        # Điều này giúp loại bỏ các hộp nhỏ nằm trọn bên trong hộp lớn (IoMin = 1.0)
+        return max(iou, iomin)
 
     detections = []
     has_mask = getattr(r, "masks", None) is not None
@@ -214,7 +219,7 @@ async def detect(
     for d in raw_detections:
         keep = True
         for kd in kept_detections:
-            if calculate_iou(d["bbox"], kd["bbox"]) > IOU_THRESHOLD:
+            if calculate_overlap(d["bbox"], kd["bbox"]) > IOU_THRESHOLD:
                 keep = False
                 break
         if keep:

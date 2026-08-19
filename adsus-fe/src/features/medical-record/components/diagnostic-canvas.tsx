@@ -1,9 +1,8 @@
-"use client";
-
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, getApiErrorMessage } from "@/lib/api-client";
 import { Loader2, AlertCircle, CheckCircle2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDiagnosticStore } from "../stores/use-diagnostic-store";
 
 interface DiagnosticCanvasProps {
   caseId: string;
@@ -47,17 +46,20 @@ const getErrorMessage = (err: unknown): string =>
   err instanceof Error ? err.message : String(err);
 
 export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasProps) {
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { currentIndex, aiResults, isProcessing, setAiResult, setIsProcessing } = useDiagnosticStore();
+  
+  const cachedResult = aiResults[currentIndex];
+  const isAnalyzing = isProcessing[currentIndex] || false;
+  const sessionId = cachedResult?.sessionId || null;
+  const aiDetections = cachedResult?.detections || [];
+
   const [isConfirming, setIsConfirming] = useState(false);
   
   // State for original image
   const [imgUrl, setImgUrl] = useState<string>("");
   const [imgDims, setImgDims] = useState({ w: 0, h: 0 });
 
-  // State mimicking the prototype
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const [lesions, setLesions] = useState<Lesion[]>([]);
-  const [aiDetections, setAiDetections] = useState<AiDetection[]>([]);
 
   const [addingMode, setAddingMode] = useState(false);
   const [addingClicks, setAddingClicks] = useState<Point[]>([]);
@@ -85,12 +87,10 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
 
   useEffect(() => {
     // 1. Reset state for new image
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets all local state when the file prop changes, not a render-time derivation
-    setAiDetections([]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLesions([]);
-    setSessionId(null);
-    setAiZoom("—");
-    setEditZoom("—");
+    setAiZoom("Fit");
+    setEditZoom("Fit");
     setAddingMode(false);
     setAddingClicks([]);
     setNote("");
@@ -108,7 +108,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
   }, [file]);
 
   const handleRunAi = async () => {
-    setIsAnalyzing(true);
+    setIsProcessing(currentIndex, true);
     try {
       const formData = new FormData();
       formData.append("image", file);
@@ -119,41 +119,36 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
 
       if (res.data.code === 200 && res.data.data) {
         const payload = res.data.data;
-        setSessionId(payload.session_id || 'completed');
-        setAiDetections(payload.detections || []);
-
-        // Initialize lesions state
-        const initialLesions = (payload.detections || []).map((d: AiDetection, i: number) => ({
-          pair_a: d.suggested_calipers.pair_a.map(([x, y]: number[]) => ({ x, y })),
-          pair_b: d.suggested_calipers.pair_b.map(([x, y]: number[]) => ({ x, y })),
-          source: 'ai',
-          ai_detection_index: i,
-          rejected: false,
-          isValid: true,
-        }));
-        setLesions(initialLesions);
+        setAiResult(currentIndex, {
+          sessionId: payload.session_id || 'completed',
+          detections: payload.detections || []
+        });
       } else {
-        setSessionId('failed');
+        setAiResult(currentIndex, { sessionId: 'failed', detections: [], error: res.data.message });
         showToast('error', "Kết nối tới model AI thất bại");
       }
     } catch (err) {
-      setSessionId('failed');
+      setAiResult(currentIndex, { sessionId: 'failed', detections: [], error: getApiErrorMessage(err, "Lỗi hệ thống") });
       showToast('error', "Kết nối tới model AI thất bại");
     } finally {
-      setIsAnalyzing(false);
+      setIsProcessing(currentIndex, false);
     }
   };
 
-  // Automatically run AI when file (or imgDims) changes and we haven't run it yet
-  // We use imgDims.w to ensure image is loaded before running AI if necessary,
-  // but running it when file changes is also fine.
+  // Sync lesions when AI result arrives or changes
   useEffect(() => {
-    if (file && imgDims.w > 0 && !sessionId && !isAnalyzing) {
-       // eslint-disable-next-line react-hooks/set-state-in-effect -- triggers the AI run once the image is ready, not a render-time derivation
-       handleRunAi();
+    if (cachedResult && cachedResult.sessionId !== 'failed' && cachedResult.detections) {
+      const initialLesions = cachedResult.detections.map((d: AiDetection, i: number) => ({
+        pair_a: d.suggested_calipers.pair_a.map(([x, y]: number[]) => ({ x, y })),
+        pair_b: d.suggested_calipers.pair_b.map(([x, y]: number[]) => ({ x, y })),
+        source: 'ai',
+        ai_detection_index: i,
+        rejected: false,
+        isValid: true,
+      }));
+      setLesions(initialLesions);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, imgDims, sessionId, isAnalyzing]);
+  }, [cachedResult]);
 
   // SVG DOM builder functions
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
