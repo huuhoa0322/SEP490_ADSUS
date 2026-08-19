@@ -1,6 +1,15 @@
 "use client";
 
-import { AlertCircle, Eye, EyeOff, Info, Loader2, Lock, Phone } from "lucide-react";
+import {
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Info,
+  Loader2,
+  Lock,
+  Phone,
+  Smartphone,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
@@ -12,6 +21,13 @@ import { getHomePathForRole, useAuthStore, useHasHydrated } from "@/store/auth-s
 
 import { useSignIn } from "../hooks/use-sign-in";
 import { getSignInErrorMessage } from "../lib/auth-messages";
+
+// File APK không commit vào git (bài học từ file model .pt 44.8MB từng làm phình repo
+// AI Backend) — host trên GitHub Releases của chính repo này (đã Public), free, không giới
+// hạn dung lượng đáng kể. Có bản Android mới: repo → Releases → tạo release mới → đính kèm
+// file .apk → copy đúng URL "asset" GitHub tự sinh, dán đè vào đây.
+const ANDROID_APK_DOWNLOAD_URL =
+    "https://github.com/huuhoa0322/SEP490_ADSUS/releases/download/android-v1.0.0/adsus-mobile-1.0.0.apk"
 
 export function SignInForm() {
   const router = useRouter();
@@ -210,6 +226,15 @@ export function SignInForm() {
             Quên mật khẩu?
           </Link>
         </p>
+
+        {/* Link tải app Android — trỏ ra ngoài GitHub Releases, xem hằng số ở đầu file. */}
+        <a
+          href={ANDROID_APK_DOWNLOAD_URL}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-border text-sm font-600 text-foreground transition-colors hover:border-accent hover:text-accent"
+        >
+          <Smartphone aria-hidden className="size-4" />
+          Tải ứng dụng Android
+        </a>
       </form>
     </div>
   );
