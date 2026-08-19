@@ -8,16 +8,19 @@ import { DiagnosticCanvas } from "@/features/medical-record/components/diagnosti
 import { useQueryClient } from "@tanstack/react-query";
 import { medicalRecordQueryKeys } from "@/features/medical-record/hooks/query-keys";
 import { useAiModelList } from "@/features/ai-model-management/hooks/use-ai-models";
+import { useBackgroundAi } from "@/features/medical-record/hooks/use-background-ai";
 
 export default function DiagnosticPage({ params }: { params: Promise<{ caseId: string }> }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { caseId } = use(params);
   const { data: medicalCase, isLoading } = useCaseDetail(caseId);
-  const { images, currentIndex, nextImage, clearSession } = useDiagnosticStore();
+  const { images, currentIndex, nextImage, prevImage, clearSession, removeImage } = useDiagnosticStore();
   
   const { data: modelsData } = useAiModelList({});
   const activeModel = modelsData?.items.find(m => m.status.toLowerCase() === "active")?.versionCode || "Không rõ";
+
+  useBackgroundAi();
   
   useEffect(() => {
     // If no images in store, redirect back to case details
@@ -42,12 +45,7 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
     queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
     queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.images(caseId) });
 
-    if (isLastImage) {
-      clearSession();
-      router.push(`/cases/${caseId}`);
-    } else {
-      nextImage();
-    }
+    removeImage(currentIndex);
   }
 
   return (
@@ -77,8 +75,27 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
             </span>
             AI Active: <span className="font-mono font-medium">{activeModel}</span>
           </div>
-          <div className="text-sm font-medium">
-            Ảnh {currentIndex + 1} / {images.length}
+          
+          <div className="flex items-center gap-3 rounded-md bg-muted px-2 py-1">
+            <button 
+              onClick={() => prevImage()} 
+              disabled={currentIndex === 0}
+              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+              title="Ảnh trước"
+            >
+              ◀
+            </button>
+            <div className="text-sm font-medium tabular-nums">
+              Ảnh {currentIndex + 1} / {images.length}
+            </div>
+            <button 
+              onClick={() => nextImage()} 
+              disabled={isLastImage}
+              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+              title="Ảnh sau"
+            >
+              ▶
+            </button>
           </div>
         </div>
       </header>
@@ -86,6 +103,7 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
       {/* MAIN DIAGNOSTIC WORKSPACE */}
       <main className="flex flex-1 overflow-hidden">
         <DiagnosticCanvas 
+          key={currentIndex}
           caseId={caseId} 
           file={currentFile} 
           onConfirm={handleNext} 
