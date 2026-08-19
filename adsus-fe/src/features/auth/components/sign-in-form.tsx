@@ -2,17 +2,23 @@
 
 import { AlertCircle, Eye, EyeOff, Info, Loader2, Lock, Phone } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { getHomePathForRole, useAuthStore, useHasHydrated } from "@/store/auth-store";
 
 import { useSignIn } from "../hooks/use-sign-in";
 import { getSignInErrorMessage } from "../lib/auth-messages";
 
 export function SignInForm() {
+  const router = useRouter();
+  const hasHydrated = useHasHydrated();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
+
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -23,6 +29,26 @@ export function SignInForm() {
   // Bị đá ra vì token hết hiệu lực (hết hạn, hoặc tài khoản vừa bị Admin khoá). Không nói
   // gì thì người dùng tưởng hệ thống tự đăng xuất vô cớ.
   const wasExpired = useSearchParams().get("expired") === "1";
+
+  // Vào thẳng "/" hoặc gõ tay "/login" khi phiên trong localStorage vẫn còn hợp lệ — trước
+  // đây bị kẹt ở form đăng nhập vì AuthGuard (app/(protected)/layout.tsx) không bọc trang
+  // này. userId thiếu nghĩa là phiên cũ trước 04/08/2026, cứ để rơi xuống form đăng nhập
+  // lại thay vì tự chuyển, an toàn hơn là chuyển tới trang rồi vỡ vì thiếu field.
+  const alreadySignedIn = hasHydrated && Boolean(accessToken) && Boolean(user?.userId);
+
+  useEffect(() => {
+    if (!alreadySignedIn || !user) return;
+    router.replace(getHomePathForRole(user.role));
+  }, [alreadySignedIn, user, router]);
+
+  if (alreadySignedIn) {
+    return (
+      <div className="flex min-h-96 items-center justify-center">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <span className="sr-only">Đang chuyển hướng...</span>
+      </div>
+    );
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
