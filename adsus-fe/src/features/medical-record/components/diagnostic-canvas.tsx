@@ -133,10 +133,12 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         }));
         setLesions(initialLesions);
       } else {
-        showToast('error', "Lỗi AI: " + res.data.message);
+        setSessionId('failed');
+        showToast('error', "Kết nối tới model AI thất bại");
       }
     } catch (err) {
-      showToast('error', "Lỗi kết nối AI: " + getErrorMessage(err));
+      setSessionId('failed');
+      showToast('error', "Kết nối tới model AI thất bại");
     } finally {
       setIsAnalyzing(false);
     }
@@ -798,18 +800,21 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
             {isAnalyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
             Chạy AI
           </button>
-          
-          <span 
-            className={`text-[13px] font-bold uppercase tracking-wide ${
-              sessionId 
-                ? (aiDetections.length > 0 ? 'text-red-500' : 'text-green-500') 
-                : 'text-amber-500'
-            }`}
-          >
-            {sessionId 
-              ? (aiDetections.length > 0 ? `Có ${aiDetections.length} vùng abnormal` : 'Không có vùng abnormal')
-              : (isAnalyzing ? 'Đang phân tích...' : 'Chưa phân tích')}
-          </span>
+                    <span 
+              className={`text-[13px] font-bold uppercase tracking-wide ${
+                sessionId === 'failed'
+                  ? 'text-red-500'
+                  : sessionId 
+                    ? (aiDetections.length > 0 ? 'text-red-500' : 'text-green-500') 
+                    : 'text-amber-500'
+              }`}
+            >
+              {sessionId === 'failed'
+                ? 'Kết nối tới model AI thất bại'
+                : sessionId 
+                  ? (aiDetections.length > 0 ? `Có ${aiDetections.length} vùng abnormal` : 'Không có vùng abnormal')
+                  : (isAnalyzing ? 'Đang phân tích...' : 'Chưa phân tích')}
+            </span>
           
           <div className="ml-auto flex items-center gap-1">
             <button className="flex h-6 w-6 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => aiPzRef.current?.zoomOut()}>−</button>
