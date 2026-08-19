@@ -5,6 +5,7 @@ import "react-hot-toast";
 
 import { QueryProvider } from "@/providers/query-provider";
 import { Toaster } from "react-hot-toast";
+import { Analytics } from "@vercel/analytics/next";
 
 // Same fonts as the team's Medizco template:
 //   Exo    for headings (style.css line 100)
@@ -62,6 +63,7 @@ export default function RootLayout({
             },
           }}
         />
+        <Analytics />
       </body>
     </html>
   );
