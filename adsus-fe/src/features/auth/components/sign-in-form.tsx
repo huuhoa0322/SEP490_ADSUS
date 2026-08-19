@@ -41,11 +41,14 @@ export function SignInForm() {
     router.replace(getHomePathForRole(user.role));
   }, [alreadySignedIn, user, router]);
 
-  if (alreadySignedIn) {
+  // Chưa hydrate xong thì CHƯA BIẾT có phiên hay không — hiện spinner trong lúc đó thay vì
+  // hiện form thật, nếu không người đã đăng nhập vẫn thấy form loé lên rồi mới bị đá đi
+  // (đúng lỗi vừa gặp). Cùng cách AuthGuard xử lý cho các trang protected.
+  if (!hasHydrated || alreadySignedIn) {
     return (
       <div className="flex min-h-96 items-center justify-center">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        <span className="sr-only">Đang chuyển hướng...</span>
+        <span className="sr-only">Đang kiểm tra phiên đăng nhập...</span>
       </div>
     );
   }
