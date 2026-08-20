@@ -114,7 +114,7 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
           };
         });
 
-        const mappedAiBboxes = aiDetections.map((d: any) => ({
+        const mappedAiBboxes = aiDetections.map((d) => ({
           xmin: d.bbox.xmin,
           ymin: d.bbox.ymin,
           xmax: d.bbox.xmax,
@@ -144,8 +144,9 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
       clearSession();
       router.push(`/cases/${caseId}`);
 
-    } catch (err: any) {
-      alert("Lỗi khi lưu hàng loạt: " + (err.message || String(err)));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      alert("Lỗi khi lưu hàng loạt: " + message);
     } finally {
       setIsSavingAll(false);
     }
