@@ -31,6 +31,13 @@ public class AiModelsControllerIntegrationTests
         CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
     };
 
+    private readonly User _doctor = new()
+    {
+        UserId = Guid.NewGuid(), FullName = "Doctor", Phone = "0933333333",
+        PasswordHash = "x", Role = UserRole.Doctor, Status = UserStatus.Active,
+        CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+    };
+
     private readonly User _nurse = new()
     {
         UserId = Guid.NewGuid(), FullName = "Nurse", Phone = "0911111111",
@@ -92,13 +99,56 @@ public class AiModelsControllerIntegrationTests
     [Theory]
     [InlineData("NURSE")]
     [InlineData("PATIENT")]
+    [InlineData("DOCTOR")]
     public async Task SearchVersions_WrongRole_Returns403Forbidden(string role)
+    {
+        using var app = MakeApp();
+        var user = role switch { "NURSE" => _nurse, "PATIENT" => _patient, _ => _doctor };
+        var client = MakeClientWithToken(app, user);
+        var response = await client.GetAsync("/api/v1/ai-model-versions");
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    // IT_Auth_02b — the full list stays Admin-only; a Doctor is not exempted just because
+    // they can see the Active version through the dedicated endpoint below.
+    [Fact]
+    public async Task GetVersionById_DoctorRole_Returns403Forbidden()
+    {
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var response = await client.GetAsync($"/api/v1/ai-model-versions/{Guid.NewGuid()}");
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    // IT_Auth_02c
+    [Theory]
+    [InlineData("NURSE")]
+    [InlineData("PATIENT")]
+    public async Task GetActiveVersion_WrongRole_Returns403Forbidden(string role)
     {
         using var app = MakeApp();
         var user = role == "NURSE" ? _nurse : _patient;
         var client = MakeClientWithToken(app, user);
-        var response = await client.GetAsync("/api/v1/ai-model-versions");
+        var response = await client.GetAsync("/api/v1/ai-model-versions/active");
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    // IT_Flow_01b — Doctor may see the Active version only (BR-07), via its own endpoint.
+    [Fact]
+    public async Task GetActiveVersion_DoctorRole_Returns200OK()
+    {
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+
+        _aiModelService.Setup(s => s.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AiModelVersionDto { VersionCode = "v1.0.0", Status = "Active" });
+
+        var response = await client.GetAsync("/api/v1/ai-model-versions/active");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<AiModelVersionDto>>();
+        Assert.Equal(200, body!.Code);
+        Assert.Equal("v1.0.0", body.Data!.VersionCode);
     }
 
     // IT_Flow_01

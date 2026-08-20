@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   activateAiModel,
+  getActiveAiModel,
   getAiModelById,
   getAiModels,
   registerAiModel,
@@ -23,6 +24,13 @@ export function useAiModelList(query: AiModelListQuery) {
   return useQuery({
     queryKey: queryKeys.list(query),
     queryFn: () => getAiModels(query),
+  });
+}
+
+export function useActiveAiModel() {
+  return useQuery({
+    queryKey: [...queryKeys.all, "active"] as const,
+    queryFn: getActiveAiModel,
   });
 }
 

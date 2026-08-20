@@ -31,6 +31,13 @@ export async function getAiModelById(id: string): Promise<AiModelVersion> {
   return data.data;
 }
 
+// Doctor-facing: chỉ trả về phiên bản đang Active (dùng cho canvas chẩn đoán UC-19).
+// Doctor không có quyền gọi getAiModels/getAiModelById (danh sách đầy đủ, Admin-only).
+export async function getActiveAiModel(): Promise<AiModelVersion | null> {
+  const { data } = await apiClient.get<ApiResponse<AiModelVersion | null>>(`${BASE}/active`);
+  return data.data ?? null;
+}
+
 export async function registerAiModel(payload: RegisterModelVersionRequest): Promise<{ data: AiModelVersion; message: string }> {
   const { data } = await apiClient.post<ApiResponse<AiModelVersion>>(BASE, payload);
   if (!data.data) throw new Error(data.message || "Đăng ký mô hình thất bại.");

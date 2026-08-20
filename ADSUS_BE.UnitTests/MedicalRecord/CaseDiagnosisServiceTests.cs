@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Services;
 using ADSUS_BE.DAL.Data;
@@ -66,20 +67,20 @@ public class CaseDiagnosisServiceTests : IDisposable
     // =========================================================================
 
     [Fact]
-    public async Task AnalyzeImageAsync_NoActiveModel_ThrowsInvalidOperationException()
+    public async Task AnalyzeImageAsync_NoActiveModel_ThrowsBusinessException()
     {
         // Arrange
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync((AiModelVersion?)null);
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAsync<BusinessException>(
             () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png"));
         Assert.Contains("Hệ thống chưa có phiên bản AI nào được kích hoạt", ex.Message);
     }
 
     [Fact]
-    public async Task AnalyzeImageAsync_AiBackendReturnsError_ThrowsInvalidOperationException()
+    public async Task AnalyzeImageAsync_AiBackendReturnsError_ThrowsBusinessException()
     {
         // Arrange
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
@@ -99,9 +100,9 @@ public class CaseDiagnosisServiceTests : IDisposable
             });
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAsync<BusinessException>(
             () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png"));
-        Assert.Contains("AI Backend Error: Model Server Down", ex.Message);
+        Assert.Contains("Lỗi từ hệ thống AI: Model Server Down", ex.Message);
     }
 
     [Fact]
@@ -202,14 +203,14 @@ public class CaseDiagnosisServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task ConfirmAnalysisAsync_NoActiveModel_ThrowsInvalidOperationException()
+    public async Task ConfirmAnalysisAsync_NoActiveModel_ThrowsBusinessException()
     {
         // Arrange
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync((AiModelVersion?)null);
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAsync<BusinessException>(
             () => _sut.ConfirmAnalysisAsync(_caseId, MakeValidConfirmRequest()));
         Assert.Contains("Hệ thống chưa có phiên bản AI nào được kích hoạt", ex.Message);
     }
