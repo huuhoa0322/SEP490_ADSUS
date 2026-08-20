@@ -466,6 +466,7 @@ namespace ADSUS_BE
 
             // BLL — Module 10: Engagement (Blog PUBLIC endpoints)
             builder.Services.AddScoped<IBlogPostService, BlogPostService>();
+            builder.Services.AddScoped<IChatService, ChatService>();
 
             // DAL — Repositories
             builder.Services.AddScoped<IBlogPostRepository, BlogPostRepository>();
