@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SignInForm } from "@/features/auth/components/sign-in-form";
 
-const { mutate, hookState, searchParamsMock } = vi.hoisted(() => ({
+const { mutate, hookState, searchParamsMock, replaceMock } = vi.hoisted(() => ({
   mutate: vi.fn(),
   hookState: {
     isPending: false,
@@ -14,10 +14,12 @@ const { mutate, hookState, searchParamsMock } = vi.hoisted(() => ({
     error: null as unknown,
   },
   searchParamsMock: vi.fn(() => new URLSearchParams()),
+  replaceMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParamsMock(),
+  useRouter: () => ({ replace: replaceMock }),
 }));
 
 vi.mock("@/features/auth/hooks/use-sign-in", () => ({
@@ -40,6 +42,7 @@ function loiHttp(status: number): AxiosError {
 describe("SignInForm", () => {
   beforeEach(() => {
     mutate.mockReset();
+    replaceMock.mockClear();
     hookState.isPending = false;
     hookState.isSuccess = false;
     hookState.isError = false;

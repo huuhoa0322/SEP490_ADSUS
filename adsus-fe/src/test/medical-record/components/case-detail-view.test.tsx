@@ -145,6 +145,8 @@ describe("CaseDetailView", () => {
 
   it("tắt nút bổ sung ảnh khi ca đã kết luận", () => {
     // GB-01 — ca đã chốt không nhận thêm dữ liệu đầu vào.
+    // Nút chỉ render cho đúng Bác sĩ phụ trách ca này (isResponsibleDoctor).
+    signInAs("DOCTOR", "doctor-1");
     detailMock.mockReturnValue(makeCase("CONFIRMED"));
 
     render(<CaseDetailView caseId="case-1" />);
@@ -153,6 +155,7 @@ describe("CaseDetailView", () => {
   });
 
   it("cho bổ sung ảnh khi ca chưa kết luận", () => {
+    signInAs("DOCTOR", "doctor-1");
     detailMock.mockReturnValue(makeCase("CREATED"));
 
     render(<CaseDetailView caseId="case-1" />);
