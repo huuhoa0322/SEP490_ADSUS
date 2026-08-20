@@ -49,4 +49,7 @@ class ApiConstants {
 
   /// Quá thời gian này coi như không kết nối được.
   static const Duration timeout = Duration(seconds: 15);
+
+  // Module 10 — AI Chatbot (FT-39)
+  static const String chatMessages = '/api/v1/me/chat/messages';
 }

@@ -17,7 +17,15 @@ class AppColors {
   static const Color blue = Color(0xFF558DCA);
   static const Color danger = Color(0xFFF13A66);
 
-  /// Màu trạng thái tuân thủ (Module 7 AdherencePill).
+  /// Màu cho chatbot AI (viền + badge ASSISTANT bubble).
+  /// Khớp với --ai-violet trong design tokens ADSUS.
+  static const Color aiViolet = Color(0xFF7C5CD9);
+
+  /// Màu nền banner/viền AI (tint của aiViolet).
+  static const Color aiVioletTint = Color(0xFFF1EDFC);
+
+  /// Màu nền danger card (safety response).
+  static const Color dangerTint = Color(0xFFFBEAE9);
   /// Hex khớp với web --status-good/--status-warning trong globals.css.
   /// KHÔNG dùng [danger] cho adherence thấp — đỏ chỉ dành cho safety card / validation
   /// error (xem CLAUDE.md §11.3.4).

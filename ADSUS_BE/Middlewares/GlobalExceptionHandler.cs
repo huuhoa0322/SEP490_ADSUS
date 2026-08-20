@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
@@ -19,6 +20,8 @@ public class GlobalExceptionHandler
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        // UnsafeRelaxedJsonEscaping đảm bảo tiếng Việt encode đúng UTF-8, không fallback.
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     public GlobalExceptionHandler(RequestDelegate next, ILogger<GlobalExceptionHandler> logger)

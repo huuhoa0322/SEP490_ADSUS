@@ -102,6 +102,7 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Role).HasColumnName("role");
 
             entity.HasOne(d => d.User).WithMany(p => p.AiChatMessages)
                 .HasForeignKey(d => d.UserId)

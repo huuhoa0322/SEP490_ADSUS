@@ -19,7 +19,10 @@ Dio createDioClient(
       baseUrl: ApiConstants.baseUrl,
       connectTimeout: ApiConstants.timeout,
       receiveTimeout: ApiConstants.timeout,
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Accept-Charset': 'utf-8',
+      },
       // Để Dio ném DioException cho mọi mã lỗi, tầng trên bắt và dịch một chỗ.
       validateStatus: (status) => status != null && status < 400,
     ),

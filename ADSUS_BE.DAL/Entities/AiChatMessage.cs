@@ -16,5 +16,7 @@ public partial class AiChatMessage
 
     public DateTime CreatedAt { get; set; }
 
+    public ChatRole Role { get; set; }
+
     public virtual User User { get; set; } = null!;
 }
