@@ -142,3 +142,13 @@ public enum MedicineStatus
     [PgName("ACTIVE")] Active,
     [PgName("INACTIVE")] Inactive,
 }
+
+/// <summary>
+/// Vai trò trong hội thoại chatbot — enum <c>chat_role</c> trong DB.
+/// Phân biệt lượt hỏi (USER) và lượt trả lời (ASSISTANT).
+/// </summary>
+public enum ChatRole
+{
+    [PgName("USER")] User,
+    [PgName("ASSISTANT")] Assistant,
+}
