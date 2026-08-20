@@ -341,6 +341,11 @@ namespace ADSUS_BE
             // chỉ đọc mảng keyword tĩnh.
             builder.Services.AddSingleton<IPsychologyTopicFilter, PsychologyTopicFilter>();
 
+            // BLL — ChatClient (Module 10 Chat).
+            // FakeChatClient mặc định vì user không có OpenAI key trả phí.
+            // Khi có key → swap sang OpenAiChatClient trong DI registration.
+            builder.Services.AddScoped<IChatClient, FakeChatClient>();
+
             // BLL — Module 1: Authentication & Account
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
