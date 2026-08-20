@@ -195,6 +195,7 @@ namespace ADSUS_BE
             dataSourceBuilder.MapEnum<ReminderSlot>("reminder_slot");
             dataSourceBuilder.MapEnum<HealthLogType>("health_log_type");
             dataSourceBuilder.MapEnum<MedicineStatus>("medicines_status");
+            dataSourceBuilder.MapEnum<ChatRole>("chat_role");
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);
@@ -463,6 +464,7 @@ namespace ADSUS_BE
 
             // DAL — Repositories
             builder.Services.AddScoped<IBlogPostRepository, BlogPostRepository>();
+            builder.Services.AddScoped<IAiChatMessageRepository, AiChatMessageRepository>();
 
             // BLL — Module 7: Prescription & Medication Adherence
             builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
