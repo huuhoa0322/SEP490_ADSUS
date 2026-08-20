@@ -49,7 +49,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
     {
         // Ignore the modelVersionId passed from frontend and fetch the true ACTIVE model
         var activeModel = await _aiModelVersionRepo.GetActiveVersionAsync(ct);
-        if (activeModel == null) throw new InvalidOperationException("Hệ thống chưa có phiên bản AI nào được kích hoạt. Vui lòng liên hệ Admin.");
+        if (activeModel == null) throw new BusinessException("Hệ thống chưa có phiên bản AI nào được kích hoạt. Vui lòng liên hệ Admin.");
 
         using var client = _httpClientFactory.CreateClient();
         client.Timeout = TimeSpan.FromMinutes(2); // AI might take time
@@ -127,7 +127,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
 
         // 4.5 Fetch true active ModelVersionId for database tracking
         var activeModel = await _aiModelVersionRepo.GetActiveVersionAsync(ct);
-        if (activeModel == null) throw new InvalidOperationException("Hệ thống chưa có phiên bản AI nào được kích hoạt. Vui lòng liên hệ Admin.");
+        if (activeModel == null) throw new BusinessException("Hệ thống chưa có phiên bản AI nào được kích hoạt. Vui lòng liên hệ Admin.");
         var activeModelId = activeModel.ModelVersionId;
 
         // 5. Database Transaction

@@ -19,9 +19,19 @@ export interface DraftState {
   note: string;
 }
 
+export interface AiDetection {
+  confidence: number;
+  class_id?: number;
+  bbox: { xmin: number; ymin: number; xmax: number; ymax: number };
+  suggested_calipers: {
+    pair_a: [number, number][];
+    pair_b: [number, number][];
+  };
+}
+
 export interface AiResultData {
   sessionId: string;
-  detections: any[];
+  detections: AiDetection[];
   error?: string;
 }
 

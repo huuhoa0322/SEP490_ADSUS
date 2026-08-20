@@ -7,7 +7,7 @@ import { useCaseDetail } from "@/features/medical-record/hooks/use-cases";
 import { DiagnosticCanvas } from "@/features/medical-record/components/diagnostic-canvas";
 import { useQueryClient } from "@tanstack/react-query";
 import { medicalRecordQueryKeys } from "@/features/medical-record/hooks/query-keys";
-import { useAiModelList } from "@/features/ai-model-management/hooks/use-ai-models";
+import { useActiveAiModel } from "@/features/ai-model-management/hooks/use-ai-models";
 import { useBackgroundAi } from "@/features/medical-record/hooks/use-background-ai";
 import { apiClient } from "@/lib/api-client";
 import { checkIntersection, generateBurntImage } from "@/features/medical-record/utils/canvas-utils";
@@ -20,8 +20,8 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
   const { data: medicalCase, isLoading } = useCaseDetail(caseId);
   const { images, currentIndex, nextImage, prevImage, clearSession, removeImage, drafts, aiResults } = useDiagnosticStore();
   
-  const { data: modelsData } = useAiModelList({});
-  const activeModel = modelsData?.items.find(m => m.status.toLowerCase() === "active")?.versionCode || "Không rõ";
+  const { data: activeModelData } = useActiveAiModel();
+  const activeModel = activeModelData?.versionCode || "Không rõ";
 
   useBackgroundAi();
   
@@ -114,7 +114,7 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
           };
         });
 
-        const mappedAiBboxes = aiDetections.map((d: any) => ({
+        const mappedAiBboxes = aiDetections.map((d) => ({
           xmin: d.bbox.xmin,
           ymin: d.bbox.ymin,
           xmax: d.bbox.xmax,
@@ -144,8 +144,9 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
       clearSession();
       router.push(`/cases/${caseId}`);
 
-    } catch (err: any) {
-      alert("Lỗi khi lưu hàng loạt: " + (err.message || String(err)));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      alert("Lỗi khi lưu hàng loạt: " + message);
     } finally {
       setIsSavingAll(false);
     }

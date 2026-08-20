@@ -8,7 +8,9 @@ public interface IAiModelService
     Task<PagedResult<AiModelVersionDto>> SearchVersionsAsync(string? keyword, int page = 1, int pageSize = 20, CancellationToken cancellationToken = default);
     
     Task<AiModelVersionDto> GetVersionByIdAsync(Guid id, CancellationToken cancellationToken = default);
-    
+
+    Task<AiModelVersionDto?> GetActiveVersionAsync(CancellationToken cancellationToken = default);
+
     Task<AiModelVersionDto> RegisterVersionAsync(
         RegisterModelVersionRequest request, 
         Guid adminId, 

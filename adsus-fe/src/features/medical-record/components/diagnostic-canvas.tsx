@@ -1,24 +1,14 @@
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { apiClient, getApiErrorMessage } from "@/lib/api-client";
 import { Loader2, AlertCircle, CheckCircle2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useDiagnosticStore, type Lesion, type Point } from "../stores/use-diagnostic-store";
+import { useDiagnosticStore, type AiDetection, type Lesion, type Point } from "../stores/use-diagnostic-store";
 import { checkIntersection, generateBurntImage } from "../utils/canvas-utils";
 
 interface DiagnosticCanvasProps {
   caseId: string;
   file: File;
   onConfirm: () => void;
-}
-
-interface AiDetection {
-  confidence: number;
-  class_id?: number;
-  bbox: { xmin: number; ymin: number; xmax: number; ymax: number };
-  suggested_calipers: {
-    pair_a: [number, number][];
-    pair_b: [number, number][];
-  };
 }
 
 interface PanZoomController {
@@ -43,7 +33,10 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
   const [isConfirming, setIsConfirming] = useState(false);
   
   // State for original image
-  const [imgUrl, setImgUrl] = useState<string>("");
+  // Object URL is a derived value of `file`, not independent state — created here (not in
+  // an effect + setState) so it's available on the same render `file` changes, and revoked
+  // by the cleanup-only effect below.
+  const imgUrl = useMemo(() => URL.createObjectURL(file), [file]);
   const [imgDims, setImgDims] = useState({ w: 0, h: 0 });
 
   const currentDraft = drafts[currentIndex] || { lesions: [], note: "" };
@@ -82,24 +75,26 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
   const aiPzRef = useRef<PanZoomController | null>(null);
   const editPzRef = useRef<PanZoomController | null>(null);
 
-  useEffect(() => {
-    // 1. Reset state for new image
+  // Reset per-image UI state when `file` changes — done during render (not in the effect
+  // below) so it doesn't trigger an extra synchronous re-render just to reset constants.
+  const [resetForFile, setResetForFile] = useState(file);
+  if (resetForFile !== file) {
+    setResetForFile(file);
     setAiZoom("Fit");
     setEditZoom("Fit");
     setAddingMode(false);
     setAddingClicks([]);
+  }
 
-    const url = URL.createObjectURL(file);
-    setImgUrl(url);
-
+  useEffect(() => {
     const img = new Image();
-    img.src = url;
+    img.src = imgUrl;
     img.onload = () => {
       setImgDims({ w: img.width, h: img.height });
     };
 
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+    return () => URL.revokeObjectURL(imgUrl);
+  }, [imgUrl]);
 
   const handleRunAi = async () => {
     setIsProcessing(currentIndex, true);

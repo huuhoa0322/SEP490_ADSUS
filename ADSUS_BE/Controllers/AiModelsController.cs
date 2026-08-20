@@ -11,7 +11,7 @@ namespace ADSUS_BE.Controllers;
 
 [ApiController]
 [Route("api/v1/ai-model-versions")]
-[Authorize] // Allow any authenticated user (e.g., Doctor) to view the list of models
+[Authorize] // Each action below states its own required role(s)
 public class AiModelsController : ControllerBase
 {
     private readonly IAiModelService _aiModelService;
@@ -24,6 +24,7 @@ public class AiModelsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "ADMIN")]
     public async Task<ActionResult<ApiResponse<PagedResult<AiModelVersionDto>>>> SearchVersions(
         [FromQuery] string? keyword,
         [FromQuery] int page = 1,
@@ -34,9 +35,20 @@ public class AiModelsController : ControllerBase
         return Ok(ApiResponse<PagedResult<AiModelVersionDto>>.Ok(result));
     }
 
-    [HttpGet("{id}")]
+    // Doctor-facing: only the currently Active version (UC-19 diagnostic canvas shows which model produced the prediction).
+    // Doctor has no access to the full list/history above or to any other version's detail below.
+    [HttpGet("active")]
+    [Authorize(Roles = "ADMIN,DOCTOR")]
+    public async Task<ActionResult<ApiResponse<AiModelVersionDto?>>> GetActiveVersion(CancellationToken cancellationToken)
+    {
+        var version = await _aiModelService.GetActiveVersionAsync(cancellationToken);
+        return Ok(ApiResponse<AiModelVersionDto?>.Ok(version));
+    }
+
+    [HttpGet("{id:guid}")]
+    [Authorize(Roles = "ADMIN")]
     public async Task<ActionResult<ApiResponse<AiModelVersionDto>>> GetVersionById(
-        Guid id, 
+        Guid id,
         CancellationToken cancellationToken)
     {
         var version = await _aiModelService.GetVersionByIdAsync(id, cancellationToken);

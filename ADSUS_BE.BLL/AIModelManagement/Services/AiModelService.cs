@@ -87,6 +87,32 @@ public class AiModelService : IAiModelService
         };
     }
 
+    public async Task<AiModelVersionDto?> GetActiveVersionAsync(CancellationToken cancellationToken = default)
+    {
+        var v = await _aiModelVersionRepository.GetActiveVersionAsync(cancellationToken);
+        if (v == null) return null;
+
+        return new AiModelVersionDto
+        {
+            ModelVersionId = v.ModelVersionId,
+            VersionCode = v.VersionCode,
+            Description = v.Description,
+            MetricsPrecision = v.MetricsPrecision,
+            MetricsMap50 = v.MetricsMap50,
+            MetricsRecall = v.MetricsRecall,
+            Status = v.Status.ToString(),
+            HfRepoId = v.HfRepoId,
+            HfFilename = v.HfFilename,
+            RegisteredAt = v.RegisteredAt,
+            RegisteredBy = v.RegisteredBy,
+            LiveTp = v.LiveTp,
+            LiveFp = v.LiveFp,
+            LiveFn = v.LiveFn,
+            LiveMap50 = v.LiveMap50,
+            LastEvaluatedAt = v.LastEvaluatedAt
+        };
+    }
+
     public async Task<AiModelVersionDto> RegisterVersionAsync(
         RegisterModelVersionRequest request, 
         Guid adminId, 
