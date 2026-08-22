@@ -10,6 +10,13 @@ jobs:
     backend-ci:
         name: "Backend API - Build & Test"
         runs-on: ubuntu-latest
+        # checks: write - dorny/test-reporter creates a Check Run + Job Summary from the .trx
+        # files below. Only needed on this job (least privilege), and only works for
+        # same-repo PRs, not forked PRs (GITHUB_TOKEN there is read-only regardless).
+        permissions:
+            contents: read
+            actions: read
+            checks: write
         steps:
             - uses: actions/checkout@v4
 
@@ -38,6 +45,17 @@ jobs:
                   JwtSettings__Audience: "adsus-ci"
                   JwtSettings__ExpiryMinutes: "60"
               run: dotnet test ADSUS_BE.IntegrationTests/ADSUS_BE.IntegrationTests.csproj --no-restore --logger trx
+
+            # Renders the same .trx files as a Job Summary on this run's page, matching what
+            # Vitest already does natively for frontend-ci. if: always() so a report still
+            # shows which tests failed, not just a silent job failure.
+            - name: Publish Test Report
+              uses: dorny/test-reporter@v3
+              if: always()
+              with:
+                  name: "Backend Test Report"
+                  path: "**/TestResults/**/*.trx"
+                  reporter: dotnet-trx
 
             - uses: actions/upload-artifact@v4
               if: always()
@@ -88,6 +106,11 @@ jobs:
     mobile-ci:
         name: "Mobile - Analyze & Test"
         runs-on: ubuntu-latest
+        # checks: write - same reason as backend-ci above, for dorny/test-reporter.
+        permissions:
+            contents: read
+            actions: read
+            checks: write
         defaults:
             run:
                 working-directory: ADSUS_Mobile
@@ -98,7 +121,19 @@ jobs:
                   flutter-version: "3.47.x"
             - run: flutter pub get
             - run: flutter analyze
-            - run: flutter test
+            # --file-reporter writes machine-readable JSON to a file ALONGSIDE the normal
+            # human-readable console reporter (unlike --reporter json, which would replace
+            # the console output entirely and make the raw Action log unreadable).
+            - run: flutter test --file-reporter="json:test-results.json"
+
+            - name: Publish Test Report
+              uses: dorny/test-reporter@v3
+              if: always()
+              with:
+                  name: "Mobile Test Report"
+                  path: "ADSUS_Mobile/test-results.json"
+                  reporter: flutter-json
+
             - run: flutter build apk --debug
 
     docker-build-check:
