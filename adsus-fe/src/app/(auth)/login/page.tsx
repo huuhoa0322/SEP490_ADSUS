@@ -2,6 +2,7 @@ import { Activity, ScanLine, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { ServerStatusBadge } from "@/features/auth/components/server-status-badge";
 import { SignInForm } from "@/features/auth/components/sign-in-form";
 
 export const metadata: Metadata = {
@@ -32,6 +33,10 @@ const highlights = [
 export default function LoginPage() {
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
+      {/* Ping /api/health nền để đánh thức Backend Render sớm, và báo trạng thái ở góc
+          phải màn hình — tránh lần đăng nhập đầu chậm bất thường không rõ lý do. */}
+      <ServerStatusBadge />
+
       {/* Marketing column — hidden below 1024px so the form gets the full width */}
       <section className="relative hidden overflow-hidden bg-primary px-14 py-16 text-primary-foreground lg:flex lg:flex-col lg:justify-center">
         {/* Blurred blobs in the two accent colours, for depth */}
