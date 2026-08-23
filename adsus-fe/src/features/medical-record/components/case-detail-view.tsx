@@ -31,8 +31,6 @@ import {
   formatIsoDate,
   formatIsoDateTime,
   genderLabel,
-  formatDiseases,
-  formatAllergies,
 } from "../lib/medical-record-labels";
 import type { CaseStatus } from "../types/medical-record.types";
 import { useDiagnosticStore } from "../stores/use-diagnostic-store";
@@ -270,35 +268,61 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
       ) : null}
 
       {medicalCase.patientProfile ? (
-        <section className="mt-5 flex flex-wrap items-center gap-6 rounded-xl border border-l-4 border-border border-l-primary p-5">
-          <div>
-            <p className="text-xs text-muted-foreground">Bệnh nhân</p>
-            <p className="font-semibold text-foreground">{medicalCase.patientProfile.fullName}</p>
+        <section className="mt-5 rounded-xl border border-l-4 border-border border-l-primary p-5 space-y-4">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-base font-bold text-foreground">
+              Bệnh nhân: {medicalCase.patientProfile.fullName}
+            </h3>
+            {medicalCase.patientProfile.dateOfBirth && (
+              <span className="text-sm text-muted-foreground">
+                Ngày sinh: {formatIsoDate(medicalCase.patientProfile.dateOfBirth)}
+              </span>
+            )}
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Ngày sinh</p>
-            <p className="font-semibold">
-              {formatIsoDate(medicalCase.patientProfile.dateOfBirth)}
-            </p>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Tiền sử bệnh</p>
+              <div className="text-sm font-semibold text-foreground">
+                {medicalCase.patientProfile.diseases && medicalCase.patientProfile.diseases.length > 0 ? (
+                  <div className="flex flex-col gap-1">
+                    {medicalCase.patientProfile.diseases.map(d => (
+                      <div key={d.diseaseId}>
+                        {d.isOther ? (d.note || d.diseaseName) : d.note ? `${d.diseaseName}: ${d.note}` : d.diseaseName}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground italic font-normal">Không có</span>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Dị ứng</p>
+              <div className="text-sm font-semibold text-foreground">
+                {medicalCase.patientProfile.allergies && medicalCase.patientProfile.allergies.length > 0 ? (
+                  <div className="flex flex-col gap-1">
+                    {medicalCase.patientProfile.allergies.map(a => (
+                      <div key={a.allergyTypeId}>
+                        {a.isOther ? (a.note || a.allergyName) : a.note ? `${a.allergyName}: ${a.note}` : a.allergyName}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground italic font-normal">Không có</span>
+                )}
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Tiền sử bệnh</p>
-            <p className="font-semibold text-foreground">
-              {formatDiseases(medicalCase.patientProfile.diseases)}
-            </p>
+
+          <div className="flex justify-end pt-2">
+            <Link
+              href={`/patients/${medicalCase.patientProfileId}`}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+            >
+              Mở hồ sơ bệnh nhân
+            </Link>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Dị ứng</p>
-            <p className="font-semibold text-destructive">
-              {formatAllergies(medicalCase.patientProfile.allergies)}
-            </p>
-          </div>
-          <Link
-            href={`/patients/${medicalCase.patientProfileId}`}
-            className="ml-auto rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
-          >
-            Mở hồ sơ bệnh nhân
-          </Link>
         </section>
       ) : null}
 
@@ -391,7 +415,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             <h2 className="mb-3 font-heading text-lg font-semibold text-foreground">
               Thông tin lâm sàng
             </h2>
-            
+
             {medicalCase.symptoms && medicalCase.symptoms.length > 0 ? (
               <div className="mb-4">
                 <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Triệu chứng chi tiết</h3>
@@ -407,12 +431,14 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
               </div>
             ) : null}
 
-            <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Ghi chú chung</h3>
-            <p className="text-sm leading-relaxed">
-              {medicalCase.clinicalInfo ?? (
-                <span className="italic text-muted-foreground">Không có ghi chú lâm sàng.</span>
-              )}
-            </p>
+            {medicalCase.clinicalInfo ? (
+              <>
+                <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Ghi chú chung</h3>
+                <p className="text-sm leading-relaxed">
+                  {medicalCase.clinicalInfo}
+                </p>
+              </>
+            ) : null}
           </section>
 
           <section className="rounded-xl border border-border p-6">

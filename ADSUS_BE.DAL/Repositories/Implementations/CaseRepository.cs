@@ -22,6 +22,8 @@ public sealed class CaseRepository : ICaseRepository
             // số dòng (5 ảnh × 3 finding × 4 thuốc = 60 dòng cho một ca).
             .AsSplitQuery()
             .Include(c => c.PatientProfile).ThenInclude(p => p.User)
+            .Include(c => c.PatientProfile).ThenInclude(p => p.PatientDiseases).ThenInclude(x => x.Disease)
+            .Include(c => c.PatientProfile).ThenInclude(p => p.PatientAllergies).ThenInclude(x => x.AllergyType)
             .Include(c => c.Doctor)
             .Include(c => c.UltrasoundImages)
             .Include(c => c.CaseSymptoms).ThenInclude(cs => cs.Category)
