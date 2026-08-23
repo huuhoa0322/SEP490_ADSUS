@@ -16,8 +16,6 @@ const profile = {
   phone: "0978123456",
   dateOfBirth: "1984-03-12",
   gender: "FEMALE" as const,
-  medicalHistory: "Đã từng có u lành tính",
-  allergies: "Penicillin",
   createdBy: "nurse-1",
   createdAt: "2026-08-04T09:00:00Z",
   updatedAt: "2026-08-04T09:00:00Z",
@@ -36,8 +34,6 @@ describe("createPatientProfile", () => {
     await createPatientProfile({
       patientUserId: "user-1",
       gender: null,
-      medicalHistory: null,
-      allergies: null,
     });
 
     // #17 cho phép bỏ trống gender (DB có default), khác #18 vốn bắt buộc.
@@ -55,8 +51,6 @@ describe("createPatientProfile", () => {
       createPatientProfile({
         patientUserId: "user-1",
         gender: "FEMALE",
-        medicalHistory: null,
-        allergies: null,
       }),
     ).rejects.toThrow("Profile already exists.");
   });
@@ -74,8 +68,6 @@ describe("updatePatientProfile", () => {
 
     await updatePatientProfile("profile-1", {
       gender: "FEMALE",
-      medicalHistory: "Cập nhật sau tái khám",
-      allergies: null,
     });
 
     // UC-06 bước 2 — ba trường định danh lấy từ bảng users, chỉ đọc. #18 không nhận chúng;

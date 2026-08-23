@@ -22,7 +22,6 @@ const profile = {
   phone: "0987654321",
   dateOfBirth: "1988-05-12",
   gender: "FEMALE" as const,
-  medicalHistory: "Đã từng có u lành tính",
   diseases: [{ diseaseId: "d1", diseaseName: "U lành tính", isOther: false, note: null }],
   allergies: [{ allergyTypeId: "a1", allergyName: "Penicillin", isOther: false, note: null }],
   createdBy: "nurse-1",
