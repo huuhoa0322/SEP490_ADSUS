@@ -179,6 +179,15 @@ public sealed class CaseService : ICaseService
             Status = CaseStatus.Created,
             CreatedAt = now,
             UpdatedAt = now,
+            CaseSymptoms = request.Symptoms?.Select(s => new CaseSymptom
+            {
+                Id = Guid.NewGuid(),
+                CaseId = caseId,
+                CategoryId = s.CategoryId,
+                SymptomId = s.SymptomId,
+                OtherNote = s.OtherNote,
+                CreatedAt = now
+            }).ToList() ?? new List<CaseSymptom>()
         };
 
         try

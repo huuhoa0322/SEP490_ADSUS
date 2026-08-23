@@ -34,6 +34,8 @@ public partial class Case
 
     public virtual ICollection<AiPrediction> AiPredictions { get; set; } = new List<AiPrediction>();
 
+    public virtual ICollection<CaseSymptom> CaseSymptoms { get; set; } = new List<CaseSymptom>();
+
     public virtual User Doctor { get; set; } = null!;
 
     public virtual ICollection<DoctorAnnotation> DoctorAnnotations { get; set; } = new List<DoctorAnnotation>();
@@ -41,6 +43,8 @@ public partial class Case
     public virtual PatientProfile PatientProfile { get; set; } = null!;
 
     public virtual ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
+
+    public virtual ServiceFeedback? ServiceFeedback { get; set; }
 
     public virtual ICollection<UltrasoundImage> UltrasoundImages { get; set; } = new List<UltrasoundImage>();
 }

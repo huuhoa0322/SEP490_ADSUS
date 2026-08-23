@@ -69,6 +69,9 @@ export async function createCase(input: CreateCaseInput): Promise<CaseDetail> {
   form.append("patientProfileId", input.patientProfileId);
   form.append("responsibleDoctorId", input.responsibleDoctorId);
   if (input.clinicalInfo) form.append("clinicalInfo", input.clinicalInfo);
+  if (input.symptoms && input.symptoms.length > 0) {
+    form.append("symptomsJson", JSON.stringify(input.symptoms));
+  }
 
   // Backend nhận List<IFormFile> images — append nhiều lần CÙNG khoá "images", không phải
   // "images[]". Sai tên khoá thì server nhận 0 file và trả 422 "phải có ít nhất 1 ảnh".

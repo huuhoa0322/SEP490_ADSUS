@@ -382,6 +382,23 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             <h2 className="mb-3 font-heading text-lg font-semibold text-foreground">
               Thông tin lâm sàng
             </h2>
+            
+            {medicalCase.symptoms && medicalCase.symptoms.length > 0 ? (
+              <div className="mb-4">
+                <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Triệu chứng chi tiết</h3>
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  {medicalCase.symptoms.map((s, idx) => (
+                    <li key={idx}>
+                      <span className="font-medium">{s.categoryName}:</span>{" "}
+                      {s.symptomName ? s.symptomName : ""}
+                      {s.otherNote ? ` (${s.otherNote})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Ghi chú chung</h3>
             <p className="text-sm leading-relaxed">
               {medicalCase.clinicalInfo ?? (
                 <span className="italic text-muted-foreground">Không có ghi chú lâm sàng.</span>

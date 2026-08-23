@@ -32,11 +32,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
 
   const [isConfirming, setIsConfirming] = useState(false);
   
-  // State for original image
-  // Object URL is a derived value of `file`, not independent state — created here (not in
-  // an effect + setState) so it's available on the same render `file` changes, and revoked
-  // by the cleanup-only effect below.
-  const imgUrl = useMemo(() => URL.createObjectURL(file), [file]);
+  const [imgUrl, setImgUrl] = useState<string>('');
   const [imgDims, setImgDims] = useState({ w: 0, h: 0 });
 
   const currentDraft = drafts[currentIndex] || { lesions: [], note: "" };
@@ -87,14 +83,18 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
   }
 
   useEffect(() => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setImgUrl(url);
+
     const img = new Image();
-    img.src = imgUrl;
     img.onload = () => {
       setImgDims({ w: img.width, h: img.height });
     };
+    img.src = url;
 
-    return () => URL.revokeObjectURL(imgUrl);
-  }, [imgUrl]);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   const handleRunAi = async () => {
     setIsProcessing(currentIndex, true);

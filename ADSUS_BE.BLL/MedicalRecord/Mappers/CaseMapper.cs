@@ -40,6 +40,12 @@ public static class CaseMapper
             .OrderBy(i => i.UploadedAt)
             .Select(i => ToImageResponse(i, imageUrls.GetValueOrDefault(i.ImageId)))
             .ToList(),
+        Symptoms: medicalCase.CaseSymptoms?.Select(cs => new CaseSymptomResponse(
+            CategoryId: cs.CategoryId,
+            CategoryName: cs.Category?.Name ?? string.Empty,
+            SymptomId: cs.SymptomId,
+            SymptomName: cs.Symptom?.Name,
+            OtherNote: cs.OtherNote)).ToList() ?? new List<CaseSymptomResponse>(),
         // AiResults mapping removed
         Prescription: ToPrescriptionSummary(medicalCase),
         CreatedAt: medicalCase.CreatedAt,
@@ -64,7 +70,13 @@ public static class CaseMapper
         UltrasoundImages: medicalCase.UltrasoundImages
             .OrderBy(i => i.UploadedAt)
             .Select(i => ToImageResponse(i, imageUrls.GetValueOrDefault(i.ImageId)))
-            .ToList());
+            .ToList(),
+        Symptoms: medicalCase.CaseSymptoms?.Select(cs => new CaseSymptomResponse(
+            CategoryId: cs.CategoryId,
+            CategoryName: cs.Category?.Name ?? string.Empty,
+            SymptomId: cs.SymptomId,
+            SymptomName: cs.Symptom?.Name,
+            OtherNote: cs.OtherNote)).ToList() ?? new List<CaseSymptomResponse>());
 
     public static CaseSummaryResponse ToSummary(Case medicalCase) => new(
         CaseId: medicalCase.CaseId,

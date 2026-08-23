@@ -11,6 +11,7 @@ public class CreateCaseRequestValidatorTests
         PatientProfileId: Guid.NewGuid(),
         ResponsibleDoctorId: Guid.NewGuid(),
         ClinicalInfo: "Đau tức vú trái",
+        Symptoms: null,
         // Số lượng ảnh KHÔNG được validator này kiểm (thuộc CaseService.CreateAsync) — vẫn
         // cần 1 phần tử ở đây để không trộn hai mối quan tâm khác nhau vào cùng 1 test.
         Images: new[] { new UploadedFile("a.png", "image/png", 10, Stream.Null) });
@@ -60,7 +61,8 @@ public class CreateCaseRequestValidatorTests
     public void ClinicalInfo_5001Chars_Fails()
     {
         // Arrange
-        var request = ValidRequest() with { ClinicalInfo = new string('a', 5001) };
+        var request = new CreateCaseRequest(
+            Guid.Empty, Guid.Empty, new string('A', 5001), null, new List<UploadedFile>());
 
         // Act
         var result = _validator.Validate(request);

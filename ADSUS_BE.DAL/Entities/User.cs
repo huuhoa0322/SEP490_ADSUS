@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace ADSUS_BE.DAL.Entities;
@@ -54,6 +53,8 @@ public partial class User
 
     public virtual ICollection<Case> Cases { get; set; } = new List<Case>();
 
+    public virtual ICollection<NotificationLog> NotificationLogs { get; set; } = new List<NotificationLog>();
+
     public virtual ICollection<PatientProfile> PatientProfileCreatedByNavigations { get; set; } = new List<PatientProfile>();
 
     public virtual PatientProfile? PatientProfileUser { get; set; }
@@ -61,4 +62,6 @@ public partial class User
     public virtual ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
 
     public virtual ICollection<ScheduleSlot> ScheduleSlots { get; set; } = new List<ScheduleSlot>();
+
+    public virtual ICollection<UserFcmToken> UserFcmTokens { get; set; } = new List<UserFcmToken>();
 }

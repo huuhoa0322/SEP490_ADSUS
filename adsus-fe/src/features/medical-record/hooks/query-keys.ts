@@ -19,4 +19,5 @@ export const medicalRecordQueryKeys = {
   cases: (query: CaseListQuery) => [...medicalRecordQueryKeys.all, "cases", query] as const,
   case: (caseId: string) => [...medicalRecordQueryKeys.all, "case", caseId] as const,
   images: (caseId: string) => [...medicalRecordQueryKeys.all, "images", caseId] as const,
+  symptoms: () => [...medicalRecordQueryKeys.all, "symptoms"] as const,
 };

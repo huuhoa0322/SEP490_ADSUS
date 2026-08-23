@@ -18,5 +18,9 @@ public partial class ServiceFeedback
 
     public DateTime SubmittedAt { get; set; }
 
+    public Guid CaseId { get; set; }
+
+    public virtual Case Case { get; set; } = null!;
+
     public virtual PatientProfile PatientProfile { get; set; } = null!;
 }

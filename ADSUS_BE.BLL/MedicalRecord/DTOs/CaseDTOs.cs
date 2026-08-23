@@ -35,6 +35,16 @@ public sealed record PrescriptionSummary(
 /// <summary>
 /// #20, #23 — bản đầy đủ cho Bác sĩ/Điều dưỡng (Web SCR-12).
 /// </summary>
+public sealed record CaseSymptomResponse(
+    Guid CategoryId,
+    string CategoryName,
+    Guid? SymptomId,
+    string? SymptomName,
+    string? OtherNote);
+
+/// <summary>
+/// #20, #23 — bản đầy đủ cho Bác sĩ/Điều dưỡng (Web SCR-12).
+/// </summary>
 public sealed record CaseResponse(
     Guid CaseId,
     Guid PatientProfileId,
@@ -47,6 +57,7 @@ public sealed record CaseResponse(
     string? DoctorConclusion,
     PatientProfileResponse? PatientProfile,
     IReadOnlyList<UltrasoundImageResponse> UltrasoundImages,
+    IReadOnlyList<CaseSymptomResponse> Symptoms,
     // AiResults removed
     PrescriptionSummary? Prescription,
     DateTime CreatedAt,
@@ -75,7 +86,8 @@ public sealed record PatientCaseResponse(
     string? FinalDiagnosis,
     string? DoctorConclusion,
     PrescriptionSummary? Prescription,
-    IReadOnlyList<UltrasoundImageResponse> UltrasoundImages);
+    IReadOnlyList<UltrasoundImageResponse> UltrasoundImages,
+    IReadOnlyList<CaseSymptomResponse> Symptoms);
 
 /// <summary>#25 — một dòng trong danh sách lần khám CỦA CHÍNH bệnh nhân (Mobile).</summary>
 public sealed record CaseSummaryResponse(
@@ -99,11 +111,17 @@ public sealed record StaffCaseSummaryResponse(
     Guid DoctorId,
     DateTime CreatedAt);
 
+public sealed record CreateCaseSymptomRequest(
+    Guid CategoryId,
+    Guid? SymptomId,
+    string? OtherNote);
+
 /// <summary>#20 — tạo lần khám mới kèm ít nhất một ảnh siêu âm (UC-07).</summary>
 public sealed record CreateCaseRequest(
     Guid PatientProfileId,
     Guid ResponsibleDoctorId,
     string? ClinicalInfo,
+    IReadOnlyList<CreateCaseSymptomRequest>? Symptoms,
     IReadOnlyList<UploadedFile> Images);
 
 /// <summary>#21 — bổ sung ảnh vào một ca chưa được chốt (UC-07).</summary>
