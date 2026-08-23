@@ -12,10 +12,6 @@ public partial class PatientProfile
 
     public Guid UserId { get; set; }
 
-    public string? MedicalHistory { get; set; }
-
-    public string? Allergies { get; set; }
-
     /// <summary>
     /// Bác sĩ lập hồ sơ (UC-06). Bệnh nhân không tự đăng ký.
     /// </summary>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using ADSUS_BE.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -604,7 +604,6 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.PatientProfile).WithMany(p => p.PatientAllergies)
                 .HasForeignKey(d => d.PatientProfileId)
-                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("patient_allergies_patient_profile_id_fkey");
         });
 
@@ -633,7 +632,6 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.PatientProfile).WithMany(p => p.PatientDiseases)
                 .HasForeignKey(d => d.PatientProfileId)
-                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("patient_diseases_patient_profile_id_fkey");
         });
 
@@ -648,14 +646,12 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.PatientProfileId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("patient_profile_id");
-            entity.Property(e => e.Allergies).HasColumnName("allergies");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy)
                 .HasComment("Bác sĩ lập hồ sơ (UC-06). Bệnh nhân không tự đăng ký.")
                 .HasColumnName("created_by");
-            entity.Property(e => e.MedicalHistory).HasColumnName("medical_history");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");

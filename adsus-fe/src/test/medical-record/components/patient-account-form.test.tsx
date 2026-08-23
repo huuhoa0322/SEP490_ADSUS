@@ -56,8 +56,6 @@ const createdProfile = {
   phone: "0981234567",
   dateOfBirth: null,
   gender: "FEMALE" as const,
-  medicalHistory: null,
-  allergies: null,
   createdBy: "nurse-1",
   createdAt: "2026-08-06T09:00:00Z",
   updatedAt: "2026-08-06T09:00:00Z",

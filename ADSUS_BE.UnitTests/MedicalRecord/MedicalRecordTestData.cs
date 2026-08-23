@@ -55,8 +55,6 @@ internal static class MedicalRecordTestData
             UserId = patientUser.UserId,
             User = patientUser,
             Gender = GenderType.Female,
-            MedicalHistory = "Tiền sử u nang buồng trứng năm 2021",
-            Allergies = "Không có",
             CreatedBy = createdBy ?? Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
