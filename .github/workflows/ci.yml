@@ -46,15 +46,25 @@ jobs:
                   JwtSettings__ExpiryMinutes: "60"
               run: dotnet test ADSUS_BE.IntegrationTests/ADSUS_BE.IntegrationTests.csproj --no-restore --logger trx
 
-            # Renders the same .trx files as a Job Summary on this run's page, matching what
-            # Vitest already does natively for frontend-ci. if: always() so a report still
-            # shows which tests failed, not just a silent job failure.
-            - name: Publish Test Report
+            # Two separate report steps, not one combined one — dotnet test already writes each
+            # project's .trx into that project's OWN TestResults/ folder, so scoping the path
+            # per-project splits the Job Summary into a Unit block and an Integration block
+            # with their own counts, instead of one merged "750 passed" number. if: always() so
+            # a report still shows which tests failed, not just a silent job failure.
+            - name: Publish Unit Test Report
               uses: dorny/test-reporter@v3
               if: always()
               with:
-                  name: "Backend Test Report"
-                  path: "**/TestResults/**/*.trx"
+                  name: "Backend Unit Test Report"
+                  path: "ADSUS_BE.UnitTests/**/*.trx"
+                  reporter: dotnet-trx
+
+            - name: Publish Integration Test Report
+              uses: dorny/test-reporter@v3
+              if: always()
+              with:
+                  name: "Backend Integration Test Report"
+                  path: "ADSUS_BE.IntegrationTests/**/*.trx"
                   reporter: dotnet-trx
 
             - uses: actions/upload-artifact@v4
@@ -86,7 +96,23 @@ jobs:
                   cache-dependency-path: adsus-fe/package-lock.json
             - run: npm ci
             - run: npm run lint
-            - run: npm run test -- --run
+
+            # Split by an existing, already-consistent directory convention (verified across
+            # every test file, not assumed): hooks/ and api/ tests use real hooks + MSW to
+            # mock only the HTTP boundary (integration-style); components/, lib/, store/ tests
+            # mock the hook/dependency directly (unit-style). --exclude is documented as
+            # "additional globs to exclude", so it adds to (not replaces) the base
+            # vitest.config.ts excludes.
+            - name: Unit Tests
+              run: npm run test -- --run --exclude "**/hooks/**" --exclude "**/api/**"
+
+            - name: Integration Tests
+              # "hooks"/"api" alone would ALSO match src/test/lib/api-messages.test.ts (unit-
+              # style, no MSW) — Vitest's positional filters are plain substring matches
+              # against the full path, not path-segment-aware, and that filename happens to
+              # contain "api". Slashes force a real directory segment match instead.
+              run: npm run test -- --run "/hooks/" "/api/"
+
             - run: npm run build
 
     ai-backend-ci:
@@ -121,17 +147,32 @@ jobs:
                   flutter-version: "3.47.x"
             - run: flutter pub get
             - run: flutter analyze
-            # --file-reporter writes machine-readable JSON to a file ALONGSIDE the normal
-            # human-readable console reporter (unlike --reporter json, which would replace
-            # the console output entirely and make the raw Action log unreadable).
-            - run: flutter test --file-reporter="json:test-results.json"
 
-            - name: Publish Test Report
+            # Split like backend-ci/frontend-ci: test/widget/ holds the 2 files that actually
+            # call testWidgets() (moved there for this split — confirmed by grepping every
+            # file, not assumed); everything else under test/ is plain unit test() logic, no
+            # widget pumped. --file-reporter writes JSON ALONGSIDE the normal human-readable
+            # console reporter (unlike --reporter json, which would replace it entirely).
+            - name: Unit Tests
+              run: flutter test test/auth_repository_test.dart test/dio_client_test.dart test/features --file-reporter="json:unit-test-results.json"
+
+            - name: Widget Tests
+              run: flutter test test/widget --file-reporter="json:widget-test-results.json"
+
+            - name: Publish Unit Test Report
               uses: dorny/test-reporter@v3
               if: always()
               with:
-                  name: "Mobile Test Report"
-                  path: "ADSUS_Mobile/test-results.json"
+                  name: "Mobile Unit Test Report"
+                  path: "ADSUS_Mobile/unit-test-results.json"
+                  reporter: flutter-json
+
+            - name: Publish Widget Test Report
+              uses: dorny/test-reporter@v3
+              if: always()
+              with:
+                  name: "Mobile Widget Test Report"
+                  path: "ADSUS_Mobile/widget-test-results.json"
                   reporter: flutter-json
 
             - run: flutter build apk --debug
