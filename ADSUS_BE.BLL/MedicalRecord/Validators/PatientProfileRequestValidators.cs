@@ -19,11 +19,8 @@ public sealed class CreatePatientProfileRequestValidator : AbstractValidator<Cre
             .When(x => !string.IsNullOrWhiteSpace(x.Gender))
             .WithMessage("Gender must be FEMALE, MALE or OTHER.");
 
-        RuleFor(x => x.MedicalHistory)
-            .MaximumLength(5000).WithMessage("Medical history must be 5000 characters or fewer.");
-
-        RuleFor(x => x.Allergies)
-            .MaximumLength(5000).WithMessage("Allergies must be 5000 characters or fewer.");
+        RuleForEach(x => x.Diseases).SetValidator(new PatientDiseaseInputValidator());
+        RuleForEach(x => x.Allergies).SetValidator(new PatientAllergyInputValidator());
     }
 }
 
@@ -36,10 +33,25 @@ public sealed class UpdatePatientProfileRequestValidator : AbstractValidator<Upd
             .Must(value => EnumExtensions.ParseGenderType(value) is not null)
             .WithMessage("Gender must be FEMALE, MALE or OTHER.");
 
-        RuleFor(x => x.MedicalHistory)
-            .MaximumLength(5000).WithMessage("Medical history must be 5000 characters or fewer.");
+        RuleForEach(x => x.Diseases).SetValidator(new PatientDiseaseInputValidator());
+        RuleForEach(x => x.Allergies).SetValidator(new PatientAllergyInputValidator());
+    }
+}
 
-        RuleFor(x => x.Allergies)
-            .MaximumLength(5000).WithMessage("Allergies must be 5000 characters or fewer.");
+public sealed class PatientDiseaseInputValidator : AbstractValidator<PatientDiseaseInput>
+{
+    public PatientDiseaseInputValidator()
+    {
+        RuleFor(x => x.DiseaseId).NotEmpty();
+        RuleFor(x => x.Note).MaximumLength(500).WithMessage("Note must be 500 characters or fewer.");
+    }
+}
+
+public sealed class PatientAllergyInputValidator : AbstractValidator<PatientAllergyInput>
+{
+    public PatientAllergyInputValidator()
+    {
+        RuleFor(x => x.AllergyTypeId).NotEmpty();
+        RuleFor(x => x.Note).MaximumLength(500).WithMessage("Note must be 500 characters or fewer.");
     }
 }

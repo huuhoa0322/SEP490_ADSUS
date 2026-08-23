@@ -18,6 +18,8 @@ public interface IPatientProfileRepository
 
     Task<PatientProfile> AddAsync(PatientProfile profile, CancellationToken ct = default);
 
+    Task ClearCollectionsAsync(Guid patientProfileId, CancellationToken ct = default);
+
     Task UpdateAsync(PatientProfile profile, CancellationToken ct = default);
 
     /// <summary>

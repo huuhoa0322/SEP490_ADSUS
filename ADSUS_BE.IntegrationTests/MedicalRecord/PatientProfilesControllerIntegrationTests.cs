@@ -62,7 +62,7 @@ public class PatientProfilesControllerIntegrationTests
         _profiles.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync(() => saved);
 
-        var request = new CreatePatientProfileRequest(_patient.UserId, "FEMALE", "Không có", null);
+        var request = new CreatePatientProfileRequest(_patient.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request);
@@ -95,7 +95,7 @@ public class PatientProfilesControllerIntegrationTests
         _profiles.Setup(r => r.ExistsForUserAsync(_patient.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(true);
 
-        var request = new CreatePatientProfileRequest(_patient.UserId, "FEMALE", null, null);
+        var request = new CreatePatientProfileRequest(_patient.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request);
@@ -122,7 +122,7 @@ public class PatientProfilesControllerIntegrationTests
         _users.Setup(r => r.GetByIdReadOnlyAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(_doctor);
 
-        var request = new CreatePatientProfileRequest(_doctor.UserId, "FEMALE", null, null);
+        var request = new CreatePatientProfileRequest(_doctor.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request);
@@ -138,7 +138,7 @@ public class PatientProfilesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _patient);
 
-        var request = new CreatePatientProfileRequest(_patient.UserId, "FEMALE", null, null);
+        var request = new CreatePatientProfileRequest(_patient.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request);
@@ -154,7 +154,7 @@ public class PatientProfilesControllerIntegrationTests
         using var app = MakeApp();
         var client = app.CreateClient(); // không gắn Authorization header
 
-        var request = new CreatePatientProfileRequest(_patient.UserId, "FEMALE", null, null);
+        var request = new CreatePatientProfileRequest(_patient.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request);
@@ -220,7 +220,7 @@ public class PatientProfilesControllerIntegrationTests
         _profiles.Setup(r => r.GetForUpdateAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
 
-        var request = new UpdatePatientProfileRequest("MALE", "Cập nhật", null);
+        var request = new UpdatePatientProfileRequest("MALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         // Act
         var response = await client.PutAsJsonAsync($"/api/v1/patient-profiles/{profile.PatientProfileId}", request);

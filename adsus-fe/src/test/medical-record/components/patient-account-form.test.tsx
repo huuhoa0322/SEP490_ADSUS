@@ -15,6 +15,11 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
+vi.mock("@/features/medical-record/hooks/use-medical-dictionaries", () => ({
+  useDiseases: () => ({ data: [], isLoading: false }),
+  useAllergyTypes: () => ({ data: [], isLoading: false }),
+}));
+
 vi.mock("@/features/medical-record/hooks/use-patient-account", () => ({
   useCreatePatientAccount: () => ({
     mutate: accountMutate,
@@ -97,7 +102,7 @@ describe("PatientAccountForm", () => {
     );
   });
 
-  it("sau khi tạo tài khoản thành công thì tạo luôn hồ sơ nền với gender bỏ trống thành null", async () => {
+  it("sau khi tạo tài khoản thành công thì tạo luôn hồ sơ nền với gender mặc định là FEMALE", async () => {
     // Mô phỏng accountMutate thành công bằng cách tự gọi onSuccess được truyền vào.
     accountMutate.mockImplementation((_payload, options) => {
       options?.onSuccess?.(createdAccount);
@@ -110,7 +115,7 @@ describe("PatientAccountForm", () => {
 
     // #17 — gender optional, khác #18. Không nhập gì ở Giới tính thì phải gửi null.
     expect(profileMutate).toHaveBeenCalledWith(
-      { patientUserId: "user-9", gender: null, medicalHistory: null, allergies: null },
+      { patientUserId: "user-9", gender: "FEMALE", diseases: [], allergies: [] },
       expect.anything(),
     );
   });

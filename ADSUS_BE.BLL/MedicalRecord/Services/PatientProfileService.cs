@@ -57,9 +57,20 @@ public sealed class PatientProfileService : IPatientProfileService
             // Validator đã bảo đảm chuỗi này đọc được nếu có gửi. Không gửi gì thì lấy đúng
             // mặc định của cột DB — nhưng giao diện vẫn nên luôn gửi giá trị rõ ràng.
             Gender = EnumExtensions.ParseGenderType(request.Gender) ?? GenderType.Female,
-
-            MedicalHistory = request.MedicalHistory,
-            Allergies = request.Allergies,
+            PatientDiseases = request.Diseases?.Select(d => new PatientDisease
+            {
+                Id = Guid.NewGuid(),
+                DiseaseId = d.DiseaseId,
+                Note = d.Note,
+                CreatedAt = now
+            }).ToList() ?? new List<PatientDisease>(),
+            PatientAllergies = request.Allergies?.Select(a => new PatientAllergy
+            {
+                Id = Guid.NewGuid(),
+                AllergyTypeId = a.AllergyTypeId,
+                Note = a.Note,
+                CreatedAt = now
+            }).ToList() ?? new List<PatientAllergy>(),
 
             // Ghi đúng người đang thao tác, kể cả khi đó là Điều dưỡng. UC-06 cho phép cả
             // Doctor lẫn Nurse lập hồ sơ; chú thích "phải là DOCTOR" trong schema chỉ là
@@ -70,8 +81,15 @@ public sealed class PatientProfileService : IPatientProfileService
             UpdatedAt = now,
         };
 
-        await _profiles.AddAsync(profile, ct);
-
+        try
+        {
+            await _profiles.AddAsync(profile, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi tạo hồ sơ nền cho người dùng {PatientUserId}. Vòng lặp hoặc thao tác CSDL gặp sự cố.", request.PatientUserId);
+            throw new InvalidOperationException("Hệ thống quá tải hoặc lỗi CSDL khi tạo hồ sơ nền. Vui lòng thử lại sau.", ex);
+        }
         _logger.LogInformation(
             "Patient profile {PatientProfileId} created for user {PatientUserId} by {ActingUserId}",
             profile.PatientProfileId, request.PatientUserId, actingUserId);
@@ -91,15 +109,49 @@ public sealed class PatientProfileService : IPatientProfileService
             ?? throw new ResourceNotFoundException("Patient profile not found.");
 
         profile.Gender = EnumExtensions.ParseGenderType(request.Gender) ?? GenderType.Female;
-        profile.MedicalHistory = request.MedicalHistory;
-        profile.Allergies = request.Allergies;
-        profile.UpdatedAt = DateTime.UtcNow;
+        
+        var now = DateTime.UtcNow;
+        profile.PatientDiseases.Clear();
+        if (request.Diseases != null)
+        {
+            foreach (var d in request.Diseases)
+            {
+                profile.PatientDiseases.Add(new PatientDisease
+                {
+                    DiseaseId = d.DiseaseId,
+                    Note = d.Note,
+                    CreatedAt = now
+                });
+            }
+        }
 
-        await _profiles.UpdateAsync(profile, ct);
+        profile.PatientAllergies.Clear();
+        if (request.Allergies != null)
+        {
+            foreach (var a in request.Allergies)
+            {
+                profile.PatientAllergies.Add(new PatientAllergy
+                {
+                    AllergyTypeId = a.AllergyTypeId,
+                    Note = a.Note,
+                    CreatedAt = now
+                });
+            }
+        }
 
-        _logger.LogInformation("Patient profile {PatientProfileId} updated", patientProfileId);
+        profile.UpdatedAt = now;
 
-        return PatientProfileMapper.ToResponse(profile);
+        try
+        {
+            await _profiles.UpdateAsync(profile, ct);
+            _logger.LogInformation("Patient profile {PatientProfileId} updated", patientProfileId);
+            return PatientProfileMapper.ToResponse(profile);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi cập nhật hồ sơ nền {PatientProfileId}. Vòng lặp hoặc thao tác CSDL gặp sự cố.", patientProfileId);
+            throw new InvalidOperationException("Hệ thống quá tải hoặc lỗi CSDL khi lưu hồ sơ. Vui lòng thử lại sau.", ex);
+        }
     }
 
     public async Task<PatientProfileResponse> GetByIdAsync(

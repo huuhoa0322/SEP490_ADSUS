@@ -18,6 +18,11 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
+vi.mock("@/features/medical-record/hooks/use-medical-dictionaries", () => ({
+  useDiseases: () => ({ data: [], isLoading: false }),
+  useAllergyTypes: () => ({ data: [], isLoading: false }),
+}));
+
 vi.mock("@/features/medical-record/hooks/use-patient-account", () => ({
   useCreatePatientAccount: () => ({
     mutate: accountMutate,

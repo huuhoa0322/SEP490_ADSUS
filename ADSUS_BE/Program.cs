@@ -127,6 +127,7 @@ namespace ADSUS_BE
             // ---------- Swagger: token input so protected endpoints can be tried out ----------
             builder.Services.AddSwaggerGen(options =>
             {
+                options.CustomSchemaIds(type => type.FullName);
                 options.SwaggerDoc("v1", new OpenApiInfo { Title = "ADSUS API", Version = "v1" });
 
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme

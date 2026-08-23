@@ -19,17 +19,23 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
         _db.PatientProfiles
             .AsNoTracking()
             .Include(p => p.User)
+            .Include(p => p.PatientDiseases).ThenInclude(x => x.Disease)
+            .Include(p => p.PatientAllergies).ThenInclude(x => x.AllergyType)
             .FirstOrDefaultAsync(p => p.PatientProfileId == patientProfileId, ct);
 
     public Task<PatientProfile?> GetForUpdateAsync(Guid patientProfileId, CancellationToken ct = default) =>
         _db.PatientProfiles
             .Include(p => p.User)
+            .Include(p => p.PatientDiseases)
+            .Include(p => p.PatientAllergies)
             .FirstOrDefaultAsync(p => p.PatientProfileId == patientProfileId, ct);
 
     public Task<PatientProfile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
         _db.PatientProfiles
             .AsNoTracking()
             .Include(p => p.User)
+            .Include(p => p.PatientDiseases).ThenInclude(x => x.Disease)
+            .Include(p => p.PatientAllergies).ThenInclude(x => x.AllergyType)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
     public Task<bool> ExistsForUserAsync(Guid userId, CancellationToken ct = default) =>
@@ -42,9 +48,36 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
         return profile;
     }
 
+    public async Task ClearCollectionsAsync(Guid patientProfileId, CancellationToken ct = default)
+    {
+        await _db.PatientDiseases.Where(d => d.PatientProfileId == patientProfileId).ExecuteDeleteAsync(ct);
+        await _db.PatientAllergies.Where(a => a.PatientProfileId == patientProfileId).ExecuteDeleteAsync(ct);
+    }
+
     public async Task UpdateAsync(PatientProfile profile, CancellationToken ct = default)
     {
-        _db.PatientProfiles.Update(profile);
+        // 1. Lấy danh sách ID hiện có trong context mà đã bị đánh dấu xóa (Deleted)
+        // để tránh EF Core gửi DELETE lệnh có thể gây ra DbUpdateConcurrencyException
+        var deletedDiseases = _db.ChangeTracker.Entries<PatientDisease>()
+            .Where(e => e.State == EntityState.Deleted).Select(e => e.Entity).ToList();
+        
+        var deletedAllergies = _db.ChangeTracker.Entries<PatientAllergy>()
+            .Where(e => e.State == EntityState.Deleted).Select(e => e.Entity).ToList();
+
+        // 2. Tách chúng ra khỏi ChangeTracker
+        foreach(var d in deletedDiseases) _db.Entry(d).State = EntityState.Detached;
+        foreach(var a in deletedAllergies) _db.Entry(a).State = EntityState.Detached;
+
+        // 3. Xóa trực tiếp bằng ExecuteDeleteAsync để đảm bảo an toàn, không sợ concurrency
+        await _db.PatientDiseases.Where(d => d.PatientProfileId == profile.PatientProfileId).ExecuteDeleteAsync(ct);
+        await _db.PatientAllergies.Where(a => a.PatientProfileId == profile.PatientProfileId).ExecuteDeleteAsync(ct);
+
+        // 4. Các item mới được thêm vào profile (State = Added) sẽ được EF xử lý bằng INSERT bình thường.
+        if (_db.Entry(profile).State == EntityState.Detached)
+        {
+            _db.PatientProfiles.Update(profile);
+        }
+
         await _db.SaveChangesAsync(ct);
     }
 

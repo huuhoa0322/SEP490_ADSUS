@@ -48,8 +48,8 @@ export interface PatientProfile {
   /** Chỉ đọc — xem fullName. */
   dateOfBirth: string | null;
   gender: Gender;
-  medicalHistory: string | null;
-  allergies: string | null;
+  diseases: PatientDiseaseResponse[];
+  allergies: PatientAllergyResponse[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -59,15 +59,52 @@ export interface PatientProfile {
 export interface CreatePatientProfileRequest {
   patientUserId: string;
   gender: Gender | null;
-  medicalHistory: string | null;
-  allergies: string | null;
+  diseases: PatientDiseaseInput[];
+  allergies: PatientAllergyInput[];
 }
 
 /** #18 — thay TOÀN BỘ hồ sơ, nên gender bắt buộc. patientUserId không sửa được. */
 export interface UpdatePatientProfileRequest {
   gender: Gender;
-  medicalHistory: string | null;
-  allergies: string | null;
+  diseases: PatientDiseaseInput[];
+  allergies: PatientAllergyInput[];
+}
+
+export interface PatientDiseaseInput {
+  diseaseId: string;
+  note: string | null;
+}
+
+export interface PatientAllergyInput {
+  allergyTypeId: string;
+  note: string | null;
+}
+
+export interface PatientDiseaseResponse {
+  diseaseId: string;
+  diseaseName: string;
+  isOther: boolean;
+  note: string | null;
+}
+
+export interface PatientAllergyResponse {
+  allergyTypeId: string;
+  allergyName: string;
+  isOther: boolean;
+  note: string | null;
+}
+
+export interface MedicalDisease {
+  id: string;
+  name: string;
+  requiresNote: boolean;
+  isOther: boolean;
+}
+
+export interface MedicalAllergyType {
+  id: string;
+  name: string;
+  isOther: boolean;
 }
 
 /** Tài khoản bệnh nhân (BE-4). CÓ dateOfBirth — khác hẳn UserAccountResponse của Module 2. */
