@@ -19,15 +19,9 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { getHomePathForRole, useAuthStore, useHasHydrated } from "@/store/auth-store";
 
+import { useLatestAndroidRelease } from "../hooks/use-latest-android-release";
 import { useSignIn } from "../hooks/use-sign-in";
 import { getSignInErrorMessage } from "../lib/auth-messages";
-
-// File APK không commit vào git (bài học từ file model .pt 44.8MB từng làm phình repo
-// AI Backend) — host trên GitHub Releases của chính repo này (đã Public), free, không giới
-// hạn dung lượng đáng kể. Có bản Android mới: repo → Releases → tạo release mới → đính kèm
-// file .apk → copy đúng URL "asset" GitHub tự sinh, dán đè vào đây.
-const ANDROID_APK_DOWNLOAD_URL =
-    "https://github.com/huuhoa0322/SEP490_ADSUS/releases/download/android-v1.0.0/adsus-mobile-1.0.0.apk"
 
 export function SignInForm() {
   const router = useRouter();
@@ -41,6 +35,7 @@ export function SignInForm() {
   const [clientError, setClientError] = useState<string | null>(null);
 
   const signIn = useSignIn();
+  const { data: androidApkUrl, isPending: isApkUrlPending } = useLatestAndroidRelease();
 
   // Bị đá ra vì token hết hiệu lực (hết hạn, hoặc tài khoản vừa bị Admin khoá). Không nói
   // gì thì người dùng tưởng hệ thống tự đăng xuất vô cớ.
@@ -227,14 +222,25 @@ export function SignInForm() {
           </Link>
         </p>
 
-        {/* Link tải app Android — trỏ ra ngoài GitHub Releases, xem hằng số ở đầu file. */}
-        <a
-          href={ANDROID_APK_DOWNLOAD_URL}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-border text-sm font-600 text-foreground transition-colors hover:border-accent hover:text-accent"
-        >
-          <Smartphone aria-hidden className="size-4" />
-          Tải ứng dụng Android
-        </a>
+        {/* Link tải app Android — tự lấy bản GitHub Release mới nhất qua /api/mobile-release
+            lúc chạy, không hardcode URL trong code (xem route.ts để biết lý do). */}
+        {androidApkUrl ? (
+          <a
+            href={androidApkUrl}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-border text-sm font-600 text-foreground transition-colors hover:border-accent hover:text-accent"
+          >
+            <Smartphone aria-hidden className="size-4" />
+            Tải ứng dụng Android
+          </a>
+        ) : (
+          <div
+            aria-disabled="true"
+            className="flex h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-full border border-border text-sm font-600 text-muted-foreground opacity-60"
+          >
+            <Smartphone aria-hidden className="size-4" />
+            {isApkUrlPending ? "Đang tìm bản Android mới nhất..." : "Chưa có bản Android nào"}
+          </div>
+        )}
       </form>
     </div>
   );

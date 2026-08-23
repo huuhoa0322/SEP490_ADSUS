@@ -5,13 +5,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SignInForm } from "@/features/auth/components/sign-in-form";
 
-const { mutate, hookState, searchParamsMock, replaceMock } = vi.hoisted(() => ({
+const { mutate, hookState, apkHookState, searchParamsMock, replaceMock } = vi.hoisted(() => ({
   mutate: vi.fn(),
   hookState: {
     isPending: false,
     isSuccess: false,
     isError: false,
     error: null as unknown,
+  },
+  apkHookState: {
+    data: "https://github.com/huuhoa0322/SEP490_ADSUS/releases/download/android-v1.0.0/adsus-mobile-1.0.0.apk" as
+      | string
+      | null,
+    isPending: false,
   },
   searchParamsMock: vi.fn(() => new URLSearchParams()),
   replaceMock: vi.fn(),
@@ -24,6 +30,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/features/auth/hooks/use-sign-in", () => ({
   useSignIn: () => ({ mutate, ...hookState }),
+}));
+
+vi.mock("@/features/auth/hooks/use-latest-android-release", () => ({
+  useLatestAndroidRelease: () => ({ ...apkHookState }),
 }));
 
 /** Dựng một lỗi axios đúng mã HTTP cần thử. */
@@ -47,6 +57,9 @@ describe("SignInForm", () => {
     hookState.isSuccess = false;
     hookState.isError = false;
     hookState.error = null;
+    apkHookState.data =
+      "https://github.com/huuhoa0322/SEP490_ADSUS/releases/download/android-v1.0.0/adsus-mobile-1.0.0.apk";
+    apkHookState.isPending = false;
     searchParamsMock.mockReturnValue(new URLSearchParams());
   });
 
@@ -121,5 +134,32 @@ describe("SignInForm", () => {
 
     await user.click(screen.getByRole("button", { name: /ẩn mật khẩu/i }));
     expect(passwordInput.type).toBe("password");
+  });
+
+  it("đã có link APK — nút tải là link thật, đúng href", () => {
+    render(<SignInForm />);
+
+    const link = screen.getByRole("link", { name: /tải ứng dụng android/i });
+    expect(link).toHaveAttribute("href", apkHookState.data);
+  });
+
+  it("đang tìm bản Android (isPending) — không phải link, hiện đúng câu chờ", () => {
+    apkHookState.data = null;
+    apkHookState.isPending = true;
+
+    render(<SignInForm />);
+
+    expect(screen.getByText("Đang tìm bản Android mới nhất...")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /tải ứng dụng android/i })).not.toBeInTheDocument();
+  });
+
+  it("chưa có release nào (data null, hết pending) — báo chưa có bản, không phải link", () => {
+    apkHookState.data = null;
+    apkHookState.isPending = false;
+
+    render(<SignInForm />);
+
+    expect(screen.getByText("Chưa có bản Android nào")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /tải ứng dụng android/i })).not.toBeInTheDocument();
   });
 });
