@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { apiClient, getApiErrorMessage } from "@/lib/api-client";
 import { Loader2, AlertCircle, CheckCircle2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -61,7 +61,6 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
   // Refs for DOM nodes
   const aiWrapRef = useRef<HTMLDivElement>(null);
   const editWrapRef = useRef<HTMLDivElement>(null);
-  const addBtnRef = useRef<HTMLButtonElement>(null);
   
   // Zoom info state
   const [aiZoom, setAiZoom] = useState("—");
@@ -85,6 +84,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
   useEffect(() => {
     if (!file) return;
     const url = URL.createObjectURL(file);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setImgUrl(url);
 
     const img = new Image();
@@ -343,6 +343,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
     // Use requestAnimationFrame to fit after layout
     requestAnimationFrame(() => requestAnimationFrame(() => pz.fit()));
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgDims, aiDetections, imgUrl]);
 
   // Make elements draggable
@@ -552,12 +553,10 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
     const checkAndShowIntersectionWarning = () => {
       // Direct DOM warning logic can go here if needed
       // But we also update state for the save button
-      let hasError = false;
       const newLesions = [...lesions];
       newLesions.forEach(l => {
         if (!l.rejected) {
           l.isValid = checkIntersection(l.pair_a, l.pair_b);
-          if (!l.isValid) hasError = true;
         }
       });
       // We don't call setLesions here during drag to avoid lag, 
@@ -587,6 +586,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
     inner.appendChild(svg);
     checkAndShowIntersectionWarning();
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lesions, imgDims, addingClicks]);
 
   // Adding caliper logic
