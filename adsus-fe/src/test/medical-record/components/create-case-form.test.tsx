@@ -44,6 +44,13 @@ vi.mock("@/features/medical-record/hooks/use-symptoms", () => ({
   }),
 }));
 
+vi.mock("@/features/medical-record/hooks/use-patient-profile", () => ({
+  usePatientProfile: () => ({
+    data: null,
+    isLoading: false,
+  }),
+}));
+
 function signInAs(role: "DOCTOR" | "NURSE", userId: string, fullName: string) {
   useAuthStore.getState().signIn("token", {
     userId,
@@ -111,21 +118,19 @@ describe("CreateCaseForm", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(/chọn bác sĩ/i);
   });
 
-  it("gửi đủ trường, images rỗng, khi Bác sĩ lưu ca khám không kèm ảnh", async () => {
-    // Sửa 07/08/2026 — ảnh siêu âm không còn ở màn này, luôn gửi mảng rỗng.
+  it("tự động gán Khám định kì khi không chọn triệu chứng nào", async () => {
     signInAs("DOCTOR", "doctor-1", "BS. Nguyễn Văn An");
     const user = userEvent.setup();
 
     render(<CreateCaseForm patientProfileId="profile-1" />);
 
-    await user.type(screen.getByLabelText(/lý do khám/i), "Rong kinh 3 tuần");
     await user.click(screen.getByRole("button", { name: /lưu ca khám/i }));
 
     expect(createMutate).toHaveBeenCalledWith(
       {
         patientProfileId: "profile-1",
         responsibleDoctorId: "doctor-1",
-        clinicalInfo: "Rong kinh 3 tuần",
+        clinicalInfo: "Khám định kì",
         symptoms: [],
         images: [],
       },
