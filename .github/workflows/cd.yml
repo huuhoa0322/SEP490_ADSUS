@@ -1,0 +1,51 @@
+name: ADSUS Mobile Release
+
+# CHỈ Mobile có file này — Backend/AI Backend/Frontend đã tự deploy qua git integration
+# native của Render/Vercel (xem ci.yml và Guide §0/§4), KHÔNG cần và KHÔNG nên thêm bước
+# deploy GitHub Actions cho 3 dịch vụ đó (dễ đá nhau với cơ chế tự deploy sẵn có).
+#
+# Trigger CỐ Ý không phải push code thường — release là hành động có chủ đích, đòi hỏi con
+# người quyết định "bản này đã sẵn sàng phát hành", không nên để bất kỳ push nào (kể cả code
+# không liên quan Mobile) vô tình tạo ra 1 bản release mới.
+on:
+    push:
+        tags:
+            - "android-v*"
+
+jobs:
+    mobile-release:
+        name: "Build APK & Publish GitHub Release"
+        runs-on: ubuntu-latest
+        # contents: write - bắt buộc để action bên dưới tạo được GitHub Release + upload asset.
+        permissions:
+            contents: write
+        defaults:
+            run:
+                working-directory: ADSUS_Mobile
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: subosito/flutter-action@v2
+              with:
+                  flutter-version: "3.47.x"
+
+            - run: flutter pub get
+
+            - run: flutter build apk --release --dart-define=API_BASE_URL=https://api-adsus.onrender.com
+
+            # Đặt tên file theo đúng version trong tag (bỏ tiền tố "android-v"), khớp quy ước
+            # đặt tên đã dùng khi release thủ công trước đây — xem Guide §10.4.
+            - name: Determine version from tag
+              id: version
+              run: echo "version=${GITHUB_REF_NAME#android-v}" >> "$GITHUB_OUTPUT"
+
+            - name: Rename APK
+              run: |
+                  mv build/app/outputs/flutter-apk/app-release.apk \
+                     build/app/outputs/flutter-apk/adsus-mobile-${{ steps.version.outputs.version }}.apk
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: ADSUS_Mobile/build/app/outputs/flutter-apk/adsus-mobile-*.apk
+                  generate_release_notes: true
