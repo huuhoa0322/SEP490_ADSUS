@@ -331,6 +331,7 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IPatientProfileRepository, PatientProfileRepository>();
             builder.Services.AddScoped<ICaseRepository, CaseRepository>();
             builder.Services.AddScoped<IUltrasoundImageRepository, UltrasoundImageRepository>();
+            builder.Services.AddScoped<ISymptomCategoryRepository, SymptomCategoryRepository>();
 
             // External services — push notification. Hiện tại dùng FakePush (in-memory stub)
             // cho dev/test/CI. Production sẽ đổi sang FirebasePushNotificationClient (sprint sau,
@@ -364,6 +365,7 @@ namespace ADSUS_BE
             // BLL — Module 4: Medical Record
             builder.Services.AddScoped<IPatientProfileService, PatientProfileService>();
             builder.Services.AddScoped<ICaseService, CaseService>();
+            builder.Services.AddScoped<ISymptomService, SymptomService>();
             builder.Services.AddScoped<ICaseDiagnosisService, CaseDiagnosisService>();
             builder.Services.AddScoped<IAiMetricsService, AiMetricsService>();
             builder.Services.AddScoped<ICaseReportService, CaseReportService>();

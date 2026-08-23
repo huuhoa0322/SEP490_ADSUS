@@ -390,7 +390,7 @@ public class CaseServiceTests
         var profile = MedicalRecordTestData.MakePatientProfile();
         var doctor = MedicalRecordTestData.MakeDoctor();
         var request = new ADSUS_BE.BLL.MedicalRecord.DTOs.CreateCaseRequest(
-            profile.PatientProfileId, doctor.UserId, "Đau vú trái", new[] { MakeValidPngUpload() });
+            profile.PatientProfileId, doctor.UserId, "Đau vú trái", null, new[] { MakeValidPngUpload() });
 
         _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
@@ -433,7 +433,7 @@ public class CaseServiceTests
         var profile = MedicalRecordTestData.MakePatientProfile();
         var doctor = MedicalRecordTestData.MakeDoctor();
         var request = new ADSUS_BE.BLL.MedicalRecord.DTOs.CreateCaseRequest(
-            profile.PatientProfileId, doctor.UserId, "Đau vú trái",
+            profile.PatientProfileId, doctor.UserId, "Đau vú trái", null,
             Array.Empty<ADSUS_BE.BLL.MedicalRecord.DTOs.UploadedFile>());
 
         _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
@@ -472,7 +472,7 @@ public class CaseServiceTests
         _profiles.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync((PatientProfile?)null);
         var request = new ADSUS_BE.BLL.MedicalRecord.DTOs.CreateCaseRequest(
-            Guid.NewGuid(), Guid.NewGuid(), null, new[] { MakeValidPngUpload() });
+            Guid.NewGuid(), Guid.NewGuid(), null, null, new[] { MakeValidPngUpload() });
 
         // Act & Assert
         await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.CreateAsync(request));
@@ -488,7 +488,7 @@ public class CaseServiceTests
         _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync((User?)null);
         var request = new ADSUS_BE.BLL.MedicalRecord.DTOs.CreateCaseRequest(
-            profile.PatientProfileId, Guid.NewGuid(), null, new[] { MakeValidPngUpload() });
+            profile.PatientProfileId, Guid.NewGuid(), null, null, new[] { MakeValidPngUpload() });
 
         // Act & Assert
         await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.CreateAsync(request));
@@ -506,7 +506,7 @@ public class CaseServiceTests
         _users.Setup(r => r.GetByIdAsync(nurse.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(nurse);
         var request = new ADSUS_BE.BLL.MedicalRecord.DTOs.CreateCaseRequest(
-            profile.PatientProfileId, nurse.UserId, null, new[] { MakeValidPngUpload() });
+            profile.PatientProfileId, nurse.UserId, null, null, new[] { MakeValidPngUpload() });
 
         // Act & Assert
         await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateAsync(request));
@@ -522,7 +522,7 @@ public class CaseServiceTests
         var fakeFile = new ADSUS_BE.BLL.MedicalRecord.DTOs.UploadedFile(
             "fake.jpg", "image/jpeg", 10, new MemoryStream("khong-phai-anh"u8.ToArray()));
         var request = new ADSUS_BE.BLL.MedicalRecord.DTOs.CreateCaseRequest(
-            profile.PatientProfileId, doctor.UserId, null, new[] { fakeFile });
+            profile.PatientProfileId, doctor.UserId, null, null, new[] { fakeFile });
 
         _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
@@ -543,7 +543,7 @@ public class CaseServiceTests
         var profile = MedicalRecordTestData.MakePatientProfile();
         var doctor = MedicalRecordTestData.MakeDoctor();
         var request = new ADSUS_BE.BLL.MedicalRecord.DTOs.CreateCaseRequest(
-            profile.PatientProfileId, doctor.UserId, null, new[] { MakeValidPngUpload() });
+            profile.PatientProfileId, doctor.UserId, null, null, new[] { MakeValidPngUpload() });
 
         _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
@@ -883,3 +883,4 @@ public class CaseServiceTests
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }
+

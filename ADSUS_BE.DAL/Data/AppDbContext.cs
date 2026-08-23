@@ -26,6 +26,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Case> Cases { get; set; }
 
+    public virtual DbSet<CaseSymptom> CaseSymptoms { get; set; }
+
     public virtual DbSet<DoctorAnnotation> DoctorAnnotations { get; set; }
 
     public virtual DbSet<HealthLog> HealthLogs { get; set; }
@@ -33,6 +35,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<MedicationIntakeLog> MedicationIntakeLogs { get; set; }
 
     public virtual DbSet<Medicine> Medicines { get; set; }
+
+    public virtual DbSet<NotificationLog> NotificationLogs { get; set; }
 
     public virtual DbSet<PatientProfile> PatientProfiles { get; set; }
 
@@ -46,9 +50,15 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<ServiceFeedback> ServiceFeedbacks { get; set; }
 
+    public virtual DbSet<Symptom> Symptoms { get; set; }
+
+    public virtual DbSet<SymptomCategory> SymptomCategories { get; set; }
+
     public virtual DbSet<UltrasoundImage> UltrasoundImages { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
+
+    public virtual DbSet<UserFcmToken> UserFcmTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -72,6 +82,8 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("intake_status", new[] { "PENDING", "TAKEN", "OVERTIME" })
             .HasPostgresEnum("medicines_status", new[] { "ACTIVE", "INACTIVE" })
             .HasPostgresEnum("model_version_status", new[] { "ACTIVE", "INACTIVE" })
+            .HasPostgresEnum("notification_status", new[] { "SENT", "DELIVERED", "FAILED", "READ", "UNREAD" })
+            .HasPostgresEnum("notification_type", new[] { "medication_reminder", "medication_confirmation", "appointment_booking", "appointment_reminder", "appointment_cancellation", "healthlog_reminder", "general" })
             .HasPostgresEnum("prescription_status", new[] { "ACTIVE", "COMPLETED" })
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in", "like", "ilike", "is", "match", "imatch", "isdistinct" })
@@ -102,7 +114,6 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.Role).HasColumnName("role");
 
             entity.HasOne(d => d.User).WithMany(p => p.AiChatMessages)
                 .HasForeignKey(d => d.UserId)
@@ -347,6 +358,37 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("fk_cases_patient_profile");
         });
 
+        modelBuilder.Entity<CaseSymptom>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("case_symptoms_pkey");
+
+            entity.ToTable("case_symptoms");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CaseId).HasColumnName("case_id");
+            entity.Property(e => e.CategoryId).HasColumnName("category_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnName("created_at");
+            entity.Property(e => e.OtherNote).HasColumnName("other_note");
+            entity.Property(e => e.SymptomId).HasColumnName("symptom_id");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.CaseSymptoms)
+                .HasForeignKey(d => d.CaseId)
+                .HasConstraintName("case_symptoms_case_id_fkey");
+
+            entity.HasOne(d => d.Category).WithMany(p => p.CaseSymptoms)
+                .HasForeignKey(d => d.CategoryId)
+                .HasConstraintName("case_symptoms_category_id_fkey");
+
+            entity.HasOne(d => d.Symptom).WithMany(p => p.CaseSymptoms)
+                .HasForeignKey(d => d.SymptomId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("case_symptoms_symptom_id_fkey");
+        });
+
         modelBuilder.Entity<DoctorAnnotation>(entity =>
         {
             entity.HasKey(e => e.AnnotationId).HasName("doctor_annotations_pkey");
@@ -446,6 +488,50 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Name)
                 .HasMaxLength(200)
                 .HasColumnName("name");
+        });
+
+        modelBuilder.Entity<NotificationLog>(entity =>
+        {
+            entity.HasKey(e => e.LogId).HasName("notification_logs_pkey");
+
+            entity.ToTable("notification_logs");
+
+            entity.HasIndex(e => new { e.UserId, e.SentAt }, "idx_notification_logs_user_timeline").IsDescending(false, true);
+
+            entity.Property(e => e.LogId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("log_id");
+            entity.Property(e => e.Body).HasColumnName("body");
+            entity.Property(e => e.DeepLink)
+                .HasMaxLength(500)
+                .HasColumnName("deep_link");
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.DeliveredAt).HasColumnName("delivered_at");
+            entity.Property(e => e.ErrorMessage).HasColumnName("error_message");
+            entity.Property(e => e.FcmMessageId)
+                .HasMaxLength(200)
+                .HasColumnName("fcm_message_id");
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .HasColumnName("is_deleted");
+            entity.Property(e => e.Payload)
+                .HasColumnType("jsonb")
+                .HasColumnName("payload");
+            entity.Property(e => e.ReadAt).HasColumnName("read_at");
+            entity.Property(e => e.RetryCount)
+                .HasDefaultValue(0)
+                .HasColumnName("retry_count");
+            entity.Property(e => e.SentAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("sent_at");
+            entity.Property(e => e.Title)
+                .HasMaxLength(200)
+                .HasColumnName("title");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.User).WithMany(p => p.NotificationLogs)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("notification_logs_user_id_fkey");
         });
 
         modelBuilder.Entity<PatientProfile>(entity =>
@@ -621,9 +707,14 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("service_feedbacks", tb => tb.HasComment("Phản hồi/đánh giá dịch vụ (FT-36), thang 1–5 sao."));
 
+            entity.HasIndex(e => e.CaseId, "ux_service_feedbacks_case")
+                .IsUnique()
+                .HasFilter("(case_id IS NOT NULL)");
+
             entity.Property(e => e.FeedbackId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("feedback_id");
+            entity.Property(e => e.CaseId).HasColumnName("case_id");
             entity.Property(e => e.Content).HasColumnName("content");
             entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
             entity.Property(e => e.Rating).HasColumnName("rating");
@@ -631,10 +722,54 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnName("submitted_at");
 
+            entity.HasOne(d => d.Case).WithOne(p => p.ServiceFeedback)
+                .HasForeignKey<ServiceFeedback>(d => d.CaseId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_service_feedbacks_case");
+
             entity.HasOne(d => d.PatientProfile).WithMany(p => p.ServiceFeedbacks)
                 .HasForeignKey(d => d.PatientProfileId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_service_feedbacks_patient");
+        });
+
+        modelBuilder.Entity<Symptom>(entity =>
+        {
+            entity.HasKey(e => e.SymptomId).HasName("symptoms_pkey");
+
+            entity.ToTable("symptoms");
+
+            entity.Property(e => e.SymptomId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("symptom_id");
+            entity.Property(e => e.CategoryId).HasColumnName("category_id");
+            entity.Property(e => e.IsOther)
+                .HasDefaultValue(false)
+                .HasColumnName("is_other");
+            entity.Property(e => e.Name)
+                .HasMaxLength(255)
+                .HasColumnName("name");
+
+            entity.HasOne(d => d.Category).WithMany(p => p.Symptoms)
+                .HasForeignKey(d => d.CategoryId)
+                .HasConstraintName("symptoms_category_id_fkey");
+        });
+
+        modelBuilder.Entity<SymptomCategory>(entity =>
+        {
+            entity.HasKey(e => e.CategoryId).HasName("symptom_categories_pkey");
+
+            entity.ToTable("symptom_categories");
+
+            entity.Property(e => e.CategoryId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("category_id");
+            entity.Property(e => e.IsOther)
+                .HasDefaultValue(false)
+                .HasColumnName("is_other");
+            entity.Property(e => e.Name)
+                .HasMaxLength(255)
+                .HasColumnName("name");
         });
 
         modelBuilder.Entity<UltrasoundImage>(entity =>
@@ -705,6 +840,39 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<UserFcmToken>(entity =>
+        {
+            entity.HasKey(e => e.TokenId).HasName("user_fcm_tokens_pkey");
+
+            entity.ToTable("user_fcm_tokens");
+
+            entity.HasIndex(e => e.UserId, "idx_user_fcm_tokens_user");
+
+            entity.HasIndex(e => e.Token, "user_fcm_tokens_token_key").IsUnique();
+
+            entity.Property(e => e.TokenId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("token_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeviceType)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'android'::character varying")
+                .HasColumnName("device_type");
+            entity.Property(e => e.Token)
+                .HasMaxLength(500)
+                .HasColumnName("token");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.User).WithMany(p => p.UserFcmTokens)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("user_fcm_tokens_user_id_fkey");
         });
 
         OnModelCreatingPartial(modelBuilder);

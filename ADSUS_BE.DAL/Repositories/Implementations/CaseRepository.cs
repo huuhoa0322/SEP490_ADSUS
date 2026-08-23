@@ -24,6 +24,8 @@ public sealed class CaseRepository : ICaseRepository
             .Include(c => c.PatientProfile).ThenInclude(p => p.User)
             .Include(c => c.Doctor)
             .Include(c => c.UltrasoundImages)
+            .Include(c => c.CaseSymptoms).ThenInclude(cs => cs.Category)
+            .Include(c => c.CaseSymptoms).ThenInclude(cs => cs.Symptom)
             .Include(c => c.Prescriptions).ThenInclude(p => p.PrescriptionItems).ThenInclude(i => i.Medicine)
             .FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
 

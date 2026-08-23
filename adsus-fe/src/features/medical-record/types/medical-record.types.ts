@@ -157,10 +157,38 @@ export interface CaseDetail {
   doctorConclusion: string | null;
   patientProfile: PatientProfile | null;
   ultrasoundImages: UltrasoundImage[];
+  symptoms: CaseSymptomDetail[];
   aiResults: AiResultSummary[];
   prescription: PrescriptionSummary | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SymptomItem {
+  symptomId: string;
+  name: string;
+  isOther: boolean;
+}
+
+export interface SymptomCategory {
+  categoryId: string;
+  name: string;
+  isOther: boolean;
+  symptoms: SymptomItem[];
+}
+
+export interface CaseSymptomDetail {
+  categoryId: string;
+  categoryName: string;
+  symptomId: string | null;
+  symptomName: string | null;
+  otherNote: string | null;
+}
+
+export interface CreateCaseSymptomInput {
+  categoryId: string;
+  symptomId: string | null;
+  otherNote: string | null;
 }
 
 /**
@@ -195,11 +223,11 @@ export interface CaseListQuery {
   pageSize?: number;
 }
 
-/** #20 — multipart. Ảnh đi riêng, không nằm trong JSON. */
 export interface CreateCaseInput {
   patientProfileId: string;
   responsibleDoctorId: string;
   clinicalInfo: string | null;
+  symptoms: CreateCaseSymptomInput[];
   images: File[];
 }
 

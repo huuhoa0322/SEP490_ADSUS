@@ -147,11 +147,26 @@ public sealed class CasesController : ControllerBase
         [FromForm] Guid patientProfileId,
         [FromForm] Guid responsibleDoctorId,
         [FromForm] string? clinicalInfo,
+        [FromForm] string? symptomsJson,
         [FromForm] List<IFormFile> images,
         CancellationToken ct)
     {
+        IReadOnlyList<CreateCaseSymptomRequest>? symptoms = null;
+        if (!string.IsNullOrWhiteSpace(symptomsJson))
+        {
+            try
+            {
+                symptoms = System.Text.Json.JsonSerializer.Deserialize<List<CreateCaseSymptomRequest>>(
+                    symptomsJson, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch
+            {
+                return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, "Invalid symptoms JSON format."));
+            }
+        }
+
         var request = new CreateCaseRequest(
-            patientProfileId, responsibleDoctorId, clinicalInfo, ToUploadedFiles(images));
+            patientProfileId, responsibleDoctorId, clinicalInfo, symptoms, ToUploadedFiles(images));
 
         var validation = await _createValidator.ValidateAsync(request, ct);
         if (!validation.IsValid)
