@@ -23,10 +23,25 @@ vi.mock("@/features/medical-record/hooks/use-cases", () => ({
     isError: false,
     error: null,
   }),
+  useCaseList: () => ({
+    data: { items: [] },
+    isLoading: false,
+  }),
+  useCaseDetail: () => ({
+    data: null,
+    isLoading: false,
+  }),
 }));
 
 vi.mock("@/features/medical-record/hooks/use-doctors", () => ({
   useDoctorList: (enabled: boolean) => doctorListMock(enabled),
+}));
+
+vi.mock("@/features/medical-record/hooks/use-symptoms", () => ({
+  useSymptomCategories: () => ({
+    data: [],
+    isLoading: false,
+  }),
 }));
 
 function signInAs(role: "DOCTOR" | "NURSE", userId: string, fullName: string) {
@@ -103,7 +118,7 @@ describe("CreateCaseForm", () => {
 
     render(<CreateCaseForm patientProfileId="profile-1" />);
 
-    await user.type(screen.getByLabelText(/triệu chứng/i), "Rong kinh 3 tuần");
+    await user.type(screen.getByLabelText(/lý do khám/i), "Rong kinh 3 tuần");
     await user.click(screen.getByRole("button", { name: /lưu ca khám/i }));
 
     expect(createMutate).toHaveBeenCalledWith(
@@ -111,6 +126,7 @@ describe("CreateCaseForm", () => {
         patientProfileId: "profile-1",
         responsibleDoctorId: "doctor-1",
         clinicalInfo: "Rong kinh 3 tuần",
+        symptoms: [],
         images: [],
       },
       expect.anything(),
