@@ -9,8 +9,8 @@ public class UpdatePatientProfileRequestValidatorTests
 
     private static UpdatePatientProfileRequest ValidRequest() => new(
         Gender: "MALE",
-        MedicalHistory: "Cập nhật sau tái khám",
-        Allergies: null);
+        Diseases: new System.Collections.Generic.List<PatientDiseaseInput>(),
+        Allergies: new System.Collections.Generic.List<PatientAllergyInput>());
 
     [Fact]
     public void ValidRequest_PassesValidation()
@@ -53,17 +53,5 @@ public class UpdatePatientProfileRequestValidatorTests
         Assert.Contains(result.Errors, e => e.PropertyName == nameof(UpdatePatientProfileRequest.Gender));
     }
 
-    [Fact]
-    public void MedicalHistory_5001Chars_Fails()
-    {
-        // Arrange
-        var request = ValidRequest() with { MedicalHistory = new string('a', 5001) };
 
-        // Act
-        var result = _validator.Validate(request);
-
-        // Assert
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName == nameof(UpdatePatientProfileRequest.MedicalHistory));
-    }
 }

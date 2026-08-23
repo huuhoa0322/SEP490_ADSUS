@@ -33,6 +33,10 @@ public partial class PatientProfile
 
     public virtual ICollection<HealthLog> HealthLogs { get; set; } = new List<HealthLog>();
 
+    public virtual ICollection<PatientAllergy> PatientAllergies { get; set; } = new List<PatientAllergy>();
+
+    public virtual ICollection<PatientDisease> PatientDiseases { get; set; } = new List<PatientDisease>();
+
     public virtual PatientReminderPreference? PatientReminderPreference { get; set; }
 
     public virtual ICollection<ServiceFeedback> ServiceFeedbacks { get; set; } = new List<ServiceFeedback>();

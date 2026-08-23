@@ -88,8 +88,8 @@ export function NewPatientFlow({ patientUserId }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
-      <h1 className="mb-6 font-heading text-[28px] font-bold tracking-[-0.02em] text-foreground">
+    <div className="mx-auto w-full px-6 py-10">
+      <h1 className="mx-auto max-w-[80vw] mb-6 font-heading text-[28px] font-bold tracking-[-0.02em] text-foreground">
         Thêm bệnh nhân mới
       </h1>
       <PatientAccountForm />

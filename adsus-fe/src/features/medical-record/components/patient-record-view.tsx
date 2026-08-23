@@ -14,6 +14,8 @@ import {
   formatIsoDate,
   formatIsoDateTime,
   genderLabel,
+  formatDiseases,
+  formatAllergies,
 } from "../lib/medical-record-labels";
 import type { CaseStatus } from "../types/medical-record.types";
 
@@ -92,14 +94,36 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
         </div>
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <dt className="text-xs text-muted-foreground">Dị ứng</dt>
-            <dd className="mt-0.5 font-semibold text-destructive">
-              {profile.allergies || EMPTY_VALUE}
+            <dt className="text-sm font-medium text-muted-foreground">Dị ứng</dt>
+            <dd className="mt-1 text-base font-semibold text-foreground">
+              {profile.allergies && profile.allergies.length > 0 ? (
+                <div className="flex flex-col gap-1">
+                  {profile.allergies.map(a => (
+                    <div key={a.allergyTypeId}>
+                      {a.isOther ? (a.note || a.allergyName) : a.note ? `${a.allergyName}: ${a.note}` : a.allergyName}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                EMPTY_VALUE
+              )}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-muted-foreground">Tiền sử bệnh</dt>
-            <dd className="mt-0.5">{profile.medicalHistory || EMPTY_VALUE}</dd>
+            <dt className="text-sm font-medium text-muted-foreground">Tiền sử bệnh</dt>
+            <dd className="mt-1 text-base font-semibold text-foreground">
+              {profile.diseases && profile.diseases.length > 0 ? (
+                <div className="flex flex-col gap-1">
+                  {profile.diseases.map(d => (
+                    <div key={d.diseaseId}>
+                      {d.isOther ? (d.note || d.diseaseName) : d.note ? `${d.diseaseName}: ${d.note}` : d.diseaseName}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                EMPTY_VALUE
+              )}
+            </dd>
           </div>
         </dl>
       </section>

@@ -29,7 +29,7 @@ public class PatientProfileServiceTests
         // Arrange
         var patient = MedicalRecordTestData.MakePatientUser();
         var actingDoctorId = Guid.NewGuid();
-        var request = new CreatePatientProfileRequest(patient.UserId, "FEMALE", "Không có", null);
+        var request = new CreatePatientProfileRequest(patient.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         _users.Setup(r => r.GetByIdAsync(patient.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(patient);
@@ -57,7 +57,7 @@ public class PatientProfileServiceTests
         // Arrange — UC-06: Điều dưỡng cũng được phép lập hồ sơ, không chỉ Bác sĩ.
         var patient = MedicalRecordTestData.MakePatientUser();
         var actingNurseId = Guid.NewGuid();
-        var request = new CreatePatientProfileRequest(patient.UserId, "FEMALE", null, null);
+        var request = new CreatePatientProfileRequest(patient.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         _users.Setup(r => r.GetByIdAsync(patient.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(patient);
@@ -82,7 +82,7 @@ public class PatientProfileServiceTests
     public async Task CreateAsync_PatientUserIdNotFound_ThrowsResourceNotFoundException()
     {
         // Arrange
-        var request = new CreatePatientProfileRequest(Guid.NewGuid(), "FEMALE", null, null);
+        var request = new CreatePatientProfileRequest(Guid.NewGuid(), "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
         _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync((User?)null);
 
@@ -96,7 +96,7 @@ public class PatientProfileServiceTests
     {
         // Arrange — BR-01: tài khoản đích phải có role PATIENT.
         var doctorAccount = MedicalRecordTestData.MakeDoctor();
-        var request = new CreatePatientProfileRequest(doctorAccount.UserId, "FEMALE", null, null);
+        var request = new CreatePatientProfileRequest(doctorAccount.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
         _users.Setup(r => r.GetByIdAsync(doctorAccount.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(doctorAccount);
 
@@ -109,7 +109,7 @@ public class PatientProfileServiceTests
     {
         // Arrange — uq_patient_profiles_user: 1 tài khoản chỉ có đúng 1 hồ sơ nền.
         var patient = MedicalRecordTestData.MakePatientUser();
-        var request = new CreatePatientProfileRequest(patient.UserId, "FEMALE", null, null);
+        var request = new CreatePatientProfileRequest(patient.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
         _users.Setup(r => r.GetByIdAsync(patient.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(patient);
         _profiles.Setup(r => r.ExistsForUserAsync(patient.UserId, It.IsAny<CancellationToken>()))
@@ -126,7 +126,7 @@ public class PatientProfileServiceTests
     {
         // Arrange
         var profile = MedicalRecordTestData.MakePatientProfile();
-        var request = new UpdatePatientProfileRequest("MALE", "Cập nhật mới", null);
+        var request = new UpdatePatientProfileRequest("MALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
         _profiles.Setup(r => r.GetForUpdateAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
 
@@ -135,7 +135,7 @@ public class PatientProfileServiceTests
 
         // Assert
         Assert.Equal("MALE", response.Gender);
-        Assert.Equal("Cập nhật mới", response.MedicalHistory);
+        Assert.Empty(response.Diseases);
         _profiles.Verify(r => r.UpdateAsync(profile, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -145,7 +145,7 @@ public class PatientProfileServiceTests
         // Arrange
         _profiles.Setup(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                  .ReturnsAsync((PatientProfile?)null);
-        var request = new UpdatePatientProfileRequest("MALE", null, null);
+        var request = new UpdatePatientProfileRequest("MALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         // Act & Assert
         await Assert.ThrowsAsync<ResourceNotFoundException>(

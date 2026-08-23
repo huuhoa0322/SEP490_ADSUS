@@ -10,16 +10,16 @@ namespace ADSUS_BE.BLL.MedicalRecord.DTOs;
 public sealed record CreatePatientProfileRequest(
     Guid PatientUserId,
     string? Gender,
-    string? MedicalHistory,
-    string? Allergies);
+    IReadOnlyList<PatientDiseaseInput> Diseases,
+    IReadOnlyList<PatientAllergyInput> Allergies);
 
 /// <summary>
 /// #18 — thay toàn bộ hồ sơ nền (UC-06). patientUserId không sửa được: quan hệ 1–1 chốt lúc tạo.
 /// </summary>
 public sealed record UpdatePatientProfileRequest(
     string Gender,
-    string? MedicalHistory,
-    string? Allergies);
+    IReadOnlyList<PatientDiseaseInput> Diseases,
+    IReadOnlyList<PatientAllergyInput> Allergies);
 
 /// <summary>
 /// #17, #18, #19 và nhúng trong #23.
@@ -32,8 +32,8 @@ public sealed record PatientProfileResponse(
     string Phone,
     DateOnly? DateOfBirth,
     string Gender,
-    string? MedicalHistory,
-    string? Allergies,
+    IReadOnlyList<PatientDiseaseResponse> Diseases,
+    IReadOnlyList<PatientAllergyResponse> Allergies,
     Guid CreatedBy,
     DateTime CreatedAt,
     DateTime UpdatedAt);
@@ -53,3 +53,10 @@ public sealed record PatientSummaryResponse(
     string Phone,
     DateOnly? LatestVisitDate,
     string? LatestVisitStatus);
+
+public sealed record PatientDiseaseInput(Guid DiseaseId, string? Note);
+public sealed record PatientAllergyInput(Guid AllergyTypeId, string? Note);
+
+public sealed record PatientDiseaseResponse(Guid DiseaseId, string DiseaseName, bool IsOther, string? Note);
+public sealed record PatientAllergyResponse(Guid AllergyTypeId, string AllergyName, bool IsOther, string? Note);
+

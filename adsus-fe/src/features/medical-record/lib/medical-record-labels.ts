@@ -1,4 +1,4 @@
-import type { CaseStatus, Gender, VisitStatusFilter } from "../types/medical-record.types";
+import type { CaseStatus, Gender, VisitStatusFilter, PatientDiseaseResponse, PatientAllergyResponse } from "../types/medical-record.types";
 
 const CASE_STATUS_LABELS: Record<CaseStatus, string> = {
   CREATED: "Mới tạo",
@@ -60,3 +60,20 @@ export function formatIsoDateTime(value: string | null | undefined): string {
 
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
+
+export function formatDiseases(diseases: PatientDiseaseResponse[] | undefined | null): string {
+  if (!diseases || diseases.length === 0) return EMPTY_VALUE;
+  return diseases.map(d => {
+    if (d.isOther) return d.note || d.diseaseName;
+    return d.note ? `${d.diseaseName} (${d.note})` : d.diseaseName;
+  }).join(", ");
+}
+
+export function formatAllergies(allergies: PatientAllergyResponse[] | undefined | null): string {
+  if (!allergies || allergies.length === 0) return EMPTY_VALUE;
+  return allergies.map(a => {
+    if (a.isOther) return a.note || a.allergyName;
+    return a.note ? `${a.allergyName} (${a.note})` : a.allergyName;
+  }).join(", ");
+}
+

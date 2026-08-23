@@ -30,6 +30,9 @@ import {
   caseStatusLabel,
   formatIsoDate,
   formatIsoDateTime,
+  genderLabel,
+  formatDiseases,
+  formatAllergies,
 } from "../lib/medical-record-labels";
 import type { CaseStatus } from "../types/medical-record.types";
 import { useDiagnosticStore } from "../stores/use-diagnostic-store";
@@ -279,9 +282,15 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             </p>
           </div>
           <div>
+            <p className="text-xs text-muted-foreground">Tiền sử bệnh</p>
+            <p className="font-semibold text-foreground">
+              {formatDiseases(medicalCase.patientProfile.diseases)}
+            </p>
+          </div>
+          <div>
             <p className="text-xs text-muted-foreground">Dị ứng</p>
             <p className="font-semibold text-destructive">
-              {medicalCase.patientProfile.allergies || EMPTY_VALUE}
+              {formatAllergies(medicalCase.patientProfile.allergies)}
             </p>
           </div>
           <Link

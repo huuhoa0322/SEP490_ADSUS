@@ -10,8 +10,8 @@ public class CreatePatientProfileRequestValidatorTests
     private static CreatePatientProfileRequest ValidRequest() => new(
         PatientUserId: Guid.NewGuid(),
         Gender: "FEMALE",
-        MedicalHistory: "Không có tiền sử đặc biệt",
-        Allergies: "Không có");
+        Diseases: new System.Collections.Generic.List<PatientDiseaseInput>(),
+        Allergies: new System.Collections.Generic.List<PatientAllergyInput>());
 
     [Fact]
     public void ValidRequest_PassesValidation()
@@ -84,44 +84,4 @@ public class CreatePatientProfileRequestValidatorTests
         Assert.True(result.IsValid);
     }
 
-    [Fact]
-    public void MedicalHistory_ExactlyAt5000Chars_Passes()
-    {
-        // Arrange
-        var request = ValidRequest() with { MedicalHistory = new string('a', 5000) };
-
-        // Act
-        var result = _validator.Validate(request);
-
-        // Assert
-        Assert.True(result.IsValid);
-    }
-
-    [Fact]
-    public void MedicalHistory_5001Chars_Fails()
-    {
-        // Arrange
-        var request = ValidRequest() with { MedicalHistory = new string('a', 5001) };
-
-        // Act
-        var result = _validator.Validate(request);
-
-        // Assert
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreatePatientProfileRequest.MedicalHistory));
-    }
-
-    [Fact]
-    public void Allergies_5001Chars_Fails()
-    {
-        // Arrange
-        var request = ValidRequest() with { Allergies = new string('a', 5001) };
-
-        // Act
-        var result = _validator.Validate(request);
-
-        // Assert
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreatePatientProfileRequest.Allergies));
-    }
 }

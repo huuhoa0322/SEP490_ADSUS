@@ -57,9 +57,20 @@ public sealed class PatientProfileService : IPatientProfileService
             // Validator đã bảo đảm chuỗi này đọc được nếu có gửi. Không gửi gì thì lấy đúng
             // mặc định của cột DB — nhưng giao diện vẫn nên luôn gửi giá trị rõ ràng.
             Gender = EnumExtensions.ParseGenderType(request.Gender) ?? GenderType.Female,
-
-            MedicalHistory = request.MedicalHistory,
-            Allergies = request.Allergies,
+            PatientDiseases = request.Diseases?.Select(d => new PatientDisease
+            {
+                Id = Guid.NewGuid(),
+                DiseaseId = d.DiseaseId,
+                Note = d.Note,
+                CreatedAt = now
+            }).ToList() ?? new List<PatientDisease>(),
+            PatientAllergies = request.Allergies?.Select(a => new PatientAllergy
+            {
+                Id = Guid.NewGuid(),
+                AllergyTypeId = a.AllergyTypeId,
+                Note = a.Note,
+                CreatedAt = now
+            }).ToList() ?? new List<PatientAllergy>(),
 
             // Ghi đúng người đang thao tác, kể cả khi đó là Điều dưỡng. UC-06 cho phép cả
             // Doctor lẫn Nurse lập hồ sơ; chú thích "phải là DOCTOR" trong schema chỉ là
@@ -91,9 +102,37 @@ public sealed class PatientProfileService : IPatientProfileService
             ?? throw new ResourceNotFoundException("Patient profile not found.");
 
         profile.Gender = EnumExtensions.ParseGenderType(request.Gender) ?? GenderType.Female;
-        profile.MedicalHistory = request.MedicalHistory;
-        profile.Allergies = request.Allergies;
-        profile.UpdatedAt = DateTime.UtcNow;
+        
+        var now = DateTime.UtcNow;
+        profile.PatientDiseases.Clear();
+        if (request.Diseases != null)
+        {
+            foreach (var d in request.Diseases)
+            {
+                profile.PatientDiseases.Add(new PatientDisease
+                {
+                    DiseaseId = d.DiseaseId,
+                    Note = d.Note,
+                    CreatedAt = now
+                });
+            }
+        }
+
+        profile.PatientAllergies.Clear();
+        if (request.Allergies != null)
+        {
+            foreach (var a in request.Allergies)
+            {
+                profile.PatientAllergies.Add(new PatientAllergy
+                {
+                    AllergyTypeId = a.AllergyTypeId,
+                    Note = a.Note,
+                    CreatedAt = now
+                });
+            }
+        }
+
+        profile.UpdatedAt = now;
 
         await _profiles.UpdateAsync(profile, ct);
 

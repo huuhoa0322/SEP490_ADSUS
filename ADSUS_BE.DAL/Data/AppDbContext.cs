@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using ADSUS_BE.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -32,11 +32,19 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<HealthLog> HealthLogs { get; set; }
 
+    public virtual DbSet<MedicalAllergyType> MedicalAllergyTypes { get; set; }
+
+    public virtual DbSet<MedicalDisease> MedicalDiseases { get; set; }
+
     public virtual DbSet<MedicationIntakeLog> MedicationIntakeLogs { get; set; }
 
     public virtual DbSet<Medicine> Medicines { get; set; }
 
     public virtual DbSet<NotificationLog> NotificationLogs { get; set; }
+
+    public virtual DbSet<PatientAllergy> PatientAllergies { get; set; }
+
+    public virtual DbSet<PatientDisease> PatientDiseases { get; set; }
 
     public virtual DbSet<PatientProfile> PatientProfiles { get; set; }
 
@@ -451,6 +459,43 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("fk_health_logs_patient");
         });
 
+        modelBuilder.Entity<MedicalAllergyType>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("medical_allergy_types_pkey");
+
+            entity.ToTable("medical_allergy_types");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.IsOther)
+                .HasDefaultValue(false)
+                .HasColumnName("is_other");
+            entity.Property(e => e.Name)
+                .HasMaxLength(50)
+                .HasColumnName("name");
+        });
+
+        modelBuilder.Entity<MedicalDisease>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("medical_diseases_pkey");
+
+            entity.ToTable("medical_diseases");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.IsOther)
+                .HasDefaultValue(false)
+                .HasColumnName("is_other");
+            entity.Property(e => e.Name)
+                .HasMaxLength(100)
+                .HasColumnName("name");
+            entity.Property(e => e.RequiresNote)
+                .HasDefaultValue(false)
+                .HasColumnName("requires_note");
+        });
+
         modelBuilder.Entity<MedicationIntakeLog>(entity =>
         {
             entity.HasKey(e => e.IntakeId).HasName("pk_medication_intake_logs");
@@ -532,6 +577,64 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.NotificationLogs)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("notification_logs_user_id_fkey");
+        });
+
+        modelBuilder.Entity<PatientAllergy>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("patient_allergies_pkey");
+
+            entity.ToTable("patient_allergies");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.AllergyTypeId).HasColumnName("allergy_type_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Note)
+                .HasMaxLength(500)
+                .HasColumnName("note");
+            entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
+
+            entity.HasOne(d => d.AllergyType).WithMany(p => p.PatientAllergies)
+                .HasForeignKey(d => d.AllergyTypeId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("patient_allergies_allergy_type_id_fkey");
+
+            entity.HasOne(d => d.PatientProfile).WithMany(p => p.PatientAllergies)
+                .HasForeignKey(d => d.PatientProfileId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("patient_allergies_patient_profile_id_fkey");
+        });
+
+        modelBuilder.Entity<PatientDisease>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("patient_diseases_pkey");
+
+            entity.ToTable("patient_diseases");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DiseaseId).HasColumnName("disease_id");
+            entity.Property(e => e.Note)
+                .HasMaxLength(500)
+                .HasColumnName("note");
+            entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
+
+            entity.HasOne(d => d.Disease).WithMany(p => p.PatientDiseases)
+                .HasForeignKey(d => d.DiseaseId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("patient_diseases_disease_id_fkey");
+
+            entity.HasOne(d => d.PatientProfile).WithMany(p => p.PatientDiseases)
+                .HasForeignKey(d => d.PatientProfileId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("patient_diseases_patient_profile_id_fkey");
         });
 
         modelBuilder.Entity<PatientProfile>(entity =>

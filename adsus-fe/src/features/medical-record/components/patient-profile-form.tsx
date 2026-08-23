@@ -11,8 +11,10 @@ import {
   usePatientProfile,
   useUpdatePatientProfile,
 } from "../hooks/use-patient-profile";
+import { MedicalHistorySelector } from "./medical-history-selector";
+import { AllergySelector } from "./allergy-selector";
 import { EMPTY_VALUE, formatIsoDate, genderLabel } from "../lib/medical-record-labels";
-import type { Gender } from "../types/medical-record.types";
+import type { Gender, PatientDiseaseInput, PatientAllergyInput } from "../types/medical-record.types";
 
 const GENDERS: Gender[] = ["FEMALE", "MALE", "OTHER"];
 
@@ -45,9 +47,8 @@ export function PatientProfileForm(props: Props) {
 
   const loaded = profileQuery.data;
 
-  const [gender, setGender] = useState<Gender | "">("");
-  const [medicalHistory, setMedicalHistory] = useState("");
-  const [allergies, setAllergies] = useState("");
+  const [diseases, setDiseases] = useState<PatientDiseaseInput[]>([]);
+  const [allergies, setAllergies] = useState<PatientAllergyInput[]>([]);
   const [clientError, setClientError] = useState<string | null>(null);
 
   // Đổ dữ liệu vừa nạp vào form MỘT LẦN, ngay trong lúc render.
@@ -62,9 +63,18 @@ export function PatientProfileForm(props: Props) {
   const [syncedProfileId, setSyncedProfileId] = useState<string | null>(null);
   if (loaded && loaded.patientProfileId !== syncedProfileId) {
     setSyncedProfileId(loaded.patientProfileId);
-    setGender(loaded.gender);
-    setMedicalHistory(loaded.medicalHistory ?? "");
-    setAllergies(loaded.allergies ?? "");
+    setDiseases(
+      loaded.diseases?.map((d) => ({
+        diseaseId: d.diseaseId,
+        note: d.note,
+      })) ?? []
+    );
+    setAllergies(
+      loaded.allergies?.map((a) => ({
+        allergyTypeId: a.allergyTypeId,
+        note: a.note,
+      })) ?? []
+    );
   }
 
   const identity: Identity | undefined =
@@ -84,18 +94,15 @@ export function PatientProfileForm(props: Props) {
     event.preventDefault();
     setClientError(null);
 
-    if (props.mode === "edit") {
-      // #18 thay toàn bộ hồ sơ nên phải gửi lại cả giá trị không đổi — bỏ trống là xoá dữ liệu.
-      if (!gender) {
-        setClientError("Vui lòng chọn giới tính.");
-        return;
-      }
+    const validDiseases = diseases.filter(d => d.note === null || d.note.trim() !== "");
+    const validAllergies = allergies.filter(a => a.note === null || a.note.trim() !== "");
 
+    if (props.mode === "edit") {
       updateMutation.mutate(
         {
-          gender,
-          medicalHistory: medicalHistory.trim() || null,
-          allergies: allergies.trim() || null,
+          gender: "FEMALE", // Phụ khoa: luôn mặc định Nữ
+          diseases: validDiseases,
+          allergies: validAllergies,
         },
         { onSuccess: () => router.push(`/patients/${props.profileId}`) },
       );
@@ -106,9 +113,9 @@ export function PatientProfileForm(props: Props) {
     createMutation.mutate(
       {
         patientUserId: props.patientUserId,
-        gender: gender || null,
-        medicalHistory: medicalHistory.trim() || null,
-        allergies: allergies.trim() || null,
+        gender: "FEMALE", // Phụ khoa: luôn mặc định Nữ
+        diseases: validDiseases,
+        allergies: validAllergies,
       },
       { onSuccess: (created) => router.push(`/patients/${created.patientProfileId}`) },
     );
@@ -127,7 +134,7 @@ export function PatientProfileForm(props: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-3xl px-6 py-10">
+    <form onSubmit={handleSubmit} className="mx-auto w-full max-w-[80vw] px-6 py-10">
       <h1 className="font-heading text-[28px] font-bold tracking-[-0.02em] text-foreground">
         {props.mode === "edit" ? "Hồ sơ Bệnh nhân Nền tảng" : "Tạo hồ sơ nền"}
       </h1>
@@ -178,49 +185,17 @@ export function PatientProfileForm(props: Props) {
 
       <section className="mt-6 space-y-5 rounded-xl border border-border p-5">
         <div>
-          <label htmlFor="gender" className="mb-1.5 block text-sm font-medium">
-            Giới tính{props.mode === "edit" ? " *" : ""}
-          </label>
-          <select
-            id="gender"
-            value={gender}
-            onChange={(event) => setGender(event.target.value as Gender | "")}
-            className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="">— Chưa chọn —</option>
-            {GENDERS.map((g) => (
-              <option key={g} value={g}>
-                {genderLabel(g)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="allergies" className="mb-1.5 block text-sm font-medium">
-            Dị ứng đã biết
-          </label>
-          <input
-            id="allergies"
-            value={allergies}
-            onChange={(event) => setAllergies(event.target.value)}
-            placeholder="Không có / liệt kê dị ứng..."
-            className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="medicalHistory" className="mb-1.5 block text-sm font-medium">
+          <label className="mb-1.5 block text-sm font-medium">
             Tiền sử bệnh
           </label>
-          <textarea
-            id="medicalHistory"
-            value={medicalHistory}
-            onChange={(event) => setMedicalHistory(event.target.value)}
-            rows={4}
-            placeholder="Không có / liệt kê bệnh mãn tính..."
-            className="w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          <MedicalHistorySelector value={diseases} onChange={setDiseases} />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            Dị ứng đã biết
+          </label>
+          <AllergySelector value={allergies} onChange={setAllergies} />
         </div>
       </section>
 

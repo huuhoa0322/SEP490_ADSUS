@@ -18,8 +18,16 @@ public static class PatientProfileMapper
         Phone: profile.User?.Phone ?? string.Empty,
         DateOfBirth: profile.User?.DateOfBirth,
         Gender: profile.Gender.ToApiString(),
-        MedicalHistory: profile.MedicalHistory,
-        Allergies: profile.Allergies,
+        Diseases: profile.PatientDiseases?.Select(d => new PatientDiseaseResponse(
+            DiseaseId: d.DiseaseId,
+            DiseaseName: d.Disease?.Name ?? string.Empty,
+            IsOther: d.Disease?.IsOther ?? false,
+            Note: d.Note)).ToList() ?? new List<PatientDiseaseResponse>(),
+        Allergies: profile.PatientAllergies?.Select(a => new PatientAllergyResponse(
+            AllergyTypeId: a.AllergyTypeId,
+            AllergyName: a.AllergyType?.Name ?? string.Empty,
+            IsOther: a.AllergyType?.IsOther ?? false,
+            Note: a.Note)).ToList() ?? new List<PatientAllergyResponse>(),
         CreatedBy: profile.CreatedBy,
         CreatedAt: profile.CreatedAt,
         UpdatedAt: profile.UpdatedAt);

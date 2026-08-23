@@ -8,7 +8,9 @@ import { getApiErrorMessage } from "@/lib/api-client";
 import { useCreatePatientAccount } from "../hooks/use-patient-account";
 import { useCreatePatientProfile } from "../hooks/use-patient-profile";
 import { genderLabel } from "../lib/medical-record-labels";
-import type { Gender, PatientAccountCreated } from "../types/medical-record.types";
+import type { Gender, PatientAccountCreated, PatientDiseaseInput, PatientAllergyInput } from "../types/medical-record.types";
+import { MedicalHistorySelector } from "./medical-history-selector";
+import { AllergySelector } from "./allergy-selector";
 
 /** Khớp validator phía backend: 10 chữ số, bắt đầu bằng 0. */
 const PHONE_PATTERN = /^0\d{9}$/;
@@ -43,9 +45,8 @@ export function PatientAccountForm() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [email, setEmail] = useState("");
-  const [gender, setGender] = useState<Gender | "">("");
-  const [medicalHistory, setMedicalHistory] = useState("");
-  const [allergies, setAllergies] = useState("");
+  const [diseases, setDiseases] = useState<PatientDiseaseInput[]>([]);
+  const [allergies, setAllergies] = useState<PatientAllergyInput[]>([]);
   const [clientError, setClientError] = useState<string | null>(null);
   const [createdAccount, setCreatedAccount] = useState<PatientAccountCreated | null>(null);
   const [createdProfileId, setCreatedProfileId] = useState<string | null>(null);
@@ -77,6 +78,9 @@ export function PatientAccountForm() {
       return;
     }
 
+    const validDiseases = diseases.filter(d => d.note === null || d.note.trim() !== "");
+    const validAllergies = allergies.filter(a => a.note === null || a.note.trim() !== "");
+
     accountMutation.mutate(
       {
         phoneNumber: phoneNumber.trim(),
@@ -94,9 +98,9 @@ export function PatientAccountForm() {
           profileMutation.mutate(
             {
               patientUserId: account.userId,
-              gender: gender || null,
-              medicalHistory: medicalHistory.trim() || null,
-              allergies: allergies.trim() || null,
+              gender: "FEMALE", // Luôn là Nữ cho hệ thống phụ khoa
+              diseases: validDiseases,
+              allergies: validAllergies,
             },
             { onSuccess: (profile) => setCreatedProfileId(profile.patientProfileId) },
           );
@@ -157,7 +161,7 @@ export function PatientAccountForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-border p-5">
+    <form onSubmit={handleSubmit} className="mx-auto w-full max-w-[80vw] rounded-xl border border-border p-5 bg-card">
       <h2 className="font-heading text-lg font-semibold text-foreground">
         Tạo tài khoản bệnh nhân mới
       </h2>
@@ -228,49 +232,17 @@ export function PatientAccountForm() {
         <h3 className="text-xs font-semibold uppercase text-muted-foreground">Hồ sơ nền</h3>
 
         <div>
-          <label htmlFor="gender" className="mb-1.5 block text-sm font-medium">
-            Giới tính
-          </label>
-          <select
-            id="gender"
-            value={gender}
-            onChange={(event) => setGender(event.target.value as Gender | "")}
-            className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="">— Chưa chọn —</option>
-            {GENDERS.map((g) => (
-              <option key={g} value={g}>
-                {genderLabel(g)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="allergies" className="mb-1.5 block text-sm font-medium">
-            Dị ứng đã biết
-          </label>
-          <input
-            id="allergies"
-            value={allergies}
-            onChange={(event) => setAllergies(event.target.value)}
-            placeholder="Không có / liệt kê dị ứng..."
-            className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="medicalHistory" className="mb-1.5 block text-sm font-medium">
+          <label className="mb-1.5 block text-sm font-medium">
             Tiền sử bệnh
           </label>
-          <textarea
-            id="medicalHistory"
-            value={medicalHistory}
-            onChange={(event) => setMedicalHistory(event.target.value)}
-            rows={4}
-            placeholder="Không có / liệt kê bệnh mãn tính..."
-            className="w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
+          <MedicalHistorySelector value={diseases} onChange={setDiseases} />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            Dị ứng đã biết
+          </label>
+          <AllergySelector value={allergies} onChange={setAllergies} />
         </div>
       </div>
 
