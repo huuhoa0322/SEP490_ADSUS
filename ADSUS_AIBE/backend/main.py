@@ -72,6 +72,8 @@ def load_ai_model(repo_id: str, filename: str):
     print(f"Đang tải model từ HF: {repo_id}/{filename} ...")
     try:
         from ultralytics import YOLO
+        import batchformer_v2
+        batchformer_v2.monkey_patch_ultralytics()
     except ImportError as e:
         raise RuntimeError("Chưa cài ultralytics. Chạy: pip install ultralytics") from e
 
