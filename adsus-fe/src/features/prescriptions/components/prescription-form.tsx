@@ -399,7 +399,7 @@ function MedicationRow({
   register,
   control,
   errors,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   onRemove,
 }: MedicationRowProps) {
   const { watch } = useFormContext<PrescriptionFormData>();

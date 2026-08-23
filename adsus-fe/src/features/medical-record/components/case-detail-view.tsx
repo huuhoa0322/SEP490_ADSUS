@@ -367,7 +367,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                   disabled={pendingImages.length === 0}
                   className="rounded-xl bg-blue-600 px-6 py-3 text-base font-bold uppercase tracking-wide text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl disabled:opacity-50"
                 >
-                  {/* eslint-disable-next-line react/jsx-curly-brace-presence */}
+                  { }
                   Xem kết quả AI
                 </button>
               </div>

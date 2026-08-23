@@ -29,18 +29,10 @@ export function SymptomSelector({ value, onChange }: SymptomSelectorProps) {
     onChange([...value, { categoryId: "", symptomId: null, otherNote: null }]);
   }
 
-  // Xoá một block
-  function handleRemoveBlock(index: number) {
-    const newVal = [...value];
-    newVal.splice(index, 1);
-    onChange(newVal);
-  }
-
   // Cập nhật categoryId cho một block (reset luôn các checkbox đã chọn trong block đó)
   function handleCategoryChange(index: number, newCategoryId: string) {
     const newVal = [...value];
     // Remove all old selected symptoms of this block
-    const updatedVal = newVal.filter((item, i) => i !== index || item.categoryId === newCategoryId);
     
     // If it's changing to a new category, we reset the block to just the categoryId
     if (newVal[index].categoryId !== newCategoryId) {
@@ -55,7 +47,7 @@ export function SymptomSelector({ value, onChange }: SymptomSelectorProps) {
     const category = categories?.find((c) => c.categoryId === categoryId);
     if (!category) return;
 
-    let newVal = [...value];
+    const newVal = [...value];
     
     if (isChecked) {
       // Nếu block hiện tại đang trống symptomId (chỉ có categoryId), dùng luôn
@@ -77,29 +69,6 @@ export function SymptomSelector({ value, onChange }: SymptomSelectorProps) {
         if (!stillHasCategory) {
           newVal.splice(blockIndex, 0, { categoryId, symptomId: null, otherNote: null });
         }
-      }
-    }
-    onChange(newVal);
-  }
-
-  // Xử lý ô Other trong category bình thường
-  function handleOtherNoteChange(blockIndex: number, otherNote: string) {
-    const categoryId = value[blockIndex].categoryId;
-    let newVal = [...value];
-    
-    // Tìm phần tử "Other" của category này
-    const otherIdx = newVal.findIndex(
-      (v, i) => i >= blockIndex && v.categoryId === categoryId && v.symptomId === null && v.otherNote !== null
-    );
-
-    if (otherIdx !== -1) {
-      newVal[otherIdx].otherNote = otherNote;
-    } else {
-      // Nếu chưa có, thay thế cái rỗng hoặc thêm mới
-      if (!newVal[blockIndex].symptomId && newVal[blockIndex].otherNote === null) {
-        newVal[blockIndex].otherNote = otherNote;
-      } else {
-        newVal.splice(blockIndex + 1, 0, { categoryId, symptomId: null, otherNote });
       }
     }
     onChange(newVal);
