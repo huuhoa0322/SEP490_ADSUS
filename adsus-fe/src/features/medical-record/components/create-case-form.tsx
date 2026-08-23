@@ -7,6 +7,7 @@ import { getApiErrorMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
 
 import { useCreateCase, useCaseList, useCaseDetail } from "../hooks/use-cases";
+import { usePatientProfile } from "../hooks/use-patient-profile";
 import { useDoctorList } from "../hooks/use-doctors";
 import { useSymptomCategories } from "../hooks/use-symptoms";
 import { SymptomSelector } from "./symptom-selector";
@@ -38,32 +39,32 @@ function PreviousCaseSummary({ caseId }: { caseId: string }) {
           Nội dung lần khám gần nhất ({new Date(caseDetail.visitDate).toLocaleDateString('vi-VN')})
         </h3>
       </div>
-      
+
       {caseDetail.finalDiagnosis && (
         <div>
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Chẩn đoán: </span>
           <span className="text-sm text-foreground">{caseDetail.finalDiagnosis}</span>
         </div>
       )}
-      
+
       {caseDetail.doctorConclusion && (
         <div>
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Kết luận: </span>
           <span className="text-sm text-foreground">{caseDetail.doctorConclusion}</span>
         </div>
       )}
-      
+
       {caseDetail.symptoms && caseDetail.symptoms.length > 0 && (
         <div>
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Triệu chứng chi tiết:</span>
           <ul className="list-disc list-inside text-sm text-foreground space-y-1.5 ml-1">
             {caseDetail.symptoms.map((sym, idx) => {
-               const text = sym.symptomName || sym.otherNote;
-               return text ? (
-                 <li key={idx} className="leading-snug">
-                   <span className="font-medium">{sym.categoryName}:</span> {text} {sym.symptomName && sym.otherNote ? `(${sym.otherNote})` : ''}
-                 </li>
-               ) : null;
+              const text = sym.symptomName || sym.otherNote;
+              return text ? (
+                <li key={idx} className="leading-snug">
+                  <span className="font-medium">{sym.categoryName}:</span> {text} {sym.symptomName && sym.otherNote ? `(${sym.otherNote})` : ''}
+                </li>
+              ) : null;
             })}
           </ul>
         </div>
@@ -71,6 +72,65 @@ function PreviousCaseSummary({ caseId }: { caseId: string }) {
     </div>
   );
 }
+
+function PatientProfileSummary({ profileId }: { profileId: string }) {
+  const { data: profile, isLoading } = usePatientProfile(profileId);
+
+  if (isLoading) return <div className="text-sm text-muted-foreground animate-pulse">Đang tải thông tin bệnh nhân...</div>;
+  if (!profile) return null;
+
+  return (
+    <div className="rounded-xl border border-border bg-accent/20 p-5 space-y-4">
+      <div className="flex flex-col gap-1">
+        <h3 className="text-base font-bold text-foreground">
+          Bệnh nhân: {profile.fullName}
+        </h3>
+        {profile.dateOfBirth && (
+          <span className="text-sm text-muted-foreground">
+            Ngày sinh: {new Date(profile.dateOfBirth).toLocaleDateString('vi-VN')}
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Dị ứng: </span>
+          <div className="text-sm font-semibold text-foreground">
+            {profile.allergies && profile.allergies.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {profile.allergies.map(a => (
+                  <div key={a.allergyTypeId}>
+                    {a.isOther ? (a.note || a.allergyName) : a.note ? `${a.allergyName}: ${a.note}` : a.allergyName}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <span className="text-muted-foreground italic font-normal">Không có</span>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Tiền sử bệnh: </span>
+          <div className="text-sm font-semibold text-foreground">
+            {profile.diseases && profile.diseases.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {profile.diseases.map(d => (
+                  <div key={d.diseaseId}>
+                    {d.isOther ? (d.note || d.diseaseName) : d.note ? `${d.diseaseName}: ${d.note}` : d.diseaseName}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <span className="text-muted-foreground italic font-normal">Không có</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 export function CreateCaseForm({ patientProfileId }: { patientProfileId: string }) {
   const router = useRouter();
@@ -112,33 +172,40 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
       return;
     }
 
+    const filteredSymptoms = symptoms
+      .filter(s => s.categoryId !== "")
+      .map(s => ({
+        ...s,
+        otherNote: s.otherNote?.trim() || null
+      }))
+      .filter(s => {
+        // 1. Lọc bỏ fallback "Khác" hoặc Category "Other" rỗng
+        if (s.symptomId === null && s.otherNote === null) return false;
+
+        // 2. Lọc bỏ DB "Khác" nếu người dùng tick nhưng không gõ chữ gì
+        if (s.symptomId !== null && s.otherNote === null && categoriesQuery.data) {
+          const category = categoriesQuery.data.find(c => c.categoryId === s.categoryId);
+          if (category) {
+            const sym = category.symptoms.find(x => x.symptomId === s.symptomId);
+            if (sym && (sym.isOther || sym.name.toLowerCase().includes('khác'))) {
+              return false; // Xóa luôn không lưu vào DB
+            }
+          }
+        }
+        return true;
+      });
+
+    let finalClinicalInfo = clinicalInfo.trim() || null;
+    if (filteredSymptoms.length === 0 && !finalClinicalInfo) {
+      finalClinicalInfo = "Khám định kì";
+    }
+
     mutation.mutate(
       {
         patientProfileId,
         responsibleDoctorId,
-        clinicalInfo: clinicalInfo.trim() || null,
-        symptoms: symptoms
-          .filter(s => s.categoryId !== "")
-          .map(s => ({
-            ...s,
-            otherNote: s.otherNote?.trim() || null
-          }))
-          .filter(s => {
-             // 1. Lọc bỏ fallback "Khác" hoặc Category "Other" rỗng
-             if (s.symptomId === null && s.otherNote === null) return false;
-             
-             // 2. Lọc bỏ DB "Khác" nếu người dùng tick nhưng không gõ chữ gì
-             if (s.symptomId !== null && s.otherNote === null && categoriesQuery.data) {
-                const category = categoriesQuery.data.find(c => c.categoryId === s.categoryId);
-                if (category) {
-                   const sym = category.symptoms.find(x => x.symptomId === s.symptomId);
-                   if (sym && (sym.isOther || sym.name.toLowerCase().includes('khác'))) {
-                      return false; // Xóa luôn không lưu vào DB
-                   }
-                }
-             }
-             return true;
-          }),
+        clinicalInfo: finalClinicalInfo,
+        symptoms: filteredSymptoms,
         images: [],
       },
       { onSuccess: (created) => router.push(`/cases/${created.caseId}`) },
@@ -146,84 +213,67 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-6xl px-6 py-10">
-      <h1 className="font-heading text-[28px] font-bold tracking-[-0.02em] text-foreground">
-        Tạo ca khám
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Ca khám mới được lưu ở trạng thái &ldquo;Mới tạo&rdquo;. Ảnh siêu âm (nếu có) bổ sung sau
-        ở màn chi tiết ca.
-      </p>
+    <form onSubmit={handleSubmit} className="w-full px-6 py-10">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="font-heading text-[28px] font-bold tracking-[-0.02em] text-foreground">
+          Tạo ca khám
+        </h1>
+        
+        <div className="w-full sm:w-[300px]">
+          <label htmlFor="responsibleDoctorId" className="sr-only">
+            Bác sĩ phụ trách
+          </label>
+          {isDoctor ? (
+            <p
+              id="responsibleDoctorId"
+              className="flex h-10 items-center justify-end text-sm font-medium text-muted-foreground"
+            >
+              Bác sĩ: <strong className="ml-1 text-foreground">{currentUser?.fullName}</strong>
+            </p>
+          ) : (
+            <div>
+              <select
+                id="responsibleDoctorId"
+                value={selectedDoctorId}
+                onChange={(event) => setSelectedDoctorId(event.target.value)}
+                disabled={doctorsQuery.isLoading}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              >
+                <option value="">-- Chọn bác sĩ phụ trách --</option>
+                {doctorsQuery.data?.map((doctor) => (
+                  <option key={doctor.userId} value={doctor.userId}>
+                    {doctor.fullName}
+                  </option>
+                ))}
+              </select>
+              {doctorsQuery.isError && (
+                <p className="mt-1 text-xs text-destructive text-right" role="alert">
+                  Không tải được danh sách bác sĩ
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Thông tin hồ sơ nền */}
+      <div className="mt-6">
+        <PatientProfileSummary profileId={patientProfileId} />
+      </div>
 
       {/* Thông tin lần khám trước (nếu có) */}
       {previousCaseId && (
-        <div className="mt-6">
+        <div className="mt-4">
           <PreviousCaseSummary caseId={previousCaseId} />
         </div>
       )}
 
       <section className="mt-6 space-y-5 rounded-xl border border-border p-5">
         <div>
-          <label htmlFor="responsibleDoctorId" className="mb-1.5 block text-sm font-medium">
-            Bác sĩ phụ trách *
-          </label>
-
-          {isDoctor ? (
-            <p
-              id="responsibleDoctorId"
-              className="flex h-10 items-center rounded-lg border border-border bg-muted/40 px-3 text-sm font-medium"
-            >
-              {currentUser?.fullName}
-            </p>
-          ) : (
-            <select
-              id="responsibleDoctorId"
-              value={selectedDoctorId}
-              onChange={(event) => setSelectedDoctorId(event.target.value)}
-              disabled={doctorsQuery.isLoading}
-              className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-            >
-              <option value="">-- Chọn bác sĩ --</option>
-              {doctorsQuery.data?.map((doctor) => (
-                <option key={doctor.userId} value={doctor.userId}>
-                  {doctor.fullName}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {doctorsQuery.isError ? (
-            <p className="mt-1.5 text-xs text-destructive" role="alert">
-              {getApiErrorMessage(doctorsQuery.error, "Không tải được danh sách bác sĩ.")}
-            </p>
-          ) : (
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              {isDoctor
-                ? "Bạn là người chịu trách nhiệm chẩn đoán cho ca khám này."
-                : "Mỗi ca khám phải gắn đúng một bác sĩ chịu trách nhiệm chẩn đoán."}
-            </p>
-          )}
-        </div>
-
-        <div>
           <label className="mb-1.5 block text-sm font-medium">
             Triệu chứng chi tiết
           </label>
           <SymptomSelector value={symptoms} onChange={setSymptoms} />
-        </div>
-
-        <div>
-          <label htmlFor="clinicalInfo" className="mb-1.5 block text-sm font-medium">
-            Lý do khám (Ghi chú chung)
-          </label>
-          <textarea
-            id="clinicalInfo"
-            value={clinicalInfo}
-            onChange={(event) => setClinicalInfo(event.target.value)}
-            rows={6}
-            placeholder="Vị trí đau, khối sờ thấy, tiết dịch..."
-            className="w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
         </div>
       </section>
 
