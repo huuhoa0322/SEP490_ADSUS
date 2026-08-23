@@ -48,8 +48,8 @@ const profile = {
   phone: "0978123456",
   dateOfBirth: "1984-03-12",
   gender: "FEMALE" as const,
-  medicalHistory: "Đã từng có u lành tính",
-  allergies: "Penicillin",
+  diseases: [{ diseaseId: "d1", diseaseName: "U lành tính", isOther: false, note: null }],
+  allergies: [{ allergyTypeId: "a1", allergyName: "Penicillin", isOther: false, note: null }],
   createdBy: "nurse-1",
   createdAt: "2026-08-04T09:00:00Z",
   updatedAt: "2026-08-04T09:00:00Z",
@@ -83,23 +83,11 @@ describe("PatientProfileForm — chế độ sửa", () => {
     expect(updateMutate).toHaveBeenCalledWith(
       {
         gender: "FEMALE",
-        medicalHistory: "Đã từng có u lành tính",
-        allergies: "Penicillin",
+        diseases: [{ diseaseId: "d1", note: null }],
+        allergies: [{ allergyTypeId: "a1", note: null }],
       },
       expect.anything(),
     );
-  });
-
-  it("chặn lưu khi bỏ trống giới tính", async () => {
-    const user = userEvent.setup();
-    renderWithClient(<PatientProfileForm mode="edit" profileId="profile-1" />);
-
-    // #18 là thay TOÀN BỘ hồ sơ nên gender bắt buộc — khác #17 vốn cho bỏ trống.
-    await user.selectOptions(screen.getByLabelText(/giới tính/i), "");
-    await user.click(screen.getByRole("button", { name: /lưu/i }));
-
-    expect(updateMutate).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent(/giới tính/i);
   });
 });
 
@@ -109,9 +97,9 @@ describe("PatientProfileForm — chế độ tạo", () => {
     profileMock.mockReturnValue({ data: undefined, isLoading: false, isError: false, error: null });
   });
 
-  it("cho phép lưu khi bỏ trống giới tính", async () => {
+  it("lưu hồ sơ nền với giới tính mặc định là nữ", async () => {
     const user = userEvent.setup();
-    render(
+    renderWithClient(
       <PatientProfileForm
         mode="create"
         patientUserId="user-9"
@@ -126,9 +114,9 @@ describe("PatientProfileForm — chế độ tạo", () => {
     expect(createMutate).toHaveBeenCalledWith(
       {
         patientUserId: "user-9",
-        gender: null,
-        medicalHistory: null,
-        allergies: null,
+        gender: "FEMALE",
+        diseases: [],
+        allergies: [],
       },
       expect.anything(),
     );

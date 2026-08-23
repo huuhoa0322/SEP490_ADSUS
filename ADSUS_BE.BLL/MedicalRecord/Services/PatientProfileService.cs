@@ -81,8 +81,15 @@ public sealed class PatientProfileService : IPatientProfileService
             UpdatedAt = now,
         };
 
-        await _profiles.AddAsync(profile, ct);
-
+        try
+        {
+            await _profiles.AddAsync(profile, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi tạo hồ sơ nền cho người dùng {PatientUserId}. Vòng lặp hoặc thao tác CSDL gặp sự cố.", request.PatientUserId);
+            throw new InvalidOperationException("Hệ thống quá tải hoặc lỗi CSDL khi tạo hồ sơ nền. Vui lòng thử lại sau.", ex);
+        }
         _logger.LogInformation(
             "Patient profile {PatientProfileId} created for user {PatientUserId} by {ActingUserId}",
             profile.PatientProfileId, request.PatientUserId, actingUserId);
@@ -134,11 +141,17 @@ public sealed class PatientProfileService : IPatientProfileService
 
         profile.UpdatedAt = now;
 
-        await _profiles.UpdateAsync(profile, ct);
-
-        _logger.LogInformation("Patient profile {PatientProfileId} updated", patientProfileId);
-
-        return PatientProfileMapper.ToResponse(profile);
+        try
+        {
+            await _profiles.UpdateAsync(profile, ct);
+            _logger.LogInformation("Patient profile {PatientProfileId} updated", patientProfileId);
+            return PatientProfileMapper.ToResponse(profile);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi cập nhật hồ sơ nền {PatientProfileId}. Vòng lặp hoặc thao tác CSDL gặp sự cố.", patientProfileId);
+            throw new InvalidOperationException("Hệ thống quá tải hoặc lỗi CSDL khi lưu hồ sơ. Vui lòng thử lại sau.", ex);
+        }
     }
 
     public async Task<PatientProfileResponse> GetByIdAsync(
