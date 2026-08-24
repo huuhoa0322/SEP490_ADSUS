@@ -13,7 +13,7 @@ void main() {
 
   group('FeedbackSheet', () {
     testWidgets('submit button disabled when no star selected', (tester) async {
-      await tester.pumpWidget(buildSheet(onSubmit: (_, __) {}));
+      await tester.pumpWidget(buildSheet(onSubmit: (r, c) {}));
       await tester.pumpAndSettle();
 
       final btn = tester.widget<ElevatedButton>(
@@ -23,7 +23,7 @@ void main() {
     });
 
     testWidgets('submit button enabled after tapping star 3', (tester) async {
-      await tester.pumpWidget(buildSheet(onSubmit: (_, __) {}));
+      await tester.pumpWidget(buildSheet(onSubmit: (r, c) {}));
       await tester.pumpAndSettle();
 
       // 5 unselected stars initially
@@ -41,7 +41,7 @@ void main() {
     });
 
     testWidgets('tapping star changes selected count', (tester) async {
-      await tester.pumpWidget(buildSheet(onSubmit: (_, __) {}));
+      await tester.pumpWidget(buildSheet(onSubmit: (r, c) {}));
       await tester.pumpAndSettle();
 
       // Tap 4th star
