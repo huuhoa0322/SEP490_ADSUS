@@ -290,36 +290,36 @@ class _AssistantBubble extends StatelessWidget {
               bottom: BorderSide(color: AppColors.border),
             ),
           ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.aiVioletTint,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: const Text(
-                '⚠️ Trợ lý AI — chỉ mang tính tham khảo',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.aiViolet,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.aiVioletTint,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
+                    '⚠️ Trợ lý AI — chỉ mang tính tham khảo',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.aiViolet,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 8),
+                // Nội dung
+                Text(
+                  message.content,
+                  style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.navy),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            // Nội dung
-            Text(
-              message.content,
-              style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.navy),
-            ),
-          ],
-        ),
-      ),
+          ),
         ),
       ),
     );
@@ -508,9 +508,17 @@ class _InputBar extends StatelessWidget {
               enabled: enabled,
               // Tắt autocorrect/suggestions để bộ gõ tiếng Việt (Telex/VNI)
               // không bị strip khi gõ các chuỗi như "ee", "aa", "oo".
+              //
+              // Quan trọng: PHẢI dùng `TextInputType.visiblePassword` thay vì `text`.
+              // Trên Android (Google Keyboard, Samsung Keyboard), ngay cả khi set
+              // autocorrect=false, nếu keyboardType=text thì IME vẫn bật autocorrect
+              // provider của hệ thống và "ee" / "aa" / "oo" sẽ bị strip trước khi
+              // tới Flutter. visiblePassword ép IME vào mode password (không autocorrect)
+              // mà vẫn hiển thị ký tự bình thường — đây là pattern chuẩn cho input
+              // tiếng Việt trên mobile.
               autocorrect: false,
               enableSuggestions: false,
-              keyboardType: TextInputType.text,
+              keyboardType: TextInputType.visiblePassword,
               decoration: InputDecoration(
                 hintText: 'Nhập câu hỏi…',
                 hintStyle: const TextStyle(color: AppColors.muted, fontSize: 14),
