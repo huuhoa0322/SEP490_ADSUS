@@ -78,11 +78,13 @@ class AiChatViewModel extends StateNotifier<AiChatState> {
       // Gọi API
       final response = await _repo.sendMessage(content.trim());
       if (response != null) {
-        // Thêm ASSISTANT response
+        // Thêm ASSISTANT response. Response đã được sanitize từ DTO.toEntity(),
+        // nhưng sendMessage trả về object thô → sanitize lại để khử disclaimer
+        // mà LLM (Gemini) tự ghép vào.
         final assistantMsg = ChatMessage(
           messageId: response.messageId,
           role: ChatRole.assistant,
-          content: response.content,
+          content: sanitizeAssistantContent(response.content),
           createdAt: response.createdAt,
           isSafety: response.isSafety,
         );

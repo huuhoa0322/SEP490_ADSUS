@@ -27,9 +27,11 @@ class AiChatRepository {
       );
 
       final envelope = res.data;
+      debugPrint('[AiChatRepo] Response envelope: $envelope');
       if (envelope == null) return null;
 
       final data = envelope['data'];
+      debugPrint('[AiChatRepo] Response data: $data');
       if (data == null) return null;
 
       return ChatMessageDto.fromJson(data as Map<String, dynamic>).toEntity();
