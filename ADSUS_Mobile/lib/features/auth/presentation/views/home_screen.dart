@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../appointment_scheduling/presentation/views/book_appointment_screen.dart';
 import '../../../appointment_scheduling/presentation/views/my_appointments_screen.dart';
+import '../../../engagement/presentation/views/blog_list_screen.dart';
 import '../../../health_log/presentation/views/health_log_screen.dart';
 import '../../../medical_record/presentation/views/medical_record_list_screen.dart';
 import '../../../medication_reminder/presentation/viewmodels/intake_view_model.dart';
@@ -123,10 +124,15 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  const _ShortcutItem(
+                  _ShortcutItem(
                     icon: Icons.article_outlined,
                     label: 'Bài viết sức khoẻ',
-                    stub: true,
+                    stub: false,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const BlogListScreen(),
+                      ),
+                    ),
                   ),
                   _ShortcutItem(
                     icon: Icons.event_note_outlined,

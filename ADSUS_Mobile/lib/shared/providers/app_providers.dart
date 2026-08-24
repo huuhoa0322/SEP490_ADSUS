@@ -20,6 +20,8 @@ import '../../features/health_log/data/repositories/health_log_repository.dart';
 import '../../features/ai_chatbot/data/repositories/ai_chat_repository.dart';
 import '../../features/medical_record/data/repositories/medical_record_repository_impl.dart';
 import '../../features/medical_record/domain/repositories/medical_record_repository.dart';
+import '../../features/engagement/data/repositories/blog_repository_impl.dart';
+import '../../features/engagement/domain/repositories/blog_repository.dart';
 /// Kho lưu trữ được hệ điều hành mã hoá (Keystore/Keychain).
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
   // Mặc định thư viện đã dùng Keystore của Android và Keychain của iOS.
@@ -98,4 +100,9 @@ final aiChatRepositoryProvider = Provider<AiChatRepository>((ref) {
 /// Module 04 — Medical Record (UC-08).
 final medicalRecordRepositoryProvider = Provider<MedicalRecordRepository>((ref) {
   return MedicalRecordRepositoryImpl(ref.watch(dioProvider));
+});
+
+/// Module 10 — Blog Sức khỏe (UC-23, BR-02: Patient đã đăng nhập).
+final blogRepositoryProvider = Provider<BlogRepository>((ref) {
+  return BlogRepositoryImpl(ref.watch(dioProvider));
 });

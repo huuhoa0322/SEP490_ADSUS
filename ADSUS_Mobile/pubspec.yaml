@@ -53,6 +53,12 @@ dependencies:
   # NOTE: Dùng 5.0.6 thay vì 6.x vì 6.x có breaking change API (items là async callback).
   dropdown_search: ^5.0.6
 
+  # Render Markdown cho nội dung Blog Sức khỏe (UC-23, BR-02). Backend lưu content dạng
+  # Markdown (chưa sanitize HTML), package này an toàn hơn flutter_html — chỉ render cú pháp
+  # MD, không thực thi script/iframe. Đây là lý do CLAUDE rule GB-03 + medical-safety.md yêu cầu
+  # dùng markdown thay vì render HTML thô.
+  flutter_markdown: ^0.7.6+1
+
   # Lưu cờ "đã sync vào lịch" cho mỗi appointment — xem CalendarSyncServiceImpl.
   # Không dùng secure storage vì đây là UI bookkeeping, không phải thông tin nhạy cảm.
 
