@@ -42,7 +42,7 @@ if not WEBHOOK_TOKEN:
     print(f"DEBUG: Available environment variable keys: {env_keys}", flush=True)
     raise RuntimeError("CRITICAL ERROR: WEBHOOK_TOKEN is not configured on the server. Please add it to your .env file or environment variables before starting the server.")
 
-CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", "0.15"))
+CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", "0.05"))
 
 app = FastAPI(title="Lesion Annotation Assist API")
 app.add_middleware(
