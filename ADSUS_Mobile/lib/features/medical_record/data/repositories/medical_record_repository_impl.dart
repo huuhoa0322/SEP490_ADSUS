@@ -5,9 +5,11 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/api_envelope.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../domain/entities/medical_record_case.dart';
+import '../../domain/entities/medical_record_feedback.dart';
 import '../../domain/entities/medical_record_summary.dart';
 import '../../domain/repositories/medical_record_repository.dart';
 import '../dtos/case_dtos.dart';
+import '../dtos/case_feedback_dto.dart';
 import '../mappers/medical_record_mapper.dart';
 
 /// Triển khai gọi API thật cho UC-08 (Mobile). Chỉ có duy nhất chỗ này được
@@ -76,6 +78,53 @@ class MedicalRecordRepositoryImpl implements MedicalRecordRepository {
     } catch (e) {
       debugPrint('[MedicalRecordRepo] getRecordDetail parse/logic error: $e');
       throw const ApiException('Không tải được chi tiết lượt khám.');
+    }
+  }
+
+  @override
+  Future<MedicalRecordFeedback?> getCaseFeedback(String caseId) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiConstants.caseFeedback(caseId),
+      );
+      final envelope = ApiEnvelope.fromJson(res.data ?? const {});
+      if (envelope.data == null) return null;
+      return MedicalRecordMapper.feedbackFromDto(
+        CaseFeedbackDto.fromJson(envelope.data as Map<String, dynamic>),
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      throw ApiErrorMapper.general(e, fallback: 'Không tải được phản hồi.');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      debugPrint('[MedicalRecordRepo] getCaseFeedback parse error: $e');
+      throw const ApiException('Không tải được phản hồi.');
+    }
+  }
+
+  @override
+  Future<void> submitCaseFeedback(
+    String caseId,
+    int rating,
+    String? content,
+  ) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        ApiConstants.submitCaseFeedback,
+        data: {
+          'rating': rating,
+          'content': content,
+        },
+        queryParameters: {'caseId': caseId},
+      );
+    } on DioException catch (e) {
+      throw ApiErrorMapper.general(e, fallback: 'Không gửi được phản hồi.');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      debugPrint('[MedicalRecordRepo] submitCaseFeedback error: $e');
+      throw const ApiException('Không gửi được phản hồi.');
     }
   }
 }

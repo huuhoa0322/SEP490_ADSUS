@@ -1,4 +1,5 @@
 import '../entities/medical_record_case.dart';
+import '../entities/medical_record_feedback.dart';
 import '../entities/medical_record_summary.dart';
 
 /// Hợp đồng duy nhất mà ViewModel (Task 3/4) được phép phụ thuộc — UC-08.
@@ -13,4 +14,10 @@ abstract interface class MedicalRecordRepository {
   /// nếu Case không thuộc về Patient này hoặc chưa End (UC-08 AF-01; đính chính 14/08/2026 —
   /// trước đó chấp nhận cả Confirmed, giờ chỉ End mới xem được).
   Future<MedicalRecordCase> getRecordDetail(String caseId);
+
+  /// Lấy feedback đã gửi cho 1 ca khám (FT-37). Trả null nếu chưa có.
+  Future<MedicalRecordFeedback?> getCaseFeedback(String caseId);
+
+  /// Gửi feedback cho 1 ca khám (FT-37).
+  Future<void> submitCaseFeedback(String caseId, int rating, String? content);
 }

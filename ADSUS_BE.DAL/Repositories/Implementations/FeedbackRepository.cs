@@ -39,4 +39,12 @@ public sealed class FeedbackRepository : IFeedbackRepository
             .Include(f => f.PatientProfile)
             .FirstOrDefaultAsync(f => f.FeedbackId == feedbackId, ct);
     }
+
+    public async Task<ServiceFeedback?> GetByCaseIdAsync(Guid caseId, CancellationToken ct = default)
+    {
+        return await _db.ServiceFeedbacks
+            .AsNoTracking()
+            .Include(f => f.PatientProfile)
+            .FirstOrDefaultAsync(f => f.CaseId == caseId, ct);
+    }
 }

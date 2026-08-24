@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../domain/entities/medical_record_feedback.dart';
 import '../../domain/entities/medical_record_image.dart';
 import '../../domain/entities/medical_record_prescription.dart';
 import '../viewmodels/medical_record_detail_viewmodel.dart';
+import '../widgets/feedback_card.dart';
+import 'feedback_sheet.dart';
 
 /// SCR-14 (Mobile) — chi tiết 1 lượt khám (UC-08). KHÔNG có nút xuất PDF (Doctor/Nurse
 /// only trên Web), KHÔNG có badge % AI confidence (GB-05) — xem thiết kế §1.
@@ -31,11 +34,15 @@ class _MedicalRecordDetailScreenState
   void initState() {
     super.initState();
     // Gọi sau frame đầu — tránh modify provider ngay trong lúc build.
-    Future.microtask(
-      () => ref
+    Future.microtask(() async {
+      ref
           .read(medicalRecordDetailViewModelProvider.notifier)
-          .loadDetail(widget.caseId),
-    );
+          .loadDetail(widget.caseId);
+      // Load feedback song song với detail (FT-37).
+      ref
+          .read(medicalRecordDetailViewModelProvider.notifier)
+          .loadFeedback(widget.caseId);
+    });
   }
 
   @override
@@ -131,7 +138,65 @@ class _MedicalRecordDetailScreenState
             const SizedBox(height: 8),
             _UltrasoundImageGrid(images: record.images),
           ],
+          const SizedBox(height: 24),
+          _FeedbackSection(
+            caseId: widget.caseId,
+            feedback: state.feedback,
+            onSubmitFeedback: (rating, content) {
+              ref
+                  .read(medicalRecordDetailViewModelProvider.notifier)
+                  .submitFeedback(widget.caseId, rating, content);
+            },
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _FeedbackSection extends StatelessWidget {
+  const _FeedbackSection({
+    required this.caseId,
+    required this.feedback,
+    required this.onSubmitFeedback,
+  });
+
+  final String caseId;
+  final MedicalRecordFeedback? feedback;
+  final void Function(int rating, String? content) onSubmitFeedback;
+
+  @override
+  Widget build(BuildContext context) {
+    if (feedback != null) {
+      return FeedbackCard(feedback: feedback!);
+    }
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => _openFeedbackSheet(context),
+        icon: const Icon(Icons.rate_review_outlined),
+        label: const Text('Phản hồi về ca khám'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.teal,
+          side: const BorderSide(color: AppColors.teal),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openFeedbackSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => FeedbackSheet(
+        onSubmit: onSubmitFeedback,
       ),
     );
   }

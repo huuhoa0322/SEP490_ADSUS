@@ -12,4 +12,17 @@ public interface IFeedbackService
 
     /// <summary>Admin xem tất cả feedback.</summary>
     Task<IReadOnlyList<FeedbackResponse>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>Patient gửi feedback cho ca khám (FT-37).</summary>
+    Task<CaseFeedbackResponse> SubmitCaseFeedbackAsync(
+        SubmitCaseFeedbackRequest request,
+        Guid patientProfileId,
+        Guid caseId,
+        CancellationToken ct = default);
+
+    /// <summary>Patient xem feedback đã gửi cho ca khám (FT-37).</summary>
+    Task<CaseFeedbackResponse?> GetCaseFeedbackAsync(
+        Guid caseId,
+        Guid patientProfileId,
+        CancellationToken ct = default);
 }

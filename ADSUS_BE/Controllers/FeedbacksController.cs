@@ -83,6 +83,51 @@ public sealed class FeedbacksController : ControllerBase
         return Ok(ApiResponse<IReadOnlyList<FeedbackResponse>>.Ok(result));
     }
 
+    /// <summary>
+    /// POST /api/v1/me/case-feedbacks — Patient gửi feedback cho ca khám (FT-37).
+    /// </summary>
+    [HttpPost("api/v1/me/case-feedbacks")]
+    [Authorize(Roles = "PATIENT")]
+    [ProducesResponseType(typeof(ApiResponse<CaseFeedbackResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> SubmitCaseFeedback(
+        [FromBody] SubmitCaseFeedbackRequest request,
+        [FromQuery] Guid caseId,
+        [FromServices] IServiceProvider sp,
+        CancellationToken ct)
+    {
+        var patientProfileId = await GetPatientProfileIdAsync(sp, ct);
+        if (patientProfileId == null)
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, "Không tìm thấy hồ sơ bệnh nhân."));
+
+        var result = await _feedbackService.SubmitCaseFeedbackAsync(request, patientProfileId.Value, caseId, ct);
+        return Created($"/api/v1/me/cases/{caseId}/feedback",
+            ApiResponse<CaseFeedbackResponse>.Ok(result, "Phản hồi đã được gửi thành công."));
+    }
+
+    /// <summary>
+    /// GET /api/v1/me/cases/{caseId}/feedback — Patient xem feedback đã gửi cho ca khám (FT-37).
+    /// </summary>
+    [HttpGet("api/v1/me/cases/{caseId}/feedback")]
+    [Authorize(Roles = "PATIENT")]
+    [ProducesResponseType(typeof(ApiResponse<CaseFeedbackResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCaseFeedback(
+        [FromRoute] Guid caseId,
+        [FromServices] IServiceProvider sp,
+        CancellationToken ct)
+    {
+        var patientProfileId = await GetPatientProfileIdAsync(sp, ct);
+        if (patientProfileId == null)
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, "Không tìm thấy hồ sơ bệnh nhân."));
+
+        var result = await _feedbackService.GetCaseFeedbackAsync(caseId, patientProfileId.Value, ct);
+        if (result == null)
+            return NotFound();
+        return Ok(ApiResponse<CaseFeedbackResponse>.Ok(result));
+    }
+
     private async Task<Guid?> GetPatientProfileIdAsync(IServiceProvider sp, CancellationToken ct)
     {
         // Get current user ID from JWT
