@@ -470,10 +470,13 @@ namespace ADSUS_BE
             // BLL — Module 10: Engagement (Blog PUBLIC endpoints)
             builder.Services.AddScoped<IBlogPostService, BlogPostService>();
             builder.Services.AddScoped<IChatService, ChatService>();
+            // UC-22 + FT-37: Patient feedback (general + per-case).
+            builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 
             // DAL — Repositories
             builder.Services.AddScoped<IBlogPostRepository, BlogPostRepository>();
             builder.Services.AddScoped<IAiChatMessageRepository, AiChatMessageRepository>();
+            builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
 
             // BLL — Module 7: Prescription & Medication Adherence
             builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();

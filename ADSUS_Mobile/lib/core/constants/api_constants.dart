@@ -52,4 +52,8 @@ class ApiConstants {
 
   // Module 10 — AI Chatbot (FT-39)
   static const String chatMessages = '/api/v1/me/chat/messages';
+
+  // Module 10 — Case Feedback (FT-37)
+  static const String submitCaseFeedback = '/api/v1/me/case-feedbacks';
+  static String caseFeedback(String caseId) => '/api/v1/me/cases/$caseId/feedback';
 }

@@ -15,4 +15,7 @@ public interface IFeedbackRepository
 
     /// <summary>Lấy feedback theo ID (kèm PatientProfile).</summary>
     Task<ServiceFeedback?> GetByIdAsync(Guid feedbackId, CancellationToken ct = default);
+
+    /// <summary>Lấy feedback theo case ID (FT-37 — ca khám).</summary>
+    Task<ServiceFeedback?> GetByCaseIdAsync(Guid caseId, CancellationToken ct = default);
 }

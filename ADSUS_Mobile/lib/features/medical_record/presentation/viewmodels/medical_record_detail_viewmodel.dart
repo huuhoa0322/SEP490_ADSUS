@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../domain/entities/medical_record_case.dart';
+import '../../domain/entities/medical_record_feedback.dart';
 
 class MedicalRecordDetailState {
   const MedicalRecordDetailState({
     this.caseId,
     this.caseDetail,
+    this.feedback,
     this.isLoading = false,
     this.errorMessage,
   });
@@ -16,12 +18,14 @@ class MedicalRecordDetailState {
   /// hiển thị bất kỳ nội dung nào (dữ liệu lẫn lỗi), thay vì chỉ suy luận từ `caseDetail == null`.
   final String? caseId;
   final MedicalRecordCase? caseDetail;
+  final MedicalRecordFeedback? feedback;
   final bool isLoading;
   final String? errorMessage;
 
   MedicalRecordDetailState copyWith({
     String? caseId,
     MedicalRecordCase? caseDetail,
+    MedicalRecordFeedback? feedback,
     bool? isLoading,
     String? errorMessage,
     bool clearError = false,
@@ -29,6 +33,7 @@ class MedicalRecordDetailState {
     return MedicalRecordDetailState(
       caseId: caseId ?? this.caseId,
       caseDetail: caseDetail ?? this.caseDetail,
+      feedback: feedback ?? this.feedback,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
@@ -50,16 +55,45 @@ class MedicalRecordDetailViewModel extends Notifier<MedicalRecordDetailState> {
     try {
       final detail =
           await ref.read(medicalRecordRepositoryProvider).getRecordDetail(caseId);
-      // Trong lúc chờ, 1 lượt loadDetail(case khác) có thể đã ghi đè caseId — nếu request
-      // của LƯỢT NÀY trả lời trễ hơn (out-of-order), không được ghi dữ liệu case cũ đè lên
-      // caseId hiện tại. Phát hiện qua whole-branch review 15/08/2026: check state.caseId
-      // (từ Screen) đủ chặn thoáng hiện nhầm khi bấm liên tiếp, nhưng KHÔNG chặn được data
-      // sai khi 2 request chồng nhau trả lời không đúng thứ tự.
       if (caseId != state.caseId) return;
       state = state.copyWith(caseDetail: detail, isLoading: false);
     } on ApiException catch (e) {
       if (caseId != state.caseId) return;
       state = state.copyWith(isLoading: false, errorMessage: e.message);
+    }
+  }
+
+  /// Load feedback cho ca khám hiện tại (FT-37).
+  Future<void> loadFeedback(String caseId) async {
+    if (caseId != state.caseId) return;
+    try {
+      final fb =
+          await ref.read(medicalRecordRepositoryProvider).getCaseFeedback(caseId);
+      if (caseId != state.caseId) return;
+      state = state.copyWith(feedback: fb);
+    } on ApiException {
+      // Feedback optional — không hiển thị lỗi, chỉ không hiện feedback.
+    }
+  }
+
+  /// Gửi feedback cho ca khám hiện tại (FT-37).
+  Future<void> submitFeedback(String caseId, int rating, String? content) async {
+    if (caseId != state.caseId) return;
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await ref.read(medicalRecordRepositoryProvider).submitCaseFeedback(
+            caseId,
+            rating,
+            content,
+          );
+      // Reload feedback sau khi submit thành công.
+      await loadFeedback(caseId);
+    } on ApiException catch (e) {
+      if (caseId != state.caseId) return;
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.message,
+      );
     }
   }
 }

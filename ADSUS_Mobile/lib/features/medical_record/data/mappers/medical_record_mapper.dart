@@ -1,8 +1,10 @@
 import '../../domain/entities/medical_record_case.dart';
+import '../../domain/entities/medical_record_feedback.dart';
 import '../../domain/entities/medical_record_image.dart';
 import '../../domain/entities/medical_record_prescription.dart';
 import '../../domain/entities/medical_record_summary.dart';
 import '../dtos/case_dtos.dart';
+import '../dtos/case_feedback_dto.dart';
 
 /// Chuyển Dto (JSON thô) sang Entity (Dart thuần) — nơi DUY NHẤT map chuỗi UPPERCASE
 /// backend (`"CONFIRMED"`) sang enum Dart lowerCamelCase (`CaseStatus.confirmed`).
@@ -49,5 +51,12 @@ class MedicalRecordMapper {
         durationDays: dto.durationDays,
         startDate: DateTime.parse(dto.startDate),
         instructions: dto.instructions,
+      );
+
+  static MedicalRecordFeedback feedbackFromDto(CaseFeedbackDto dto) => MedicalRecordFeedback(
+        id: dto.id,
+        rating: dto.rating,
+        content: dto.content,
+        submittedAt: DateTime.parse(dto.submittedAt),
       );
 }
