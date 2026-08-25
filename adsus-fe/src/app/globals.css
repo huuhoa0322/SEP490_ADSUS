@@ -89,6 +89,23 @@
   --status-warning: #e0912f;
   --status-critical: #f13a66;
 
+  /* ── Categorical palette for dashboard redesign ────────────────────────────────
+     Extracted from reference image (preclinic admin dashboard).
+     Only used within the dashboard redesign scope. Other pages continue using
+     the existing --primary / --accent / --chart-* token set.
+     See: docs/newfrontend.md
+  ─────────────────────────────────────────────────────────────────────────────── */
+  --cat-navy:   #2E37A4;
+  --cat-violet:  #7C5CD9;
+  --cat-magenta: #DD2590;
+  --cat-teal:    #0E9384;
+  --cat-blue:    #2F80ED;
+  --cat-green:   #27AE60;
+  --cat-amber:   #E2B93B;
+  --cat-rose:    #EF1E1E;
+  --cat-text:    oklch(0.145 0 0);
+  --cat-muted:   oklch(0.45 0 0);
+
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);

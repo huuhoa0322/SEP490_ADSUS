@@ -80,10 +80,6 @@ export function AuditLogPanel() {
       <h2 className="font-heading text-[17px] font-bold tracking-[-0.01em] text-foreground">
         Thao tác quản trị gần đây
       </h2>
-      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-        Mười thao tác mới nhất trên tài khoản đăng nhập. Nhật ký chỉ đọc, không sửa và không
-        xoá được.
-      </p>
 
       <div className="mt-6">
         {isLoading && (
