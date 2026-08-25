@@ -152,3 +152,23 @@ public enum ChatRole
     [PgName("USER")] User,
     [PgName("ASSISTANT")] Assistant,
 }
+
+public enum InventoryTxnType
+{
+    [PgName("IMPORT")] Import,
+    [PgName("DISPENSE")] Dispense,
+    [PgName("ADJUSTMENT")] Adjustment,
+}
+
+public enum InvoiceStatus
+{
+    [PgName("PENDING")] PENDING,
+    [PgName("PAID")] PAID,
+    [PgName("CANCELLED")] CANCELLED,
+}
+
+public enum PaymentMethod
+{
+    [PgName("CASH")] CASH,
+    [PgName("BANK_TRANSFER")] BANK_TRANSFER,
+}

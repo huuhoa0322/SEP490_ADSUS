@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,8 +23,8 @@ public class MedicinesController : ControllerBase
     }
 
     /// <summary>
-    /// Tìm ki?m danh m?c thu?c d? g?i ý (Autocomplete).
-    /// Dùng cho Bác si khi kê don.
+    /// Tï¿½m ki?m danh m?c thu?c d? g?i ï¿½ (Autocomplete).
+    /// Dï¿½ng cho Bï¿½c si khi kï¿½ don.
     /// </summary>
     [HttpGet]
     [Authorize(Roles = "DOCTOR")]
@@ -36,7 +36,7 @@ public class MedicinesController : ControllerBase
     }
 
     /// <summary>
-    /// L?y danh sách thu?c phân trang (Admin).
+    /// L?y danh sï¿½ch thu?c phï¿½n trang (Admin).
     /// </summary>
     [HttpGet("admin")]
     [Authorize(Roles = "ADMIN")]
@@ -48,7 +48,7 @@ public class MedicinesController : ControllerBase
     }
 
     /// <summary>
-    /// Thêm thu?c m?i (Admin).
+    /// Thï¿½m thu?c m?i (Admin).
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "ADMIN")]
@@ -60,7 +60,7 @@ public class MedicinesController : ControllerBase
     }
 
     /// <summary>
-    /// C?p nh?t tên thu?c (Admin).
+    /// C?p nh?t tï¿½n thu?c (Admin).
     /// </summary>
     [HttpPut("{id}")]
     [Authorize(Roles = "ADMIN")]
@@ -72,7 +72,7 @@ public class MedicinesController : ControllerBase
     }
 
     /// <summary>
-    /// Xóa m?m thu?c (Admin).
+    /// Xï¿½a m?m thu?c (Admin).
     /// </summary>
     [HttpDelete("{id}")]
     [Authorize(Roles = "ADMIN")]
@@ -83,7 +83,7 @@ public class MedicinesController : ControllerBase
         return NoContent();
     }
     /// <summary>
-    /// Kích ho?t l?i thu?c (Admin).
+    /// Kï¿½ch ho?t l?i thu?c (Admin).
     /// </summary>
     [HttpPatch("{id}/activate")]
     [Authorize(Roles = "ADMIN")]
@@ -91,6 +91,52 @@ public class MedicinesController : ControllerBase
     public async Task<IActionResult> ActivateMedicine(Guid id, CancellationToken ct = default)
     {
         await _medicineService.ActivateMedicineAsync(id, ct);
+        return NoContent();
+    }
+    // --- Packaging Endpoints ---
+
+    [HttpGet("units")]
+    [Authorize(Roles = "ADMIN,DOCTOR")]
+    [ProducesResponseType(typeof(IEnumerable<MedicineUnitResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMedicineUnits(CancellationToken ct = default)
+    {
+        var result = await _medicineService.GetMedicineUnitsAsync(ct);
+        return Ok(result);
+    }
+
+    [HttpGet("{id}/packagings")]
+    [Authorize(Roles = "ADMIN,DOCTOR")]
+    [ProducesResponseType(typeof(IEnumerable<MedicinePackagingResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPackagingsByMedicineId(Guid id, CancellationToken ct = default)
+    {
+        var result = await _medicineService.GetPackagingsByMedicineIdAsync(id, ct);
+        return Ok(result);
+    }
+
+    [HttpPost("{id}/packagings")]
+    [Authorize(Roles = "ADMIN")]
+    [ProducesResponseType(typeof(MedicinePackagingResponse), StatusCodes.Status201Created)]
+    public async Task<IActionResult> AddPackaging(Guid id, [FromBody] CreateMedicinePackagingRequest request, CancellationToken ct = default)
+    {
+        var result = await _medicineService.AddPackagingAsync(id, request, ct);
+        return CreatedAtAction(nameof(GetPackagingsByMedicineId), new { id = result.MedicineId }, result);
+    }
+
+    [HttpPut("packagings/{packagingId}")]
+    [Authorize(Roles = "ADMIN")]
+    [ProducesResponseType(typeof(MedicinePackagingResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdatePackaging(Guid packagingId, [FromBody] UpdateMedicinePackagingRequest request, CancellationToken ct = default)
+    {
+        var result = await _medicineService.UpdatePackagingAsync(packagingId, request, ct);
+        return Ok(result);
+    }
+
+    [HttpDelete("packagings/{packagingId}")]
+    [Authorize(Roles = "ADMIN")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeletePackaging(Guid packagingId, CancellationToken ct = default)
+    {
+        await _medicineService.DeletePackagingAsync(packagingId, ct);
         return NoContent();
     }
 }

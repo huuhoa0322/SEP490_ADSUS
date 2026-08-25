@@ -40,6 +40,8 @@ public partial class Case
 
     public virtual ICollection<DoctorAnnotation> DoctorAnnotations { get; set; } = new List<DoctorAnnotation>();
 
+    public virtual ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
+
     public virtual PatientProfile PatientProfile { get; set; } = null!;
 
     public virtual ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
