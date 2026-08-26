@@ -31,6 +31,7 @@ public class CreateMedicinePackagingRequest
 
 public class UpdateMedicinePackagingRequest
 {
+    public Guid MedicineUnitId { get; set; }
     public int ConversionFactor { get; set; }
     public bool IsBaseUnit { get; set; }
     public bool IsSellable { get; set; }

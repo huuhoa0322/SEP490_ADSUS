@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
@@ -58,6 +58,15 @@ public sealed class MedicineService : IMedicineService
 
     public async Task<MedicineResponse> CreateMedicineAsync(CreateMedicineRequest request, CancellationToken ct = default)
     {
+        if (request.VolumePerBaseUnit > 0 && string.IsNullOrWhiteSpace(request.UsageUnit))
+        {
+            throw new BusinessException("Vui lòng nhập Đơn vị dùng (Usage Unit) khi đã nhập Hàm lượng.");
+        }
+        if (!string.IsNullOrWhiteSpace(request.UsageUnit) && (request.VolumePerBaseUnit == null || request.VolumePerBaseUnit <= 0))
+        {
+            throw new BusinessException("Vui lòng nhập đúng Hàm lượng (lớn hơn 0) khi đã nhập Đơn vị dùng.");
+        }
+
         var existing = await _medicineRepository.FindByNameAsync(request.Name, ct);
         if (existing != null)
         {
@@ -103,19 +112,26 @@ public sealed class MedicineService : IMedicineService
 
     public async Task<MedicineResponse> UpdateMedicineAsync(Guid id, UpdateMedicineRequest request, CancellationToken ct = default)
     {
+        if (request.VolumePerBaseUnit > 0 && string.IsNullOrWhiteSpace(request.UsageUnit))
+        {
+            throw new BusinessException("Vui lòng nhập Đơn vị dùng (Usage Unit) khi đã nhập Hàm lượng.");
+        }
+        if (!string.IsNullOrWhiteSpace(request.UsageUnit) && (request.VolumePerBaseUnit == null || request.VolumePerBaseUnit <= 0))
+        {
+            throw new BusinessException("Vui lòng nhập đúng Hàm lượng (lớn hơn 0) khi đã nhập Đơn vị dùng.");
+        }
+
         var existing = await _medicineRepository.GetByIdAsync(id, ct);
         if (existing == null)
         {
             throw new ResourceNotFoundException("Không tìm thấy thuốc.");
         }
 
-        var nameCheck = await _medicineRepository.FindByNameAsync(request.Name, ct);
-        if (nameCheck != null && nameCheck.MedicineId != id)
+        if (!string.Equals(existing.Name, request.Name.Trim(), StringComparison.OrdinalIgnoreCase))
         {
-            throw new BusinessException($"Thuốc với tên '{request.Name}' đã tồn tại.");
+            throw new BusinessException("Tên thuốc là Master Data gốc, tuyệt đối không được sửa sau khi tạo.");
         }
 
-        existing.Name = request.Name.Trim();
         existing.UsageUnit = request.UsageUnit?.Trim();
         existing.VolumePerBaseUnit = request.VolumePerBaseUnit;
 
@@ -195,6 +211,12 @@ public sealed class MedicineService : IMedicineService
 
     public async Task<MedicinePackagingResponse> AddPackagingAsync(Guid medicineId, CreateMedicinePackagingRequest request, CancellationToken ct = default)
     {
+        var duplicateUnit = await _db.Set<MedicinePackaging>().FirstOrDefaultAsync(p => p.MedicineId == medicineId && p.MedicineUnitId == request.MedicineUnitId, ct);
+        if (duplicateUnit != null)
+        {
+            throw new BusinessException("Đơn vị tính này đã được sử dụng cho thuốc. Không thể thêm trùng.");
+        }
+
         if (request.IsBaseUnit)
         {
             var existingBase = await _db.Set<MedicinePackaging>().FirstOrDefaultAsync(p => p.MedicineId == medicineId && p.IsBaseUnit, ct);
@@ -226,7 +248,16 @@ public sealed class MedicineService : IMedicineService
     public async Task<MedicinePackagingResponse> UpdatePackagingAsync(Guid id, UpdateMedicinePackagingRequest request, CancellationToken ct = default)
     {
         var packaging = await _db.Set<MedicinePackaging>().FindAsync(new object[] { id }, ct);
-        if (packaging == null) throw new ResourceNotFoundException("Khong tim thay quy cach dong goi.");
+        if (packaging == null) throw new ResourceNotFoundException("Không tìm thấy quy cách đóng gói.");
+
+        if (request.MedicineUnitId != packaging.MedicineUnitId)
+        {
+            var duplicateUnit = await _db.Set<MedicinePackaging>().FirstOrDefaultAsync(p => p.MedicineId == packaging.MedicineId && p.MedicineUnitId == request.MedicineUnitId && p.Id != id, ct);
+            if (duplicateUnit != null)
+            {
+                throw new BusinessException("Đơn vị tính này đã được sử dụng bởi một quy cách khác của cùng loại thuốc.");
+            }
+        }
 
         if (request.IsBaseUnit && !packaging.IsBaseUnit)
         {
@@ -239,7 +270,8 @@ public sealed class MedicineService : IMedicineService
             request.ConversionFactor = 1;
         }
 
-                packaging.ConversionFactor = request.ConversionFactor;
+        packaging.MedicineUnitId = request.MedicineUnitId;
+        packaging.ConversionFactor = request.ConversionFactor;
         packaging.IsBaseUnit = request.IsBaseUnit;
         packaging.SalePrice = request.SalePrice;
         packaging.IsSellable = request.IsSellable;

@@ -61,10 +61,15 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
     const finalVolume = parseFloat(volume);
     const finalUsageUnit = usageUnit.trim();
 
-    if (finalUsageUnit && (isNaN(finalVolume) || finalVolume <= 0)) {
-      toast.error("Vui lòng nhập đúng Hàm lượng (lớn hơn 0).");
-      return;
-    }
+      if (finalUsageUnit && (isNaN(finalVolume) || finalVolume <= 0)) {
+        toast.error("Vui lòng nhập đúng Hàm lượng (lớn hơn 0) khi đã nhập Đơn vị dùng.");
+        return;
+      }
+      
+      if (!isNaN(finalVolume) && finalVolume > 0 && !finalUsageUnit) {
+        toast.error("Vui lòng nhập Đơn vị dùng (Usage Unit) khi đã nhập Hàm lượng.");
+        return;
+      }
 
     try {
       await updateMedicineMutation.mutateAsync({
@@ -153,20 +158,23 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
     setPendingDeleteId(id);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!pendingDeleteId) return;
-    deleteMutation.mutate(pendingDeleteId, {
-      onSuccess: () => {
-        toast.success("Đã xóa quy cách.");
-        setPendingDeleteId(null);
-      },
-      onError: (err) => toast.error(getApiErrorMessage(err, "Có lỗi xảy ra")),
-    });
+    try {
+      await deleteMutation.mutateAsync(pendingDeleteId);
+      toast.success("Đã xóa quy cách đóng gói.");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Có lỗi xảy ra"));
+    } finally {
+      setTimeout(() => setPendingDeleteId(null), 10);
+    }
   };
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open && !pendingDeleteId) onClose();
+      }}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">
@@ -396,7 +404,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
         message="Bạn có chắc chắn muốn xóa quy cách đóng gói này? Hành động này không thể hoàn tác."
         confirmLabel="Xóa quy cách"
         onConfirm={handleConfirmDelete}
-        onCancel={() => setPendingDeleteId(null)}
+        onCancel={() => setTimeout(() => setPendingDeleteId(null), 10)}
         isPending={deleteMutation.isPending}
         destructive={true}
       />
