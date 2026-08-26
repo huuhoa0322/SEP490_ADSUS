@@ -34,6 +34,8 @@ describe("createPatientProfile", () => {
     await createPatientProfile({
       patientUserId: "user-1",
       gender: null,
+      diseases: [],
+      allergies: [],
     });
 
     // #17 cho phép bỏ trống gender (DB có default), khác #18 vốn bắt buộc.
@@ -51,6 +53,8 @@ describe("createPatientProfile", () => {
       createPatientProfile({
         patientUserId: "user-1",
         gender: "FEMALE",
+        diseases: [],
+        allergies: [],
       }),
     ).rejects.toThrow("Profile already exists.");
   });
@@ -68,6 +72,8 @@ describe("updatePatientProfile", () => {
 
     await updatePatientProfile("profile-1", {
       gender: "FEMALE",
+      diseases: [],
+      allergies: [],
     });
 
     // UC-06 bước 2 — ba trường định danh lấy từ bảng users, chỉ đọc. #18 không nhận chúng;

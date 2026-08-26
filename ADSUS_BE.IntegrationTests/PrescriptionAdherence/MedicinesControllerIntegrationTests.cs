@@ -12,7 +12,7 @@ using Xunit;
 
 namespace ADSUS_BE.IntegrationTests.PrescriptionAdherence;
 
-public class MedicinesControllerIntegrationTests
+public partial class MedicinesControllerIntegrationTests
 {
     private readonly Mock<IMedicineRepository> _medicines = new();
     private readonly Mock<IUserRepository> _users = new();

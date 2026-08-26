@@ -9,6 +9,8 @@ public partial class NotificationLog
 
     public Guid UserId { get; set; }
 
+    public string NotificationType { get; set; } = null!;
+
     public string Title { get; set; } = null!;
 
     public string? Body { get; set; }
@@ -32,6 +34,10 @@ public partial class NotificationLog
     public bool? IsDeleted { get; set; }
 
     public DateTime? DeletedAt { get; set; }
+
+    public string Type { get; set; } = null!;
+
+    public string? Metadata { get; set; }
 
     public virtual User User { get; set; } = null!;
 }
