@@ -6,7 +6,6 @@ import { useMemo } from "react";
 
 import {
   createPrescription,
-  getMedicationCatalog,
 } from "@/features/prescriptions/api/prescriptions.api";
 import { PrescriptionForm } from "@/features/prescriptions/components/prescription-form";
 import type { PrescriptionFormData } from "@/features/prescriptions/components/prescription-form";
@@ -19,11 +18,7 @@ export default function NewPrescriptionPage() {
 
   const { data: medicalCase, isLoading: isLoadingCase } = useCaseDetail(caseId);
 
-  const medicationsQuery = useQuery({
-    queryKey: ["medication-catalog"],
-    queryFn: getMedicationCatalog,
-    staleTime: 30 * 60 * 1000,
-  });
+
 
   const prefilledPatient = useMemo(() => {
     if (!medicalCase?.patientProfile) return undefined;
@@ -57,7 +52,7 @@ export default function NewPrescriptionPage() {
     router.push(`/cases/${targetCaseId}`);
   }
 
-  const isLoading = isLoadingCase || medicationsQuery.isLoading;
+  const isLoading = isLoadingCase;
 
   return (
     <div className="container mx-auto max-w-4xl py-8">
@@ -85,17 +80,9 @@ export default function NewPrescriptionPage() {
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-600">
           Không tìm thấy ca khám. Vui lòng kiểm tra lại.
         </div>
-      ) : medicationsQuery.isError ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-600">
-          Không tải được danh mục thuốc. Vui lòng tải lại trang.
-        </div>
       ) : (
         <PrescriptionForm
           prefilledPatient={prefilledPatient}
-          medications={(medicationsQuery.data ?? []).map((m) => ({
-            medicineId: m.medicineId,
-            name: m.name,
-          }))}
           onSubmit={handleSubmit}
         />
       )}

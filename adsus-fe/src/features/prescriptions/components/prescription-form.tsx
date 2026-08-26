@@ -247,7 +247,6 @@ export function PrescriptionForm({
 interface MedicineComboboxProps {
   value: string;
   onChange: (value: string) => void;
-  medications: Array<{ medicineId: string; name: string }>;
   error?: string;
 }
 

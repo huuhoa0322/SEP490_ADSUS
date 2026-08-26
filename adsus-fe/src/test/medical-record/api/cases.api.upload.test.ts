@@ -39,6 +39,7 @@ describe("createCase", () => {
       patientProfileId: "profile-1",
       responsibleDoctorId: "doctor-1",
       clinicalInfo: "Rong kinh 3 tuần",
+      symptoms: [],
       images: [fakeImage("a.jpg"), fakeImage("b.jpg")],
     });
 
