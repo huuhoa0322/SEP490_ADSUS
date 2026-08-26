@@ -34,6 +34,7 @@ jobs:
               run: dotnet test ADSUS_BE.UnitTests/ADSUS_BE.UnitTests.csproj --no-restore --logger trx
 
             - name: Integration Tests
+              if: success() || failure()
               env:
                   ConnectionStrings__DefaultConnection: ${{ secrets.TEST_DB_CONNECTION_STRING }}
                   # Not a real shared secret — every test mints and validates its own tokens
@@ -58,6 +59,7 @@ jobs:
                   name: "Backend Unit Test Report"
                   path: "ADSUS_BE.UnitTests/**/*.trx"
                   reporter: dotnet-trx
+                  fail-on-empty: "false"
 
             - name: Publish Integration Test Report
               uses: dorny/test-reporter@v3
@@ -66,6 +68,7 @@ jobs:
                   name: "Backend Integration Test Report"
                   path: "ADSUS_BE.IntegrationTests/**/*.trx"
                   reporter: dotnet-trx
+                  fail-on-empty: "false"
 
             - uses: actions/upload-artifact@v4
               if: always()
@@ -107,6 +110,7 @@ jobs:
               run: npm run test -- --run --exclude "**/hooks/**" --exclude "**/api/**"
 
             - name: Integration Tests
+              if: success() || failure()
               # "hooks"/"api" alone would ALSO match src/test/lib/api-messages.test.ts (unit-
               # style, no MSW) — Vitest's positional filters are plain substring matches
               # against the full path, not path-segment-aware, and that filename happens to
@@ -166,6 +170,7 @@ jobs:
               run: flutter test test/auth_repository_test.dart test/dio_client_test.dart test/features --file-reporter="json:unit-test-results.json"
 
             - name: Widget Tests
+              if: success() || failure()
               run: flutter test test/widget --file-reporter="json:widget-test-results.json"
 
             - name: Publish Unit Test Report
@@ -175,6 +180,7 @@ jobs:
                   name: "Mobile Unit Test Report"
                   path: "ADSUS_Mobile/unit-test-results.json"
                   reporter: flutter-json
+                  fail-on-empty: "false"
 
             - name: Publish Widget Test Report
               uses: dorny/test-reporter@v3
@@ -183,6 +189,7 @@ jobs:
                   name: "Mobile Widget Test Report"
                   path: "ADSUS_Mobile/widget-test-results.json"
                   reporter: flutter-json
+                  fail-on-empty: "false"
 
             - run: flutter build apk --debug
 

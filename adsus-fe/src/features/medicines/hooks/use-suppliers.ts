@@ -37,7 +37,7 @@ export function useCreateSupplier() {
       toast.success("Thêm nhà cung cấp thành công!");
       queryClient.invalidateQueries({ queryKey: SUPPLIERS_QUERY_KEY });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast.error(getApiErrorMessage(error, "Đã có lỗi xảy ra khi thêm nhà cung cấp."));
     },
   });
@@ -54,7 +54,7 @@ export function useUpdateSupplier() {
       queryClient.invalidateQueries({ queryKey: SUPPLIERS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: [...SUPPLIERS_QUERY_KEY, id] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast.error(getApiErrorMessage(error, "Đã có lỗi xảy ra khi cập nhật nhà cung cấp."));
     },
   });
@@ -70,7 +70,7 @@ export function useUpdateSupplierStatus() {
       queryClient.invalidateQueries({ queryKey: SUPPLIERS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: [...SUPPLIERS_QUERY_KEY, id] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast.error(getApiErrorMessage(error, "Đã có lỗi xảy ra khi thay đổi trạng thái."));
     },
   });
