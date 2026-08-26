@@ -1,6 +1,7 @@
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
-using ADSUS_BE.DAL.ExternalServices;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
 
@@ -9,33 +10,37 @@ namespace ADSUS_BE.Jobs;
 /// <summary>
 /// JOB-01 — Nhắc nhở bệnh nhân uống thuốc.
 /// Chạy mỗi phút (prod) hoặc 30 giây (dev).
-/// GB-08: chỉ gọi IPushNotificationClient (push), không gửi Email/SMS.
+/// GB-08: chỉ gửi push notification, không gửi Email/SMS.
 /// ReminderWindowMinutes = 30: chỉ gửi push khi ScheduledTime rơi vào khoảng [now-30min, now].
 /// </summary>
 [DisallowConcurrentExecution]
 public sealed class MedicationReminderJob : IJob
 {
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMedicationIntakeLogRepository _intakeLogRepo;
     private readonly IPatientProfileRepository _patientProfileRepo;
-    private readonly IPushNotificationClient _pushClient;
     private readonly ILogger<MedicationReminderJob> _logger;
 
     private const int ReminderWindowMinutes = 30;
 
     public MedicationReminderJob(
+        IServiceScopeFactory scopeFactory,
         IMedicationIntakeLogRepository intakeLogRepo,
         IPatientProfileRepository patientProfileRepo,
-        IPushNotificationClient pushClient,
         ILogger<MedicationReminderJob> logger)
     {
+        _scopeFactory = scopeFactory;
         _intakeLogRepo = intakeLogRepo;
         _patientProfileRepo = patientProfileRepo;
-        _pushClient = pushClient;
         _logger = logger;
     }
 
     public async Task Execute(IJobExecutionContext context)
     {
+        // Tạo scope mới cho scoped services (INotificationService là Scoped)
+        using var scope = _scopeFactory.CreateScope();
+        var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+
         _logger.LogInformation("[JOB-01] Medication reminder job started at {Time}", DateTime.UtcNow);
 
         var now = DateTime.UtcNow;
@@ -72,19 +77,20 @@ public sealed class MedicationReminderJob : IJob
                     log.ScheduledTime,
                     TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"));
 
-                var message = new PushMessage(
-                    Title: "Nhắc nhở uống thuốc",
-                    Body: $"Đã đến giờ uống {medicineName} lúc {scheduledTimeLocal:HH:mm}.",
-                    DeepLink: $"/me/medication-intakes/{log.IntakeId}",
-                    Data: new Dictionary<string, string>
+                await notificationService.SendAsync(new SendNotificationRequest
+                {
+                    UserId = patientProfile.UserId,
+                    Type = "medication_reminder",
+                    Title = "Nhắc nhở uống thuốc",
+                    Body = $"Đã đến giờ uống {medicineName} lúc {scheduledTimeLocal:HH:mm}.",
+                    DeepLink = $"/me/medication-intakes/{log.IntakeId}",
+                    Metadata = new Dictionary<string, object>
                     {
-                        ["type"] = "medication_reminder",
-                        ["intakeId"] = log.IntakeId.ToString(),
+                        ["scheduleId"] = log.IntakeId.ToString(),
                         ["medicineName"] = medicineName,
-                        ["scheduledTime"] = log.ScheduledTime.ToString("O"),
-                    });
-
-                await _pushClient.SendToUserAsync(patientProfile.UserId, message, context.CancellationToken);
+                        ["scheduledTime"] = log.ScheduledTime.ToString("O")
+                    }
+                }, context.CancellationToken);
 
                 sentCount++;
                 _logger.LogInformation(

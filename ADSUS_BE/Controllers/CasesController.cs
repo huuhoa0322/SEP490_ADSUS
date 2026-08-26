@@ -22,7 +22,7 @@ namespace ADSUS_BE.Controllers;
 public sealed class CasesController : ControllerBase
 {
     private readonly ICaseService _cases;
-    private readonly ICaseReportService _reports;
+    private readonly System.Lazy<ICaseReportService> _reportsLazy;
     private readonly IPrescriptionService _prescriptions;
     private readonly IValidator<CreateCaseRequest> _createValidator;
     private readonly IValidator<AddUltrasoundImagesRequest> _addImagesValidator;
@@ -30,14 +30,14 @@ public sealed class CasesController : ControllerBase
 
     public CasesController(
         ICaseService cases,
-        ICaseReportService reports,
+        System.Lazy<ICaseReportService> reportsLazy,
         IPrescriptionService prescriptions,
         IValidator<CreateCaseRequest> createValidator,
         IValidator<AddUltrasoundImagesRequest> addImagesValidator,
         IValidator<CaseConclusionRequest> conclusionValidator)
     {
         _cases = cases;
-        _reports = reports;
+        _reportsLazy = reportsLazy;
         _prescriptions = prescriptions;
         _createValidator = createValidator;
         _addImagesValidator = addImagesValidator;
@@ -309,7 +309,7 @@ public sealed class CasesController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> ExportReport(Guid id, CancellationToken ct)
     {
-        var pdf = await _reports.GenerateReportAsync(id, ct);
+        var pdf = await _reportsLazy.Value.GenerateReportAsync(id, ct);
         return File(pdf, "application/pdf", $"visit-report-{id}.pdf");
     }
 

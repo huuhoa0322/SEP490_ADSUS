@@ -9,6 +9,12 @@ public partial class NotificationLog
 
     public Guid UserId { get; set; }
 
+    /// <summary>Loại notification — lưu dạng string để tương thích với PostgreSQL enum</summary>
+    public string Type { get; set; } = "general";
+
+    /// <summary>JSON metadata chứa ID để navigate (scheduleId, appointmentId, etc.)</summary>
+    public string? Metadata { get; set; }
+
     public string Title { get; set; } = null!;
 
     public string? Body { get; set; }

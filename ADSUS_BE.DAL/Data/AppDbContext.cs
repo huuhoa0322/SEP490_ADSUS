@@ -91,7 +91,6 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("medicines_status", new[] { "ACTIVE", "INACTIVE" })
             .HasPostgresEnum("model_version_status", new[] { "ACTIVE", "INACTIVE" })
             .HasPostgresEnum("notification_status", new[] { "SENT", "DELIVERED", "FAILED", "READ", "UNREAD" })
-            .HasPostgresEnum("notification_type", new[] { "medication_reminder", "medication_confirmation", "appointment_booking", "appointment_reminder", "appointment_cancellation", "healthlog_reminder", "general" })
             .HasPostgresEnum("prescription_status", new[] { "ACTIVE", "COMPLETED" })
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in", "like", "ilike", "is", "match", "imatch", "isdistinct" })
@@ -573,6 +572,13 @@ public partial class AppDbContext : DbContext
                 .HasMaxLength(200)
                 .HasColumnName("title");
             entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Type)
+                .HasMaxLength(50)
+                .HasDefaultValue("general")
+                .HasColumnName("notification_type");
+            entity.Property(e => e.Metadata)
+                .HasColumnType("jsonb")
+                .HasColumnName("metadata");
 
             entity.HasOne(d => d.User).WithMany(p => p.NotificationLogs)
                 .HasForeignKey(d => d.UserId)

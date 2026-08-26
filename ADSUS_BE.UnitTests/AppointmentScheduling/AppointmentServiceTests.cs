@@ -1,9 +1,11 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Services;
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -18,6 +20,8 @@ public class AppointmentServiceTests : IDisposable
 {
     private readonly Mock<IAppointmentRepository> _appointmentRepo = new();
     private readonly Mock<IScheduleSlotRepository> _slotRepo = new();
+    private readonly Mock<IPatientProfileRepository> _profileRepo = new();
+    private readonly Mock<INotificationService> _notificationService = new();
     private readonly AppDbContext _db;
     private readonly AppointmentService _sut;
 
@@ -38,7 +42,10 @@ public class AppointmentServiceTests : IDisposable
         _sut = new AppointmentService(
             _appointmentRepo.Object,
             _slotRepo.Object,
-            _db);
+            _profileRepo.Object,
+            _notificationService.Object,
+            _db,
+            Mock.Of<ILogger<AppointmentService>>());
     }
 
     public void Dispose()
@@ -576,6 +583,24 @@ public class AppointmentServiceTests : IDisposable
             Status = SlotStatus.Open,
             CreatedAt = DateTime.UtcNow,
             Appointments = new List<Appointment>(),
+            Doctor = new User
+            {
+                UserId = _doctorId,
+                FullName = "Dr. Test",
+                Email = "dr.test@test.com",
+                Phone = "1234567890",
+                PasswordHash = "hash",
+                Role = UserRole.Doctor,
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+            }
+        };
+
+        var patientProfile = new PatientProfile
+        {
+            PatientProfileId = _patientId,
+            UserId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
         };
 
         _slotRepo.Setup(r => r.GetByIdForUpdateAsync(_slotId, It.IsAny<CancellationToken>()))
@@ -586,6 +611,12 @@ public class AppointmentServiceTests : IDisposable
 
         _slotRepo.Setup(r => r.UpdateAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+
+        _profileRepo.Setup(r => r.GetByIdAsync(_patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(patientProfile);
+
+        _notificationService.Setup(n => n.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid());
 
         return slot;
     }
@@ -607,9 +638,22 @@ public class AppointmentServiceTests : IDisposable
             Slot = slot,
         };
 
+        var patientProfile = new PatientProfile
+        {
+            PatientProfileId = _patientId,
+            UserId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+        };
+
         _db.Appointments.Add(appointment);
         _db.ScheduleSlots.Add(slot);
         _db.SaveChanges();
+
+        _profileRepo.Setup(r => r.GetByIdAsync(_patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(patientProfile);
+
+        _notificationService.Setup(n => n.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid());
 
         return appointment;
     }

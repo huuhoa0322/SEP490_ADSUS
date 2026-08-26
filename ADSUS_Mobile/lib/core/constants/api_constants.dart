@@ -56,4 +56,9 @@ class ApiConstants {
   // Module 10 — Case Feedback (FT-37)
   static const String submitCaseFeedback = '/api/v1/me/case-feedbacks';
   static String caseFeedback(String caseId) => '/api/v1/me/cases/$caseId/feedback';
+
+  // Module 09 — Notification (UC-16, JOB-01, JOB-02, JOB-03)
+  static const String notifications = '/api/v1/notifications';
+  static const String notificationUnreadCount = '/api/v1/notifications/unread-count';
+  static const String fcmToken = '/api/v1/fcm-token';
 }

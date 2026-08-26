@@ -35,6 +35,9 @@ class AppColors {
   static const Color background = Color(0xFFF7F9FB);
   static const Color border = Color(0xFFDDE5EF);
   static const Color muted = Color(0xFF5B6B85);
+
+  /// Màu nền notification chưa đọc (xanh nhạt)
+  static const Color unreadBg = Color(0xFFE3F2FD);
 }
 
 class AppTheme {

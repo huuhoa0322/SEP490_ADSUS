@@ -1,4 +1,5 @@
 using ADSUS_BE.BLL.Common.Exceptions;
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
 using ADSUS_BE.DAL.Data;
@@ -18,15 +19,18 @@ public sealed class MedicationIntakeService : IMedicationIntakeService
     private readonly AppDbContext _db;
     private readonly IMedicationIntakeLogRepository _intakeLogRepo;
     private readonly IPrescriptionRepository _prescriptionRepo;
+    private readonly INotificationService _notificationService;
 
     public MedicationIntakeService(
         AppDbContext db,
         IMedicationIntakeLogRepository intakeLogRepo,
-        IPrescriptionRepository prescriptionRepo)
+        IPrescriptionRepository prescriptionRepo,
+        INotificationService notificationService)
     {
         _db = db;
         _intakeLogRepo = intakeLogRepo;
         _prescriptionRepo = prescriptionRepo;
+        _notificationService = notificationService;
     }
 
     public async Task<IReadOnlyList<IntakeLogResponse>> ListByPrescriptionAsync(
@@ -98,6 +102,26 @@ public sealed class MedicationIntakeService : IMedicationIntakeService
                 "Chưa đến giờ uống thuốc. Không thể xác nhận sớm hơn giờ đã hẹn.");
 
         await _intakeLogRepo.ConfirmTakenAsync(intakeId, now, ct);
+
+        // Gửi notification xác nhận đã uống thuốc
+        var medicineName = log.PrescriptionItem?.Medicine?.Name ?? "thuốc";
+        var scheduledTimeLocal = TimeZoneInfo.ConvertTimeFromUtc(
+            log.ScheduledTime,
+            TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"));
+
+        await _notificationService.SendAsync(new SendNotificationRequest
+        {
+            UserId = patientId,
+            Type = "medication_confirmation",
+            Title = "Xác nhận uống thuốc",
+            Body = $"Bạn đã uống {medicineName} lúc {scheduledTimeLocal:HH:mm}.",
+            Metadata = new Dictionary<string, object>
+            {
+                ["scheduleId"] = log.IntakeId.ToString(),
+                ["medicineName"] = medicineName,
+                ["confirmedAt"] = now.ToString("O")
+            }
+        }, ct);
     }
 
     public async Task<AdherenceSummary> GetAdherenceAsync(

@@ -98,4 +98,9 @@ public interface IUserRepository
     /// nhỏ có biên, không phải collection tăng trưởng vô hạn.
     /// </summary>
     Task<IReadOnlyList<User>> ListActiveDoctorsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lấy tất cả bệnh nhân Active — dùng để gửi notification khi có bài viết blog mới.
+    /// </summary>
+    Task<IReadOnlyList<User>> GetAllPatientsAsync(CancellationToken cancellationToken = default);
 }

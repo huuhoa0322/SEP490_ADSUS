@@ -5,6 +5,8 @@ using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.BLL.Auth.Validators;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.Common.Interfaces;
+using ADSUS_BE.BLL.Common.Services;
 using ADSUS_BE.BLL.DashboardReporting.Interfaces;
 using ADSUS_BE.BLL.DashboardReporting.Services;
 using ADSUS_BE.BLL.Engagement.Interfaces;
@@ -334,10 +336,14 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IUltrasoundImageRepository, UltrasoundImageRepository>();
             builder.Services.AddScoped<ISymptomCategoryRepository, SymptomCategoryRepository>();
 
-            // External services — push notification. Hiện tại dùng FakePush (in-memory stub)
-            // cho dev/test/CI. Production sẽ đổi sang FirebasePushNotificationClient (sprint sau,
-            // cần FCM service account JSON qua User Secrets). Singleton vì stateless.
+            // External services — push notification.
+            // DEBUG: dùng FakePush (in-memory stub) cho dev/test/CI không cần Firebase.
+            // RELEASE: dùng FirebasePushNotificationClient thật (cần Firebase:ServiceAccountPath trong User Secrets).
+#if DEBUG
             builder.Services.AddSingleton<IPushNotificationClient, FakePushNotificationClient>();
+#else
+            builder.Services.AddSingleton<IPushNotificationClient, FirebasePushNotificationClient>();
+#endif
 
             // BLL — safety filter cho Module 10 Chat (trước khi gọi LLM). Singleton vì stateless,
             // chỉ đọc mảng keyword tĩnh.
@@ -365,11 +371,17 @@ namespace ADSUS_BE
 
             // BLL — Module 4: Medical Record
             builder.Services.AddScoped<IPatientProfileService, PatientProfileService>();
+            // Lazy<IFileStorageService> cho CaseService - chỉ resolve khi cần upload/build URLs
+            builder.Services.AddScoped<System.Lazy<IFileStorageService>>(sp =>
+                new System.Lazy<IFileStorageService>(() => sp.GetRequiredService<IFileStorageService>()));
             builder.Services.AddScoped<ICaseService, CaseService>();
             builder.Services.AddScoped<ISymptomService, SymptomService>();
             builder.Services.AddScoped<ICaseDiagnosisService, CaseDiagnosisService>();
             builder.Services.AddScoped<IAiMetricsService, AiMetricsService>();
             builder.Services.AddScoped<ICaseReportService, CaseReportService>();
+            // Lazy<ICaseReportService> cho CasesController - chỉ resolve khi cần export PDF
+            builder.Services.AddScoped<System.Lazy<ICaseReportService>>(sp =>
+                new System.Lazy<ICaseReportService>(() => sp.GetRequiredService<ICaseReportService>()));
             builder.Services.AddScoped<IDoctorDirectoryService, DoctorDirectoryService>();
             builder.Services.AddScoped<IPatientAccountService, PatientAccountService>();
             builder.Services.AddScoped<IValidator<CreatePatientAccountRequest>, CreatePatientAccountRequestValidator>();
@@ -389,6 +401,12 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IHealthLogRepository, HealthLogRepository>();
             builder.Services.AddScoped<IHealthLogService, HealthLogService>();
             builder.Services.AddScoped<IValidator<BLL.HealthMonitoring.DTOs.LogHealthDataRequest>, BLL.HealthMonitoring.Validators.LogHealthDataRequestValidator>();
+
+            // BLL — Module 9: Notification & FCM
+            builder.Services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
+            builder.Services.AddScoped<IUserFcmTokenRepository, UserFcmTokenRepository>();
+            builder.Services.AddScoped<IFcmTokenService, FcmTokenService>();
+            builder.Services.AddScoped<INotificationService, NotificationService>();
 
             // ---------- Cấu hình AI Backend ----------
             builder.Services.Configure<AiBackendSettings>(
@@ -533,6 +551,78 @@ namespace ADSUS_BE
                 q.AddTrigger(opts => opts
                     .ForJob(jobKey)
                     .WithIdentity("SlotGeneratorTrigger", "schedule")
+                    .WithCronSchedule(cronExpression));
+            });
+
+            // ---------- Quartz JOB-03: Appointment Reminder ----------
+            builder.Services.AddQuartz(q =>
+            {
+                // Chạy mỗi giờ
+                var cronExpression = "0 0 * * * ?"; // At second :00 of every minute -> "0 0 * * * ?" = every hour
+
+                var jobKey = new Quartz.JobKey("AppointmentReminderJob", "appointment");
+
+                q.AddJob<AppointmentReminderJob>(opts => opts
+                    .WithIdentity(jobKey)
+                    .StoreDurably());
+
+                q.AddTrigger(opts => opts
+                    .ForJob(jobKey)
+                    .WithIdentity("AppointmentReminderTrigger", "appointment")
+                    .WithCronSchedule(cronExpression));
+            });
+
+            // ---------- Quartz JOB-04: Health Log Reminder ----------
+            builder.Services.AddQuartz(q =>
+            {
+                // Chạy 2 lần/ngày: 8h và 20h
+                var cronExpression = "0 0 8,20 * * ?"; // At 08:00 and 20:00 every day
+
+                var jobKey = new Quartz.JobKey("HealthLogReminderJob", "healthlog");
+
+                q.AddJob<HealthLogReminderJob>(opts => opts
+                    .WithIdentity(jobKey)
+                    .StoreDurably());
+
+                q.AddTrigger(opts => opts
+                    .ForJob(jobKey)
+                    .WithIdentity("HealthLogReminderTrigger", "healthlog")
+                    .WithCronSchedule(cronExpression));
+            });
+
+            // ---------- Quartz JOB-05: Weekly Health Report ----------
+            builder.Services.AddQuartz(q =>
+            {
+                // Chạy 9h sáng thứ 6 hàng tuần
+                var cronExpression = "0 0 9 ? * FRI"; // At 09:00:00 on Friday
+
+                var jobKey = new Quartz.JobKey("WeeklyHealthReportJob", "healthlog");
+
+                q.AddJob<WeeklyHealthReportJob>(opts => opts
+                    .WithIdentity(jobKey)
+                    .StoreDurably());
+
+                q.AddTrigger(opts => opts
+                    .ForJob(jobKey)
+                    .WithIdentity("WeeklyHealthReportTrigger", "healthlog")
+                    .WithCronSchedule(cronExpression));
+            });
+
+            // ---------- Quartz JOB-06: Adherence Summary ----------
+            builder.Services.AddQuartz(q =>
+            {
+                // Chạy 23h mỗi ngày
+                var cronExpression = "0 0 23 * * ?"; // At 23:00 every day
+
+                var jobKey = new Quartz.JobKey("AdherenceSummaryJob", "medication");
+
+                q.AddJob<AdherenceSummaryJob>(opts => opts
+                    .WithIdentity(jobKey)
+                    .StoreDurably());
+
+                q.AddTrigger(opts => opts
+                    .ForJob(jobKey)
+                    .WithIdentity("AdherenceSummaryTrigger", "medication")
                     .WithCronSchedule(cronExpression));
             });
 
