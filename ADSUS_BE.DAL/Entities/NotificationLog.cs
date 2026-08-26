@@ -39,5 +39,9 @@ public partial class NotificationLog
 
     public DateTime? DeletedAt { get; set; }
 
+    public string Type { get; set; } = null!;
+
+    public string? Metadata { get; set; }
+
     public virtual User User { get; set; } = null!;
 }

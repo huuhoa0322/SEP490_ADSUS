@@ -107,6 +107,16 @@ namespace ADSUS_BE
             // Replaces the default Microsoft.Extensions.Logging console provider. Sinks and
             // levels are read from the "Serilog" section in appsettings.json — GlobalExceptionHandler
             // and every Service still just inject ILogger<T> as usual, Serilog is only the provider.
+            // User-secrets: API key LLM, JWT secret, Supabase credentials (dotnet user-secrets set).
+            // Must be called BEFORE UseSerilog so Serilog reads the full config tree.
+            builder.Configuration.AddUserSecrets("0b55daea-3ede-48d9-847b-1d62fa20823d");
+
+            // Verify config is present:
+            var openAiKey = builder.Configuration["OpenAi:ApiKey"];
+            var openAiModel = builder.Configuration["OpenAi:Model"];
+            Console.WriteLine($"[DEBUG CONFIG] OpenAi:ApiKey = '{(string.IsNullOrEmpty(openAiKey) ? "NULL/EMPTY" : openAiKey.Substring(0, Math.Min(10, openAiKey.Length)) + "...")}'");
+            Console.WriteLine($"[DEBUG CONFIG] OpenAi:Model = '{(openAiModel ?? "NULL")}'");
+
             builder.Host.UseSerilog((context, configuration) =>
                 configuration.ReadFrom.Configuration(context.Configuration));
 
@@ -350,9 +360,9 @@ namespace ADSUS_BE
             builder.Services.AddSingleton<IPsychologyTopicFilter, PsychologyTopicFilter>();
 
             // BLL — ChatClient (Module 10 Chat).
-            // FakeChatClient mặc định vì user không có OpenAI key trả phí.
-            // Khi có key → swap sang OpenAiChatClient trong DI registration.
-            builder.Services.AddScoped<IChatClient, FakeChatClient>();
+            // GeminiChatClient dùng Google AI API (gemini-3.6-flash, free tier).
+            // Key và model đọc từ AiBackendSettings (user-secrets).
+            builder.Services.AddScoped<IChatClient, GeminiChatClient>();
 
             // BLL — Module 1: Authentication & Account
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();

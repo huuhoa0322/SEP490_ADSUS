@@ -25,6 +25,10 @@ public partial class PrescriptionItem
 
     public string? Instructions { get; set; }
 
+    public int QuantityBase { get; set; }
+
+    public virtual ICollection<InventoryTransaction> InventoryTransactions { get; set; } = new List<InventoryTransaction>();
+
     public virtual ICollection<MedicationIntakeLog> MedicationIntakeLogs { get; set; } = new List<MedicationIntakeLog>();
 
     public virtual Medicine Medicine { get; set; } = null!;

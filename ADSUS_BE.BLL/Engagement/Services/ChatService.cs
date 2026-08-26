@@ -94,11 +94,12 @@ public sealed class ChatService : IChatService
         }
         else
         {
-            // Safe: gọi LLM
+            // Safe: gọi LLM. Disclaimer đã hiển thị ở Flutter UI (banner cố định + badge đầu bubble),
+            // nên BE không ghép DisclaimerText.General vào nữa — tránh lặp khi LLM tự thêm.
             var history = await BuildHistoryForLlm(userId, ct);
             var llmResponse = await _chatClient.SendMessageAsync(
                 _systemPrompt, history, content, ct);
-            assistantContent = llmResponse + DisclaimerText.General;
+            assistantContent = llmResponse.Trim();
             isSafety = false;
         }
 

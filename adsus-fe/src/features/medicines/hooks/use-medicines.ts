@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+﻿import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createMedicine,
   deleteMedicine, activateMedicine,
@@ -6,6 +6,13 @@ import {
   updateMedicine,
   type CreateMedicineRequest,
   type UpdateMedicineRequest,
+  getMedicineUnits,
+  getPackagingsByMedicineId,
+  addPackaging,
+  updatePackaging,
+  deletePackaging,
+  type CreateMedicinePackagingRequest,
+  type UpdateMedicinePackagingRequest,
 } from "../api/medicines-api";
 
 export function useMedicines(page: number, pageSize: number, search?: string) {
@@ -57,6 +64,54 @@ export function useActivateMedicine() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-medicines"] });
       queryClient.invalidateQueries({ queryKey: ["search-medicines"] });
+    },
+  });
+}
+
+export function useMedicineUnits() {
+  return useQuery({
+    queryKey: ["medicine-units"],
+    queryFn: () => getMedicineUnits(),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
+export function useMedicinePackagings(medicineId: string) {
+  return useQuery({
+    queryKey: ["medicine-packagings", medicineId],
+    queryFn: () => getPackagingsByMedicineId(medicineId),
+    enabled: !!medicineId,
+  });
+}
+
+export function useAddPackaging() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ medicineId, request }: { medicineId: string; request: CreateMedicinePackagingRequest }) =>
+      addPackaging(medicineId, request),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["medicine-packagings", variables.medicineId] });
+    },
+  });
+}
+
+export function useUpdatePackaging() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ packagingId, request }: { packagingId: string; request: UpdateMedicinePackagingRequest }) =>
+      updatePackaging(packagingId, request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["medicine-packagings"] });
+    },
+  });
+}
+
+export function useDeletePackaging() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (packagingId: string) => deletePackaging(packagingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["medicine-packagings"] });
     },
   });
 }

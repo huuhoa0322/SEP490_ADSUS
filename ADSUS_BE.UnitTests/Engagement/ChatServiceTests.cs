@@ -80,12 +80,12 @@ public class ChatServiceTests
         Assert.Equal(ChatRole.User, savedUserMsg!.Role);
         Assert.Equal("Tôi bị đau đầu", savedUserMsg.Content);
 
-        // Verify ASSISTANT message saved with disclaimer
+        // Verify ASSISTANT message saved. BE không ghép DisclaimerText.General nữa (decision 2026-08-24):
+        // UI Flutter hiển thị sticky banner + badge → GB-02 đáp ứng qua UI, tránh trùng với disclaimer
+        // mà LLM (Gemini) tự ghép. Content trong DB giữ thuần từ LLM để audit.
         Assert.NotNull(savedAssistantMsg);
         Assert.Equal(ChatRole.Assistant, savedAssistantMsg!.Role);
         Assert.Contains("Mock AI response", savedAssistantMsg.Content);
-        Assert.Contains("thông tin", savedAssistantMsg.Content, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("AI sinh ra", savedAssistantMsg.Content, StringComparison.OrdinalIgnoreCase);
 
         // Verify LLM was called (GB-02 safety gate passed)
         chat.Verify(c => c.SendMessageAsync(

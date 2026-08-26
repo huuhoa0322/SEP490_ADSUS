@@ -13,7 +13,7 @@ using Xunit;
 
 namespace ADSUS_BE.UnitTests.PrescriptionAdherence;
 
-public class MedicineServiceTests
+public partial class MedicineServiceTests
 {
     private readonly Mock<IMedicineRepository> _medicineRepoMock;
     private readonly AppDbContext _db;

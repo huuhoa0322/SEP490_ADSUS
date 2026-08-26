@@ -220,7 +220,8 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Chào bạn!',
+              'Xin chào, tôi là trợ lý sức khoẻ của ADSUS.',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -229,7 +230,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Tôi là Trợ lý AI của ADSUS. Bạn có thể hỏi về thuốc đang dùng, triệu chứng, hoặc kết quả khám.',
+              'Nếu bạn có thắc mắc gì trong quá trình sử dụng dịch vụ, hãy hỏi tôi, tôi sẽ hỗ trợ bạn.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: AppColors.muted),
             ),
@@ -277,44 +278,48 @@ class _AssistantBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        border: const Border(
-          left: BorderSide(color: AppColors.aiViolet, width: 3),
-          top: BorderSide(color: AppColors.border),
-          right: BorderSide(color: AppColors.border),
-          bottom: BorderSide(color: AppColors.border),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.aiVioletTint,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: const Text(
-                '⚠️ Trợ lý AI — chỉ mang tính tham khảo',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.aiViolet,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: const Border(
+              left: BorderSide(color: AppColors.aiViolet, width: 3),
+              top: BorderSide(color: AppColors.border),
+              right: BorderSide(color: AppColors.border),
+              bottom: BorderSide(color: AppColors.border),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.aiVioletTint,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
+                    '⚠️ Trợ lý AI — chỉ mang tính tham khảo',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.aiViolet,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 8),
+                // Nội dung
+                Text(
+                  message.content,
+                  style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.navy),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            // Nội dung
-            Text(
-              message.content,
-              style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.navy),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -391,30 +396,34 @@ class _TypingIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        border: const Border(
-          left: BorderSide(color: AppColors.aiViolet, width: 3),
-          top: BorderSide(color: AppColors.border),
-          right: BorderSide(color: AppColors.border),
-          bottom: BorderSide(color: AppColors.border),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(3, (i) {
-          return Container(
-            width: 8,
-            height: 8,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            decoration: BoxDecoration(
-              color: AppColors.muted.withValues(alpha: 0.4),
-              shape: BoxShape.circle,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              left: BorderSide(color: AppColors.aiViolet, width: 3),
+              top: BorderSide(color: AppColors.border),
+              right: BorderSide(color: AppColors.border),
+              bottom: BorderSide(color: AppColors.border),
             ),
-          );
-        }),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (i) {
+              return Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.muted.withValues(alpha: 0.4),
+                  shape: BoxShape.circle,
+                ),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }
@@ -497,6 +506,19 @@ class _InputBar extends StatelessWidget {
             child: TextField(
               controller: controller,
               enabled: enabled,
+              // Tắt autocorrect/suggestions để bộ gõ tiếng Việt (Telex/VNI)
+              // không bị strip khi gõ các chuỗi như "ee", "aa", "oo".
+              //
+              // Quan trọng: PHẢI dùng `TextInputType.visiblePassword` thay vì `text`.
+              // Trên Android (Google Keyboard, Samsung Keyboard), ngay cả khi set
+              // autocorrect=false, nếu keyboardType=text thì IME vẫn bật autocorrect
+              // provider của hệ thống và "ee" / "aa" / "oo" sẽ bị strip trước khi
+              // tới Flutter. visiblePassword ép IME vào mode password (không autocorrect)
+              // mà vẫn hiển thị ký tự bình thường — đây là pattern chuẩn cho input
+              // tiếng Việt trên mobile.
+              autocorrect: false,
+              enableSuggestions: false,
+              keyboardType: TextInputType.visiblePassword,
               decoration: InputDecoration(
                 hintText: 'Nhập câu hỏi…',
                 hintStyle: const TextStyle(color: AppColors.muted, fontSize: 14),
