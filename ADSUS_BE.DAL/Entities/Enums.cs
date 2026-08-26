@@ -153,6 +153,25 @@ public enum ChatRole
     [PgName("ASSISTANT")] Assistant,
 }
 
+/// <summary>
+/// Loại notification — enum <c>notification_type</c> trong DB (Module 9).
+/// Dùng để phân biệt notification và xác định navigation khi bấm vào.
+/// </summary>
+public enum NotificationType
+{
+    [PgName("general")] General,
+    [PgName("medication_reminder")] MedicationReminder,
+    [PgName("medication_confirmation")] MedicationConfirmation,
+    [PgName("appointment_booking")] AppointmentBooking,
+    [PgName("appointment_reminder")] AppointmentReminder,
+    [PgName("appointment_cancellation")] AppointmentCancellation,
+    [PgName("healthlog_reminder")] HealthlogReminder,
+    [PgName("medical_record_added")] MedicalRecordAdded,
+    [PgName("blog_new_post")] BlogNewPost,
+    [PgName("weekly_health_report")] WeeklyHealthReport,
+    [PgName("adherence_summary")] AdherenceSummary,
+}
+
 public enum InventoryTxnType
 {
     [PgName("IMPORT")] Import,

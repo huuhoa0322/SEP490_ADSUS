@@ -42,8 +42,9 @@ dependencies:
   # UC-02 đăng nhập sinh trắc học. Mẫu vân tay/khuôn mặt nằm trong secure enclave của
   # hệ điều hành, thư viện này chỉ hỏi OS "xác thực có đúng không" chứ không đọc được mẫu.
   local_auth: ^2.3.0
-  firebase_core: ^4.12.1
+  firebase_core: ^4.13.0
   firebase_messaging: ^16.4.3
+  flutter_local_notifications: ^19.0.0
   shared_preferences: ^2.3.5
 
   # UC-16 — đồng bộ lịch hẹn vào Calendar hệ thống (Google/Apple).

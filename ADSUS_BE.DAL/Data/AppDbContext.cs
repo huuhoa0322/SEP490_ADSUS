@@ -747,7 +747,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Metadata)
                 .HasColumnType("jsonb")
                 .HasColumnName("metadata");
-            entity.Property(e => e.NotificationType).HasColumnName("notification_type");
             entity.Property(e => e.Payload)
                 .HasColumnType("jsonb")
                 .HasColumnName("payload");

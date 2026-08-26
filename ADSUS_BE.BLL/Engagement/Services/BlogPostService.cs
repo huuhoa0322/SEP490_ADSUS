@@ -1,4 +1,5 @@
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.Engagement.DTOs;
 using ADSUS_BE.BLL.Engagement.Interfaces;
 using ADSUS_BE.DAL.Entities;
@@ -13,10 +14,17 @@ namespace ADSUS_BE.BLL.Engagement.Services;
 public sealed class BlogPostService : IBlogPostService
 {
     private readonly IBlogPostRepository _repo;
+    private readonly INotificationService _notificationService;
+    private readonly IUserRepository _userRepo;
 
-    public BlogPostService(IBlogPostRepository repo)
+    public BlogPostService(
+        IBlogPostRepository repo,
+        INotificationService notificationService,
+        IUserRepository userRepo)
     {
         _repo = repo;
+        _notificationService = notificationService;
+        _userRepo = userRepo;
     }
 
     public async Task<PagedResult<BlogPostListItemResponse>> ListPublishedAsync(int page = 1, int pageSize = 10, CancellationToken ct = default)
@@ -184,6 +192,24 @@ public sealed class BlogPostService : IBlogPostService
         post.UpdatedAt = DateTime.UtcNow;
 
         await _repo.UpdateAsync(post, ct);
+
+        // Send notification to all patients about new blog post
+        var patients = await _userRepo.GetAllPatientsAsync(ct);
+        if (patients.Count > 0)
+        {
+            var patientIds = patients.Select(u => u.UserId).ToList();
+            await _notificationService.SendBulkAsync(patientIds, new SendNotificationRequest
+            {
+                UserId = Guid.Empty, // overridden in SendBulkAsync
+                Type = "blog_new_post",
+                Title = "Bài viết mới từ ADSUS",
+                Body = $"Bài viết mới: {post.Title}",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["postId"] = post.PostId.ToString()
+                }
+            }, ct);
+        }
 
         return new AdminBlogPostDetailResponse
         {

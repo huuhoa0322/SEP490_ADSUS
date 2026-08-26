@@ -1,9 +1,11 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.AppointmentScheduling.Services;
 
@@ -14,16 +16,25 @@ public sealed class AppointmentService : IAppointmentService
 {
     private readonly IAppointmentRepository _appointmentRepo;
     private readonly IScheduleSlotRepository _slotRepo;
+    private readonly IPatientProfileRepository _profileRepo;
+    private readonly INotificationService _notificationService;
     private readonly AppDbContext _db;
+    private readonly ILogger<AppointmentService> _logger;
 
     public AppointmentService(
         IAppointmentRepository appointmentRepo,
         IScheduleSlotRepository slotRepo,
-        AppDbContext db)
+        IPatientProfileRepository profileRepo,
+        INotificationService notificationService,
+        AppDbContext db,
+        ILogger<AppointmentService> logger)
     {
         _appointmentRepo = appointmentRepo;
         _slotRepo = slotRepo;
+        _profileRepo = profileRepo;
+        _notificationService = notificationService;
         _db = db;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<OpenSlotResponse>> ListOpenSlotsAsync(
@@ -145,6 +156,48 @@ public sealed class AppointmentService : IAppointmentService
         // Load navigation properties for response
         appointment.Slot = slot;
 
+        // Send notification to patient (best effort - don't fail the booking if notification fails)
+        try
+        {
+            var patientProfile = await _profileRepo.GetByIdAsync(patientProfileId, ct);
+            if (patientProfile != null)
+            {
+                _logger.LogInformation(
+                    "[NOTIF-DEBUG] Preparing to send booking notification to user {UserId} for appointment {AppointmentId}",
+                    patientProfile.UserId, appointment.AppointmentId);
+
+                await _notificationService.SendAsync(new SendNotificationRequest
+                {
+                    UserId = patientProfile.UserId,
+                    Type = "appointment_booking",
+                    Title = "Xác nhận đặt lịch khám",
+                    Body = $"Bạn đã đặt lịch khám với BS. {slot.Doctor.FullName} vào ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
+                    Metadata = new Dictionary<string, object>
+                    {
+                        ["appointmentId"] = appointment.AppointmentId.ToString(),
+                        ["slotId"] = slot.SlotId.ToString()
+                    }
+                }, ct);
+
+                _logger.LogInformation(
+                    "[NOTIF-SUCCESS] Sent booking notification to user {UserId} for appointment {AppointmentId}",
+                    patientProfile.UserId, appointment.AppointmentId);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "[NOTIF-WARN] No patient profile found for patientProfileId {PatientProfileId}",
+                    patientProfileId);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the booking
+            _logger.LogWarning(ex,
+                "[NOTIF-ERROR] Failed to send booking notification for appointment {AppointmentId}: {Message}",
+                appointment.AppointmentId, ex.Message);
+        }
+
         return ToAppointmentResponse(appointment);
     }
 
@@ -190,6 +243,30 @@ public sealed class AppointmentService : IAppointmentService
         slot.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
+
+        // Send notification to patient about cancellation (best effort - don't fail cancellation if notification fails)
+        try
+        {
+            var patientProfile = await _profileRepo.GetByIdAsync(appointment.PatientProfileId, ct);
+            if (patientProfile != null)
+            {
+                await _notificationService.SendAsync(new SendNotificationRequest
+                {
+                    UserId = patientProfile.UserId,
+                    Type = "appointment_cancellation",
+                    Title = "Lịch khám đã bị hủy",
+                    Body = $"Lịch khám với BS. {slot.Doctor.FullName} vào ngày {slot.SlotDate:dd/MM/yyyy} đã bị hủy.",
+                    Metadata = new Dictionary<string, object>
+                    {
+                        ["appointmentId"] = appointment.AppointmentId.ToString()
+                    }
+                }, ct);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send cancellation notification for appointment {AppointmentId}", appointment.AppointmentId);
+        }
 
         return ToAppointmentResponse(appointment);
     }

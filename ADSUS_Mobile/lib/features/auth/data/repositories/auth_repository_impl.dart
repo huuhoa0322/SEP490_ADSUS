@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/constants/storage_keys.dart';
 import '../../../../core/network/api_exception.dart';
+import '../../../../features/notification/services/notification_service.dart';
 import '../../domain/entities/auth_session.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -64,6 +65,14 @@ class AuthRepositoryImpl implements AuthRepository {
       // UC-02 BR-01: ghi lại rằng máy này đã đăng nhập bằng mật khẩu thành công.
       // Đây chính là bước "ghép đôi thiết bị" mà sinh trắc học yêu cầu.
       await _storage.write(key: StorageKeys.pairedPhone, value: phoneNumber);
+
+      // Register FCM token to backend for push notifications.
+      // Best-effort: failure should not block login.
+      try {
+        await notificationService.registerTokenWithBackend(session.accessToken);
+      } catch (_) {
+        // Ignore - user can still use app without push notifications
+      }
 
       return session;
     } on DioException catch (e) {
@@ -177,6 +186,17 @@ class AuthRepositoryImpl implements AuthRepository {
     // LỆCH TÀI LIỆU — cần nhóm chốt: UC-02 ngụ ý vân tay dùng được lâu dài sau một lần
     // đăng nhập mật khẩu. Muốn đúng như vậy thì backend phải có refresh token (hoặc token
     // thiết bị dài hạn) để vân tay đổi lấy phiên mới. Hiện backend chưa có.
+
+    // Unregister FCM token before deleting the access token.
+    final token = await _storage.read(key: StorageKeys.accessToken);
+    if (token != null) {
+      try {
+        await notificationService.unregisterTokenFromBackend(token);
+      } catch (_) {
+        // Ignore - proceed with logout even if unregister fails
+      }
+    }
+
     await _storage.delete(key: StorageKeys.accessToken);
     await _storage.delete(key: StorageKeys.pairedPhone);
     await _storage.delete(key: StorageKeys.biometricEnabled);

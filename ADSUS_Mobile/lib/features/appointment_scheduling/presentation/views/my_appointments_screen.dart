@@ -17,7 +17,13 @@ import 'widgets/cancel_reason_sheet.dart';
 ///   - "Đổi lịch" → hủy bản ghi cũ với lý do "Reschedule", chuyển sang Đặt lịch (UC-13).
 ///   - "Hủy lịch"  → mở bottom sheet chọn lý do (BR-02 bắt buộc), rồi gọi API hủy.
 class MyAppointmentsScreen extends ConsumerStatefulWidget {
-  const MyAppointmentsScreen({super.key});
+  const MyAppointmentsScreen({
+    super.key,
+    this.highlightAppointmentId, // Dùng để scroll đến appointment cụ thể từ notification
+  });
+
+  /// Appointment ID cần highlight/scroll đến (từ notification tap)
+  final String? highlightAppointmentId;
 
   @override
   ConsumerState<MyAppointmentsScreen> createState() =>
@@ -27,11 +33,48 @@ class MyAppointmentsScreen extends ConsumerStatefulWidget {
 class _MyAppointmentsScreenState
     extends ConsumerState<MyAppointmentsScreen> {
   bool _snackbarShown = false;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Sau khi data load xong, scroll đến appointment được highlight
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToHighlightedAppointment();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToHighlightedAppointment() {
+    if (widget.highlightAppointmentId == null) return;
+
+    final state = ref.read(myAppointmentsViewModelProvider);
+    final index = state.appointments.indexWhere(
+      (a) => a.id == widget.highlightAppointmentId,
+    );
+
+    if (index != -1 && _scrollController.hasClients) {
+      // Tính offset của item (approximate)
+      const itemHeight = 120.0; // Chiều cao approximated của mỗi card
+      final offset = index * itemHeight;
+      _scrollController.animateTo(
+        offset,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(myAppointmentsViewModelProvider);
 
+    // Listen để scroll khi data đã load xong
     ref.listen<MyAppointmentsState>(myAppointmentsViewModelProvider,
         (prev, next) {
       if (_snackbarShown) return;
@@ -160,12 +203,22 @@ class _MyAppointmentsScreenState
           child: RefreshIndicator(
             onRefresh: () => ref.read(myAppointmentsViewModelProvider.notifier).load(),
             child: ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
               itemCount: state.appointments.length,
               itemBuilder: (context, i) {
                 final ap = state.appointments[i];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                // Highlight nếu đây là appointment được tap từ notification
+                final isHighlighted = ap.id == widget.highlightAppointmentId;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: isHighlighted
+                      ? BoxDecoration(
+                          border: Border.all(color: AppColors.teal, width: 2),
+                          borderRadius: BorderRadius.circular(12),
+                        )
+                      : null,
                   child: AppointmentCard(
                     appointment: ap,
                     busy: state.isMutating,

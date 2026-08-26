@@ -381,3 +381,18 @@ graphify-out/
 # Plan/2026-08-16-adsus-cicd-render-vercel-plan.md Task 1). AI Backend tải qua
 # Hugging Face lúc runtime, giống hệt trước đây.
 *.pt
+
+# ---- Sensitive Config Files ----
+# Firebase Service Account credentials - TUYỆT ĐỐI KHÔNG COMMIT
+*firebase*.json
+*Firebase*.json
+*FCM*.json
+
+# appsettings.Development.json có thể chứa sensitive config
+ADSUS_BE/appsettings.Development.json
+
+# Google Services config cho Mobile
+ADSUS_Mobile/android/app/google-services.json
+
+# Firebase Service Account credentials (Backend)
+ADSUS_BE/Config/
