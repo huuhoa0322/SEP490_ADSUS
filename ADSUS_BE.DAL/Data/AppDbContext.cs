@@ -747,7 +747,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Metadata)
                 .HasColumnType("jsonb")
                 .HasColumnName("metadata");
-            entity.Property(e => e.NotificationType).HasColumnName("notification_type");
             entity.Property(e => e.Payload)
                 .HasColumnType("jsonb")
                 .HasColumnName("payload");
@@ -766,13 +765,6 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("'general'::character varying")
                 .HasColumnName("type");
             entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.Type)
-                .HasMaxLength(50)
-                .HasDefaultValue("general")
-                .HasColumnName("notification_type");
-            entity.Property(e => e.Metadata)
-                .HasColumnType("jsonb")
-                .HasColumnName("metadata");
 
             entity.HasOne(d => d.User).WithMany(p => p.NotificationLogs)
                 .HasForeignKey(d => d.UserId)
