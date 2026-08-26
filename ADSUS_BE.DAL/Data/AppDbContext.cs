@@ -105,6 +105,8 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("medicines_status", new[] { "ACTIVE", "INACTIVE" })
             .HasPostgresEnum("model_version_status", new[] { "ACTIVE", "INACTIVE" })
             .HasPostgresEnum("notification_status", new[] { "SENT", "DELIVERED", "FAILED", "READ", "UNREAD" })
+            .HasPostgresEnum("notification_type", new[] { "medication_reminder", "medication_confirmation", "appointment_booking", "appointment_reminder", "appointment_cancellation", "healthlog_reminder", "general" })
+            .HasPostgresEnum("payment_method", new[] { "CASH", "BANK_TRANSFER" })
             .HasPostgresEnum("prescription_status", new[] { "ACTIVE", "COMPLETED" })
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in", "like", "ilike", "is", "match", "imatch", "isdistinct" })

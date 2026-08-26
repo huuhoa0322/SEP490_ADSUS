@@ -171,3 +171,23 @@ public enum NotificationType
     [PgName("weekly_health_report")] WeeklyHealthReport,
     [PgName("adherence_summary")] AdherenceSummary,
 }
+
+public enum InventoryTxnType
+{
+    [PgName("IMPORT")] Import,
+    [PgName("DISPENSE")] Dispense,
+    [PgName("ADJUSTMENT")] Adjustment,
+}
+
+public enum InvoiceStatus
+{
+    [PgName("PENDING")] PENDING,
+    [PgName("PAID")] PAID,
+    [PgName("CANCELLED")] CANCELLED,
+}
+
+public enum PaymentMethod
+{
+    [PgName("CASH")] CASH,
+    [PgName("BANK_TRANSFER")] BANK_TRANSFER,
+}
