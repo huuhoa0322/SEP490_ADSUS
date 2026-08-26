@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Plus, Trash2, Edit2, CheckCircle2, Save, Package, Info } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import toast from "react-hot-toast";
 
 import { Button } from "@/components/ui/button";
@@ -50,12 +50,16 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
   const [volume, setVolume] = useState(medicine.volumePerBaseUnit ? medicine.volumePerBaseUnit.toString() : "");
 
   // Sync general info state when medicine changes
-  useEffect(() => {
+  const [prevMedicineId, setPrevMedicineId] = useState(medicine.medicineId);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (medicine.medicineId !== prevMedicineId || isOpen !== prevIsOpen) {
+    setPrevMedicineId(medicine.medicineId);
+    setPrevIsOpen(isOpen);
     if (isOpen) {
       setUsageUnit(medicine.usageUnit || "");
       setVolume(medicine.volumePerBaseUnit ? medicine.volumePerBaseUnit.toString() : "");
     }
-  }, [medicine, isOpen]);
+  }
 
   const handleUpdateGeneralInfo = async () => {
     const finalVolume = parseFloat(volume);
@@ -321,7 +325,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
                         <SelectValue placeholder="Chọn đơn vị" />
                       </SelectTrigger>
                       <SelectContent>
-                        {units.map((u: any) => (
+                        {units.map((u: { medicineUnitId: string; name: string }) => (
                           <SelectItem key={u.medicineUnitId} value={u.medicineUnitId}>{u.name}</SelectItem>
                         ))}
                       </SelectContent>

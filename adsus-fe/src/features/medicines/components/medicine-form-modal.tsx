@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -39,7 +39,11 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
   const [volume, setVolume] = useState("1");
 
   // Reset form when modal opens or editing changes
-  useEffect(() => {
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const [prevMedicineId, setPrevMedicineId] = useState(medicineToEdit?.medicineId);
+  if (isOpen !== prevIsOpen || medicineToEdit?.medicineId !== prevMedicineId) {
+    setPrevIsOpen(isOpen);
+    setPrevMedicineId(medicineToEdit?.medicineId);
     if (isOpen) {
       if (medicineToEdit) {
         setName(medicineToEdit.name);
@@ -55,7 +59,7 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
         setVolume("1");
       }
     }
-  }, [isOpen, medicineToEdit]);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +86,7 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
 
     if (!isLiquid) {
       // Smart Defaults: usage unit = base unit name, volume = 1
-      const selectedUnit = units.find((u: any) => u.medicineUnitId === medicineUnitId);
+      const selectedUnit = units.find((u: { medicineUnitId: string; name: string }) => u.medicineUnitId === medicineUnitId);
       finalUsageUnit = selectedUnit ? selectedUnit.name : "";
       finalVolume = 1;
     }
@@ -153,7 +157,7 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
                     <SelectValue placeholder="Chọn đơn vị vật lý" />
                   </SelectTrigger>
                   <SelectContent>
-                    {units.map((u: any) => (
+                    {units.map((u: { medicineUnitId: string; name: string }) => (
                       <SelectItem key={u.medicineUnitId} value={u.medicineUnitId}>{u.name}</SelectItem>
                     ))}
                   </SelectContent>

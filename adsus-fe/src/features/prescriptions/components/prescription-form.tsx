@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronDown, Plus, Trash2, X } from "lucide-react";
-import { useRouter } from "next/navigation";
 import {
   Controller,
   FormProvider,
@@ -56,8 +55,6 @@ interface PrefilledPatient {
 interface PrescriptionFormProps {
   prefilledPatient?: PrefilledPatient;
   cases?: Array<{ caseId: string; patientName: string; patientCode: string }>;
-  /** Danh mục thuốc (GET /api/v1/medication-catalog) — dùng cho autocomplete. */
-  medications: Array<{ medicineId: string; name: string }>;
   /** Gọi khi submit hợp lệ. Trả về prescriptionId để form tự điều hướng. */
   onSubmit: (data: PrescriptionFormData) => Promise<{ prescriptionId: string } | void>;
 }
@@ -67,7 +64,6 @@ interface PrescriptionFormProps {
 export function PrescriptionForm({
   prefilledPatient,
   cases,
-  medications, // Note: kept for backwards compatibility but not used
   onSubmit,
 }: PrescriptionFormProps) {
   const methods = useForm<PrescriptionFormData>({
@@ -185,7 +181,6 @@ export function PrescriptionForm({
               <MedicationRow
                 key={field.id}
                 index={index}
-                medications={medications}
                 allSlots={allSlots}
                 register={register}
                 control={control}
@@ -259,7 +254,6 @@ interface MedicineComboboxProps {
 function MedicineCombobox({
   value,
   onChange,
-  medications, // old static prop, no longer strictly used for filtering, but we'll ignore it
   error,
 }: MedicineComboboxProps) {
   const [open, setOpen] = useState(false);
@@ -377,7 +371,6 @@ function MedicineCombobox({
 
 interface MedicationRowProps {
   index: number;
-  medications: Array<{ medicineId: string; name: string }>;
   allSlots: ScheduleSlot[];
   register: ReturnType<typeof useForm<PrescriptionFormData>>["register"];
   errors?: {
@@ -394,7 +387,6 @@ interface MedicationRowProps {
 
 function MedicationRow({
   index,
-  medications,
   allSlots,
   register,
   control,
@@ -417,7 +409,6 @@ function MedicationRow({
             } as React.ChangeEvent<HTMLInputElement>;
             register(`items.${index}.medicineName`).onChange(event);
           }}
-          medications={medications}
           error={errors?.medicineName?.message}
         />
       </div>

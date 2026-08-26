@@ -36,7 +36,7 @@ export function MedicineList() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   
-  const { data, isLoading, isError } = useMedicines(page, pageSize, search);
+  const { data, isLoading } = useMedicines(page, pageSize, search);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [detailMedicine, setDetailMedicine] = useState<MedicineResponse | null>(null);
