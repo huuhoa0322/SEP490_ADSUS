@@ -515,6 +515,7 @@ namespace ADSUS_BE
             builder.Services.AddSingleton<IMedicationIntakeScheduleGenerator, MedicationIntakeScheduleGenerator>();
             builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
             builder.Services.AddScoped<IMedicineService, MedicineService>();
+            builder.Services.AddScoped<ISupplierService, SupplierService>();
             builder.Services.AddScoped<IMedicationIntakeService, MedicationIntakeService>();
             builder.Services.AddScoped<IReminderPreferenceRepository, ReminderPreferenceRepository>();
             builder.Services.AddScoped<IReminderPreferenceService, ReminderPreferenceService>();
