@@ -236,6 +236,10 @@ public class BlogPostServiceTests
         repo.Setup(r => r.UpdateAsync(It.IsAny<BlogPost>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        // Setup _userRepo mock to return empty list (no patients to notify)
+        _userRepo.Setup(r => r.GetAllPatientsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<User>());
+
         var sut = CreateSut(repo);
 
         var result = await sut.PublishAsync(draft.PostId);

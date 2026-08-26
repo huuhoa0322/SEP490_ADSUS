@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/notification_navigation_service.dart';
@@ -223,7 +222,7 @@ class _NotificationDropdownContent extends ConsumerWidget {
               shrinkWrap: true,
               padding: EdgeInsets.zero,
               itemCount: notifications.length > 5 ? 5 : notifications.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final notification = notifications[index];
                 return _NotificationItem(
