@@ -143,7 +143,7 @@ public class SuppliersControllerIntegrationTests
         var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Admin);
         var id = Guid.NewGuid();
 
-        var request = new UpdateSupplierRequest("Updated", "123", "a@a", "A", "1");
+        var request = new UpdateSupplierRequest("Updated", "123", "a@a", "A");
         var mockResponse = new SupplierResponse(id, "Updated", "123", "a@a", "A", "1", true, DateTime.UtcNow, DateTime.UtcNow);
 
         _supplierService.Setup(s => s.UpdateSupplierAsync(id, request, It.IsAny<CancellationToken>()))
