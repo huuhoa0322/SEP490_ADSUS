@@ -228,6 +228,31 @@ public class PasswordResetServiceTests
         _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    // ---------- Tác vụ nền (fire-and-forget, thêm 28/08/2026) ----------
+
+    [Fact]
+    public async Task RequestSelfServiceResetAsync_BackgroundThrowsUnexpectedException_DoesNotPropagate()
+    {
+        // CompleteSelfServiceResetInBackgroundAsync chạy sau khi HTTP response đã trả về —
+        // nếu exception ở đây văng ra ngoài (không bị catch nuốt lại), nó sẽ rơi vào
+        // UnobservedTaskException ở production (Task.Run không ai await), còn ở đây (test
+        // chạy đồng bộ qua dispatchBackground) nó sẽ làm hỏng chính response mà controller
+        // đã trả cho người dùng — vi phạm thẳng AF-01 (im lặng hoàn toàn dù có chuyện gì).
+        var user = BuildUser();
+        SetupGetByPhone(user);
+
+        // Gửi mail thành công (đã setup mặc định ở constructor: SendTemporaryPasswordAsync
+        // luôn true), nhưng bước đọc lại user trong scope nền lại lỗi — mô phỏng DB tạm
+        // gián đoạn đúng lúc.
+        _users.Setup(r => r.GetForUpdateAsync(user.UserId, It.IsAny<CancellationToken>()))
+              .ThrowsAsync(new InvalidOperationException("Simulated DB failure"));
+
+        var exception = await Record.ExceptionAsync(
+            () => _sut.RequestSelfServiceResetAsync(BuildRequest()));
+
+        Assert.Null(exception);
+    }
+
     // ---------- Nhật ký thao tác ----------
 
     [Fact]
@@ -313,7 +338,9 @@ public class PasswordResetServiceTests
 
     private void SetupGetByPhone(User? user)
     {
-        _users.Setup(r => r.GetByPhoneAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        // RequestSelfServiceResetAsync dùng bản AsNoTracking (P11 review Feature 1, 28/08/2026)
+        // — luồng đồng bộ chỉ còn đọc để đối chiếu BR-01, không còn lưu qua entity này nữa.
+        _users.Setup(r => r.GetByPhoneReadOnlyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(user);
 
         // Phần "nền" của RequestSelfServiceResetAsync (28/08/2026) đọc lại đúng user này bằng

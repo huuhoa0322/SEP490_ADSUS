@@ -487,9 +487,9 @@ namespace ADSUS_BE
                 // nên NGAY CẢ ĐĂNG NHẬP cũng trả 500 ở môi trường khác Development, trong
                 // khi log không nói gì về email.
                 throw new InvalidOperationException(
-                    "Chua cau hinh SendGrid. Moi truong " +
-                    $"'{builder.Environment.EnvironmentName}' bat buoc phai co — xem " +
-                    "ADSUS_BE.BLL/Common/SendGridSettings.cs de biet cac khoa can khai.");
+                    "SendGrid is not configured. Environment " +
+                    $"'{builder.Environment.EnvironmentName}' requires it — see " +
+                    "ADSUS_BE.BLL/Common/SendGridSettings.cs for the required keys.");
             }
 
             // BLL — Module 10: Engagement (Blog PUBLIC endpoints)

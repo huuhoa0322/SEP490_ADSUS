@@ -52,7 +52,12 @@ public class PasswordResetService : IPasswordResetService
         var phone = request.PhoneNumber.Trim();
         var email = request.Email.Trim();
 
-        var user = await _users.GetByPhoneAsync(phone, cancellationToken);
+        // AsNoTracking thật sự (P11 review Feature 1, 28/08/2026) — kể từ khi luồng này chuyển
+        // sang fire-and-forget, entity đọc ở đây chỉ để đối chiếu BR-01, KHÔNG còn được lưu
+        // qua chính nó nữa (việc sửa-rồi-lưu thật đã chuyển hẳn sang GetForUpdateAsync trong
+        // CompleteSelfServiceResetInBackgroundAsync, ở 1 scope DI khác). Dùng bản có tracking
+        // ở đây chỉ khiến EF theo dõi thừa 1 entity không bao giờ SaveChanges.
+        var user = await _users.GetByPhoneReadOnlyAsync(phone, cancellationToken);
 
         // Sinh mật khẩu và băm nó LUÔN LUÔN, kể cả khi không tìm thấy tài khoản.
         //
@@ -153,7 +158,7 @@ public class PasswordResetService : IPasswordResetService
             // UnobservedTaskException, im lặng biến mất, không ai biết vì sao mật khẩu không
             // đổi dù thư có vẻ đã gửi.
             _logger.LogError(
-                ex, "Background self-service password reset that lam that bai cho tai khoan {UserId}.", userId);
+                ex, "Background self-service password reset failed for account {UserId}.", userId);
         }
     }
 

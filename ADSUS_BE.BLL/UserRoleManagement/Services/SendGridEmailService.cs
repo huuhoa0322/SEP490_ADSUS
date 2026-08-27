@@ -48,7 +48,7 @@ public class SendGridEmailService : IEmailService
                     new { to = new[] { new { email = toEmail } } },
                 },
                 from = new { email = _settings.FromAddress, name = _settings.FromName },
-                subject = "ADSUS — Mat khau tam thoi cua ban",
+                subject = "ADSUS — Mật khẩu tạm thời của bạn",
                 content = new[]
                 {
                     new { type = "text/plain", value = BuildBody(fullName, temporaryPassword) },
@@ -69,38 +69,42 @@ public class SendGridEmailService : IEmailService
                 // ngược địa chỉ người nhận — log status là đủ (401 = sai API key, 403 = FromAddress
                 // chưa qua Single Sender Verification, 400 = payload sai định dạng).
                 _logger.LogError(
-                    "SendGrid tra ve loi khi gui mat khau tam toi {Email}: HTTP {StatusCode}.",
+                    "SendGrid returned an error while sending the temporary password to {Email}: HTTP {StatusCode}.",
                     toEmail, (int)response.StatusCode);
                 return false;
             }
 
-            _logger.LogInformation("Da gui mat khau tam toi {Email} qua SendGrid.", toEmail);
+            _logger.LogInformation("Sent the temporary password to {Email} via SendGrid.", toEmail);
             return true;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             // Hợp đồng của IEmailService: KHÔNG ném ngoại lệ ra ngoài.
-            _logger.LogError(ex, "Khong ket noi duoc toi SendGrid de gui mat khau tam toi {Email}.", toEmail);
+            _logger.LogError(ex, "Could not reach SendGrid to send the temporary password to {Email}.", toEmail);
             return false;
         }
     }
 
-    /// <summary>Nội dung thư — y hệt <see cref="SmtpEmailService"/>/<see cref="ResendEmailService"/>.</summary>
+    /// <summary>
+    /// Nội dung thư — viết đúng tiếng Việt có dấu (P12 review Feature 1, 28/08/2026: bản cũ
+    /// kế thừa từ <c>SmtpEmailService</c>/<c>ResendEmailService</c> đã xóa dùng tiếng Việt
+    /// không dấu, không phù hợp cho nội dung gửi thẳng tới người dùng cuối).
+    /// </summary>
     private static string BuildBody(string fullName, string temporaryPassword) =>
         $"""
-         Xin chao {fullName},
+         Xin chào {fullName},
 
-         Mat khau tam thoi cho tai khoan ADSUS cua ban la:
+         Mật khẩu tạm thời cho tài khoản ADSUS của bạn là:
 
              {temporaryPassword}
 
-         Hay dang nhap bang so dien thoai da dang ky va mat khau nay. He thong se yeu cau ban
-         doi mat khau ngay o lan dang nhap dau tien.
+         Hãy đăng nhập bằng số điện thoại đã đăng ký và mật khẩu này. Hệ thống sẽ yêu cầu bạn
+         đổi mật khẩu ngay ở lần đăng nhập đầu tiên.
 
-         Neu ban khong yeu cau cap lai mat khau, vui long bao ngay cho quan tri vien.
+         Nếu bạn không yêu cầu cấp lại mật khẩu, vui lòng báo ngay cho quản trị viên.
 
          --
          ADSUS
-         Thu tu dong, vui long khong tra loi.
+         Thư tự động, vui lòng không trả lời.
          """;
 }

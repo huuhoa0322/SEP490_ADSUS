@@ -30,8 +30,8 @@ public class DevConsoleEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         _logger.LogWarning(
-            "[CHUA CO DICH VU EMAIL] Mat khau tam cua tai khoan {FullName} <{Email}>: {Password} " +
-            "-- dong nay chi xuat hien o moi truong Development.",
+            "[NO EMAIL SERVICE CONFIGURED] Temporary password for account {FullName} <{Email}>: {Password} " +
+            "-- this line only appears in the Development environment.",
             fullName,
             toEmail,
             temporaryPassword);
