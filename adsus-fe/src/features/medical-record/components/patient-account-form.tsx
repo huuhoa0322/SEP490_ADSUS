@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { getApiErrorMessage } from "@/lib/api-client";
+import { DatePicker } from "@/components/ui/date-picker";
 
 import { useCreatePatientAccount } from "../hooks/use-patient-account";
 import { useCreatePatientProfile } from "../hooks/use-patient-profile";
@@ -202,11 +203,9 @@ export function PatientAccountForm() {
           <label htmlFor="dateOfBirth" className="mb-1.5 block text-sm font-medium">
             Ngày sinh
           </label>
-          <input
-            id="dateOfBirth"
-            type="date"
+          <DatePicker
             value={dateOfBirth}
-            onChange={(event) => setDateOfBirth(event.target.value)}
+            onChange={(val) => setDateOfBirth(val)}
             className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>

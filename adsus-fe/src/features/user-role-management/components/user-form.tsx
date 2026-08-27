@@ -12,6 +12,7 @@ import {
   isValidPhoneNumber,
 } from "@/lib/phone-number";
 
+import { DatePicker } from "@/components/ui/date-picker";
 import { useCreateUser, useUpdateUser, useUserDetail } from "../hooks/use-users";
 import { ROLE_LABEL } from "../lib/user-labels";
 import {
@@ -110,7 +111,9 @@ function UserFormFields({
       : "DOCTOR",
   );
   const [email, setEmail] = useState(initial?.email ?? "");
-  const [dateOfBirth, setDateOfBirth] = useState(initial?.dateOfBirth ?? "");
+  const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(
+    initial?.dateOfBirth ? new Date(initial.dateOfBirth) : undefined,
+  );
   const [clientError, setClientError] = useState<string | null>(null);
   /** Kết quả sau khi tạo — mật khẩu tạm chỉ hiện được đúng một lần, ngay tại đây. */
   const [createdResult, setCreatedResult] = useState<CreateUserResult | null>(null);
@@ -121,7 +124,7 @@ function UserFormFields({
   const isPatient = role === "PATIENT";
   const isSubmitting = create.isPending || update.isPending;
   const serverError = create.error ?? update.error;
-  const maximumDateOfBirth = latestEligibleBirthDate();
+  const maximumDateOfBirth = new Date(latestEligibleBirthDate());
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -147,7 +150,7 @@ function UserFormFields({
     const payload = {
       fullName: fullName.trim(),
       email: email.trim() || null,
-      dateOfBirth: isPatient ? null : dateOfBirth || null,
+      dateOfBirth: isPatient ? null : dateOfBirth?.toISOString().split("T")[0] || null,
     };
 
     if (isEdit) {
@@ -307,13 +310,11 @@ function UserFormFields({
             label="Ngày sinh"
             hint={`Không bắt buộc · người dùng phải đủ ${MINIMUM_ACCOUNT_HOLDER_AGE} tuổi`}
           >
-            <input
+            <DatePicker
               value={dateOfBirth}
-              onChange={(e) => setDateOfBirth(e.target.value)}
+              onChange={setDateOfBirth}
               disabled={isSubmitting}
-              type="date"
-              max={maximumDateOfBirth}
-              className={inputClass}
+              maxDate={maximumDateOfBirth}
             />
           </Field>
         )}

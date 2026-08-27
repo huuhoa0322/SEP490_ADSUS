@@ -86,7 +86,7 @@ public partial class AppDbContext : DbContext
     {
         modelBuilder
             .HasPostgresEnum("ai_result_status", new[] { "PENDING_REVIEW", "CONFIRMED", "REJECTED" })
-            .HasPostgresEnum("appointment_status", new[] { "BOOKED", "CANCELLED", "COMPLETED" })
+            .HasPostgresEnum("appointment_status", new[] { "BOOKED", "CANCELLED", "COMPLETED", "APPROVED" })
             .HasPostgresEnum("auth", "aal_level", new[] { "aal1", "aal2", "aal3" })
             .HasPostgresEnum("auth", "code_challenge_method", new[] { "s256", "plain" })
             .HasPostgresEnum("auth", "factor_status", new[] { "unverified", "verified" })
@@ -97,7 +97,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("auth", "oauth_response_type", new[] { "code" })
             .HasPostgresEnum("auth", "one_time_token_type", new[] { "confirmation_token", "reauthentication_token", "recovery_token", "email_change_token_new", "email_change_token_current", "phone_change_token" })
             .HasPostgresEnum("blog_status", new[] { "DRAFT", "PUBLISHED" })
-            .HasPostgresEnum("case_status", new[] { "CREATED", "END", "CONFIRMED" })
+            .HasPostgresEnum("case_status", new[] { "CREATED", "END", "CONFIRMED", "BOOKED" })
             .HasPostgresEnum("chat_role", new[] { "USER", "ASSISTANT" })
             .HasPostgresEnum("gender_type", new[] { "FEMALE", "MALE", "OTHER" })
             .HasPostgresEnum("health_log_type", new[] { "EXERCISE", "DIET" })
@@ -248,6 +248,8 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("appointments", tb => tb.HasComment("Lịch khám đã đặt (UC-13/14). Đổi lịch = CANCELLED dòng cũ + tạo dòng mới (giữ vết). Job JOB-02 đọc bảng này để nhắc lịch qua push. Chỉ 2 trạng thái BOOKED/CANCELLED — không có COMPLETED: lịch \"đã qua\" suy ra ở tầng ứng dụng bằng cách so schedule_slots.end_time với NOW(), không lưu trạng thái riêng (tránh job quét/cập nhật hàng loạt)."));
 
+            entity.HasIndex(e => e.CaseId, "idx_appointments_case_id");
+
             entity.HasIndex(e => new { e.PatientProfileId, e.CreatedAt }, "idx_appointments_patient").IsDescending(false, true);
 
             entity.HasIndex(e => e.SlotId, "idx_appointments_slot");
@@ -263,6 +265,7 @@ public partial class AppDbContext : DbContext
                 .HasComment("Mốc đã đẩy sự kiện sang Calendar thiết bị (FT-34, one-way sync) — sự kiện nằm NGOÀI hệ thống, chỉ giữ timestamp.")
                 .HasColumnName("calendar_synced_at");
             entity.Property(e => e.CancelledReason).HasColumnName("cancelled_reason");
+            entity.Property(e => e.CaseId).HasColumnName("case_id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
@@ -272,6 +275,10 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.Appointments)
+                .HasForeignKey(d => d.CaseId)
+                .HasConstraintName("appointments_case_id_fkey");
 
             entity.HasOne(d => d.PatientProfile).WithMany(p => p.Appointments)
                 .HasForeignKey(d => d.PatientProfileId)
@@ -489,11 +496,15 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("id");
+            entity.Property(e => e.ActualImportPrice)
+                .HasPrecision(18, 2)
+                .HasColumnName("actual_import_price");
             entity.Property(e => e.BatchId).HasColumnName("batch_id");
             entity.Property(e => e.MedicinePackagingId).HasColumnName("medicine_packaging_id");
             entity.Property(e => e.PrescriptionItemId).HasColumnName("prescription_item_id");
             entity.Property(e => e.QuantityBase).HasColumnName("quantity_base");
             entity.Property(e => e.QuantityInUnit).HasColumnName("quantity_in_unit");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
             entity.Property(e => e.TxnDate)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("txn_date");
@@ -511,6 +522,11 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.PrescriptionItem).WithMany(p => p.InventoryTransactions)
                 .HasForeignKey(d => d.PrescriptionItemId)
                 .HasConstraintName("inventory_transaction_prescription_item_id_fkey");
+
+            entity.HasOne(d => d.Supplier).WithMany(p => p.InventoryTransactions)
+                .HasForeignKey(d => d.SupplierId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("inventory_transaction_supplier_id_fkey");
         });
 
         modelBuilder.Entity<Invoice>(entity =>
@@ -655,11 +671,12 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => new { e.MedicineId, e.ExpiryDate }, "ix_medicine_batch_fefo");
 
-            entity.HasIndex(e => e.SupplierId, "ix_medicine_batch_supplier_id");
-
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("id");
+            entity.Property(e => e.BaseUnitAvgImportPrice)
+                .HasPrecision(18, 2)
+                .HasColumnName("base_unit_avg_import_price");
             entity.Property(e => e.ExpiryDate).HasColumnName("expiry_date");
             entity.Property(e => e.LotNumber)
                 .HasMaxLength(100)
@@ -668,16 +685,11 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.QuantityBase)
                 .HasDefaultValue(0)
                 .HasColumnName("quantity_base");
-            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
 
             entity.HasOne(d => d.Medicine).WithMany(p => p.MedicineBatches)
                 .HasForeignKey(d => d.MedicineId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("medicine_batch_medicine_id_fkey");
-
-            entity.HasOne(d => d.Supplier).WithMany(p => p.MedicineBatches)
-                .HasForeignKey(d => d.SupplierId)
-                .HasConstraintName("medicine_batch_supplier_id_fkey");
         });
 
         modelBuilder.Entity<MedicinePackaging>(entity =>

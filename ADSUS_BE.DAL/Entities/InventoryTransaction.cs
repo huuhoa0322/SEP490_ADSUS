@@ -19,9 +19,15 @@ public partial class InventoryTransaction
 
     public Guid? PrescriptionItemId { get; set; }
 
+    public Guid? SupplierId { get; set; }
+
+    public decimal? ActualImportPrice { get; set; }
+
     public virtual MedicineBatch Batch { get; set; } = null!;
 
     public virtual MedicinePackaging MedicinePackaging { get; set; } = null!;
 
     public virtual PrescriptionItem? PrescriptionItem { get; set; }
+
+    public virtual Supplier? Supplier { get; set; }
 }

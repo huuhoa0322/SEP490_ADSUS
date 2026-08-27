@@ -1,6 +1,6 @@
 "use client";
 
-import { BrainCircuit, CalendarClock, FileText, KeyRound, LogOut, LayoutDashboard, ClipboardList, Users, Pill, Truck } from "lucide-react";
+import { BrainCircuit, CalendarClock, FileText, KeyRound, LogOut, LayoutDashboard, ClipboardList, Users, Pill, Truck, PackagePlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -34,6 +34,8 @@ export function AppSidebar() {
             <NavItem expanded={expanded} href="/admin/users" icon={<Users className="size-5" />} label="Tài khoản" active={pathname.startsWith("/admin/users")} />
             <NavItem expanded={expanded} href="/admin/medicines" icon={<Pill className="size-5" />} label="Danh mục thuốc" active={pathname.startsWith("/admin/medicines")} />
             <NavItem expanded={expanded} href="/admin/suppliers" icon={<Truck className="size-5" />} label="Nhà cung cấp" active={pathname.startsWith("/admin/suppliers")} />
+            <NavItem expanded={expanded} href="/inventory/import" icon={<PackagePlus className="size-5" />} label="Nhập kho" active={pathname.startsWith("/inventory/import")} />
+            <NavItem expanded={expanded} href="/inventory" icon={<ClipboardList className="size-5" />} label="Lịch sử kho" active={pathname === "/inventory"} />
             <NavItem expanded={expanded} href="/admin/ai-models" icon={<BrainCircuit className="size-5" />} label="Mô hình AI" active={pathname.startsWith("/admin/ai-models")} />
             <NavItem expanded={expanded} href="/admin/blog" icon={<FileText className="size-5" />} label="Blog" active={pathname.startsWith("/admin/blog")} />
           </>

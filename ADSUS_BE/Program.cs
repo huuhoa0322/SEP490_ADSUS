@@ -209,6 +209,7 @@ namespace ADSUS_BE
             dataSourceBuilder.MapEnum<HealthLogType>("health_log_type");
             dataSourceBuilder.MapEnum<MedicineStatus>("medicines_status");
             dataSourceBuilder.MapEnum<ChatRole>("chat_role");
+            dataSourceBuilder.MapEnum<InventoryTxnType>("inventory_txn_type");
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);
@@ -399,6 +400,11 @@ namespace ADSUS_BE
 
             // BLL — Module 6: AI Model Management
             builder.Services.AddScoped<IAiModelService, AiModelService>();
+
+            // BLL — Module 7: Inventory Management
+            builder.Services.AddScoped<IMedicineService, MedicineService>();
+            builder.Services.AddScoped<ISupplierService, SupplierService>();
+            builder.Services.AddScoped<IInventoryService, InventoryService>();
 
             // BLL — Module 8: Appointment Scheduling (UC-15)
             builder.Services.AddScoped<IScheduleSlotRepository, ScheduleSlotRepository>();
