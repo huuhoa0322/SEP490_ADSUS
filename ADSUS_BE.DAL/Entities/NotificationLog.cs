@@ -9,11 +9,7 @@ public partial class NotificationLog
 
     public Guid UserId { get; set; }
 
-    /// <summary>Loại notification — lưu dạng string để tương thích với PostgreSQL enum</summary>
-    public string Type { get; set; } = "general";
-
-    /// <summary>JSON metadata chứa ID để navigate (scheduleId, appointmentId, etc.)</summary>
-    public string? Metadata { get; set; }
+    public string NotificationType { get; set; } = null!;
 
     public string Title { get; set; } = null!;
 
@@ -38,6 +34,10 @@ public partial class NotificationLog
     public bool? IsDeleted { get; set; }
 
     public DateTime? DeletedAt { get; set; }
+
+    public string Type { get; set; } = null!;
+
+    public string? Metadata { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

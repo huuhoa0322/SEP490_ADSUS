@@ -70,6 +70,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<ServiceFeedback> ServiceFeedbacks { get; set; }
 
+    public virtual DbSet<Supplier> Suppliers { get; set; }
+
     public virtual DbSet<Symptom> Symptoms { get; set; }
 
     public virtual DbSet<SymptomCategory> SymptomCategories { get; set; }
@@ -246,6 +248,8 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("appointments", tb => tb.HasComment("Lịch khám đã đặt (UC-13/14). Đổi lịch = CANCELLED dòng cũ + tạo dòng mới (giữ vết). Job JOB-02 đọc bảng này để nhắc lịch qua push. Chỉ 2 trạng thái BOOKED/CANCELLED — không có COMPLETED: lịch \"đã qua\" suy ra ở tầng ứng dụng bằng cách so schedule_slots.end_time với NOW(), không lưu trạng thái riêng (tránh job quét/cập nhật hàng loạt)."));
 
+            entity.HasIndex(e => e.CaseId, "idx_appointments_case_id");
+
             entity.HasIndex(e => new { e.PatientProfileId, e.CreatedAt }, "idx_appointments_patient").IsDescending(false, true);
 
             entity.HasIndex(e => e.SlotId, "idx_appointments_slot");
@@ -261,6 +265,7 @@ public partial class AppDbContext : DbContext
                 .HasComment("Mốc đã đẩy sự kiện sang Calendar thiết bị (FT-34, one-way sync) — sự kiện nằm NGOÀI hệ thống, chỉ giữ timestamp.")
                 .HasColumnName("calendar_synced_at");
             entity.Property(e => e.CancelledReason).HasColumnName("cancelled_reason");
+            entity.Property(e => e.CaseId).HasColumnName("case_id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
@@ -270,6 +275,10 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.Appointments)
+                .HasForeignKey(d => d.CaseId)
+                .HasConstraintName("appointments_case_id_fkey");
 
             entity.HasOne(d => d.PatientProfile).WithMany(p => p.Appointments)
                 .HasForeignKey(d => d.PatientProfileId)
@@ -482,16 +491,16 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.BatchId, "ix_inventory_transaction_batch_id");
 
-            entity.HasIndex(e => e.ReferencePrescriptionItemId, "ix_inventory_transaction_prescription_item");
+            entity.HasIndex(e => e.PrescriptionItemId, "ix_inventory_transaction_prescription_item");
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("id");
             entity.Property(e => e.BatchId).HasColumnName("batch_id");
             entity.Property(e => e.MedicinePackagingId).HasColumnName("medicine_packaging_id");
+            entity.Property(e => e.PrescriptionItemId).HasColumnName("prescription_item_id");
             entity.Property(e => e.QuantityBase).HasColumnName("quantity_base");
             entity.Property(e => e.QuantityInUnit).HasColumnName("quantity_in_unit");
-            entity.Property(e => e.ReferencePrescriptionItemId).HasColumnName("reference_prescription_item_id");
             entity.Property(e => e.TxnDate)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("txn_date");
@@ -506,9 +515,9 @@ public partial class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("inventory_transaction_medicine_packaging_id_fkey");
 
-            entity.HasOne(d => d.ReferencePrescriptionItem).WithMany(p => p.InventoryTransactions)
-                .HasForeignKey(d => d.ReferencePrescriptionItemId)
-                .HasConstraintName("inventory_transaction_reference_prescription_item_id_fkey");
+            entity.HasOne(d => d.PrescriptionItem).WithMany(p => p.InventoryTransactions)
+                .HasForeignKey(d => d.PrescriptionItemId)
+                .HasConstraintName("inventory_transaction_prescription_item_id_fkey");
         });
 
         modelBuilder.Entity<Invoice>(entity =>
@@ -653,6 +662,8 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => new { e.MedicineId, e.ExpiryDate }, "ix_medicine_batch_fefo");
 
+            entity.HasIndex(e => e.SupplierId, "ix_medicine_batch_supplier_id");
+
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("id");
@@ -664,11 +675,16 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.QuantityBase)
                 .HasDefaultValue(0)
                 .HasColumnName("quantity_base");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
 
             entity.HasOne(d => d.Medicine).WithMany(p => p.MedicineBatches)
                 .HasForeignKey(d => d.MedicineId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("medicine_batch_medicine_id_fkey");
+
+            entity.HasOne(d => d.Supplier).WithMany(p => p.MedicineBatches)
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("medicine_batch_supplier_id_fkey");
         });
 
         modelBuilder.Entity<MedicinePackaging>(entity =>
@@ -731,6 +747,11 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.LogId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("log_id");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("text")
+                .HasConversion<string>()
+                .HasDefaultValue(NotificationStatus.Sent);
             entity.Property(e => e.Body).HasColumnName("body");
             entity.Property(e => e.DeepLink)
                 .HasMaxLength(500)
@@ -747,6 +768,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Metadata)
                 .HasColumnType("jsonb")
                 .HasColumnName("metadata");
+            entity.Property(e => e.NotificationType).HasColumnName("notification_type");
             entity.Property(e => e.Payload)
                 .HasColumnType("jsonb")
                 .HasColumnName("payload");
@@ -1025,6 +1047,39 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.PatientProfileId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_service_feedbacks_patient");
+        });
+
+        modelBuilder.Entity<Supplier>(entity =>
+        {
+            entity.HasKey(e => e.SupplierId).HasName("supplier_pkey");
+
+            entity.ToTable("supplier");
+
+            entity.Property(e => e.SupplierId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("supplier_id");
+            entity.Property(e => e.Address).HasColumnName("address");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Email)
+                .HasMaxLength(255)
+                .HasColumnName("email");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.Name)
+                .HasMaxLength(255)
+                .HasColumnName("name");
+            entity.Property(e => e.PhoneNumber)
+                .HasMaxLength(20)
+                .HasColumnName("phone_number");
+            entity.Property(e => e.TaxCode)
+                .HasMaxLength(50)
+                .HasColumnName("tax_code");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
         });
 
         modelBuilder.Entity<Symptom>(entity =>

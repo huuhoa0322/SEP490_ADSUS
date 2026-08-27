@@ -9,8 +9,10 @@ import '../../features/auth/data/repositories/biometric_service.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
 import '../../features/appointment_scheduling/data/repositories/appointment_repository_impl.dart';
+import '../../features/appointment_scheduling/data/repositories/symptom_repository_impl.dart';
 import '../../features/appointment_scheduling/data/services/calendar_sync_service_impl.dart';
 import '../../features/appointment_scheduling/domain/repositories/appointment_repository.dart';
+import '../../features/appointment_scheduling/domain/repositories/symptom_repository.dart';
 import '../../features/appointment_scheduling/domain/services/calendar_sync_service.dart';
 import '../../features/medication_reminder/data/repositories/medication_intake_repository_impl.dart';
 import '../../features/medication_reminder/data/repositories/reminder_preference_repository_impl.dart';
@@ -56,6 +58,11 @@ final biometricServiceProvider = Provider<BiometricService>((ref) {
 /// mock trong test ViewModel, đúng quy ước 03_mobile.md §9.
 final appointmentRepositoryProvider = Provider<AppointmentRepository>((ref) {
   return AppointmentRepositoryImpl(ref.watch(dioProvider));
+});
+
+/// Module 8 — Repository cho Symptoms (dùng trong booking)
+final symptomRepositoryProvider = Provider<SymptomRepository>((ref) {
+  return SymptomRepositoryImpl(ref.watch(dioProvider));
 });
 
 /// `SharedPreferences` cần await `getInstance()` ở lần đầu — để không phá pattern

@@ -87,4 +87,11 @@ public sealed class CaseRepository : ICaseRepository
 
         return newCase;
     }
+
+    public async Task<Case> CreateAsync(Case newCase, CancellationToken ct = default)
+    {
+        _db.Cases.Add(newCase);
+        await _db.SaveChangesAsync(ct);
+        return newCase;
+    }
 }

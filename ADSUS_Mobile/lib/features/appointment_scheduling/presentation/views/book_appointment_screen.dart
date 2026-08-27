@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../viewmodels/book_appointment_view_model.dart';
+import '../widgets/symptom_selector.dart';
 import 'widgets/slot_pill.dart';
 
 /// SCR-21 — Màn đặt lịch khám (UC-13).
@@ -147,6 +148,8 @@ class _BookAppointmentScreenState
               _slotsSection(state),
               const SizedBox(height: 20),
               _reasonSection(),
+              const SizedBox(height: 20),
+              _symptomSection(state),
               const SizedBox(height: 24),
               _confirmButton(state),
             ],
@@ -539,5 +542,93 @@ class _BookAppointmentScreenState
     final nextSunday = nextMonday.add(const Duration(days: 6));
     return '${nextMonday.day.toString().padLeft(2, '0')}/${nextMonday.month.toString().padLeft(2, '0')}-'
         '${nextSunday.day.toString().padLeft(2, '0')}/${nextSunday.month.toString().padLeft(2, '0')}';
+  }
+
+  Widget _symptomSection(BookAppointmentState state) {
+    final notifier = ref.read(bookAppointmentViewModelProvider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Expandable header
+        InkWell(
+          onTap: () => notifier.toggleSymptomSection(),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: state.isSymptomSectionExpanded
+                  ? AppColors.teal.withValues(alpha: 0.1)
+                  : AppColors.unreadBg,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: state.isSymptomSectionExpanded
+                    ? AppColors.teal
+                    : AppColors.border,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  state.isSymptomSectionExpanded
+                      ? Icons.expand_less
+                      : Icons.expand_more,
+                  color: AppColors.teal,
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.medical_services_outlined, color: AppColors.teal, size: 20),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Triệu chứng (tùy chọn)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ),
+                if (state.symptomBlocks.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.teal,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${state.symptomBlocks.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+
+        // Symptom content
+        if (state.isSymptomSectionExpanded) ...[
+          const SizedBox(height: 12),
+          SymptomSelector(
+            categories: state.symptomCategories,
+            blocks: state.symptomBlocks,
+            isLoading: state.isLoadingSymptoms,
+            onCategorySelected: (blockId, categoryId) =>
+                notifier.selectSymptomCategory(blockId, categoryId),
+            onSymptomToggled: (blockId, symptomId) =>
+                notifier.toggleSymptom(blockId, symptomId),
+            onOtherNoteChanged: (blockId, note) =>
+                notifier.updateOtherNote(blockId, note),
+            onBlockRemoved: (blockId) => notifier.removeSymptomBlock(blockId),
+            onAddBlock: () => notifier.addSymptomBlock(),
+            getUsedCategoryIds: (blockId) =>
+                notifier.getUsedCategoryIds(blockId),
+          ),
+        ],
+      ],
+    );
   }
 }

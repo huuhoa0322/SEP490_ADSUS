@@ -49,6 +49,7 @@ public sealed class NotificationService : INotificationService
             LogId = logId,
             UserId = request.UserId,
             Type = request.Type,
+            NotificationType = request.Type, // Database column notification_type
             Title = request.Title,
             Body = request.Body,
             DeepLink = request.DeepLink,

@@ -17,11 +17,11 @@ public partial class InventoryTransaction
 
     public DateTime TxnDate { get; set; }
 
-    public Guid? ReferencePrescriptionItemId { get; set; }
+    public Guid? PrescriptionItemId { get; set; }
 
     public virtual MedicineBatch Batch { get; set; } = null!;
 
     public virtual MedicinePackaging MedicinePackaging { get; set; } = null!;
 
-    public virtual PrescriptionItem? ReferencePrescriptionItem { get; set; }
+    public virtual PrescriptionItem? PrescriptionItem { get; set; }
 }

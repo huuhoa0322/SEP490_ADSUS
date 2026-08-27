@@ -1,6 +1,7 @@
 import '../entities/appointment.dart';
 import '../entities/appointment_summary.dart';
 import '../entities/schedule_slot.dart';
+import '../../data/dtos/symptom_dtos.dart';
 
 /// Hợp đồng cho tầng dữ liệu của module Đặt lịch (UC-13, UC-14).
 ///
@@ -23,9 +24,12 @@ abstract interface class AppointmentRepository {
   /// BR-01: nếu bệnh nhân đã có cuộc hẹn Booked trên cùng slot, server trả 409.
   /// BR-02: server chỉ chấp nhận khi slot.status == OPEN (trả 422 nếu không).
   /// Trả về Appointment đã tạo (status = booked).
+  ///
+  /// Thêm [symptoms] parameter để gửi triệu chứng khi đặt lịch.
   Future<Appointment> bookAppointment({
     required String scheduleSlotId,
     String? reason,
+    List<SymptomInput>? symptoms,
   });
 
   /// UC-14 bước 1 — liệt kê các cuộc hẹn của chính bệnh nhân đang đăng nhập.

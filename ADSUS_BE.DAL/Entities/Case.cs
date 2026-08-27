@@ -34,6 +34,8 @@ public partial class Case
 
     public virtual ICollection<AiPrediction> AiPredictions { get; set; } = new List<AiPrediction>();
 
+    public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+
     public virtual ICollection<CaseSymptom> CaseSymptoms { get; set; } = new List<CaseSymptom>();
 
     public virtual User Doctor { get; set; } = null!;

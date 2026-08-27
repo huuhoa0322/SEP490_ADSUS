@@ -22,6 +22,7 @@ public class AppointmentServiceTests : IDisposable
     private readonly Mock<IScheduleSlotRepository> _slotRepo = new();
     private readonly Mock<IPatientProfileRepository> _profileRepo = new();
     private readonly Mock<INotificationService> _notificationService = new();
+    private readonly Mock<ADSUS_BE.BLL.MedicalRecord.Interfaces.ICaseService> _caseService = new();
     private readonly AppDbContext _db;
     private readonly AppointmentService _sut;
 
@@ -44,6 +45,7 @@ public class AppointmentServiceTests : IDisposable
             _slotRepo.Object,
             _profileRepo.Object,
             _notificationService.Object,
+            _caseService.Object,
             _db,
             Mock.Of<ILogger<AppointmentService>>());
     }
