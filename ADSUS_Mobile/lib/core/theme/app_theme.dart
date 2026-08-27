@@ -26,6 +26,28 @@ class AppColors {
 
   /// Màu nền danger card (safety response).
   static const Color dangerTint = Color(0xFFFBEAE9);
+
+  // ── Context badge colors (intent-based, inside AI bubble) ──────────────────
+  /// Mặc định khi không rõ intent.
+  static const Color contextDefault = AppColors.aiVioletTint;
+  static const Color contextPrescription = Color(0xFFE8F5E9); // xanh lá nhạt
+  static const Color contextAppointment  = Color(0xFFE3F2FD); // xanh dương nhạt
+  static const Color contextCaseHistory  = Color(0xFFFFF3E0); // cam nhạt
+  static const Color contextAllergy      = Color(0xFFFFEBEE); // đỏ nhạt
+  static const Color contextDisease       = Color(0xFFFFF3E0); // cam nhạt
+  static const Color contextHealthLog    = Color(0xFFE0F7FA); // cyan nhạt
+  static const Color contextBlog         = Color(0xFFF3E5F5); // tím nhạt
+  static const Color contextGreeting     = Color(0xFFF1EDFC); // aiViolet tint
+  static const Color contextGeneral      = Color(0xFFF1EDFC); // aiViolet tint
+
+  /// Text color tương ứng cho context badge.
+  static const Color contextTextPrescription = Color(0xFF2E7D32); // xanh đậm
+  static const Color contextTextAppointment  = Color(0xFF1565C0); // xanh dương đậm
+  static const Color contextTextCaseHistory  = Color(0xFFE65100); // cam đậm
+  static const Color contextTextAllergy      = Color(0xFFC62828); // đỏ đậm
+  static const Color contextTextDisease       = Color(0xFFE65100); // cam đậm
+  static const Color contextTextHealthLog    = Color(0xFF00695C); // cyan đậm
+  static const Color contextTextBlog         = Color(0xFF6A1B9A); // tím đậm
   /// Hex khớp với web --status-good/--status-warning trong globals.css.
   /// KHÔNG dùng [danger] cho adherence thấp — đỏ chỉ dành cho safety card / validation
   /// error (xem CLAUDE.md §11.3.4).

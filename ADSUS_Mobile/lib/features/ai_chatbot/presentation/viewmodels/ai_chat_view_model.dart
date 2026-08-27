@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../data/repositories/ai_chat_repository.dart';
-import '../../domain/entities/chat_message.dart';
+import '../../domain/entities/chat_message.dart' as entity;
+import '../../domain/entities/chat_message.dart' show sanitizeAssistantContent;
 
 /// Trạng thái màn hình chatbot.
 class AiChatState {
@@ -11,22 +12,30 @@ class AiChatState {
     this.messages = const [],
     this.isSending = false,
     this.errorMessage,
+    this.lastDetectedIntent,
   });
 
-  final List<ChatMessage> messages;
+  final List<entity.ChatMessage> messages;
   final bool isSending;
   final String? errorMessage;
 
+  /// Intent của assistant message vừa nhất (dùng cho suggestion chips).
+  final entity.ChatIntent? lastDetectedIntent;
+
   AiChatState copyWith({
-    List<ChatMessage>? messages,
+    List<entity.ChatMessage>? messages,
     bool? isSending,
     String? errorMessage,
+    entity.ChatIntent? lastDetectedIntent,
     bool clearError = false,
+    bool clearLastIntent = false,
   }) =>
       AiChatState(
         messages: messages ?? this.messages,
         isSending: isSending ?? this.isSending,
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+        lastDetectedIntent:
+            clearLastIntent ? null : (lastDetectedIntent ?? this.lastDetectedIntent),
       );
 }
 
@@ -66,9 +75,9 @@ class AiChatViewModel extends StateNotifier<AiChatState> {
 
     try {
       // Thêm USER message vào list ngay (optimistic)
-      final userMsg = ChatMessage(
+      final userMsg = entity.ChatMessage(
         messageId: 'local-${DateTime.now().millisecondsSinceEpoch}',
-        role: ChatRole.user,
+        role: entity.ChatRole.user,
         content: content.trim(),
         createdAt: DateTime.now(),
         isSafety: false,
@@ -81,16 +90,18 @@ class AiChatViewModel extends StateNotifier<AiChatState> {
         // Thêm ASSISTANT response. Response đã được sanitize từ DTO.toEntity(),
         // nhưng sendMessage trả về object thô → sanitize lại để khử disclaimer
         // mà LLM (Gemini) tự ghép vào.
-        final assistantMsg = ChatMessage(
+        final assistantMsg = entity.ChatMessage(
           messageId: response.messageId,
-          role: ChatRole.assistant,
+          role: entity.ChatRole.assistant,
           content: sanitizeAssistantContent(response.content),
           createdAt: response.createdAt,
           isSafety: response.isSafety,
+          detectedIntent: response.detectedIntent,
         );
         state = state.copyWith(
           messages: [...state.messages, assistantMsg],
           isSending: false,
+          lastDetectedIntent: assistantMsg.detectedIntent,
         );
       } else {
         state = state.copyWith(

@@ -19,6 +19,7 @@ class ChatMessageDto {
     required this.content,
     required this.createdAt,
     required this.isSafetyResponse,
+    this.detectedIntent,
   });
 
   final String messageId;
@@ -26,6 +27,7 @@ class ChatMessageDto {
   final String content;
   final DateTime createdAt;
   final bool isSafetyResponse;
+  final String? detectedIntent; // ChatIntent string from BE
 
   factory ChatMessageDto.fromJson(Map<String, dynamic> json) {
     return ChatMessageDto(
@@ -34,6 +36,7 @@ class ChatMessageDto {
       content: json['content'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
       isSafetyResponse: json['isSafetyResponse'] as bool? ?? false,
+      detectedIntent: json['detectedIntent'] as String?,
     );
   }
 }

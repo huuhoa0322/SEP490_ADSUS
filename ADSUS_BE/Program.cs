@@ -497,6 +497,12 @@ namespace ADSUS_BE
 
             // BLL — Module 10: Engagement (Blog PUBLIC endpoints)
             builder.Services.AddScoped<IBlogPostService, BlogPostService>();
+
+            // BLL — Module 10 Chat (FT-39) Phase 2: Intent Detection + RAG Aggregator.
+            // IntentDetector: stateless singleton (keyword matching, no I/O).
+            // ChatDataAggregator: scoped (EF Core DbContext-per-request).
+            builder.Services.AddSingleton<IIntentDetector, ChatIntentDetector>();
+            builder.Services.AddScoped<IChatDataAggregator, ChatDataAggregator>();
             builder.Services.AddScoped<IChatService, ChatService>();
             // UC-22 + FT-37: Patient feedback (general + per-case).
             builder.Services.AddScoped<IFeedbackService, FeedbackService>();

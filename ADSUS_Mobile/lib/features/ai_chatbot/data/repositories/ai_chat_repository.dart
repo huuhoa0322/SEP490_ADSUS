@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../domain/entities/chat_message.dart';
 import '../dtos/chat_dto.dart';
@@ -17,6 +18,9 @@ class AiChatRepository {
   ///
   /// Gửi tin nhắn → nhận ASSISTANT response.
   /// Trả về null nếu lỗi.
+  ///
+  /// Override `receiveTimeout` = 60s: Gemini free tier cold-start 6-15s mỗi
+  /// call (đo 2026-08-27), cộng thời gian BE build prompt + query DB.
   Future<ChatMessage?> sendMessage(String content) async {
     try {
       debugPrint('[AiChatRepo] POST /api/v1/me/chat/messages content: $content');
@@ -24,6 +28,10 @@ class AiChatRepository {
       final res = await _dio.post<Map<String, dynamic>>(
         '/api/v1/me/chat/messages',
         data: SendChatMessageRequest(content: content).toJson(),
+        options: Options(
+          receiveTimeout: ApiConstants.chatTimeout,
+          sendTimeout: ApiConstants.chatTimeout,
+        ),
       );
 
       final envelope = res.data;

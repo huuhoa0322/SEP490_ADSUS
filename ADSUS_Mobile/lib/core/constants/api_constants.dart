@@ -48,7 +48,11 @@ class ApiConstants {
   static String caseDetail(String id) => '/api/v1/cases/$id';
 
   /// Quá thời gian này coi như không kết nối được.
+  /// Mặc định 15s — nhưng request tới AI Chatbot cần 60s vì Gemini free tier
+  /// cold-start mỗi call từ 6-15s (đo 2026-08-27), cộng thêm thời gian BE
+  /// build system prompt + query DB. Endpoint chat truyền timeout riêng 60s.
   static const Duration timeout = Duration(seconds: 15);
+  static const Duration chatTimeout = Duration(seconds: 60);
 
   // Module 10 — AI Chatbot (FT-39)
   static const String chatMessages = '/api/v1/me/chat/messages';

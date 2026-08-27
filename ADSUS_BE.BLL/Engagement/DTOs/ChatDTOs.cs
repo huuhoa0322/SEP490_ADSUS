@@ -1,4 +1,5 @@
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.BLL.Engagement.Services;
 
 namespace ADSUS_BE.BLL.Engagement.DTOs;
 
@@ -32,6 +33,13 @@ public sealed class ChatMessageResponse
     /// Client dùng flag này để render safety card thay vì assistant bubble thường.
     /// </summary>
     public bool IsSafetyResponse { get; init; }
+
+    /// <summary>
+    /// Intent đã detect từ tin nhắn USER gần nhất.
+    /// Client dùng để hiển thị context badge + suggestion chips.
+    /// Null khi IsSafetyResponse=true hoặc không xác định được intent.
+    /// </summary>
+    public ChatIntent? DetectedIntent { get; init; }
 }
 
 /// <summary>
