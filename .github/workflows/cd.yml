@@ -31,6 +31,15 @@ jobs:
 
             - run: flutter pub get
 
+            # google-services.json không commit vào git (chứa cấu hình Firebase thật) — dựng
+            # lại từ secret base64 trước khi Gradle chạy, cùng cách ci.yml (mobile-ci) đã làm.
+            # Lấy giá trị secret bằng: base64 -w0 android/app/google-services.json
+            - name: Create google-services.json
+              env:
+                  GOOGLE_SERVICES_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+              run: |
+                  echo "$GOOGLE_SERVICES_BASE64" | base64 -d > android/app/google-services.json
+
             - run: flutter build apk --release --dart-define=API_BASE_URL=https://api-adsus.onrender.com
 
             # Đặt tên file theo đúng version trong tag (bỏ tiền tố "android-v"), khớp quy ước

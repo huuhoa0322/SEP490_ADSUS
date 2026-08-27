@@ -40,10 +40,71 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
   }
 
   void _openDropdown() {
-    final overlay = Overlay.of(context);
+    // Use showModalBottomSheet instead of Overlay for better centering
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Drag handle
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Thông báo',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // Content
+              Expanded(
+                child: _NotificationDropdownContent(
+                  onClose: () => Navigator.of(context).pop(),
+                  scrollController: scrollController,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).then((_) {
+      setState(() {
+        _isOpen = false;
+      });
+    });
 
-    _overlayEntry = _createOverlayEntry();
-    overlay.insert(_overlayEntry!);
     setState(() {
       _isOpen = true;
     });
@@ -53,42 +114,10 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
   }
 
   void _closeDropdown() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
+    Navigator.of(context).pop();
     setState(() {
       _isOpen = false;
     });
-  }
-
-  OverlayEntry _createOverlayEntry() {
-    RenderBox renderBox = context.findRenderObject() as RenderBox;
-    var size = renderBox.size;
-
-    return OverlayEntry(
-      builder: (context) => Positioned(
-        width: 320,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: Offset(-220, size.height + 8),
-          child: Material(
-            elevation: 8,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              constraints: const BoxConstraints(maxHeight: 400),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: _NotificationDropdownContent(
-                onClose: _closeDropdown,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   @override
@@ -148,9 +177,13 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
 }
 
 class _NotificationDropdownContent extends ConsumerWidget {
-  const _NotificationDropdownContent({required this.onClose});
+  const _NotificationDropdownContent({
+    required this.onClose,
+    this.scrollController,
+  });
 
   final VoidCallback onClose;
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -158,88 +191,54 @@ class _NotificationDropdownContent extends ConsumerWidget {
     final notifications = state.notifications;
 
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        // Header
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: const BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: AppColors.border),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Thông báo',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close, size: 20),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: onClose,
-              ),
-            ],
-          ),
+        // Content
+        Expanded(
+          child: state.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : notifications.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.notifications_none_outlined,
+                            size: 48,
+                            color: AppColors.muted,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Không có thông báo nào',
+                            style: TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      controller: scrollController,
+                      padding: EdgeInsets.zero,
+                      itemCount: notifications.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final notification = notifications[index];
+                        return _NotificationItem(
+                          notification: notification,
+                          onTap: () {
+                            // Mark as read and close dropdown
+                            ref.read(notificationsProvider.notifier).markAsRead(notification.logId);
+                            onClose();
+                            // Navigate to appropriate screen based on notification type
+                            _showNotificationDetail(context, notification, ref);
+                          },
+                        );
+                      },
+                    ),
         ),
 
-        // Content
-        if (state.isLoading)
-          const Padding(
-            padding: EdgeInsets.all(32),
-            child: CircularProgressIndicator(),
-          )
-        else if (notifications.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(32),
-            child: Column(
-              children: [
-                Icon(
-                  Icons.notifications_none_outlined,
-                  size: 48,
-                  color: AppColors.muted,
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Không có thông báo nào',
-                  style: TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          )
-        else
-          Flexible(
-            child: ListView.separated(
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              itemCount: notifications.length > 5 ? 5 : notifications.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final notification = notifications[index];
-                return _NotificationItem(
-                  notification: notification,
-                  onTap: () {
-                    // Mark as read and close dropdown
-                    ref.read(notificationsProvider.notifier).markAsRead(notification.logId);
-                    onClose();
-                    // Navigate to appropriate screen based on notification type
-                    _showNotificationDetail(context, notification, ref);
-                  },
-                );
-              },
-            ),
-          ),
-
-        // Footer with "View all" and "Mark all as read"
+        // Footer with "View all" and "Mark all as read" (only show if there are notifications)
         if (notifications.isNotEmpty)
           Container(
             padding: const EdgeInsets.all(12),

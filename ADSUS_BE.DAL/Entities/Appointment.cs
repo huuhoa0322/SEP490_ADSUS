@@ -27,6 +27,10 @@ public partial class Appointment
 
     public DateTime UpdatedAt { get; set; }
 
+    public Guid? CaseId { get; set; }
+
+    public virtual Case? Case { get; set; }
+
     public virtual PatientProfile PatientProfile { get; set; } = null!;
 
     public virtual ScheduleSlot Slot { get; set; } = null!;

@@ -1,3 +1,4 @@
+using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.Common.Interfaces;
@@ -340,6 +341,47 @@ public sealed class CaseService : ICaseService
         _logger.LogInformation("Case {CaseId} ended without prescription by doctor {DoctorId}", caseId, actingDoctorId);
 
         return await GetForStaffAsync(caseId, ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<Guid> CreateFromBookingAsync(
+        Guid patientProfileId,
+        Guid doctorId,
+        DateOnly visitDate,
+        IReadOnlyList<SymptomInput> symptoms,
+        CancellationToken ct = default)
+    {
+        var caseId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        var newCase = new Case
+        {
+            CaseId = caseId,
+            PatientProfileId = patientProfileId,
+            DoctorId = doctorId,
+            VisitDate = visitDate,
+            ClinicalInfo = null, // Sẽ được bác sĩ cập nhật khi khám
+            Status = CaseStatus.Booked,
+            CreatedAt = now,
+            UpdatedAt = now,
+            CaseSymptoms = symptoms.Select(s => new CaseSymptom
+            {
+                Id = Guid.NewGuid(),
+                CaseId = caseId,
+                CategoryId = s.CategoryId,
+                SymptomId = s.SymptomId,
+                OtherNote = s.OtherNote,
+                CreatedAt = now
+            }).ToList()
+        };
+
+        await _cases.CreateAsync(newCase, ct);
+
+        _logger.LogInformation(
+            "Case {CaseId} created from appointment booking for patient profile {PatientProfileId} with {SymptomCount} symptoms",
+            caseId, patientProfileId, symptoms.Count);
+
+        return caseId;
     }
 
     /// <summary>

@@ -47,6 +47,9 @@ class ApiConstants {
   static const String myCases = '/api/v1/cases/me';
   static String caseDetail(String id) => '/api/v1/cases/$id';
 
+  // Module 04 — Symptoms (cho booking)
+  static const String symptomCategories = '/api/v1/symptoms/categories';
+
   /// Quá thời gian này coi như không kết nối được.
   /// Mặc định 15s — nhưng request tới AI Chatbot cần 60s vì Gemini free tier
   /// cold-start mỗi call từ 6-15s (đo 2026-08-27), cộng thêm thời gian BE
