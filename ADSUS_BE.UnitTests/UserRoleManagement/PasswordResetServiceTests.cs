@@ -3,6 +3,7 @@ using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -36,11 +37,30 @@ public class PasswordResetServiceTests
                   .Callback<AuditLog, CancellationToken>((l, _) => _audited.Add(l))
                   .Returns(Task.CompletedTask);
 
+        // RequestSelfServiceResetAsync (28/08/2026) chạy phần gửi thư + đổi mật khẩu ở 1 scope
+        // DI riêng (IServiceScopeFactory), để không đụng vào AppDbContext của scope request đã
+        // bị dispose. Dựng 1 ServiceProvider thật (không mock tay IServiceProvider) đăng ký
+        // đúng các mock/instance đang dùng ở test này, để CreateScope() trả về đúng chúng.
+        var services = new ServiceCollection();
+        services.AddSingleton(_users.Object);
+        services.AddSingleton(_email.Object);
+        services.AddSingleton(new AccountAuditTrail(_auditLogs.Object));
+        var provider = services.BuildServiceProvider();
+
+        var scopeFactory = new Mock<IServiceScopeFactory>();
+        scopeFactory.Setup(f => f.CreateScope()).Returns(() => provider.CreateScope());
+
         _sut = new PasswordResetService(
             _users.Object,
             _email.Object,
             new AccountAuditTrail(_auditLogs.Object),
-            new Mock<ILogger<PasswordResetService>>().Object);
+            scopeFactory.Object,
+            new Mock<ILogger<PasswordResetService>>().Object,
+            // Chạy việc "nền" NGAY tại chỗ thay vì Task.Run — nếu không, mọi assertion đọc
+            // trạng thái ngay sau `await _sut.RequestSelfServiceResetAsync(...)` bên dưới sẽ
+            // thành race condition (có lúc qua có lúc trượt), vì việc thật sẽ chạy trên 1
+            // thread khác, không đồng bộ với awaiter của bài test.
+            dispatchBackground: work => work());
     }
 
     // ---------- Đường tự phục vụ ----------
@@ -291,9 +311,21 @@ public class PasswordResetServiceTests
         MustChangePassword = false,
     };
 
-    private void SetupGetByPhone(User? user) =>
+    private void SetupGetByPhone(User? user)
+    {
         _users.Setup(r => r.GetByPhoneAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(user);
+
+        // Phần "nền" của RequestSelfServiceResetAsync (28/08/2026) đọc lại đúng user này bằng
+        // GetForUpdateAsync (scope DI riêng, xem PasswordResetService) rồi mới sửa-rồi-lưu —
+        // trả về CÙNG một instance để các assertion đọc thẳng trên biến `user` ở từng test vẫn
+        // đúng, không phải dựng lại một bản sao.
+        if (user is not null)
+        {
+            _users.Setup(r => r.GetForUpdateAsync(user.UserId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(user);
+        }
+    }
 
     // Chỉ dùng cho AdminResetAsync (sửa-rồi-lưu) — GetForUpdateAsync (P11 review Module 2, 12/08/2026).
     private void SetupGetById(User? user) =>
