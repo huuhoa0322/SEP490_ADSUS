@@ -1,6 +1,7 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.Common.Interfaces;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
@@ -18,6 +19,7 @@ public sealed class AppointmentService : IAppointmentService
     private readonly IScheduleSlotRepository _slotRepo;
     private readonly IPatientProfileRepository _profileRepo;
     private readonly INotificationService _notificationService;
+    private readonly ICaseService _caseService;
     private readonly AppDbContext _db;
     private readonly ILogger<AppointmentService> _logger;
 
@@ -26,6 +28,7 @@ public sealed class AppointmentService : IAppointmentService
         IScheduleSlotRepository slotRepo,
         IPatientProfileRepository profileRepo,
         INotificationService notificationService,
+        ICaseService caseService,
         AppDbContext db,
         ILogger<AppointmentService> logger)
     {
@@ -33,6 +36,7 @@ public sealed class AppointmentService : IAppointmentService
         _slotRepo = slotRepo;
         _profileRepo = profileRepo;
         _notificationService = notificationService;
+        _caseService = caseService;
         _db = db;
         _logger = logger;
     }
@@ -145,6 +149,23 @@ public sealed class AppointmentService : IAppointmentService
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
+
+        // Tạo Case nếu có symptoms (từ Mobile booking)
+        if (request.Symptoms?.Any() == true)
+        {
+            var caseId = await _caseService.CreateFromBookingAsync(
+                patientProfileId,
+                slot.DoctorId,
+                slot.SlotDate,
+                request.Symptoms,
+                ct);
+
+            appointment.CaseId = caseId;
+
+            _logger.LogInformation(
+                "Case {CaseId} created from appointment booking for appointment {AppointmentId}",
+                caseId, appointment.AppointmentId);
+        }
 
         // Update slot status
         slot.Status = SlotStatus.Booked;
@@ -271,7 +292,7 @@ public sealed class AppointmentService : IAppointmentService
         return ToAppointmentResponse(appointment);
     }
 
-    private static AppointmentResponse ToAppointmentResponse(Appointment a)
+    private static AppointmentResponse ToAppointmentResponse(Appointment a, Guid? caseId = null)
     {
         return new AppointmentResponse
         {
@@ -286,6 +307,7 @@ public sealed class AppointmentService : IAppointmentService
             CancellationReason = a.CancelledReason,
             CalendarSyncedAt = a.CalendarSyncedAt,
             CreatedAt = a.CreatedAt,
+            CaseId = caseId ?? a.CaseId,
         };
     }
 }

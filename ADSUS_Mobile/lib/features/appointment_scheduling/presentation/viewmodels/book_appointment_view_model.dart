@@ -3,7 +3,58 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../../../../shared/providers/app_providers.dart';
+import '../../data/dtos/symptom_dtos.dart';
 import '../../domain/entities/schedule_slot.dart' show ScheduleSlot, DoctorStatus;
+import '../../domain/entities/symptom.dart' show SymptomCategory;
+
+/// Một block triệu chứng trong UI (tương ứng với 1 category)
+class SymptomBlock {
+  final String id; // Unique ID cho block này
+  final String? selectedCategoryId;
+  final Set<String> selectedSymptomIds;
+  final String otherNote;
+
+  const SymptomBlock({
+    required this.id,
+    this.selectedCategoryId,
+    this.selectedSymptomIds = const {},
+    this.otherNote = '',
+  });
+
+  SymptomBlock copyWith({
+    String? selectedCategoryId,
+    Set<String>? selectedSymptomIds,
+    String? otherNote,
+  }) {
+    return SymptomBlock(
+      id: id,
+      selectedCategoryId: selectedCategoryId ?? this.selectedCategoryId,
+      selectedSymptomIds: selectedSymptomIds ?? this.selectedSymptomIds,
+      otherNote: otherNote ?? this.otherNote,
+    );
+  }
+
+  /// Chuyển thành SymptomInput để gửi lên backend
+  List<SymptomInput> toSymptomInputs() {
+    final inputs = <SymptomInput>[];
+    if (selectedCategoryId == null) return inputs;
+
+    for (final symptomId in selectedSymptomIds) {
+      inputs.add(SymptomInput(
+        categoryId: selectedCategoryId!,
+        symptomId: symptomId,
+      ));
+    }
+    // Thêm "Other" nếu có text
+    if (otherNote.isNotEmpty) {
+      inputs.add(SymptomInput(
+        categoryId: selectedCategoryId!,
+        otherNote: otherNote,
+      ));
+    }
+    return inputs;
+  }
+}
 
 /// Trạng thái màn hình Đặt lịch (SCR-21, UC-13).
 ///
@@ -22,6 +73,11 @@ class BookAppointmentState {
     this.errorMessage,
     this.bookingSuccess,
     this.showWeekView = true, // Mặc định hiển thị tuần hiện tại
+    // Symptoms state
+    this.symptomCategories = const [],
+    this.symptomBlocks = const [],
+    this.isLoadingSymptoms = false,
+    this.isSymptomSectionExpanded = false,
   });
 
   /// Toàn bộ slot Open server trả về (sau khi lọc theo status=OPEN).
@@ -55,6 +111,12 @@ class BookAppointmentState {
   /// Mã đặt lịch thành công để View biết khi nào pop về Home.
   final String? bookingSuccess;
 
+  // --- Symptoms state ---
+  final List<SymptomCategory> symptomCategories;
+  final List<SymptomBlock> symptomBlocks;
+  final bool isLoadingSymptoms;
+  final bool isSymptomSectionExpanded;
+
   BookAppointmentState copyWith({
     List<ScheduleSlot>? slots,
     List<DoctorOption>? doctorOptions,
@@ -68,6 +130,10 @@ class BookAppointmentState {
     String? errorMessage,
     String? bookingSuccess,
     bool? showWeekView,
+    List<SymptomCategory>? symptomCategories,
+    List<SymptomBlock>? symptomBlocks,
+    bool? isLoadingSymptoms,
+    bool? isSymptomSectionExpanded,
     bool clearError = false,
     bool clearSelection = false,
     bool clearBookingSuccess = false,
@@ -89,6 +155,10 @@ class BookAppointmentState {
       bookingSuccess:
           clearBookingSuccess ? null : (bookingSuccess ?? this.bookingSuccess),
       showWeekView: showWeekView ?? this.showWeekView,
+      symptomCategories: symptomCategories ?? this.symptomCategories,
+      symptomBlocks: symptomBlocks ?? this.symptomBlocks,
+      isLoadingSymptoms: isLoadingSymptoms ?? this.isLoadingSymptoms,
+      isSymptomSectionExpanded: isSymptomSectionExpanded ?? this.isSymptomSectionExpanded,
     );
   }
 
@@ -307,14 +377,119 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
     _successShown = false;
   }
 
+  // ============ Symptoms Methods ============
+
+  Future<void> loadSymptomCategories() async {
+    if (state.symptomCategories.isNotEmpty) return; // Đã load rồi
+    state = state.copyWith(isLoadingSymptoms: true);
+    try {
+      final categories = await ref.read(symptomRepositoryProvider).getCategories();
+      state = state.copyWith(
+        symptomCategories: categories,
+        isLoadingSymptoms: false,
+      );
+    } catch (e) {
+      debugPrint('[DEBUG] loadSymptomCategories error: $e');
+      state = state.copyWith(isLoadingSymptoms: false);
+    }
+  }
+
+  void toggleSymptomSection() {
+    final newExpanded = !state.isSymptomSectionExpanded;
+    state = state.copyWith(isSymptomSectionExpanded: newExpanded);
+    if (newExpanded && state.symptomCategories.isEmpty) {
+      loadSymptomCategories();
+    }
+  }
+
+  void addSymptomBlock() {
+    final newBlock = SymptomBlock(id: DateTime.now().millisecondsSinceEpoch.toString());
+    state = state.copyWith(
+      symptomBlocks: [...state.symptomBlocks, newBlock],
+    );
+  }
+
+  void removeSymptomBlock(String blockId) {
+    state = state.copyWith(
+      symptomBlocks: state.symptomBlocks.where((b) => b.id != blockId).toList(),
+    );
+  }
+
+  void selectSymptomCategory(String blockId, String categoryId) {
+    state = state.copyWith(
+      symptomBlocks: state.symptomBlocks.map((b) {
+        if (b.id == blockId) {
+          return b.copyWith(
+            selectedCategoryId: categoryId,
+            selectedSymptomIds: {}, // Reset symptoms khi đổi category
+            otherNote: '', // Reset other note khi đổi category
+          );
+        }
+        return b;
+      }).toList(),
+    );
+  }
+
+  void toggleSymptom(String blockId, String symptomId) {
+    state = state.copyWith(
+      symptomBlocks: state.symptomBlocks.map((b) {
+        if (b.id == blockId) {
+          final newSet = Set<String>.from(b.selectedSymptomIds);
+          if (newSet.contains(symptomId)) {
+            newSet.remove(symptomId);
+          } else {
+            newSet.add(symptomId);
+          }
+          return b.copyWith(selectedSymptomIds: newSet);
+        }
+        return b;
+      }).toList(),
+    );
+  }
+
+  void updateOtherNote(String blockId, String note) {
+    state = state.copyWith(
+      symptomBlocks: state.symptomBlocks.map((b) {
+        if (b.id == blockId) {
+          return b.copyWith(otherNote: note);
+        }
+        return b;
+      }).toList(),
+    );
+  }
+
+  /// Lấy danh sách category IDs đã được chọn ở các block khác
+  Set<String> getUsedCategoryIds(String currentBlockId) {
+    return state.symptomBlocks
+        .where((b) => b.id != currentBlockId && b.selectedCategoryId != null)
+        .map((b) => b.selectedCategoryId!)
+        .toSet();
+  }
+
+  /// Lấy symptoms từ tất cả blocks
+  List<SymptomInput> getAllSymptomInputs() {
+    return state.symptomBlocks
+        .expand((b) => b.toSymptomInputs())
+        .toList();
+  }
+
+  // ============ Booking Method ============
+
   Future<void> book({String? reason}) async {
     final slotId = state.selectedSlotId;
     if (slotId == null) return;
     state = state.copyWith(isBooking: true, clearError: true);
     try {
+      // Thu thập symptoms từ các blocks
+      final symptoms = getAllSymptomInputs();
+
       final appointment = await ref
           .read(appointmentRepositoryProvider)
-          .bookAppointment(scheduleSlotId: slotId, reason: reason);
+          .bookAppointment(
+            scheduleSlotId: slotId,
+            reason: reason,
+            symptoms: symptoms.isNotEmpty ? symptoms : null,
+          );
 
       // Xóa slot đã đặt khỏi danh sách để không hiện lại
       final updatedSlots = state.slots.where((s) => s.id != slotId).toList();
@@ -327,6 +502,9 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
         // Reset selection sau khi đặt thành công
         selectedSlotId: null,
         selectedDate: null,
+        // Reset symptoms
+        symptomBlocks: [],
+        isSymptomSectionExpanded: false,
       );
     } on ApiException catch (e) {
       state = state.copyWith(isBooking: false, errorMessage: e.message);

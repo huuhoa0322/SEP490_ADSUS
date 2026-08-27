@@ -49,6 +49,7 @@ public enum AppointmentStatus
 {
     [PgName("BOOKED")] Booked,
     [PgName("CANCELLED")] Cancelled,
+    [PgName("COMPLETED")] Completed,
 }
 
 /// <summary>
@@ -56,12 +57,14 @@ public enum AppointmentStatus
 /// Vòng đời một chiều:
 ///   Created → Confirmed (bác sĩ kết luận, chưa kê đơn) → END (bác sĩ đã kê đơn thuốc).
 /// END là trạng thái cuối — không có đường lùi (GB-01).
+/// BOOKED được tạo tự động khi bệnh nhân đặt lịch khám (kèm triệu chứng).
 /// </summary>
 public enum CaseStatus
 {
     [PgName("CREATED")] Created,
-    [PgName("END")] End,
     [PgName("CONFIRMED")] Confirmed,
+    [PgName("END")] End,
+    [PgName("BOOKED")] Booked,
 }
 
 /// <summary>
@@ -151,6 +154,18 @@ public enum ChatRole
 {
     [PgName("USER")] User,
     [PgName("ASSISTANT")] Assistant,
+}
+
+/// <summary>
+/// Trạng thái notification — enum <c>notification_status</c> trong DB (Module 9).
+/// </summary>
+public enum NotificationStatus
+{
+    [PgName("SENT")] Sent,
+    [PgName("DELIVERED")] Delivered,
+    [PgName("FAILED")] Failed,
+    [PgName("READ")] Read,
+    [PgName("UNREAD")] Unread,
 }
 
 /// <summary>

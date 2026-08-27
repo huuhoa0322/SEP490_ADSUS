@@ -135,6 +135,7 @@ class AppointmentMapper {
         startTime: parseHm(dto.startTime),
         endTime: parseHm(dto.endTime),
         doctorName: dto.doctorName,
+        caseId: dto.caseId,
       );
 
   static AppointmentSummary summaryFromDto(AppointmentSummaryDto dto) =>

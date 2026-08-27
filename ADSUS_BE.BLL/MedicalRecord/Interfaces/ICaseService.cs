@@ -1,5 +1,6 @@
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
+using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 
 namespace ADSUS_BE.BLL.MedicalRecord.Interfaces;
 
@@ -58,4 +59,15 @@ public interface ICaseService
     /// </summary>
     Task<CaseResponse> EndWithoutPrescriptionAsync(
         Guid caseId, Guid actingDoctorId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Tạo case từ việc đặt lịch khám (Mobile).
+    /// Status của case = BOOKED. Không tạo ảnh, không gửi notification.
+    /// </summary>
+    Task<Guid> CreateFromBookingAsync(
+        Guid patientProfileId,
+        Guid doctorId,
+        DateOnly visitDate,
+        IReadOnlyList<SymptomInput> symptoms,
+        CancellationToken ct = default);
 }

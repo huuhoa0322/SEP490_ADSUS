@@ -752,6 +752,11 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.LogId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("log_id");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("text")
+                .HasConversion<string>()
+                .HasDefaultValue(NotificationStatus.Sent);
             entity.Property(e => e.Body).HasColumnName("body");
             entity.Property(e => e.DeepLink)
                 .HasMaxLength(500)

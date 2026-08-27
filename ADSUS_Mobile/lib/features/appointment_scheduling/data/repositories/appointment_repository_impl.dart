@@ -7,6 +7,7 @@ import '../../domain/entities/appointment_summary.dart';
 import '../../domain/entities/schedule_slot.dart';
 import '../../domain/repositories/appointment_repository.dart';
 import '../dtos/appointment_dtos.dart';
+import '../dtos/symptom_dtos.dart';
 import '../mappers/appointment_mapper.dart';
 
 /// Triển khai gọi API thật cho module Đặt lịch (UC-13, UC-14).
@@ -89,6 +90,7 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
   Future<Appointment> bookAppointment({
     required String scheduleSlotId,
     String? reason,
+    List<SymptomInput>? symptoms,
   }) async {
     try {
       final body = <String, dynamic>{
@@ -97,6 +99,10 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
       // BR-03: reason là optional, chỉ gửi khi người dùng nhập — không gửi chuỗi rỗng.
       if (reason != null && reason.trim().isNotEmpty) {
         body['reason'] = reason.trim();
+      }
+      // Gửi symptoms nếu có
+      if (symptoms != null && symptoms.isNotEmpty) {
+        body['symptoms'] = symptoms.map((s) => s.toJson()).toList();
       }
 
       final res = await _dio.post<Map<String, dynamic>>(
