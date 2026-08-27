@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/network/api_exception.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/providers/app_providers.dart';
 import '../viewmodels/auth_view_model.dart';
+import '../viewmodels/change_password_view_model.dart';
 import 'widgets/message_banner.dart';
 
 /// Chính sách mật khẩu — lấy từ TDS §4.3, phải khớp với validator phía backend.
@@ -32,9 +31,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   final _newController = TextEditingController();
   final _confirmController = TextEditingController();
 
-  bool _isSaving = false;
-  String? _errorMessage;
-  bool _succeeded = false;
+  /// Lỗi kiểm định dạng phía client — tách riêng khỏi lỗi mạng của ViewModel, gộp lại
+  /// đúng một chỗ lúc hiển thị (cùng pattern SignInScreen/Web).
+  String? _clientError;
 
   @override
   void dispose() {
@@ -55,51 +54,39 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     final confirm = _confirmController.text;
 
     if ((!mustChange && current.isEmpty) || newPassword.isEmpty || confirm.isEmpty) {
-      setState(() => _errorMessage = mustChange
+      setState(() => _clientError = mustChange
           ? 'Vui lòng điền đầy đủ cả hai ô.'
           : 'Vui lòng điền đầy đủ cả ba ô.');
       return;
     }
     if (_passwordRules.any((r) => !r.test(newPassword))) {
-      setState(() => _errorMessage = 'Mật khẩu mới chưa đạt yêu cầu bên dưới.');
+      setState(() => _clientError = 'Mật khẩu mới chưa đạt yêu cầu bên dưới.');
       return;
     }
     if (newPassword != confirm) {
-      setState(() => _errorMessage = 'Xác nhận mật khẩu không khớp.');
+      setState(() => _clientError = 'Xác nhận mật khẩu không khớp.');
       return;
     }
 
-    setState(() {
-      _isSaving = true;
-      _errorMessage = null;
-      _succeeded = false;
-    });
+    setState(() => _clientError = null);
 
-    try {
-      await ref.read(authRepositoryProvider).changePassword(
-            currentPassword: mustChange ? null : current,
-            newPassword: newPassword,
-            confirmNewPassword: confirm,
-          );
-
-      // Backend đã gỡ cờ trong DB, gỡ luôn ở client để thôi chặn màn khác.
-      ref.read(authViewModelProvider.notifier).clearMustChangePassword();
-
-      if (mounted) setState(() => _succeeded = true);
-    } on ApiException catch (e) {
-      if (mounted) setState(() => _errorMessage = e.message);
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
+    await ref.read(changePasswordViewModelProvider.notifier).submit(
+          currentPassword: mustChange ? null : current,
+          newPassword: newPassword,
+          confirmNewPassword: confirm,
+        );
   }
 
   @override
   Widget build(BuildContext context) {
     final mustChange =
         ref.watch(authViewModelProvider).session?.mustChangePassword ?? false;
+    final vmState = ref.watch(changePasswordViewModelProvider);
     final newPassword = _newController.text;
     final confirmMatches =
         _confirmController.text.isNotEmpty && _confirmController.text == newPassword;
+    final errorMessage = _clientError ?? vmState.errorMessage;
+    final isSaving = vmState.isSaving;
 
     return Scaffold(
       appBar: AppBar(
@@ -136,11 +123,11 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               const SizedBox(height: 20),
               _buildChecklist(newPassword, confirmMatches),
 
-              if (_errorMessage != null) ...[
+              if (errorMessage != null) ...[
                 const SizedBox(height: 18),
-                MessageBanner(message: _errorMessage!),
+                MessageBanner(message: errorMessage),
               ],
-              if (_succeeded) ...[
+              if (vmState.succeeded) ...[
                 const SizedBox(height: 18),
                 const MessageBanner(
                   message: 'Đổi mật khẩu thành công. Lần đăng nhập sau hãy dùng mật khẩu mới.',
@@ -150,8 +137,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
               const SizedBox(height: 26),
               ElevatedButton(
-                onPressed: _isSaving ? null : _submit,
-                child: _isSaving
+                onPressed: isSaving ? null : _submit,
+                child: isSaving
                     ? const SizedBox(
                         height: 20,
                         width: 20,
@@ -188,7 +175,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         TextField(
           controller: controller,
           obscureText: true,
-          enabled: !_isSaving,
+          enabled: !ref.watch(changePasswordViewModelProvider).isSaving,
           onChanged: onChanged,
           decoration: const InputDecoration(
             hintText: '••••••••',
