@@ -7,6 +7,7 @@ export interface MedicineResponse {
   volumePerBaseUnit?: number;
   status: string;
   createdAt: string;
+  totalInventoryBase: number;
 }
 
 export interface PagedResult<T> {

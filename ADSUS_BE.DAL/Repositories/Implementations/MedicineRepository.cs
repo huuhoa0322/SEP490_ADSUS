@@ -51,6 +51,7 @@ public sealed class MedicineRepository : IMedicineRepository
         if (string.IsNullOrWhiteSpace(keyword))
         {
             return await _db.Medicines
+                .Include(m => m.MedicineBatches)
                 .AsNoTracking()
                 .Where(m => m.Status == MedicineStatus.Active)
                 .OrderBy(m => m.Name)
@@ -60,6 +61,7 @@ public sealed class MedicineRepository : IMedicineRepository
 
         var trimmed = keyword.Trim();
         return await _db.Medicines
+            .Include(m => m.MedicineBatches)
             .AsNoTracking()
             .Where(m => m.Status == MedicineStatus.Active && EF.Functions.ILike(m.Name, $"%{trimmed}%"))
             .OrderBy(m => m.Name)
@@ -75,7 +77,7 @@ public sealed class MedicineRepository : IMedicineRepository
 
     public async Task<(IReadOnlyList<Medicine> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? keyword, CancellationToken ct = default)
     {
-        var query = _db.Medicines.AsNoTracking();
+        var query = _db.Medicines.Include(m => m.MedicineBatches).AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {

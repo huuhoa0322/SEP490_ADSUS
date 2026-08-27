@@ -7,6 +7,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.DTOs
     {
         public string? Search { get; set; }
         public InventoryTxnType? Type { get; set; }
+        public Guid? BatchId { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }

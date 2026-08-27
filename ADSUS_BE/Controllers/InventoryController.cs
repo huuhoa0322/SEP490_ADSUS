@@ -25,6 +25,13 @@ namespace ADSUS_BE.Controllers
             return Ok(new { message = "Nhập kho thành công." });
         }
 
+        [HttpPost("validate-import")]
+        public async Task<IActionResult> ValidateImport([FromBody] ImportInventoryRequest request)
+        {
+            var result = await _inventoryService.ValidateImportAsync(request);
+            return Ok(result);
+        }
+
         [HttpPost("import/bulk")]
         public async Task<IActionResult> ImportMedicineBulk([FromBody] System.Collections.Generic.List<ImportInventoryRequest> requests)
         {
@@ -36,6 +43,13 @@ namespace ADSUS_BE.Controllers
         public async Task<IActionResult> GetInventoryHistory([FromQuery] InventoryHistoryFilter filter)
         {
             var result = await _inventoryService.GetInventoryHistoryAsync(filter);
+            return Ok(result);
+        }
+
+        [HttpGet("batches")]
+        public async Task<IActionResult> GetMedicineBatches([FromQuery] System.Guid medicineId)
+        {
+            var result = await _inventoryService.GetMedicineBatchesAsync(medicineId);
             return Ok(result);
         }
     }

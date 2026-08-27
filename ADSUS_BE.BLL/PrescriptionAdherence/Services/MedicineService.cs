@@ -34,7 +34,8 @@ public sealed class MedicineService : IMedicineService
             MedicineId = m.MedicineId,
             Name = m.Name,
             Status = m.Status.ToString().ToUpperInvariant(),
-            CreatedAt = m.CreatedAt
+            CreatedAt = m.CreatedAt,
+            TotalInventoryBase = m.MedicineBatches?.Sum(b => b.QuantityBase) ?? 0
         });
     }
 
@@ -49,7 +50,8 @@ public sealed class MedicineService : IMedicineService
             UsageUnit = m.UsageUnit,
             VolumePerBaseUnit = m.VolumePerBaseUnit,
             Status = m.Status.ToString().ToUpperInvariant(),
-            CreatedAt = m.CreatedAt
+            CreatedAt = m.CreatedAt,
+            TotalInventoryBase = m.MedicineBatches?.Sum(b => b.QuantityBase) ?? 0
         }).ToList();
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);

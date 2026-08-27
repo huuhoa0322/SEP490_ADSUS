@@ -19,7 +19,7 @@ import { ExcelImportModal } from './excel-import-modal';
 
 import { ConfirmDialog } from '@/features/user-role-management/components/confirm-dialog';
 
-import { useImportInventory, useBulkImportInventory, type ImportInventoryRequest } from '@/features/medicines/api/inventory.api';
+import { useImportInventory, useBulkImportInventory, useValidateImport, type ImportInventoryRequest } from '@/features/medicines/api/inventory.api';
 import { getPagedMedicines, getPackagingsByMedicineId } from '@/features/medicines/api/medicines-api';
 import { getSuppliers } from '@/features/medicines/api/suppliers.api';
 
@@ -58,6 +58,7 @@ export const InventoryImportForm = () => {
 
   const { mutateAsync: importInventory, isPending } = useImportInventory();
   const { mutateAsync: importBulkInventory, isPending: isBulkPending } = useBulkImportInventory();
+  const { mutateAsync: validateImport, isPending: isValidatePending } = useValidateImport();
   
   const { data: medicinesData, isLoading: isLoadingMedicines } = useQuery({
     queryKey: ['medicines-all'],
@@ -92,19 +93,47 @@ export const InventoryImportForm = () => {
   
   const packagings = packagingsData || [];
 
-  const onSubmit = (data: ImportFormValues) => {
+  const onSubmit = async (data: ImportFormValues) => {
     // Tìm tên để hiển thị
     const medName = medicinesData?.items.find(m => m.medicineId === data.medicineId)?.name || '';
     const supName = suppliersData?.items.find(s => s.supplierId === data.supplierId)?.name || '';
     const packName = packagings.find(p => p.id === data.medicinePackagingId)?.unitName || '';
 
+    const formattedExpiryDate = new Date(data.expiryDate).toISOString();
+
+    // 1. Kiểm tra chéo với danh sách chờ (bulkData)
+    const existingInQueue = bulkData.find(item => item.lotNumber === data.lotNumber);
+    if (existingInQueue) {
+      if (existingInQueue.medicineId !== data.medicineId) {
+        toast.error(`Mã lô ${data.lotNumber} đã có trong bảng chờ nhưng thuộc về một loại thuốc khác!`);
+        return;
+      }
+      if (existingInQueue.expiryDate.split('T')[0] !== formattedExpiryDate.split('T')[0]) {
+        toast.error(`Mã lô ${data.lotNumber} đã có trong bảng chờ nhưng khác Hạn sử dụng! Vui lòng kiểm tra lại.`);
+        return;
+      }
+    }
+
     const newRequest: any = {
       ...data,
-      expiryDate: new Date(data.expiryDate).toISOString(),
+      expiryDate: formattedExpiryDate,
       _medicineName: medName,
       _supplierName: supName,
       _unitName: packName,
     };
+
+    // 2. Validate với DB qua API
+    try {
+      const result = await validateImport(newRequest);
+      if (!result.isValid) {
+        toast.error(result.errorMessage || 'Dữ liệu lô không hợp lệ');
+        return;
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Lỗi khi kiểm tra dữ liệu từ máy chủ. Vui lòng thử lại.');
+      return;
+    }
 
     setBulkData(prev => [...prev, newRequest]);
     toast.success('Đã thêm vào bảng xem trước');
@@ -129,7 +158,8 @@ export const InventoryImportForm = () => {
       setBulkData([]);
       router.push('/inventory'); // Navigate to inventory list if exists
     } catch (error: any) {
-      console.error("Bulk Import Error:", error.response?.data || error);
+      // Bỏ console.error để tránh Next.js dev server bật bảng lỗi đỏ (Error Overlay)
+      // console.error("Bulk Import Error:", error.response?.data || error);
       
       let errMsg = 'Có lỗi xảy ra khi nhập kho hàng loạt';
       if (error.response?.data) {
@@ -286,8 +316,8 @@ export const InventoryImportForm = () => {
                   <Button type="button" variant="outline" onClick={() => form.reset()}>
                     Hủy
                   </Button>
-                  <Button type="submit" disabled={isPending || isBulkPending}>
-                    Thêm vào bảng chờ
+                  <Button type="submit" disabled={isPending || isBulkPending || isValidatePending}>
+                    {isValidatePending ? 'Đang kiểm tra...' : 'Thêm vào bảng chờ'}
                   </Button>
                 </div>
               </div>
@@ -302,6 +332,7 @@ export const InventoryImportForm = () => {
               <table className="w-full text-sm text-left mb-6">
                 <thead className="bg-muted text-muted-foreground border-b uppercase">
                   <tr>
+                    <th className="px-4 py-3">#</th>
                     <th className="px-4 py-3">Tên Thuốc</th>
                     <th className="px-4 py-3">Nhà Cung Cấp</th>
                     <th className="px-4 py-3">Số Lô</th>
@@ -315,6 +346,7 @@ export const InventoryImportForm = () => {
                 <tbody className="divide-y">
                   {bulkData.map((row, idx) => (
                     <tr key={idx} className="hover:bg-muted/50">
+                      <td className="px-4 py-2 text-muted-foreground">{idx + 1}</td>
                       <td className="px-4 py-2 font-medium">{row._medicineName || 'N/A'}</td>
                       <td className="px-4 py-2">{row._supplierName || 'N/A'}</td>
                       <td className="px-4 py-2">{row.lotNumber}</td>

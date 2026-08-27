@@ -10,6 +10,7 @@ public class MedicineResponse
     public decimal? VolumePerBaseUnit { get; set; }
     public string Status { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
+    public int TotalInventoryBase { get; set; }
 }
 
 public class CreateMedicineRequest

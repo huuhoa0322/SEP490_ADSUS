@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, PlusCircle, Pencil, PlayCircle, Ban, Search } from "lucide-react";
+import { Loader2, PlusCircle, Pencil, PlayCircle, Ban, Search, Package } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/features/user-role-management/components/confirm-dialog";
 import { MedicineFormModal } from "./medicine-form-modal";
 import { MedicineDetailModal } from "./medicine-detail-modal";
+import { MedicineBatchesModal } from "./medicine-batches-modal";
 
 // A small sub-component for pagination buttons
 function PagerButton({ disabled, onClick, children }: { disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -40,6 +41,7 @@ export function MedicineList() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [detailMedicine, setDetailMedicine] = useState<MedicineResponse | null>(null);
+  const [batchesMedicine, setBatchesMedicine] = useState<MedicineResponse | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pendingActivateId, setPendingActivateId] = useState<string | null>(null);
 
@@ -109,6 +111,7 @@ export function MedicineList() {
           <thead>
             <tr className="border-b border-border">
               <th className="px-5 py-4 text-left font-semibold text-muted-foreground">Tên thuốc</th>
+              <th className="px-5 py-4 text-left font-semibold text-muted-foreground">Tồn kho</th>
               <th className="px-5 py-4 text-left font-semibold text-muted-foreground">Trạng thái</th>
               <th className="px-5 py-4 text-left font-semibold text-muted-foreground">Ngày tạo</th>
               <th className="px-5 py-4 text-right font-semibold text-muted-foreground">Hành động</th>
@@ -134,6 +137,15 @@ export function MedicineList() {
                     {medicine.name}
                   </td>
                   <td className="px-5 py-4">
+                    {medicine.totalInventoryBase > 0 ? (
+                      <span className="font-semibold text-emerald-600">
+                        {medicine.totalInventoryBase} {medicine.usageUnit || "đơn vị"}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground italic">Hết hàng</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-4">
                     <Badge variant={medicine.status === "ACTIVE" ? "default" : "secondary"}>
                       {medicine.status === "ACTIVE" ? "Đang sử dụng" : "Ngừng sử dụng"}
                     </Badge>
@@ -143,6 +155,13 @@ export function MedicineList() {
                   </td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setBatchesMedicine(medicine)}
+                        title="Tồn kho"
+                        className="flex size-9 items-center justify-center rounded-full text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                      >
+                        <Package className="size-4" />
+                      </button>
                       <button
                         onClick={() => setDetailMedicine(medicine)}
                         title="Chi tiết / Quản lý"
@@ -248,6 +267,13 @@ export function MedicineList() {
           onClose={() => setDetailMedicine(null)}
         />
       )}
+
+      {/* Modal Lô Thuốc */}
+      <MedicineBatchesModal
+        medicine={batchesMedicine}
+        isOpen={!!batchesMedicine}
+        onClose={() => setBatchesMedicine(null)}
+      />
 
       <ConfirmDialog
         open={!!pendingDeleteId}

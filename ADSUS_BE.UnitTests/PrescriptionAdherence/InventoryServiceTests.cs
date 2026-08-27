@@ -62,7 +62,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             var batch = await _dbContext.MedicineBatches.FirstOrDefaultAsync(b => b.LotNumber == "LOT-123");
             Assert.NotNull(batch);
             Assert.Equal(50, batch.QuantityBase); // 5 * 10
-            Assert.Equal(10000, batch.UnitImportPrice); // 100000 / 10
+            Assert.Equal(10000, batch.BaseUnitAvgImportPrice); // 100000 / 10
 
             var txn = await _dbContext.InventoryTransactions.FirstOrDefaultAsync(t => t.BatchId == batch.Id);
             Assert.NotNull(txn);
@@ -92,8 +92,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
                 LotNumber = "LOT-123",
                 ExpiryDate = expiry,
                 QuantityBase = 10,
-                SupplierId = supplierId,
-                UnitImportPrice = 5000
+                BaseUnitAvgImportPrice = 5000
             });
             await _dbContext.SaveChangesAsync();
 
@@ -117,7 +116,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             Assert.Equal(50, batch.QuantityBase); // 10 + 40
             
             // Weighted avg price: (10 * 5000 + 40 * 2000) / 50 = (50000 + 80000) / 50 = 130000 / 50 = 2600
-            Assert.Equal(2600, batch.UnitImportPrice); 
+            Assert.Equal(2600, batch.BaseUnitAvgImportPrice); 
         }
 
         [Fact]
@@ -140,8 +139,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
                 LotNumber = "LOT-123",
                 ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
                 QuantityBase = 10,
-                SupplierId = supplierId,
-                UnitImportPrice = 5000
+                BaseUnitAvgImportPrice = 5000
             });
             await _dbContext.SaveChangesAsync();
 
@@ -199,11 +197,11 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             _dbContext.MedicineUnits.Add(unit);
             _dbContext.MedicinePackagings.Add(pack);
 
-            var batch1 = new MedicineBatch { Id = Guid.NewGuid(), MedicineId = med1.MedicineId, SupplierId = supplier.SupplierId, LotNumber = "LOT-1", QuantityBase = 100, ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(1)) };
+            var batch1 = new MedicineBatch { Id = Guid.NewGuid(), MedicineId = med1.MedicineId, LotNumber = "LOT-1", QuantityBase = 100, ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(1)) };
             var batch2 = new MedicineBatch { Id = Guid.NewGuid(), MedicineId = med2.MedicineId, LotNumber = "LOT-2", QuantityBase = 50, ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(1)) };
             _dbContext.MedicineBatches.AddRange(batch1, batch2);
 
-            _dbContext.InventoryTransactions.Add(new InventoryTransaction { Id = Guid.NewGuid(), BatchId = batch1.Id, MedicinePackagingId = pack.Id, QuantityInUnit = 10, QuantityBase = 100, TxnType = InventoryTxnType.Import, TxnDate = DateTime.UtcNow });
+            _dbContext.InventoryTransactions.Add(new InventoryTransaction { Id = Guid.NewGuid(), BatchId = batch1.Id, MedicinePackagingId = pack.Id, QuantityInUnit = 10, QuantityBase = 100, TxnType = InventoryTxnType.Import, TxnDate = DateTime.UtcNow, SupplierId = supplier.SupplierId });
             _dbContext.InventoryTransactions.Add(new InventoryTransaction { Id = Guid.NewGuid(), BatchId = batch2.Id, MedicinePackagingId = pack.Id, QuantityInUnit = 5, QuantityBase = 50, TxnType = InventoryTxnType.Import, TxnDate = DateTime.UtcNow });
             await _dbContext.SaveChangesAsync();
 
@@ -218,6 +216,128 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             Assert.Equal("Paracetamol", result.Items.First().MedicineName);
             Assert.Equal("LOT-1", result.Items.First().LotNumber);
             Assert.Equal("Hau Giang Pharma", result.Items.First().SupplierName);
+        }
+        [Fact]
+        public async Task ProcessBulkImportAsync_ValidationFails_ThrowsExceptionWithRowIndex()
+        {
+            // Arrange
+            var medicineId = Guid.NewGuid();
+            var supplierId = Guid.NewGuid();
+            var packagingId = Guid.NewGuid();
+            var unitId = Guid.NewGuid();
+
+            _dbContext.Medicines.Add(new Medicine { MedicineId = medicineId, Name = "Test Med", Status = MedicineStatus.Active, CreatedAt = DateTime.UtcNow });
+            _dbContext.Suppliers.Add(new Supplier { SupplierId = supplierId, Name = "Test Sup", IsActive = true, PhoneNumber = "1", Email = "a", Address = "a", TaxCode = "1" });
+            _dbContext.MedicineUnits.Add(new MedicineUnit { MedicineUnitId = unitId, Name = "Unit" });
+            _dbContext.MedicinePackagings.Add(new MedicinePackaging { Id = packagingId, MedicineId = medicineId, MedicineUnitId = unitId, ConversionFactor = 10 });
+            await _dbContext.SaveChangesAsync();
+
+            var requests = new System.Collections.Generic.List<ImportInventoryRequest>
+            {
+                new ImportInventoryRequest
+                {
+                    MedicineId = medicineId, SupplierId = supplierId, MedicinePackagingId = packagingId,
+                    LotNumber = "LOT-1", ExpiryDate = DateTime.UtcNow.AddDays(30), Quantity = 1, ImportPricePerUnit = 1000
+                },
+                new ImportInventoryRequest
+                {
+                    MedicineId = medicineId, SupplierId = supplierId, MedicinePackagingId = packagingId,
+                    LotNumber = "LOT-2", ExpiryDate = DateTime.UtcNow.AddDays(-1), Quantity = 1, ImportPricePerUnit = 1000
+                } // Invalid row (index 1 => Row 2)
+            };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<BusinessException>(() => _service.ImportMedicineBulkAsync(requests));
+            Assert.Contains("Lỗi ở Hàng số 2", ex.Message);
+            Assert.Contains("Hạn sử dụng", ex.Message);
+        }
+
+        [Fact]
+        public async Task ValidateImportAsync_DuplicateLot_DifferentMedicine_ReturnsInvalid()
+        {
+            // Arrange
+            var medicineId1 = Guid.NewGuid();
+            var medicineId2 = Guid.NewGuid();
+            var supplierId = Guid.NewGuid();
+            var packagingId = Guid.NewGuid();
+            var unitId = Guid.NewGuid();
+
+            _dbContext.Medicines.Add(new Medicine { MedicineId = medicineId1, Name = "Med 1", Status = MedicineStatus.Active, CreatedAt = DateTime.UtcNow });
+            _dbContext.Medicines.Add(new Medicine { MedicineId = medicineId2, Name = "Med 2", Status = MedicineStatus.Active, CreatedAt = DateTime.UtcNow });
+            _dbContext.Suppliers.Add(new Supplier { SupplierId = supplierId, Name = "Sup", IsActive = true, PhoneNumber = "1", Email = "a", Address = "a", TaxCode = "1" });
+            _dbContext.MedicineUnits.Add(new MedicineUnit { MedicineUnitId = unitId, Name = "Unit" });
+            _dbContext.MedicinePackagings.Add(new MedicinePackaging { Id = packagingId, MedicineId = medicineId2, MedicineUnitId = unitId, ConversionFactor = 1 });
+            
+            _dbContext.MedicineBatches.Add(new MedicineBatch
+            {
+                Id = Guid.NewGuid(),
+                MedicineId = medicineId1, // Belongs to Med 1
+                LotNumber = "LOT-SHARED",
+                ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
+                QuantityBase = 10
+            });
+            await _dbContext.SaveChangesAsync();
+
+            var request = new ImportInventoryRequest
+            {
+                MedicineId = medicineId2, // Try to import for Med 2
+                SupplierId = supplierId,
+                MedicinePackagingId = packagingId,
+                LotNumber = "LOT-SHARED",
+                ExpiryDate = DateTime.UtcNow.AddDays(30),
+                Quantity = 1,
+                ImportPricePerUnit = 100
+            };
+
+            // Act
+            var result = await _service.ValidateImportAsync(request);
+
+            // Assert
+            Assert.False(result.IsValid);
+            Assert.Contains("đã được sử dụng cho một loại thuốc khác", result.ErrorMessage);
+        }
+
+        [Fact]
+        public async Task ValidateImportAsync_DuplicateLot_DifferentExpiry_ReturnsInvalid()
+        {
+            // Arrange
+            var medicineId = Guid.NewGuid();
+            var supplierId = Guid.NewGuid();
+            var packagingId = Guid.NewGuid();
+            var unitId = Guid.NewGuid();
+
+            _dbContext.Medicines.Add(new Medicine { MedicineId = medicineId, Name = "Med", Status = MedicineStatus.Active, CreatedAt = DateTime.UtcNow });
+            _dbContext.Suppliers.Add(new Supplier { SupplierId = supplierId, Name = "Sup", IsActive = true, PhoneNumber = "1", Email = "a", Address = "a", TaxCode = "1" });
+            _dbContext.MedicineUnits.Add(new MedicineUnit { MedicineUnitId = unitId, Name = "Unit" });
+            _dbContext.MedicinePackagings.Add(new MedicinePackaging { Id = packagingId, MedicineId = medicineId, MedicineUnitId = unitId, ConversionFactor = 1 });
+            
+            _dbContext.MedicineBatches.Add(new MedicineBatch
+            {
+                Id = Guid.NewGuid(),
+                MedicineId = medicineId,
+                LotNumber = "LOT-SAME",
+                ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
+                QuantityBase = 10
+            });
+            await _dbContext.SaveChangesAsync();
+
+            var request = new ImportInventoryRequest
+            {
+                MedicineId = medicineId,
+                SupplierId = supplierId,
+                MedicinePackagingId = packagingId,
+                LotNumber = "LOT-SAME",
+                ExpiryDate = DateTime.UtcNow.AddDays(50), // Different expiry
+                Quantity = 1,
+                ImportPricePerUnit = 100
+            };
+
+            // Act
+            var result = await _service.ValidateImportAsync(request);
+
+            // Assert
+            Assert.False(result.IsValid);
+            Assert.Contains("khác Hạn sử dụng", result.ErrorMessage);
         }
     }
 }

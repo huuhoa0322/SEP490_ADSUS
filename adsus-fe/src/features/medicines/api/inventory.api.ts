@@ -21,6 +21,15 @@ export const useImportInventory = () => {
   });
 };
 
+export const useValidateImport = () => {
+  return useMutation({
+    mutationFn: async (data: ImportInventoryRequest) => {
+      const response = await apiClient.post<{ isValid: boolean; errorMessage?: string }>('/api/v1/inventory/validate-import', data);
+      return response.data;
+    },
+  });
+};
+
 export const useBulkImportInventory = () => {
   return useMutation({
     mutationFn: async (data: ImportInventoryRequest[]) => {
@@ -33,6 +42,7 @@ export const useBulkImportInventory = () => {
 export interface InventoryHistoryFilter {
   search?: string;
   type?: string;
+  batchId?: string;
   page?: number;
   pageSize?: number;
 }
@@ -61,5 +71,27 @@ export const useInventoryHistory = (filter: InventoryHistoryFilter) => {
       });
       return response.data;
     },
+  });
+};
+
+export interface MedicineBatchResponse {
+  batchId: string;
+  medicineId: string;
+  lotNumber: string;
+  expiryDate: string;
+  quantityBase: number;
+  baseUnitAvgImportPrice: number;
+}
+
+export const useMedicineBatches = (medicineId: string) => {
+  return useQuery({
+    queryKey: ['medicine-batches', medicineId],
+    queryFn: async () => {
+      const response = await apiClient.get<MedicineBatchResponse[]>('/api/v1/inventory/batches', {
+        params: { medicineId },
+      });
+      return response.data;
+    },
+    enabled: !!medicineId,
   });
 };
