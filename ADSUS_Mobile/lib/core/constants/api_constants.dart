@@ -47,6 +47,9 @@ class ApiConstants {
   static const String myCases = '/api/v1/cases/me';
   static String caseDetail(String id) => '/api/v1/cases/$id';
 
+  // Module 04 — Symptoms (cho booking)
+  static const String symptomCategories = '/api/v1/symptoms/categories';
+
   /// Quá thời gian này coi như không kết nối được.
   static const Duration timeout = Duration(seconds: 15);
 

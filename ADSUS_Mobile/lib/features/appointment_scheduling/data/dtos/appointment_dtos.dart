@@ -69,6 +69,9 @@ class AppointmentDto {
   final String? endTime;
   final String? doctorName;
 
+  // Case được tạo từ booking (nếu có triệu chứng)
+  final String? caseId;
+
   AppointmentDto({
     this.appointmentId,
     this.slotId,
@@ -83,6 +86,7 @@ class AppointmentDto {
     this.startTime,
     this.endTime,
     this.doctorName,
+    this.caseId,
   });
 
   factory AppointmentDto.fromJson(Map<String, dynamic> json) => AppointmentDto(
@@ -100,6 +104,7 @@ class AppointmentDto {
         startTime: json['startTime'] as String?,
         endTime: json['endTime'] as String?,
         doctorName: json['doctorName'] as String?,
+        caseId: json['caseId'] as String?,
       );
 }
 

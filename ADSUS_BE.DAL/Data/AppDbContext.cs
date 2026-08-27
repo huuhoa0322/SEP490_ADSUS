@@ -248,6 +248,8 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("appointments", tb => tb.HasComment("Lịch khám đã đặt (UC-13/14). Đổi lịch = CANCELLED dòng cũ + tạo dòng mới (giữ vết). Job JOB-02 đọc bảng này để nhắc lịch qua push. Chỉ 2 trạng thái BOOKED/CANCELLED — không có COMPLETED: lịch \"đã qua\" suy ra ở tầng ứng dụng bằng cách so schedule_slots.end_time với NOW(), không lưu trạng thái riêng (tránh job quét/cập nhật hàng loạt)."));
 
+            entity.HasIndex(e => e.CaseId, "idx_appointments_case_id");
+
             entity.HasIndex(e => new { e.PatientProfileId, e.CreatedAt }, "idx_appointments_patient").IsDescending(false, true);
 
             entity.HasIndex(e => e.SlotId, "idx_appointments_slot");
@@ -263,6 +265,7 @@ public partial class AppDbContext : DbContext
                 .HasComment("Mốc đã đẩy sự kiện sang Calendar thiết bị (FT-34, one-way sync) — sự kiện nằm NGOÀI hệ thống, chỉ giữ timestamp.")
                 .HasColumnName("calendar_synced_at");
             entity.Property(e => e.CancelledReason).HasColumnName("cancelled_reason");
+            entity.Property(e => e.CaseId).HasColumnName("case_id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
@@ -272,6 +275,10 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.Appointments)
+                .HasForeignKey(d => d.CaseId)
+                .HasConstraintName("appointments_case_id_fkey");
 
             entity.HasOne(d => d.PatientProfile).WithMany(p => p.Appointments)
                 .HasForeignKey(d => d.PatientProfileId)
@@ -740,6 +747,11 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.LogId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("log_id");
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasColumnType("text")
+                .HasConversion<string>()
+                .HasDefaultValue(NotificationStatus.Sent);
             entity.Property(e => e.Body).HasColumnName("body");
             entity.Property(e => e.DeepLink)
                 .HasMaxLength(500)

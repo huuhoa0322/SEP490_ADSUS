@@ -433,28 +433,14 @@ namespace ADSUS_BE
 
             if (storageSettings?.IsConfigured != true)
             {
-                if (builder.Environment.IsDevelopment())
-                {
-                    // Chưa khai Supabase thì vẫn phải chạy được ở Development — nếu không, ai
-                    // không đụng tới upload ảnh siêu âm cũng bị chặn khởi động chỉ vì thiếu một
-                    // secret không liên quan tới việc họ đang làm. Chỉ request nào thực sự cần
-                    // IFileStorageService mới vỡ, kèm thông báo rõ phải sửa gì.
-                    builder.Services.AddScoped<IFileStorageService>(_ =>
-                        throw new InvalidOperationException(
-                            "Chua cau hinh SupabaseStorage. Chuot phai project ADSUS_BE > Manage "
-                            + "User Secrets va them ca SupabaseStorage:Url va "
-                            + "SupabaseStorage:ServiceKey — ca hai gia tri deu nam trong User "
-                            + "Secrets, khong nam trong appsettings.json."));
-                }
-                else
-                {
-                    // Dừng ngay tại đây thay vì để vỡ lúc bác sĩ bấm tải ảnh lên. Lỗi lúc đó chỉ
-                    // hiện ra là 500 giữa ca khám, còn ở đây thì biết ngay phải sửa gì.
-                    throw new InvalidOperationException(
-                        "Chua cau hinh SupabaseStorage. Moi truong " +
-                        $"'{builder.Environment.EnvironmentName}' bat buoc phai cau hinh " +
-                        "SupabaseStorage:Url va SupabaseStorage:ServiceKey.");
-                }
+                // Chưa khai Supabase thì dùng NoOpFileStorageService - trả null cho signed URLs
+                // thay vì throw exception. App vẫn hoạt động, images sẽ không hiển thị URL nhưng
+                // case vẫn xem được.
+                Console.Error.WriteLine(
+                    "[WARN] SupabaseStorage chua duoc cau hinh. Su dung NoOpFileStorageService. "
+                    + "Images se khong co signed URLs. De enable, them SupabaseStorage:Url va "
+                    + "SupabaseStorage:ServiceKey vao User Secrets.");
+                builder.Services.AddScoped<IFileStorageService, NoOpFileStorageService>();
             }
             else
             {

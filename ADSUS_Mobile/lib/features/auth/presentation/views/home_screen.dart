@@ -11,7 +11,6 @@ import '../../../medication_reminder/presentation/viewmodels/intake_view_model.d
 import '../../../medication_reminder/presentation/widgets/adherence_pill_badge.dart';
 import '../../../notification/widgets/notification_bell.dart';
 import '../viewmodels/auth_view_model.dart';
-import 'profile_screen.dart';
 
 /// Màn hình Trang chủ của bệnh nhân sau khi đăng nhập.
 ///
@@ -82,13 +81,7 @@ class HomeScreen extends ConsumerWidget {
                   Row(
                     children: [
                       const NotificationBell(),
-                      IconButton(
-                        icon: const Icon(Icons.person_outline),
-                        color: AppColors.navy,
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
-                        ),
-                      ),
+                      // Profile button đã xóa - chuyển đến footer navigation
                     ],
                   ),
                 ],
