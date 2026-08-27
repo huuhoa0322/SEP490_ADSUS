@@ -449,49 +449,27 @@ namespace ADSUS_BE
             }
 
             // ---------- Gửi email (API-04) ----------
-            builder.Services.Configure<EmailSettings>(
-                builder.Configuration.GetSection(EmailSettings.SectionName));
-            builder.Services.Configure<ResendSettings>(
-                builder.Configuration.GetSection(ResendSettings.SectionName));
             builder.Services.Configure<SendGridSettings>(
                 builder.Configuration.GetSection(SendGridSettings.SectionName));
 
-            var emailSettings = builder.Configuration
-                .GetSection(EmailSettings.SectionName)
-                .Get<EmailSettings>();
-            var resendSettings = builder.Configuration
-                .GetSection(ResendSettings.SectionName)
-                .Get<ResendSettings>();
             var sendGridSettings = builder.Configuration
                 .GetSection(SendGridSettings.SectionName)
                 .Get<SendGridSettings>();
 
-            // 3 lựa chọn IEmailService, cùng né được vụ SmtpEmailService (SMTP thô qua cổng
-            // 587) mất tới ~2.3 phút mỗi lần gọi trên Render (không rõ do IPv6 hay do mạng
-            // chặn/làm chậm cổng 587) — cả Resend lẫn SendGrid đều gửi qua HTTPS REST API,
-            // né hẳn lớp socket SMTP nên né luôn cả lớp vấn đề đó.
-            //
-            // SendGrid được ưu tiên trước Resend (thêm 28/08/2026, cùng ngày với Resend):
-            // Resend ở free tier bắt verify CẢ 1 DOMAIN (cần quyền quản trị DNS) mới gửi được
-            // cho người nhận bất kỳ — nếu chưa verify domain, CHỈ gửi được tới đúng email chủ
-            // tài khoản Resend, xác nhận thật bằng lỗi 403 khi thử gửi cho người khác lúc test.
-            // SendGrid chỉ cần verify ĐÚNG 1 địa chỉ gửi (Single Sender Verification — bấm link
-            // trong hộp thư), không cần domain riêng, phù hợp hơn khi chưa có domain thật.
-            // Vẫn giữ SmtpEmailService (Gmail) làm phương án dự phòng cuối — vốn dĩ gửi được
-            // cho người nhận bất kỳ ngay từ đầu, không hề kém 2 lựa chọn REST API ở khoản này.
+            // Gửi qua SendGrid REST API (HTTPS) — chốt 28/08/2026 sau khi thử cả 3 lựa chọn:
+            //   - SmtpEmailService (SMTP thô qua cổng 587, đã gỡ bỏ): đo thật trên Render có
+            //     lúc mất tới ~2.3 phút mỗi lần gọi (không rõ do IPv6 hay do mạng chặn/làm
+            //     chậm cổng 587).
+            //   - ResendEmailService (REST API, đã gỡ bỏ): free tier bắt verify CẢ 1 DOMAIN
+            //     (cần quyền quản trị DNS) mới gửi được cho người nhận bất kỳ — xác nhận bằng
+            //     lỗi 403 thật khi thử gửi cho người khác lúc chưa verify domain.
+            // SendGrid chỉ cần verify ĐÚNG 1 địa chỉ gửi (Single Sender Verification — bấm
+            // link trong hộp thư), không cần domain riêng, và gửi qua HTTPS nên không dính
+            // vấn đề mạng/cổng SMTP của Render.
             if (sendGridSettings?.IsConfigured == true)
             {
                 builder.Services.AddHttpClient("SendGrid");
                 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
-            }
-            else if (resendSettings?.IsConfigured == true)
-            {
-                builder.Services.AddHttpClient("Resend");
-                builder.Services.AddScoped<IEmailService, ResendEmailService>();
-            }
-            else if (emailSettings?.IsConfigured == true)
-            {
-                builder.Services.AddScoped<IEmailService, SmtpEmailService>();
             }
             else if (builder.Environment.IsDevelopment())
             {
@@ -509,10 +487,9 @@ namespace ADSUS_BE
                 // nên NGAY CẢ ĐĂNG NHẬP cũng trả 500 ở môi trường khác Development, trong
                 // khi log không nói gì về email.
                 throw new InvalidOperationException(
-                    "Chua cau hinh SendGrid, Resend, hay EmailSettings. Moi truong " +
-                    $"'{builder.Environment.EnvironmentName}' bat buoc phai co 1 trong 3 — xem " +
-                    "ADSUS_BE.BLL/Common/SendGridSettings.cs, ResendSettings.cs hoac EmailSettings.cs " +
-                    "de biet cac khoa can khai.");
+                    "Chua cau hinh SendGrid. Moi truong " +
+                    $"'{builder.Environment.EnvironmentName}' bat buoc phai co — xem " +
+                    "ADSUS_BE.BLL/Common/SendGridSettings.cs de biet cac khoa can khai.");
             }
 
             // BLL — Module 10: Engagement (Blog PUBLIC endpoints)
