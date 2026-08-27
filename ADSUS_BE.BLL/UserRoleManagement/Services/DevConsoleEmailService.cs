@@ -7,8 +7,8 @@ namespace ADSUS_BE.BLL.UserRoleManagement.Services;
 /// Bản dự phòng của <see cref="IEmailService"/> cho người chưa khai máy chủ SMTP.
 ///
 /// ====================================================================================
-/// CHỈ DÙNG KHI PHÁT TRIỂN, và chỉ khi CHƯA khai EmailSettings. Khai rồi thì Program.cs
-/// dùng <see cref="SmtpEmailService"/>. Ngoài Development mà chưa khai thì ứng dụng dừng
+/// CHỈ DÙNG KHI PHÁT TRIỂN, và chỉ khi CHƯA khai SendGridSettings. Khai rồi thì Program.cs
+/// dùng <see cref="SendGridEmailService"/>. Ngoài Development mà chưa khai thì ứng dụng dừng
 /// ngay lúc khởi động — cố ý như vậy, để không ai lỡ đưa lên thật với email không hoạt động.
 /// ====================================================================================
 ///
