@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../domain/entities/chat_message.dart';
+import '../../domain/entities/chat_message.dart' as entity;
 import '../viewmodels/ai_chat_view_model.dart';
 
 /// Màn hình Chatbot AI (SCR-28 / FT-39).
@@ -125,7 +125,7 @@ class _AiChatbotScreenState extends ConsumerState<AiChatbotScreen> {
                         return const _TypingIndicator();
                       }
                       final msg = state.messages[index];
-                      if (msg.role == ChatRole.user) {
+                      if (msg.role == entity.ChatRole.user) {
                         return _UserBubble(message: msg);
                       }
                       if (msg.isSafety) {
@@ -137,10 +137,13 @@ class _AiChatbotScreenState extends ConsumerState<AiChatbotScreen> {
           ),
 
           // ── Quick suggestions ─────────────────────────────────────────
-          _SuggestionChips(onTap: (text) {
-            _textController.text = text;
-            _send();
-          }),
+          _SuggestionChips(
+            intent: state.lastDetectedIntent,
+            onTap: (text) {
+              _textController.text = text;
+              _send();
+            },
+          ),
 
           // ── Input bar ─────────────────────────────────────────────────
           _InputBar(
@@ -244,7 +247,7 @@ class _EmptyState extends StatelessWidget {
 /// Bubble tin nhắn người dùng.
 class _UserBubble extends StatelessWidget {
   const _UserBubble({required this.message});
-  final ChatMessage message;
+  final entity.ChatMessage message;
 
   @override
   Widget build(BuildContext context) {
@@ -272,10 +275,14 @@ class _UserBubble extends StatelessWidget {
 /// Bubble tin nhắn AI (viền trái tím + badge).
 class _AssistantBubble extends StatelessWidget {
   const _AssistantBubble({required this.message});
-  final ChatMessage message;
+  final entity.ChatMessage message;
 
   @override
   Widget build(BuildContext context) {
+    final ctx = message.detectedIntent;
+    final badgeColor = _intentBackgroundColor(ctx);
+    final textColor  = _intentTextColor(ctx);
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ClipRRect(
@@ -295,21 +302,44 @@ class _AssistantBubble extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.aiVioletTint,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: const Text(
-                    '⚠️ Trợ lý AI — chỉ mang tính tham khảo',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.aiViolet,
+                // Context badge (intent) + AI disclaimer side by side
+                Row(
+                  children: [
+                    // Intent badge (nếu có context)
+                    if (ctx != null && ctx != entity.ChatIntent.unknown)
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: badgeColor,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          _intentLabel(ctx),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: textColor,
+                          ),
+                        ),
+                      ),
+                    // AI disclaimer badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.aiVioletTint,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        '⚠️ Trợ lý AI — chỉ mang tính tham khảo',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.aiViolet,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 // Nội dung
@@ -324,12 +354,85 @@ class _AssistantBubble extends StatelessWidget {
       ),
     );
   }
+
+  static Color _intentBackgroundColor(entity.ChatIntent? intent) {
+    if (intent == null) return AppColors.aiVioletTint;
+    switch (intent) {
+      case entity.ChatIntent.prescription:
+        return AppColors.contextPrescription;
+      case entity.ChatIntent.appointment:
+        return AppColors.contextAppointment;
+      case entity.ChatIntent.caseHistory:
+        return AppColors.contextCaseHistory;
+      case entity.ChatIntent.allergy:
+        return AppColors.contextAllergy;
+      case entity.ChatIntent.disease:
+        return AppColors.contextDisease;
+      case entity.ChatIntent.healthLog:
+        return AppColors.contextHealthLog;
+      case entity.ChatIntent.blog:
+        return AppColors.contextBlog;
+      case entity.ChatIntent.greeting:
+      case entity.ChatIntent.general:
+      case entity.ChatIntent.unknown:
+        return AppColors.aiVioletTint;
+    }
+  }
+
+  static Color _intentTextColor(entity.ChatIntent? intent) {
+    if (intent == null) return AppColors.aiViolet;
+    switch (intent) {
+      case entity.ChatIntent.prescription:
+        return AppColors.contextTextPrescription;
+      case entity.ChatIntent.appointment:
+        return AppColors.contextTextAppointment;
+      case entity.ChatIntent.caseHistory:
+        return AppColors.contextTextCaseHistory;
+      case entity.ChatIntent.allergy:
+        return AppColors.contextTextAllergy;
+      case entity.ChatIntent.disease:
+        return AppColors.contextTextDisease;
+      case entity.ChatIntent.healthLog:
+        return AppColors.contextTextHealthLog;
+      case entity.ChatIntent.blog:
+        return AppColors.contextTextBlog;
+      case entity.ChatIntent.greeting:
+      case entity.ChatIntent.general:
+      case entity.ChatIntent.unknown:
+        return AppColors.aiViolet;
+    }
+  }
+
+  static String _intentLabel(entity.ChatIntent intent) {
+    switch (intent) {
+      case entity.ChatIntent.prescription:
+        return '💊 Đơn thuốc';
+      case entity.ChatIntent.appointment:
+        return '📅 Lịch hẹn';
+      case entity.ChatIntent.caseHistory:
+        return '📋 Lịch sử khám';
+      case entity.ChatIntent.allergy:
+        return '⚠️ Dị ứng';
+      case entity.ChatIntent.disease:
+        return '🩺 Bệnh nền';
+      case entity.ChatIntent.healthLog:
+        return '📝 Nhật ký SK';
+      case entity.ChatIntent.blog:
+        return '📖 Blog';
+      case entity.ChatIntent.greeting:
+        return '👋 Chào hỏi';
+      case entity.ChatIntent.general:
+        return '💬 Tổng quát';
+      case entity.ChatIntent.unknown:
+        return '';
+    }
+  }
 }
 
 /// Safety card (full-width, không viền tím).
 class _SafetyCard extends StatelessWidget {
   const _SafetyCard({required this.message});
-  final ChatMessage message;
+  final entity.ChatMessage message;
 
   @override
   Widget build(BuildContext context) {
@@ -429,18 +532,92 @@ class _TypingIndicator extends StatelessWidget {
   }
 }
 
-/// Quick suggestion chips.
+/// Quick suggestion chips (dynamic theo intent vừa được assistant reply).
 class _SuggestionChips extends StatelessWidget {
-  const _SuggestionChips({required this.onTap});
+  const _SuggestionChips({required this.onTap, this.intent});
 
   final void Function(String) onTap;
+  final entity.ChatIntent? intent;
 
-  static const _suggestions = [
+  static const _defaultSuggestions = [
     'Duphaston uống khi nào?',
     'Khi nào cần tái khám?',
     'Tôi nên ăn gì?',
     'Tác dụng phụ của thuốc?',
   ];
+
+  static const _prescriptionSuggestions = [
+    'Đơn thuốc của tôi còn hiệu lực không?',
+    'Thuốc uống trước hay sau ăn?',
+    'Tôi quên uống thuốc thì sao?',
+    'Tác dụng phụ của thuốc là gì?',
+  ];
+
+  static const _appointmentSuggestions = [
+    'Lịch khám gần nhất của tôi là khi nào?',
+    'Tôi có lịch hẹn nào sắp tới không?',
+    'Làm sao đặt lịch tái khám?',
+    'Tôi muốn đổi lịch khám',
+  ];
+
+  static const _caseHistorySuggestions = [
+    'Kết quả khám gần nhất của tôi là gì?',
+    'Bác sĩ kết luận thế nào?',
+    'Tôi có xét nghiệm gì gần đây?',
+    'Bệnh sử của tôi như thế nào?',
+  ];
+
+  static const _allergySuggestions = [
+    'Tôi có dị ứng gì không?',
+    'Dị ứng thuốc cần lưu ý gì?',
+    'Làm sao cập nhật thông tin dị ứng?',
+    'Phản ứng dị ứng xử lý thế nào?',
+  ];
+
+  static const _diseaseSuggestions = [
+    'Bệnh nền của tôi là gì?',
+    'Bệnh nền cần theo dõi gì?',
+    'Tiểu đường ăn uống thế nào?',
+    'Cao huyết áp cần lưu ý gì?',
+  ];
+
+  static const _healthLogSuggestions = [
+    'Nhật ký sức khỏe gần đây của tôi?',
+    'Tôi nên ghi chép sức khỏe như thế nào?',
+    'Chỉ số sức khỏe của tôi ra sao?',
+    'Hướng dẫn theo dõi sức khỏe',
+  ];
+
+  static const _blogSuggestions = [
+    'Blog sức khỏe gần đây có gì mới?',
+    'Bài viết về dinh dưỡng',
+    'Hướng dẫn sức khỏe hôm nay',
+    'Tin tức sức khỏe mới nhất',
+  ];
+
+  List<String> get _chips {
+    if (intent == null) return _defaultSuggestions;
+    switch (intent!) {
+      case entity.ChatIntent.prescription:
+        return _prescriptionSuggestions;
+      case entity.ChatIntent.appointment:
+        return _appointmentSuggestions;
+      case entity.ChatIntent.caseHistory:
+        return _caseHistorySuggestions;
+      case entity.ChatIntent.allergy:
+        return _allergySuggestions;
+      case entity.ChatIntent.disease:
+        return _diseaseSuggestions;
+      case entity.ChatIntent.healthLog:
+        return _healthLogSuggestions;
+      case entity.ChatIntent.blog:
+        return _blogSuggestions;
+      case entity.ChatIntent.greeting:
+      case entity.ChatIntent.general:
+      case entity.ChatIntent.unknown:
+        return _defaultSuggestions;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -449,10 +626,10 @@ class _SuggestionChips extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _suggestions.length,
+        itemCount: _chips.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final text = _suggestions[index];
+          final text = _chips[index];
           return GestureDetector(
             onTap: () => onTap(text),
             child: Container(
