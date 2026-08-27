@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.DAL.Entities;
@@ -32,10 +33,19 @@ public class PasswordResetService : IPasswordResetService
         ForgotPasswordRequest request,
         CancellationToken cancellationToken = default)
     {
+        // [DIAG-20260827] Log tạm để chẩn đoán UC-03 (forgot-password mất ~2.3 phút, không
+        // rõ nghẽn ở bước nào). XÓA khối [DIAG-20260827] này sau khi chẩn đoán xong.
+        var diagSw = Stopwatch.StartNew();
+
         var phone = request.PhoneNumber.Trim();
         var email = request.Email.Trim();
 
         var user = await _users.GetByPhoneAsync(phone, cancellationToken);
+
+        _logger.LogWarning(
+            "[DIAG-20260827] GetByPhoneAsync xong sau {ElapsedMs}ms. Tim thay user: {Found}, " +
+            "Status: {Status}, CoEmail: {HasEmail}",
+            diagSw.ElapsedMilliseconds, user is not null, user?.Status, user?.Email is not null);
 
         // Sinh mật khẩu và băm nó LUÔN LUÔN, kể cả khi không tìm thấy tài khoản.
         //
@@ -46,6 +56,10 @@ public class PasswordResetService : IPasswordResetService
         var temporaryPassword = TemporaryPasswordGenerator.Generate();
         var hash = BCrypt.Net.BCrypt.HashPassword(temporaryPassword);
 
+        _logger.LogWarning(
+            "[DIAG-20260827] Bam xong mat khau tam sau {ElapsedMs}ms (tinh tu dau ham).",
+            diagSw.ElapsedMilliseconds);
+
         // BR-01 — phải khớp CẢ số điện thoại LẪN email.
         // AF-01 — tài khoản đã khoá hoặc vô hiệu hoá thì cũng không cấp lại.
         var matched = user is not null
@@ -53,7 +67,15 @@ public class PasswordResetService : IPasswordResetService
                       && user.Email is not null
                       && string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase);
 
-        if (!matched) return;
+        _logger.LogWarning("[DIAG-20260827] Ket qua matched = {Matched}.", matched);
+
+        if (!matched)
+        {
+            _logger.LogWarning(
+                "[DIAG-20260827] Return SOM vi khong matched, tong thoi gian {ElapsedMs}ms.",
+                diagSw.ElapsedMilliseconds);
+            return;
+        }
 
         // GỬI THƯ TRƯỚC, LƯU SAU — thứ tự này quan trọng.
         //
@@ -61,8 +83,14 @@ public class PasswordResetService : IPasswordResetService
         // thay mất trong khi mật khẩu mới không tới tay ai: chủ tài khoản bị nhốt ở ngoài
         // đúng lúc họ đang cần vào. Gửi trước thì thư hỏng chỉ có nghĩa là không có gì thay
         // đổi cả, họ thử lại là xong.
+        _logger.LogWarning("[DIAG-20260827] Bat dau goi SendTemporaryPasswordAsync...");
+
         var daGui = await _email.SendTemporaryPasswordAsync(
             user!.Email!, user.FullName, temporaryPassword, cancellationToken);
+
+        _logger.LogWarning(
+            "[DIAG-20260827] SendTemporaryPasswordAsync tra ve {DaGui} sau tong {ElapsedMs}ms.",
+            daGui, diagSw.ElapsedMilliseconds);
 
         // AF-01 — vẫn không được phát ra tín hiệu nào khác nhau. Phương thức trả về void nên
         // ở đây không có gì rò rỉ ra ngoài được; chi tiết lỗi đã nằm trong log của server.
