@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ADSUS_BE.DAL.Entities;
@@ -9,13 +9,13 @@ public partial class Supplier
 
     public string Name { get; set; } = null!;
 
-    public string? PhoneNumber { get; set; }
+    public string PhoneNumber { get; set; } = null!;
 
-    public string? Email { get; set; }
+    public string Email { get; set; } = null!;
 
-    public string? Address { get; set; }
+    public string Address { get; set; } = null!;
 
-    public string? TaxCode { get; set; }
+    public string TaxCode { get; set; } = null!;
 
     public bool IsActive { get; set; }
 
