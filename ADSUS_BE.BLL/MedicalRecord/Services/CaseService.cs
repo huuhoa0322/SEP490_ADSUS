@@ -9,6 +9,7 @@ using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.MedicalRecord.Services;
@@ -24,6 +25,7 @@ public sealed class CaseService : ICaseService
     private readonly IUserRepository _users;
     private readonly System.Lazy<IFileStorageService> _storageLazy;
     private readonly INotificationService _notificationService;
+    private readonly AppDbContext _db;
     private readonly ILogger<CaseService> _logger;
 
     private IFileStorageService _storage => _storageLazy.Value;
@@ -35,6 +37,7 @@ public sealed class CaseService : ICaseService
         IUserRepository users,
         System.Lazy<IFileStorageService> storageLazy,
         INotificationService notificationService,
+        AppDbContext db,
         ILogger<CaseService> logger)
     {
         _cases = cases;
@@ -43,6 +46,7 @@ public sealed class CaseService : ICaseService
         _users = users;
         _storageLazy = storageLazy;
         _notificationService = notificationService;
+        _db = db;
         _logger = logger;
     }
 
@@ -336,11 +340,34 @@ public sealed class CaseService : ICaseService
         medicalCase.Status = CaseStatus.End;
         medicalCase.UpdatedAt = DateTime.UtcNow;
 
+        // Complete related appointment if exists and is Approved
+        await CompleteRelatedAppointmentAsync(caseId, ct);
+
         await _cases.SaveChangesAsync(ct);
 
         _logger.LogInformation("Case {CaseId} ended without prescription by doctor {DoctorId}", caseId, actingDoctorId);
 
         return await GetForStaffAsync(caseId, ct);
+    }
+
+    /// <summary>
+    /// Complete appointment when case is ended.
+    /// </summary>
+    private async Task CompleteRelatedAppointmentAsync(Guid caseId, CancellationToken ct)
+    {
+        var appointment = await _db.Appointments
+            .Where(a => a.CaseId == caseId && a.Status == AppointmentStatus.Approved)
+            .FirstOrDefaultAsync(ct);
+
+        if (appointment != null)
+        {
+            appointment.Status = AppointmentStatus.Completed;
+            appointment.UpdatedAt = DateTime.UtcNow;
+
+            _logger.LogInformation(
+                "Appointment {AppointmentId} completed when case {CaseId} was ended",
+                appointment.AppointmentId, caseId);
+        }
     }
 
     /// <inheritdoc />
