@@ -139,6 +139,11 @@ const ROUTE_ROLES: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
   // UC-18: Doctor kê đơn thuốc (Module 7 Task 8 / SCR-17). Nurse có thể xem danh sách
   // tuân thủ nhưng không được kê đơn — kê đơn là hành vi y khoa chỉ Doctor được phép.
   { prefix: "/prescriptions", roles: ["DOCTOR"] },
+  // SCR mới (28/08/2026) — "Lịch bệnh nhân": Doctor xem lịch bệnh nhân đã đặt, chỉ đọc. Phải
+  // đứng TRƯỚC "/schedule" bên dưới vì isRoleAllowedOnPath dùng .find() (khớp luật đầu tiên) —
+  // nếu để sau, cả hai luật đều cho DOCTOR nên không lộ bug, nhưng thứ tự đúng ngăn một luật
+  // "/schedule" mới hơn (nếu sau này đổi role) vô tình khớp nhầm trước.
+  { prefix: "/schedule/patients", roles: ["DOCTOR"] },
   // UC-15: Chỉ Bác sĩ mới được quyền quản lý lịch khám của mình, Admin và Nurse không được vào.
   { prefix: "/schedule", roles: ["DOCTOR"] },
 ];

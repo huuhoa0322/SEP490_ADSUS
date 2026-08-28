@@ -46,7 +46,10 @@ export function AppSidebar() {
         )}
 
         {user?.role === "DOCTOR" && (
-          <NavItem expanded={expanded} href="/schedule" icon={<CalendarClock className="size-5" />} label="Quản lý lịch" active={pathname.startsWith("/schedule")} />
+          <>
+            <NavItem expanded={expanded} href="/schedule" icon={<CalendarClock className="size-5" />} label="Quản lý lịch" active={pathname.startsWith("/schedule") && !pathname.startsWith("/schedule/patients")} />
+            <NavItem expanded={expanded} href="/schedule/patients" icon={<Users className="size-5" />} label="Lịch bệnh nhân" active={pathname.startsWith("/schedule/patients")} />
+          </>
         )}
       </div>
 

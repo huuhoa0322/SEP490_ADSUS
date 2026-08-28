@@ -103,3 +103,19 @@ public sealed class OpenSlotResponse
     public TimeOnly EndTime { get; init; }
     public DateTime CreatedAt { get; init; }
 }
+
+/// <summary>
+/// Response cho màn "Lịch bệnh nhân" của Doctor — appointment còn BOOKED hoặc APPROVED
+/// (Approved = bệnh nhân đã checkin, vẫn phải hiện). Cancelled và Completed bị lọc bỏ.
+/// Độc lập với ScheduleSlotResponse: đây là góc nhìn theo BỆNH NHÂN, không phải theo slot.
+/// </summary>
+public sealed class DoctorPatientAppointmentResponse
+{
+    public Guid AppointmentId { get; init; }
+    public DateOnly SlotDate { get; init; }
+    public TimeOnly StartTime { get; init; }
+    public TimeOnly EndTime { get; init; }
+    public Guid PatientProfileId { get; init; }
+    public string PatientFullName { get; init; } = string.Empty;
+    public string? Reason { get; init; }
+}
