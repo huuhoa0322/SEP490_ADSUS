@@ -53,7 +53,9 @@ public sealed class GeminiChatClient : IChatClient
 
         var client = _httpClientFactory.CreateClient("AiBackend");
         client.DefaultRequestHeaders.Clear();
-        client.Timeout = TimeSpan.FromSeconds(30);
+        // Gemini free tier cold-start mỗi call từ 6-15s (đo 2026-08-27). Client
+        // abort sớm = user thấy 500 thay vì fallback thân thiện.
+        client.Timeout = TimeSpan.FromSeconds(60);
 
         var request = BuildRequest(systemPrompt, history, userMessage);
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
@@ -98,7 +100,15 @@ public sealed class GeminiChatClient : IChatClient
         }
         catch (TaskCanceledException) when (ct.IsCancellationRequested)
         {
-            throw;
+            // Client (Flutter) abort request → ct bị huỷ. Trước đây code re-throw khiến
+            // controller trả 500. Client timeout sớm hơn HttpClient.Timeout, nên khi ct
+            // bị cancel thường là vì user đã đóng, NHƯNG vẫn nên trả fallback để log
+            // không bị nhiễu bởi exception này.
+            sw.Stop();
+            _logger.LogInformation(
+                "Gemini call cancelled by client after {Elapsed}ms (ct.IsCancellationRequested=true)",
+                sw.ElapsedMilliseconds);
+            return "Trợ lý AI đang bận. Vui lòng thử lại sau.";
         }
         catch (TaskCanceledException tex)
         {

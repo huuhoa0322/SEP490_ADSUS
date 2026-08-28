@@ -20,12 +20,14 @@ namespace ADSUS_BE.BLL.Engagement.Services;
 /// 4. Return ChatMessageResponse
 ///
 /// GB-02: KHÔNG gọi LLM khi filter chặn.
+///
+/// Phase 2 — Intent Detection: trước khi gọi LLM, ChatDataAggregator chỉ query
+/// data sources cần thiết dựa trên intent đã detect (giảm latency + token bloat).
 /// </summary>
 public sealed class ChatService : IChatService
 {
     private const int MaxContentLength = 1000;
 
-    // System prompt mặc định theo docs/module-10.md
     private const string DefaultSystemPrompt =
         "Bạn là trợ lý sức khỏe của ADSUS. " +
         "Trả lời ngắn gọn, dựa trên kết quả khám đã được bác sĩ xác nhận. " +
@@ -34,6 +36,8 @@ public sealed class ChatService : IChatService
     private readonly IAiChatMessageRepository _repo;
     private readonly IPsychologyTopicFilter _psychologyFilter;
     private readonly IChatClient _chatClient;
+    private readonly IIntentDetector _intentDetector;
+    private readonly IChatDataAggregator _aggregator;
     private readonly ILogger<ChatService> _logger;
     private readonly string _systemPrompt;
 
@@ -41,12 +45,16 @@ public sealed class ChatService : IChatService
         IAiChatMessageRepository repo,
         IPsychologyTopicFilter psychologyFilter,
         IChatClient chatClient,
+        IIntentDetector intentDetector,
+        IChatDataAggregator aggregator,
         ILogger<ChatService> logger,
         IOptions<AiBackendSettings> settings)
     {
         _repo = repo;
         _psychologyFilter = psychologyFilter;
         _chatClient = chatClient;
+        _intentDetector = intentDetector;
+        _aggregator = aggregator;
         _logger = logger;
         _systemPrompt = !string.IsNullOrWhiteSpace(settings.Value.ChatBotSystemPrompt)
             ? settings.Value.ChatBotSystemPrompt
@@ -82,6 +90,7 @@ public sealed class ChatService : IChatService
         var unsafeTopic = _psychologyFilter.DetectUnsafeTopic(content);
         string assistantContent;
         bool isSafety;
+        IntentResult? intent = null;
 
         if (unsafeTopic is not null)
         {
@@ -94,11 +103,15 @@ public sealed class ChatService : IChatService
         }
         else
         {
+            // Phase 2: detect intent → selective query data sources
+            intent = await _intentDetector.DetectAsync(content, ct);
+
             // Safe: gọi LLM. Disclaimer đã hiển thị ở Flutter UI (banner cố định + badge đầu bubble),
             // nên BE không ghép DisclaimerText.General vào nữa — tránh lặp khi LLM tự thêm.
             var history = await BuildHistoryForLlm(userId, ct);
+            var effectivePrompt = await BuildSystemPromptAsync(userId, intent, ct);
             var llmResponse = await _chatClient.SendMessageAsync(
-                _systemPrompt, history, content, ct);
+                effectivePrompt, history, content, ct);
             assistantContent = llmResponse.Trim();
             isSafety = false;
         }
@@ -121,6 +134,7 @@ public sealed class ChatService : IChatService
             Content = assistantContent,
             CreatedAt = assistantMsg.CreatedAt,
             IsSafetyResponse = isSafety,
+            DetectedIntent = isSafety ? null : intent?.Intent,
         };
     }
 
@@ -178,5 +192,104 @@ public sealed class ChatService : IChatService
     {
         // Safety response không bao giờ chứa "độ tin cậy AI" (chỉ normal AI response mới có badge)
         return !content.Contains("độ tin cậy AI", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Ghép patient context vào system prompt.
+    /// Nếu không có hồ sơ nền, trả về prompt gốc.
+    /// Phase 2: chỉ inject sections có data thực (dựa trên intent.TriggeredSources).
+    /// </summary>
+    private async Task<string> BuildSystemPromptAsync(Guid userId, IntentResult intent, CancellationToken ct)
+    {
+        var context = await _aggregator.BuildContextAsync(userId, intent, ct);
+
+        if (context?.BasicInfo is null)
+            return _systemPrompt;
+
+        var sections = new List<string> { _systemPrompt };
+
+        sections.Add("=== THÔNG TIN BỆNH NHÂN ===");
+        sections.Add($"Họ tên: {context.BasicInfo.FullName}");
+        if (context.BasicInfo.Age is not null)
+            sections.Add($"Tuổi: {context.BasicInfo.Age}");
+
+        if (context.ActivePrescriptions?.Count > 0)
+        {
+            sections.Add("\n=== ĐƠN THUỐC ĐANG DÙNG ===");
+            foreach (var rx in context.ActivePrescriptions)
+            {
+                sections.Add($"Đơn ngày {rx.PrescribedDate:yyyy-MM-dd}" +
+                    (rx.GeneralNote is { } n ? $" ({n})" : "") + ":");
+                foreach (var item in rx.Items)
+                {
+                    var slots = string.Join(", ",
+                        Enumerable.Range(0, (int)item.DurationDays)
+                            .Select(d => item.StartDate.AddDays(d).ToString("dd/MM")));
+                    sections.Add($"  - {item.MedicineName} {item.Dosage}" +
+                        $" × {item.DurationDays} ngày (từ {item.StartDate:dd/MM})" +
+                        (item.Instructions is { } i ? $" — {i}" : ""));
+                }
+            }
+        }
+
+        if (context.TodayIntakes?.Count > 0)
+        {
+            sections.Add("\n=== LIỀU HÔM NAY ===");
+            foreach (var dose in context.TodayIntakes)
+            {
+                var time = dose.ScheduledTime.ToString("HH:mm");
+                sections.Add($"  - {dose.MedicineName} {dose.Dosage} lúc {time} [{dose.Status}]" +
+                    (dose.Instructions is { } i ? $" — {i}" : ""));
+            }
+        }
+
+        if (context.UpcomingAppointments?.Count > 0)
+        {
+            sections.Add("\n=== LỊCH HẸN SẮP TỚI ===");
+            foreach (var appt in context.UpcomingAppointments)
+            {
+                sections.Add($"  - {appt.SlotDate:dd/MM/yyyy} {appt.StartTime:HH:mm}–{appt.EndTime:HH:mm}" +
+                    $" với Bác sĩ {appt.DoctorName}" +
+                    (appt.Reason is { } r ? $" (lý do: {r})" : ""));
+            }
+        }
+
+        if (context.RecentCases?.Count > 0)
+        {
+            sections.Add("\n=== LỊCH SỬ KHÁM GẦN ĐÂY ===");
+            foreach (var c in context.RecentCases)
+            {
+                sections.Add($"  - {c.VisitDate:dd/MM/yyyy}: " +
+                    $"{(c.FinalDiagnosis?.Length > 0 == true ? c.FinalDiagnosis : "Chưa có chẩn đoán")}" +
+                    (c.DoctorConclusion?.Length > 0 == true ? $" — {c.DoctorConclusion}" : ""));
+            }
+        }
+
+        if (context.Allergies?.Count > 0)
+        {
+            sections.Add("\n=== DỊ ỨNG ===");
+            sections.Add(string.Join(", ",
+                context.Allergies.Select(a => $"{a.AllergyTypeName}" +
+                    (a.Note?.Length > 0 == true ? $" ({a.Note})" : ""))));
+        }
+
+        if (context.Diseases?.Count > 0)
+        {
+            sections.Add("\n=== BỆNH NỀN ===");
+            sections.Add(string.Join(", ",
+                context.Diseases.Select(d => $"{d.DiseaseName}" +
+                    (d.Note?.Length > 0 == true ? $" ({d.Note})" : ""))));
+        }
+
+        if (context.RecentHealthLogs?.Count > 0)
+        {
+            sections.Add("\n=== NHẬT KÝ SỨC KHỎE GẦN ĐÂY ===");
+            foreach (var log in context.RecentHealthLogs)
+            {
+                sections.Add($"  - {log.LogDate:dd/MM}: {log.Content}");
+            }
+        }
+
+        return string.Join(Environment.NewLine, sections);
     }
 }
