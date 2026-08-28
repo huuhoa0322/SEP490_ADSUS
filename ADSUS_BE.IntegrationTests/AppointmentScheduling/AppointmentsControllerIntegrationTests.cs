@@ -533,6 +533,45 @@ public class AppointmentsControllerIntegrationTests
 
     #endregion
 
+    #region ListForDoctor Tests
+
+    [Fact]
+    public async Task ListForDoctor_AsDoctor_ReturnsOk()
+    {
+        using var app = CreateApp();
+        var client = CreateDoctorClient(app);
+
+        _appointments
+            .Setup(r => r.ListByDoctorAsync(
+                It.IsAny<Guid>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Appointment>());
+
+        var response = await client.GetAsync("/api/v1/appointments/doctor?fromDate=2026-07-10&toDate=2026-07-16");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("patient")]
+    [InlineData("nurse")]
+    [InlineData("admin")]
+    public async Task ListForDoctor_AsNonDoctorRole_IsForbidden(string role)
+    {
+        using var app = CreateApp();
+        var client = role switch
+        {
+            "patient" => TestAuthHelper.CreatePatientClient(app, _users),
+            "nurse" => TestAuthHelper.CreateNurseClient(app, _users),
+            _ => TestAuthHelper.CreateAdminClient(app, _users),
+        };
+
+        var response = await client.GetAsync("/api/v1/appointments/doctor?fromDate=2026-07-10&toDate=2026-07-16");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private WebApplicationFactory<Program> CreateApp()

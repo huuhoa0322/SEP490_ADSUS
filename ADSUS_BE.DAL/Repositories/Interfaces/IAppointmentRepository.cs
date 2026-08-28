@@ -16,6 +16,17 @@ public interface IAppointmentRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Danh sách appointment của một Doctor trong khoảng ngày (theo Slot.SlotDate).
+    /// Dùng cho màn "Lịch bệnh nhân" (Doctor xem ai đã đặt lịch với mình) — độc lập với
+    /// luồng quản lý ScheduleSlot.
+    /// </summary>
+    Task<IReadOnlyList<Appointment>> ListByDoctorAsync(
+        Guid doctorId,
+        DateOnly fromDate,
+        DateOnly toDate,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Lấy appointment theo ID (kèm Slot + Doctor).
     /// </summary>
     Task<Appointment?> GetByIdAsync(Guid appointmentId, CancellationToken ct = default);

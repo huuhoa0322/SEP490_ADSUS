@@ -485,6 +485,160 @@ public class AppointmentServiceTests : IDisposable
 
     #endregion
 
+    #region ListForDoctorAsync Tests
+
+    [Fact]
+    public async Task ListForDoctorAsync_OnlyBookedAppointments_ExcludesCancelled()
+    {
+        var fromDate = new DateOnly(2026, 7, 10);
+        var toDate = new DateOnly(2026, 7, 16);
+
+        var patientUser = new User { UserId = Guid.NewGuid(), FullName = "Trần Văn Bình" };
+        var patientProfile = new PatientProfile { PatientProfileId = Guid.NewGuid(), User = patientUser };
+        var slot = new ScheduleSlot
+        {
+            SlotId = Guid.NewGuid(),
+            DoctorId = _doctorId,
+            SlotDate = new DateOnly(2026, 7, 11),
+            StartTime = new TimeOnly(9, 0),
+            EndTime = new TimeOnly(9, 30),
+        };
+
+        var bookedAppointment = new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = slot.SlotId,
+            Slot = slot,
+            PatientProfileId = patientProfile.PatientProfileId,
+            PatientProfile = patientProfile,
+            Status = AppointmentStatus.Booked,
+            Reason = "Khám định kỳ",
+        };
+        var cancelledAppointment = new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = slot.SlotId,
+            Slot = slot,
+            PatientProfileId = patientProfile.PatientProfileId,
+            PatientProfile = patientProfile,
+            Status = AppointmentStatus.Cancelled,
+        };
+
+        _appointmentRepo
+            .Setup(r => r.ListByDoctorAsync(_doctorId, fromDate, toDate, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { bookedAppointment, cancelledAppointment });
+
+        var result = await _sut.ListForDoctorAsync(_doctorId, fromDate, toDate);
+
+        var item = Assert.Single(result);
+        Assert.Equal(bookedAppointment.AppointmentId, item.AppointmentId);
+        Assert.Equal("Trần Văn Bình", item.PatientFullName);
+        Assert.Equal("Khám định kỳ", item.Reason);
+        Assert.Equal(slot.SlotDate, item.SlotDate);
+    }
+
+    [Fact]
+    public async Task ListForDoctorAsync_NoAppointments_ReturnsEmptyList()
+    {
+        var fromDate = new DateOnly(2026, 7, 10);
+        var toDate = new DateOnly(2026, 7, 16);
+
+        _appointmentRepo
+            .Setup(r => r.ListByDoctorAsync(_doctorId, fromDate, toDate, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Appointment>());
+
+        var result = await _sut.ListForDoctorAsync(_doctorId, fromDate, toDate);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task ListForDoctorAsync_ApprovedAppointment_IsIncluded()
+    {
+        // Arrange — patient has checked in (status = APPROVED) and should still show up in
+        // doctor's "who is coming to see me" list. This tests the fix for the bug where
+        // Approved was incorrectly filtered out.
+        var fromDate = new DateOnly(2026, 7, 10);
+        var toDate = new DateOnly(2026, 7, 16);
+
+        var patientUser = new User { UserId = Guid.NewGuid(), FullName = "Lê Thị Mai" };
+        var patientProfile = new PatientProfile { PatientProfileId = Guid.NewGuid(), User = patientUser };
+        var slot = new ScheduleSlot
+        {
+            SlotId = Guid.NewGuid(),
+            DoctorId = _doctorId,
+            SlotDate = new DateOnly(2026, 7, 12),
+            StartTime = new TimeOnly(14, 0),
+            EndTime = new TimeOnly(14, 30),
+        };
+
+        var approvedAppointment = new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = slot.SlotId,
+            Slot = slot,
+            PatientProfileId = patientProfile.PatientProfileId,
+            PatientProfile = patientProfile,
+            Status = AppointmentStatus.Approved,  // Nurse checked in
+            Reason = "Khám theo dõi",
+        };
+
+        _appointmentRepo
+            .Setup(r => r.ListByDoctorAsync(_doctorId, fromDate, toDate, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { approvedAppointment });
+
+        // Act
+        var result = await _sut.ListForDoctorAsync(_doctorId, fromDate, toDate);
+
+        // Assert — Approved appointment should be included
+        var item = Assert.Single(result);
+        Assert.Equal(approvedAppointment.AppointmentId, item.AppointmentId);
+        Assert.Equal("Lê Thị Mai", item.PatientFullName);
+    }
+
+    [Fact]
+    public async Task ListForDoctorAsync_CompletedAppointment_IsExcluded()
+    {
+        // Arrange — appointment is already completed (doctor ended the case) and should NOT
+        // show up in the doctor's schedule list for future/current appointments.
+        var fromDate = new DateOnly(2026, 7, 10);
+        var toDate = new DateOnly(2026, 7, 16);
+
+        var patientUser = new User { UserId = Guid.NewGuid(), FullName = "Nguyễn Văn Công" };
+        var patientProfile = new PatientProfile { PatientProfileId = Guid.NewGuid(), User = patientUser };
+        var slot = new ScheduleSlot
+        {
+            SlotId = Guid.NewGuid(),
+            DoctorId = _doctorId,
+            SlotDate = new DateOnly(2026, 7, 11),
+            StartTime = new TimeOnly(10, 0),
+            EndTime = new TimeOnly(10, 30),
+        };
+
+        var completedAppointment = new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = slot.SlotId,
+            Slot = slot,
+            PatientProfileId = patientProfile.PatientProfileId,
+            PatientProfile = patientProfile,
+            Status = AppointmentStatus.Completed,  // Doctor already ended case
+            Reason = "Khám tổng quát",
+        };
+
+        _appointmentRepo
+            .Setup(r => r.ListByDoctorAsync(_doctorId, fromDate, toDate, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { completedAppointment });
+
+        // Act
+        var result = await _sut.ListForDoctorAsync(_doctorId, fromDate, toDate);
+
+        // Assert — Completed appointment should be excluded
+        Assert.Empty(result);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private User CreateDoctor(string name = "Dr. Test", Guid? specificId = null)

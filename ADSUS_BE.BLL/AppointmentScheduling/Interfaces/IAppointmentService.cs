@@ -63,4 +63,16 @@ public interface IAppointmentService
     Task<AppointmentResponse> CheckinAppointmentAsync(
         Guid appointmentId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Danh sách bệnh nhân BOOKED và APPROVED với Doctor trong khoảng ngày — cho màn
+    /// "Lịch bệnh nhân". Cancelled và Completed bị lọc bỏ hoàn toàn.
+    /// Approved = bệnh nhân đã checkin tại phòng khám, vẫn cần hiện trên màn để bác sĩ
+    /// biết ai đã đến.
+    /// </summary>
+    Task<IReadOnlyList<DoctorPatientAppointmentResponse>> ListForDoctorAsync(
+        Guid doctorId,
+        DateOnly fromDate,
+        DateOnly toDate,
+        CancellationToken ct = default);
 }
