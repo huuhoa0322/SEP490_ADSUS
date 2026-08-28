@@ -22,7 +22,7 @@ public class RateLimitResponseTests
         "Too many requests. Please wait before trying again.";
 
     [Fact]
-    public async Task RequestThuMuoiMot_TraVe429KemJsonDungChuan()
+    public async Task EleventhRequest_Returns429WithStandardJsonEnvelope()
     {
         using var app = CreateApp();
         using var client = app.CreateClient();
