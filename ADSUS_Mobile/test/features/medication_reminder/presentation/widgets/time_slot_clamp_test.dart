@@ -218,20 +218,30 @@ class _ClampResult {
 _ClampResult _clampToSlot(String label, TimeOfDay picked) {
   switch (label) {
     case 'Sáng': // 05:00–10:59
-      if (picked.hour < 5)  return _ClampResult(hour: 5,  minute: 0,  adjusted: true);
-      if (picked.hour > 10 || (picked.hour == 10 && picked.minute > 59))
+      if (picked.hour < 5) {
+        return _ClampResult(hour: 5, minute: 0, adjusted: true);
+      }
+      if (picked.hour > 10 || (picked.hour == 10 && picked.minute > 59)) {
         return _ClampResult(hour: 10, minute: 59, adjusted: true);
+      }
       return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
 
     case 'Trưa': // 11:00–16:59
-      if (picked.hour < 11) return _ClampResult(hour: 11, minute: 0,  adjusted: true);
-      if (picked.hour > 16 || (picked.hour == 16 && picked.minute > 59))
+      if (picked.hour < 11) {
+        return _ClampResult(hour: 11, minute: 0, adjusted: true);
+      }
+      if (picked.hour > 16 || (picked.hour == 16 && picked.minute > 59)) {
         return _ClampResult(hour: 16, minute: 59, adjusted: true);
+      }
       return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
 
     case 'Tối': // 17:00–23:59
-      if (picked.hour < 17) return _ClampResult(hour: 17, minute: 0,  adjusted: true);
-      if (picked.hour > 23) return _ClampResult(hour: 23, minute: 59, adjusted: true);
+      if (picked.hour < 17) {
+        return _ClampResult(hour: 17, minute: 0, adjusted: true);
+      }
+      if (picked.hour > 23) {
+        return _ClampResult(hour: 23, minute: 59, adjusted: true);
+      }
       return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
 
     default:
