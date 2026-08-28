@@ -31,6 +31,7 @@ public class AccountAuditTrail
     public const string CreateAccount = "CREATE_ACCOUNT";
     public const string UpdateAccount = "UPDATE_ACCOUNT";
     public const string DeactivateAccount = "DEACTIVATE_ACCOUNT";
+    public const string ReactivateAccount = "REACTIVATE_ACCOUNT";
     public const string AdminResetPassword = "ADMIN_RESET_PASSWORD";
     public const string SelfServiceResetPassword = "SELF_RESET_PASSWORD";
 

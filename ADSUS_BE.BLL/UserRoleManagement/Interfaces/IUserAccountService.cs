@@ -51,16 +51,17 @@ public interface IUserAccountService
         Guid actingAdminId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// FT-08 — vô hiệu hoá tài khoản.
-    /// Không bao giờ xoá cứng bản ghi; dữ liệu liên quan vẫn phải truy cập được.
-    /// </summary>
-        Task<AccountOperationResult> ReactivateAsync(
+    /// <summary>AF-02 — khôi phục một tài khoản đã bị vô hiệu hoá.</summary>
+    Task<AccountOperationResult> ReactivateAsync(
         Guid actingAdminId,
         Guid targetUserId,
         string reason,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// FT-08 — vô hiệu hoá tài khoản.
+    /// Không bao giờ xoá cứng bản ghi; dữ liệu liên quan vẫn phải truy cập được.
+    /// </summary>
     Task<AccountOperationResult> DeactivateAsync(
         Guid userId,
         Guid actingAdminId,
