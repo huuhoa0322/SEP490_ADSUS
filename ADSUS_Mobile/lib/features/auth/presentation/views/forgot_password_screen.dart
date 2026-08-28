@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/phone_number_rule.dart';
-import '../../../../core/network/api_exception.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/providers/app_providers.dart';
+import '../viewmodels/forgot_password_view_model.dart';
 import 'widgets/message_banner.dart';
 
 /// UC-03 FT-06 — người dùng tự yêu cầu cấp lại mật khẩu, mở từ SCR-02.
@@ -25,9 +24,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
 
-  bool _isSending = false;
-  bool _sent = false;
-  String? _errorMessage;
+  String? _clientError;
 
   @override
   void dispose() {
@@ -41,7 +38,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     final email = _emailController.text.trim();
 
     if (phone.isEmpty || email.isEmpty) {
-      setState(() => _errorMessage = 'Vui lòng nhập số điện thoại và email đã đăng ký.');
+      setState(() => _clientError = 'Vui lòng nhập số điện thoại và email đã đăng ký.');
       return;
     }
 
@@ -50,42 +47,35 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     // Thiếu bước này thì gõ nhầm một chữ số vẫn nhận được câu "đã gửi yêu cầu", rồi ngồi chờ
     // mail mãi không tới mà tưởng hệ thống hỏng.
     if (!PhoneNumberRule.isValid(phone)) {
-      setState(() => _errorMessage = PhoneNumberRule.errorMessage);
+      setState(() => _clientError = PhoneNumberRule.errorMessage);
       return;
     }
 
-    setState(() {
-      _isSending = true;
-      _errorMessage = null;
-    });
+    setState(() => _clientError = null);
 
-    try {
-      await ref
-          .read(authRepositoryProvider)
-          .requestPasswordReset(phoneNumber: phone, email: email);
-
-      if (mounted) setState(() => _sent = true);
-    } on ApiException catch (e) {
-      if (mounted) setState(() => _errorMessage = e.message);
-    } finally {
-      if (mounted) setState(() => _isSending = false);
-    }
+    await ref
+        .read(forgotPasswordViewModelProvider.notifier)
+        .submit(phoneNumber: phone, email: email);
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(forgotPasswordViewModelProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Quên mật khẩu')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-          child: _sent ? _buildSentMessage() : _buildForm(),
+          child: state.sent ? _buildSentMessage() : _buildForm(state),
         ),
       ),
     );
   }
 
-  Widget _buildForm() {
+  Widget _buildForm(ForgotPasswordState state) {
+    final errorMessage = _clientError ?? state.errorMessage;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -99,7 +89,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         TextField(
           controller: _phoneController,
           keyboardType: TextInputType.phone,
-          enabled: !_isSending,
+          enabled: !state.isSending,
           decoration: const InputDecoration(
             hintText: '0900000000',
             prefixIcon: Icon(Icons.phone_outlined),
@@ -111,7 +101,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         TextField(
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
-          enabled: !_isSending,
+          enabled: !state.isSending,
           onSubmitted: (_) => _submit(),
           decoration: const InputDecoration(
             hintText: 'email@example.com',
@@ -119,15 +109,15 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           ),
         ),
 
-        if (_errorMessage != null) ...[
+        if (errorMessage != null) ...[
           const SizedBox(height: 18),
-          MessageBanner(message: _errorMessage!),
+          MessageBanner(message: errorMessage),
         ],
 
         const SizedBox(height: 26),
         ElevatedButton(
-          onPressed: _isSending ? null : _submit,
-          child: _isSending
+          onPressed: state.isSending ? null : _submit,
+          child: state.isSending
               ? const SizedBox(
                   height: 20,
                   width: 20,

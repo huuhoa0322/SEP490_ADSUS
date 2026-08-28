@@ -168,7 +168,10 @@ jobs:
             # widget pumped. --file-reporter writes JSON ALONGSIDE the normal human-readable
             # console reporter (unlike --reporter json, which would replace it entirely).
             - name: Unit Tests
-              run: flutter test test/auth_repository_test.dart test/dio_client_test.dart test/features --file-reporter="json:unit-test-results.json"
+              # auth_repository_test.dart moved under test/features/auth/data/repositories/
+              # (P_MB9 review, 28/08/2026) — already covered by the test/features argument
+              # below, no longer needs its own explicit path.
+              run: flutter test test/dio_client_test.dart test/features --file-reporter="json:unit-test-results.json"
 
             - name: Widget Tests
               if: success() || failure()

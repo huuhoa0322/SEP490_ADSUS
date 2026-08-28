@@ -16,7 +16,7 @@ import 'auth_error_mapper.dart';
 /// UC-01: SCR-02 (Mobile) dành cho Bệnh nhân; Admin, Bác sĩ và Điều dưỡng đăng nhập trên
 /// Web qua SCR-01. Bảng quyền PRD §3.2 cũng không giao chức năng nào của ba vai trò kia
 /// cho ứng dụng di động.
-const UserRole vaiTroDuocDungMobile = UserRole.patient;
+const UserRole mobileAllowedRole = UserRole.patient;
 
 class AuthRepositoryImpl implements AuthRepository {
   // Dùng tham số vị trí thay vì tham số có tên, vì Dart không cho phép tên tham số bắt
@@ -46,7 +46,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
       // Chặn TRƯỚC khi ghi bất cứ thứ gì xuống máy. Nếu ghi rồi mới chặn thì token của
       // bác sĩ vẫn nằm lại trong thiết bị dù họ không vào được ứng dụng.
-      if (session.role != vaiTroDuocDungMobile) {
+      if (session.role != mobileAllowedRole) {
         throw const ApiException(
           'Tài khoản này sử dụng giao diện web của ADSUS. '
           'Ứng dụng di động chỉ dành cho bệnh nhân.',
@@ -55,8 +55,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
       // Đổi sang tài khoản khác thì phải xoá trạng thái sinh trắc học của người trước.
       // Không có bước này, người sau sẽ thừa hưởng nút vân tay mà chính họ chưa hề bật.
-      final soDaGhep = await _storage.read(key: StorageKeys.pairedPhone);
-      if (soDaGhep != null && soDaGhep != phoneNumber) {
+      final pairedPhoneOnDevice = await _storage.read(key: StorageKeys.pairedPhone);
+      if (pairedPhoneOnDevice != null && pairedPhoneOnDevice != phoneNumber) {
         await _storage.delete(key: StorageKeys.biometricEnabled);
       }
 

@@ -449,20 +449,31 @@ namespace ADSUS_BE
             }
 
             // ---------- Gửi email (API-04) ----------
-            builder.Services.Configure<EmailSettings>(
-                builder.Configuration.GetSection(EmailSettings.SectionName));
+            builder.Services.Configure<SendGridSettings>(
+                builder.Configuration.GetSection(SendGridSettings.SectionName));
 
-            var emailSettings = builder.Configuration
-                .GetSection(EmailSettings.SectionName)
-                .Get<EmailSettings>();
+            var sendGridSettings = builder.Configuration
+                .GetSection(SendGridSettings.SectionName)
+                .Get<SendGridSettings>();
 
-            if (emailSettings?.IsConfigured == true)
+            // Gửi qua SendGrid REST API (HTTPS) — chốt 28/08/2026 sau khi thử cả 3 lựa chọn:
+            //   - SmtpEmailService (SMTP thô qua cổng 587, đã gỡ bỏ): đo thật trên Render có
+            //     lúc mất tới ~2.3 phút mỗi lần gọi (không rõ do IPv6 hay do mạng chặn/làm
+            //     chậm cổng 587).
+            //   - ResendEmailService (REST API, đã gỡ bỏ): free tier bắt verify CẢ 1 DOMAIN
+            //     (cần quyền quản trị DNS) mới gửi được cho người nhận bất kỳ — xác nhận bằng
+            //     lỗi 403 thật khi thử gửi cho người khác lúc chưa verify domain.
+            // SendGrid chỉ cần verify ĐÚNG 1 địa chỉ gửi (Single Sender Verification — bấm
+            // link trong hộp thư), không cần domain riêng, và gửi qua HTTPS nên không dính
+            // vấn đề mạng/cổng SMTP của Render.
+            if (sendGridSettings?.IsConfigured == true)
             {
-                builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+                builder.Services.AddHttpClient("SendGrid");
+                builder.Services.AddScoped<IEmailService, SendGridEmailService>();
             }
             else if (builder.Environment.IsDevelopment())
             {
-                // Chưa khai SMTP thì vẫn phải chạy được, nếu không cả nhóm bị chặn chỉ vì
+                // Chưa khai gì thì vẫn phải chạy được, nếu không cả nhóm bị chặn chỉ vì
                 // thiếu một tài khoản gửi mail. Bản này in mật khẩu tạm ra console.
                 builder.Services.AddScoped<IEmailService, DevConsoleEmailService>();
             }
@@ -476,13 +487,19 @@ namespace ADSUS_BE
                 // nên NGAY CẢ ĐĂNG NHẬP cũng trả 500 ở môi trường khác Development, trong
                 // khi log không nói gì về email.
                 throw new InvalidOperationException(
-                    "Chua cau hinh EmailSettings. Moi truong " +
-                    $"'{builder.Environment.EnvironmentName}' bat buoc phai co may chu SMTP that " +
-                    "— xem ADSUS_BE.BLL/Common/EmailSettings.cs de biet cac khoa can khai.");
+                    "SendGrid is not configured. Environment " +
+                    $"'{builder.Environment.EnvironmentName}' requires it — see " +
+                    "ADSUS_BE.BLL/Common/SendGridSettings.cs for the required keys.");
             }
 
             // BLL — Module 10: Engagement (Blog PUBLIC endpoints)
             builder.Services.AddScoped<IBlogPostService, BlogPostService>();
+
+            // BLL — Module 10 Chat (FT-39) Phase 2: Intent Detection + RAG Aggregator.
+            // IntentDetector: stateless singleton (keyword matching, no I/O).
+            // ChatDataAggregator: scoped (EF Core DbContext-per-request).
+            builder.Services.AddSingleton<IIntentDetector, ChatIntentDetector>();
+            builder.Services.AddScoped<IChatDataAggregator, ChatDataAggregator>();
             builder.Services.AddScoped<IChatService, ChatService>();
             // UC-22 + FT-37: Patient feedback (general + per-case).
             builder.Services.AddScoped<IFeedbackService, FeedbackService>();

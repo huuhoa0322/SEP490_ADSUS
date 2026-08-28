@@ -18,18 +18,22 @@ public class ChatServiceTests
     private static ChatService NewSut(
         IAiChatMessageRepository? repo = null,
         IPsychologyTopicFilter? filter = null,
-        IChatClient? chatClient = null)
+        IChatClient? chatClient = null,
+        IIntentDetector? intentDetector = null,
+        IChatDataAggregator? aggregator = null)
     {
         repo ??= new Mock<IAiChatMessageRepository>().Object;
         filter ??= new Mock<IPsychologyTopicFilter>().Object;
         chatClient ??= new Mock<IChatClient>().Object;
+        intentDetector ??= Mock.Of<IIntentDetector>();
+        aggregator ??= Mock.Of<IChatDataAggregator>();
 
         var settings = Options.Create(new BLL.Common.AiBackendSettings
         {
             ChatBotSystemPrompt = "Test system prompt",
         });
 
-        return new ChatService(repo, filter, chatClient, Mock.Of<ILogger<ChatService>>(), settings);
+        return new ChatService(repo, filter, chatClient, intentDetector, aggregator, Mock.Of<ILogger<ChatService>>(), settings);
     }
 
     // ── SendMessageAsync ──────────────────────────────────────────────────────
@@ -250,5 +254,110 @@ public class ChatServiceTests
 
         Assert.Single(result.Messages);
         Assert.True(result.Messages[0].IsSafetyResponse);
+    }
+
+    // ── RAG: patient context injected into system prompt ───────────────────────
+
+    [Fact]
+    public async Task SendMessageAsync_WithPatientProfile_BuildsContextAndPassesToAggregator()
+    {
+        // Arrange
+        var repo = new Mock<IAiChatMessageRepository>();
+        var filter = new Mock<IPsychologyTopicFilter>();
+        var chat = new Mock<IChatClient>();
+        var intentDetector = new Mock<IIntentDetector>();
+        var aggregator = new Mock<IChatDataAggregator>();
+
+        repo.Setup(r => r.AddAsync(It.IsAny<AiChatMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AiChatMessage m, CancellationToken _) => m);
+        repo.Setup(r => r.ListByUserAsync(
+                It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AiChatMessage>());
+        filter.Setup(f => f.DetectUnsafeTopic(It.IsAny<string>())).Returns((string?)null);
+
+        intentDetector.Setup(d => d.DetectAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IntentResult { Intent = ChatIntent.General, TriggeredSources = DataSource.None });
+
+        var expectedContext = new PatientChatContext(
+            BasicInfo: new PatientBasicContextDto("Nguyễn Văn A", new DateOnly(1990, 1, 1), 36),
+            ActivePrescriptions: null,
+            TodayIntakes: null,
+            UpcomingAppointments: null,
+            RecentCases: null,
+            Allergies: null,
+            Diseases: null,
+            RecentHealthLogs: null,
+            RecentBlogs: null);
+
+        aggregator.Setup(a => a.BuildContextAsync(It.IsAny<Guid>(), It.IsAny<IntentResult>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedContext);
+
+        string? capturedSystemPrompt = null;
+        chat.Setup(c => c.SendMessageAsync(
+                It.IsAny<string>(),
+                It.IsAny<IReadOnlyList<ChatTurn>>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<string, IReadOnlyList<ChatTurn>, string, CancellationToken>(
+                (sysPrompt, _, _, _) => capturedSystemPrompt = sysPrompt)
+            .ReturnsAsync("AI response with context");
+
+        var sut = NewSut(repo.Object, filter.Object, chat.Object, intentDetector.Object, aggregator.Object);
+
+        // Act
+        await sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "Thuốc của tôi uống thế nào?" });
+
+        // Assert
+        Assert.NotNull(capturedSystemPrompt);
+        Assert.Contains("Nguyễn Văn A", capturedSystemPrompt);
+        Assert.Contains("THÔNG TIN BỆNH NHÂN", capturedSystemPrompt);
+
+        // Verify aggregator was called
+        aggregator.Verify(a => a.BuildContextAsync(It.IsAny<Guid>(), It.IsAny<IntentResult>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SendMessageAsync_NoPatientProfile_FallsBackToDefaultPrompt()
+    {
+        // Arrange
+        var repo = new Mock<IAiChatMessageRepository>();
+        var filter = new Mock<IPsychologyTopicFilter>();
+        var chat = new Mock<IChatClient>();
+        var intentDetector = new Mock<IIntentDetector>();
+        var aggregator = new Mock<IChatDataAggregator>();
+
+        repo.Setup(r => r.AddAsync(It.IsAny<AiChatMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AiChatMessage m, CancellationToken _) => m);
+        repo.Setup(r => r.ListByUserAsync(
+                It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AiChatMessage>());
+        filter.Setup(f => f.DetectUnsafeTopic(It.IsAny<string>())).Returns((string?)null);
+        intentDetector.Setup(d => d.DetectAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IntentResult { Intent = ChatIntent.Greeting, TriggeredSources = DataSource.None });
+        // No patient profile → aggregator returns null
+        aggregator.Setup(a => a.BuildContextAsync(It.IsAny<Guid>(), It.IsAny<IntentResult>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PatientChatContext?)null);
+
+        string? capturedSystemPrompt = null;
+        chat.Setup(c => c.SendMessageAsync(
+                It.IsAny<string>(),
+                It.IsAny<IReadOnlyList<ChatTurn>>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<string, IReadOnlyList<ChatTurn>, string, CancellationToken>(
+                (sysPrompt, _, _, _) => capturedSystemPrompt = sysPrompt)
+            .ReturnsAsync("AI fallback response");
+
+        var sut = NewSut(repo.Object, filter.Object, chat.Object, intentDetector.Object, aggregator.Object);
+
+        // Act
+        await sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "Xin chào" });
+
+        // Assert — default prompt used (no patient context)
+        Assert.NotNull(capturedSystemPrompt);
+        Assert.Contains("Test system prompt", capturedSystemPrompt);
+        Assert.DoesNotContain("THÔNG TIN BỆNH NHÂN", capturedSystemPrompt);
     }
 }
