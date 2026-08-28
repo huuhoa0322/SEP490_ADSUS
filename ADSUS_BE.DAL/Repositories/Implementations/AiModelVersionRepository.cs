@@ -61,6 +61,13 @@ public class AiModelVersionRepository : IAiModelVersionRepository
             .FirstOrDefaultAsync(x => x.Status == ModelVersionStatus.Active, cancellationToken);
     }
 
+    public async Task<AiModelVersion?> GetActiveVersionReadOnlyAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.AiModelVersions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Status == ModelVersionStatus.Active, cancellationToken);
+    }
+
     public async Task AddAsync(AiModelVersion modelVersion, CancellationToken cancellationToken = default)
     {
         await _context.AiModelVersions.AddAsync(modelVersion, cancellationToken);

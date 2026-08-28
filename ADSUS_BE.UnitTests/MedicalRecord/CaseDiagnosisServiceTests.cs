@@ -70,7 +70,7 @@ public class CaseDiagnosisServiceTests : IDisposable
     public async Task AnalyzeImageAsync_NoActiveModel_ThrowsBusinessException()
     {
         // Arrange
-        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync((AiModelVersion?)null);
 
         // Act & Assert
@@ -83,7 +83,7 @@ public class CaseDiagnosisServiceTests : IDisposable
     public async Task AnalyzeImageAsync_AiBackendReturnsError_ThrowsBusinessException()
     {
         // Arrange
-        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId, HfRepoId = "repo", HfFilename = "file.pt" });
 
         _httpMessageHandlerMock
@@ -109,7 +109,7 @@ public class CaseDiagnosisServiceTests : IDisposable
     public async Task AnalyzeImageAsync_AiBackendReturnsInvalidJson_ThrowsJsonException()
     {
         // Arrange
-        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId, HfRepoId = "repo", HfFilename = "file.pt" });
 
         _httpMessageHandlerMock
@@ -134,7 +134,7 @@ public class CaseDiagnosisServiceTests : IDisposable
     public async Task AnalyzeImageAsync_AiBackendTimeouts_ThrowsTaskCanceledException()
     {
         // Arrange - Bao phủ ngoại lệ Timeout/Network lỗi từ HttpClient
-        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId, HfRepoId = "repo", HfFilename = "file.pt" });
 
         _httpMessageHandlerMock
@@ -155,7 +155,7 @@ public class CaseDiagnosisServiceTests : IDisposable
     public async Task AnalyzeImageAsync_Success_ReturnsJsonElement()
     {
         // Arrange
-        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId, HfRepoId = "repo", HfFilename = "file.pt" });
 
         var validJson = "[{\"xmin\":1,\"ymin\":2,\"xmax\":3,\"ymax\":4,\"confidence\":0.9}]";
@@ -206,7 +206,7 @@ public class CaseDiagnosisServiceTests : IDisposable
     public async Task ConfirmAnalysisAsync_NoActiveModel_ThrowsBusinessException()
     {
         // Arrange
-        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync((AiModelVersion?)null);
 
         // Act & Assert
@@ -219,7 +219,7 @@ public class CaseDiagnosisServiceTests : IDisposable
     public async Task ConfirmAnalysisAsync_InvalidJsonInput_ThrowsJsonException()
     {
         // Arrange
-        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId });
 
         var request = MakeValidConfirmRequest(aiJson: "invalid-json");
@@ -253,7 +253,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         await _db.SaveChangesAsync();
 
         var conflictingModel = new AiModelVersion { ModelVersionId = _activeModelId, LiveTp = 0, LiveFp = 0, LiveFn = 0, VersionCode = "v1", HfRepoId = "repo", HfFilename = "file" };
-        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(conflictingModel);
 
         // Act & Assert
@@ -269,7 +269,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         _db.AiModelVersions.Add(activeModel);
         await _db.SaveChangesAsync();
 
-        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeModel);
 
         // Setup AI json with 2 boxes, Doc json with 2 boxes
@@ -312,7 +312,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         _db.AiModelVersions.Add(activeModel);
         await _db.SaveChangesAsync();
 
-        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeModel);
 
         // AI predicts 2 boxes very close to 1 Doc box.
@@ -343,7 +343,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         _db.AiModelVersions.Add(activeModel);
         await _db.SaveChangesAsync();
 
-        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeModel);
 
         var aiJson = "[{\"xmin\":0,\"ymin\":0,\"xmax\":100,\"ymax\":100,\"confidence\":0.9}]";
@@ -368,7 +368,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         _db.AiModelVersions.Add(activeModel);
         await _db.SaveChangesAsync();
 
-        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeModel);
 
         var aiJson = "[]"; // AI returns nothing

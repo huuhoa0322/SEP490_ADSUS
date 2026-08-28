@@ -89,7 +89,7 @@ public class AiModelService : IAiModelService
 
     public async Task<AiModelVersionDto?> GetActiveVersionAsync(CancellationToken cancellationToken = default)
     {
-        var v = await _aiModelVersionRepository.GetActiveVersionAsync(cancellationToken);
+        var v = await _aiModelVersionRepository.GetActiveVersionReadOnlyAsync(cancellationToken);
         if (v == null) return null;
 
         return new AiModelVersionDto

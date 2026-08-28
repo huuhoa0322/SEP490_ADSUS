@@ -48,7 +48,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
     public async Task<JsonElement> AnalyzeImageAsync(Guid caseId, Stream imageStream, string fileName, string contentType, CancellationToken ct = default)
     {
         // Ignore the modelVersionId passed from frontend and fetch the true ACTIVE model
-        var activeModel = await _aiModelVersionRepo.GetActiveVersionAsync(ct);
+        var activeModel = await _aiModelVersionRepo.GetActiveVersionReadOnlyAsync(ct);
         if (activeModel == null) throw new BusinessException("Hệ thống chưa có phiên bản AI nào được kích hoạt. Vui lòng liên hệ Admin.");
 
         using var client = _httpClientFactory.CreateClient();
@@ -126,7 +126,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         await _storage.UploadAsync(request.BurntImageStream, burntPath, request.BurntImageContentType, "ultrasound-images", ct);
 
         // 4.5 Fetch true active ModelVersionId for database tracking
-        var activeModel = await _aiModelVersionRepo.GetActiveVersionAsync(ct);
+        var activeModel = await _aiModelVersionRepo.GetActiveVersionReadOnlyAsync(ct);
         if (activeModel == null) throw new BusinessException("Hệ thống chưa có phiên bản AI nào được kích hoạt. Vui lòng liên hệ Admin.");
         var activeModelId = activeModel.ModelVersionId;
 
