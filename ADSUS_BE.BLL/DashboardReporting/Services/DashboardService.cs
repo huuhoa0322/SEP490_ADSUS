@@ -46,7 +46,7 @@ public class DashboardService : IDashboardService
         var accounts = await _dashboard.GetAccountCountsAsync(cancellationToken);
         var activity = await _dashboard.GetActivityCountsAsync(from, to, cancellationToken);
         var daily = await _dashboard.GetDailyActivityAsync(from, to, cancellationToken);
-        var activeModel = await _aiModelRepo.GetActiveVersionAsync(cancellationToken);
+        var activeModel = await _aiModelRepo.GetActiveVersionReadOnlyAsync(cancellationToken);
 
         return new DashboardStatisticsResponse
         {
@@ -123,14 +123,14 @@ public class DashboardService : IDashboardService
     {
         // Tra theo từ điển thay vì quét lại danh sách cho từng ngày: khoảng tối đa 366 ngày,
         // quét lồng nhau là hơn 130 nghìn phép so sánh không cần thiết.
-        var theoNgay = daily.ToDictionary(d => d.Date);
-        var diem = new List<DailyPoint>();
+        var byDate = daily.ToDictionary(d => d.Date);
+        var points = new List<DailyPoint>();
 
         for (var date = from; date <= to; date = date.AddDays(1))
         {
-            theoNgay.TryGetValue(date, out var d);
+            byDate.TryGetValue(date, out var d);
 
-            diem.Add(new DailyPoint
+            points.Add(new DailyPoint
             {
                 Date = date.ToString(DateFormat, CultureInfo.InvariantCulture),
                 NewAccounts = d?.NewAccounts ?? 0,
@@ -139,7 +139,7 @@ public class DashboardService : IDashboardService
             });
         }
 
-        return diem;
+        return points;
     }
 
     /// <summary>
