@@ -23,6 +23,7 @@ class Appointment {
     this.startTime,
     this.endTime,
     this.doctorName,
+    this.caseId,
   });
 
   final String id;
@@ -45,6 +46,9 @@ class Appointment {
   final String? startTime;
   final String? endTime;
   final String? doctorName;
+
+  // Case được tạo từ booking (nếu có triệu chứng)
+  final String? caseId;
 
   bool get isBooked => status == AppointmentStatus.booked;
   bool get isCancelled => status == AppointmentStatus.cancelled;

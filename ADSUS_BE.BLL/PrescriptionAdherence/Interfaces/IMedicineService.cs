@@ -15,5 +15,11 @@ public interface IMedicineService
     Task<MedicineResponse> UpdateMedicineAsync(Guid id, UpdateMedicineRequest request, CancellationToken ct = default);
     Task DeleteMedicineAsync(Guid id, CancellationToken ct = default);
     Task ActivateMedicineAsync(Guid id, CancellationToken ct = default);
-}
 
+    // --- Packaging methods ---
+    Task<IEnumerable<MedicineUnitResponse>> GetMedicineUnitsAsync(CancellationToken ct = default);
+    Task<IEnumerable<MedicinePackagingResponse>> GetPackagingsByMedicineIdAsync(Guid medicineId, CancellationToken ct = default);
+    Task<MedicinePackagingResponse> AddPackagingAsync(Guid medicineId, CreateMedicinePackagingRequest request, CancellationToken ct = default);
+    Task<MedicinePackagingResponse> UpdatePackagingAsync(Guid packagingId, UpdateMedicinePackagingRequest request, CancellationToken ct = default);
+    Task DeletePackagingAsync(Guid packagingId, CancellationToken ct = default);
+}

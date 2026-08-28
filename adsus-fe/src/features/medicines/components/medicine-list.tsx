@@ -1,39 +1,29 @@
 "use client";
 
-import { Ban, Loader2, Pencil, Search, PlusCircle, PlayCircle } from "lucide-react";
+import { Loader2, PlusCircle, Pencil, PlayCircle, Ban, Search } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
-import { Badge } from "@/components/ui/badge";
-import { getApiErrorMessage } from "@/lib/api-client";
-import { formatDateTime } from "@/features/user-role-management/lib/user-labels";
-
-import {
-  useCreateMedicine,
-  useDeleteMedicine,
-  useMedicines,
-  useUpdateMedicine,
+import { 
+  useMedicines, 
   useActivateMedicine,
+  useDeleteMedicine 
 } from "../hooks/use-medicines";
+import { formatDateTime } from "@/features/user-role-management/lib/user-labels";
 import type { MedicineResponse } from "../api/medicines-api";
-
+import { getApiErrorMessage } from "@/lib/api-client";
+import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/features/user-role-management/components/confirm-dialog";
+import { MedicineFormModal } from "./medicine-form-modal";
+import { MedicineDetailModal } from "./medicine-detail-modal";
 
-function PagerButton({
-  children,
-  disabled,
-  onClick,
-}: {
-  children: React.ReactNode;
-  disabled: boolean;
-  onClick: () => void;
-}) {
+// A small sub-component for pagination buttons
+function PagerButton({ disabled, onClick, children }: { disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
-      type="button"
-      disabled={disabled}
       onClick={onClick}
-      className="rounded-full border border-border px-4 py-2 transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+      disabled={disabled}
+      className="flex h-10 items-center justify-center rounded-full border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
     >
       {children}
     </button>
@@ -42,56 +32,22 @@ function PagerButton({
 
 export function MedicineList() {
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const pageSize = 10;
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
-
+  
   const { data, isLoading } = useMedicines(page, pageSize, search);
-
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingMedicine, setEditingMedicine] = useState<MedicineResponse | null>(null);
-  const [medicineName, setMedicineName] = useState("");
-
+  const [detailMedicine, setDetailMedicine] = useState<MedicineResponse | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingActivateId, setPendingActivateId] = useState<string | null>(null);
 
-  const createMutation = useCreateMedicine();
-  const updateMutation = useUpdateMedicine();
   const deleteMutation = useDeleteMedicine();
   const activateMutation = useActivateMedicine();
 
   function handleOpenCreate() {
-    setEditingMedicine(null);
-    setMedicineName("");
     setIsModalOpen(true);
-  }
-
-  function handleOpenEdit(medicine: MedicineResponse) {
-    setEditingMedicine(medicine);
-    setMedicineName(medicine.name);
-    setIsModalOpen(true);
-  }
-
-  async function handleSaveMedicine() {
-    if (!medicineName.trim()) {
-      toast.error("Vui lòng nhập tên thuốc");
-      return;
-    }
-
-    try {
-      if (editingMedicine) {
-        await updateMutation.mutateAsync({
-          id: editingMedicine.medicineId,
-          request: { name: medicineName },
-        });
-        toast.success("Cập nhật thuốc thành công");
-      } else {
-        await createMutation.mutateAsync({ name: medicineName });
-        toast.success("Thêm thuốc thành công");
-      }
-      setIsModalOpen(false);
-    } catch (e) {
-      toast.error(getApiErrorMessage(e, "Có lỗi xảy ra"));
-    }
   }
 
   async function handleConfirmDelete() {
@@ -106,10 +62,13 @@ export function MedicineList() {
     }
   }
 
-  async function handleActivateMedicine(id: string) {
+  async function handleConfirmActivate() {
+    if (!pendingActivateId) return;
+
     try {
-      await activateMutation.mutateAsync(id);
+      await activateMutation.mutateAsync(pendingActivateId);
       toast.success("Kích hoạt thuốc thành công");
+      setPendingActivateId(null);
     } catch (e) {
       toast.error(getApiErrorMessage(e, "Có lỗi xảy ra"));
     }
@@ -129,7 +88,7 @@ export function MedicineList() {
       </div>
 
       <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm border border-border">
-        <div className="flex gap-4">
+        <div className="flex gap-4 mb-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -145,15 +104,13 @@ export function MedicineList() {
             />
           </div>
         </div>
-      </div>
 
-      <div className="flex-1 overflow-x-auto rounded-3xl border border-border bg-background">
-        <table className="w-full min-w-4xl border-collapse text-left text-sm">
+        <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-secondary/40">
-              <th className="px-5 py-4 font-semibold text-muted-foreground">Tên thuốc</th>
-              <th className="px-5 py-4 font-semibold text-muted-foreground">Trạng thái</th>
-              <th className="px-5 py-4 font-semibold text-muted-foreground">Ngày tạo</th>
+            <tr className="border-b border-border">
+              <th className="px-5 py-4 text-left font-semibold text-muted-foreground">Tên thuốc</th>
+              <th className="px-5 py-4 text-left font-semibold text-muted-foreground">Trạng thái</th>
+              <th className="px-5 py-4 text-left font-semibold text-muted-foreground">Ngày tạo</th>
               <th className="px-5 py-4 text-right font-semibold text-muted-foreground">Hành động</th>
             </tr>
           </thead>
@@ -187,13 +144,9 @@ export function MedicineList() {
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => {
-                          setEditingMedicine(medicine);
-                          setMedicineName(medicine.name);
-                          setIsModalOpen(true);
-                        }}
-                        title="Sửa thuốc"
-                        className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        onClick={() => setDetailMedicine(medicine)}
+                        title="Chi tiết / Quản lý"
+                        className="flex size-9 items-center justify-center rounded-full text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                       >
                         <Pencil className="size-4" />
                       </button>
@@ -207,7 +160,7 @@ export function MedicineList() {
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleActivateMedicine(medicine.medicineId)}
+                          onClick={() => setPendingActivateId(medicine.medicineId)}
                           title="Kích hoạt lại"
                           className="flex size-9 items-center justify-center rounded-full text-emerald-600 hover:bg-emerald-500/10"
                         >
@@ -277,49 +230,23 @@ export function MedicineList() {
         </div>
       )}
 
-      {/* Modal Thêm/Sửa */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
-            <h2 className="mb-6 text-xl font-bold text-primary">
-              {editingMedicine ? "Sửa thông tin thuốc" : "Thêm thuốc mới"}
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-primary">
-                  Tên thuốc <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={medicineName}
-                  onChange={(e) => setMedicineName(e.target.value)}
-                  placeholder="Nhập tên thuốc..."
-                  className="w-full rounded-full border border-border bg-surface px-4 py-2.5 text-sm focus:border-teal focus:outline-none"
-                  autoFocus
-                />
-              </div>
-            </div>
-            <div className="mt-8 flex justify-end gap-3">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="rounded-full px-6 py-2 text-sm font-medium text-muted-foreground transition hover:bg-surface"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleSaveMedicine}
-                disabled={createMutation.isPending || updateMutation.isPending}
-                className="rounded-full bg-accent px-6 py-2 text-sm font-medium text-white transition hover:bg-accent/90 disabled:opacity-50"
-              >
-                {createMutation.isPending || updateMutation.isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  "Lưu lại"
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Modal Thêm Mới */}
+      <MedicineFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        medicineToEdit={null}
+        onSuccessCreate={(medicine) => {
+          setDetailMedicine(medicine);
+        }}
+      />
+
+      {/* Modal Chi tiết & Quy cách */}
+      {detailMedicine && (
+        <MedicineDetailModal
+          medicine={detailMedicine}
+          isOpen={!!detailMedicine}
+          onClose={() => setDetailMedicine(null)}
+        />
       )}
 
       <ConfirmDialog
@@ -332,7 +259,17 @@ export function MedicineList() {
         isPending={deleteMutation.isPending}
         destructive={true}
       />
+      
+      <ConfirmDialog
+        open={!!pendingActivateId}
+        title="Kích hoạt lại thuốc"
+        message="Bạn có chắc chắn muốn kích hoạt lại thuốc này? Thuốc sẽ xuất hiện trở lại trong danh sách để chọn khi kê đơn."
+        confirmLabel="Kích hoạt"
+        onConfirm={handleConfirmActivate}
+        onCancel={() => setPendingActivateId(null)}
+        isPending={activateMutation.isPending}
+        destructive={false}
+      />
     </div>
   );
 }
-

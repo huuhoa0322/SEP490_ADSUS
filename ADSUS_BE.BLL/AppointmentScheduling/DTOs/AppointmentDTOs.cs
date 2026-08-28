@@ -2,6 +2,18 @@ using ADSUS_BE.DAL.Entities;
 
 namespace ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 
+// ─── Symptom Input (từ Mobile booking) ───────────────────────────────────────
+
+/// <summary>
+/// Input triệu chứng khi đặt lịch khám.
+/// </summary>
+public sealed class SymptomInput
+{
+    public Guid CategoryId { get; init; }
+    public Guid? SymptomId { get; init; }
+    public string? OtherNote { get; init; }
+}
+
 // ─── Requests ──────────────────────────────────────────────────────────────────
 
 /// <summary>
@@ -13,6 +25,11 @@ public sealed class BookAppointmentRequest
 {
     public Guid ScheduleSlotId { get; init; }
     public string? Reason { get; init; }
+
+    /// <summary>
+    /// Danh sách triệu chứng (tùy chọn). Nếu có, hệ thống sẽ tạo Case với status=BOOKED.
+    /// </summary>
+    public List<SymptomInput>? Symptoms { get; init; }
 }
 
 /// <summary>
@@ -43,6 +60,11 @@ public sealed class AppointmentResponse
     public string? CancellationReason { get; init; }
     public DateTime? CalendarSyncedAt { get; init; }
     public DateTime CreatedAt { get; init; }
+
+    /// <summary>
+    /// Case được tạo tự động khi đặt lịch (nếu có triệu chứng).
+    /// </summary>
+    public Guid? CaseId { get; init; }
 }
 
 /// <summary>

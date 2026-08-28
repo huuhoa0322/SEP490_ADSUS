@@ -5,6 +5,8 @@ using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.BLL.Auth.Validators;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.Common.Interfaces;
+using ADSUS_BE.BLL.Common.Services;
 using ADSUS_BE.BLL.DashboardReporting.Interfaces;
 using ADSUS_BE.BLL.DashboardReporting.Services;
 using ADSUS_BE.BLL.Engagement.Interfaces;
@@ -344,10 +346,14 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IUltrasoundImageRepository, UltrasoundImageRepository>();
             builder.Services.AddScoped<ISymptomCategoryRepository, SymptomCategoryRepository>();
 
-            // External services — push notification. Hiện tại dùng FakePush (in-memory stub)
-            // cho dev/test/CI. Production sẽ đổi sang FirebasePushNotificationClient (sprint sau,
-            // cần FCM service account JSON qua User Secrets). Singleton vì stateless.
+            // External services — push notification.
+            // DEBUG: dùng FakePush (in-memory stub) cho dev/test/CI không cần Firebase.
+            // RELEASE: dùng FirebasePushNotificationClient thật (cần Firebase:ServiceAccountPath trong User Secrets).
+#if DEBUG
             builder.Services.AddSingleton<IPushNotificationClient, FakePushNotificationClient>();
+#else
+            builder.Services.AddSingleton<IPushNotificationClient, FirebasePushNotificationClient>();
+#endif
 
             // BLL — safety filter cho Module 10 Chat (trước khi gọi LLM). Singleton vì stateless,
             // chỉ đọc mảng keyword tĩnh.
@@ -375,11 +381,17 @@ namespace ADSUS_BE
 
             // BLL — Module 4: Medical Record
             builder.Services.AddScoped<IPatientProfileService, PatientProfileService>();
+            // Lazy<IFileStorageService> cho CaseService - chỉ resolve khi cần upload/build URLs
+            builder.Services.AddScoped<System.Lazy<IFileStorageService>>(sp =>
+                new System.Lazy<IFileStorageService>(() => sp.GetRequiredService<IFileStorageService>()));
             builder.Services.AddScoped<ICaseService, CaseService>();
             builder.Services.AddScoped<ISymptomService, SymptomService>();
             builder.Services.AddScoped<ICaseDiagnosisService, CaseDiagnosisService>();
             builder.Services.AddScoped<IAiMetricsService, AiMetricsService>();
             builder.Services.AddScoped<ICaseReportService, CaseReportService>();
+            // Lazy<ICaseReportService> cho CasesController - chỉ resolve khi cần export PDF
+            builder.Services.AddScoped<System.Lazy<ICaseReportService>>(sp =>
+                new System.Lazy<ICaseReportService>(() => sp.GetRequiredService<ICaseReportService>()));
             builder.Services.AddScoped<IDoctorDirectoryService, DoctorDirectoryService>();
             builder.Services.AddScoped<IPatientAccountService, PatientAccountService>();
             builder.Services.AddScoped<IValidator<CreatePatientAccountRequest>, CreatePatientAccountRequestValidator>();
@@ -400,6 +412,12 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IHealthLogService, HealthLogService>();
             builder.Services.AddScoped<IValidator<BLL.HealthMonitoring.DTOs.LogHealthDataRequest>, BLL.HealthMonitoring.Validators.LogHealthDataRequestValidator>();
 
+            // BLL — Module 9: Notification & FCM
+            builder.Services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
+            builder.Services.AddScoped<IUserFcmTokenRepository, UserFcmTokenRepository>();
+            builder.Services.AddScoped<IFcmTokenService, FcmTokenService>();
+            builder.Services.AddScoped<INotificationService, NotificationService>();
+
             // ---------- Cấu hình AI Backend ----------
             builder.Services.Configure<AiBackendSettings>(
                 builder.Configuration.GetSection(AiBackendSettings.SectionName));
@@ -415,28 +433,14 @@ namespace ADSUS_BE
 
             if (storageSettings?.IsConfigured != true)
             {
-                if (builder.Environment.IsDevelopment())
-                {
-                    // Chưa khai Supabase thì vẫn phải chạy được ở Development — nếu không, ai
-                    // không đụng tới upload ảnh siêu âm cũng bị chặn khởi động chỉ vì thiếu một
-                    // secret không liên quan tới việc họ đang làm. Chỉ request nào thực sự cần
-                    // IFileStorageService mới vỡ, kèm thông báo rõ phải sửa gì.
-                    builder.Services.AddScoped<IFileStorageService>(_ =>
-                        throw new InvalidOperationException(
-                            "Chua cau hinh SupabaseStorage. Chuot phai project ADSUS_BE > Manage "
-                            + "User Secrets va them ca SupabaseStorage:Url va "
-                            + "SupabaseStorage:ServiceKey — ca hai gia tri deu nam trong User "
-                            + "Secrets, khong nam trong appsettings.json."));
-                }
-                else
-                {
-                    // Dừng ngay tại đây thay vì để vỡ lúc bác sĩ bấm tải ảnh lên. Lỗi lúc đó chỉ
-                    // hiện ra là 500 giữa ca khám, còn ở đây thì biết ngay phải sửa gì.
-                    throw new InvalidOperationException(
-                        "Chua cau hinh SupabaseStorage. Moi truong " +
-                        $"'{builder.Environment.EnvironmentName}' bat buoc phai cau hinh " +
-                        "SupabaseStorage:Url va SupabaseStorage:ServiceKey.");
-                }
+                // Chưa khai Supabase thì dùng NoOpFileStorageService - trả null cho signed URLs
+                // thay vì throw exception. App vẫn hoạt động, images sẽ không hiển thị URL nhưng
+                // case vẫn xem được.
+                Console.Error.WriteLine(
+                    "[WARN] SupabaseStorage chua duoc cau hinh. Su dung NoOpFileStorageService. "
+                    + "Images se khong co signed URLs. De enable, them SupabaseStorage:Url va "
+                    + "SupabaseStorage:ServiceKey vao User Secrets.");
+                builder.Services.AddScoped<IFileStorageService, NoOpFileStorageService>();
             }
             else
             {
@@ -445,20 +449,31 @@ namespace ADSUS_BE
             }
 
             // ---------- Gửi email (API-04) ----------
-            builder.Services.Configure<EmailSettings>(
-                builder.Configuration.GetSection(EmailSettings.SectionName));
+            builder.Services.Configure<SendGridSettings>(
+                builder.Configuration.GetSection(SendGridSettings.SectionName));
 
-            var emailSettings = builder.Configuration
-                .GetSection(EmailSettings.SectionName)
-                .Get<EmailSettings>();
+            var sendGridSettings = builder.Configuration
+                .GetSection(SendGridSettings.SectionName)
+                .Get<SendGridSettings>();
 
-            if (emailSettings?.IsConfigured == true)
+            // Gửi qua SendGrid REST API (HTTPS) — chốt 28/08/2026 sau khi thử cả 3 lựa chọn:
+            //   - SmtpEmailService (SMTP thô qua cổng 587, đã gỡ bỏ): đo thật trên Render có
+            //     lúc mất tới ~2.3 phút mỗi lần gọi (không rõ do IPv6 hay do mạng chặn/làm
+            //     chậm cổng 587).
+            //   - ResendEmailService (REST API, đã gỡ bỏ): free tier bắt verify CẢ 1 DOMAIN
+            //     (cần quyền quản trị DNS) mới gửi được cho người nhận bất kỳ — xác nhận bằng
+            //     lỗi 403 thật khi thử gửi cho người khác lúc chưa verify domain.
+            // SendGrid chỉ cần verify ĐÚNG 1 địa chỉ gửi (Single Sender Verification — bấm
+            // link trong hộp thư), không cần domain riêng, và gửi qua HTTPS nên không dính
+            // vấn đề mạng/cổng SMTP của Render.
+            if (sendGridSettings?.IsConfigured == true)
             {
-                builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+                builder.Services.AddHttpClient("SendGrid");
+                builder.Services.AddScoped<IEmailService, SendGridEmailService>();
             }
             else if (builder.Environment.IsDevelopment())
             {
-                // Chưa khai SMTP thì vẫn phải chạy được, nếu không cả nhóm bị chặn chỉ vì
+                // Chưa khai gì thì vẫn phải chạy được, nếu không cả nhóm bị chặn chỉ vì
                 // thiếu một tài khoản gửi mail. Bản này in mật khẩu tạm ra console.
                 builder.Services.AddScoped<IEmailService, DevConsoleEmailService>();
             }
@@ -472,13 +487,19 @@ namespace ADSUS_BE
                 // nên NGAY CẢ ĐĂNG NHẬP cũng trả 500 ở môi trường khác Development, trong
                 // khi log không nói gì về email.
                 throw new InvalidOperationException(
-                    "Chua cau hinh EmailSettings. Moi truong " +
-                    $"'{builder.Environment.EnvironmentName}' bat buoc phai co may chu SMTP that " +
-                    "— xem ADSUS_BE.BLL/Common/EmailSettings.cs de biet cac khoa can khai.");
+                    "SendGrid is not configured. Environment " +
+                    $"'{builder.Environment.EnvironmentName}' requires it — see " +
+                    "ADSUS_BE.BLL/Common/SendGridSettings.cs for the required keys.");
             }
 
             // BLL — Module 10: Engagement (Blog PUBLIC endpoints)
             builder.Services.AddScoped<IBlogPostService, BlogPostService>();
+
+            // BLL — Module 10 Chat (FT-39) Phase 2: Intent Detection + RAG Aggregator.
+            // IntentDetector: stateless singleton (keyword matching, no I/O).
+            // ChatDataAggregator: scoped (EF Core DbContext-per-request).
+            builder.Services.AddSingleton<IIntentDetector, ChatIntentDetector>();
+            builder.Services.AddScoped<IChatDataAggregator, ChatDataAggregator>();
             builder.Services.AddScoped<IChatService, ChatService>();
             // UC-22 + FT-37: Patient feedback (general + per-case).
             builder.Services.AddScoped<IFeedbackService, FeedbackService>();
@@ -497,6 +518,7 @@ namespace ADSUS_BE
             builder.Services.AddSingleton<IMedicationIntakeScheduleGenerator, MedicationIntakeScheduleGenerator>();
             builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
             builder.Services.AddScoped<IMedicineService, MedicineService>();
+            builder.Services.AddScoped<ISupplierService, SupplierService>();
             builder.Services.AddScoped<IMedicationIntakeService, MedicationIntakeService>();
             builder.Services.AddScoped<IReminderPreferenceRepository, ReminderPreferenceRepository>();
             builder.Services.AddScoped<IReminderPreferenceService, ReminderPreferenceService>();
@@ -543,6 +565,78 @@ namespace ADSUS_BE
                 q.AddTrigger(opts => opts
                     .ForJob(jobKey)
                     .WithIdentity("SlotGeneratorTrigger", "schedule")
+                    .WithCronSchedule(cronExpression));
+            });
+
+            // ---------- Quartz JOB-03: Appointment Reminder ----------
+            builder.Services.AddQuartz(q =>
+            {
+                // Chạy mỗi giờ
+                var cronExpression = "0 0 * * * ?"; // At second :00 of every minute -> "0 0 * * * ?" = every hour
+
+                var jobKey = new Quartz.JobKey("AppointmentReminderJob", "appointment");
+
+                q.AddJob<AppointmentReminderJob>(opts => opts
+                    .WithIdentity(jobKey)
+                    .StoreDurably());
+
+                q.AddTrigger(opts => opts
+                    .ForJob(jobKey)
+                    .WithIdentity("AppointmentReminderTrigger", "appointment")
+                    .WithCronSchedule(cronExpression));
+            });
+
+            // ---------- Quartz JOB-04: Health Log Reminder ----------
+            builder.Services.AddQuartz(q =>
+            {
+                // Chạy 2 lần/ngày: 8h và 20h
+                var cronExpression = "0 0 8,20 * * ?"; // At 08:00 and 20:00 every day
+
+                var jobKey = new Quartz.JobKey("HealthLogReminderJob", "healthlog");
+
+                q.AddJob<HealthLogReminderJob>(opts => opts
+                    .WithIdentity(jobKey)
+                    .StoreDurably());
+
+                q.AddTrigger(opts => opts
+                    .ForJob(jobKey)
+                    .WithIdentity("HealthLogReminderTrigger", "healthlog")
+                    .WithCronSchedule(cronExpression));
+            });
+
+            // ---------- Quartz JOB-05: Weekly Health Report ----------
+            builder.Services.AddQuartz(q =>
+            {
+                // Chạy 9h sáng thứ 6 hàng tuần
+                var cronExpression = "0 0 9 ? * FRI"; // At 09:00:00 on Friday
+
+                var jobKey = new Quartz.JobKey("WeeklyHealthReportJob", "healthlog");
+
+                q.AddJob<WeeklyHealthReportJob>(opts => opts
+                    .WithIdentity(jobKey)
+                    .StoreDurably());
+
+                q.AddTrigger(opts => opts
+                    .ForJob(jobKey)
+                    .WithIdentity("WeeklyHealthReportTrigger", "healthlog")
+                    .WithCronSchedule(cronExpression));
+            });
+
+            // ---------- Quartz JOB-06: Adherence Summary ----------
+            builder.Services.AddQuartz(q =>
+            {
+                // Chạy 23h mỗi ngày
+                var cronExpression = "0 0 23 * * ?"; // At 23:00 every day
+
+                var jobKey = new Quartz.JobKey("AdherenceSummaryJob", "medication");
+
+                q.AddJob<AdherenceSummaryJob>(opts => opts
+                    .WithIdentity(jobKey)
+                    .StoreDurably());
+
+                q.AddTrigger(opts => opts
+                    .ForJob(jobKey)
+                    .WithIdentity("AdherenceSummaryTrigger", "medication")
                     .WithCronSchedule(cronExpression));
             });
 

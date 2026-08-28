@@ -13,7 +13,7 @@ using Xunit;
 
 namespace ADSUS_BE.UnitTests.PrescriptionAdherence;
 
-public class MedicineServiceTests
+public partial class MedicineServiceTests
 {
     private readonly Mock<IMedicineRepository> _medicineRepoMock;
     private readonly AppDbContext _db;
@@ -104,7 +104,7 @@ public class MedicineServiceTests
         // Arrange
         var id = Guid.NewGuid();
         _medicineRepoMock.Setup(repo => repo.GetByIdAsync(id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Medicine)null);
+            .ReturnsAsync((Medicine?)null);
 
         // Act & Assert
         await Assert.ThrowsAsync<ADSUS_BE.BLL.Common.Exceptions.ResourceNotFoundException>(

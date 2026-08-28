@@ -27,6 +27,11 @@ public interface ICaseRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Tạo ca bệnh (dùng cho booking từ Mobile - không có images).
+    /// </summary>
+    Task<Case> CreateAsync(Case newCase, CancellationToken ct = default);
+
+    /// <summary>
     /// Ghi ca bệnh và toàn bộ ảnh trong MỘT lần SaveChanges — không bao giờ tồn tại ca
     /// không có ảnh nào (UC-07 BR-02).
     /// </summary>

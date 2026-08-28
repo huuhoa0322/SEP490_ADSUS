@@ -1,9 +1,12 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
+using ADSUS_BE.BLL.Common.Interfaces;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.AppointmentScheduling.Services;
 
@@ -14,16 +17,28 @@ public sealed class AppointmentService : IAppointmentService
 {
     private readonly IAppointmentRepository _appointmentRepo;
     private readonly IScheduleSlotRepository _slotRepo;
+    private readonly IPatientProfileRepository _profileRepo;
+    private readonly INotificationService _notificationService;
+    private readonly ICaseService _caseService;
     private readonly AppDbContext _db;
+    private readonly ILogger<AppointmentService> _logger;
 
     public AppointmentService(
         IAppointmentRepository appointmentRepo,
         IScheduleSlotRepository slotRepo,
-        AppDbContext db)
+        IPatientProfileRepository profileRepo,
+        INotificationService notificationService,
+        ICaseService caseService,
+        AppDbContext db,
+        ILogger<AppointmentService> logger)
     {
         _appointmentRepo = appointmentRepo;
         _slotRepo = slotRepo;
+        _profileRepo = profileRepo;
+        _notificationService = notificationService;
+        _caseService = caseService;
         _db = db;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<OpenSlotResponse>> ListOpenSlotsAsync(
@@ -135,6 +150,23 @@ public sealed class AppointmentService : IAppointmentService
             UpdatedAt = DateTime.UtcNow,
         };
 
+        // Tạo Case nếu có symptoms (từ Mobile booking)
+        if (request.Symptoms?.Any() == true)
+        {
+            var caseId = await _caseService.CreateFromBookingAsync(
+                patientProfileId,
+                slot.DoctorId,
+                slot.SlotDate,
+                request.Symptoms,
+                ct);
+
+            appointment.CaseId = caseId;
+
+            _logger.LogInformation(
+                "Case {CaseId} created from appointment booking for appointment {AppointmentId}",
+                caseId, appointment.AppointmentId);
+        }
+
         // Update slot status
         slot.Status = SlotStatus.Booked;
         slot.UpdatedAt = DateTime.UtcNow;
@@ -144,6 +176,48 @@ public sealed class AppointmentService : IAppointmentService
 
         // Load navigation properties for response
         appointment.Slot = slot;
+
+        // Send notification to patient (best effort - don't fail the booking if notification fails)
+        try
+        {
+            var patientProfile = await _profileRepo.GetByIdAsync(patientProfileId, ct);
+            if (patientProfile != null)
+            {
+                _logger.LogInformation(
+                    "[NOTIF-DEBUG] Preparing to send booking notification to user {UserId} for appointment {AppointmentId}",
+                    patientProfile.UserId, appointment.AppointmentId);
+
+                await _notificationService.SendAsync(new SendNotificationRequest
+                {
+                    UserId = patientProfile.UserId,
+                    Type = "appointment_booking",
+                    Title = "Xác nhận đặt lịch khám",
+                    Body = $"Bạn đã đặt lịch khám với BS. {slot.Doctor.FullName} vào ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
+                    Metadata = new Dictionary<string, object>
+                    {
+                        ["appointmentId"] = appointment.AppointmentId.ToString(),
+                        ["slotId"] = slot.SlotId.ToString()
+                    }
+                }, ct);
+
+                _logger.LogInformation(
+                    "[NOTIF-SUCCESS] Sent booking notification to user {UserId} for appointment {AppointmentId}",
+                    patientProfile.UserId, appointment.AppointmentId);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "[NOTIF-WARN] No patient profile found for patientProfileId {PatientProfileId}",
+                    patientProfileId);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the booking
+            _logger.LogWarning(ex,
+                "[NOTIF-ERROR] Failed to send booking notification for appointment {AppointmentId}: {Message}",
+                appointment.AppointmentId, ex.Message);
+        }
 
         return ToAppointmentResponse(appointment);
     }
@@ -191,10 +265,64 @@ public sealed class AppointmentService : IAppointmentService
 
         await _db.SaveChangesAsync(ct);
 
+        // Send notification to patient about cancellation (best effort - don't fail cancellation if notification fails)
+        try
+        {
+            var patientProfile = await _profileRepo.GetByIdAsync(appointment.PatientProfileId, ct);
+            if (patientProfile != null)
+            {
+                await _notificationService.SendAsync(new SendNotificationRequest
+                {
+                    UserId = patientProfile.UserId,
+                    Type = "appointment_cancellation",
+                    Title = "Lịch khám đã bị hủy",
+                    Body = $"Lịch khám với BS. {slot.Doctor.FullName} vào ngày {slot.SlotDate:dd/MM/yyyy} đã bị hủy.",
+                    Metadata = new Dictionary<string, object>
+                    {
+                        ["appointmentId"] = appointment.AppointmentId.ToString()
+                    }
+                }, ct);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send cancellation notification for appointment {AppointmentId}", appointment.AppointmentId);
+        }
+
         return ToAppointmentResponse(appointment);
     }
 
-    private static AppointmentResponse ToAppointmentResponse(Appointment a)
+    public async Task<AppointmentResponse> CheckinAppointmentAsync(
+        Guid appointmentId,
+        CancellationToken ct = default)
+    {
+        // Lấy appointment với tracking để update
+        var appointment = await _db.Appointments
+            .Include(a => a.Slot)
+                .ThenInclude(s => s.Doctor)
+            .FirstOrDefaultAsync(a => a.AppointmentId == appointmentId, ct)
+            ?? throw new InvalidOperationException($"Appointment '{appointmentId}' not found.");
+
+        // Chỉ appointment đang BOOKED mới được checkin
+        if (appointment.Status != AppointmentStatus.Booked)
+        {
+            throw new InvalidOperationException("Chỉ lịch hẹn đang ở trạng thái ĐÃ ĐẶT mới được checkin.");
+        }
+
+        // Cập nhật Appointment: Booked → Approved
+        appointment.Status = AppointmentStatus.Approved;
+        appointment.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Appointment {AppointmentId} checked in by nurse. Status: {Status}",
+            appointmentId, appointment.Status);
+
+        return ToAppointmentResponse(appointment);
+    }
+
+    private static AppointmentResponse ToAppointmentResponse(Appointment a, Guid? caseId = null)
     {
         return new AppointmentResponse
         {
@@ -209,6 +337,7 @@ public sealed class AppointmentService : IAppointmentService
             CancellationReason = a.CancelledReason,
             CalendarSyncedAt = a.CalendarSyncedAt,
             CreatedAt = a.CreatedAt,
+            CaseId = caseId ?? a.CaseId,
         };
     }
 }

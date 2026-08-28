@@ -38,10 +38,12 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm pointer-events-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
     >
       <div className="w-full max-w-md rounded-3xl bg-background p-7 shadow-2xl">
         <div className="flex items-start gap-3.5">

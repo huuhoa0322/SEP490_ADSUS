@@ -9,6 +9,7 @@ import '../../../health_log/presentation/views/health_log_screen.dart';
 import '../../../medical_record/presentation/views/medical_record_list_screen.dart';
 import '../../../medication_reminder/presentation/viewmodels/intake_view_model.dart';
 import '../../../medication_reminder/presentation/widgets/adherence_pill_badge.dart';
+import '../../../notification/widgets/notification_bell.dart';
 import '../viewmodels/auth_view_model.dart';
 
 /// Màn hình Trang chủ của bệnh nhân sau khi đăng nhập.
@@ -75,6 +76,12 @@ class HomeScreen extends ConsumerWidget {
                           color: AppColors.navy,
                         ),
                       ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      const NotificationBell(),
+                      // Profile button đã xóa - chuyển đến footer navigation
                     ],
                   ),
                 ],

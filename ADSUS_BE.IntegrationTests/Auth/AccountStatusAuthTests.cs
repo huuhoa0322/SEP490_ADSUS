@@ -26,10 +26,10 @@ namespace ADSUS_BE.IntegrationTests.Auth;
 /// </summary>
 public class AccountStatusAuthTests
 {
-    private const string DuongDanHoSo = "/api/v1/users/me";
+    private const string OwnProfilePath = "/api/v1/users/me";
 
     private readonly Mock<IUserRepository> _users = new();
-    private readonly User _taiKhoan = new()
+    private readonly User _account = new()
     {
         UserId = Guid.NewGuid(),
         Phone = "0912345678",
@@ -40,44 +40,44 @@ public class AccountStatusAuthTests
     };
 
     [Fact]
-    public async Task TaiKhoanConHieuLuc_GoiDuocApi()
+    public async Task ActiveAccount_CanCallApi()
     {
-        using var app = TaoApp();
-        var client = TaoClientCoToken(app);
+        using var app = CreateApp();
+        var client = CreateClientWithToken(app);
 
-        var response = await client.GetAsync(DuongDanHoSo);
+        var response = await client.GetAsync(OwnProfilePath);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Theory]
     [InlineData(UserStatus.Deactivated)]
-    public async Task TokenConHan_NhungTaiKhoanBiKhoa_TraVe401(UserStatus trangThai)
+    public async Task TokenStillValid_ButAccountDeactivated_Returns401(UserStatus status)
     {
-        using var app = TaoApp();
+        using var app = CreateApp();
 
         // Token được phát lúc tài khoản còn hiệu lực...
-        var client = TaoClientCoToken(app);
+        var client = CreateClientWithToken(app);
 
         // ...rồi Admin vô hiệu hoá tài khoản. Token trong tay người dùng KHÔNG đổi.
-        _taiKhoan.Status = trangThai;
+        _account.Status = status;
 
-        var response = await client.GetAsync(DuongDanHoSo);
+        var response = await client.GetAsync(OwnProfilePath);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task TaiKhoanBiXoa_TraVe401()
+    public async Task AccountDeleted_Returns401()
     {
-        using var app = TaoApp();
-        var client = TaoClientCoToken(app);
+        using var app = CreateApp();
+        var client = CreateClientWithToken(app);
 
         // Cả AccountStatusJwtEvents (chặn ở tầng xác thực) lẫn ProfileService.GetOwnProfileAsync
         _users.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync((User?)null);
 
-        var response = await client.GetAsync(DuongDanHoSo);
+        var response = await client.GetAsync(OwnProfilePath);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -88,11 +88,11 @@ public class AccountStatusAuthTests
     /// Dựng ứng dụng thật, chỉ tráo <see cref="IUserRepository"/> sang bản giả.
     /// Nhờ vậy không có lời gọi nào chạm tới PostgreSQL.
     /// </summary>
-    private WebApplicationFactory<Program> TaoApp()
+    private WebApplicationFactory<Program> CreateApp()
     {
         // Cả AccountStatusJwtEvents (chặn ở tầng xác thực) lẫn ProfileService.GetOwnProfileAsync
         _users.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(() => _taiKhoan);
+              .ReturnsAsync(() => _account);
 
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -105,12 +105,12 @@ public class AccountStatusAuthTests
     }
 
     /// <summary>Phát token đúng như lúc đăng nhập thành công, rồi gắn vào header.</summary>
-    private HttpClient TaoClientCoToken(WebApplicationFactory<Program> app)
+    private HttpClient CreateClientWithToken(WebApplicationFactory<Program> app)
     {
         using var scope = app.Services.CreateScope();
         var token = scope.ServiceProvider
             .GetRequiredService<IJwtTokenService>()
-            .GenerateAccessToken(_taiKhoan);
+            .GenerateAccessToken(_account);
 
         var client = app.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);

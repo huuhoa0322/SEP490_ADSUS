@@ -1,3 +1,4 @@
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.Engagement.DTOs;
 using ADSUS_BE.BLL.Engagement.Interfaces;
 using ADSUS_BE.BLL.Engagement.Services;
@@ -13,6 +14,9 @@ namespace ADSUS_BE.UnitTests.Engagement;
 /// </summary>
 public class BlogPostServiceTests
 {
+    private readonly Mock<INotificationService> _notificationService = new();
+    private readonly Mock<IUserRepository> _userRepo = new();
+
     private static BlogPost NewBlogPost(Guid? id = null, BlogPostStatus status = BlogPostStatus.Published, DateTime? publishedAt = null)
         => new()
         {
@@ -25,6 +29,9 @@ public class BlogPostServiceTests
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
+
+    private BlogPostService CreateSut(Mock<IBlogPostRepository> repo) =>
+        new(repo.Object, _notificationService.Object, _userRepo.Object);
 
     [Fact]
     public async Task ListPublishedAsync_ReturnsOnlyPublishedPosts()
@@ -39,7 +46,7 @@ public class BlogPostServiceTests
         repo.Setup(r => r.ListPublishedAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(posts.Where(p => p.Status == BlogPostStatus.Published).ToList());
 
-        var sut = new BlogPostService(repo.Object);
+        var sut = CreateSut(repo);
 
         // Act
         var result = await sut.ListPublishedAsync();
@@ -56,7 +63,7 @@ public class BlogPostServiceTests
         repo.Setup(r => r.ListPublishedAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<BlogPost>());
 
-        var sut = new BlogPostService(repo.Object);
+        var sut = CreateSut(repo);
 
         var result = await sut.ListPublishedAsync();
 
@@ -73,7 +80,7 @@ public class BlogPostServiceTests
         repo.Setup(r => r.GetByIdAsync(post.PostId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(post);
 
-        var sut = new BlogPostService(repo.Object);
+        var sut = CreateSut(repo);
 
         var result = await sut.GetByIdAsync(post.PostId);
 
@@ -90,7 +97,7 @@ public class BlogPostServiceTests
         repo.Setup(r => r.GetByIdAsync(draft.PostId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(draft);
 
-        var sut = new BlogPostService(repo.Object);
+        var sut = CreateSut(repo);
 
         // Act — service lọc Draft, trả null cho bệnh nhân
         var result = await sut.GetByIdAsync(draft.PostId);
@@ -105,7 +112,7 @@ public class BlogPostServiceTests
         repo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((BlogPost?)null);
 
-        var sut = new BlogPostService(repo.Object);
+        var sut = CreateSut(repo);
 
         var result = await sut.GetByIdAsync(Guid.NewGuid());
 
@@ -126,7 +133,7 @@ public class BlogPostServiceTests
         repo.Setup(r => r.ListAllAsync(null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(posts);
 
-        var sut = new BlogPostService(repo.Object);
+        var sut = CreateSut(repo);
 
         var result = await sut.ListAllAsync();
 
@@ -145,7 +152,7 @@ public class BlogPostServiceTests
         repo.Setup(r => r.ListAllAsync(BlogPostStatus.Draft, It.IsAny<CancellationToken>()))
             .ReturnsAsync(posts.Where(p => p.Status == BlogPostStatus.Draft).ToList());
 
-        var sut = new BlogPostService(repo.Object);
+        var sut = CreateSut(repo);
 
         var result = await sut.ListAllAsync(statusFilter: BlogPostStatus.Draft);
 
@@ -161,7 +168,7 @@ public class BlogPostServiceTests
         repo.Setup(r => r.GetByIdAsync(draft.PostId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(draft);
 
-        var sut = new BlogPostService(repo.Object);
+        var sut = CreateSut(repo);
 
         var result = await sut.GetByIdForAdminAsync(draft.PostId);
 
@@ -177,7 +184,7 @@ public class BlogPostServiceTests
         repo.Setup(r => r.AddAsync(It.IsAny<BlogPost>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((BlogPost p, CancellationToken _) => p);
 
-        var sut = new BlogPostService(repo.Object);
+        var sut = CreateSut(repo);
         var request = new CreateBlogPostRequest { Title = "New Post", Content = "Content" };
         var authorId = Guid.NewGuid();
 
@@ -196,7 +203,7 @@ public class BlogPostServiceTests
         repo.Setup(r => r.GetByIdForUpdateAsync(published.PostId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(published);
 
-        var sut = new BlogPostService(repo.Object);
+        var sut = CreateSut(repo);
         var request = new UpdateBlogPostRequest { Title = "Updated", Content = "Content" };
 
         var result = await sut.UpdateAsync(published.PostId, request);
@@ -212,7 +219,7 @@ public class BlogPostServiceTests
         repo.Setup(r => r.GetByIdForUpdateAsync(published.PostId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(published);
 
-        var sut = new BlogPostService(repo.Object);
+        var sut = CreateSut(repo);
 
         var result = await sut.PublishAsync(published.PostId);
 
@@ -229,7 +236,11 @@ public class BlogPostServiceTests
         repo.Setup(r => r.UpdateAsync(It.IsAny<BlogPost>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var sut = new BlogPostService(repo.Object);
+        // Setup _userRepo mock to return empty list (no patients to notify)
+        _userRepo.Setup(r => r.GetAllPatientsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<User>());
+
+        var sut = CreateSut(repo);
 
         var result = await sut.PublishAsync(draft.PostId);
 

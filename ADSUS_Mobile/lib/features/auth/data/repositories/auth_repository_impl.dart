@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/constants/storage_keys.dart';
 import '../../../../core/network/api_exception.dart';
+import '../../../../features/notification/services/notification_service.dart';
 import '../../domain/entities/auth_session.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -15,7 +16,7 @@ import 'auth_error_mapper.dart';
 /// UC-01: SCR-02 (Mobile) dành cho Bệnh nhân; Admin, Bác sĩ và Điều dưỡng đăng nhập trên
 /// Web qua SCR-01. Bảng quyền PRD §3.2 cũng không giao chức năng nào của ba vai trò kia
 /// cho ứng dụng di động.
-const UserRole vaiTroDuocDungMobile = UserRole.patient;
+const UserRole mobileAllowedRole = UserRole.patient;
 
 class AuthRepositoryImpl implements AuthRepository {
   // Dùng tham số vị trí thay vì tham số có tên, vì Dart không cho phép tên tham số bắt
@@ -45,7 +46,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
       // Chặn TRƯỚC khi ghi bất cứ thứ gì xuống máy. Nếu ghi rồi mới chặn thì token của
       // bác sĩ vẫn nằm lại trong thiết bị dù họ không vào được ứng dụng.
-      if (session.role != vaiTroDuocDungMobile) {
+      if (session.role != mobileAllowedRole) {
         throw const ApiException(
           'Tài khoản này sử dụng giao diện web của ADSUS. '
           'Ứng dụng di động chỉ dành cho bệnh nhân.',
@@ -54,8 +55,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
       // Đổi sang tài khoản khác thì phải xoá trạng thái sinh trắc học của người trước.
       // Không có bước này, người sau sẽ thừa hưởng nút vân tay mà chính họ chưa hề bật.
-      final soDaGhep = await _storage.read(key: StorageKeys.pairedPhone);
-      if (soDaGhep != null && soDaGhep != phoneNumber) {
+      final pairedPhoneOnDevice = await _storage.read(key: StorageKeys.pairedPhone);
+      if (pairedPhoneOnDevice != null && pairedPhoneOnDevice != phoneNumber) {
         await _storage.delete(key: StorageKeys.biometricEnabled);
       }
 
@@ -64,6 +65,14 @@ class AuthRepositoryImpl implements AuthRepository {
       // UC-02 BR-01: ghi lại rằng máy này đã đăng nhập bằng mật khẩu thành công.
       // Đây chính là bước "ghép đôi thiết bị" mà sinh trắc học yêu cầu.
       await _storage.write(key: StorageKeys.pairedPhone, value: phoneNumber);
+
+      // Register FCM token to backend for push notifications.
+      // Best-effort: failure should not block login.
+      try {
+        await notificationService.registerTokenWithBackend(session.accessToken);
+      } catch (_) {
+        // Ignore - user can still use app without push notifications
+      }
 
       return session;
     } on DioException catch (e) {
@@ -177,6 +186,17 @@ class AuthRepositoryImpl implements AuthRepository {
     // LỆCH TÀI LIỆU — cần nhóm chốt: UC-02 ngụ ý vân tay dùng được lâu dài sau một lần
     // đăng nhập mật khẩu. Muốn đúng như vậy thì backend phải có refresh token (hoặc token
     // thiết bị dài hạn) để vân tay đổi lấy phiên mới. Hiện backend chưa có.
+
+    // Unregister FCM token before deleting the access token.
+    final token = await _storage.read(key: StorageKeys.accessToken);
+    if (token != null) {
+      try {
+        await notificationService.unregisterTokenFromBackend(token);
+      } catch (_) {
+        // Ignore - proceed with logout even if unregister fails
+      }
+    }
+
     await _storage.delete(key: StorageKeys.accessToken);
     await _storage.delete(key: StorageKeys.pairedPhone);
     await _storage.delete(key: StorageKeys.biometricEnabled);

@@ -29,6 +29,7 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
     public async Task<ScheduleSlot?> GetByIdForUpdateAsync(Guid id, CancellationToken ct = default)
     {
         return await _db.ScheduleSlots
+            .Include(s => s.Doctor)
             .Include(s => s.Appointments)
             .FirstOrDefaultAsync(s => s.SlotId == id, ct);
     }

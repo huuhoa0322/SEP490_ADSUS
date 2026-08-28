@@ -153,6 +153,7 @@ public sealed class PrescriptionService : IPrescriptionService
                 morningTime,
                 middayTime,
                 eveningTime,
+                DateTime.UtcNow,
                 ct);
 
             foreach (var dose in scheduledDoses)

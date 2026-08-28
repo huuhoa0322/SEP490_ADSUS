@@ -1,5 +1,7 @@
+using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Mappers;
@@ -20,22 +22,30 @@ public sealed class CaseService : ICaseService
     private readonly IUltrasoundImageRepository _images;
     private readonly IPatientProfileRepository _profiles;
     private readonly IUserRepository _users;
-    private readonly IFileStorageService _storage;
+    private readonly System.Lazy<IFileStorageService> _storageLazy;
+    private readonly INotificationService _notificationService;
+    private readonly IAppointmentRepository _appointments;
     private readonly ILogger<CaseService> _logger;
+
+    private IFileStorageService _storage => _storageLazy.Value;
 
     public CaseService(
         ICaseRepository cases,
         IUltrasoundImageRepository images,
         IPatientProfileRepository profiles,
         IUserRepository users,
-        IFileStorageService storage,
+        System.Lazy<IFileStorageService> storageLazy,
+        INotificationService notificationService,
+        IAppointmentRepository appointments,
         ILogger<CaseService> logger)
     {
         _cases = cases;
         _images = images;
         _profiles = profiles;
         _users = users;
-        _storage = storage;
+        _storageLazy = storageLazy;
+        _notificationService = notificationService;
+        _appointments = appointments;
         _logger = logger;
     }
 
@@ -207,6 +217,28 @@ public sealed class CaseService : ICaseService
             "Case {CaseId} created for patient profile {PatientProfileId} with {ImageCount} image(s)",
             caseId, profile.PatientProfileId, images.Count);
 
+        // Send notification to patient about new medical record (best effort - don't fail case creation)
+        try
+        {
+            var patientUserId = profile.UserId;
+            await _notificationService.SendAsync(new SendNotificationRequest
+            {
+                UserId = patientUserId,
+                Type = "medical_record_added",
+                Title = "Hồ sơ y tế mới được tạo",
+                Body = $"BS. {doctor.FullName} đã tạo hồ sơ khám cho bạn vào ngày {ClinicClock.Today():dd/MM/yyyy}.",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["caseId"] = caseId.ToString(),
+                    ["recordId"] = caseId.ToString()
+                }
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send medical record notification for case {CaseId}", caseId);
+        }
+
         return await GetForStaffAsync(caseId, ct);
     }
 
@@ -307,11 +339,81 @@ public sealed class CaseService : ICaseService
         medicalCase.Status = CaseStatus.End;
         medicalCase.UpdatedAt = DateTime.UtcNow;
 
+        // Complete related appointment if exists and is Approved
+        await CompleteRelatedAppointmentAsync(caseId, ct);
+
         await _cases.SaveChangesAsync(ct);
 
         _logger.LogInformation("Case {CaseId} ended without prescription by doctor {DoctorId}", caseId, actingDoctorId);
 
         return await GetForStaffAsync(caseId, ct);
+    }
+
+    /// <summary>
+    /// Complete appointment when case is ended.
+    /// </summary>
+    private async Task CompleteRelatedAppointmentAsync(Guid caseId, CancellationToken ct)
+    {
+        // Get all appointments for the patient and find the one linked to this case
+        // Note: This is a simplified approach. In production, you might want to add
+        // a specific method to IAppointmentRepository to query by CaseId.
+        var appointments = await _appointments.ListByPatientAsync(
+            (await _cases.GetByIdAsync(caseId, ct))!.PatientProfileId, ct);
+
+        var appointment = appointments
+            .FirstOrDefault(a => a.CaseId == caseId && a.Status == AppointmentStatus.Approved);
+
+        if (appointment != null)
+        {
+            appointment.Status = AppointmentStatus.Completed;
+            appointment.UpdatedAt = DateTime.UtcNow;
+            await _appointments.UpdateAsync(appointment, ct);
+
+            _logger.LogInformation(
+                "Appointment {AppointmentId} completed when case {CaseId} was ended",
+                appointment.AppointmentId, caseId);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Guid> CreateFromBookingAsync(
+        Guid patientProfileId,
+        Guid doctorId,
+        DateOnly visitDate,
+        IReadOnlyList<SymptomInput> symptoms,
+        CancellationToken ct = default)
+    {
+        var caseId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        var newCase = new Case
+        {
+            CaseId = caseId,
+            PatientProfileId = patientProfileId,
+            DoctorId = doctorId,
+            VisitDate = visitDate,
+            ClinicalInfo = null, // Sẽ được bác sĩ cập nhật khi khám
+            Status = CaseStatus.Booked,
+            CreatedAt = now,
+            UpdatedAt = now,
+            CaseSymptoms = symptoms.Select(s => new CaseSymptom
+            {
+                Id = Guid.NewGuid(),
+                CaseId = caseId,
+                CategoryId = s.CategoryId,
+                SymptomId = s.SymptomId,
+                OtherNote = s.OtherNote,
+                CreatedAt = now
+            }).ToList()
+        };
+
+        await _cases.CreateAsync(newCase, ct);
+
+        _logger.LogInformation(
+            "Case {CaseId} created from appointment booking for patient profile {PatientProfileId} with {SymptomCount} symptoms",
+            caseId, patientProfileId, symptoms.Count);
+
+        return caseId;
     }
 
     /// <summary>

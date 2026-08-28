@@ -88,4 +88,11 @@ public class UserRepository : IUserRepository
             .Where(u => u.Role == UserRole.Doctor && u.Status == UserStatus.Active)
             .OrderBy(u => u.FullName)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<User>> GetAllPatientsAsync(
+        CancellationToken cancellationToken = default) =>
+        await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Role == UserRole.Patient && u.Status == UserStatus.Active)
+            .ToListAsync(cancellationToken);
 }

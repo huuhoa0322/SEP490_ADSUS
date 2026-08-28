@@ -1,4 +1,5 @@
 using ADSUS_BE.BLL.Common.Exceptions;
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Services;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
@@ -15,13 +16,22 @@ public class CaseServiceTests
     private readonly Mock<IPatientProfileRepository> _profiles = new();
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IFileStorageService> _storage = new();
+    private readonly Mock<INotificationService> _notificationService = new();
+    private readonly Mock<IAppointmentRepository> _appointments = new();
     private readonly CaseService _sut;
 
     public CaseServiceTests()
     {
         _sut = new CaseService(
             _cases.Object, _images.Object, _profiles.Object, _users.Object,
-            _storage.Object, Mock.Of<ILogger<CaseService>>());
+            new System.Lazy<IFileStorageService>(() => _storage.Object),
+            _notificationService.Object,
+            _appointments.Object,
+            Mock.Of<ILogger<CaseService>>());
+
+        // Setup notification service mock for all tests
+        _notificationService.Setup(n => n.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Guid.NewGuid());
     }
 
     private static ADSUS_BE.BLL.MedicalRecord.DTOs.UploadedFile MakeValidPngUpload(string fileName = "anh.png")
@@ -839,6 +849,10 @@ public class CaseServiceTests
               .ReturnsAsync(medicalCase);
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase); // GetForStaffAsync internally calls GetDetailAsync
+        _cases.Setup(r => r.GetByIdAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _appointments.Setup(r => r.ListByPatientAsync(medicalCase.PatientProfileId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(new List<Appointment>());
 
         // Act
         var response = await _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, doctor.UserId);

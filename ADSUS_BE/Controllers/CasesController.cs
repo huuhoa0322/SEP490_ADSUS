@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
+using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
@@ -22,23 +24,26 @@ namespace ADSUS_BE.Controllers;
 public sealed class CasesController : ControllerBase
 {
     private readonly ICaseService _cases;
-    private readonly ICaseReportService _reports;
+    private readonly System.Lazy<ICaseReportService> _reportsLazy;
     private readonly IPrescriptionService _prescriptions;
+    private readonly IAppointmentService _appointmentService;
     private readonly IValidator<CreateCaseRequest> _createValidator;
     private readonly IValidator<AddUltrasoundImagesRequest> _addImagesValidator;
     private readonly IValidator<CaseConclusionRequest> _conclusionValidator;
 
     public CasesController(
         ICaseService cases,
-        ICaseReportService reports,
+        System.Lazy<ICaseReportService> reportsLazy,
         IPrescriptionService prescriptions,
+        IAppointmentService appointmentService,
         IValidator<CreateCaseRequest> createValidator,
         IValidator<AddUltrasoundImagesRequest> addImagesValidator,
         IValidator<CaseConclusionRequest> conclusionValidator)
     {
         _cases = cases;
-        _reports = reports;
+        _reportsLazy = reportsLazy;
         _prescriptions = prescriptions;
+        _appointmentService = appointmentService;
         _createValidator = createValidator;
         _addImagesValidator = addImagesValidator;
         _conclusionValidator = conclusionValidator;
@@ -129,6 +134,23 @@ public sealed class CasesController : ControllerBase
 
         var staffView = await _cases.GetForStaffAsync(id, ct);
         return Ok(ApiResponse<CaseResponse>.Ok(staffView));
+    }
+
+    /// <summary>
+    /// Nurse checkin appointment thông qua case.
+    /// Appointment: Booked → Approved
+    /// </summary>
+    [HttpPost("{caseId:guid}/appointment/checkin")]
+    [Authorize(Roles = "NURSE,ADMIN")]
+    [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CheckinAppointment(
+        Guid caseId,
+        CancellationToken ct)
+    {
+        var result = await _appointmentService.CheckinAppointmentAsync(caseId, ct);
+        return Ok(ApiResponse<AppointmentResponse>.Ok(result, "Appointment checked in successfully."));
     }
 
     /// <summary>
@@ -309,7 +331,7 @@ public sealed class CasesController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> ExportReport(Guid id, CancellationToken ct)
     {
-        var pdf = await _reports.GenerateReportAsync(id, ct);
+        var pdf = await _reportsLazy.Value.GenerateReportAsync(id, ct);
         return File(pdf, "application/pdf", $"visit-report-{id}.pdf");
     }
 

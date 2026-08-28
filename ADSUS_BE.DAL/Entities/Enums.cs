@@ -43,12 +43,14 @@ public enum BlogPostStatus
 
 /// <summary>
 /// Trạng thái lịch hẹn — enum <c>appointment_status</c> trong DB (Module 8).
-/// Dùng bởi Dashboard (UC-05) để đếm tỉ lệ Booked/Cancelled.
+/// Flow: Booked → Approved (nurse checkin) → Completed (doctor end case)
 /// </summary>
 public enum AppointmentStatus
 {
     [PgName("BOOKED")] Booked,
+    [PgName("APPROVED")] Approved,     // Nurse checkin khi bệnh nhân đến
     [PgName("CANCELLED")] Cancelled,
+    [PgName("COMPLETED")] Completed,    // Doctor end case
 }
 
 /// <summary>
@@ -56,12 +58,14 @@ public enum AppointmentStatus
 /// Vòng đời một chiều:
 ///   Created → Confirmed (bác sĩ kết luận, chưa kê đơn) → END (bác sĩ đã kê đơn thuốc).
 /// END là trạng thái cuối — không có đường lùi (GB-01).
+/// BOOKED được tạo tự động khi bệnh nhân đặt lịch khám (kèm triệu chứng).
 /// </summary>
 public enum CaseStatus
 {
     [PgName("CREATED")] Created,
-    [PgName("END")] End,
     [PgName("CONFIRMED")] Confirmed,
+    [PgName("END")] End,
+    [PgName("BOOKED")] Booked,
 }
 
 /// <summary>
@@ -151,4 +155,55 @@ public enum ChatRole
 {
     [PgName("USER")] User,
     [PgName("ASSISTANT")] Assistant,
+}
+
+/// <summary>
+/// Trạng thái notification — enum <c>notification_status</c> trong DB (Module 9).
+/// </summary>
+public enum NotificationStatus
+{
+    [PgName("SENT")] Sent,
+    [PgName("DELIVERED")] Delivered,
+    [PgName("FAILED")] Failed,
+    [PgName("READ")] Read,
+    [PgName("UNREAD")] Unread,
+}
+
+/// <summary>
+/// Loại notification — enum <c>notification_type</c> trong DB (Module 9).
+/// Dùng để phân biệt notification và xác định navigation khi bấm vào.
+/// </summary>
+public enum NotificationType
+{
+    [PgName("general")] General,
+    [PgName("medication_reminder")] MedicationReminder,
+    [PgName("medication_confirmation")] MedicationConfirmation,
+    [PgName("appointment_booking")] AppointmentBooking,
+    [PgName("appointment_reminder")] AppointmentReminder,
+    [PgName("appointment_cancellation")] AppointmentCancellation,
+    [PgName("healthlog_reminder")] HealthlogReminder,
+    [PgName("medical_record_added")] MedicalRecordAdded,
+    [PgName("blog_new_post")] BlogNewPost,
+    [PgName("weekly_health_report")] WeeklyHealthReport,
+    [PgName("adherence_summary")] AdherenceSummary,
+}
+
+public enum InventoryTxnType
+{
+    [PgName("IMPORT")] Import,
+    [PgName("DISPENSE")] Dispense,
+    [PgName("ADJUSTMENT")] Adjustment,
+}
+
+public enum InvoiceStatus
+{
+    [PgName("PENDING")] PENDING,
+    [PgName("PAID")] PAID,
+    [PgName("CANCELLED")] CANCELLED,
+}
+
+public enum PaymentMethod
+{
+    [PgName("CASH")] CASH,
+    [PgName("BANK_TRANSFER")] BANK_TRANSFER,
 }

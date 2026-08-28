@@ -14,5 +14,13 @@ public partial class Medicine
 
     public DateTime CreatedAt { get; set; }
 
+    public string? UsageUnit { get; set; }
+
+    public decimal? VolumePerBaseUnit { get; set; }
+
+    public virtual ICollection<MedicineBatch> MedicineBatches { get; set; } = new List<MedicineBatch>();
+
+    public virtual ICollection<MedicinePackaging> MedicinePackagings { get; set; } = new List<MedicinePackaging>();
+
     public virtual ICollection<PrescriptionItem> PrescriptionItems { get; set; } = new List<PrescriptionItem>();
 }
