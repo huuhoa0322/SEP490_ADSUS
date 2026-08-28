@@ -22,6 +22,7 @@ public sealed class MedicationIntakeScheduleGenerator : IMedicationIntakeSchedul
         TimeOnly patientMorningTime,
         TimeOnly patientMiddayTime,
         TimeOnly patientEveningTime,
+        DateTime utcNow,
         CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
@@ -51,6 +52,12 @@ public sealed class MedicationIntakeScheduleGenerator : IMedicationIntakeSchedul
                 // thuộc TimeZoneInfo của OS (Linux vs Windows đặt tên khác nhau).
                 var naiveLocal = date.ToDateTime(timeOfDay, DateTimeKind.Unspecified);
                 var scheduledUtc = DateTime.SpecifyKind(naiveLocal - ClinicClock.Offset, DateTimeKind.Utc);
+
+                // Skip doses that are already past on dayOffset=0 (scheduled <= utcNow).
+                // Fixes UC-18: doctor prescribes at 15:00 ICT → morning/noon slots for today
+                // are already past and must not be generated (avoids OVERTIME status confusion).
+                if (dayOffset == 0 && scheduledUtc <= utcNow)
+                    continue;
 
                 result.Add(new ScheduledDose(item.PrescriptionItemId, scheduledUtc));
             }
