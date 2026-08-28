@@ -43,6 +43,8 @@ export interface InventoryHistoryFilter {
   search?: string;
   type?: string;
   batchId?: string;
+  sortBy?: string;   // txnDate | quantityBase
+  sortDir?: string;  // asc | desc
   page?: number;
   pageSize?: number;
 }
@@ -53,7 +55,8 @@ export interface InventoryHistoryResponse {
   lotNumber: string;
   medicineName: string;
   supplierName?: string;
-  unitName: string;
+  unitName: string;        // Đơn vị đóng gói
+  baseUnitName?: string;   // Đơn vị cơ bản (usageUnit của thuốc)
   txnType: 'Import' | 'Dispense' | 'Adjustment';
   quantityBase: number;
   quantityInUnit: number;
@@ -81,6 +84,16 @@ export interface MedicineBatchResponse {
   expiryDate: string;
   quantityBase: number;
   baseUnitAvgImportPrice: number;
+  usageUnit?: string;   // Đơn vị cơ bản
+}
+
+export interface MedicineBatchFilter {
+  medicineId: string;
+  search?: string;   // Tìm theo mã lô
+  sortBy?: string;   // expiryDate | quantityBase | avgPrice
+  sortDir?: string;  // asc | desc
+  page?: number;
+  pageSize?: number;
 }
 
 export const useMedicineBatches = (medicineId: string) => {
@@ -93,5 +106,19 @@ export const useMedicineBatches = (medicineId: string) => {
       return response.data;
     },
     enabled: !!medicineId,
+  });
+};
+
+export const usePagedMedicineBatches = (filter: MedicineBatchFilter) => {
+  return useQuery({
+    queryKey: ['medicine-batches-paged', filter],
+    queryFn: async () => {
+      const response = await apiClient.get<PagedResult<MedicineBatchResponse>>(
+        '/api/v1/inventory/batches',
+        { params: filter }
+      );
+      return response.data;
+    },
+    enabled: !!filter.medicineId,
   });
 };

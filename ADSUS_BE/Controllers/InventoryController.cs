@@ -47,9 +47,9 @@ namespace ADSUS_BE.Controllers
         }
 
         [HttpGet("batches")]
-        public async Task<IActionResult> GetMedicineBatches([FromQuery] System.Guid medicineId)
+        public async Task<IActionResult> GetMedicineBatches([FromQuery] MedicineBatchFilter filter)
         {
-            var result = await _inventoryService.GetMedicineBatchesAsync(medicineId);
+            var result = await _inventoryService.GetMedicineBatchesAsync(filter);
             return Ok(result);
         }
     }

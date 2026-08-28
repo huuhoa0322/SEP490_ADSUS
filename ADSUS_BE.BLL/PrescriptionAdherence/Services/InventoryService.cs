@@ -208,8 +208,17 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                 );
             }
 
-            // Mặc định sắp xếp giảm dần theo thời gian (mới nhất ở trên)
-            query = query.OrderByDescending(q => q.txn.TxnDate);
+            // Sắp xếp động theo filter
+            bool desc = !string.Equals(filter.SortDir, "asc", StringComparison.OrdinalIgnoreCase);
+            query = filter.SortBy?.ToLower() switch
+            {
+                "quantitybase" => desc
+                    ? query.OrderByDescending(q => q.txn.QuantityBase)
+                    : query.OrderBy(q => q.txn.QuantityBase),
+                _ => desc
+                    ? query.OrderByDescending(q => q.txn.TxnDate)
+                    : query.OrderBy(q => q.txn.TxnDate),
+            };
 
             var totalCount = await query.CountAsync();
 
@@ -224,6 +233,11 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                     MedicineName = q.txn.Batch.Medicine.Name,
                     SupplierName = q.txn.Supplier != null ? q.txn.Supplier.Name : null,
                     UnitName = q.mp.MedicineUnit.Name,
+                    // Lấy tên đơn vị cơ bản từ MedicinePackaging có IsBaseUnit = true
+                    BaseUnitName = _dbContext.MedicinePackagings
+                        .Where(bp => bp.MedicineId == q.txn.Batch.MedicineId && bp.IsBaseUnit)
+                        .Select(bp => bp.MedicineUnit.Name)
+                        .FirstOrDefault(),
                     TxnType = q.txn.TxnType,
                     QuantityBase = q.txn.QuantityBase,
                     QuantityInUnit = q.txn.QuantityInUnit,
@@ -286,11 +300,39 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
             return new ImportValidationResponse { IsValid = true };
         }
 
-        public async Task<List<MedicineBatchResponse>> GetMedicineBatchesAsync(Guid medicineId)
+        public async Task<PagedResult<MedicineBatchResponse>> GetMedicineBatchesAsync(MedicineBatchFilter filter)
         {
-            var batches = await _dbContext.MedicineBatches
-                .Where(b => b.MedicineId == medicineId)
-                .OrderBy(b => b.ExpiryDate)
+            var query = _dbContext.MedicineBatches
+                .Where(b => b.MedicineId == filter.MedicineId)
+                .AsQueryable();
+
+            // Search theo Số lô
+            if (!string.IsNullOrWhiteSpace(filter.Search))
+            {
+                var lower = filter.Search.Trim().ToLower();
+                query = query.Where(b => b.LotNumber.ToLower().Contains(lower));
+            }
+
+            // Sort động
+            bool desc = string.Equals(filter.SortDir, "desc", StringComparison.OrdinalIgnoreCase);
+            query = filter.SortBy?.ToLower() switch
+            {
+                "quantitybase" => desc
+                    ? query.OrderByDescending(b => b.QuantityBase)
+                    : query.OrderBy(b => b.QuantityBase),
+                "avgprice" => desc
+                    ? query.OrderByDescending(b => b.BaseUnitAvgImportPrice)
+                    : query.OrderBy(b => b.BaseUnitAvgImportPrice),
+                _ => desc
+                    ? query.OrderByDescending(b => b.ExpiryDate)
+                    : query.OrderBy(b => b.ExpiryDate), // mặc định: hạn gần nhất lên trước
+            };
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((filter.Page - 1) * filter.PageSize)
+                .Take(filter.PageSize)
                 .Select(b => new MedicineBatchResponse
                 {
                     BatchId = b.Id,
@@ -298,11 +340,18 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                     LotNumber = b.LotNumber,
                     ExpiryDate = b.ExpiryDate.ToDateTime(TimeOnly.MinValue),
                     QuantityBase = b.QuantityBase,
-                    BaseUnitAvgImportPrice = b.BaseUnitAvgImportPrice
+                    BaseUnitAvgImportPrice = b.BaseUnitAvgImportPrice,
+                    // Lấy tên đơn vị cơ bản từ MedicinePackaging có IsBaseUnit = true
+                    UsageUnit = _dbContext.MedicinePackagings
+                        .Where(mp => mp.MedicineId == b.MedicineId && mp.IsBaseUnit)
+                        .Select(mp => mp.MedicineUnit.Name)
+                        .FirstOrDefault()
                 })
                 .ToListAsync();
 
-            return batches;
+            return new PagedResult<MedicineBatchResponse>(
+                items, filter.Page, filter.PageSize, totalCount,
+                (int)Math.Ceiling(totalCount / (double)filter.PageSize));
         }
     }
 }

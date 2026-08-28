@@ -1,8 +1,9 @@
-﻿import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createMedicine,
   deleteMedicine, activateMedicine,
   getPagedMedicines,
+  getMedicineById,
   updateMedicine,
   type CreateMedicineRequest,
   type UpdateMedicineRequest,
@@ -15,10 +16,19 @@ import {
   type UpdateMedicinePackagingRequest,
 } from "../api/medicines-api";
 
-export function useMedicines(page: number, pageSize: number, search?: string) {
+export function useMedicines(page: number, pageSize: number, search?: string, inStock?: boolean) {
   return useQuery({
-    queryKey: ["admin-medicines", page, pageSize, search],
-    queryFn: () => getPagedMedicines(page, pageSize, search),
+    queryKey: ["admin-medicines", page, pageSize, search, inStock],
+    queryFn: () => getPagedMedicines(page, pageSize, search, inStock),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useMedicineById(id: string) {
+  return useQuery({
+    queryKey: ["medicine-by-id", id],
+    queryFn: () => getMedicineById(id),
+    enabled: !!id,
     staleTime: 5 * 60 * 1000,
   });
 }

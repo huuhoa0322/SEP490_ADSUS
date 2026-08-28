@@ -2,6 +2,7 @@
 
 import { Loader2, PlusCircle, Pencil, PlayCircle, Ban, Search, Package } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 import { 
@@ -16,7 +17,6 @@ import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/features/user-role-management/components/confirm-dialog";
 import { MedicineFormModal } from "./medicine-form-modal";
 import { MedicineDetailModal } from "./medicine-detail-modal";
-import { MedicineBatchesModal } from "./medicine-batches-modal";
 
 // A small sub-component for pagination buttons
 function PagerButton({ disabled, onClick, children }: { disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -36,17 +36,23 @@ export function MedicineList() {
   const pageSize = 10;
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [inStockFilter, setInStockFilter] = useState<"all" | "in_stock" | "out_of_stock">("all");
   
-  const { data, isLoading } = useMedicines(page, pageSize, search);
+  const { data, isLoading } = useMedicines(
+    page, 
+    pageSize, 
+    search, 
+    inStockFilter === "all" ? undefined : inStockFilter === "in_stock"
+  );
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [detailMedicine, setDetailMedicine] = useState<MedicineResponse | null>(null);
-  const [batchesMedicine, setBatchesMedicine] = useState<MedicineResponse | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pendingActivateId, setPendingActivateId] = useState<string | null>(null);
 
   const deleteMutation = useDeleteMedicine();
   const activateMutation = useActivateMedicine();
+  const router = useRouter();
 
   function handleOpenCreate() {
     setIsModalOpen(true);
@@ -105,6 +111,20 @@ export function MedicineList() {
               className="w-full h-12 rounded-full border border-border bg-background py-2 pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-accent"
             />
           </div>
+          <div className="w-[180px]">
+            <select
+              value={inStockFilter}
+              onChange={(e) => {
+                setInStockFilter(e.target.value as "all" | "in_stock" | "out_of_stock");
+                setPage(1);
+              }}
+              className="w-full h-12 rounded-full border border-border bg-background px-4 text-[15px] outline-none transition-colors focus:border-accent cursor-pointer"
+            >
+              <option value="all">Tất cả trạng thái</option>
+              <option value="in_stock">Còn hàng</option>
+              <option value="out_of_stock">Hết hàng</option>
+            </select>
+          </div>
         </div>
 
         <table className="w-full text-sm">
@@ -139,7 +159,7 @@ export function MedicineList() {
                   <td className="px-5 py-4">
                     {medicine.totalInventoryBase > 0 ? (
                       <span className="font-semibold text-emerald-600">
-                        {medicine.totalInventoryBase} {medicine.usageUnit || "đơn vị"}
+                        {medicine.totalInventoryBase.toLocaleString()} {medicine.baseUnitName || '?'}
                       </span>
                     ) : (
                       <span className="text-muted-foreground italic">Hết hàng</span>
@@ -156,8 +176,8 @@ export function MedicineList() {
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => setBatchesMedicine(medicine)}
-                        title="Tồn kho"
+                        onClick={() => router.push(`/admin/medicines/${medicine.medicineId}/batches`)}
+                        title="Xem lô tồn kho"
                         className="flex size-9 items-center justify-center rounded-full text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
                       >
                         <Package className="size-4" />
@@ -268,12 +288,6 @@ export function MedicineList() {
         />
       )}
 
-      {/* Modal Lô Thuốc */}
-      <MedicineBatchesModal
-        medicine={batchesMedicine}
-        isOpen={!!batchesMedicine}
-        onClose={() => setBatchesMedicine(null)}
-      />
 
       <ConfirmDialog
         open={!!pendingDeleteId}

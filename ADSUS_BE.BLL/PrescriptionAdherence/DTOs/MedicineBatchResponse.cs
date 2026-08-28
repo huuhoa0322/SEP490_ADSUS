@@ -10,5 +10,6 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.DTOs
         public DateTime ExpiryDate { get; set; }
         public int QuantityBase { get; set; }
         public decimal BaseUnitAvgImportPrice { get; set; }
+        public string? UsageUnit { get; set; }   // Đơn vị cơ bản của thuốc
     }
 }

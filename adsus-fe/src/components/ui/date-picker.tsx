@@ -100,8 +100,8 @@ export function DatePicker({ value, onChange, placeholder = "dd/mm/yyyy", disabl
             mode="single"
             selected={parsedDate}
             captionLayout="dropdown"
-            fromYear={1900}
-            toYear={2100}
+            startMonth={new Date(1900, 0)}
+            endMonth={new Date(2100, 11)}
             disabled={(date) => {
               if (maxDate && date > maxDate) return true;
               if (minDate && date < minDate) return true;
@@ -121,7 +121,6 @@ export function DatePicker({ value, onChange, placeholder = "dd/mm/yyyy", disabl
               }
               setIsOpen(false);
             }}
-            initialFocus
           />
         </PopoverContent>
       </Popover>

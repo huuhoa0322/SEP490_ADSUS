@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -41,9 +41,23 @@ public class MedicinesController : ControllerBase
     [HttpGet("admin")]
     [Authorize(Roles = "ADMIN")]
     [ProducesResponseType(typeof(PagedResult<MedicineResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetPagedMedicines([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", CancellationToken ct = default)
+    public async Task<IActionResult> GetPagedMedicines([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool? inStock = null, CancellationToken ct = default)
     {
-        var result = await _medicineService.GetPagedAsync(page, pageSize, search, ct);
+        var result = await _medicineService.GetPagedAsync(page, pageSize, search, inStock, ct);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Lấy chi tiết 1 thuốc theo ID (Admin).
+    /// </summary>
+    [HttpGet("{id}")]
+    [Authorize(Roles = "ADMIN")]
+    [ProducesResponseType(typeof(MedicineResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMedicineById(Guid id, CancellationToken ct = default)
+    {
+        var result = await _medicineService.GetByIdAsync(id, ct);
+        if (result == null) return NotFound();
         return Ok(result);
     }
 
