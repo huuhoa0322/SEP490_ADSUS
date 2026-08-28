@@ -4,10 +4,11 @@ namespace ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 /// Cổng gửi email của hệ thống (API-04 trong PRD).
 ///
 /// Có hai bản hiện thực:
-///   <c>SmtpEmailService</c> — bản thật, dùng khi đã khai EmailSettings.
+///   <c>SendGridEmailService</c> — bản thật, gửi qua SendGrid REST API, dùng khi đã khai
+///   SendGridSettings (xem lớp đó để biết vì sao chọn SendGrid thay vì SMTP thô/Resend).
 ///   <c>DevConsoleEmailService</c> — in mật khẩu tạm ra console, CHỈ ở Development và chỉ
-///   khi chưa khai SMTP, để cả nhóm không bị chặn vì thiếu tài khoản gửi mail.
-/// Program.cs chọn bản nào; ngoài Development mà chưa khai SMTP thì dừng ngay lúc khởi động.
+///   khi chưa khai SendGrid, để cả nhóm không bị chặn vì thiếu tài khoản gửi mail.
+/// Program.cs chọn bản nào; ngoài Development mà chưa khai SendGrid thì dừng ngay lúc khởi động.
 ///
 /// Hai use case đang cần: UC-04 (Admin tạo tài khoản) và UC-03 (người dùng tự quên mật khẩu).
 /// Cả hai đều gửi đúng một loại nội dung nên chỉ cần một phương thức.

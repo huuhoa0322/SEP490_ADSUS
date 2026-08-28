@@ -27,6 +27,7 @@ class ChatMessage {
     required this.content,
     required this.createdAt,
     required this.isSafety,
+    this.detectedIntent,
   });
 
   final String messageId;
@@ -34,6 +35,50 @@ class ChatMessage {
   final String content;
   final DateTime createdAt;
   final bool isSafety;
+
+  /// Intent BE detect cho tin nhắn assistant này.
+  /// Dùng để hiển thị context badge + suggestion chips.
+  final ChatIntent? detectedIntent;
+}
+
+/// Intent chatbot — khớp với BE ChatIntent enum.
+enum ChatIntent {
+  greeting,
+  prescription,
+  appointment,
+  caseHistory,
+  allergy,
+  disease,
+  healthLog,
+  blog,
+  general,
+  unknown;
+
+  static ChatIntent fromString(String? s) {
+    if (s == null) return ChatIntent.unknown;
+    switch (s.toLowerCase()) {
+      case 'greeting':
+        return ChatIntent.greeting;
+      case 'prescription':
+        return ChatIntent.prescription;
+      case 'appointment':
+        return ChatIntent.appointment;
+      case 'casehistory':
+        return ChatIntent.caseHistory;
+      case 'allergy':
+        return ChatIntent.allergy;
+      case 'disease':
+        return ChatIntent.disease;
+      case 'healthlog':
+        return ChatIntent.healthLog;
+      case 'blog':
+        return ChatIntent.blog;
+      case 'general':
+        return ChatIntent.general;
+      default:
+        return ChatIntent.unknown;
+    }
+  }
 }
 
 extension ChatMessageDtoX on ChatMessageDto {
@@ -44,6 +89,7 @@ extension ChatMessageDtoX on ChatMessageDto {
       content: sanitizeAssistantContent(content),
       createdAt: createdAt,
       isSafety: isSafetyResponse,
+      detectedIntent: ChatIntent.fromString(detectedIntent),
     );
   }
 }

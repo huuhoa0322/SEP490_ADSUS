@@ -25,9 +25,12 @@ const baseURL = API_BASE_URL;
 // ở đây, mọi request FormData (#20/#21 — tải ảnh siêu âm) sẽ bị hasJSONContentType=true,
 // khiến axios âm thầm JSON.stringify() FormData thay vì giữ nguyên multipart, trong khi
 // header vẫn ghi application/json — backend nhận sai định dạng, không phải lỗi chỉ ở test.
+// TẠM THỜI bỏ giới hạn (0 = không timeout) để xác định xem forgot-password có thật sự
+// hoàn tất sau 60s hay không, phục vụ chẩn đoán 27/08/2026. NHỚ trả lại 60_000 sau khi
+// test xong — timeout: 0 để mãi mãi là để UI treo vô thời hạn nếu backend không phản hồi.
 export const apiClient = axios.create({
   baseURL,
-  timeout: 60_000,
+  timeout: 0,
 });
 
 /** Storage key for the access token, shared by the store and the interceptor below. */
