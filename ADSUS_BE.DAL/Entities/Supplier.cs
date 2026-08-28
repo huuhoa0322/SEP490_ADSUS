@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace ADSUS_BE.DAL.Entities;
@@ -23,5 +23,5 @@ public partial class Supplier
 
     public DateTime UpdatedAt { get; set; }
 
-    public virtual ICollection<MedicineBatch> MedicineBatches { get; set; } = new List<MedicineBatch>();
+    public virtual ICollection<InventoryTransaction> InventoryTransactions { get; set; } = new List<InventoryTransaction>();
 }

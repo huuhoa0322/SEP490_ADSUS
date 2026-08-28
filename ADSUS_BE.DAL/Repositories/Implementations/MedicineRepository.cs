@@ -51,6 +51,7 @@ public sealed class MedicineRepository : IMedicineRepository
         if (string.IsNullOrWhiteSpace(keyword))
         {
             return await _db.Medicines
+                .Include(m => m.MedicineBatches)
                 .AsNoTracking()
                 .Where(m => m.Status == MedicineStatus.Active)
                 .OrderBy(m => m.Name)
@@ -60,6 +61,7 @@ public sealed class MedicineRepository : IMedicineRepository
 
         var trimmed = keyword.Trim();
         return await _db.Medicines
+            .Include(m => m.MedicineBatches)
             .AsNoTracking()
             .Where(m => m.Status == MedicineStatus.Active && EF.Functions.ILike(m.Name, $"%{trimmed}%"))
             .OrderBy(m => m.Name)
@@ -73,14 +75,26 @@ public sealed class MedicineRepository : IMedicineRepository
         return Task.CompletedTask;
     }
 
-    public async Task<(IReadOnlyList<Medicine> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? keyword, CancellationToken ct = default)
+    public async Task<(IReadOnlyList<Medicine> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? keyword, bool? inStock = null, CancellationToken ct = default)
     {
-        var query = _db.Medicines.AsNoTracking();
+        var query = _db.Medicines.Include(m => m.MedicineBatches).AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             var trimmed = keyword.Trim();
             query = query.Where(m => EF.Functions.ILike(m.Name, $"%{trimmed}%"));
+        }
+
+        if (inStock.HasValue)
+        {
+            if (inStock.Value)
+            {
+                query = query.Where(m => m.MedicineBatches.Sum(b => b.QuantityBase) > 0);
+            }
+            else
+            {
+                query = query.Where(m => m.MedicineBatches.Sum(b => b.QuantityBase) == 0);
+            }
         }
 
         var totalCount = await query.CountAsync(ct);

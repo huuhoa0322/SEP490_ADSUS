@@ -86,7 +86,7 @@ public partial class AppDbContext : DbContext
     {
         modelBuilder
             .HasPostgresEnum("ai_result_status", new[] { "PENDING_REVIEW", "CONFIRMED", "REJECTED" })
-            .HasPostgresEnum("appointment_status", new[] { "BOOKED", "CANCELLED", "COMPLETED" })
+            .HasPostgresEnum("appointment_status", new[] { "BOOKED", "CANCELLED", "COMPLETED", "APPROVED" })
             .HasPostgresEnum("auth", "aal_level", new[] { "aal1", "aal2", "aal3" })
             .HasPostgresEnum("auth", "code_challenge_method", new[] { "s256", "plain" })
             .HasPostgresEnum("auth", "factor_status", new[] { "unverified", "verified" })
@@ -97,7 +97,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("auth", "oauth_response_type", new[] { "code" })
             .HasPostgresEnum("auth", "one_time_token_type", new[] { "confirmation_token", "reauthentication_token", "recovery_token", "email_change_token_new", "email_change_token_current", "phone_change_token" })
             .HasPostgresEnum("blog_status", new[] { "DRAFT", "PUBLISHED" })
-            .HasPostgresEnum("case_status", new[] { "CREATED", "END", "CONFIRMED" })
+            .HasPostgresEnum("case_status", new[] { "CREATED", "END", "CONFIRMED", "BOOKED" })
             .HasPostgresEnum("chat_role", new[] { "USER", "ASSISTANT" })
             .HasPostgresEnum("gender_type", new[] { "FEMALE", "MALE", "OTHER" })
             .HasPostgresEnum("health_log_type", new[] { "EXERCISE", "DIET" })
@@ -496,11 +496,15 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("id");
+            entity.Property(e => e.ActualImportPrice)
+                .HasPrecision(18, 2)
+                .HasColumnName("actual_import_price");
             entity.Property(e => e.BatchId).HasColumnName("batch_id");
             entity.Property(e => e.MedicinePackagingId).HasColumnName("medicine_packaging_id");
             entity.Property(e => e.PrescriptionItemId).HasColumnName("prescription_item_id");
             entity.Property(e => e.QuantityBase).HasColumnName("quantity_base");
             entity.Property(e => e.QuantityInUnit).HasColumnName("quantity_in_unit");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
             entity.Property(e => e.TxnDate)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("txn_date");
@@ -518,6 +522,11 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.PrescriptionItem).WithMany(p => p.InventoryTransactions)
                 .HasForeignKey(d => d.PrescriptionItemId)
                 .HasConstraintName("inventory_transaction_prescription_item_id_fkey");
+
+            entity.HasOne(d => d.Supplier).WithMany(p => p.InventoryTransactions)
+                .HasForeignKey(d => d.SupplierId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("inventory_transaction_supplier_id_fkey");
         });
 
         modelBuilder.Entity<Invoice>(entity =>
@@ -662,11 +671,12 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => new { e.MedicineId, e.ExpiryDate }, "ix_medicine_batch_fefo");
 
-            entity.HasIndex(e => e.SupplierId, "ix_medicine_batch_supplier_id");
-
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("id");
+            entity.Property(e => e.BaseUnitAvgImportPrice)
+                .HasPrecision(18, 2)
+                .HasColumnName("base_unit_avg_import_price");
             entity.Property(e => e.ExpiryDate).HasColumnName("expiry_date");
             entity.Property(e => e.LotNumber)
                 .HasMaxLength(100)
@@ -675,16 +685,11 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.QuantityBase)
                 .HasDefaultValue(0)
                 .HasColumnName("quantity_base");
-            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
 
             entity.HasOne(d => d.Medicine).WithMany(p => p.MedicineBatches)
                 .HasForeignKey(d => d.MedicineId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("medicine_batch_medicine_id_fkey");
-
-            entity.HasOne(d => d.Supplier).WithMany(p => p.MedicineBatches)
-                .HasForeignKey(d => d.SupplierId)
-                .HasConstraintName("medicine_batch_supplier_id_fkey");
         });
 
         modelBuilder.Entity<MedicinePackaging>(entity =>

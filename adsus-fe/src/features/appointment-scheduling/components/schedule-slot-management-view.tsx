@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
+import { format } from "date-fns";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -444,8 +445,8 @@ function CreateOvertimeModal({
           <span className="text-slate-600">Ngày khám</span>
           <input
             readOnly
-            type="date"
-            value={visitDate}
+            type="text"
+            value={visitDate ? format(new Date(visitDate), "dd/MM/yyyy") : ""}
             className="mt-1 w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-slate-500 cursor-not-allowed"
           />
         </label>

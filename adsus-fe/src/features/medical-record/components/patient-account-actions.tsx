@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DatePicker } from "@/components/ui/date-picker";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
@@ -214,11 +215,9 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
             <label htmlFor="acc-dob" className="mb-1.5 block text-sm font-medium">
               Ngày sinh
             </label>
-            <input
-              id="acc-dob"
-              type="date"
+            <DatePicker
               value={formDateOfBirth}
-              onChange={(event) => setFormDateOfBirth(event.target.value)}
+              onChange={(val) => setFormDateOfBirth(val)}
               className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>

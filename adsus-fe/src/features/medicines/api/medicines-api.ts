@@ -3,10 +3,12 @@ import { apiClient } from "@/lib/api-client";
 export interface MedicineResponse {
   medicineId: string;
   name: string;
-  usageUnit?: string;
+  usageUnit?: string;       // Đơn vị kê đơn
+  baseUnitName?: string;   // Tên đơn vị cơ bản kho (IsBaseUnit=true)
   volumePerBaseUnit?: number;
   status: string;
   createdAt: string;
+  totalInventoryBase: number;
 }
 
 export interface PagedResult<T> {
@@ -31,15 +33,23 @@ export interface UpdateMedicineRequest {
   volumePerBaseUnit?: number;
 }
 
-export async function getPagedMedicines(page: number, pageSize: number, search?: string) {
+export async function getPagedMedicines(page: number, pageSize: number, search?: string, inStock?: boolean) {
   const params = new URLSearchParams();
   params.append("page", page.toString());
   params.append("pageSize", pageSize.toString());
   if (search) {
     params.append("search", search);
   }
+  if (inStock !== undefined) {
+    params.append("inStock", inStock.toString());
+  }
   
   const response = await apiClient.get<PagedResult<MedicineResponse>>(`/api/v1/medicines/admin?${params.toString()}`);
+  return response.data;
+}
+
+export async function getMedicineById(id: string) {
+  const response = await apiClient.get<MedicineResponse>(`/api/v1/medicines/${id}`);
   return response.data;
 }
 
