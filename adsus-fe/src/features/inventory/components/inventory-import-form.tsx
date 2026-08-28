@@ -315,7 +315,7 @@ export const InventoryImportForm = () => {
                   <Button type="button" variant="outline" onClick={() => form.reset()}>
                     Hủy
                   </Button>
-                  <Button type="submit" disabled={isPending || isBulkPending || isValidatePending}>
+                  <Button type="submit" disabled={isBulkPending || isValidatePending}>
                     {isValidatePending ? 'Đang kiểm tra...' : 'Thêm vào bảng chờ'}
                   </Button>
                 </div>
