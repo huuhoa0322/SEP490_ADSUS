@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import toast from 'react-hot-toast';
@@ -17,7 +17,7 @@ import { SearchableSelect } from '@/components/shared/searchable-select';
 import { UploadCloud } from 'lucide-react';
 import { ExcelImportModal } from './excel-import-modal';
 
-import { ConfirmDialog } from '@/features/user-role-management/components/confirm-dialog';
+// ConfirmDialog removed
 
 import { useImportInventory, useBulkImportInventory, useValidateImport, type ImportInventoryRequest } from '@/features/medicines/api/inventory.api';
 import { getPagedMedicines, getPackagingsByMedicineId } from '@/features/medicines/api/medicines-api';
@@ -51,12 +51,10 @@ type ImportFormValues = z.infer<typeof importSchema>;
 
 export const InventoryImportForm = () => {
   const router = useRouter();
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
-  const [formDataToSubmit, setFormDataToSubmit] = useState<ImportFormValues | null>(null);
-  const [bulkData, setBulkData] = useState<any[]>([]);
+  const [bulkData, setBulkData] = useState<(ImportInventoryRequest & { _medicineName?: string, _supplierName?: string, _unitName?: string })[]>([]);
 
-  const { mutateAsync: importInventory, isPending } = useImportInventory();
+  // importInventory removed as it's bulk only now
   const { mutateAsync: importBulkInventory, isPending: isBulkPending } = useBulkImportInventory();
   const { mutateAsync: validateImport, isPending: isValidatePending } = useValidateImport();
   
@@ -83,7 +81,7 @@ export const InventoryImportForm = () => {
     },
   });
 
-  const watchMedicineId = form.watch('medicineId');
+  const watchMedicineId = useWatch({ control: form.control, name: 'medicineId' });
   
   const { data: packagingsData } = useQuery({
     queryKey: ['medicine-packagings', watchMedicineId],
@@ -114,7 +112,7 @@ export const InventoryImportForm = () => {
       }
     }
 
-    const newRequest: any = {
+    const newRequest: ImportInventoryRequest & { _medicineName?: string, _supplierName?: string, _unitName?: string } = {
       ...data,
       expiryDate: formattedExpiryDate,
       _medicineName: medName,
@@ -157,6 +155,7 @@ export const InventoryImportForm = () => {
       toast.success(`Đã nhập thành công ${bulkData.length} danh mục vào kho`);
       setBulkData([]);
       router.push('/inventory'); // Navigate to inventory list if exists
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       // Bỏ console.error để tránh Next.js dev server bật bảng lỗi đỏ (Error Overlay)
       // console.error("Bulk Import Error:", error.response?.data || error);

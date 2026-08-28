@@ -16,7 +16,7 @@ interface ExcelImportModalProps {
 }
 
 export function ExcelImportModal({ isOpen, onClose, onConfirm, isPending }: ExcelImportModalProps) {
-  const [parsedData, setParsedData] = useState<any[]>([]);
+  const [parsedData, setParsedData] = useState<Record<string, unknown>[]>([]);
   const [mappedRequests, setMappedRequests] = useState<ImportInventoryRequest[]>([]);
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -34,7 +34,7 @@ export function ExcelImportModal({ isOpen, onClose, onConfirm, isPending }: Exce
         const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws);
+        const data = XLSX.utils.sheet_to_json(ws) as Record<string, unknown>[];
         
         if (data.length === 0) {
           toast.error("File trống hoặc không đúng định dạng.");
@@ -58,7 +58,7 @@ export function ExcelImportModal({ isOpen, onClose, onConfirm, isPending }: Exce
     }
   };
 
-  const processData = async (data: any[]) => {
+  const processData = async (data: Record<string, unknown>[]) => {
     try {
       // In a real app, you would map names to IDs here by calling APIs or passing mapping dicts
       // For simplicity in this demo, we assume the excel file contains IDs directly, OR
@@ -70,7 +70,7 @@ export function ExcelImportModal({ isOpen, onClose, onConfirm, isPending }: Exce
       const requests: ImportInventoryRequest[] = [];
       const errors: string[] = [];
       
-      const getVal = (row: any, key: string) => {
+      const getVal = (row: Record<string, unknown>, key: string) => {
         const foundKey = Object.keys(row).find(k => k.toLowerCase().trim() === key.toLowerCase());
         return foundKey ? row[foundKey] : undefined;
       };
@@ -106,8 +106,8 @@ export function ExcelImportModal({ isOpen, onClose, onConfirm, isPending }: Exce
         }
 
         const unitName = getVal(row, 'Đơn vị nhập')?.toString().trim();
-        const quantity = parseFloat(getVal(row, 'Số lượng'));
-        const price = parseFloat(getVal(row, 'Giá Nhập'));
+        const quantity = parseFloat(String(getVal(row, 'Số lượng')));
+        const price = parseFloat(String(getVal(row, 'Giá Nhập')));
 
         const missingFields = [];
         if (!medName) missingFields.push("Tên Thuốc");
@@ -123,20 +123,20 @@ export function ExcelImportModal({ isOpen, onClose, onConfirm, isPending }: Exce
           continue;
         }
 
-        const med = medicines.items.find(m => m.name.toLowerCase() === medName.toLowerCase());
+        const med = medicines.items.find(m => m.name.toLowerCase() === (medName as string).toLowerCase());
         if (!med) {
           errors.push(`Dòng ${i + 2}: Không tìm thấy thuốc "${medName}".`);
           continue;
         }
 
-        const sup = suppliers.items.find(s => s.name.toLowerCase() === supName.toLowerCase());
+        const sup = suppliers.items.find(s => s.name.toLowerCase() === (supName as string).toLowerCase());
         if (!sup) {
           errors.push(`Dòng ${i + 2}: Không tìm thấy nhà cung cấp "${supName}".`);
           continue;
         }
 
         const packagings = await getPackagingsByMedicineId(med.medicineId);
-        const pack = packagings.find(p => p.unitName.toLowerCase() === unitName.toLowerCase());
+        const pack = packagings.find(p => p.unitName.toLowerCase() === (unitName as string).toLowerCase());
         
         if (!pack) {
           errors.push(`Dòng ${i + 2}: Không tìm thấy đơn vị "${unitName}" cho thuốc "${medName}".`);
@@ -154,7 +154,7 @@ export function ExcelImportModal({ isOpen, onClose, onConfirm, isPending }: Exce
           _medicineName: med.name,
           _supplierName: sup.name,
           _unitName: pack.unitName
-        } as any);
+        } as ImportInventoryRequest & { _medicineName: string, _supplierName: string, _unitName: string });
       }
 
       if (errors.length > 0) {
@@ -167,9 +167,10 @@ export function ExcelImportModal({ isOpen, onClose, onConfirm, isPending }: Exce
         toast.success(`Phân tích thành công ${requests.length} danh mục.`);
         onConfirm(requests); // Auto submit if no errors
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      toast.error("Lỗi xử lý dữ liệu từ file: " + e.message);
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      toast.error("Lỗi xử lý dữ liệu từ file: " + errorMessage);
     } finally {
       setIsProcessing(false);
     }

@@ -157,9 +157,14 @@ export default function MedicineBatchesPage() {
                 </td>
               </tr>
             ) : (
-              data.items.map(batch => {
-                const isExpired = new Date(batch.expiryDate) < new Date();
-                const soonExpiry = !isExpired && new Date(batch.expiryDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+              (() => {
+                const now = new Date();
+                const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+                
+                return data.items.map(batch => {
+                  const expiry = new Date(batch.expiryDate);
+                  const isExpired = expiry < now;
+                  const soonExpiry = !isExpired && expiry < thirtyDaysFromNow;
 
                 return (
                   <tr key={batch.batchId} className="border-b border-border last:border-0 transition-colors hover:bg-secondary/20">
@@ -198,7 +203,8 @@ export default function MedicineBatchesPage() {
                     </td>
                   </tr>
                 );
-              })
+                });
+              })()
             )}
           </tbody>
         </table>

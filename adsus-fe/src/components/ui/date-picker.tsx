@@ -14,6 +14,7 @@ import {
 
 interface DatePickerProps {
   value?: string | Date | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onChange: (value: any) => void;
   placeholder?: string;
   disabled?: boolean;
@@ -29,11 +30,15 @@ export function DatePicker({ value, onChange, placeholder = "dd/mm/yyyy", disabl
 
   // Sync input value when external value changes
   React.useEffect(() => {
-    if (parsedDate && !isNaN(parsedDate.getTime())) {
-      setInputValue(format(parsedDate, "dd/MM/yyyy"));
+    const pDate = value ? new Date(value) : undefined;
+    if (pDate && !isNaN(pDate.getTime())) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setInputValue(format(pDate, "dd/MM/yyyy"));
     } else {
+       
       setInputValue("");
     }
+     
   }, [value]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
