@@ -2,6 +2,7 @@ using System.Security.Claims;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
+using ADSUS_BE.BLL.PrescriptionAdherence.Validators;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -42,6 +43,11 @@ public class ReminderPreferencesController : ControllerBase
     {
         if (!TryGetUserId(out var userId))
             return Unauthorized();
+
+        var validator = new ReminderPreferenceValidator();
+        var validation = await validator.ValidateAsync(request, ct);
+        if (!validation.IsValid)
+            return BadRequest(string.Join("; ", validation.Errors.Select(e => e.ErrorMessage)));
 
         var result = await _service.UpsertAsync(userId, request, ct);
         return Ok(ApiResponse<ReminderPreferenceResponse>.Ok(result, "Đã lưu cài đặt nhắc nhở."));

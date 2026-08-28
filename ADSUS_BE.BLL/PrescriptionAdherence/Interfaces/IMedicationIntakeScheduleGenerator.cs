@@ -12,12 +12,14 @@ public interface IMedicationIntakeScheduleGenerator
     /// Sinh logs cho 1 dòng thuốc. Mỗi slot (MORNING/NOON/EVENING) tạo 1 log riêng
     /// cho mỗi ngày trong khoảng [StartDate, StartDate + DurationDays - 1].
     /// </summary>
+    /// <param name="utcNow">Mốc thời gian hiện tại (UTC). Dùng cho skip logic và test deterministic.</param>
     Task<IReadOnlyList<ScheduledDose>> GenerateAsync(
         PrescriptionItemWithPatient item,
         IReadOnlyList<ScheduleSlot> slots,
         TimeOnly patientMorningTime,
         TimeOnly patientMiddayTime,
         TimeOnly patientEveningTime,
+        DateTime utcNow,
         CancellationToken ct = default);
 }
 

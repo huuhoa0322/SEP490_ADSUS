@@ -150,6 +150,70 @@ public class UserAccountServiceTests
         Assert.Empty(_saved);
     }
 
+    [Fact]
+    public async Task CreateAsync_EmailAlreadyUsed_IsRejected()
+    {
+        _users.Setup(r => r.IsEmailUsedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(true);
+
+        var (result, account, temporaryPassword) = await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId);
+
+        Assert.Equal(AccountOperationResult.EmailAlreadyUsed, result);
+        Assert.Null(account);
+        Assert.Null(temporaryPassword);
+        Assert.Empty(_saved);
+    }
+
+    // ---------- SCR-06: tìm kiếm và phân trang ----------
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(-5, 1)]
+    public async Task SearchAsync_PageBelowOne_IsClampedToOne(int requestedPage, int expectedPage)
+    {
+        _users.Setup(r => r.SearchAsync(
+                  It.IsAny<string?>(), It.IsAny<UserRole?>(), It.IsAny<UserStatus?>(),
+                  It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((Array.Empty<User>(), 0));
+
+        var result = await _sut.SearchAsync(null, null, null, requestedPage, 20, _adminId);
+
+        Assert.Equal(expectedPage, result.Page);
+        _users.Verify(r => r.SearchAsync(
+            null, null, null, expectedPage, 20, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(0, 20)]
+    [InlineData(-1, 20)]
+    [InlineData(101, 20)]
+    public async Task SearchAsync_PageSizeOutOfRange_IsClampedToDefault(int requestedPageSize, int expectedPageSize)
+    {
+        // MaxPageSize = 100 — chặn client kéo cả bảng users về một lần.
+        _users.Setup(r => r.SearchAsync(
+                  It.IsAny<string?>(), It.IsAny<UserRole?>(), It.IsAny<UserStatus?>(),
+                  It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((Array.Empty<User>(), 0));
+
+        var result = await _sut.SearchAsync(null, null, null, 1, requestedPageSize, _adminId);
+
+        Assert.Equal(expectedPageSize, result.PageSize);
+    }
+
+    [Fact]
+    public async Task SearchAsync_ValidPageAndPageSize_PassedThroughUnchanged()
+    {
+        _users.Setup(r => r.SearchAsync(
+                  It.IsAny<string?>(), It.IsAny<UserRole?>(), It.IsAny<UserStatus?>(),
+                  It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((Array.Empty<User>(), 0));
+
+        var result = await _sut.SearchAsync(null, null, null, 3, 50, _adminId);
+
+        Assert.Equal(3, result.Page);
+        Assert.Equal(50, result.PageSize);
+    }
+
     // ---------- BR-01: ngày sinh của bệnh nhân ----------
 
     [Fact]
@@ -192,6 +256,16 @@ public class UserAccountServiceTests
         var account = await _sut.GetByIdAsync(user.UserId, Guid.NewGuid());
 
         Assert.Null(account!.DateOfBirth);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_AccountNotFound_ReturnsNull()
+    {
+        SetupGetById(null);
+
+        var account = await _sut.GetByIdAsync(Guid.NewGuid(), _adminId);
+
+        Assert.Null(account);
     }
 
     [Fact]
@@ -259,7 +333,106 @@ public class UserAccountServiceTests
         Assert.Equal(AccountOperationResult.NotFound, result);
     }
 
+    // ---------- AF-02: khôi phục tài khoản ----------
+
+    [Fact]
+    public async Task ReactivateAsync_DeactivatedAccount_TransitionsToActive()
+    {
+        var user = BuildDbUser(UserRole.Doctor);
+        user.Status = UserStatus.Deactivated;
+        SetupGetById(user);
+
+        var result = await _sut.ReactivateAsync(_adminId, user.UserId, "khôi phục theo yêu cầu");
+
+        Assert.Equal(AccountOperationResult.Success, result);
+        Assert.Equal(UserStatus.Active, user.Status);
+        _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_TargetIsSelf_ReturnsCannotTargetSelf()
+    {
+        var adminId = Guid.NewGuid();
+
+        var result = await _sut.ReactivateAsync(adminId, adminId, "lý do bất kỳ");
+
+        Assert.Equal(AccountOperationResult.CannotTargetSelf, result);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_AccountNotFound_ReturnsNotFound()
+    {
+        SetupGetById(null);
+
+        var result = await _sut.ReactivateAsync(_adminId, Guid.NewGuid(), "lý do bất kỳ");
+
+        Assert.Equal(AccountOperationResult.NotFound, result);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_AccountAlreadyActive_IsRejected()
+    {
+        // Chỉ khôi phục tài khoản ĐANG bị vô hiệu hoá — gọi lại trên tài khoản đã Active
+        // không có tác dụng gì, không nên âm thầm trả Success.
+        var user = BuildDbUser(UserRole.Doctor);
+        user.Status = UserStatus.Active;
+        SetupGetById(user);
+
+        var result = await _sut.ReactivateAsync(_adminId, user.UserId, "lý do bất kỳ");
+
+        Assert.NotEqual(AccountOperationResult.Success, result);
+        _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // ---------- FT-09: phân quyền ----------
+
+    [Fact]
+    public async Task UpdateAsync_AccountNotFound_ReturnsNotFound()
+    {
+        SetupGetById(null);
+
+        var result = await _sut.UpdateAsync(Guid.NewGuid(), new UpdateUserAccountRequest
+        {
+            FullName = "Nguyễn Văn A",
+            Role = "DOCTOR",
+        }, _adminId);
+
+        Assert.Equal(AccountOperationResult.NotFound, result);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_InvalidRoleString_IsRejected()
+    {
+        var user = BuildDbUser(UserRole.Doctor);
+        SetupGetById(user);
+
+        var result = await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
+        {
+            FullName = "Nguyễn Văn A",
+            Role = "SUPERUSER",
+        }, _adminId);
+
+        Assert.Equal(AccountOperationResult.InvalidRole, result);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_EmailAlreadyUsedByAnotherUser_IsRejected()
+    {
+        var user = BuildDbUser(UserRole.Doctor);
+        SetupGetById(user);
+        _users.Setup(r => r.IsEmailUsedByAnotherUserAsync(
+                  user.UserId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(true);
+
+        var result = await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
+        {
+            FullName = "Nguyễn Văn A",
+            Role = "DOCTOR",
+            Email = "da-dung@example.com",
+        }, _adminId);
+
+        Assert.Equal(AccountOperationResult.EmailAlreadyUsed, result);
+    }
 
     [Fact]
     public async Task UpdateAsync_ChangeRoleToNurse_Succeeds()
@@ -475,6 +648,23 @@ public class UserAccountServiceTests
         await _sut.DeactivateAsync(_adminId, _adminId);
 
         Assert.Empty(_audited);
+    }
+
+    [Fact]
+    public async Task ReactivateAsync_RecordsAuditLogWithReadableVietnameseReason()
+    {
+        // Bug thật phát hiện qua P11 review Feature 2 (28/08/2026): chuỗi ghi nhật ký ở đây
+        // từng bị hỏng encoding (mojibake), nên mọi lần khôi phục tài khoản ghi chữ không đọc
+        // được vào audit_log — một bảng dữ liệu tuân thủ.
+        var user = BuildDbUser(UserRole.Doctor);
+        user.Status = UserStatus.Deactivated;
+        SetupGetById(user);
+
+        await _sut.ReactivateAsync(_adminId, user.UserId, "Reactivated by admin via UI");
+
+        var log = Assert.Single(_audited);
+        Assert.Equal(AccountAuditTrail.ReactivateAccount, log.Action);
+        Assert.Contains("khôi phục tài khoản, lý do: Reactivated by admin via UI", log.Detail);
     }
 
     [Fact]

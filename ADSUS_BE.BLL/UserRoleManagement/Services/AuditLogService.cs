@@ -24,9 +24,9 @@ public class AuditLogService : IAuditLogService
         int limit,
         CancellationToken cancellationToken = default)
     {
-        var soDong = limit is < 1 or > MaxLimit ? DefaultLimit : limit;
+        var effectiveLimit = limit is < 1 or > MaxLimit ? DefaultLimit : limit;
 
-        var entries = await _auditLogs.GetRecentAsync(soDong, cancellationToken);
+        var entries = await _auditLogs.GetRecentAsync(effectiveLimit, cancellationToken);
 
         return entries
             .Select(e => new AuditLogResponse
