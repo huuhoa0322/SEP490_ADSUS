@@ -1128,6 +1128,7 @@ class _TimeSlotRow extends StatelessWidget {
   }
 
   Future<void> _pickTime(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
     final picked = await showTimePicker(
       context: context,
       initialTime: time,
@@ -1145,7 +1146,25 @@ class _TimeSlotRow extends StatelessWidget {
         );
       },
     );
-    if (picked != null) onPick(picked);
+    if (picked == null) return;
+
+    final result = _clampToSlot(label, picked);
+    if (result.adjusted) {
+      final clamped = TimeOfDay(hour: result.hour, minute: result.minute);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Giờ $label phải từ ${_slotMinTime(label)} đến ${_slotMaxTime(label)}. '
+            'Đã đặt về ${_formatTimeOfDay(clamped)}.',
+          ),
+          duration: const Duration(seconds: 3),
+          backgroundColor: AppColors.amberWarn,
+        ),
+      );
+      onPick(clamped);
+    } else {
+      onPick(picked);
+    }
   }
 }
 
@@ -1189,6 +1208,67 @@ class _ErrorCard extends StatelessWidget {
 }
 
 // ---- helpers ----
+
+/// Kết quả clamp: giờ đã điều chỉnh + có hay không điều chỉnh.
+class _ClampResult {
+  const _ClampResult({required this.hour, required this.minute, required this.adjusted});
+  final int hour;
+  final int minute;
+  final bool adjusted;
+}
+
+/// Clamp giờ vào khoảng hợp lệ của slot.
+/// Sáng: 05:00–10:59 | Trưa: 11:00–16:59 | Tối: 17:00–23:59
+///
+/// Trả về _ClampResult.
+/// adjusted = true khi giờ nằm ngoài khoảng và đã bị snap.
+_ClampResult _clampToSlot(String label, TimeOfDay picked) {
+  switch (label) {
+    case 'Sáng': // 05:00–10:59
+      if (picked.hour < 5) {
+        return _ClampResult(hour: 5, minute: 0, adjusted: true);
+      }
+      if (picked.hour > 10 || (picked.hour == 10 && picked.minute > 59)) {
+        return _ClampResult(hour: 10, minute: 59, adjusted: true);
+      }
+      return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
+
+    case 'Trưa': // 11:00–16:59
+      if (picked.hour < 11) {
+        return _ClampResult(hour: 11, minute: 0, adjusted: true);
+      }
+      if (picked.hour > 16 || (picked.hour == 16 && picked.minute > 59)) {
+        return _ClampResult(hour: 16, minute: 59, adjusted: true);
+      }
+      return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
+
+    case 'Tối': // 17:00–23:59
+      if (picked.hour < 17) {
+        return _ClampResult(hour: 17, minute: 0, adjusted: true);
+      }
+      if (picked.hour > 23) {
+        return _ClampResult(hour: 23, minute: 59, adjusted: true);
+      }
+      return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
+
+    default:
+      return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
+  }
+}
+
+String _slotMinTime(String label) => switch (label) {
+      'Sáng' => '05:00',
+      'Trưa' => '11:00',
+      'Tối' => '17:00',
+      _ => ''
+    };
+
+String _slotMaxTime(String label) => switch (label) {
+      'Sáng' => '10:59',
+      'Trưa' => '16:59',
+      'Tối' => '23:59',
+      _ => ''
+    };
 
 bool _isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
