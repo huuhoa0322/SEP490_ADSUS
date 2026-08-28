@@ -12,7 +12,8 @@ namespace ADSUS_BE.Controllers;
 
 /// <summary>
 /// UC-13, UC-14 — Appointment Scheduling (Module 8).
-/// Endpoints cho Patient đặt lịch và xem/hủy lịch hẹn.
+/// Endpoints cho Patient đặt lịch và xem/hủy lịch hẹn, và cho Doctor xem "Lịch bệnh nhân"
+/// (endpoint "doctor", thêm 28/08/2026).
 /// </summary>
 // Không còn [Authorize(Roles = "PATIENT")] ở mức class — ASP.NET Core cộng dồn (AND) mọi
 // [Authorize] của class + action, nên nếu để "PATIENT" ở đây thì action "doctor" bên dưới
@@ -165,7 +166,9 @@ public sealed class AppointmentsController : ControllerBase
         [FromQuery] DateOnly toDate,
         CancellationToken ct = default)
     {
-        var doctorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? throw new InvalidOperationException("Missing NameIdentifier claim.");
+        var doctorId = Guid.Parse(userId);
         var appointments = await _appointmentService.ListForDoctorAsync(doctorId, fromDate, toDate, ct);
         return Ok(ApiResponse<IReadOnlyList<DoctorPatientAppointmentResponse>>.Ok(appointments));
     }

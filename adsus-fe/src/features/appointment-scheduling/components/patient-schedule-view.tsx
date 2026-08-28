@@ -6,21 +6,9 @@ import { useState } from "react";
 import { getApiErrorMessage } from "@/lib/api-client";
 
 import { useDoctorAppointments } from "../hooks/use-doctor-appointments";
-import { groupAppointmentsByWeek } from "../lib/group-appointments-by-week";
+import { addDays, groupAppointmentsByWeek, toIsoDate } from "../lib/group-appointments-by-week";
 
 const WEEKDAY_LABELS_VI = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
-
-function toIsoDate(date: Date): string {
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-function addDays(date: Date, days: number): Date {
-  const next = new Date(date);
-  next.setDate(date.getDate() + days);
-  return next;
-}
 
 /** T2 của tuần chứa `date`. Sao chép từ schedule-slot-management-view.tsx (không import chéo
  * — hai màn hình độc lập hoàn toàn theo quyết định thiết kế 28/08/2026). */
@@ -43,7 +31,7 @@ export function PatientScheduleView() {
   const fromDate = toIsoDate(weekStart);
   const toDate = toIsoDate(weekEnd);
 
-  const { data, isLoading, isError, error } = useDoctorAppointments({ fromDate, toDate });
+  const { data, isLoading, isPlaceholderData, isError, error } = useDoctorAppointments({ fromDate, toDate });
 
   const days = groupAppointmentsByWeek(weekStart, data ?? []);
 
@@ -67,6 +55,14 @@ export function PatientScheduleView() {
         </button>
         <h2 className="font-heading text-lg font-semibold">
           Tuần {fromDate} → {toDate}
+          {isPlaceholderData && (
+            // F4 fix: data hiện có là placeholderData của tuần TRƯỚC (placeholderData: (previous)
+            // => previous trong useDoctorAppointments) — báo cho người dùng biết đang tải tuần
+            // mới, thay vì im lặng hiện dữ liệu/thông báo trống của tuần cũ.
+            <span role="status" className="ml-2 inline-flex items-center gap-1 align-middle text-xs font-normal text-slate-400">
+              <Loader2 className="h-3 w-3 animate-spin" /> Đang cập nhật…
+            </span>
+          )}
         </h2>
         <button
           type="button"
@@ -93,7 +89,7 @@ export function PatientScheduleView() {
           <Loader2 className="h-4 w-4 animate-spin" /> Đang tải…
         </div>
       ) : (
-        <div className="grid grid-cols-7 gap-3">
+        <div className={`grid grid-cols-7 gap-3 ${isPlaceholderData ? "opacity-50" : ""}`}>
           {days.map((day, i) => (
             <div key={day.dateIso} className="flex min-h-[200px] flex-col gap-2 rounded border border-slate-200 bg-white p-2">
               <div className="text-center text-sm font-semibold text-slate-500">
@@ -101,7 +97,11 @@ export function PatientScheduleView() {
                 <div className="text-xs font-normal text-slate-400">{day.dateIso}</div>
               </div>
 
-              {day.groups.length === 0 && (
+              {/* F4 fix: khi isPlaceholderData, `data` vẫn còn là dữ liệu tuần CŨ (do
+                  placeholderData: (previous) => previous), nên groups rỗng ở đây không có nghĩa
+                  tuần mới thật sự không có bệnh nhân — chỉ là chưa tải xong. Không hiện thông báo
+                  trống gây hiểu lầm; đã có chỉ báo "Đang cập nhật…" ở header thay thế. */}
+              {day.groups.length === 0 && !isPlaceholderData && (
                 <p className="mt-2 text-center text-xs text-slate-400">Không có bệnh nhân</p>
               )}
 

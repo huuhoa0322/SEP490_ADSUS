@@ -57,4 +57,20 @@ describe("groupAppointmentsByWeek", () => {
 
     expect(result.every((day) => day.groups.length === 0)).toBe(true);
   });
+
+  it("F7: cùng giờ bắt đầu nhưng khác giờ kết thúc -> tách thành 2 group riêng, không gộp sai", () => {
+    const appointments = [
+      buildAppointment({ appointmentId: "a1", slotDate: "2026-07-06", startTime: "08:00:00", endTime: "08:30:00", patientFullName: "Nguyễn Văn A" }),
+      buildAppointment({ appointmentId: "a2", slotDate: "2026-07-06", startTime: "08:00:00", endTime: "09:00:00", patientFullName: "Trần Thị B" }),
+    ];
+
+    const result = groupAppointmentsByWeek(monday, appointments);
+    const monday06 = result.find((d) => d.dateIso === "2026-07-06")!;
+
+    expect(monday06.groups).toHaveLength(2);
+    expect(monday06.groups[0].endTime).toBe("08:30:00");
+    expect(monday06.groups[0].appointments).toHaveLength(1);
+    expect(monday06.groups[1].endTime).toBe("09:00:00");
+    expect(monday06.groups[1].appointments).toHaveLength(1);
+  });
 });

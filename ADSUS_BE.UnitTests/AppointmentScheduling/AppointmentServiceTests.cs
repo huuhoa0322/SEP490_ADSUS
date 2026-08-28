@@ -488,7 +488,7 @@ public class AppointmentServiceTests : IDisposable
     #region ListForDoctorAsync Tests
 
     [Fact]
-    public async Task ListForDoctorAsync_OnlyBookedAppointments_ExcludesCancelled()
+    public async Task ListForDoctorAsync_ExcludesCancelled()
     {
         var fromDate = new DateOnly(2026, 7, 10);
         var toDate = new DateOnly(2026, 7, 16);

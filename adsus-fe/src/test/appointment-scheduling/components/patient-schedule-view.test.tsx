@@ -83,4 +83,31 @@ describe("PatientScheduleView", () => {
 
     expect(useDoctorAppointmentsMock).toHaveBeenCalled();
   });
+
+  it("đang chuyển tuần (isPlaceholderData) — KHÔNG hiện sai 'Không có bệnh nhân', hiện chỉ báo đang tải", () => {
+    // Ghim đồng hồ về tuần chứa 2026-07-13 (Thứ Hai) — tuần ĐANG được hiển thị/yêu cầu.
+    // Nhưng data trả về là placeholderData của tuần TRƯỚC (2026-07-06), đúng như hành vi thật
+    // của placeholderData: (previous) => previous trong lúc query tuần mới còn đang chạy.
+    // groupAppointmentsByWeek sẽ lọc theo slotDate của tuần mới -> mọi ngày đều rỗng nếu component
+    // không biết đây là placeholder, dẫn tới hiện sai "Không có bệnh nhân" cho cả 7 ngày (bug F4).
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 13));
+
+    try {
+      useDoctorAppointmentsMock.mockReturnValue({
+        data: [buildAppointment({ slotDate: "2026-07-06" })],
+        isLoading: false,
+        isPlaceholderData: true,
+        isError: false,
+        error: null,
+      });
+
+      render(<PatientScheduleView />);
+
+      expect(screen.queryAllByText("Không có bệnh nhân")).toHaveLength(0);
+      expect(screen.getByRole("status")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

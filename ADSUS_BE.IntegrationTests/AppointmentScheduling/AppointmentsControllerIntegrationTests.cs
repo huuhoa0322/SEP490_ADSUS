@@ -551,6 +551,77 @@ public class AppointmentsControllerIntegrationTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    /// <summary>
+    /// F5 (final whole-branch review, 28/08/2026): chốt định dạng JSON thật của DateOnly/TimeOnly
+    /// trên response — kiểm tra chuỗi thô, không chỉ deserialize lại thành DTO (deserialize chỉ
+    /// chứng minh converter đối xứng, không chứng minh định dạng thật đúng thứ FE đang giả định
+    /// khi so sánh chuỗi tuyệt đối trong groupAppointmentsByWeek). Nếu ai đó sau này đổi
+    /// serializer/naming policy, test này sẽ đỏ thay vì để FE âm thầm hiện sai "không có bệnh nhân".
+    /// </summary>
+    [Fact]
+    public async Task ListForDoctor_AsDoctor_ReturnsExpectedJsonDateTimeFormat()
+    {
+        using var app = CreateApp();
+        var client = CreateDoctorClient(app);
+
+        var doctorId = Guid.NewGuid();
+        var patientUser = new User
+        {
+            UserId = Guid.NewGuid(),
+            Phone = "0900000002",
+            FullName = "Nguyễn Thị Lan",
+            PasswordHash = "khong-dung-toi-trong-bai-test-nay",
+            Role = UserRole.Patient,
+            Status = UserStatus.Active,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        var patientProfile = new PatientProfile
+        {
+            PatientProfileId = Guid.NewGuid(),
+            UserId = patientUser.UserId,
+            User = patientUser,
+            CreatedBy = doctorId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        var slot = new ScheduleSlot
+        {
+            SlotId = Guid.NewGuid(),
+            DoctorId = doctorId,
+            SlotDate = new DateOnly(2026, 7, 10),
+            StartTime = new TimeOnly(8, 30),
+            EndTime = new TimeOnly(9, 0),
+            Status = SlotStatus.Booked,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        var appointment = new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = slot.SlotId,
+            Slot = slot,
+            PatientProfileId = patientProfile.PatientProfileId,
+            PatientProfile = patientProfile,
+            Status = AppointmentStatus.Booked,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+
+        _appointments
+            .Setup(r => r.ListByDoctorAsync(
+                It.IsAny<Guid>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { appointment });
+
+        var response = await client.GetAsync("/api/v1/appointments/doctor?fromDate=2026-07-10&toDate=2026-07-16");
+        var rawBody = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("\"slotDate\":\"2026-07-10\"", rawBody);
+        Assert.Contains("\"startTime\":\"08:30:00\"", rawBody);
+        Assert.Contains("\"endTime\":\"09:00:00\"", rawBody);
+    }
+
     [Theory]
     [InlineData("patient")]
     [InlineData("nurse")]
