@@ -43,13 +43,14 @@ public enum BlogPostStatus
 
 /// <summary>
 /// Trạng thái lịch hẹn — enum <c>appointment_status</c> trong DB (Module 8).
-/// Dùng bởi Dashboard (UC-05) để đếm tỉ lệ Booked/Cancelled.
+/// Flow: Booked → Approved (nurse checkin) → Completed (doctor end case)
 /// </summary>
 public enum AppointmentStatus
 {
     [PgName("BOOKED")] Booked,
+    [PgName("APPROVED")] Approved,     // Nurse checkin khi bệnh nhân đến
     [PgName("CANCELLED")] Cancelled,
-    [PgName("COMPLETED")] Completed,
+    [PgName("COMPLETED")] Completed,    // Doctor end case
 }
 
 /// <summary>

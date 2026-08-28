@@ -292,6 +292,36 @@ public sealed class AppointmentService : IAppointmentService
         return ToAppointmentResponse(appointment);
     }
 
+    public async Task<AppointmentResponse> CheckinAppointmentAsync(
+        Guid appointmentId,
+        CancellationToken ct = default)
+    {
+        // Lấy appointment với tracking để update
+        var appointment = await _db.Appointments
+            .Include(a => a.Slot)
+                .ThenInclude(s => s.Doctor)
+            .FirstOrDefaultAsync(a => a.AppointmentId == appointmentId, ct)
+            ?? throw new InvalidOperationException($"Appointment '{appointmentId}' not found.");
+
+        // Chỉ appointment đang BOOKED mới được checkin
+        if (appointment.Status != AppointmentStatus.Booked)
+        {
+            throw new InvalidOperationException("Chỉ lịch hẹn đang ở trạng thái ĐÃ ĐẶT mới được checkin.");
+        }
+
+        // Cập nhật Appointment: Booked → Approved
+        appointment.Status = AppointmentStatus.Approved;
+        appointment.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Appointment {AppointmentId} checked in by nurse. Status: {Status}",
+            appointmentId, appointment.Status);
+
+        return ToAppointmentResponse(appointment);
+    }
+
     private static AppointmentResponse ToAppointmentResponse(Appointment a, Guid? caseId = null)
     {
         return new AppointmentResponse
