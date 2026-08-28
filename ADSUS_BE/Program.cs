@@ -405,6 +405,7 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IMedicineService, MedicineService>();
             builder.Services.AddScoped<ISupplierService, SupplierService>();
             builder.Services.AddScoped<IInventoryService, InventoryService>();
+            builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 
             // BLL — Module 8: Appointment Scheduling (UC-15)
             builder.Services.AddScoped<IScheduleSlotRepository, ScheduleSlotRepository>();

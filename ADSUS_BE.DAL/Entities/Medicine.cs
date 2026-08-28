@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
-/// Danh mục thuốc dùng chung. Bác sĩ gõ tìm tên thuốc khi kê đơn (FT-30) qua ô tìm kiếm; nếu chưa có trong danh mục, hệ thống tự thêm mới để dùng lại cho lần sau — thay cho việc nhập tự do trước đây.
+/// Danh mục thuốc dùng chung. Bác sĩ gõ tìm tên thuốc khi kê đơn (FT-30) qua ô tìm kiếm. Bắt buộc phải chọn thuốc có trong hệ thống.
 /// </summary>
 public partial class Medicine
 {

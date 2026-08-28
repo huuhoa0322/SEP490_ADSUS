@@ -353,5 +353,68 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                 items, filter.Page, filter.PageSize, totalCount,
                 (int)Math.Ceiling(totalCount / (double)filter.PageSize));
         }
+        public async Task DispenseAsync(Guid caseId)
+        {
+            var prescription = await _dbContext.Prescriptions
+                .Include(p => p.PrescriptionItems)
+                    .ThenInclude(pi => pi.Medicine)
+                        .ThenInclude(m => m.MedicinePackagings)
+                .FirstOrDefaultAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active);
+
+            if (prescription == null || !prescription.PrescriptionItems.Any())
+            {
+                throw new BusinessException("Không tìm thấy đơn thuốc hoặc đơn thuốc trống.");
+            }
+
+            foreach (var pItem in prescription.PrescriptionItems)
+            {
+                var quantityNeeded = pItem.QuantityBase;
+                if (quantityNeeded <= 0) continue;
+
+                var baseUnitPack = pItem.Medicine.MedicinePackagings.FirstOrDefault(mp => mp.IsBaseUnit);
+                if (baseUnitPack == null)
+                {
+                    throw new BusinessException($"Thuốc '{pItem.Medicine.Name}' chưa được cấu hình Base Unit.");
+                }
+
+                // FEFO: Lấy các lô còn hạn, còn hàng, sắp xếp theo Hạn sử dụng tăng dần
+                var batches = await _dbContext.MedicineBatches
+                    .Where(b => b.MedicineId == pItem.MedicineId && b.QuantityBase > 0 && b.ExpiryDate >= DateOnly.FromDateTime(DateTime.UtcNow))
+                    .OrderBy(b => b.ExpiryDate)
+                    .ToListAsync();
+
+                foreach (var batch in batches)
+                {
+                    if (quantityNeeded <= 0) break;
+
+                    int cutQty = Math.Min(batch.QuantityBase, quantityNeeded);
+                    
+                    batch.QuantityBase -= cutQty;
+                    quantityNeeded -= cutQty;
+
+                    var txn = new InventoryTransaction
+                    {
+                        Id = Guid.NewGuid(),
+                        BatchId = batch.Id,
+                        MedicinePackagingId = baseUnitPack.Id,
+                        QuantityInUnit = cutQty,
+                        QuantityBase = cutQty, // Vì là BaseUnit nên Quantity = QuantityBase
+                        TxnDate = DateTime.UtcNow,
+                        PrescriptionItemId = pItem.PrescriptionItemId,
+                        ActualImportPrice = batch.BaseUnitAvgImportPrice, // ĐÓNG BĂNG GIÁ VỐN
+                        TxnType = InventoryTxnType.Dispense
+                    };
+
+                    _dbContext.InventoryTransactions.Add(txn);
+                }
+
+                if (quantityNeeded > 0)
+                {
+                    throw new BusinessException($"Thuốc '{pItem.Medicine.Name}' không đủ tồn kho hợp lệ. Thiếu {quantityNeeded} đơn vị.");
+                }
+            }
+
+            await _dbContext.SaveChangesAsync();
+        }
     }
 }

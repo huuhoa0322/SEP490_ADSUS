@@ -1,6 +1,6 @@
 "use client";
 
-import { BrainCircuit, CalendarClock, FileText, KeyRound, LogOut, LayoutDashboard, ClipboardList, Users, Pill, Truck, PackagePlus } from "lucide-react";
+import { BrainCircuit, CalendarClock, FileText, KeyRound, LogOut, LayoutDashboard, ClipboardList, Users, Pill, Truck, PackagePlus, Receipt } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -43,6 +43,10 @@ export function AppSidebar() {
 
         {(user?.role === "DOCTOR" || user?.role === "NURSE") && (
           <NavItem expanded={expanded} href="/patients" icon={<ClipboardList className="size-5" />} label="Danh sách bệnh nhân" active={pathname.startsWith("/patients")} />
+        )}
+
+        {user?.role === "NURSE" && (
+          <NavItem expanded={expanded} href="/invoices" icon={<Receipt className="size-5" />} label="Quản lý hóa đơn" active={pathname.startsWith("/invoices")} />
         )}
 
         {user?.role === "DOCTOR" && (

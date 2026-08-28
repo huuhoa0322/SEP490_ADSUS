@@ -191,6 +191,8 @@ interface RawMedicineItem {
   MedicineId?: string;
   name?: string;
   Name?: string;
+  usageUnit?: string;
+  UsageUnit?: string;
 }
 
 export async function searchMedicines(keyword: string): Promise<MedicationCatalogItem[]> {
@@ -208,5 +210,6 @@ export async function searchMedicines(keyword: string): Promise<MedicationCatalo
   return (items as RawMedicineItem[]).map((item) => ({
     medicineId: item.medicineId || item.MedicineId || "",
     name: item.name || item.Name || "",
+    usageUnit: item.usageUnit || item.UsageUnit || "đơn vị",
   }));
 }

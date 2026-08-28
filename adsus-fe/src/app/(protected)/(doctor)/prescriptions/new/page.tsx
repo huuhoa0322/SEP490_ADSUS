@@ -38,7 +38,7 @@ export default function NewPrescriptionPage() {
       caseId: targetCaseId,
       items: data.items.map((item) => ({
         medicineName: item.medicineName,
-        dosage: item.dosage,
+        quantityPerDose: item.quantityPerDose,
         scheduleSlots: item.scheduleSlots,
         durationDays: item.durationDays,
         startDate: item.startDate,
@@ -55,7 +55,7 @@ export default function NewPrescriptionPage() {
   const isLoading = isLoadingCase;
 
   return (
-    <div className="container mx-auto max-w-4xl py-8">
+    <div className="mx-auto w-4/5 py-8">
       <div className="mb-6">
         <button
           type="button"

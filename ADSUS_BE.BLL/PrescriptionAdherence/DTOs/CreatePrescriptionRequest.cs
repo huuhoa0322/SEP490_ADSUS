@@ -17,12 +17,11 @@ public sealed record CreatePrescriptionRequest(
 
 /// <summary>
 /// 1 dòng thuốc trong đơn kê.
-/// MedicineName: tên thuốc nhập bởi bác sĩ. Backend tự tìm hoặc tạo mới trong bảng medicines.
-/// (Option A: tự động quản lý danh mục thuốc).
+/// MedicineName: tên thuốc nhập bởi bác sĩ. Thuốc phải tồn tại trong danh mục.
 /// </summary>
 public sealed record CreatePrescriptionItemDto(
     [Required][MinLength(1)] string MedicineName,
-    [Required] string Dosage,
+    [Range(1, 1000)] int QuantityPerDose,
     [Range(1, 365)] short DurationDays,
     DateOnly StartDate,
     [MaxLength(1000)] string? Instructions,

@@ -22,7 +22,8 @@ const ScheduleSlotEnum = z.enum(["Morning", "Noon", "Evening"]);
 
 const PrescriptionItemSchema = z.object({
   medicineName: z.string().min(1, "Nhập tên thuốc"),
-  dosage: z.string().min(1, "Nhập liều dùng (vd: 1 viên/1 gói)"),
+  usageUnit: z.string().optional(),
+  quantityPerDose: z.coerce.number().int().min(1, "Nhập số lượng"),
   scheduleSlots: z
     .array(ScheduleSlotEnum)
     .min(1, "Chọn ít nhất 1 khung giờ uống"),
@@ -73,7 +74,8 @@ export function PrescriptionForm({
       items: [
         {
           medicineName: "",
-          dosage: "",
+          usageUnit: "đơn vị",
+          quantityPerDose: 1,
           scheduleSlots: [] as ScheduleSlot[],
           durationDays: 30,
           startDate: new Date().toISOString().split("T")[0],
@@ -152,7 +154,8 @@ export function PrescriptionForm({
               onClick={() =>
                 append({
                   medicineName: "",
-                  dosage: "",
+                  usageUnit: "đơn vị",
+                  quantityPerDose: 1,
                   scheduleSlots: [] as ScheduleSlot[],
                   durationDays: 30,
                   startDate: new Date().toISOString().split("T")[0],
@@ -246,7 +249,7 @@ export function PrescriptionForm({
 
 interface MedicineComboboxProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, usageUnit: string) => void;
   error?: string;
 }
 
@@ -281,14 +284,14 @@ function MedicineCombobox({
 
   const filtered = searchResults ?? [];
 
-  function handleSelect(name: string) {
-    onChange(name);
+  function handleSelect(name: string, usageUnit: string) {
+    onChange(name, usageUnit);
     setInputValue(name);
     setOpen(false);
   }
 
   function handleClear() {
-    onChange("");
+    onChange("", "đơn vị");
     setInputValue("");
     setOpen(false);
   }
@@ -312,7 +315,7 @@ function MedicineCombobox({
           value={inputValue}
           onChange={(e) => {
             setInputValue(e.target.value);
-            onChange(e.target.value);
+            onChange(e.target.value, "đơn vị");
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
@@ -343,14 +346,14 @@ function MedicineCombobox({
             <li className="px-3 py-2 text-xs text-muted-foreground text-center">Đang tìm...</li>
           ) : filtered.length === 0 ? (
             <li className="px-3 py-2 text-xs text-muted-foreground">
-              Chưa có trong danh mục (sẽ tự động thêm mới)
+              Không tìm thấy thuốc trong danh mục
             </li>
           ) : (
             filtered.map((m) => (
               <li key={m.medicineId ?? m.name}>
                 <button
                   type="button"
-                  onClick={() => handleSelect(m.name)}
+                  onClick={() => handleSelect(m.name, m.usageUnit)}
                   className="w-full px-3 py-2 text-left text-xs hover:bg-teal/5"
                 >
                   {m.name}
@@ -374,7 +377,7 @@ interface MedicationRowProps {
   register: ReturnType<typeof useForm<PrescriptionFormData>>["register"];
   errors?: {
     medicineName?: { message?: string };
-    dosage?: { message?: string };
+    quantityPerDose?: { message?: string };
     scheduleSlots?: { message?: string };
     durationDays?: { message?: string };
     startDate?: { message?: string };
@@ -393,8 +396,9 @@ function MedicationRow({
    
   onRemove,
 }: MedicationRowProps) {
-  const { watch } = useFormContext<PrescriptionFormData>();
+  const { watch, setValue } = useFormContext<PrescriptionFormData>();
   const watchedMedicineName = watch(`items.${index}.medicineName`) ?? "";
+  const watchedUsageUnit = watch(`items.${index}.usageUnit`) ?? "đơn vị";
 
   return (
     <div className="grid grid-cols-12 items-start gap-2 rounded-2xl border border-border bg-surface p-3">
@@ -402,26 +406,32 @@ function MedicationRow({
       <div className="col-span-4">
         <MedicineCombobox
           value={watchedMedicineName}
-          onChange={(v) => {
+          onChange={(name, unit) => {
             const event = {
-              target: { name: `items.${index}.medicineName`, value: v },
+              target: { name: `items.${index}.medicineName`, value: name },
             } as React.ChangeEvent<HTMLInputElement>;
             register(`items.${index}.medicineName`).onChange(event);
+            setValue(`items.${index}.usageUnit`, unit);
           }}
           error={errors?.medicineName?.message}
         />
       </div>
 
-      {/* Dosage — free text input */}
+      {/* QuantityPerDose — number input + unit */}
       <div className="col-span-2">
-        <input
-          type="text"
-          {...register(`items.${index}.dosage`)}
-          placeholder="VD: 1 viên, 1 gói"
-          className="w-full rounded-full border border-border bg-white px-3 py-2 text-xs focus:border-teal focus:outline-none"
-        />
-        {errors?.dosage && (
-          <p className="mt-0.5 text-xs text-red-500">{errors.dosage.message}</p>
+        <div className="flex items-center gap-1.5 w-full rounded-full border border-border bg-white px-3 py-2 focus-within:border-teal">
+          <input
+            type="number"
+            {...register(`items.${index}.quantityPerDose`)}
+            min={1}
+            className="w-full bg-transparent text-xs outline-none"
+          />
+          <span className="shrink-0 text-xs text-muted-foreground whitespace-nowrap border-l border-border pl-1.5">
+            {watchedUsageUnit}
+          </span>
+        </div>
+        {errors?.quantityPerDose && (
+          <p className="mt-0.5 text-xs text-red-500">{errors.quantityPerDose.message}</p>
         )}
       </div>
 
