@@ -22,6 +22,7 @@ public class CasesControllerIntegrationTests
     private readonly Mock<IPatientProfileRepository> _profiles = new();
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IFileStorageService> _storage = new();
+    private readonly Mock<IAppointmentRepository> _appointments = new();
 
     private readonly User _doctor = new()
     {
@@ -378,6 +379,8 @@ public class CasesControllerIntegrationTests
                 services.AddScoped(_ => _users.Object);
                 services.RemoveAll<IFileStorageService>();
                 services.AddScoped(_ => _storage.Object);
+                services.RemoveAll<IAppointmentRepository>();
+                services.AddScoped(_ => _appointments.Object);
             });
         });
 
@@ -927,7 +930,7 @@ public class CasesControllerIntegrationTests
 
     // ---------- #xx PUT /cases/{id}/end ----------
 
-    [Fact(Skip = "Flaky test - to be investigated")]
+    [Fact]
     public async Task PutEnd_CalledByResponsibleDoctor_Returns200AndChangesStatus()
     {
         // Arrange
@@ -940,6 +943,11 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(medicalCase);
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
+        _cases.Setup(r => r.GetByIdAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        // Mock appointments - return empty list since no appointment is linked to this case
+        _appointments.Setup(r => r.ListByPatientAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(new List<Appointment>());
 
         // Act
         var response = await client.PutAsync($"/api/v1/cases/{medicalCase.CaseId}/end", null);
@@ -949,7 +957,7 @@ public class CasesControllerIntegrationTests
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
         Assert.Equal(200, body!.Code);
         Assert.Equal("Case ended successfully without prescription", body.Message);
-        
+
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal(CaseStatus.End, medicalCase.Status);
     }
