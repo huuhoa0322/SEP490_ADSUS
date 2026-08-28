@@ -45,7 +45,7 @@ describe("UserForm date of birth", () => {
       target: { value: "Nguyễn Văn A" },
     });
     fireEvent.change(screen.getByLabelText(/Ngày sinh/), {
-      target: { value: localIsoDate(new Date()) },
+      target: { value: localDateFormat(new Date()) },
     });
     fireEvent.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
 
@@ -54,8 +54,8 @@ describe("UserForm date of birth", () => {
   });
 });
 
-function localIsoDate(date: Date): string {
+function localDateFormat(date: Date): string {
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
+  return `${day}/${month}/${date.getFullYear()}`;
 }

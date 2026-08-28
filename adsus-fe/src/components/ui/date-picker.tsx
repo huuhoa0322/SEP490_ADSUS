@@ -64,10 +64,6 @@ export function DatePicker({ value, onChange, placeholder = "dd/mm/yyyy", disabl
       // Try parsing the manually typed full date (e.g., 27/08/2026)
       const parsed = parse(val, "dd/MM/yyyy", new Date());
       if (isValid(parsed)) {
-        // Validate min/max constraints
-        if (maxDate && parsed > maxDate) return;
-        if (minDate && parsed < minDate) return;
-
         if (value instanceof Date || value === undefined) {
           onChange(parsed);
         } else {
