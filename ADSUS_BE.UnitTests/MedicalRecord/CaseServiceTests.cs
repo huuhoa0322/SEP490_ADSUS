@@ -1,11 +1,9 @@
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Services;
-using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -19,22 +17,16 @@ public class CaseServiceTests
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IFileStorageService> _storage = new();
     private readonly Mock<INotificationService> _notificationService = new();
-    private readonly AppDbContext _db;
+    private readonly Mock<IAppointmentRepository> _appointments = new();
     private readonly CaseService _sut;
 
     public CaseServiceTests()
     {
-        // Create in-memory database for testing
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-        _db = new AppDbContext(options);
-
         _sut = new CaseService(
             _cases.Object, _images.Object, _profiles.Object, _users.Object,
             new System.Lazy<IFileStorageService>(() => _storage.Object),
             _notificationService.Object,
-            _db,
+            _appointments.Object,
             Mock.Of<ILogger<CaseService>>());
 
         // Setup notification service mock for all tests
@@ -857,6 +849,10 @@ public class CaseServiceTests
               .ReturnsAsync(medicalCase);
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase); // GetForStaffAsync internally calls GetDetailAsync
+        _cases.Setup(r => r.GetByIdAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _appointments.Setup(r => r.ListByPatientAsync(medicalCase.PatientProfileId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(new List<Appointment>());
 
         // Act
         var response = await _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, doctor.UserId);
