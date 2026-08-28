@@ -17,6 +17,7 @@ public class CaseServiceTests
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IFileStorageService> _storage = new();
     private readonly Mock<INotificationService> _notificationService = new();
+    private readonly Mock<IAppointmentRepository> _appointments = new();
     private readonly CaseService _sut;
 
     public CaseServiceTests()
@@ -25,6 +26,7 @@ public class CaseServiceTests
             _cases.Object, _images.Object, _profiles.Object, _users.Object,
             new System.Lazy<IFileStorageService>(() => _storage.Object),
             _notificationService.Object,
+            _appointments.Object,
             Mock.Of<ILogger<CaseService>>());
 
         // Setup notification service mock for all tests
@@ -847,6 +849,10 @@ public class CaseServiceTests
               .ReturnsAsync(medicalCase);
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase); // GetForStaffAsync internally calls GetDetailAsync
+        _cases.Setup(r => r.GetByIdAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _appointments.Setup(r => r.ListByPatientAsync(medicalCase.PatientProfileId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(new List<Appointment>());
 
         // Act
         var response = await _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, doctor.UserId);

@@ -181,10 +181,10 @@ public class UserAccountService : IUserAccountService
         // cùng thì không còn ai tạo lại được, kể cả chính người vừa bấm.
         //
         // Chiều ngược lại cũng chặn: không được nâng người khác lên Admin qua màn này.
-        var dangLaAdmin = user.Role == UserRole.Admin;
-        var muonThanhAdmin = role.Value == UserRole.Admin;
+        var isCurrentlyAdmin = user.Role == UserRole.Admin;
+        var wantsToBeAdmin = role.Value == UserRole.Admin;
 
-        if (dangLaAdmin != muonThanhAdmin)
+        if (isCurrentlyAdmin != wantsToBeAdmin)
         {
             return AccountOperationResult.CannotChangeAdminRole;
         }
@@ -204,7 +204,7 @@ public class UserAccountService : IUserAccountService
 
         // Giữ lại vai trò cũ TRƯỚC khi ghi đè, để nhật ký nói được là đã đổi từ gì sang gì.
         // Đây là thay đổi đáng theo dõi nhất ở màn này: đổi vai trò là đổi quyền truy cập.
-        var vaiTroCu = user.Role;
+        var previousRole = user.Role;
 
         user.FullName = request.FullName.Trim();
         user.Email = email;
@@ -229,18 +229,18 @@ public class UserAccountService : IUserAccountService
 
         // KHÔNG đụng tới Phone (BR-02) và Status (đi qua endpoint riêng).
 
-        var doiVaiTro = vaiTroCu != role.Value
-            ? $"đổi vai trò {vaiTroCu.ToString().ToUpperInvariant()} → {role.Value.ToString().ToUpperInvariant()}"
+        var roleChangeDetail = previousRole != role.Value
+            ? $"đổi vai trò {previousRole.ToString().ToUpperInvariant()} → {role.Value.ToString().ToUpperInvariant()}"
             : "sửa thông tin";
 
         await _audit.RecordAsync(
-            actingAdminId, AccountAuditTrail.UpdateAccount, user, doiVaiTro, cancellationToken);
+            actingAdminId, AccountAuditTrail.UpdateAccount, user, roleChangeDetail, cancellationToken);
 
         await _users.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Admin {ActingAdminId} updated account {UserId} ({Detail})",
-            actingAdminId, user.UserId, doiVaiTro);
+            actingAdminId, user.UserId, roleChangeDetail);
 
         return AccountOperationResult.Success;
     }
@@ -262,9 +262,9 @@ public class UserAccountService : IUserAccountService
 
         await _audit.RecordAsync(
             actingAdminId,
-            "REACTIVATE_ACCOUNT",
+            AccountAuditTrail.ReactivateAccount,
             user,
-            $"kh�i ph?c t�i kho?n, l� do: {reason}",
+            $"khôi phục tài khoản, lý do: {reason}",
             cancellationToken);
 
         await _users.SaveChangesAsync(cancellationToken);
@@ -289,7 +289,7 @@ public class UserAccountService : IUserAccountService
 
         // BR-05 — chỉ đổi trạng thái, TUYỆT ĐỐI không xoá bản ghi. Dữ liệu y tế gắn với tài
         // khoản này vẫn phải truy cập được sau khi vô hiệu hoá.
-        var trangThaiCu = user.Status;
+        var previousStatus = user.Status;
 
         user.Status = UserStatus.Deactivated;
         user.UpdatedAt = DateTime.UtcNow;
@@ -299,14 +299,14 @@ public class UserAccountService : IUserAccountService
             actingAdminId,
             AccountAuditTrail.DeactivateAccount,
             user,
-            $"vô hiệu hoá vĩnh viễn, trạng thái trước đó {trangThaiCu.ToString().ToUpperInvariant()}",
+            $"vô hiệu hoá vĩnh viễn, trạng thái trước đó {previousStatus.ToString().ToUpperInvariant()}",
             cancellationToken);
 
         await _users.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Admin {ActingAdminId} deactivated account {UserId} (was {PreviousStatus})",
-            actingAdminId, user.UserId, trangThaiCu);
+            actingAdminId, user.UserId, previousStatus);
 
         return AccountOperationResult.Success;
     }

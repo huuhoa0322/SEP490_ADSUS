@@ -55,4 +55,12 @@ public interface IAppointmentService
         Guid patientProfileId,
         CancelAppointmentRequest request,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Nurse checkin appointment khi bệnh nhân đến bệnh viện.
+    /// Appointment: Booked → Approved
+    /// </summary>
+    Task<AppointmentResponse> CheckinAppointmentAsync(
+        Guid appointmentId,
+        CancellationToken ct = default);
 }
