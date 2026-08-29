@@ -411,8 +411,8 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
               <div className="mb-4">
                 <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Triệu chứng chi tiết</h3>
                 <ul className="list-disc pl-5 space-y-1 text-sm">
-                  {medicalCase.symptoms.map((s, idx) => (
-                    <li key={idx}>
+                  {medicalCase.symptoms.map((s) => (
+                    <li key={`${s.categoryId}-${s.symptomId ?? "other"}`}>
                       <span className="font-medium">{s.categoryName}:</span>{" "}
                       {s.symptomName ? s.symptomName : ""}
                       {s.otherNote ? ` (${s.otherNote})` : ""}
