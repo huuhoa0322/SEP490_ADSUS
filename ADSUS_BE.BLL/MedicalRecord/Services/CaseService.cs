@@ -242,41 +242,6 @@ public sealed class CaseService : ICaseService
         return await GetForStaffAsync(caseId, ct);
     }
 
-    public async Task<IReadOnlyList<UltrasoundImageResponse>> AddImagesAsync(
-        Guid caseId,
-        AddUltrasoundImagesRequest request,
-        CancellationToken ct = default)
-    {
-        var medicalCase = await _cases.GetByIdAsync(caseId, ct)
-            ?? throw new ResourceNotFoundException("Case not found.");
-
-        // GB-01: ca đã chốt thì không mở lại để nhận thêm đầu vào.
-        if (medicalCase.Status == CaseStatus.Confirmed)
-        {
-            throw new BusinessException("This case is already confirmed and cannot accept more images.");
-        }
-
-        var (images, uploadedPaths) = await UploadImagesAsync(caseId, request.Images, request.Note, ct);
-
-        try
-        {
-            await _images.AddRangeAsync(images, ct);
-        }
-        catch
-        {
-            await CleanUpAsync(uploadedPaths, ct);
-            throw;
-        }
-
-        _logger.LogInformation("Added {ImageCount} image(s) to case {CaseId}", images.Count, caseId);
-
-        var urls = await BuildImageUrlsAsync(images, ct);
-
-        return images
-            .Select(i => CaseMapper.ToImageResponse(i, urls.GetValueOrDefault(i.ImageId)))
-            .ToList();
-    }
-
     public async Task<CaseResponse> SaveConclusionAsync(
         Guid caseId,
         Guid actingDoctorId,

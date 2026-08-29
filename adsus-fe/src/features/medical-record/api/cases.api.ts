@@ -4,7 +4,6 @@ import { apiClient } from "@/lib/api-client";
 import type { ApiResponse } from "@/types/api.types";
 
 import type {
-  AddUltrasoundImagesInput,
   CaseConclusionInput,
   CaseDetail,
   CaseListQuery,
@@ -82,26 +81,6 @@ export async function createCase(input: CreateCaseInput): Promise<CaseDetail> {
   const { data } = await apiClient.post<ApiResponse<CaseDetail>>(BASE, form);
 
   if (!data.data) throw new Error(data.message || "Tạo ca khám thất bại.");
-
-  return data.data;
-}
-
-/** #21 — bổ sung ảnh vào ca CHƯA chốt. Ca đã CONFIRMED sẽ bị backend từ chối (GB-01). */
-export async function addUltrasoundImages(
-  input: AddUltrasoundImagesInput,
-): Promise<UltrasoundImage[]> {
-  const form = new FormData();
-  for (const file of input.images) {
-    form.append("images", file);
-  }
-  if (input.note) form.append("note", input.note);
-
-  const { data } = await apiClient.post<ApiResponse<UltrasoundImage[]>>(
-    `${BASE}/${input.caseId}/ultrasound-images`,
-    form,
-  );
-
-  if (!data.data) throw new Error(data.message || "Tải ảnh bổ sung thất bại.");
 
   return data.data;
 }

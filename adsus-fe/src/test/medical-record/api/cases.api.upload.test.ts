@@ -18,7 +18,7 @@ import { describe, expect, it } from "vitest";
 import { API_BASE_URL } from "@/lib/api-client";
 import { server } from "@/test/mocks/server";
 
-import { addUltrasoundImages, createCase } from "@/features/medical-record/api/cases.api";
+import { createCase } from "@/features/medical-record/api/cases.api";
 
 function fakeImage(name: string): File {
   return new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], name, { type: "image/jpeg" });
@@ -46,22 +46,5 @@ describe("createCase", () => {
     // Backend nhận List<IFormFile> images — phải append nhiều lần cùng khoá "images",
     // KHÔNG phải "images[]". Sai chỗ này thì server nhận được 0 file và trả 422.
     expect(fileNames).toEqual(["a.jpg", "b.jpg"]);
-  });
-});
-
-describe("addUltrasoundImages", () => {
-  it("gửi note kèm lô ảnh", async () => {
-    let note: string | null = null;
-    server.use(
-      http.post(`${API_BASE_URL}/api/v1/cases/case-1/ultrasound-images`, async ({ request }) => {
-        const form = await request.formData();
-        note = form.get("note") as string;
-        return HttpResponse.json({ code: 200, message: "ok", data: [] }, { status: 201 });
-      }),
-    );
-
-    await addUltrasoundImages({ caseId: "case-1", images: [fakeImage("c.png")], note: "Mặt cắt ngang thấp" });
-
-    expect(note).toBe("Mặt cắt ngang thấp");
   });
 });

@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dialog";
 
 import {
-  useAddUltrasoundImages,
   useCaseDetail,
   useConfirmCase,
   useEndCaseWithoutPrescription,
@@ -90,7 +89,6 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const [syncedCaseId, setSyncedCaseId] = useState<string | null>(null);
 
   const currentUser = useAuthStore((state) => state.user);
-  const addImagesMutation = useAddUltrasoundImages(caseId);
   const saveConclusionMutation = useSaveCaseConclusion(caseId);
   const confirmMutation = useConfirmCase(caseId);
   const endCaseMutation = useEndCaseWithoutPrescription(caseId);
@@ -371,7 +369,6 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
               <UltrasoundUploadField
                 files={pendingImages}
                 onChange={setPendingImages}
-                disabled={addImagesMutation.isPending}
               />
 
               <div>
@@ -386,12 +383,6 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                   className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
-
-              {addImagesMutation.isError ? (
-                <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive" role="alert">
-                  {getApiErrorMessage(addImagesMutation.error, "Tải ảnh bổ sung thất bại.")}
-                </p>
-              ) : null}
 
               <div className="flex justify-end">
                 <button
