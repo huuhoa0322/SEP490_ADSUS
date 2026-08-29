@@ -12,10 +12,10 @@ function formatDate(value: string | null | undefined): string {
   return `${d}/${m}/${y}`;
 }
 
-/** Tính ngày kết thúc đơn thuốc: startDate + durationDays - 1. */
+/** Tính ngày kết thúc: startDate + durationDays = ngày uống liều cuối. */
 function calcEndDate(startDate: string, durationDays: number): string {
   const d = new Date(`${startDate}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + durationDays - 1);
+  d.setUTCDate(d.getUTCDate() + durationDays);
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 }
 
@@ -96,8 +96,7 @@ function PrescriptionTable({
                   {item.scheduleSlots?.map((s) => SLOT_LABEL[s] ?? s).join(", ") ?? "—"}
                 </td>
                 <td className="px-3 py-2 text-foreground">
-                  {formatDate(item.startDate)} → {formatDate(calcEndDate(item.startDate, item.durationDays))}{" "}
-                  <span className="text-xs text-muted-foreground">({item.durationDays} ngày)</span>
+                  {formatDate(item.startDate)} → {formatDate(calcEndDate(item.startDate, item.durationDays))}
                 </td>
                 <td className="px-3 py-2 text-foreground">{item.instructions || "—"}</td>
                 <td className="px-3 py-2">
