@@ -14,13 +14,6 @@ const { detailMock, saveMutate, confirmMutate } = vi.hoisted(() => ({
 
 vi.mock("@/features/medical-record/hooks/use-cases", () => ({
   useCaseDetail: () => detailMock(),
-  useAddUltrasoundImages: () => ({
-    mutate: vi.fn(),
-    isPending: false,
-    isSuccess: false,
-    isError: false,
-    error: null,
-  }),
   useSaveCaseConclusion: () => ({
     // Component gọi mutate(input, { onSuccess }) — mock phải TỰ gọi onSuccess như react-query
     // thật thì mới kiểm được hành vi khoá tạm sau khi lưu (isLocked chuyển true trong callback đó).

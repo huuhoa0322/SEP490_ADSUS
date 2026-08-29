@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:adsus_mobile/core/network/api_exception.dart';
 import 'package:adsus_mobile/features/medical_record/domain/entities/medical_record_case.dart';
+import 'package:adsus_mobile/features/medical_record/domain/entities/medical_record_feedback.dart';
 import 'package:adsus_mobile/features/medical_record/domain/repositories/medical_record_repository.dart';
 import 'package:adsus_mobile/features/medical_record/presentation/viewmodels/medical_record_detail_viewmodel.dart';
 import 'package:adsus_mobile/shared/providers/app_providers.dart';
@@ -127,4 +128,120 @@ void main() {
       );
     },
   );
+
+  group('loadFeedback (FT-37)', () {
+    MedicalRecordFeedback makeFeedback() => MedicalRecordFeedback(
+          id: 'feedback-1',
+          rating: 5,
+          content: 'Bac si rat tan tam',
+          submittedAt: DateTime(2026, 8, 20),
+        );
+
+    test('thanh cong thi state.feedback duoc gan dung', () async {
+      when(() => repo.getRecordDetail('case-1'))
+          .thenAnswer((_) async => _makeCase('case-1'));
+      when(() => repo.getCaseFeedback('case-1')).thenAnswer((_) async => makeFeedback());
+
+      final notifier = container.read(medicalRecordDetailViewModelProvider.notifier);
+      await notifier.loadDetail('case-1');
+      await notifier.loadFeedback('case-1');
+
+      final state = container.read(medicalRecordDetailViewModelProvider);
+      expect(state.feedback?.rating, 5);
+    });
+
+    test('chua gui feedback (repo tra null) thi state.feedback la null, khong loi', () async {
+      when(() => repo.getRecordDetail('case-1'))
+          .thenAnswer((_) async => _makeCase('case-1'));
+      when(() => repo.getCaseFeedback('case-1')).thenAnswer((_) async => null);
+
+      final notifier = container.read(medicalRecordDetailViewModelProvider.notifier);
+      await notifier.loadDetail('case-1');
+      await notifier.loadFeedback('case-1');
+
+      final state = container.read(medicalRecordDetailViewModelProvider);
+      expect(state.feedback, isNull);
+      expect(state.errorMessage, isNull);
+    });
+
+    test('repo nem ApiException thi bi nuot, KHONG hien errorMessage (feedback la optional)',
+        () async {
+      when(() => repo.getRecordDetail('case-1'))
+          .thenAnswer((_) async => _makeCase('case-1'));
+      when(() => repo.getCaseFeedback('case-1'))
+          .thenThrow(const ApiException('Khong tai duoc phan hoi.'));
+
+      final notifier = container.read(medicalRecordDetailViewModelProvider.notifier);
+      await notifier.loadDetail('case-1');
+      await notifier.loadFeedback('case-1');
+
+      final state = container.read(medicalRecordDetailViewModelProvider);
+      expect(state.errorMessage, isNull);
+      expect(state.feedback, isNull);
+    });
+
+    test('caseId khac state.caseId hien tai thi khong goi repo (chan case cu)', () async {
+      when(() => repo.getRecordDetail('case-1'))
+          .thenAnswer((_) async => _makeCase('case-1'));
+
+      final notifier = container.read(medicalRecordDetailViewModelProvider.notifier);
+      await notifier.loadDetail('case-1');
+      await notifier.loadFeedback('case-2');
+
+      verifyNever(() => repo.getCaseFeedback('case-2'));
+    });
+  });
+
+  group('submitFeedback (FT-37)', () {
+    test('thanh cong thi tai lai feedback, tat loading, khong con error', () async {
+      when(() => repo.getRecordDetail('case-1'))
+          .thenAnswer((_) async => _makeCase('case-1'));
+      when(() => repo.submitCaseFeedback('case-1', 5, 'Rat hai long'))
+          .thenAnswer((_) async {});
+      when(() => repo.getCaseFeedback('case-1')).thenAnswer(
+        (_) async => MedicalRecordFeedback(
+          id: 'feedback-1',
+          rating: 5,
+          content: 'Rat hai long',
+          submittedAt: DateTime(2026, 8, 20),
+        ),
+      );
+
+      final notifier = container.read(medicalRecordDetailViewModelProvider.notifier);
+      await notifier.loadDetail('case-1');
+      await notifier.submitFeedback('case-1', 5, 'Rat hai long');
+
+      final state = container.read(medicalRecordDetailViewModelProvider);
+      expect(state.isLoading, isFalse);
+      expect(state.errorMessage, isNull);
+      expect(state.feedback?.rating, 5);
+      verify(() => repo.submitCaseFeedback('case-1', 5, 'Rat hai long')).called(1);
+    });
+
+    test('repo nem ApiException thi state co errorMessage, tat loading', () async {
+      when(() => repo.getRecordDetail('case-1'))
+          .thenAnswer((_) async => _makeCase('case-1'));
+      when(() => repo.submitCaseFeedback('case-1', 1, null))
+          .thenThrow(const ApiException('Khong gui duoc phan hoi.'));
+
+      final notifier = container.read(medicalRecordDetailViewModelProvider.notifier);
+      await notifier.loadDetail('case-1');
+      await notifier.submitFeedback('case-1', 1, null);
+
+      final state = container.read(medicalRecordDetailViewModelProvider);
+      expect(state.isLoading, isFalse);
+      expect(state.errorMessage, 'Khong gui duoc phan hoi.');
+    });
+
+    test('caseId khac state.caseId hien tai thi khong goi repo (chan case cu)', () async {
+      when(() => repo.getRecordDetail('case-1'))
+          .thenAnswer((_) async => _makeCase('case-1'));
+
+      final notifier = container.read(medicalRecordDetailViewModelProvider.notifier);
+      await notifier.loadDetail('case-1');
+      await notifier.submitFeedback('case-2', 5, null);
+
+      verifyNever(() => repo.submitCaseFeedback('case-2', any(), any()));
+    });
+  });
 }

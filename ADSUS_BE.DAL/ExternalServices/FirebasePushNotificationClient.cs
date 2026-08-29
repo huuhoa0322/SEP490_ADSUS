@@ -31,8 +31,11 @@ public sealed class FirebasePushNotificationClient : IPushNotificationClient, ID
         _scopeFactory = scopeFactory;
 
         // Ưu tiên đọc từ Environment Variable (cho Render/Hosting)
-        // Fallback về file path trong appsettings (cho local dev)
-        _serviceAccountPath = Environment.GetEnvironmentVariable("FIREBASE_CREDENTIALS_PATH")
+        // 1. FIREBASE_CREDENTIALS_JSON - JSON string trực tiếp
+        // 2. FIREBASE_CREDENTIALS_PATH - đường dẫn đến file JSON
+        // 3. Firebase:ServiceAccountPath trong appsettings
+        _serviceAccountPath = Environment.GetEnvironmentVariable("FIREBASE_CREDENTIALS_JSON")
+            ?? Environment.GetEnvironmentVariable("FIREBASE_CREDENTIALS_PATH")
             ?? configuration["Firebase:ServiceAccountPath"]
             ?? throw new InvalidOperationException("Firebase:ServiceAccountPath not configured in appsettings or User Secrets.");
 
@@ -49,23 +52,24 @@ public sealed class FirebasePushNotificationClient : IPushNotificationClient, ID
 
         try
         {
-            // Thử đọc credentials từ environment variable trước (Render)
+            // Ưu tiên đọc credentials từ JSON string environment variable (Render)
             var credentialsJson = Environment.GetEnvironmentVariable("FIREBASE_CREDENTIALS_JSON");
 
             if (!string.IsNullOrEmpty(credentialsJson))
             {
-                // Đọc từ JSON string trong environment variable
+                _logger.LogInformation("[FCM] Initializing Firebase from FIREBASE_CREDENTIALS_JSON environment variable");
                 using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(credentialsJson));
                 var credential = GoogleCredential.FromStream(stream);
                 FirebaseApp.Create(new AppOptions
                 {
                     Credential = credential,
                 });
-                _logger.LogInformation("[FCM] Firebase App initialized from environment variable");
+                _logger.LogInformation("[FCM] Firebase App initialized successfully from JSON env var");
             }
             else
             {
                 // Fallback: đọc từ file path
+                _logger.LogInformation("[FCM] Initializing Firebase from file path: {Path}", _serviceAccountPath);
 #pragma warning disable CS0618 // GoogleCredential.FromFile is deprecated but still works
                 var credential = GoogleCredential.FromFile(_serviceAccountPath);
 #pragma warning restore CS0618
@@ -73,7 +77,7 @@ public sealed class FirebasePushNotificationClient : IPushNotificationClient, ID
                 {
                     Credential = credential,
                 });
-                _logger.LogInformation("[FCM] Firebase App initialized from file path: {Path}", _serviceAccountPath);
+                _logger.LogInformation("[FCM] Firebase App initialized successfully from file");
             }
         }
         catch (Exception ex)

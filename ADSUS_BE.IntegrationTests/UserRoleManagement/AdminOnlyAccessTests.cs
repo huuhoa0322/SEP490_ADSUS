@@ -27,7 +27,7 @@ namespace ADSUS_BE.IntegrationTests.UserRoleManagement;
 /// </summary>
 public class AdminOnlyAccessTests
 {
-    private const string DuongDan = "/api/v1/admin/users";
+    private const string UsersPath = "/api/v1/admin/users";
 
     private readonly Mock<IUserRepository> _users = new();
 
@@ -35,23 +35,23 @@ public class AdminOnlyAccessTests
     [InlineData(UserRole.Doctor)]
     [InlineData(UserRole.Nurse)]
     [InlineData(UserRole.Patient)]
-    public async Task VaiTroKhongPhaiAdmin_BiTuChoi(UserRole vaiTro)
+    public async Task NonAdminRole_IsForbidden(UserRole role)
     {
-        using var app = TaoApp();
-        var client = TaoClient(app, vaiTro);
+        using var app = CreateApp();
+        var client = CreateClient(app, role);
 
-        var response = await client.GetAsync(DuongDan);
+        var response = await client.GetAsync(UsersPath);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
-    public async Task Admin_VaoDuoc()
+    public async Task Admin_CanAccess()
     {
-        using var app = TaoApp();
-        var client = TaoClient(app, UserRole.Admin);
+        using var app = CreateApp();
+        var client = CreateClient(app, UserRole.Admin);
 
-        var response = await client.GetAsync(DuongDan);
+        var response = await client.GetAsync(UsersPath);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -59,12 +59,12 @@ public class AdminOnlyAccessTests
     [Theory]
     [InlineData(UserRole.Doctor)]
     [InlineData(UserRole.Nurse)]
-    public async Task VaiTroKhongPhaiAdmin_KhongTaoDuocTaiKhoan(UserRole vaiTro)
+    public async Task NonAdminRole_CannotCreateAccount(UserRole role)
     {
-        using var app = TaoApp();
-        var client = TaoClient(app, vaiTro);
+        using var app = CreateApp();
+        var client = CreateClient(app, role);
 
-        var response = await client.PostAsJsonAsync(DuongDan, new
+        var response = await client.PostAsJsonAsync(UsersPath, new
         {
             phoneNumber = "0988776655",
             fullName = "BS. Trần Văn B",
@@ -75,11 +75,11 @@ public class AdminOnlyAccessTests
     }
 
     [Fact]
-    public async Task KhongCoToken_BiTuChoi()
+    public async Task NoToken_IsUnauthorized()
     {
-        using var app = TaoApp();
+        using var app = CreateApp();
 
-        var response = await app.CreateClient().GetAsync(DuongDan);
+        var response = await app.CreateClient().GetAsync(UsersPath);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -87,7 +87,7 @@ public class AdminOnlyAccessTests
     // ---- helpers ----
 
     /// <summary>Dựng app thật, tráo repository sang bản giả nên không chạm database của nhóm.</summary>
-    private WebApplicationFactory<Program> TaoApp()
+    private WebApplicationFactory<Program> CreateApp()
     {
         _users.Setup(r => r.SearchAsync(
                   It.IsAny<string?>(), It.IsAny<UserRole?>(), It.IsAny<UserStatus?>(),
@@ -105,30 +105,30 @@ public class AdminOnlyAccessTests
     }
 
     /// <summary>Phát token cho một vai trò rồi gắn vào header.</summary>
-    private HttpClient TaoClient(WebApplicationFactory<Program> app, UserRole vaiTro)
+    private HttpClient CreateClient(WebApplicationFactory<Program> app, UserRole role)
     {
-        var nguoiDung = new User
+        var user = new User
         {
             UserId = Guid.NewGuid(),
             Phone = "0900000001",
             FullName = "Người kiểm thử",
             PasswordHash = "khong-dung-toi",
-            Role = vaiTro,
+            Role = role,
             Status = UserStatus.Active,
         };
 
         // AccountStatusJwtEvents đọc lại tài khoản từ repository ở mỗi request, nên bản giả
         // phải trả về đúng người dùng này, nếu không mọi request đều nhận 401.
         _users.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(nguoiDung);
+              .ReturnsAsync(user);
 
         _users.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(nguoiDung);
+              .ReturnsAsync(user);
 
         using var scope = app.Services.CreateScope();
         var token = scope.ServiceProvider
             .GetRequiredService<IJwtTokenService>()
-            .GenerateAccessToken(nguoiDung);
+            .GenerateAccessToken(user);
 
         var client = app.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);

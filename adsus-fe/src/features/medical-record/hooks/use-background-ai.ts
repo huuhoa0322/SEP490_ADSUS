@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useDiagnosticStore } from "../stores/use-diagnostic-store";
-import { apiClient, getApiErrorMessage } from "@/lib/api-client";
+import { getApiErrorMessage } from "@/lib/api-client";
+import { analyzeImage } from "../api/cases-diagnosis.api";
 
 export function useBackgroundAi() {
   const store = useDiagnosticStore();
@@ -27,26 +28,8 @@ export function useBackgroundAi() {
       setIsProcessing(nextIndex, true);
 
       try {
-        const formData = new FormData();
-        formData.append("image", images[nextIndex]);
-
-        const res = await apiClient.post(`/api/v1/cases/${caseId}/analyze`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-
-        if (res.data.code === 200 && res.data.data) {
-          const payload = res.data.data;
-          setAiResult(nextIndex, {
-            sessionId: payload.session_id || 'completed',
-            detections: payload.detections || []
-          });
-        } else {
-          setAiResult(nextIndex, {
-            sessionId: 'failed',
-            detections: [],
-            error: res.data.message
-          });
-        }
+        const result = await analyzeImage(caseId, images[nextIndex]);
+        setAiResult(nextIndex, result);
       } catch (err) {
         setAiResult(nextIndex, {
           sessionId: 'failed',

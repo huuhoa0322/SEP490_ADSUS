@@ -322,6 +322,32 @@ public sealed class AppointmentService : IAppointmentService
         return ToAppointmentResponse(appointment);
     }
 
+    public async Task<IReadOnlyList<DoctorPatientAppointmentResponse>> ListForDoctorAsync(
+        Guid doctorId,
+        DateOnly fromDate,
+        DateOnly toDate,
+        CancellationToken ct = default)
+    {
+        var appointments = await _appointmentRepo.ListByDoctorAsync(doctorId, fromDate, toDate, ct);
+
+        // Hiện cả BOOKED và APPROVED — Cancelled và Completed ẩn hẳn.
+        // Lý do: Approved = bệnh nhân đã đến (nurse checkin) — vẫn cần hiện trên màn "Lịch bệnh nhân"
+        // để bác sĩ biết ai đã đến, không bị mất khỏi danh sách khám ngay từ khi được checkin.
+        return appointments
+            .Where(a => a.Status is AppointmentStatus.Booked or AppointmentStatus.Approved)
+            .Select(a => new DoctorPatientAppointmentResponse
+            {
+                AppointmentId = a.AppointmentId,
+                SlotDate = a.Slot.SlotDate,
+                StartTime = a.Slot.StartTime,
+                EndTime = a.Slot.EndTime,
+                PatientProfileId = a.PatientProfileId,
+                PatientFullName = a.PatientProfile.User.FullName,
+                Reason = a.Reason,
+            })
+            .ToList();
+    }
+
     private static AppointmentResponse ToAppointmentResponse(Appointment a, Guid? caseId = null)
     {
         return new AppointmentResponse

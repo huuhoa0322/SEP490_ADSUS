@@ -29,6 +29,25 @@ public sealed class AppointmentRepository : IAppointmentRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Appointment>> ListByDoctorAsync(
+        Guid doctorId,
+        DateOnly fromDate,
+        DateOnly toDate,
+        CancellationToken ct = default)
+    {
+        return await _db.Appointments
+            .AsNoTracking()
+            .Include(a => a.Slot)
+            .Include(a => a.PatientProfile)
+                .ThenInclude(p => p.User)
+            .Where(a => a.Slot.DoctorId == doctorId
+                && a.Slot.SlotDate >= fromDate
+                && a.Slot.SlotDate <= toDate)
+            .OrderBy(a => a.Slot.SlotDate)
+                .ThenBy(a => a.Slot.StartTime)
+            .ToListAsync(ct);
+    }
+
     public async Task<Appointment?> GetByIdAsync(Guid appointmentId, CancellationToken ct = default)
     {
         return await _db.Appointments

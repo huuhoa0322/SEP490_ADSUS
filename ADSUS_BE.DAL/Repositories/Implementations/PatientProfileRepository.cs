@@ -69,8 +69,7 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
         foreach(var a in deletedAllergies) _db.Entry(a).State = EntityState.Detached;
 
         // 3. Xóa trực tiếp bằng ExecuteDeleteAsync để đảm bảo an toàn, không sợ concurrency
-        await _db.PatientDiseases.Where(d => d.PatientProfileId == profile.PatientProfileId).ExecuteDeleteAsync(ct);
-        await _db.PatientAllergies.Where(a => a.PatientProfileId == profile.PatientProfileId).ExecuteDeleteAsync(ct);
+        await ClearCollectionsAsync(profile.PatientProfileId, ct);
 
         // 4. Các item mới được thêm vào profile (State = Added) sẽ được EF xử lý bằng INSERT bình thường.
         if (_db.Entry(profile).State == EntityState.Detached)

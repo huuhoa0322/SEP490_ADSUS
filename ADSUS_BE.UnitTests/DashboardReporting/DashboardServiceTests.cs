@@ -34,7 +34,7 @@ public class DashboardServiceTests
                  _capturedFrom = f;
                  _capturedTo = t;
              })
-             .ReturnsAsync(KhongCoHoatDong());
+             .ReturnsAsync(NoActivity());
 
         _repo.Setup(r => r.GetDailyActivityAsync(
                  It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
@@ -47,7 +47,7 @@ public class DashboardServiceTests
     // ---------- AF-01: không bao giờ vỡ ----------
 
     [Fact]
-    public async Task KhongCoDuLieu_TraVeToanSo0_KhongNemLoi()
+    public async Task NoData_ReturnsAllZeros_DoesNotThrow()
     {
         var result = await _sut.GetStatisticsAsync(null, null);
 
@@ -64,7 +64,7 @@ public class DashboardServiceTests
     [InlineData("khong-phai-ngay", null)]
     [InlineData("2026/07/31", "31-07-2026")]
     [InlineData("", "")]
-    public async Task NgayThangSaiDinhDang_RoiVeMacDinh_KhongNemLoi(string? from, string? to)
+    public async Task MalformedDates_FallsBackToDefault_DoesNotThrow(string? from, string? to)
     {
         // Bỏ qua giá trị sai và dùng mặc định, thay vì trả 400 làm màn hình trắng xoá.
         var result = await _sut.GetStatisticsAsync(from, to);
@@ -76,7 +76,7 @@ public class DashboardServiceTests
     // ---------- Khoảng thời gian ----------
 
     [Fact]
-    public async Task KhongChonGi_LayMacDinh30NgayGanNhat()
+    public async Task NothingSelected_UsesDefaultLast30Days()
     {
         var result = await _sut.GetStatisticsAsync(null, null);
 
@@ -93,7 +93,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task KhoangNgay_TRUYEN_XUONG_NGUYEN_VEN_CA_HAI_DAU()
+    public async Task DateRange_PassedDownIntactBothEnds()
     {
         await _sut.GetStatisticsAsync("2026-07-01", "2026-07-31");
 
@@ -102,7 +102,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task ChonNguocNgay_TuDongDoiCho()
+    public async Task ReversedDates_AutomaticallySwapped()
     {
         // Người dùng chọn "từ 31/07 đến 01/07" thì hiểu là họ chọn nhầm thứ tự, chứ không
         // phải muốn xem một khoảng rỗng.
@@ -113,7 +113,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task KhoangQuaDai_BiCatNganLai()
+    public async Task RangeTooLong_IsClampedShorter()
     {
         // Chặn một cú bấm nhầm quét cả bảng nhiều năm trên Supabase.
         var result = await _sut.GetStatisticsAsync("2000-01-01", "2026-07-31");
@@ -126,26 +126,26 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public void NgayCuoi_DUOC_TINH_TRON_VEN()
+    public void EndDate_IsFullyInclusive()
     {
         // Mốc kết thúc phải là đầu NGÀY HÔM SAU theo giờ phòng khám. Lấy đúng cuối ngày là
         // mọi thứ phát sinh trong ngày hôm đó đều bị bỏ sót, vì mọi mốc giờ đều lớn hơn 00:00.
-        var ngay = new DateOnly(2026, 7, 31);
+        var date = new DateOnly(2026, 7, 31);
 
         // 01/08 ở Việt Nam bắt đầu lúc 17:00 ngày 31/07 giờ UTC.
         Assert.Equal(
             new DateTime(2026, 7, 31, 17, 0, 0, DateTimeKind.Utc),
-            ClinicClock.EndOfDayExclusiveUtc(ngay));
+            ClinicClock.EndOfDayExclusiveUtc(date));
 
         Assert.Equal(
             new DateTime(2026, 7, 30, 17, 0, 0, DateTimeKind.Utc),
-            ClinicClock.StartOfDayUtc(ngay));
+            ClinicClock.StartOfDayUtc(date));
     }
 
     // ---------- Cách tính tỉ lệ ----------
 
     [Fact]
-    public async Task TiLeTaiKhoanHoatDong_TinhDung()
+    public async Task ActiveAccountRate_CalculatedCorrectly()
     {
         _repo.Setup(r => r.GetAccountCountsAsync(It.IsAny<CancellationToken>()))
              .ReturnsAsync(new AccountCounts(
@@ -159,12 +159,12 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task TiLeXacNhanAI_KHONG_TINH_PHAN_DANG_CHO_VAO_MAU_SO()
+    public async Task AiConfirmRate_ExcludesPendingFromDenominator()
     {
         // 6 xác nhận, 2 từ chối, 92 đang chờ duyệt.
         // Đúng: 6/(6+2) = 75%. Sai: 6/100 = 6% — con số đó nói bác sĩ làm việc kém, trong khi
         // thực tế chỉ là có nhiều ca mới chưa kịp duyệt.
-        SetupHoatDong(aiConfirmed: 6, aiRejected: 2, aiPending: 92, aiRun: 100);
+        SetupActivity(aiConfirmed: 6, aiRejected: 2, aiPending: 92, aiRun: 100);
 
         var result = await _sut.GetStatisticsAsync(null, null);
 
@@ -173,9 +173,9 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task TiLeXacNhanAI_ChuaDuyetCaiNao_TraVe0_KhongChiaCho0()
+    public async Task AiConfirmRate_NoneReviewedYet_ReturnsZeroWithoutDivideByZero()
     {
-        SetupHoatDong(aiConfirmed: 0, aiRejected: 0, aiPending: 50, aiRun: 50);
+        SetupActivity(aiConfirmed: 0, aiRejected: 0, aiPending: 50, aiRun: 50);
 
         var result = await _sut.GetStatisticsAsync(null, null);
 
@@ -183,9 +183,9 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task TiLeHuyLichHen_TinhTrenTongSoLuotDat()
+    public async Task CancellationRate_CalculatedOverTotalBookings()
     {
-        SetupHoatDong(booked: 30, cancelled: 10, slots: 20);
+        SetupActivity(booked: 30, cancelled: 10, slots: 20);
 
         var result = await _sut.GetStatisticsAsync(null, null);
 
@@ -197,7 +197,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task KHONG_CON_CHI_SO_TI_LE_LAP_DAY_KHUNG_GIO()
+    public async Task NoSlotUtilizationRateMetric_SlotHasNoCapacityColumn()
     {
         // ScheduleSlot không có cột Capacity, và chính entity ghi rõ "không giới hạn số
         // Appointment/slot" (quyết định UCS 3.1 ngày 23/07/2026). Không có mẫu số thì không
@@ -206,16 +206,16 @@ public class DashboardServiceTests
         //
         // Bài test này canh chừng việc ai đó thêm lại: nếu có ngày ScheduleSlot có Capacity
         // thật thì cứ xoá bài test này đi và tính tỉ lệ cho đúng.
-        var thuocTinh = typeof(AppointmentStatistics).GetProperties().Select(p => p.Name);
+        var propertyNames = typeof(AppointmentStatistics).GetProperties().Select(p => p.Name);
 
-        Assert.DoesNotContain("AverageBookingsPerSlot", thuocTinh);
-        Assert.DoesNotContain("UtilizationRate", thuocTinh);
+        Assert.DoesNotContain("AverageBookingsPerSlot", propertyNames);
+        Assert.DoesNotContain("UtilizationRate", propertyNames);
     }
 
     [Fact]
-    public async Task TiLeTuanThuUongThuoc_TinhDung()
+    public async Task AdherenceRate_CalculatedCorrectly()
     {
-        SetupHoatDong(doses: 200, taken: 173);
+        SetupActivity(doses: 200, taken: 173);
 
         var result = await _sut.GetStatisticsAsync(null, null);
 
@@ -225,7 +225,7 @@ public class DashboardServiceTests
     // ---------- Biểu đồ xu hướng ----------
 
     [Fact]
-    public async Task XuHuong_DU_MOI_NGAY_KE_CA_NGAY_KHONG_CO_GI()
+    public async Task Trend_FillsEveryDayIncludingEmptyOnes()
     {
         // Repository chỉ trả về ngày CÓ phát sinh. Nếu đưa thẳng dãy thưa đó lên biểu đồ thì
         // đường nối thẳng qua các ngày trống, nhìn như hoạt động vẫn đều trong khi thực tế
@@ -251,7 +251,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task XuHuong_KhongCoDuLieu_VanDuDiem_ToanSo0()
+    public async Task Trend_NoData_StillProducesAllZeroPoints()
     {
         // AF-01 — khoảng trống vẫn phải vẽ được, không được ném lỗi hay trả dãy rỗng.
         var result = await _sut.GetStatisticsAsync("2026-07-01", "2026-07-03");
@@ -267,10 +267,10 @@ public class DashboardServiceTests
 
     // ---------- helpers ----------
 
-    private static ActivityCounts KhongCoHoatDong() =>
+    private static ActivityCounts NoActivity() =>
         new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
-    private void SetupHoatDong(
+    private void SetupActivity(
         int aiConfirmed = 0,
         int aiRejected = 0,
         int aiPending = 0,

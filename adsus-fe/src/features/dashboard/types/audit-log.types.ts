@@ -4,9 +4,8 @@ import type { Role } from "@/types/api.types";
 export type AuditAction =
   | "CREATE_ACCOUNT"
   | "UPDATE_ACCOUNT"
-  | "LOCK_ACCOUNT"
-  | "UNLOCK_ACCOUNT"
   | "DEACTIVATE_ACCOUNT"
+  | "REACTIVATE_ACCOUNT"
   | "ADMIN_RESET_PASSWORD"
   | "SELF_RESET_PASSWORD";
 

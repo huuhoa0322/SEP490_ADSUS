@@ -5,38 +5,46 @@ using System.Threading;
 using System.Threading.Tasks;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
-using ADSUS_BE.DAL.Data;
-using Microsoft.EntityFrameworkCore;
+using ADSUS_BE.DAL.Repositories.Interfaces;
 
 namespace ADSUS_BE.BLL.MedicalRecord.Services;
 
+/// <summary>
+/// Đọc qua Repository thay vì AppDbContext trực tiếp (P11 review Feature 4, 29/08/2026) —
+/// GetByIdAsync/SaveChangesAsync của IAiModelVersionRepository dùng chung 1 DbContext scoped
+/// với 2 repository kia, nên vẫn track/save đúng entity model đang sửa (LiveMap50,
+/// LastEvaluatedAt) như code cũ gọi _db.SaveChangesAsync() trực tiếp.
+/// </summary>
 public sealed class AiMetricsService : IAiMetricsService
 {
-    private readonly AppDbContext _db;
+    private readonly IAiModelVersionRepository _modelVersions;
+    private readonly IAiPredictionRepository _predictions;
+    private readonly IDoctorAnnotationRepository _annotations;
 
-    public AiMetricsService(AppDbContext db)
+    public AiMetricsService(
+        IAiModelVersionRepository modelVersions,
+        IAiPredictionRepository predictions,
+        IDoctorAnnotationRepository annotations)
     {
-        _db = db;
+        _modelVersions = modelVersions;
+        _predictions = predictions;
+        _annotations = annotations;
     }
 
     public async Task CalculateMap50Async(Guid modelVersionId, CancellationToken ct = default)
     {
-        var model = await _db.AiModelVersions.FirstOrDefaultAsync(m => m.ModelVersionId == modelVersionId, ct);
+        var model = await _modelVersions.GetByIdAsync(modelVersionId, ct);
         if (model == null) throw new InvalidOperationException("Model version not found");
 
         // 1. Fetch all predictions and GTs for this model
-        // Note: DoctorAnnotations don't have ModelVersionId directly, but we can fetch based on ImageId that the model evaluated, 
+        // Note: DoctorAnnotations don't have ModelVersionId directly, but we can fetch based on ImageId that the model evaluated,
         // or just fetch all DoctorAnnotations. Actually, the most accurate is to fetch DoctorAnnotations for Images where this model made predictions.
-        
-        var predictions = await _db.AiPredictions
-            .Where(p => p.ModelVersionId == modelVersionId)
-            .ToListAsync(ct);
+
+        var predictions = await _predictions.ListByModelVersionAsync(modelVersionId, ct);
 
         var imageIds = predictions.Select(p => p.ImageId).Distinct().ToList();
 
-        var annotations = await _db.DoctorAnnotations
-            .Where(a => imageIds.Contains(a.ImageId))
-            .ToListAsync(ct);
+        var annotations = await _annotations.ListByImageIdsAsync(imageIds, ct);
 
         int totalGt = annotations.Count;
 
@@ -44,7 +52,7 @@ public sealed class AiMetricsService : IAiMetricsService
         {
             model.LiveMap50 = 0;
             model.LastEvaluatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(ct);
+            await _modelVersions.SaveChangesAsync(ct);
             return;
         }
 
@@ -84,7 +92,7 @@ public sealed class AiMetricsService : IAiMetricsService
                 }
             }
 
-            if (maxIou >= 0.5m && bestGtIndex >= 0 && !gtsForImage[bestGtIndex].IsMatched)
+            if (maxIou >= IoUCalculator.MatchThreshold && bestGtIndex >= 0 && !gtsForImage[bestGtIndex].IsMatched)
             {
                 tpList.Add(1);
                 gtsForImage[bestGtIndex].IsMatched = true;
@@ -128,8 +136,8 @@ public sealed class AiMetricsService : IAiMetricsService
 
         model.LiveMap50 = map50 * 100; // Store as percentage 0-100
         model.LastEvaluatedAt = DateTime.UtcNow;
-        
-        await _db.SaveChangesAsync(ct);
+
+        await _modelVersions.SaveChangesAsync(ct);
     }
 
     private class GtInfo

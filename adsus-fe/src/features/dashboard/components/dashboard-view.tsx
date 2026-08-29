@@ -214,6 +214,21 @@ export function DashboardView() {
               />
             </ChartCard>
 
+            <ChartCard
+              title="Trạng thái tài khoản"
+              description="Tính trên toàn hệ thống, không phụ thuộc khoảng thời gian đang chọn."
+            >
+              <StatusBreakdown
+                segments={[
+                  { label: "Đang hoạt động", value: data.accounts.activeCount, tone: "good" },
+                  {
+                    label: "Đã vô hiệu hoá",
+                    value: data.accounts.deactivatedCount,
+                    tone: "critical",
+                  },
+                ]}
+              />
+            </ChartCard>
 
             <ChartCard
               title="Lịch hẹn"

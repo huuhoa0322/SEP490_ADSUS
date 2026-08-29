@@ -1,4 +1,5 @@
 import 'package:adsus_mobile/features/medical_record/data/dtos/case_dtos.dart';
+import 'package:adsus_mobile/features/medical_record/data/dtos/case_feedback_dto.dart';
 import 'package:adsus_mobile/features/medical_record/data/mappers/medical_record_mapper.dart';
 import 'package:adsus_mobile/features/medical_record/domain/entities/medical_record_case.dart';
 import 'package:adsus_mobile/features/medical_record/domain/entities/medical_record_prescription.dart';
@@ -134,6 +135,36 @@ void main() {
       final entity = MedicalRecordMapper.caseFromDto(dto);
 
       expect(entity.images, isEmpty);
+    });
+  });
+
+  group('MedicalRecordMapper.feedbackFromDto', () {
+    test('map dung 4 field, submittedAt parse dung DateTime (FT-37)', () {
+      const dto = CaseFeedbackDto(
+        id: 'feedback-1',
+        rating: 5,
+        content: 'Bac si rat tan tam',
+        submittedAt: '2026-08-20T09:30:00Z',
+      );
+
+      final entity = MedicalRecordMapper.feedbackFromDto(dto);
+
+      expect(entity.id, 'feedback-1');
+      expect(entity.rating, 5);
+      expect(entity.content, 'Bac si rat tan tam');
+      expect(entity.submittedAt, DateTime.parse('2026-08-20T09:30:00Z'));
+    });
+
+    test('content null thi entity cung null, khong nem loi', () {
+      const dto = CaseFeedbackDto(
+        id: 'feedback-1',
+        rating: 3,
+        submittedAt: '2026-08-20T09:30:00Z',
+      );
+
+      final entity = MedicalRecordMapper.feedbackFromDto(dto);
+
+      expect(entity.content, isNull);
     });
   });
 }

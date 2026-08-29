@@ -1,6 +1,7 @@
 using ADSUS_BE.BLL.MedicalRecord.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.Repositories.Implementations;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -17,7 +18,13 @@ public class AiMetricsServiceTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         _db = new AppDbContext(options);
-        _sut = new AiMetricsService(_db);
+        // P11 review (29/08/2026): AiMetricsService không còn nhận AppDbContext trực tiếp,
+        // giữ nguyên phong cách test EF InMemory thật (không mock) bằng cách bọc 3 repository
+        // thật quanh cùng _db — hành vi giống hệt code cũ, chỉ đổi đường truy cập dữ liệu.
+        _sut = new AiMetricsService(
+            new AiModelVersionRepository(_db),
+            new AiPredictionRepository(_db),
+            new DoctorAnnotationRepository(_db));
     }
 
     // UT_Metrics_01: CalculateMap50Async -> Version not found -> Throws InvalidOperationException

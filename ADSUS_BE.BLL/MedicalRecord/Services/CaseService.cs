@@ -242,41 +242,6 @@ public sealed class CaseService : ICaseService
         return await GetForStaffAsync(caseId, ct);
     }
 
-    public async Task<IReadOnlyList<UltrasoundImageResponse>> AddImagesAsync(
-        Guid caseId,
-        AddUltrasoundImagesRequest request,
-        CancellationToken ct = default)
-    {
-        var medicalCase = await _cases.GetByIdAsync(caseId, ct)
-            ?? throw new ResourceNotFoundException("Case not found.");
-
-        // GB-01: ca đã chốt thì không mở lại để nhận thêm đầu vào.
-        if (medicalCase.Status == CaseStatus.Confirmed)
-        {
-            throw new BusinessException("This case is already confirmed and cannot accept more images.");
-        }
-
-        var (images, uploadedPaths) = await UploadImagesAsync(caseId, request.Images, request.Note, ct);
-
-        try
-        {
-            await _images.AddRangeAsync(images, ct);
-        }
-        catch
-        {
-            await CleanUpAsync(uploadedPaths, ct);
-            throw;
-        }
-
-        _logger.LogInformation("Added {ImageCount} image(s) to case {CaseId}", images.Count, caseId);
-
-        var urls = await BuildImageUrlsAsync(images, ct);
-
-        return images
-            .Select(i => CaseMapper.ToImageResponse(i, urls.GetValueOrDefault(i.ImageId)))
-            .ToList();
-    }
-
     public async Task<CaseResponse> SaveConclusionAsync(
         Guid caseId,
         Guid actingDoctorId,
@@ -516,14 +481,13 @@ public sealed class CaseService : ICaseService
         IReadOnlyList<UltrasoundImage> images,
         CancellationToken ct)
     {
-        var urls = new Dictionary<Guid, string?>(images.Count);
+        var signTasks = images
+            .Select(async image => (image.ImageId, Url: await _storage.CreateSignedUrlAsync(image.FileRef, ct)))
+            .ToList();
 
-        foreach (var image in images)
-        {
-            urls[image.ImageId] = await _storage.CreateSignedUrlAsync(image.FileRef, ct);
-        }
+        var signed = await Task.WhenAll(signTasks);
 
-        return urls;
+        return signed.ToDictionary(x => x.ImageId, x => x.Url);
     }
 
     /// <summary>
