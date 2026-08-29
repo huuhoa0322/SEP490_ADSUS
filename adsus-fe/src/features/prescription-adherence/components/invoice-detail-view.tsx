@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { invoiceService, InvoiceDetailResponse } from "@/api/invoiceService";
 import {
@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Image from "next/image";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -24,11 +25,7 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
   const [loading, setLoading] = useState(false);
   const [paying, setPaying] = useState(false);
 
-  useEffect(() => {
-    fetchDetail();
-  }, [invoiceId]);
-
-  const fetchDetail = async () => {
+  const fetchDetail = useCallback(async () => {
     try {
       setLoading(true);
       const res = await invoiceService.getInvoiceDetail(invoiceId);
@@ -38,7 +35,12 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [invoiceId]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDetail();
+  }, [fetchDetail]);
 
   const handlePay = async (method: string) => {
     try {
@@ -46,8 +48,9 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
       await invoiceService.payAndDispense(invoiceId, method);
       toast.success("Hóa đơn đã được thanh toán và cập nhật tồn kho (FEFO).");
       fetchDetail(); // reload to get new status
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Có lỗi xảy ra khi thanh toán.");
+    } catch (error: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      toast.error((error as any).response?.data?.message || "Có lỗi xảy ra khi thanh toán.");
     } finally {
       setPaying(false);
     }
@@ -163,7 +166,7 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
               </CardHeader>
               <CardContent className="flex flex-col items-center space-y-4">
                 <div className="bg-white p-2 rounded-xl shadow-sm">
-                  <img src={qrUrl} alt="QR Code" className="w-48 h-48 object-contain" />
+                  <Image src={qrUrl} alt="QR Code" width={192} height={192} className="w-48 h-48 object-contain" unoptimized />
                 </div>
                 <div className="text-center space-y-1 w-full">
                   <p className="text-sm text-muted-foreground">Quét mã để thanh toán</p>

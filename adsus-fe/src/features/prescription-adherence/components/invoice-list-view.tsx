@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { invoiceService, InvoiceResponse, PagedResult } from "@/api/invoiceService";
 import {
@@ -23,7 +23,7 @@ export function InvoiceListView() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const fetchInvoices = async (currentPage: number, currentSearch: string) => {
+  const fetchInvoices = useCallback(async (currentPage: number, currentSearch: string) => {
     try {
       setLoading(true);
       const res = await invoiceService.getInvoices({
@@ -37,11 +37,13 @@ export function InvoiceListView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchInvoices(page, search);
-  }, [page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, fetchInvoices]);
 
   const handleSearch = () => {
     setPage(1);
