@@ -346,6 +346,9 @@ namespace ADSUS_BE
             builder.Services.AddScoped<ICaseRepository, CaseRepository>();
             builder.Services.AddScoped<IUltrasoundImageRepository, UltrasoundImageRepository>();
             builder.Services.AddScoped<ISymptomCategoryRepository, SymptomCategoryRepository>();
+            builder.Services.AddScoped<IAiPredictionRepository, AiPredictionRepository>();
+            builder.Services.AddScoped<IDoctorAnnotationRepository, DoctorAnnotationRepository>();
+            builder.Services.AddScoped<IMedicalDictionaryRepository, MedicalDictionaryRepository>();
 
             // External services — push notification.
             // DEBUG: dùng FakePush (in-memory stub) cho dev/test/CI không cần Firebase.
@@ -387,6 +390,7 @@ namespace ADSUS_BE
                 new System.Lazy<IFileStorageService>(() => sp.GetRequiredService<IFileStorageService>()));
             builder.Services.AddScoped<ICaseService, CaseService>();
             builder.Services.AddScoped<ISymptomService, SymptomService>();
+            builder.Services.AddScoped<IMedicalDictionaryService, MedicalDictionaryService>();
             builder.Services.AddScoped<ICaseDiagnosisService, CaseDiagnosisService>();
             builder.Services.AddScoped<IAiMetricsService, AiMetricsService>();
             builder.Services.AddScoped<ICaseReportService, CaseReportService>();

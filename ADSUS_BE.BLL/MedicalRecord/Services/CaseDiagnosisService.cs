@@ -18,15 +18,28 @@ using ADSUS_BE.BLL.Common.Exceptions;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.MedicalRecord.Services;
 
+/// <summary>
+/// AppDbContext vẫn được inject, nhưng CHỈ để mở transaction bao ngoài (Database
+/// .BeginTransactionAsync/CommitAsync/RollbackAsync) — mọi thao tác đọc/ghi entity giờ đi
+/// qua Repository (P11 review Feature 4, 29/08/2026); trước đây gọi thẳng
+/// _db.UltrasoundImages/.AiPredictions/.DoctorAnnotations/.AiModelVersions. Nhiều
+/// SaveChangesAsync() gọi tuần tự bên trong 1 transaction vẫn atomic — chưa gì commit thật
+/// cho tới transaction.CommitAsync() cuối cùng, rollback sẽ hoàn tác tất cả.
+/// </summary>
 public sealed class CaseDiagnosisService : ICaseDiagnosisService
 {
     private readonly AppDbContext _db;
     private readonly IFileStorageService _storage;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IAiModelVersionRepository _aiModelVersionRepo;
+    private readonly IUltrasoundImageRepository _images;
+    private readonly IAiPredictionRepository _predictions;
+    private readonly IDoctorAnnotationRepository _annotations;
+    private readonly ILogger<CaseDiagnosisService> _logger;
     private readonly string _aiBackendUrl;
     private readonly string? _aiBackendToken;
 
@@ -35,13 +48,33 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         IFileStorageService storage,
         IHttpClientFactory httpClientFactory,
         IAiModelVersionRepository aiModelVersionRepo,
-        IConfiguration configuration)
+        IUltrasoundImageRepository images,
+        IAiPredictionRepository predictions,
+        IDoctorAnnotationRepository annotations,
+        IConfiguration configuration,
+        ILogger<CaseDiagnosisService> logger)
     {
         _db = db;
         _storage = storage;
         _httpClientFactory = httpClientFactory;
         _aiModelVersionRepo = aiModelVersionRepo;
-        _aiBackendUrl = configuration["AiBackend:WebhookUrl"] ?? "http://localhost:8000";
+        _images = images;
+        _predictions = predictions;
+        _annotations = annotations;
+        _logger = logger;
+
+        var configuredUrl = configuration["AiBackend:WebhookUrl"];
+        if (string.IsNullOrEmpty(configuredUrl))
+        {
+            // P11 review (Feature 4, 29/08/2026): trước đây fallback âm thầm về localhost —
+            // nếu thiếu config ở production thì mọi request AI sẽ lỗi kết nối khó hiểu thay vì
+            // báo rõ nguyên nhân. Vẫn giữ fallback (không đổi hành vi dev hiện tại) nhưng cảnh
+            // báo rõ ràng qua log để không bị bỏ sót.
+            _logger.LogWarning(
+                "AiBackend:WebhookUrl is not configured — falling back to http://localhost:8000. " +
+                "This is only correct for local development; set it explicitly in production.");
+        }
+        _aiBackendUrl = configuredUrl ?? "http://localhost:8000";
         _aiBackendToken = configuration["AiBackend:Token"];
     }
 
@@ -142,41 +175,37 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
                 Note = request.Note,
                 UploadedAt = DateTime.UtcNow
             };
-            _db.UltrasoundImages.Add(ultrasoundImage);
+            await _images.AddRangeAsync(new[] { ultrasoundImage }, ct);
 
-            foreach (var aiBox in aiBboxes)
+            var aiPredictionEntities = aiBboxes.Select(aiBox => new AiPrediction
             {
-                _db.AiPredictions.Add(new AiPrediction
-                {
-                    PredictionId = Guid.NewGuid(),
-                    CaseId = caseId,
-                    ImageId = imageId,
-                    ModelVersionId = activeModelId,
-                    BboxXmin = aiBox.Xmin,
-                    BboxYmin = aiBox.Ymin,
-                    BboxXmax = aiBox.Xmax,
-                    BboxYmax = aiBox.Ymax,
-                    Confidence = aiBox.Confidence,
-                    CreatedAt = DateTime.UtcNow
-                });
-            }
+                PredictionId = Guid.NewGuid(),
+                CaseId = caseId,
+                ImageId = imageId,
+                ModelVersionId = activeModelId,
+                BboxXmin = aiBox.Xmin,
+                BboxYmin = aiBox.Ymin,
+                BboxXmax = aiBox.Xmax,
+                BboxYmax = aiBox.Ymax,
+                Confidence = aiBox.Confidence,
+                CreatedAt = DateTime.UtcNow
+            }).ToList();
+            await _predictions.AddRangeAsync(aiPredictionEntities, ct);
 
-            foreach (var docBox in docBboxes)
+            var doctorAnnotationEntities = docBboxes.Select(docBox => new DoctorAnnotation
             {
-                _db.DoctorAnnotations.Add(new DoctorAnnotation
-                {
-                    AnnotationId = Guid.NewGuid(),
-                    CaseId = caseId,
-                    ImageId = imageId,
-                    BboxXmin = docBox.Xmin,
-                    BboxYmin = docBox.Ymin,
-                    BboxXmax = docBox.Xmax,
-                    BboxYmax = docBox.Ymax,
-                    Source = "doctor_added",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                });
-            }
+                AnnotationId = Guid.NewGuid(),
+                CaseId = caseId,
+                ImageId = imageId,
+                BboxXmin = docBox.Xmin,
+                BboxYmin = docBox.Ymin,
+                BboxXmax = docBox.Xmax,
+                BboxYmax = docBox.Ymax,
+                Source = "doctor_added",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }).ToList();
+            await _annotations.AddRangeAsync(doctorAnnotationEntities, ct);
 
             // Calculate O(1) Metrics for this single image
             int newTp = 0;
@@ -204,7 +233,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
                     }
                 }
 
-                if (maxIou >= 0.5m && !matchedGtIndices.Contains(bestGtIndex))
+                if (maxIou >= IoUCalculator.MatchThreshold && !matchedGtIndices.Contains(bestGtIndex))
                 {
                     newTp++;
                     matchedGtIndices.Add(bestGtIndex);
@@ -220,10 +249,8 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
             activeModel.LiveTp += newTp;
             activeModel.LiveFp += newFp;
             activeModel.LiveFn += newFn;
-            
-            _db.AiModelVersions.Update(activeModel);
 
-            await _db.SaveChangesAsync(ct);
+            await _aiModelVersionRepo.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
         }
         catch

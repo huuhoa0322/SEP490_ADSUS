@@ -481,14 +481,13 @@ public sealed class CaseService : ICaseService
         IReadOnlyList<UltrasoundImage> images,
         CancellationToken ct)
     {
-        var urls = new Dictionary<Guid, string?>(images.Count);
+        var signTasks = images
+            .Select(async image => (image.ImageId, Url: await _storage.CreateSignedUrlAsync(image.FileRef, ct)))
+            .ToList();
 
-        foreach (var image in images)
-        {
-            urls[image.ImageId] = await _storage.CreateSignedUrlAsync(image.FileRef, ct);
-        }
+        var signed = await Task.WhenAll(signTasks);
 
-        return urls;
+        return signed.ToDictionary(x => x.ImageId, x => x.Url);
     }
 
     /// <summary>
