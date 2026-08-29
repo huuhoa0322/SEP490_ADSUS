@@ -210,6 +210,10 @@ namespace ADSUS_BE
             dataSourceBuilder.MapEnum<MedicineStatus>("medicines_status");
             dataSourceBuilder.MapEnum<ChatRole>("chat_role");
             dataSourceBuilder.MapEnum<InventoryTxnType>("inventory_txn_type");
+            dataSourceBuilder.MapEnum<InvoiceStatus>("invoice_status");
+            dataSourceBuilder.MapEnum<PaymentMethod>("payment_method");
+            dataSourceBuilder.MapEnum<NotificationStatus>("notification_status");
+            dataSourceBuilder.MapEnum<NotificationType>("notification_type");
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);
@@ -409,6 +413,7 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IMedicineService, MedicineService>();
             builder.Services.AddScoped<ISupplierService, SupplierService>();
             builder.Services.AddScoped<IInventoryService, InventoryService>();
+            builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 
             // BLL — Module 8: Appointment Scheduling (UC-15)
             builder.Services.AddScoped<IScheduleSlotRepository, ScheduleSlotRepository>();

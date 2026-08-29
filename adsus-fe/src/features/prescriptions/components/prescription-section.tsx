@@ -1,7 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { getCasePrescriptionWithCompliance } from "../api/prescriptions.api";
+import { useCasePrescriptionWithCompliance } from "../hooks/use-prescriptions";
 import type { PrescriptionWithComplianceResponse } from "../types/prescriptions.types";
 
 import { AdherencePill } from "./adherence-pill";
@@ -31,11 +30,7 @@ interface PrescriptionSectionProps {
 }
 
 export function PrescriptionSection({ caseId }: PrescriptionSectionProps) {
-  const { data: prescriptions, isLoading } = useQuery({
-    queryKey: ["case-prescription-with-compliance", caseId],
-    queryFn: () => getCasePrescriptionWithCompliance(caseId),
-    staleTime: 30 * 1000,
-  });
+  const { data: prescriptions, isLoading } = useCasePrescriptionWithCompliance(caseId);
 
   if (isLoading) {
     return (

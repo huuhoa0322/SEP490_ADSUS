@@ -75,9 +75,9 @@ public sealed class PrescriptionService : IPrescriptionService
         if (caseEntity.DoctorId != actorId)
             throw new BusinessException("Bác sĩ không có quyền kê đơn cho ca khám này.");
 
-        // Option A: lookup-or-create medicine by name (case-insensitive).
-        // Handles both: doctor picks from catalog OR types a new name.
-        var medicineCache = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+        // Option A: lookup by name (case-insensitive).
+        // Handles doctor picks from catalog.
+        var medicineCache = new Dictionary<string, (Guid Id, string? Unit, decimal VolumePerBaseUnit)>(StringComparer.OrdinalIgnoreCase);
 
         // Get patient reminder preferences
         var patientPref = await _db.PatientReminderPreferences
@@ -112,8 +112,8 @@ public sealed class PrescriptionService : IPrescriptionService
         {
             var itemId = Guid.NewGuid();
 
-            // Lookup or create medicine by name
-            if (!medicineCache.TryGetValue(itemDto.MedicineName, out var medicineId))
+            // Lookup medicine by name
+            if (!medicineCache.TryGetValue(itemDto.MedicineName, out var medicineInfo))
             {
                 var existing = await _medicineRepo.FindByNameAsync(itemDto.MedicineName, ct);
                 if (existing is null || existing.Status == MedicineStatus.Inactive)
@@ -121,19 +121,33 @@ public sealed class PrescriptionService : IPrescriptionService
                     throw new BusinessException($"Thuốc '{itemDto.MedicineName}' không tồn tại trong hệ thống hoặc đã bị ngừng sử dụng. Vui lòng chọn thuốc từ danh sách.");
                 }
                 
-                medicineId = existing.MedicineId;
-                medicineCache[itemDto.MedicineName] = medicineId;
+                medicineInfo = (existing.MedicineId, existing.UsageUnit, existing.VolumePerBaseUnit ?? 1m);
+                medicineCache[itemDto.MedicineName] = medicineInfo;
+            }
+
+            var quantityUSNeeded = itemDto.QuantityPerDose * itemDto.ScheduleSlots.Count * itemDto.DurationDays;
+            decimal volumePerBaseUnit = medicineInfo.VolumePerBaseUnit;
+            
+            var totalAvailableBS = await _db.MedicineBatches
+                .Where(b => b.MedicineId == medicineInfo.Id && b.QuantityBase > 0 && b.ExpiryDate >= DateOnly.FromDateTime(now))
+                .SumAsync(b => b.QuantityBase, ct);
+            var totalAvailableUS = (int)(totalAvailableBS * volumePerBaseUnit);
+
+            if (quantityUSNeeded > totalAvailableUS)
+            {
+                throw new BusinessException($"Thuốc '{itemDto.MedicineName}' không đủ số lượng trong kho. Yêu cầu: {quantityUSNeeded} {medicineInfo.Unit ?? "đơn vị"}, Hiện còn: {totalAvailableUS} {medicineInfo.Unit ?? "đơn vị"}.");
             }
 
             var prescriptionItem = new PrescriptionItem
             {
                 PrescriptionItemId = itemId,
                 PrescriptionId = prescription.PrescriptionId,
-                MedicineId = medicineId,
-                Dosage = itemDto.Dosage,
+                MedicineId = medicineInfo.Id,
+                Dosage = $"{itemDto.QuantityPerDose} {medicineInfo.Unit ?? "đơn vị"}",
                 DurationDays = itemDto.DurationDays,
                 StartDate = itemDto.StartDate,
                 Instructions = itemDto.Instructions,
+                QuantityBase = quantityUSNeeded,
                 ScheduleSlots = itemDto.ScheduleSlots
                     .Select(s => (ReminderSlot)(int)s)
                     .ToArray(),

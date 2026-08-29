@@ -29,10 +29,19 @@ public sealed class MedicineService : IMedicineService
     {
         var medicines = await _medicineRepository.SearchByNameAsync(keyword, limit, ct);
         
+        var medicineIds = medicines.Select(m => m.MedicineId).ToList();
+        
+        var baseUnitNames = await _db.MedicinePackagings
+            .Where(mp => medicineIds.Contains(mp.MedicineId) && mp.IsBaseUnit)
+            .Select(mp => new { mp.MedicineId, mp.MedicineUnit.Name })
+            .ToDictionaryAsync(x => x.MedicineId, x => x.Name, ct);
+
         return medicines.Select(m => new MedicineResponse
         {
             MedicineId = m.MedicineId,
             Name = m.Name,
+            UsageUnit = !string.IsNullOrWhiteSpace(m.UsageUnit) ? m.UsageUnit : baseUnitNames.GetValueOrDefault(m.MedicineId),
+            BaseUnitName = baseUnitNames.GetValueOrDefault(m.MedicineId),
             Status = m.Status.ToString().ToUpperInvariant(),
             CreatedAt = m.CreatedAt,
             TotalInventoryBase = m.MedicineBatches?.Sum(b => b.QuantityBase) ?? 0
@@ -55,7 +64,7 @@ public sealed class MedicineService : IMedicineService
         {
             MedicineId = m.MedicineId,
             Name = m.Name,
-            UsageUnit = m.UsageUnit,
+            UsageUnit = !string.IsNullOrWhiteSpace(m.UsageUnit) ? m.UsageUnit : baseUnitNames.GetValueOrDefault(m.MedicineId),
             BaseUnitName = baseUnitNames.GetValueOrDefault(m.MedicineId),
             VolumePerBaseUnit = m.VolumePerBaseUnit,
             Status = m.Status.ToString().ToUpperInvariant(),
@@ -84,7 +93,7 @@ public sealed class MedicineService : IMedicineService
         {
             MedicineId = m.MedicineId,
             Name = m.Name,
-            UsageUnit = m.UsageUnit,
+            UsageUnit = !string.IsNullOrWhiteSpace(m.UsageUnit) ? m.UsageUnit : baseUnitName,
             BaseUnitName = baseUnitName,
             VolumePerBaseUnit = m.VolumePerBaseUnit,
             Status = m.Status.ToString().ToUpperInvariant(),

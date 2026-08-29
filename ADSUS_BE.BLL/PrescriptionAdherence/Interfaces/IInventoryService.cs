@@ -11,5 +11,11 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Interfaces
         Task<ADSUS_BE.BLL.Common.PagedResult<MedicineBatchResponse>> GetMedicineBatchesAsync(MedicineBatchFilter filter);
 
         Task<ImportValidationResponse> ValidateImportAsync(ImportInventoryRequest request);
+        
+        /// <summary>
+        /// Xuất kho dựa trên đơn thuốc (FEFO algorithm).
+        /// Cắt QuantityBase từ các lô cũ nhất, sinh InventoryTransaction đóng băng giá vốn.
+        /// </summary>
+        Task DispenseAsync(System.Guid caseId);
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using ADSUS_BE.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -504,6 +504,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.PrescriptionItemId).HasColumnName("prescription_item_id");
             entity.Property(e => e.QuantityBase).HasColumnName("quantity_base");
             entity.Property(e => e.QuantityInUnit).HasColumnName("quantity_in_unit");
+            entity.Property(e => e.TxnType).HasColumnName("txn_type");
             entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
             entity.Property(e => e.TxnDate)
                 .HasDefaultValueSql("now()")
@@ -542,6 +543,8 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.PaymentMethod).HasColumnName("payment_method");
             entity.Property(e => e.PaidAt).HasColumnName("paid_at");
             entity.Property(e => e.TotalAmount)
                 .HasPrecision(18, 2)
@@ -752,11 +755,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.LogId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("log_id");
-            entity.Property(e => e.Status)
-                .HasColumnName("status")
-                .HasColumnType("text")
-                .HasConversion<string>()
-                .HasDefaultValue(NotificationStatus.Sent);
             entity.Property(e => e.Body).HasColumnName("body");
             entity.Property(e => e.DeepLink)
                 .HasMaxLength(500)
