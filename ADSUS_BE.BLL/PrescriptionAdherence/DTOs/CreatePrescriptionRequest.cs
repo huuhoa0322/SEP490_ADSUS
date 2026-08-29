@@ -11,8 +11,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 /// </summary>
 public sealed record CreatePrescriptionRequest(
     [Required] Guid CaseId,
-    [Required] Guid DoctorId,
-    [MaxLength(2000)] string? GeneralNote,
+    [MaxLength(1000)] string? GeneralNote,
     [Required][MinLength(1)] IReadOnlyList<CreatePrescriptionItemDto> Items);
 
 /// <summary>

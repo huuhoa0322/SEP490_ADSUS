@@ -11,13 +11,12 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence;
 /// - Dosage rỗng
 /// - GeneralNote 2000 / 2001 char
 /// - Instructions 1000 / 1001 char
-/// - CaseId / DoctorId rỗng
+/// - CaseId rỗng
 /// </summary>
 public class CreatePrescriptionRequestValidatorTests
 {
     private static CreatePrescriptionRequest ValidRequest() => new(
         CaseId: Guid.NewGuid(),
-        DoctorId: Guid.NewGuid(),
         GeneralNote: null,
         Items: new[]
         {
@@ -49,17 +48,6 @@ public class CreatePrescriptionRequestValidatorTests
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, e => e.PropertyName == "CaseId");
-    }
-
-    [Fact]
-    public void EmptyDoctorId_Fails()
-    {
-        var req = ValidRequest() with { DoctorId = Guid.Empty };
-
-        var result = _validator.Validate(req);
-
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName == "DoctorId");
     }
 
     [Fact]

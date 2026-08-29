@@ -44,17 +44,17 @@ export const invoiceService = {
     if (filter.sortBy) params.append('sortBy', filter.sortBy);
     if (filter.sortDir) params.append('sortDir', filter.sortDir);
 
-    const response = await api.get<ApiResponse<PagedResult<InvoiceResponse>>>(`/api/invoices?${params.toString()}`);
+    const response = await api.get<ApiResponse<PagedResult<InvoiceResponse>>>(`/api/v1/invoices?${params.toString()}`);
     return response.data.data as PagedResult<InvoiceResponse>;
   },
 
   getInvoiceDetail: async (id: string): Promise<InvoiceDetailResponse> => {
-    const response = await api.get<ApiResponse<InvoiceDetailResponse>>(`/api/invoices/${id}`);
+    const response = await api.get<ApiResponse<InvoiceDetailResponse>>(`/api/v1/invoices/${id}`);
     return response.data.data as InvoiceDetailResponse;
   },
 
   payAndDispense: async (id: string, paymentMethod: string): Promise<void> => {
-    const response = await api.put<ApiResponse<void>>(`/api/invoices/${id}/pay`, { paymentMethod });
+    const response = await api.put<ApiResponse<void>>(`/api/v1/invoices/${id}/pay`, { paymentMethod });
     // no return value needed, throwing if not 2xx
   },
 };

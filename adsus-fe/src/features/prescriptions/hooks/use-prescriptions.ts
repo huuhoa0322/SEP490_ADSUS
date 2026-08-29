@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { getApiErrorMessage } from "@/lib/api-client";
+import { medicalRecordQueryKeys } from "@/features/medical-record/hooks/query-keys";
 
 import {
   confirmIntake,
@@ -41,8 +42,15 @@ const keys = {
 
 /** POST /api/v1/prescriptions — Doctor kê đơn (UC-18). */
 export function useCreatePrescription() {
+  const qc = useQueryClient();
   return useMutation<PrescriptionResponse, Error, CreatePrescriptionRequest>({
     mutationFn: createPrescription,
+    onSuccess: (_, variables) => {
+      // Invalidate prescription list for this case so UI updates immediately
+      qc.invalidateQueries({ queryKey: keys.caseCompliance(variables.caseId) });
+      // Also invalidate the case detail query so case status (End) refreshes
+      qc.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(variables.caseId) });
+    },
   });
 }
 

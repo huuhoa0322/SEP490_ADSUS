@@ -10,8 +10,8 @@ using Microsoft.AspNetCore.Authorization;
 namespace ADSUS_BE.Controllers;
 
 [ApiController]
-[Route("api/invoices")]
-[Authorize(Roles = "NURSE")]
+[Route("api/v1/invoices")]
+[Authorize(Roles = "NURSE,DOCTOR")]
 public class InvoicesController : ControllerBase
 {
     private readonly IInvoiceService _invoiceService;
@@ -22,17 +22,17 @@ public class InvoicesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<PagedResult<InvoiceResponse>>> GetInvoices([FromQuery] InvoiceFilter filter)
+    public async Task<ActionResult<ApiResponse<PagedResult<InvoiceResponse>>>> GetInvoices([FromQuery] InvoiceFilter filter)
     {
         var result = await _invoiceService.GetInvoicesAsync(filter);
-        return Ok(result);
+        return Ok(ApiResponse<PagedResult<InvoiceResponse>>.Ok(result));
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<InvoiceDetailResponse>> GetInvoiceDetail(Guid id)
+    public async Task<ActionResult<ApiResponse<InvoiceDetailResponse>>> GetInvoiceDetail(Guid id)
     {
         var result = await _invoiceService.GetInvoiceDetailAsync(id);
-        return Ok(result);
+        return Ok(ApiResponse<InvoiceDetailResponse>.Ok(result));
     }
 
     [HttpPost("generate/{caseId}")]
@@ -51,7 +51,7 @@ public class InvoicesController : ControllerBase
         }
         
         await _invoiceService.PayAndDispenseAsync(id, method);
-        return Ok(new { message = "Thanh toán và xuất kho thành công." });
+        return Ok(ApiResponse<object>.Ok(new { message = "Thanh toán và xuất kho thành công." }));
     }
 }
 

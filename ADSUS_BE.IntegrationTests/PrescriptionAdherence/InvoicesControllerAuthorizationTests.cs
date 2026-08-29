@@ -46,7 +46,7 @@ public class InvoicesControllerAuthorizationTests
             .ReturnsAsync(mockResult);
 
         // Act
-        var response = await client.GetAsync("/api/invoices");
+        var response = await client.GetAsync("/api/v1/invoices");
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -60,24 +60,29 @@ public class InvoicesControllerAuthorizationTests
         var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Patient);
 
         // Act
-        var response = await client.GetAsync("/api/invoices");
+        var response = await client.GetAsync("/api/v1/invoices");
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
     
     [Fact]
-    public async Task GetInvoices_AsDoctor_ReturnsForbidden()
+    public async Task GetInvoices_AsDoctor_ReturnsOk()
     {
         // Arrange
         using var app = CreateApp();
         var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Doctor);
 
+        var mockResult = new PagedResult<InvoiceResponse>(new List<InvoiceResponse>(), 1, 10, 0, 0);
+
+        _invoiceService.Setup(s => s.GetInvoicesAsync(It.IsAny<InvoiceFilter>()))
+            .ReturnsAsync(mockResult);
+
         // Act
-        var response = await client.GetAsync("/api/invoices");
+        var response = await client.GetAsync("/api/v1/invoices");
 
         // Assert
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
     
     [Fact]
@@ -88,7 +93,7 @@ public class InvoicesControllerAuthorizationTests
         var client = app.CreateClient();
 
         // Act
-        var response = await client.GetAsync("/api/invoices");
+        var response = await client.GetAsync("/api/v1/invoices");
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

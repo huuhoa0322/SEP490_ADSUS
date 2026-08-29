@@ -368,8 +368,9 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
 
             foreach (var pItem in prescription.PrescriptionItems)
             {
-                var quantityNeeded = pItem.QuantityBase;
-                if (quantityNeeded <= 0) continue;
+                decimal volumePerBaseUnit = pItem.Medicine.VolumePerBaseUnit ?? 1m;
+                var quantityNeededBS = (int)Math.Ceiling(pItem.QuantityBase / (double)volumePerBaseUnit);
+                if (quantityNeededBS <= 0) continue;
 
                 var baseUnitPack = pItem.Medicine.MedicinePackagings.FirstOrDefault(mp => mp.IsBaseUnit);
                 if (baseUnitPack == null)
@@ -385,20 +386,20 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
 
                 foreach (var batch in batches)
                 {
-                    if (quantityNeeded <= 0) break;
+                    if (quantityNeededBS <= 0) break;
 
-                    int cutQty = Math.Min(batch.QuantityBase, quantityNeeded);
+                    int cutQtyBS = Math.Min(batch.QuantityBase, quantityNeededBS);
                     
-                    batch.QuantityBase -= cutQty;
-                    quantityNeeded -= cutQty;
+                    batch.QuantityBase -= cutQtyBS;
+                    quantityNeededBS -= cutQtyBS;
 
                     var txn = new InventoryTransaction
                     {
                         Id = Guid.NewGuid(),
                         BatchId = batch.Id,
                         MedicinePackagingId = baseUnitPack.Id,
-                        QuantityInUnit = cutQty,
-                        QuantityBase = cutQty, // Vì là BaseUnit nên Quantity = QuantityBase
+                        QuantityInUnit = cutQtyBS,
+                        QuantityBase = cutQtyBS,
                         TxnDate = DateTime.UtcNow,
                         PrescriptionItemId = pItem.PrescriptionItemId,
                         ActualImportPrice = batch.BaseUnitAvgImportPrice, // ĐÓNG BĂNG GIÁ VỐN
@@ -408,9 +409,9 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                     _dbContext.InventoryTransactions.Add(txn);
                 }
 
-                if (quantityNeeded > 0)
+                if (quantityNeededBS > 0)
                 {
-                    throw new BusinessException($"Thuốc '{pItem.Medicine.Name}' không đủ tồn kho hợp lệ. Thiếu {quantityNeeded} đơn vị.");
+                    throw new BusinessException($"Thuốc '{pItem.Medicine.Name}' không đủ tồn kho hợp lệ. Thiếu {quantityNeededBS} {baseUnitPack?.MedicineUnit?.Name ?? "đơn vị BS"}.");
                 }
             }
 

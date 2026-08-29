@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Chi tiết hóa đơn | ADSUS",
 };
 
-export default function InvoiceDetailPage({ params }: { params: { id: string } }) {
-  return <InvoiceDetailView invoiceId={params.id} />;
+export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <InvoiceDetailView invoiceId={id} />;
 }

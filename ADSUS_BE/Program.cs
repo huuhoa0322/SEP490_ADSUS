@@ -210,6 +210,10 @@ namespace ADSUS_BE
             dataSourceBuilder.MapEnum<MedicineStatus>("medicines_status");
             dataSourceBuilder.MapEnum<ChatRole>("chat_role");
             dataSourceBuilder.MapEnum<InventoryTxnType>("inventory_txn_type");
+            dataSourceBuilder.MapEnum<InvoiceStatus>("invoice_status");
+            dataSourceBuilder.MapEnum<PaymentMethod>("payment_method");
+            dataSourceBuilder.MapEnum<NotificationStatus>("notification_status");
+            dataSourceBuilder.MapEnum<NotificationType>("notification_type");
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);

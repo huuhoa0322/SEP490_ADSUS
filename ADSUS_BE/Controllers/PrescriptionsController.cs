@@ -12,10 +12,12 @@ namespace ADSUS_BE.Controllers;
 public class PrescriptionsController : ControllerBase
 {
     private readonly IPrescriptionService _prescriptionService;
+    private readonly IInvoiceService _invoiceService;
 
-    public PrescriptionsController(IPrescriptionService prescriptionService)
+    public PrescriptionsController(IPrescriptionService prescriptionService, IInvoiceService invoiceService)
     {
         _prescriptionService = prescriptionService;
+        _invoiceService = invoiceService;
     }
 
     /// <summary>UC-18 — Bác sĩ kê đơn thuốc.</summary>
@@ -29,6 +31,10 @@ public class PrescriptionsController : ControllerBase
             return Unauthorized();
 
         var result = await _prescriptionService.CreateAsync(userId, request, ct);
+        
+        // Generate invoice automatically after creating prescription
+        await _invoiceService.GenerateInvoiceForCaseAsync(request.CaseId);
+        
         return Created($"/api/v1/prescriptions/{result.PrescriptionId}", result);
     }
 

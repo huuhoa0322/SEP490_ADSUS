@@ -29,6 +29,8 @@ public class InvoiceService : IInvoiceService
         var existingInvoice = await _context.Invoices
             .FirstOrDefaultAsync(i => i.CaseId == caseId && (i.Status == InvoiceStatus.PENDING || i.Status == InvoiceStatus.PAID));
             
+
+        
         if (existingInvoice != null)
         {
             return existingInvoice.Id;
@@ -36,9 +38,12 @@ public class InvoiceService : IInvoiceService
 
         // 2. Lấy đơn thuốc của Case này (chỉ lấy đơn đang Active)
         var prescription = await _context.Prescriptions
+            .AsNoTracking()
             .Include(p => p.PrescriptionItems)
                 .ThenInclude(pi => pi.Medicine)
             .FirstOrDefaultAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active);
+
+
 
         if (prescription == null || !prescription.PrescriptionItems.Any())
         {
@@ -62,6 +67,7 @@ public class InvoiceService : IInvoiceService
         foreach (var pItem in prescription.PrescriptionItems)
         {
             var remainingQuantity = pItem.QuantityBase;
+            decimal volumePerBaseUnit = pItem.Medicine.VolumePerBaseUnit ?? 1m;
             if (remainingQuantity <= 0) continue;
 
             // Lấy tất cả các quy cách đóng gói được phép bán của loại thuốc này, xếp từ lớn xuống nhỏ
@@ -76,44 +82,45 @@ public class InvoiceService : IInvoiceService
                 throw new BusinessException($"Thuốc '{pItem.Medicine.Name}' chưa được cấu hình đơn vị bán (IsSellable = true).");
             }
 
+            // Gom số lượng theo từng packaging trước, sau đó mới tạo InvoiceItem
+            var billingLines = new List<(MedicinePackaging Pack, int Qty)>();
+
             foreach (var pack in packagings)
             {
-                if (remainingQuantity >= pack.ConversionFactor)
-                {
-                    int qtyToBill = remainingQuantity / pack.ConversionFactor;
-                    remainingQuantity = remainingQuantity % pack.ConversionFactor;
+                int packCapacityUS = (int)(pack.ConversionFactor * volumePerBaseUnit);
 
-                    var invoiceItem = new InvoiceItem
-                    {
-                        Id = Guid.NewGuid(),
-                        InvoiceId = invoice.Id,
-                        Description = $"{pItem.Medicine.Name} - {pack.MedicineUnit.Name}",
-                        Quantity = qtyToBill,
-                        UnitPrice = pack.SalePrice,
-                        TotalPrice = qtyToBill * pack.SalePrice,
-                        ReferenceId = pItem.PrescriptionItemId
-                    };
-                    
-                    _context.InvoiceItems.Add(invoiceItem);
-                    grandTotal += invoiceItem.TotalPrice;
+                if (remainingQuantity >= packCapacityUS)
+                {
+                    int qtyToBill = remainingQuantity / packCapacityUS;
+                    remainingQuantity = remainingQuantity % packCapacityUS;
+                    billingLines.Add((pack, qtyToBill));
                 }
             }
 
-            // Nếu vẫn còn lẻ (nhỏ hơn đơn vị bán lẻ nhỏ nhất), làm tròn lên (Ceil) 1 đơn vị nhỏ nhất đó
+            // Nếu vẫn còn lẻ, cộng thêm 1 vào đơn vị nhỏ nhất (không tạo dòng riêng)
             if (remainingQuantity > 0)
             {
-                var smallestPack = packagings.Last(); // Đã sort Descending, Last() là nhỏ nhất
+                var smallestPack = packagings.Last();
+                var idx = billingLines.FindIndex(b => b.Pack.Id == smallestPack.Id);
+                if (idx >= 0)
+                    billingLines[idx] = (billingLines[idx].Pack, billingLines[idx].Qty + 1);
+                else
+                    billingLines.Add((smallestPack, 1));
+            }
+
+            // Tạo InvoiceItem từ danh sách đã gộp
+            foreach (var (pack, qty) in billingLines)
+            {
                 var invoiceItem = new InvoiceItem
                 {
                     Id = Guid.NewGuid(),
                     InvoiceId = invoice.Id,
-                    Description = $"{pItem.Medicine.Name} - {smallestPack.MedicineUnit.Name} (Làm tròn lên)",
-                    Quantity = 1,
-                    UnitPrice = smallestPack.SalePrice,
-                    TotalPrice = smallestPack.SalePrice,
+                    Description = $"{pItem.Medicine.Name} - {pack.MedicineUnit.Name}",
+                    Quantity = qty,
+                    UnitPrice = pack.SalePrice,
+                    TotalPrice = qty * pack.SalePrice,
                     ReferenceId = pItem.PrescriptionItemId
                 };
-                
                 _context.InvoiceItems.Add(invoiceItem);
                 grandTotal += invoiceItem.TotalPrice;
             }

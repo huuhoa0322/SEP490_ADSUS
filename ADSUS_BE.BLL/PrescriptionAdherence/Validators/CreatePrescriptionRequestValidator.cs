@@ -19,9 +19,6 @@ public sealed class CreatePrescriptionRequestValidator : AbstractValidator<Creat
         RuleFor(r => r.CaseId)
             .NotEmpty().WithMessage("CaseId không được để trống.");
 
-        RuleFor(r => r.DoctorId)
-            .NotEmpty().WithMessage("DoctorId không được để trống.");
-
         RuleFor(r => r.GeneralNote)
             .MaximumLength(2000).WithMessage("Ghi chú đơn tối đa 2000 ký tự.")
             .When(r => !string.IsNullOrEmpty(r.GeneralNote));
@@ -42,11 +39,10 @@ public sealed class CreatePrescriptionItemDtoValidator : AbstractValidator<Creat
             .MaximumLength(200).WithMessage("Tên thuốc tối đa 200 ký tự.");
 
         RuleFor(i => i.QuantityPerDose)
-            .InclusiveBetween(1, 1000).WithMessage("Số lượng mỗi liều phải nằm trong khoảng [1, 1000].");
+            .InclusiveBetween(1, 1000).WithMessage("Số lượng mỗi liều phải từ 1 đến 1000.");
 
         RuleFor(i => i.DurationDays)
-            .InclusiveBetween((short)1, (short)365)
-            .WithMessage("DurationDays phải nằm trong khoảng [1, 365].");
+            .InclusiveBetween((short)1, (short)365).WithMessage("DurationDays phải nằm trong khoảng [1, 365].");
 
         RuleFor(i => i.Instructions)
             .MaximumLength(1000).WithMessage("Hướng dẫn tối đa 1000 ký tự.")
