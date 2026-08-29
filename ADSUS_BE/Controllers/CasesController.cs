@@ -28,7 +28,6 @@ public sealed class CasesController : ControllerBase
     private readonly IPrescriptionService _prescriptions;
     private readonly IAppointmentService _appointmentService;
     private readonly IValidator<CreateCaseRequest> _createValidator;
-    private readonly IValidator<AddUltrasoundImagesRequest> _addImagesValidator;
     private readonly IValidator<CaseConclusionRequest> _conclusionValidator;
 
     public CasesController(
@@ -37,7 +36,6 @@ public sealed class CasesController : ControllerBase
         IPrescriptionService prescriptions,
         IAppointmentService appointmentService,
         IValidator<CreateCaseRequest> createValidator,
-        IValidator<AddUltrasoundImagesRequest> addImagesValidator,
         IValidator<CaseConclusionRequest> conclusionValidator)
     {
         _cases = cases;
@@ -45,7 +43,6 @@ public sealed class CasesController : ControllerBase
         _prescriptions = prescriptions;
         _appointmentService = appointmentService;
         _createValidator = createValidator;
-        _addImagesValidator = addImagesValidator;
         _conclusionValidator = conclusionValidator;
     }
 
@@ -203,40 +200,6 @@ public sealed class CasesController : ControllerBase
             nameof(GetById),
             new { id = result.CaseId },
             ApiResponse<CaseResponse>.Ok(result, "Case created successfully"));
-    }
-
-    /// <summary>Bổ sung ảnh siêu âm vào một ca chưa được chốt (UC-07).</summary>
-    [HttpPost("{caseId:guid}/ultrasound-images")]
-    [Authorize(Roles = "DOCTOR,NURSE")]
-    [Consumes("multipart/form-data")]
-    [RequestSizeLimit(120L * 1024 * 1024)]
-    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<UltrasoundImageResponse>>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> AddImages(
-        Guid caseId,
-        [FromForm] List<IFormFile> images,
-        [FromForm] string? note,
-        CancellationToken ct)
-    {
-        var request = new AddUltrasoundImagesRequest(ToUploadedFiles(images), note);
-
-        // Đặc tả cho #21 quy định lỗi "không đính kèm file" là 400, khác với #20 (422) — nên
-        // ở đây kiểm bằng validator. Bất nhất này đã ghi lại ở flag N2.
-        var validation = await _addImagesValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
-            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
-        }
-
-        var result = await _cases.AddImagesAsync(caseId, request, ct);
-
-        return StatusCode(
-            StatusCodes.Status201Created,
-            ApiResponse<IReadOnlyList<UltrasoundImageResponse>>.Ok(
-                result, "Ultrasound image(s) uploaded successfully"));
     }
 
     /// <summary>

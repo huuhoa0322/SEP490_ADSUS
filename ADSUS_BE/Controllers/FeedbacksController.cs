@@ -1,9 +1,9 @@
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Engagement.DTOs;
 using ADSUS_BE.BLL.Engagement.Interfaces;
+using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace ADSUS_BE.Controllers;
 
@@ -16,10 +16,12 @@ namespace ADSUS_BE.Controllers;
 public sealed class FeedbacksController : ControllerBase
 {
     private readonly IFeedbackService _feedbackService;
+    private readonly IPatientProfileRepository _patientProfiles;
 
-    public FeedbacksController(IFeedbackService feedbackService)
+    public FeedbacksController(IFeedbackService feedbackService, IPatientProfileRepository patientProfiles)
     {
         _feedbackService = feedbackService;
+        _patientProfiles = patientProfiles;
     }
 
     /// <summary>
@@ -32,7 +34,6 @@ public sealed class FeedbacksController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Submit(
         [FromBody] SubmitFeedbackRequest request,
-        [FromServices] IServiceProvider sp,
         CancellationToken ct)
     {
         // Validate Rating
@@ -55,9 +56,7 @@ public sealed class FeedbacksController : ControllerBase
                 StatusCodes.Status400BadRequest, "Nội dung phản hồi không được quá 2000 ký tự."));
         }
 
-        // TODO: Get patientProfileId from JWT via IUserContext or PatientProfile lookup
-        // For now, we'll need to look up the PatientProfile from the authenticated user's ID
-        var patientProfileId = await GetPatientProfileIdAsync(sp, ct);
+        var patientProfileId = await GetPatientProfileIdAsync(ct);
         if (patientProfileId == null)
         {
             return BadRequest(ApiResponse<object>.Fail(
@@ -94,10 +93,9 @@ public sealed class FeedbacksController : ControllerBase
     public async Task<IActionResult> SubmitCaseFeedback(
         [FromBody] SubmitCaseFeedbackRequest request,
         [FromQuery] Guid caseId,
-        [FromServices] IServiceProvider sp,
         CancellationToken ct)
     {
-        var patientProfileId = await GetPatientProfileIdAsync(sp, ct);
+        var patientProfileId = await GetPatientProfileIdAsync(ct);
         if (patientProfileId == null)
             return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, "Không tìm thấy hồ sơ bệnh nhân."));
 
@@ -115,10 +113,9 @@ public sealed class FeedbacksController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCaseFeedback(
         [FromRoute] Guid caseId,
-        [FromServices] IServiceProvider sp,
         CancellationToken ct)
     {
-        var patientProfileId = await GetPatientProfileIdAsync(sp, ct);
+        var patientProfileId = await GetPatientProfileIdAsync(ct);
         if (patientProfileId == null)
             return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, "Không tìm thấy hồ sơ bệnh nhân."));
 
@@ -128,7 +125,7 @@ public sealed class FeedbacksController : ControllerBase
         return Ok(ApiResponse<CaseFeedbackResponse>.Ok(result));
     }
 
-    private async Task<Guid?> GetPatientProfileIdAsync(IServiceProvider sp, CancellationToken ct)
+    private async Task<Guid?> GetPatientProfileIdAsync(CancellationToken ct)
     {
         // Get current user ID from JWT
         var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -137,13 +134,7 @@ public sealed class FeedbacksController : ControllerBase
             return null;
         }
 
-        // Look up PatientProfile by UserId
-        using var scope = sp.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ADSUS_BE.DAL.Data.AppDbContext>();
-        var patientProfile = await db.PatientProfiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
-
+        var patientProfile = await _patientProfiles.GetByUserIdAsync(userId, ct);
         return patientProfile?.PatientProfileId;
     }
 }

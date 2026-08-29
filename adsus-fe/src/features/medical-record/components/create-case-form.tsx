@@ -58,10 +58,10 @@ function PreviousCaseSummary({ caseId }: { caseId: string }) {
         <div>
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Triệu chứng chi tiết:</span>
           <ul className="list-disc list-inside text-sm text-foreground space-y-1.5 ml-1">
-            {caseDetail.symptoms.map((sym, idx) => {
+            {caseDetail.symptoms.map((sym) => {
               const text = sym.symptomName || sym.otherNote;
               return text ? (
-                <li key={idx} className="leading-snug">
+                <li key={`${sym.categoryId}-${sym.symptomId ?? "other"}`} className="leading-snug">
                   <span className="font-medium">{sym.categoryName}:</span> {text} {sym.symptomName && sym.otherNote ? `(${sym.otherNote})` : ''}
                 </li>
               ) : null;

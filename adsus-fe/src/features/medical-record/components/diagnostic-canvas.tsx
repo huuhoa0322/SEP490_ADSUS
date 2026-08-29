@@ -1,9 +1,12 @@
+"use client";
+
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import { apiClient, getApiErrorMessage } from "@/lib/api-client";
+import { getApiErrorMessage } from "@/lib/api-client";
 import { Loader2, AlertCircle, CheckCircle2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDiagnosticStore, type AiDetection, type Lesion, type Point } from "../stores/use-diagnostic-store";
 import { checkIntersection, generateBurntImage } from "../utils/canvas-utils";
+import { analyzeImage, confirmAnalysis } from "../api/cases-diagnosis.api";
 
 interface DiagnosticCanvasProps {
   caseId: string;
@@ -99,23 +102,8 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
   const handleRunAi = async () => {
     setIsProcessing(currentIndex, true);
     try {
-      const formData = new FormData();
-      formData.append("image", file);
-
-      const res = await apiClient.post(`/api/v1/cases/${caseId}/analyze`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      if (res.data.code === 200 && res.data.data) {
-        const payload = res.data.data;
-        setAiResult(currentIndex, {
-          sessionId: payload.session_id || 'completed',
-          detections: payload.detections || []
-        });
-      } else {
-        setAiResult(currentIndex, { sessionId: 'failed', detections: [], error: res.data.message });
-        showToast('error', "Kết nối tới model AI thất bại");
-      }
+      const result = await analyzeImage(caseId, file);
+      setAiResult(currentIndex, result);
     } catch (err) {
       setAiResult(currentIndex, { sessionId: 'failed', detections: [], error: getApiErrorMessage(err, "Lỗi hệ thống") });
       showToast('error', "Kết nối tới model AI thất bại");
@@ -658,27 +646,16 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         confidence: d.confidence
       }));
 
-      const formData = new FormData();
-      formData.append("OriginalImage", file);
-      formData.append("BurntImage", burntFile);
-      formData.append("AiPredictionsJson", JSON.stringify(mappedAiBboxes));
-      formData.append("DoctorAnnotationsJson", JSON.stringify(doctorBboxes));
-      formData.append("ModelVersionId", "00000000-0000-0000-0000-000000000000");
-      if (note.trim()) {
-        formData.append("Note", note.trim());
-      }
-
-      const res = await apiClient.post(`/api/v1/cases/${caseId}/images/confirm`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        timeout: 60000, // Supabase uploads can take longer than the default 15s
+      await confirmAnalysis(caseId, {
+        originalImage: file,
+        burntImage: burntFile,
+        aiPredictions: mappedAiBboxes,
+        doctorAnnotations: doctorBboxes,
+        note: note.trim() || undefined,
       });
 
-      if (res.data.code === 200) {
-        showToast('success', "Đã chốt ảnh thành công!");
-        onConfirm(); // Trigger next image
-      } else {
-        showToast('error', res.data.message);
-      }
+      showToast('success', "Đã chốt ảnh thành công!");
+      onConfirm(); // Trigger next image
     } catch (err) {
       showToast('error', "Lỗi lưu ảnh: " + getErrorMessage(err));
     } finally {

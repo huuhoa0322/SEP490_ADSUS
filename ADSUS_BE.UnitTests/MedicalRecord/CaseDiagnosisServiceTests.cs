@@ -7,9 +7,11 @@ using ADSUS_BE.BLL.MedicalRecord.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
+using ADSUS_BE.DAL.Repositories.Implementations;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 
@@ -21,6 +23,7 @@ public class CaseDiagnosisServiceTests : IDisposable
     private readonly Mock<IFileStorageService> _storageMock = new();
     private readonly Mock<IHttpClientFactory> _httpClientFactoryMock = new();
     private readonly Mock<IAiModelVersionRepository> _aiModelVersionRepoMock = new();
+    private readonly Mock<ILogger<CaseDiagnosisService>> _loggerMock = new();
     private readonly Mock<HttpMessageHandler> _httpMessageHandlerMock = new();
     private readonly CaseDiagnosisService _sut;
     private readonly Guid _caseId = Guid.NewGuid();
@@ -45,12 +48,21 @@ public class CaseDiagnosisServiceTests : IDisposable
         };
         _httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(client);
 
+        // P11 review (29/08/2026): CaseDiagnosisService không còn ghi thẳng qua _db cho
+        // UltrasoundImage/AiPrediction/DoctorAnnotation — bọc 3 repository thật quanh cùng
+        // _db InMemory để giữ nguyên các assertion cũ (_db.UltrasoundImages, _db.AiPredictions,
+        // _db.DoctorAnnotations). IAiModelVersionRepository vẫn giữ Mock thuần (không backed by
+        // _db) vì một số test cần kiểm soát trực tiếp việc SaveChangesAsync thành công/thất bại.
         _sut = new CaseDiagnosisService(
             _db,
             _storageMock.Object,
             _httpClientFactoryMock.Object,
             _aiModelVersionRepoMock.Object,
-            configMock.Object
+            new UltrasoundImageRepository(_db),
+            new AiPredictionRepository(_db),
+            new DoctorAnnotationRepository(_db),
+            configMock.Object,
+            _loggerMock.Object
         );
     }
 
@@ -247,14 +259,17 @@ public class CaseDiagnosisServiceTests : IDisposable
     [Fact]
     public async Task ConfirmAnalysisAsync_DbFails_RollbacksAndThrows()
     {
-        // Arrange
-        var trackedModel = new AiModelVersion { ModelVersionId = _activeModelId, LiveTp = 0, LiveFp = 0, LiveFn = 0, VersionCode = "v1", HfRepoId = "repo", HfFilename = "file" };
-        _db.AiModelVersions.Add(trackedModel);
-        await _db.SaveChangesAsync();
-
-        var conflictingModel = new AiModelVersion { ModelVersionId = _activeModelId, LiveTp = 0, LiveFp = 0, LiveFn = 0, VersionCode = "v1", HfRepoId = "repo", HfFilename = "file" };
+        // Arrange — mô phỏng lỗi ghi DB ở bước cuối (lưu chỉ số AiModelVersion) bằng cách cho
+        // SaveChangesAsync ném lỗi trực tiếp qua Mock. (Trước refactor P11 29/08/2026, test này
+        // dựa vào việc code gọi _db.AiModelVersions.Update(activeModel) trực tiếp để cố ý tạo
+        // tracking-conflict giữa 2 object cùng khoá — dòng Update() dư thừa đó đã bị gỡ, nên kỹ
+        // thuật cũ không còn tái hiện được lỗi; mock throw trực tiếp phản ánh đúng ý định gốc:
+        // "DB lỗi ở bước cuối thì exception phải lan ra ngoài, không bị nuốt".)
+        var activeModel = new AiModelVersion { ModelVersionId = _activeModelId, LiveTp = 0, LiveFp = 0, LiveFn = 0, VersionCode = "v1", HfRepoId = "repo", HfFilename = "file" };
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(conflictingModel);
+            .ReturnsAsync(activeModel);
+        _aiModelVersionRepoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("DB save failed"));
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
