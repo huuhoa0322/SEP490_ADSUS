@@ -200,6 +200,8 @@ jobs:
     docker-build-check:
         name: "Docker - Confirm Images Still Build"
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
         needs: [backend-ci, ai-backend-ci]
         steps:
             - uses: actions/checkout@v4
