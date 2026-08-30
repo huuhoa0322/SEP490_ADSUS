@@ -4,7 +4,6 @@ namespace ADSUS_BE.DAL.Repositories.Interfaces;
 
 public interface IAiModelVersionRepository
 {
-    Task<IReadOnlyList<AiModelVersion>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<(List<AiModelVersion> Items, int TotalItems)> SearchAsync(string? keyword, int page, int pageSize, CancellationToken cancellationToken = default);
     Task<AiModelVersion?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<bool> VersionCodeExistsAsync(string versionCode, CancellationToken cancellationToken = default);
