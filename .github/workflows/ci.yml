@@ -125,6 +125,8 @@ jobs:
     ai-backend-ci:
         name: "AI Backend - Lint & Import Check"
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
         defaults:
             run:
                 working-directory: ADSUS_AIBE/backend
