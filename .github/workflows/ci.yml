@@ -80,6 +80,8 @@ jobs:
     frontend-ci:
         name: "Frontend - Lint, Test & Build"
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
         defaults:
             run:
                 working-directory: adsus-fe
