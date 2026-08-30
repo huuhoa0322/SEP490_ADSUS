@@ -30,11 +30,10 @@ public class DevConsoleEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         _logger.LogWarning(
-            "[NO EMAIL SERVICE CONFIGURED] Temporary password for account {FullName} <{Email}>: {Password} " +
-            "-- this line only appears in the Development environment.",
+            "[NO EMAIL SERVICE CONFIGURED] Temporary password was generated for account {FullName} <{Email}> " +
+            "-- value is intentionally not logged; this line only appears in the Development environment.",
             fullName,
-            toEmail,
-            temporaryPassword);
+            toEmail);
 
         return Task.FromResult(true);
     }
