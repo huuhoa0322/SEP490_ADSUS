@@ -37,6 +37,8 @@ public class ChatIntentDetectorTests
     [InlineData("cách uống thuốc")]
     [InlineData("thuốc hôm nay")]
     [InlineData("uống thuốc trước hay sau ăn?")]
+    [InlineData("lich uong thuoc hom nay cua toi la gi")]
+    [InlineData("lịch uống thuốc hôm nay của tôi là gì")]
     public async Task Detect_PrescriptionKeywords_ReturnsPrescription(string message)
     {
         var result = await _sut.DetectAsync(message);

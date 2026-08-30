@@ -168,17 +168,54 @@ public sealed class ChatIntentDetector : IIntentDetector
     }
 
     private static string Normalize(string message)
-        => message.ToLowerInvariant().Trim().Replace(",", "").Replace(".", "")
-            .Replace("?", "").Replace("!", "").Replace(";", "").Replace(":", "");
+        => StripDiacritics(
+            message.ToLowerInvariant().Trim().Replace(",", "").Replace(".", "")
+                .Replace("?", "").Replace("!", "").Replace(";", "").Replace(":", ""));
+
+    /// <summary>
+    /// Strip Vietnamese diacritics (e.g. "thuốc" → "thuoc", "hôm nay" → "hom nay").
+    ///
+    /// Vì sao CẦN: user gõ không dấu (Telex OFF, IME bị strip, mobile keyboard)
+    /// là chuyện thường — input normalized "thuoc" không Contains("thuốc") (có dấu)
+    /// nên mọi keyword đều fail, dẫn đến false-positive (vd keyword ngắn "ho"
+    /// trong AdditionalHealthLog match vào substring "ho" của "hom" → intent sai).
+    ///
+    /// Form chuẩn NFD + loại combining marks (U+0300..U+036F) là canonical Unicode
+    /// normalization — đủ cho tiếng Việt, không cần custom dictionary.
+    /// </summary>
+    private static string StripDiacritics(string s)
+    {
+        var normalized = s.Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder(normalized.Length);
+        foreach (var ch in normalized)
+        {
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch)
+                != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                sb.Append(ch);
+            }
+        }
+        return sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
+    }
+
+    private static bool ContainsKeyword(string normalized, string keyword)
+    {
+        // Tìm keyword đã strip dấu trong input đã strip dấu, dùng word boundary
+        // để tránh false-positive: keyword "ho" (AdditionalHealthLog) phải match từ
+        // "ho" đứng riêng, không phải substring "ho" trong "hom nay" (hôm nay).
+        var pattern = @"\b" + System.Text.RegularExpressions.Regex.Escape(StripDiacritics(keyword)) + @"\b";
+        return System.Text.RegularExpressions.Regex.IsMatch(normalized, pattern);
+    }
 
     private static bool IsGreeting(string normalized)
     {
         foreach (var kw in GreetingKeywords)
         {
-            if (!normalized.StartsWith(kw))
+            // So sánh với keyword đã strip dấu, vì input có thể gõ không dấu.
+            var stripped = StripDiacritics(kw);
+            if (!normalized.StartsWith(stripped))
                 continue;
-            // Greeting is the content itself: only a few filler words allowed after the greeting word
-            var after = normalized[kw.Length..].TrimStart();
+            var after = normalized[stripped.Length..].TrimStart();
             if (string.IsNullOrEmpty(after) || after.Split(' ').Length < 3)
                 return true;
         }
@@ -231,7 +268,7 @@ public sealed class ChatIntentDetector : IIntentDetector
     private static bool ContainsAny(string normalized, string[] keywords)
     {
         foreach (var kw in keywords)
-            if (normalized.Contains(kw)) return true;
+            if (ContainsKeyword(normalized, kw)) return true;
         return false;
     }
 
@@ -240,7 +277,7 @@ public sealed class ChatIntentDetector : IIntentDetector
         int total = 0;
         foreach (var kw in keywords)
         {
-            if (normalized.Contains(kw))
+            if (ContainsKeyword(normalized, kw))
                 total += points;
         }
         return total;
