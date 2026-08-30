@@ -4,6 +4,7 @@ import type { ApiResponse } from "@/types/api.types";
 
 import type {
   ActivateVersionRequest,
+  ActiveAiModelVersion,
   AiModelListQuery,
   AiModelVersion,
   PagedResult,
@@ -33,8 +34,8 @@ export async function getAiModelById(id: string): Promise<AiModelVersion> {
 
 // Doctor-facing: chỉ trả về phiên bản đang Active (dùng cho canvas chẩn đoán UC-19).
 // Doctor không có quyền gọi getAiModels/getAiModelById (danh sách đầy đủ, Admin-only).
-export async function getActiveAiModel(): Promise<AiModelVersion | null> {
-  const { data } = await apiClient.get<ApiResponse<AiModelVersion | null>>(`${BASE}/active`);
+export async function getActiveAiModel(): Promise<ActiveAiModelVersion | null> {
+  const { data } = await apiClient.get<ApiResponse<ActiveAiModelVersion | null>>(`${BASE}/active`);
   return data.data ?? null;
 }
 

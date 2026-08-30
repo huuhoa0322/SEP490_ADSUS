@@ -14,16 +14,9 @@ public class AiModelVersionRepository : IAiModelVersionRepository
         _context = context;
     }
 
-    public async Task<IReadOnlyList<AiModelVersion>> GetAllAsync(CancellationToken cancellationToken = default)
-    {
-        return await _context.AiModelVersions
-            .OrderByDescending(x => x.RegisteredAt)
-            .ToListAsync(cancellationToken);
-    }
-
     public async Task<(List<AiModelVersion> Items, int TotalItems)> SearchAsync(string? keyword, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        var query = _context.AiModelVersions.AsQueryable();
+        var query = _context.AiModelVersions.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {

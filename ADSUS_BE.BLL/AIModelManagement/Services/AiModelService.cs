@@ -2,10 +2,12 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ADSUS_BE.BLL.AIModelManagement.DTOs;
 using ADSUS_BE.BLL.AIModelManagement.Interfaces;
+using ADSUS_BE.BLL.AIModelManagement.Mappers;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ADSUS_BE.BLL.AIModelManagement.Services;
@@ -16,42 +18,27 @@ public class AiModelService : IAiModelService
     private readonly IAuditLogRepository _auditLogRepository;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly AiBackendSettings _aiBackendSettings;
+    private readonly ILogger<AiModelService> _logger;
 
     public AiModelService(
         IAiModelVersionRepository aiModelVersionRepository,
         IAuditLogRepository auditLogRepository,
         IHttpClientFactory httpClientFactory,
-        IOptions<AiBackendSettings> aiBackendSettings)
+        IOptions<AiBackendSettings> aiBackendSettings,
+        ILogger<AiModelService> logger)
     {
         _aiModelVersionRepository = aiModelVersionRepository;
         _auditLogRepository = auditLogRepository;
         _httpClientFactory = httpClientFactory;
         _aiBackendSettings = aiBackendSettings.Value;
+        _logger = logger;
     }
 
     public async Task<PagedResult<AiModelVersionDto>> SearchVersionsAsync(string? keyword, int page = 1, int pageSize = 20, CancellationToken cancellationToken = default)
     {
         var (items, totalItems) = await _aiModelVersionRepository.SearchAsync(keyword, page, pageSize, cancellationToken);
-        
-        var dtoList = items.Select(v => new AiModelVersionDto
-        {
-            ModelVersionId = v.ModelVersionId,
-            VersionCode = v.VersionCode,
-            Description = v.Description,
-            MetricsPrecision = v.MetricsPrecision,
-            MetricsMap50 = v.MetricsMap50,
-            MetricsRecall = v.MetricsRecall,
-            Status = v.Status.ToString(),
-            HfRepoId = v.HfRepoId,
-            HfFilename = v.HfFilename,
-            RegisteredAt = v.RegisteredAt,
-            RegisteredBy = v.RegisteredBy,
-            LiveTp = v.LiveTp,
-            LiveFp = v.LiveFp,
-            LiveFn = v.LiveFn,
-            LiveMap50 = v.LiveMap50,
-            LastEvaluatedAt = v.LastEvaluatedAt
-        }).ToList();
+
+        var dtoList = items.Select(AiModelVersionMapper.ToDto).ToList();
 
         var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
 
@@ -66,51 +53,13 @@ public class AiModelService : IAiModelService
             throw new ResourceNotFoundException("Không tìm thấy phiên bản AI này.");
         }
 
-        return new AiModelVersionDto
-        {
-            ModelVersionId = v.ModelVersionId,
-            VersionCode = v.VersionCode,
-            Description = v.Description,
-            MetricsPrecision = v.MetricsPrecision,
-            MetricsMap50 = v.MetricsMap50,
-            MetricsRecall = v.MetricsRecall,
-            Status = v.Status.ToString(),
-            HfRepoId = v.HfRepoId,
-            HfFilename = v.HfFilename,
-            RegisteredAt = v.RegisteredAt,
-            RegisteredBy = v.RegisteredBy,
-            LiveTp = v.LiveTp,
-            LiveFp = v.LiveFp,
-            LiveFn = v.LiveFn,
-            LiveMap50 = v.LiveMap50,
-            LastEvaluatedAt = v.LastEvaluatedAt
-        };
+        return AiModelVersionMapper.ToDto(v);
     }
 
-    public async Task<AiModelVersionDto?> GetActiveVersionAsync(CancellationToken cancellationToken = default)
+    public async Task<ActiveAiModelVersionDto?> GetActiveVersionAsync(CancellationToken cancellationToken = default)
     {
         var v = await _aiModelVersionRepository.GetActiveVersionReadOnlyAsync(cancellationToken);
-        if (v == null) return null;
-
-        return new AiModelVersionDto
-        {
-            ModelVersionId = v.ModelVersionId,
-            VersionCode = v.VersionCode,
-            Description = v.Description,
-            MetricsPrecision = v.MetricsPrecision,
-            MetricsMap50 = v.MetricsMap50,
-            MetricsRecall = v.MetricsRecall,
-            Status = v.Status.ToString(),
-            HfRepoId = v.HfRepoId,
-            HfFilename = v.HfFilename,
-            RegisteredAt = v.RegisteredAt,
-            RegisteredBy = v.RegisteredBy,
-            LiveTp = v.LiveTp,
-            LiveFp = v.LiveFp,
-            LiveFn = v.LiveFn,
-            LiveMap50 = v.LiveMap50,
-            LastEvaluatedAt = v.LastEvaluatedAt
-        };
+        return v == null ? null : AiModelVersionMapper.ToActiveDto(v);
     }
 
     public async Task<AiModelVersionDto> RegisterVersionAsync(
@@ -153,20 +102,11 @@ public class AiModelService : IAiModelService
 
         await _aiModelVersionRepository.SaveChangesAsync(cancellationToken);
 
-        return new AiModelVersionDto
-        {
-            ModelVersionId = newVersion.ModelVersionId,
-            VersionCode = newVersion.VersionCode,
-            Description = newVersion.Description,
-            MetricsPrecision = newVersion.MetricsPrecision,
-            MetricsMap50 = newVersion.MetricsMap50,
-            MetricsRecall = newVersion.MetricsRecall,
-            Status = newVersion.Status.ToString(),
-            HfRepoId = newVersion.HfRepoId,
-            HfFilename = newVersion.HfFilename,
-            RegisteredAt = newVersion.RegisteredAt,
-            RegisteredBy = newVersion.RegisteredBy
-        };
+        _logger.LogInformation(
+            "AI model version {ModelVersionId} ({VersionCode}) registered by admin {AdminId}",
+            newVersion.ModelVersionId, newVersion.VersionCode, adminId);
+
+        return AiModelVersionMapper.ToDto(newVersion);
     }
 
     public async Task UpdateVersionAsync(Guid id, UpdateModelVersionRequest request, Guid adminId, CancellationToken cancellationToken = default)
@@ -199,6 +139,10 @@ public class AiModelService : IAiModelService
         }, cancellationToken);
 
         await _aiModelVersionRepository.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "AI model version {ModelVersionId} ({VersionCode}) updated by admin {AdminId}",
+            version.ModelVersionId, version.VersionCode, adminId);
     }
 
     public async Task ActivateVersionAsync(Guid id, Guid adminId, CancellationToken cancellationToken = default)
@@ -248,14 +192,18 @@ public class AiModelService : IAiModelService
             {
                 var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
                 
-                if (errorBody.Contains("Repository Not Found", StringComparison.OrdinalIgnoreCase) || 
+                _logger.LogWarning(
+                    "AI backend refused to reload model {ModelVersionId} ({VersionCode}): {StatusCode} {ErrorBody}",
+                    targetVersion.ModelVersionId, targetVersion.VersionCode, response.StatusCode, errorBody);
+
+                if (errorBody.Contains("Repository Not Found", StringComparison.OrdinalIgnoreCase) ||
                     errorBody.Contains("404", StringComparison.OrdinalIgnoreCase) ||
                     errorBody.Contains("Entry not found", StringComparison.OrdinalIgnoreCase))
                 {
                     throw new BusinessException("Không tìm thấy mô hình trên HuggingFace. Vui lòng kiểm tra lại Repo ID và Filename.");
                 }
-                
-                if (errorBody.Contains("authentication", StringComparison.OrdinalIgnoreCase) || 
+
+                if (errorBody.Contains("authentication", StringComparison.OrdinalIgnoreCase) ||
                     errorBody.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase))
                 {
                     throw new BusinessException("Lỗi xác thực với HuggingFace. Vui lòng kiểm tra lại cấu hình Token (HUGGING_FACE_HUB_TOKEN) trên Python Backend.");
@@ -281,9 +229,16 @@ public class AiModelService : IAiModelService
             // Commit DB sau khi Python backend đã nạp thành công
             await _aiModelVersionRepository.SaveChangesAsync(cancellationToken);
             await _aiModelVersionRepository.CommitTransactionAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "{ActionType} version {VersionCode} by admin {AdminId}. Prev active: {PrevVersionCode}",
+                actionType, targetVersion.VersionCode, adminId, currentActive?.VersionCode ?? "None");
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex,
+                "Failed to activate AI model version {ModelVersionId} ({VersionCode}) — rolling back",
+                targetVersion.ModelVersionId, targetVersion.VersionCode);
             await _aiModelVersionRepository.RollbackTransactionAsync(cancellationToken);
             throw;
         }

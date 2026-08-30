@@ -162,7 +162,7 @@ export function AiModelList() {
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={6} className="px-5 py-14 text-center text-muted-foreground">
+                <td colSpan={7} className="px-5 py-14 text-center text-muted-foreground">
                   <Loader2 className="mx-auto size-5 animate-spin" />
                 </td>
               </tr>
@@ -170,7 +170,7 @@ export function AiModelList() {
 
             {!isLoading && (!models || models.length === 0) && (
               <tr>
-                <td colSpan={6} className="px-5 py-14 text-center text-muted-foreground">
+                <td colSpan={7} className="px-5 py-14 text-center text-muted-foreground">
                   Chưa có phiên bản AI nào được đăng ký hoặc không tìm thấy kết quả.
                 </td>
               </tr>
