@@ -15,6 +15,8 @@ using ADSUS_BE.BLL.AIModelManagement.Interfaces;
 using ADSUS_BE.BLL.AIModelManagement.Services;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
 using ADSUS_BE.BLL.PrescriptionAdherence.Services;
+using ADSUS_BE.BLL.DoctorMedicationTracking.Interfaces;
+using ADSUS_BE.BLL.DoctorMedicationTracking.Services;
 using ADSUS_BE.Jobs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
@@ -537,6 +539,9 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IMedicationIntakeService, MedicationIntakeService>();
             builder.Services.AddScoped<IReminderPreferenceRepository, ReminderPreferenceRepository>();
             builder.Services.AddScoped<IReminderPreferenceService, ReminderPreferenceService>();
+
+            // Doctor Medication Tracking (manual reminder feature)
+            builder.Services.AddScoped<IDoctorMedicationTrackingService, DoctorMedicationTrackingService>();
 
             // ---------- Quartz JOB-01: Medication Reminder ----------
             builder.Services.AddQuartz(q =>
