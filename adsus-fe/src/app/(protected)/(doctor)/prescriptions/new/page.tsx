@@ -4,9 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 
-import {
-  createPrescription,
-} from "@/features/prescriptions/api/prescriptions.api";
+import { useCreatePrescription } from "@/features/prescriptions/hooks/use-prescriptions";
 import { PrescriptionForm } from "@/features/prescriptions/components/prescription-form";
 import type { PrescriptionFormData } from "@/features/prescriptions/components/prescription-form";
 import { useCaseDetail } from "@/features/medical-record/hooks/use-cases";
@@ -15,6 +13,8 @@ export default function NewPrescriptionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const caseId = searchParams.get("caseId") ?? undefined;
+  
+  const createMutation = useCreatePrescription();
 
   const { data: medicalCase, isLoading: isLoadingCase } = useCaseDetail(caseId);
 
@@ -47,7 +47,7 @@ export default function NewPrescriptionPage() {
       generalNote: data.generalNote ?? "",
     };
 
-    await createPrescription(request);
+    await createMutation.mutateAsync(request);
     // Sau khi lưu thành công → redirect về trang chi tiết ca.
     router.push(`/cases/${targetCaseId}`);
   }

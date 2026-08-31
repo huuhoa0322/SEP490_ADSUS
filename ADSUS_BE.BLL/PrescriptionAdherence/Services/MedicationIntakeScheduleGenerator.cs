@@ -32,13 +32,22 @@ public sealed class MedicationIntakeScheduleGenerator : IMedicationIntakeSchedul
         var eveningTime = patientEveningTime  == default ? DefaultEvening : patientEveningTime;
 
         var result = new List<ScheduledDose>();
+        var totalRequiredDoses = item.DurationDays * slots.Count;
+        var dayOffset = 0;
 
-        for (var dayOffset = 0; dayOffset < item.DurationDays; dayOffset++)
+        while (result.Count < totalRequiredDoses)
         {
+            // Safety guard to prevent infinite loops (e.g. from malicious inputs or bugs)
+            if (dayOffset > item.DurationDays + 100)
+                throw new InvalidOperationException("Infinite loop detected in intake schedule generation.");
+
             var date = item.StartDate.AddDays(dayOffset);
 
             foreach (var slot in slots)
             {
+                if (result.Count >= totalRequiredDoses)
+                    break;
+
                 var timeOfDay = slot switch
                 {
                     ScheduleSlot.Morning => morningTime,
@@ -61,6 +70,8 @@ public sealed class MedicationIntakeScheduleGenerator : IMedicationIntakeSchedul
 
                 result.Add(new ScheduledDose(item.PrescriptionItemId, scheduledUtc));
             }
+
+            dayOffset++;
         }
 
         return Task.FromResult<IReadOnlyList<ScheduledDose>>(result);
