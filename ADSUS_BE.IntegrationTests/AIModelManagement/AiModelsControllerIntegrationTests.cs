@@ -141,12 +141,12 @@ public class AiModelsControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctor);
 
         _aiModelService.Setup(s => s.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AiModelVersionDto { VersionCode = "v1.0.0", Status = "Active" });
+            .ReturnsAsync(new ActiveAiModelVersionDto { VersionCode = "v1.0.0", Status = "Active" });
 
         var response = await client.GetAsync("/api/v1/ai-model-versions/active");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<AiModelVersionDto>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ActiveAiModelVersionDto>>();
         Assert.Equal(200, body!.Code);
         Assert.Equal("v1.0.0", body.Data!.VersionCode);
     }
@@ -162,10 +162,43 @@ public class AiModelsControllerIntegrationTests
             .ReturnsAsync(new PagedResult<AiModelVersionDto>(new List<AiModelVersionDto>(), 1, 20, 0, 0));
 
         var response = await client.GetAsync("/api/v1/ai-model-versions");
-        
+
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<AiModelVersionDto>>>();
         Assert.Equal(200, body!.Code);
+    }
+
+    // IT_Flow_01b — P11 review Feature 6 (30/08/2026): pageSize phải bị clamp tối đa 100 trước khi
+    // xuống Service, không cho client tự do request pageSize cực lớn.
+    [Fact]
+    public async Task SearchVersions_PageSizeExceeds100_ClampedTo100BeforeCallingService()
+    {
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _admin);
+
+        _aiModelService.Setup(s => s.SearchVersionsAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PagedResult<AiModelVersionDto>(new List<AiModelVersionDto>(), 1, 100, 0, 0));
+
+        var response = await client.GetAsync("/api/v1/ai-model-versions?pageSize=999999");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        _aiModelService.Verify(s => s.SearchVersionsAsync(It.IsAny<string>(), 1, 100, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // IT_Flow_01c — pageSize/page dưới 1 phải rơi về giá trị mặc định, không truyền thẳng số âm/0 xuống Service.
+    [Fact]
+    public async Task SearchVersions_PageAndPageSizeBelowOne_FallBackToDefaults()
+    {
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _admin);
+
+        _aiModelService.Setup(s => s.SearchVersionsAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PagedResult<AiModelVersionDto>(new List<AiModelVersionDto>(), 1, 20, 0, 0));
+
+        var response = await client.GetAsync("/api/v1/ai-model-versions?page=0&pageSize=-5");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        _aiModelService.Verify(s => s.SearchVersionsAsync(It.IsAny<string>(), 1, 20, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // IT_Flow_02
