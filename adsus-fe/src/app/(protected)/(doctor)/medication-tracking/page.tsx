@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Pill, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,12 +45,21 @@ export default function MedicationTrackingPage() {
       }),
   });
 
+  const hasActiveFilter =
+    search.trim().length > 0 || !!adherenceLevel || !!hasOverdue;
+
+  function resetFilters() {
+    setSearch("");
+    setAdherenceLevel("");
+    setHasOverdue("");
+  }
+
   return (
-    <div className="mx-auto w-4/5 py-8">
+    <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
       <div className="mb-6 flex items-center gap-3">
-        <Pill className="size-7 text-primary" />
+        <Pill className="size-7 shrink-0 text-primary" />
         <h1 className="font-heading text-2xl font-semibold text-primary">
-          Theo dõi thuốc
+          Theo dõi tiến độ uống thuốc
         </h1>
       </div>
 
@@ -59,11 +69,11 @@ export default function MedicationTrackingPage() {
           placeholder="Tìm bệnh nhân..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="max-w-xs"
+          className="w-full sm:w-56"
         />
         <Select value={adherenceLevel} onValueChange={setAdherenceLevel}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Mức tuân thủ" />
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="Mức tuân thủ mặc định" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="good">Tốt (≥80%)</SelectItem>
@@ -72,14 +82,19 @@ export default function MedicationTrackingPage() {
           </SelectContent>
         </Select>
         <Select value={hasOverdue} onValueChange={setHasOverdue}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Trạng thái" />
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="Trạng thái mặc định" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="true">Có liều quá giờ</SelectItem>
             <SelectItem value="false">Không có quá giờ</SelectItem>
           </SelectContent>
         </Select>
+        {hasActiveFilter && (
+          <Button variant="ghost" size="sm" onClick={resetFilters}>
+            Đặt lại
+          </Button>
+        )}
       </div>
 
       {/* Patient list */}

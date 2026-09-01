@@ -14,6 +14,7 @@ public sealed record AdherenceDto(
 
 public sealed record PrescriptionCardDto(
     Guid PrescriptionId,
+    Guid CaseId,
     string CaseName,
     IReadOnlyList<TodayDoseDto> TodayDoses,
     AdherenceDto AdherenceToday,

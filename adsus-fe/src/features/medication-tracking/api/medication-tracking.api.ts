@@ -19,6 +19,7 @@ export interface TodayDoseDto {
 
 export interface PrescriptionCardDto {
   prescriptionId: string;
+  caseId: string;
   caseName: string;
   todayDoses: TodayDoseDto[];
   adherenceToday: AdherenceDto;

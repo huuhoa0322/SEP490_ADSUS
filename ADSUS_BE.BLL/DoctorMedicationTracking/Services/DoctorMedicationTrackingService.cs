@@ -24,6 +24,23 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
 
     private static readonly TimeZoneInfo VietnamZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh");
 
+    // Strip diacritics so "Le" matches "Lê", "Tran" matches "Trần".
+    private static string NormalizeForSearch(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var formD = value.Trim().ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder(formD.Length);
+        foreach (var ch in formD)
+        {
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch)
+                != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                sb.Append(ch);
+            }
+        }
+        return sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
+    }
+
     public DoctorMedicationTrackingService(
         AppDbContext db,
         IPrescriptionRepository prescriptionRepo,
@@ -79,9 +96,9 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
             var profile = group.First().Case.PatientProfile;
             var patientName = profile.User?.FullName ?? "Bệnh nhân";
 
-            // Search filter
+            // Search filter (diacritic-insensitive: "Le" matches "Lê", "Tran" matches "Trần")
             if (!string.IsNullOrWhiteSpace(search) &&
-                !patientName.Contains(search, StringComparison.OrdinalIgnoreCase))
+                !NormalizeForSearch(patientName).Contains(NormalizeForSearch(search)))
             {
                 continue;
             }
@@ -230,6 +247,7 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
 
             cards.Add(new PrescriptionCardDto(
                 prescription.PrescriptionId,
+                caseEntity.CaseId,
                 caseName,
                 doseDtos,
                 adherenceToday,

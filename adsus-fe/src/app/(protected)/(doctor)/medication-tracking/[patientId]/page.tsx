@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Pill, Bell, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   getPatientPrescriptions,
   sendReminders,
@@ -24,26 +24,17 @@ function doseStatusConfig(status: TodayDoseDto["status"]) {
     case "TAKEN":
       return {
         label: "Đã uống",
-        icon: "✅",
         pillClass: "bg-green-100 text-green-700 border-green-200",
-        progressClass: "bg-green-500",
-        barWidth: "100%",
       };
     case "OVERTIME":
       return {
         label: "Quá giờ",
-        icon: "⚠️",
         pillClass: "bg-red-100 text-red-700 border-red-200",
-        progressClass: "bg-red-500",
-        barWidth: "50%",
       };
     case "PENDING":
       return {
         label: "Chưa đến",
-        icon: "⏳",
         pillClass: "bg-amber-100 text-amber-700 border-amber-200",
-        progressClass: "bg-amber-400",
-        barWidth: "0%",
       };
   }
 }
@@ -116,12 +107,12 @@ function PrescriptionCard({ prescription }: { prescription: PrescriptionCardDto 
   return (
     <Card className="overflow-hidden">
       <CardHeader className="bg-muted/40 pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-2">
-            <Pill className="mt-0.5 size-5 shrink-0 text-primary" />
-            <CardTitle className="text-base font-medium leading-snug">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Pill className="size-5 shrink-0 text-primary" />
+            <span className="min-w-0 truncate text-base font-medium leading-snug">
               {prescription.caseName}
-            </CardTitle>
+            </span>
           </div>
           <Button
             size="sm"
@@ -154,21 +145,13 @@ function PrescriptionCard({ prescription }: { prescription: PrescriptionCardDto 
                 </span>
               </div>
 
-              <div className="flex-1 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{dose.medicineName}</span>
-                  <span
-                    className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-medium ${cfg.pillClass}`}
-                  >
-                    {cfg.icon} {cfg.label}
-                  </span>
-                </div>
-                <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full rounded-full ${cfg.progressClass}`}
-                    style={{ width: cfg.barWidth }}
-                  />
-                </div>
+              <div className="flex flex-1 items-center gap-2">
+                <span className="text-sm font-medium">{dose.medicineName}</span>
+                <span
+                  className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-medium ${cfg.pillClass}`}
+                >
+                  {cfg.label}
+                </span>
               </div>
             </div>
           );
@@ -191,6 +174,18 @@ function PrescriptionCard({ prescription }: { prescription: PrescriptionCardDto 
       </CardContent>
     </Card>
   );
+}
+
+function extractCaseDate(caseName: string): string {
+  const match = caseName.match(/(\d{2}\/\d{2}\/\d{4})$/);
+  if (!match) return caseName;
+  const [day, month, year] = match[1].split("/");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateHeader(dateKey: string): string {
+  const [year, month, day] = dateKey.split("-");
+  return `Ngày ${day}/${month}/${year}`;
 }
 
 export default function PatientPrescriptionDetailPage() {
@@ -216,8 +211,22 @@ export default function PatientPrescriptionDetailPage() {
     );
   }
 
+  // Group prescriptions by case date
+  const grouped = (data?.prescriptions ?? []).reduce<
+    Record<string, PrescriptionCardDto[]>
+  >((acc, p) => {
+    const key = extractCaseDate(p.caseName);
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(p);
+    return acc;
+  }, {});
+
+  const sortedDates = Object.keys(grouped).sort(
+    (a, b) => new Date(b).getTime() - new Date(a).getTime(),
+  );
+
   return (
-    <div className="mx-auto w-4/5 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <div className="mb-6 flex items-center gap-3">
         <Button
           variant="ghost"
@@ -228,7 +237,11 @@ export default function PatientPrescriptionDetailPage() {
           <ArrowLeft className="size-5" />
         </Button>
         <h1 className="font-heading text-2xl font-semibold text-primary">
-          {isLoading ? <SkeletonBox className="h-8 w-48" /> : (data?.patientName ?? "Bệnh nhân")}
+          {isLoading ? (
+            <SkeletonBox className="h-8 w-48" />
+          ) : (
+            data?.patientName ?? "Bệnh nhân"
+          )}
         </h1>
       </div>
 
@@ -244,12 +257,21 @@ export default function PatientPrescriptionDetailPage() {
           <p>Không có đơn thuốc Active nào.</p>
         </div>
       ) : (
-        <div className="space-y-5">
-          {data.prescriptions.map((prescription) => (
-            <PrescriptionCard
-              key={prescription.prescriptionId}
-              prescription={prescription}
-            />
+        <div className="space-y-6">
+          {sortedDates.map((dateKey) => (
+            <section key={dateKey}>
+              <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
+                {formatDateHeader(dateKey)}
+              </h2>
+              <div className="space-y-4">
+                {grouped[dateKey].map((prescription) => (
+                  <PrescriptionCard
+                    key={prescription.prescriptionId}
+                    prescription={prescription}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}
