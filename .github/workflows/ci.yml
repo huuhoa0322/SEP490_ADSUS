@@ -171,11 +171,42 @@ jobs:
             # file, not assumed); everything else under test/ is plain unit test() logic, no
             # widget pumped. --file-reporter writes JSON ALONGSIDE the normal human-readable
             # console reporter (unlike --reporter json, which would replace it entirely).
+            #
+            # A 2nd split, Unit vs Repository Integration, mirrors backend-ci/frontend-ci's
+            # own Unit/Integration steps: any file under a data/repositories/ folder mocks
+            # Dio directly (confirmed by grepping every file for "extends Mock implements
+            # Dio", not assumed) rather than mocking the repository interface a ViewModel
+            # depends on, so it counts as Integration-style per the project's own convention
+            # — the same folder-based rule frontend-ci already uses for hooks/ and api/. The
+            # find commands build both file lists dynamically so a newly added repository
+            # test is picked up automatically, with no explicit path list to maintain; the
+            # emptiness check on the Repository Integration side exists because an empty
+            # argument list would make `flutter test` silently run the WHOLE suite instead,
+            # mislabeling every test as Integration.
+            #
+            # Named "Repository Integration" (not plain "Integration") on purpose: this repo
+            # ALSO has a real top-level `integration_test/` folder (Flutter's own package of
+            # that name — see integration_test/auth_flow_test.dart), which drives the app on
+            # a real emulator against a real running ADSUS_BE and a real DB row, no mocks at
+            # all. That is System/E2E Test scope (Report 5.3), not Integration Test scope,
+            # and is intentionally NOT run here — see
+            # Plan/2026-09-03-mobile-e2e-integration-test-folder-for-report5-3.md. A step
+            # plainly named "Integration Tests" next to a real `integration_test/` folder
+            # would make it look like that folder is already covered by CI when it isn't.
             - name: Unit Tests
-              # auth_repository_test.dart moved under test/features/auth/data/repositories/
-              # (P_MB9 review, 28/08/2026) — already covered by the test/features argument
-              # below, no longer needs its own explicit path.
-              run: flutter test test/dio_client_test.dart test/features --file-reporter="json:unit-test-results.json"
+              run: |
+                  UNIT_FILES=$(find test/features -name '*_test.dart' -not -path '*/data/repositories/*')
+                  flutter test test/dio_client_test.dart $UNIT_FILES --file-reporter="json:unit-test-results.json"
+
+            - name: Repository Integration Tests
+              if: success() || failure()
+              run: |
+                  INTEGRATION_FILES=$(find test/features -path '*/data/repositories/*_test.dart')
+                  if [ -z "$INTEGRATION_FILES" ]; then
+                    echo "No Repository Integration-style Mobile test files found (expected at least 1 under data/repositories/)."
+                    exit 1
+                  fi
+                  flutter test $INTEGRATION_FILES --file-reporter="json:repository-integration-test-results.json"
 
             - name: Widget Tests
               if: success() || failure()
@@ -187,6 +218,15 @@ jobs:
               with:
                   name: "Mobile Unit Test Report"
                   path: "ADSUS_Mobile/unit-test-results.json"
+                  reporter: flutter-json
+                  fail-on-empty: "false"
+
+            - name: Publish Repository Integration Test Report
+              uses: dorny/test-reporter@v3
+              if: always()
+              with:
+                  name: "Mobile Repository Integration Test Report"
+                  path: "ADSUS_Mobile/repository-integration-test-results.json"
                   reporter: flutter-json
                   fail-on-empty: "false"
 
