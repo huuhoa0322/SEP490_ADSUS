@@ -396,3 +396,8 @@ ADSUS_Mobile/android/app/google-services.json
 
 # Firebase Service Account credentials (Backend)
 ADSUS_BE/Config/
+
+# coverage report
+coveragereport/
+coveragereport-integration/
+coveragereport-unit/
