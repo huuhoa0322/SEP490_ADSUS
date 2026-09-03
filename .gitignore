@@ -401,3 +401,6 @@ ADSUS_BE/Config/
 coveragereport/
 coveragereport-integration/
 coveragereport-unit/
+
+# sonarqube
+.sonarqube/

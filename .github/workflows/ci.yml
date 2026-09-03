@@ -241,6 +241,114 @@ jobs:
 
             - run: flutter build apk --debug
 
+    sonarcloud-scan:
+        name: "SonarCloud - Full Repo Analysis"
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        # Runs as its own job (not folded into backend-ci/frontend-ci) so exactly ONE
+        # analysis submission goes to SonarCloud per commit — backend-ci and frontend-ci
+        # run in parallel, and 2 concurrent `begin`/`end` pairs against the SAME project key
+        # would race each other. needs: waits for both to pass first (no point analyzing a
+        # commit that doesn't even build/test clean), then this job repeats their build/test
+        # steps itself with coverage collection turned on, since dotnet-sonarscanner must
+        # wrap the actual `dotnet build`/`dotnet test` calls to instrument them — it can't
+        # attach after the fact to a build that already happened in a different job/runner.
+        #
+        # Requires Automatic Analysis to be DISABLED for this project on SonarCloud
+        # (Administration/Analysis → Analysis Method) — SonarCloud refuses to accept a
+        # CI-based submission while Automatic Analysis is on for the same project key
+        # ("You are running manual analysis while Automatic Analysis is enabled"),
+        # confirmed by hitting that exact error locally before writing this job.
+        needs: [backend-ci, frontend-ci]
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  # SonarCloud's new-code/blame features want real history, not a 1-commit
+                  # shallow clone (actions/checkout's default).
+                  fetch-depth: 0
+
+            - uses: actions/setup-java@v4
+              with:
+                  # dotnet-sonarscanner is a wrapper around the underlying Java scanner
+                  # engine — it needs a JDK on PATH even though the code being analyzed is
+                  # C#/TypeScript, not Java.
+                  distribution: "zulu"
+                  java-version: "17"
+
+            - uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: "8.0.x"
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 26
+                  cache: npm
+                  cache-dependency-path: adsus-fe/package-lock.json
+
+            - name: Cache SonarCloud packages
+              uses: actions/cache@v4
+              with:
+                  path: ~/.sonar/cache
+                  key: ${{ runner.os }}-sonar
+                  restore-keys: ${{ runner.os }}-sonar
+
+            - name: Install SonarScanner for .NET
+              run: dotnet tool install --global dotnet-sonarscanner
+
+            - name: Restore Backend
+              run: |
+                  dotnet restore ADSUS_BE/ADSUS_BE.csproj
+                  dotnet restore ADSUS_BE.UnitTests/ADSUS_BE.UnitTests.csproj
+                  dotnet restore ADSUS_BE.IntegrationTests/ADSUS_BE.IntegrationTests.csproj
+
+            - name: Install Frontend dependencies
+              working-directory: adsus-fe
+              run: npm ci
+
+            # sonar.sources is scoped to real production code on both platforms — excludes
+            # the test projects themselves (coverage, not source, tracks what THEY exercise),
+            # build output, and ADSUS_Mobile entirely (Dart isn't a supported language on
+            # SonarCloud's free plan, so including it would only produce "unrecognized file"
+            # noise). sonar.cs.opencover.reportsPaths is a glob resolved AFTER `end` runs, so
+            # it can point at report files the two `dotnet test` steps below haven't
+            # generated yet at the time `begin` executes.
+            - name: SonarCloud - Begin analysis
+              env:
+                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+              run: >
+                  dotnet-sonarscanner begin
+                  /k:"huuhoa0322_SEP490_ADSUS"
+                  /o:"huuhoa0322"
+                  /d:sonar.host.url="https://sonarcloud.io"
+                  /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+                  /d:sonar.sources="ADSUS_BE,ADSUS_BE.BLL,ADSUS_BE.DAL,adsus-fe/src"
+                  /d:sonar.exclusions="**/bin/**,**/obj/**,adsus-fe/node_modules/**,adsus-fe/.next/**"
+                  /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
+
+            # No separate build step: there is no .sln at the repo root (each project is
+            # restored/built individually, same as backend-ci above) — `dotnet test` builds
+            # its own project graph automatically, and ADSUS_BE.IntegrationTests already
+            # references the ADSUS_BE API project (for `Program` via WebApplicationFactory),
+            # so both dotnet test calls below build all 3 production assemblies between them.
+            - name: Test Backend Unit (with coverage)
+              run: dotnet test ADSUS_BE.UnitTests/ADSUS_BE.UnitTests.csproj --no-restore --collect:"XPlat Code Coverage;Format=opencover"
+
+            - name: Test Backend Integration (with coverage)
+              continue-on-error: true # same flakiness allowance as backend-ci's own Integration Tests step
+              env:
+                  ConnectionStrings__DefaultConnection: ${{ secrets.TEST_DB_CONNECTION_STRING }}
+                  JwtSettings__SecretKey: "ci-only-fake-jwt-signing-key-not-used-anywhere-else-1234567890"
+                  JwtSettings__Issuer: "adsus-ci"
+                  JwtSettings__Audience: "adsus-ci"
+                  JwtSettings__ExpiryMinutes: "60"
+              run: dotnet test ADSUS_BE.IntegrationTests/ADSUS_BE.IntegrationTests.csproj --no-restore --collect:"XPlat Code Coverage;Format=opencover"
+
+            - name: SonarCloud - End analysis
+              env:
+                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+              run: dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
     docker-build-check:
         name: "Docker - Confirm Images Still Build"
         runs-on: ubuntu-latest
