@@ -11,6 +11,7 @@ import {
 import { usePagedMedicineBatches } from '@/features/medicines/api/inventory.api';
 import { useMedicineById } from '@/features/medicines/hooks/use-medicines';
 import { formatCurrency } from '@/lib/utils';
+import { PaginationNumbered } from '@/components/ui/pagination-numbered';
 
 type SortKey = 'expiryDate' | 'quantityBase' | 'avgPrice';
 
@@ -19,18 +20,6 @@ function SortIcon({ field, current, dir }: { field: SortKey; current: SortKey; d
   return dir === 'asc'
     ? <ChevronUp className="ml-1 inline size-3.5 text-accent" />
     : <ChevronDown className="ml-1 inline size-3.5 text-accent" />;
-}
-
-function PagerButton({ disabled, onClick, children }: { disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="flex h-9 items-center justify-center rounded-full border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-40"
-    >
-      {children}
-    </button>
-  );
 }
 
 export default function MedicineBatchesPage() {
@@ -217,32 +206,11 @@ export default function MedicineBatchesPage() {
             Trang <span className="font-semibold text-foreground">{page}</span> / {data.totalPages} &nbsp;·&nbsp;
             {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, data.totalItems)} trên {data.totalItems} lô
           </span>
-          <div className="flex gap-2">
-            <PagerButton disabled={page <= 1} onClick={() => setPage(p => p - 1)}>← Trước</PagerButton>
-            {(() => {
-              const total = data.totalPages;
-              const cur = page;
-              let pages: number[] = [];
-              if (total <= 5) pages = Array.from({ length: total }, (_, i) => i + 1);
-              else if (cur <= 3) pages = [1, 2, 3, 4, 5];
-              else if (cur >= total - 2) pages = [total - 4, total - 3, total - 2, total - 1, total];
-              else pages = [cur - 2, cur - 1, cur, cur + 1, cur + 2];
-              return pages.map(p => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`flex h-9 min-w-9 items-center justify-center rounded-full border px-3 text-sm transition-colors ${
-                    p === page
-                      ? 'border-accent bg-accent font-bold text-white shadow-sm'
-                      : 'border-border hover:bg-secondary text-foreground'
-                  }`}
-                >
-                  {p}
-                </button>
-              ));
-            })()}
-            <PagerButton disabled={page >= data.totalPages} onClick={() => setPage(p => p + 1)}>Sau →</PagerButton>
-          </div>
+          <PaginationNumbered
+            currentPage={page}
+            totalPages={data.totalPages}
+            setPage={setPage}
+          />
         </div>
       )}
     </div>

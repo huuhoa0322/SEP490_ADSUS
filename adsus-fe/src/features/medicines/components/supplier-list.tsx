@@ -14,19 +14,8 @@ import { getApiErrorMessage } from "@/lib/api-client";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/features/user-role-management/components/confirm-dialog";
 import { SupplierFormModal } from "./supplier-form-modal";
+import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 
-// A small sub-component for pagination buttons
-function PagerButton({ disabled, onClick, children }: { disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="flex h-10 items-center justify-center rounded-full border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
-    >
-      {children}
-    </button>
-  );
-}
 
 export function SupplierList() {
   const [page, setPage] = useState(1);
@@ -181,57 +170,17 @@ export function SupplierList() {
         </table>
       </div>
 
+      {/* Phân trang */}
       {data && data.totalPages > 1 && (
         <div className="mt-5 flex items-center justify-between text-sm text-muted-foreground">
           <span>
             Đang xem {data.items.length} / {data.totalItems} kết quả
           </span>
-          <div className="flex gap-2">
-            <PagerButton disabled={data.page <= 1} onClick={() => setPage((p) => p - 1)}>
-              Trước
-            </PagerButton>
-            
-            <div className="flex gap-1.5 items-center mx-2">
-              {(() => {
-                const total = data.totalPages;
-                const current = data.page;
-                let pages: number[] = [];
-                if (total <= 5) {
-                  pages = Array.from({ length: total }, (_, i) => i + 1);
-                } else if (current <= 3) {
-                  pages = [1, 2, 3, 4, 5];
-                } else if (current >= total - 2) {
-                  pages = [total - 4, total - 3, total - 2, total - 1, total];
-                } else {
-                  pages = [current - 2, current - 1, current, current + 1, current + 2];
-                }
-
-                return pages.map((p) => {
-                  const active = p === current;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className={`flex h-10 min-w-10 items-center justify-center rounded-full border px-3 text-sm transition-colors ${
-                        active
-                          ? "border-accent bg-accent font-bold text-white shadow-sm"
-                          : "border-border hover:bg-secondary text-foreground"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  );
-                });
-              })()}
-            </div>
-
-            <PagerButton
-              disabled={data.page >= data.totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Sau
-            </PagerButton>
-          </div>
+          <PaginationNumbered
+            currentPage={data.page}
+            totalPages={data.totalPages}
+            setPage={setPage}
+          />
         </div>
       )}
 

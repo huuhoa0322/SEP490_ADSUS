@@ -201,4 +201,64 @@ public class InvoicesControllerBusinessTests
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Cancel Invoice
+    // ─────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CancelInvoice_Nurse_OK()
+    {
+        using var app = CreateApp();
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Nurse);
+        var id = Guid.NewGuid();
+
+        _invoiceService
+            .Setup(s => s.CancelInvoiceAsync(id, It.IsAny<CancelInvoiceRequest>()))
+            .Returns(Task.CompletedTask);
+
+        var payload = new StringContent(
+            JsonSerializer.Serialize(new { reason = "Sai đơn thuốc" }),
+            Encoding.UTF8, "application/json");
+
+        var response = await client.PutAsync($"/api/v1/invoices/{id}/cancel", payload);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CancelInvoice_MissingReason_ReturnsBadRequest()
+    {
+        using var app = CreateApp();
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Nurse);
+        var id = Guid.NewGuid();
+
+        var payload = new StringContent(
+            JsonSerializer.Serialize(new {  }), // Thiếu field reason
+            Encoding.UTF8, "application/json");
+
+        var response = await client.PutAsync($"/api/v1/invoices/{id}/cancel", payload);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CancelInvoice_NotFound_ReturnsUnprocessableEntity()
+    {
+        using var app = CreateApp();
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Nurse);
+        var id = Guid.NewGuid();
+
+        _invoiceService
+            .Setup(s => s.CancelInvoiceAsync(id, It.IsAny<CancelInvoiceRequest>()))
+            .ThrowsAsync(new BusinessException("Không tìm thấy hóa đơn."));
+
+        var payload = new StringContent(
+            JsonSerializer.Serialize(new { reason = "Test" }),
+            Encoding.UTF8, "application/json");
+
+        var response = await client.PutAsync($"/api/v1/invoices/{id}/cancel", payload);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
 }

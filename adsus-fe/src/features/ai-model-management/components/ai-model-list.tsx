@@ -12,32 +12,13 @@ import { useActivateAiModel, useAiModelList, useCalculateMap50 } from "../hooks/
 import type { AiModelVersion } from "../types/ai-model.types";
 import { AiModelDetailDialog } from "./ai-model-detail-dialog";
 import { AiModelFormDialog } from "./ai-model-form";
+import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 
 const formatPercent = (val?: number | null) => {
   if (val === undefined || val === null) return "Chưa có dữ liệu";
   return (val * 100).toFixed(1) + "%";
 };
 
-function PagerButton({
-  children,
-  disabled,
-  onClick,
-}: {
-  children: React.ReactNode;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className="rounded-full border border-border px-4 py-2 transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
-    >
-      {children}
-    </button>
-  );
-}
 
 export function AiModelList() {
   const [keyword, setKeyword] = useState("");
@@ -259,54 +240,13 @@ export function AiModelList() {
       {data && data.totalPages > 1 && (
         <div className="mt-5 flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            Đang xem {data.items.length} / {data.totalItems} kết quả
+            Đang xem {data.items.length} / {data.totalCount} kết quả
           </span>
-          <div className="flex gap-2">
-            <PagerButton disabled={data.page <= 1} onClick={() => setPage((p) => p - 1)}>
-              Trước
-            </PagerButton>
-            
-            <div className="flex gap-1.5 items-center mx-2">
-              {(() => {
-                const total = data.totalPages;
-                const current = data.page;
-                let pages: number[] = [];
-                if (total <= 5) {
-                  pages = Array.from({ length: total }, (_, i) => i + 1);
-                } else if (current <= 3) {
-                  pages = [1, 2, 3, 4, 5];
-                } else if (current >= total - 2) {
-                  pages = [total - 4, total - 3, total - 2, total - 1, total];
-                } else {
-                  pages = [current - 2, current - 1, current, current + 1, current + 2];
-                }
-
-                return pages.map((p) => {
-                  const active = p === current;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className={`flex h-10 min-w-10 items-center justify-center rounded-full border px-3 text-sm transition-colors ${
-                        active
-                          ? "border-accent bg-accent font-bold text-white shadow-sm"
-                          : "border-border hover:bg-secondary text-foreground"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  );
-                });
-              })()}
-            </div>
-
-            <PagerButton
-              disabled={data.page >= data.totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Sau
-            </PagerButton>
-          </div>
+          <PaginationNumbered
+            currentPage={data.page}
+            totalPages={data.totalPages}
+            setPage={setPage}
+          />
         </div>
       )}
 

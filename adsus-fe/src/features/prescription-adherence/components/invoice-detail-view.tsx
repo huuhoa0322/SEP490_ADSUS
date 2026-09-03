@@ -14,8 +14,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import Image from "next/image";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Ban } from "lucide-react";
 import toast from "react-hot-toast";
 
 export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
@@ -24,6 +33,9 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
   const [data, setData] = useState<InvoiceDetailResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [canceling, setCanceling] = useState(false);
 
   const fetchDetail = useCallback(async () => {
     try {
@@ -53,6 +65,25 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
       toast.error((error as any).response?.data?.message || "Có lỗi xảy ra khi thanh toán.");
     } finally {
       setPaying(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!cancelReason.trim()) {
+      toast.error("Vui lòng nhập lý do hủy hóa đơn.");
+      return;
+    }
+    try {
+      setCanceling(true);
+      await invoiceService.cancelInvoice(invoiceId, cancelReason);
+      toast.success("Hủy hóa đơn thành công.");
+      setCancelOpen(false);
+      fetchDetail(); // reload to get new status
+    } catch (error: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      toast.error((error as any).response?.data?.message || "Có lỗi xảy ra khi hủy.");
+    } finally {
+      setCanceling(false);
     }
   };
 
@@ -92,6 +123,14 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
           )}
         </div>
       </div>
+      
+      {data.status !== "CANCELLED" && (
+        <div className="flex justify-end">
+          <Button variant="destructive" onClick={() => setCancelOpen(true)}>
+            <Ban className="mr-2 h-4 w-4" /> Hủy Hóa Đơn
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
@@ -119,6 +158,12 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
                   <div>
                     <span className="text-muted-foreground">Phương thức:</span>
                     <p className="font-medium">{data.paymentMethod}</p>
+                  </div>
+                )}
+                {data.cancelledReason && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Lý do hủy:</span>
+                    <p className="font-medium text-destructive">{data.cancelledReason}</p>
                   </div>
                 )}
               </div>
@@ -195,7 +240,7 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
             </Card>
           )}
 
-          {!isPending && (
+          {!isPending && data.status === "PAID" && (
             <Card className="bg-green-50 border-green-200">
               <CardContent className="flex flex-col items-center justify-center p-8 space-y-4 text-green-700">
                 <CheckCircle2 className="w-16 h-16" />
@@ -204,8 +249,48 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
               </CardContent>
             </Card>
           )}
+
+          {data.status === "CANCELLED" && (
+            <Card className="bg-red-50 border-red-200">
+              <CardContent className="flex flex-col items-center justify-center p-8 space-y-4 text-red-700">
+                <Ban className="w-16 h-16" />
+                <h3 className="text-xl font-bold">Hóa Đơn Đã Hủy</h3>
+                {data.paidAt && <p className="text-center text-sm">Thuốc đã được hoàn kho tự động.</p>}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
+
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác Nhận Hủy Hóa Đơn</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              {data.status === "PAID" 
+                ? "Hóa đơn này đã thanh toán. Hủy hóa đơn sẽ tự động hoàn số lượng thuốc về lại các lô trong kho (Reverse Dispense)."
+                : "Hóa đơn này chưa thanh toán và sẽ bị hủy bỏ."}
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="reason" className="text-destructive font-semibold">Lý do hủy (bắt buộc)</Label>
+              <Textarea
+                id="reason"
+                placeholder="Nhập lý do hủy hóa đơn..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelOpen(false)} disabled={canceling}>Đóng</Button>
+            <Button variant="destructive" onClick={handleCancel} disabled={canceling}>
+              {canceling ? "Đang xử lý..." : "Xác nhận Hủy"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

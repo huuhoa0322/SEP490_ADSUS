@@ -1,13 +1,19 @@
 'use client';
 
+import { useState } from 'react';
 import { useInventoryAlerts } from '@/features/medicines/api/inventory.api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, AlertTriangle, PackageX } from 'lucide-react';
 import Link from 'next/link';
+import { PaginationNumbered } from '@/components/ui/pagination-numbered';
 
 export function InventoryAlertsList() {
   const { data: summary, isLoading, isError } = useInventoryAlerts();
+
+  const [expiryPage, setExpiryPage] = useState(1);
+  const [lowStockPage, setLowStockPage] = useState(1);
+  const pageSize = 15;
 
   if (isLoading) {
     return <div className="p-8 text-center text-muted-foreground">Đang tải dữ liệu cảnh báo...</div>;
@@ -69,7 +75,7 @@ export function InventoryAlertsList() {
               <p className="text-sm text-muted-foreground">Không có lô thuốc nào sắp hết hạn.</p>
             ) : (
               <div className="space-y-4">
-                {summary.expiryAlerts.map((alert) => (
+                {summary.expiryAlerts.slice((expiryPage - 1) * pageSize, expiryPage * pageSize).map((alert) => (
                   <div key={alert.batchId} className="flex flex-col space-y-1 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
                     <div className="flex items-center justify-between">
                       <Link href={`/admin/medicines/${alert.medicineId}/batches`} className="font-medium hover:underline">
@@ -85,6 +91,13 @@ export function InventoryAlertsList() {
                     </div>
                   </div>
                 ))}
+                
+                <PaginationNumbered
+                  currentPage={expiryPage}
+                  totalPages={Math.ceil(summary.expiryAlerts.length / pageSize)}
+                  setPage={setExpiryPage}
+                  className="pt-4 border-t mt-4 justify-end"
+                />
               </div>
             )}
           </CardContent>
@@ -100,7 +113,7 @@ export function InventoryAlertsList() {
               <p className="text-sm text-muted-foreground">Không có thuốc nào sắp hết hàng.</p>
             ) : (
               <div className="space-y-4">
-                {summary.lowStockAlerts.map((alert) => (
+                {summary.lowStockAlerts.slice((lowStockPage - 1) * pageSize, lowStockPage * pageSize).map((alert) => (
                   <div key={alert.medicineId} className="flex flex-col space-y-1 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
                     <div className="flex items-center justify-between">
                       <Link href={`/admin/medicines/${alert.medicineId}`} className="font-medium hover:underline">
@@ -116,6 +129,13 @@ export function InventoryAlertsList() {
                     </div>
                   </div>
                 ))}
+                
+                <PaginationNumbered
+                  currentPage={lowStockPage}
+                  totalPages={Math.ceil(summary.lowStockAlerts.length / pageSize)}
+                  setPage={setLowStockPage}
+                  className="pt-4 border-t mt-4 justify-end"
+                />
               </div>
             )}
           </CardContent>

@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 
 import { useCaseList } from "../hooks/use-cases";
 import { usePatientProfile } from "../hooks/use-patient-profile";
@@ -203,24 +204,11 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
             <p className="font-mono text-xs tabular-nums text-muted-foreground">
               Trang {cases.page} / {cases.totalPages} · {cases.totalItems} lần khám
             </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-                disabled={cases.page <= 1}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium disabled:opacity-50"
-              >
-                Trước
-              </button>
-              <button
-                type="button"
-                onClick={() => setPage((current) => current + 1)}
-                disabled={cases.page >= cases.totalPages}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium disabled:opacity-50"
-              >
-                Sau
-              </button>
-            </div>
+            <PaginationNumbered
+              currentPage={cases.page}
+              totalPages={cases.totalPages}
+              setPage={setPage}
+            />
           </div>
         ) : null}
       </section>
