@@ -274,7 +274,7 @@ jobs:
                   # engine — it needs a JDK on PATH even though the code being analyzed is
                   # C#/TypeScript, not Java.
                   distribution: "zulu"
-                  java-version: "17"
+                  java-version: "24"
 
             - uses: actions/setup-dotnet@v4
               with:
