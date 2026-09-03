@@ -53,6 +53,13 @@ public class InvoicesController : ControllerBase
         await _invoiceService.PayAndDispenseAsync(id, method);
         return Ok(ApiResponse<object>.Ok(new { message = "Thanh toán và xuất kho thành công." }));
     }
+
+    [HttpPut("{id}/cancel")]
+    public async Task<IActionResult> CancelInvoice(Guid id, [FromBody] CancelInvoiceRequest request)
+    {
+        await _invoiceService.CancelInvoiceAsync(id, request);
+        return Ok(ApiResponse<object>.Ok(new { message = "Đã hủy hóa đơn thành công." }));
+    }
 }
 
 public class PayInvoiceRequest

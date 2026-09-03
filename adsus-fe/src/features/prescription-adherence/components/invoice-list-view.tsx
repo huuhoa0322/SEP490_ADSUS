@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 import { Search } from "lucide-react";
 
 export function InvoiceListView() {
@@ -139,23 +140,12 @@ export function InvoiceListView() {
       </div>
 
       {data && data.totalPages > 1 && (
-        <div className="flex justify-end items-center space-x-2">
-          <Button
-            variant="outline"
-            disabled={page === 1}
-            onClick={() => setPage(p => p - 1)}
-          >
-            Trước
-          </Button>
-          <span className="text-sm">Trang {page} / {data.totalPages}</span>
-          <Button
-            variant="outline"
-            disabled={page === data.totalPages}
-            onClick={() => setPage(p => p + 1)}
-          >
-            Sau
-          </Button>
-        </div>
+        <PaginationNumbered
+          currentPage={page}
+          totalPages={data.totalPages}
+          setPage={setPage}
+          className="justify-end mt-4"
+        />
       )}
     </div>
   );

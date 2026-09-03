@@ -235,4 +235,69 @@ public class InvoiceService : IInvoiceService
         // Lưu trạng thái hóa đơn (giao dịch Inventory đã được add bên trong DispenseAsync)
         await _context.SaveChangesAsync();
     }
+
+    public async Task CancelInvoiceAsync(Guid invoiceId, CancelInvoiceRequest request)
+    {
+        var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.Id == invoiceId);
+        if (invoice == null) throw new BusinessException("Không tìm thấy hóa đơn.");
+        
+        if (invoice.Status == InvoiceStatus.CANCELLED)
+            throw new BusinessException("Hóa đơn này đã bị hủy từ trước.");
+
+        if (invoice.Status == InvoiceStatus.PENDING)
+        {
+            invoice.Status = InvoiceStatus.CANCELLED;
+            invoice.CancelledReason = request.Reason;
+        }
+        else if (invoice.Status == InvoiceStatus.PAID)
+        {
+            // Lấy danh sách PrescriptionItemIds của Case này
+            var prescriptionItemIds = await _context.PrescriptionItems
+                .Where(pi => pi.Prescription.CaseId == invoice.CaseId && pi.Prescription.Status == PrescriptionStatus.Active)
+                .Select(pi => pi.PrescriptionItemId)
+                .ToListAsync();
+
+            if (prescriptionItemIds.Any())
+            {
+                // Tìm tất cả giao dịch Dispense liên quan
+                var dispenseTransactions = await _context.InventoryTransactions
+                    .Include(t => t.Batch)
+                    .Where(t => t.TxnType == InventoryTxnType.Dispense 
+                                && t.PrescriptionItemId.HasValue 
+                                && prescriptionItemIds.Contains(t.PrescriptionItemId.Value))
+                    .ToListAsync();
+
+                foreach (var txn in dispenseTransactions)
+                {
+                    var batch = txn.Batch;
+                    if (batch != null)
+                    {
+                        // Hoàn lại số lượng vào lô
+                        batch.QuantityBase += txn.QuantityBase;
+
+                        // Tạo giao dịch Adjustment để lưu vết hoàn kho
+                        var reverseTxn = new InventoryTransaction
+                        {
+                            Id = Guid.NewGuid(),
+                            BatchId = txn.BatchId,
+                            MedicinePackagingId = txn.MedicinePackagingId,
+                            TxnType = InventoryTxnType.Adjustment,
+                            QuantityInUnit = txn.QuantityInUnit,
+                            QuantityBase = txn.QuantityBase, // Dương vì cộng lại
+                            TxnDate = DateTime.UtcNow,
+                            Reason = "Hoàn kho tự động do hủy hóa đơn",
+                            PrescriptionItemId = txn.PrescriptionItemId
+                        };
+                        
+                        _context.InventoryTransactions.Add(reverseTxn);
+                    }
+                }
+            }
+
+            invoice.Status = InvoiceStatus.CANCELLED;
+            invoice.CancelledReason = request.Reason;
+        }
+
+        await _context.SaveChangesAsync();
+    }
 }

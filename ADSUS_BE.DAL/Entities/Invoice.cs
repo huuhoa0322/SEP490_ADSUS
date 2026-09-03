@@ -15,6 +15,8 @@ public partial class Invoice
 
     public DateTime? PaidAt { get; set; }
 
+    public string? CancelledReason { get; set; }
+
     public virtual Case Case { get; set; } = null!;
 
     public virtual ICollection<InvoiceItem> InvoiceItems { get; set; } = new List<InvoiceItem>();

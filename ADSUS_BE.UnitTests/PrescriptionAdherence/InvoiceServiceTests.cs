@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ADSUS_BE.BLL.Common.Exceptions;
+using ADSUS_BE.BLL.PrescriptionAdherence.DTOs.Invoice;
 using ADSUS_BE.BLL.PrescriptionAdherence.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
@@ -430,5 +431,138 @@ public class InvoiceServiceTests
         inventoryMock.Verify(
             s => s.DispenseAsync(It.IsAny<Guid>()),
             Moq.Times.Never);
+    }
+
+    [Fact]
+    public async Task CancelInvoiceAsync_Pending_Success()
+    {
+        var options = GetInMemoryOptions("Invoice_Test_Cancel_Pending");
+        using var context = new AppDbContext(options);
+        var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
+        var service = new InvoiceService(context, inventoryMock.Object);
+
+        var invoiceId = Guid.NewGuid();
+        context.Invoices.Add(new Invoice
+        {
+            Id = invoiceId,
+            Status = InvoiceStatus.PENDING,
+            TotalAmount = 50000
+        });
+        await context.SaveChangesAsync();
+
+        var request = new CancelInvoiceRequest { Reason = "Bệnh nhân đổi ý" };
+        await service.CancelInvoiceAsync(invoiceId, request);
+
+        var invoice = await context.Invoices.FindAsync(invoiceId);
+        Assert.Equal(InvoiceStatus.CANCELLED, invoice.Status);
+        Assert.Equal("Bệnh nhân đổi ý", invoice.CancelledReason);
+    }
+
+    [Fact]
+    public async Task CancelInvoiceAsync_Paid_ReverseDispense()
+    {
+        var options = GetInMemoryOptions("Invoice_Test_Cancel_Paid");
+        using var context = new AppDbContext(options);
+        var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
+        var service = new InvoiceService(context, inventoryMock.Object);
+
+        var caseId = Guid.NewGuid();
+        var invoiceId = Guid.NewGuid();
+        var prescriptionId = Guid.NewGuid();
+        var pItemId = Guid.NewGuid();
+        var batchId = Guid.NewGuid();
+
+        context.Invoices.Add(new Invoice
+        {
+            Id = invoiceId,
+            CaseId = caseId,
+            Status = InvoiceStatus.PAID,
+            TotalAmount = 50000
+        });
+
+        context.Prescriptions.Add(new Prescription
+        {
+            PrescriptionId = prescriptionId,
+            CaseId = caseId,
+            Status = PrescriptionStatus.Active
+        });
+
+        context.PrescriptionItems.Add(new PrescriptionItem
+        {
+            PrescriptionItemId = pItemId,
+            PrescriptionId = prescriptionId,
+            Dosage = "1 viên"
+        });
+
+        context.MedicineBatches.Add(new MedicineBatch
+        {
+            Id = batchId,
+            QuantityBase = 50,
+            LotNumber = "LOT123"
+        });
+
+        context.InventoryTransactions.Add(new InventoryTransaction
+        {
+            Id = Guid.NewGuid(),
+            BatchId = batchId,
+            TxnType = InventoryTxnType.Dispense,
+            QuantityInUnit = 2,
+            QuantityBase = 20,
+            PrescriptionItemId = pItemId
+        });
+
+        await context.SaveChangesAsync();
+
+        var request = new CancelInvoiceRequest { Reason = "Nhầm lẫn kê đơn" };
+        await service.CancelInvoiceAsync(invoiceId, request);
+
+        var invoice = await context.Invoices.FindAsync(invoiceId);
+        Assert.Equal(InvoiceStatus.CANCELLED, invoice.Status);
+        Assert.Equal("Nhầm lẫn kê đơn", invoice.CancelledReason);
+
+        var batch = await context.MedicineBatches.FindAsync(batchId);
+        Assert.Equal(70, batch.QuantityBase); // 50 + 20
+
+        var reverseTxn = await context.InventoryTransactions
+            .FirstOrDefaultAsync(t => t.TxnType == InventoryTxnType.Adjustment && t.Reason == "Hoàn kho tự động do hủy hóa đơn");
+        Assert.NotNull(reverseTxn);
+        Assert.Equal(20, reverseTxn.QuantityBase);
+        Assert.Equal(pItemId, reverseTxn.PrescriptionItemId);
+    }
+
+    [Fact]
+    public async Task CancelInvoiceAsync_NotFound()
+    {
+        var options = GetInMemoryOptions("Invoice_Test_Cancel_NotFound");
+        using var context = new AppDbContext(options);
+        var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
+        var service = new InvoiceService(context, inventoryMock.Object);
+
+        var request = new CancelInvoiceRequest { Reason = "Lý do" };
+        var ex = await Assert.ThrowsAsync<BusinessException>(
+            () => service.CancelInvoiceAsync(Guid.NewGuid(), request));
+        Assert.Contains("Không tìm thấy", ex.Message);
+    }
+
+    [Fact]
+    public async Task CancelInvoiceAsync_AlreadyCancelled()
+    {
+        var options = GetInMemoryOptions("Invoice_Test_Cancel_Already");
+        using var context = new AppDbContext(options);
+        var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
+        var service = new InvoiceService(context, inventoryMock.Object);
+
+        var invoiceId = Guid.NewGuid();
+        context.Invoices.Add(new Invoice
+        {
+            Id = invoiceId,
+            Status = InvoiceStatus.CANCELLED
+        });
+        await context.SaveChangesAsync();
+
+        var request = new CancelInvoiceRequest { Reason = "Lý do" };
+        var ex = await Assert.ThrowsAsync<BusinessException>(
+            () => service.CancelInvoiceAsync(invoiceId, request));
+        Assert.Contains("đã bị hủy", ex.Message);
     }
 }

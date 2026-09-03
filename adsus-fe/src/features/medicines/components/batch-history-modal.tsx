@@ -70,6 +70,10 @@ export function BatchHistoryModal({
                 <tbody>
                   {historyData.items.map((txn) => {
                     const isImport = txn.txnType === "Import";
+                    const isDispense = txn.txnType === "Dispense";
+                    const isAdjustment = txn.txnType === "Adjustment";
+                    const isIncrease = txn.quantityBase > 0;
+                    const isPositive = isImport || (!isDispense && isIncrease);
                     
                     return (
                       <tr key={txn.transactionId} className="border-b border-border last:border-0 hover:bg-secondary/20">
@@ -77,19 +81,25 @@ export function BatchHistoryModal({
                           {format(new Date(txn.txnDate), "dd/MM/yyyy HH:mm")}
                         </td>
                         <td className="px-4 py-3">
-                          <Badge variant={isImport ? "default" : "secondary"} className={isImport ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : "bg-orange-100 text-orange-800 hover:bg-orange-100"}>
-                            {isImport ? (
-                              <><ArrowDownToLine className="mr-1 size-3" /> Nhập kho</>
-                            ) : (
-                              <><ArrowUpFromLine className="mr-1 size-3" /> Xuất kho</>
-                            )}
-                          </Badge>
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            isImport
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : isDispense
+                              ? 'bg-orange-100 text-orange-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {isImport
+                              ? <><ArrowDownToLine className="size-3" /> Nhập kho</>
+                              : isDispense
+                              ? <><ArrowUpFromLine className="size-3" /> Xuất kho</>
+                              : <><Activity className="size-3" /> Điều chỉnh</>}
+                          </span>
                         </td>
-                        <td className={`px-4 py-3 text-right font-semibold ${isImport ? "text-emerald-600" : "text-orange-600"}`}>
-                          {isImport ? "+" : "-"}{txn.quantityBase}
+                        <td className={`px-4 py-3 text-right font-semibold ${isPositive ? "text-emerald-600" : "text-orange-600"}`}>
+                          {isPositive ? "+" : "-"}{Math.abs(txn.quantityBase)}
                         </td>
                         <td className="px-4 py-3 text-right text-muted-foreground">
-                          {txn.quantityInUnit} {txn.unitName}
+                          {isPositive ? "+" : "-"}{Math.abs(txn.quantityInUnit)} {txn.unitName}
                         </td>
                         <td className="px-4 py-3 text-right text-muted-foreground">
                           {isImport && txn.unitImportPrice ? formatCurrency(txn.unitImportPrice) : "-"}

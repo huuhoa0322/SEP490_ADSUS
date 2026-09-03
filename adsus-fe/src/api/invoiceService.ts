@@ -20,6 +20,7 @@ export interface InvoiceResponse {
   paidAt?: string;
   status: string;
   paymentMethod?: string;
+  cancelledReason?: string;
 }
 
 export interface InvoiceItemResponse {
@@ -56,5 +57,9 @@ export const invoiceService = {
   payAndDispense: async (id: string, paymentMethod: string): Promise<void> => {
     const response = await api.put<ApiResponse<void>>(`/api/v1/invoices/${id}/pay`, { paymentMethod });
     // no return value needed, throwing if not 2xx
+  },
+
+  cancelInvoice: async (id: string, reason: string): Promise<void> => {
+    await api.put<ApiResponse<void>>(`/api/v1/invoices/${id}/cancel`, { reason });
   },
 };

@@ -39,5 +39,6 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.DTOs
         public DateTime TxnDate { get; set; }
         public decimal UnitImportPrice { get; set; }
         public Guid? PrescriptionItemId { get; set; }
+        public string? Reason { get; set; }
     }
 }

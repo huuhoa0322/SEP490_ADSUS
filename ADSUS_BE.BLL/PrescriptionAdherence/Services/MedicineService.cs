@@ -44,6 +44,7 @@ public sealed class MedicineService : IMedicineService
             BaseUnitName = baseUnitNames.GetValueOrDefault(m.MedicineId),
             Status = m.Status.ToString().ToUpperInvariant(),
             CreatedAt = m.CreatedAt,
+            LowStockThreshold = m.LowStockThreshold,
             TotalInventoryBase = m.MedicineBatches?.Sum(b => b.QuantityBase) ?? 0
         });
     }
@@ -69,6 +70,7 @@ public sealed class MedicineService : IMedicineService
             VolumePerBaseUnit = m.VolumePerBaseUnit,
             Status = m.Status.ToString().ToUpperInvariant(),
             CreatedAt = m.CreatedAt,
+            LowStockThreshold = m.LowStockThreshold,
             TotalInventoryBase = m.MedicineBatches?.Sum(b => b.QuantityBase) ?? 0
         }).ToList();
 
@@ -98,6 +100,7 @@ public sealed class MedicineService : IMedicineService
             VolumePerBaseUnit = m.VolumePerBaseUnit,
             Status = m.Status.ToString().ToUpperInvariant(),
             CreatedAt = m.CreatedAt,
+            LowStockThreshold = m.LowStockThreshold,
             TotalInventoryBase = m.MedicineBatches?.Sum(b => b.QuantityBase) ?? 0
         };
     }
@@ -112,6 +115,10 @@ public sealed class MedicineService : IMedicineService
         {
             throw new BusinessException("Vui lòng nhập đúng Hàm lượng (lớn hơn 0) khi đã nhập Đơn vị dùng.");
         }
+        if (request.LowStockThreshold < 0)
+        {
+            throw new BusinessException("Ngưỡng cảnh báo hết hàng không được nhỏ hơn 0.");
+        }
 
         var existing = await _medicineRepository.FindByNameAsync(request.Name, ct);
         if (existing != null)
@@ -125,6 +132,7 @@ public sealed class MedicineService : IMedicineService
             Name = request.Name.Trim(),
             UsageUnit = request.UsageUnit?.Trim(),
             VolumePerBaseUnit = request.VolumePerBaseUnit,
+            LowStockThreshold = request.LowStockThreshold,
             CreatedAt = DateTime.UtcNow,
             Status = MedicineStatus.Active
         };
@@ -151,6 +159,7 @@ public sealed class MedicineService : IMedicineService
             Name = medicine.Name,
             UsageUnit = medicine.UsageUnit,
             VolumePerBaseUnit = medicine.VolumePerBaseUnit,
+            LowStockThreshold = medicine.LowStockThreshold,
             Status = medicine.Status.ToString().ToUpperInvariant(),
             CreatedAt = medicine.CreatedAt
         };
@@ -166,6 +175,10 @@ public sealed class MedicineService : IMedicineService
         {
             throw new BusinessException("Vui lòng nhập đúng Hàm lượng (lớn hơn 0) khi đã nhập Đơn vị dùng.");
         }
+        if (request.LowStockThreshold < 0)
+        {
+            throw new BusinessException("Ngưỡng cảnh báo hết hàng không được nhỏ hơn 0.");
+        }
 
         var existing = await _medicineRepository.GetByIdAsync(id, ct);
         if (existing == null)
@@ -180,6 +193,7 @@ public sealed class MedicineService : IMedicineService
 
         existing.UsageUnit = request.UsageUnit?.Trim();
         existing.VolumePerBaseUnit = request.VolumePerBaseUnit;
+        existing.LowStockThreshold = request.LowStockThreshold;
 
         await _medicineRepository.UpdateAsync(existing, ct);
         await _db.SaveChangesAsync(ct);
@@ -190,6 +204,7 @@ public sealed class MedicineService : IMedicineService
             Name = existing.Name,
             UsageUnit = existing.UsageUnit,
             VolumePerBaseUnit = existing.VolumePerBaseUnit,
+            LowStockThreshold = existing.LowStockThreshold,
             Status = existing.Status.ToString().ToUpperInvariant(),
             CreatedAt = existing.CreatedAt
         };

@@ -17,6 +17,7 @@ import type {
   AdminBlogPostListItemResponse,
   BlogStatus,
 } from "../types/blog.types";
+import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 
 const STATUS_LABELS: Record<BlogStatus, string> = {
   DRAFT: "Bản nháp",
@@ -136,11 +137,12 @@ export function AdminBlogListView() {
 
         {/* Pagination */}
         {data && data.totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-center gap-2">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50">Trước</button>
-            <span className="px-4 text-sm text-[var(--muted-foreground)]">Trang {page} / {data.totalPages}</span>
-            <button onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))} disabled={page === data.totalPages} className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50">Sau</button>
-          </div>
+          <PaginationNumbered
+            currentPage={page}
+            totalPages={data.totalPages}
+            setPage={setPage}
+            className="mt-6 justify-center"
+          />
         )}
       </div>
 

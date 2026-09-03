@@ -48,6 +48,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
   // === General Info State ===
   const [usageUnit, setUsageUnit] = useState(medicine.usageUnit || "");
   const [volume, setVolume] = useState(medicine.volumePerBaseUnit ? medicine.volumePerBaseUnit.toString() : "");
+  const [lowStockThreshold, setLowStockThreshold] = useState(medicine.lowStockThreshold?.toString() || "0");
 
   // Sync general info state when medicine changes
   const [prevMedicineId, setPrevMedicineId] = useState(medicine.medicineId);
@@ -58,6 +59,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
     if (isOpen) {
       setUsageUnit(medicine.usageUnit || "");
       setVolume(medicine.volumePerBaseUnit ? medicine.volumePerBaseUnit.toString() : "");
+      setLowStockThreshold(medicine.lowStockThreshold?.toString() || "0");
     }
   }
 
@@ -81,7 +83,8 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
         request: {
           name: medicine.name,
           usageUnit: finalUsageUnit,
-          volumePerBaseUnit: isNaN(finalVolume) ? undefined : finalVolume
+          volumePerBaseUnit: isNaN(finalVolume) ? undefined : finalVolume,
+          lowStockThreshold: parseInt(lowStockThreshold) || 0
         }
       });
       toast.success("Cập nhật thông tin cơ bản thành công.");
@@ -199,7 +202,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
             </div>
             
             <div className="bg-slate-50 p-5 rounded-lg border">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="space-y-2">
                   <Label>Tên thuốc (Master Data)</Label>
                   <Input 
@@ -226,6 +229,17 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
                     value={volume} 
                     onChange={e => setVolume(e.target.value)} 
                     className="bg-white font-mono"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ngưỡng cảnh báo hết hàng</Label>
+                  <Input 
+                    type="number"
+                    min="0"
+                    placeholder="Nhập 0 để bỏ qua" 
+                    value={lowStockThreshold} 
+                    onChange={e => setLowStockThreshold(e.target.value)} 
+                    className="bg-orange-50/50 border-orange-200 font-mono"
                   />
                 </div>
               </div>

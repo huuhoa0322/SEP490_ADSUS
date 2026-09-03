@@ -47,7 +47,8 @@ public partial class MedicineServiceTests
             UsageUnit = "ml",
             VolumePerBaseUnit = 100,
             MedicineUnitId = Guid.NewGuid(),
-            SalePrice = 100
+            SalePrice = 100,
+            LowStockThreshold = 50
         };
 
         _medicineRepoMock.Setup(repo => repo.FindByNameAsync(request.Name, It.IsAny<CancellationToken>()))
@@ -58,6 +59,7 @@ public partial class MedicineServiceTests
         Assert.NotNull(result);
         Assert.Equal("ml", result.UsageUnit);
         Assert.Equal(100, result.VolumePerBaseUnit);
+        Assert.Equal(50, result.LowStockThreshold);
     }
 
     [Fact]
@@ -86,6 +88,14 @@ public partial class MedicineServiceTests
         Assert.Contains("đã tồn tại", exception.Message);
     }
 
+    [Fact]
+    public async Task CreateMedicineAsync_Fail_NegativeLowStockThreshold()
+    {
+        var request = new CreateMedicineRequest { Name = "Aspirin", LowStockThreshold = -10 };
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateMedicineAsync(request));
+        Assert.Equal("Ngưỡng cảnh báo hết hàng không được nhỏ hơn 0.", exception.Message);
+    }
+
     // ==============================================
     // UpdateMedicineAsync Tests
     // ==============================================
@@ -93,15 +103,18 @@ public partial class MedicineServiceTests
     public async Task UpdateMedicineAsync_Success_ValidRequest()
     {
         var id = Guid.NewGuid();
-        var existing = new Medicine { MedicineId = id, Name = "Aspirin", UsageUnit = null, VolumePerBaseUnit = null };
-        var request = new UpdateMedicineRequest { Name = "Aspirin", UsageUnit = "mg", VolumePerBaseUnit = 500 };
+        var existing = new Medicine { MedicineId = id, Name = "Aspirin", UsageUnit = null, VolumePerBaseUnit = null, LowStockThreshold = 0 };
+        var request = new UpdateMedicineRequest { Name = "Aspirin", UsageUnit = "mg", VolumePerBaseUnit = 500, LowStockThreshold = 200 };
 
         _medicineRepoMock.Setup(repo => repo.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
 
         var result = await _sut.UpdateMedicineAsync(id, request);
+
         Assert.NotNull(result);
         Assert.Equal("mg", result.UsageUnit);
         Assert.Equal(500, result.VolumePerBaseUnit);
+        Assert.Equal(200, result.LowStockThreshold);
+        
         _medicineRepoMock.Verify(repo => repo.UpdateAsync(existing, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -124,6 +137,17 @@ public partial class MedicineServiceTests
         _medicineRepoMock.Setup(repo => repo.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
         var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdateMedicineAsync(id, request));
         Assert.Equal("Tên thuốc là Master Data gốc, tuyệt đối không được sửa sau khi tạo.", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateMedicineAsync_Fail_NegativeLowStockThreshold()
+    {
+        var id = Guid.NewGuid();
+        var existing = new Medicine { MedicineId = id, Name = "Aspirin" };
+        var request = new UpdateMedicineRequest { Name = "Aspirin", LowStockThreshold = -5 };
+        _medicineRepoMock.Setup(repo => repo.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdateMedicineAsync(id, request));
+        Assert.Equal("Ngưỡng cảnh báo hết hàng không được nhỏ hơn 0.", exception.Message);
     }
 
     [Fact]

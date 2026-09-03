@@ -186,6 +186,7 @@ public enum NotificationType
     [PgName("blog_new_post")] BlogNewPost,
     [PgName("weekly_health_report")] WeeklyHealthReport,
     [PgName("adherence_summary")] AdherenceSummary,
+    [PgName("inventory_alert")] InventoryAlert,
 }
 
 public enum InventoryTxnType
