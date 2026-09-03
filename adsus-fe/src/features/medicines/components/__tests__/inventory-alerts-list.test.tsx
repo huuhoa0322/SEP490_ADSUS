@@ -23,7 +23,7 @@ describe('InventoryAlertsList', () => {
       data: undefined,
       isLoading: true,
       isError: false,
-    } as any);
+    } as unknown as ReturnType<typeof useInventoryAlerts>);
 
     render(<InventoryAlertsList />);
     expect(screen.getByText('Đang tải dữ liệu cảnh báo...')).toBeInTheDocument();
@@ -34,7 +34,7 @@ describe('InventoryAlertsList', () => {
       data: undefined,
       isLoading: false,
       isError: true,
-    } as any);
+    } as unknown as ReturnType<typeof useInventoryAlerts>);
 
     render(<InventoryAlertsList />);
     expect(screen.getByText('Lỗi khi tải dữ liệu cảnh báo.')).toBeInTheDocument();
@@ -51,7 +51,7 @@ describe('InventoryAlertsList', () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as ReturnType<typeof useInventoryAlerts>);
 
     render(<InventoryAlertsList />);
     expect(screen.getByText('Kho hoạt động ổn định')).toBeInTheDocument();
@@ -90,7 +90,7 @@ describe('InventoryAlertsList', () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as ReturnType<typeof useInventoryAlerts>);
 
     render(<InventoryAlertsList />);
     
