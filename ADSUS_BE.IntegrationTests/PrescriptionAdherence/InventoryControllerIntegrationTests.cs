@@ -217,4 +217,50 @@ public class InventoryControllerIntegrationTests
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task GetAlerts_AsAdmin_ReturnsOkWithSummary()
+    {
+        // Arrange
+        using var app = CreateApp();
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Admin);
+
+        var mockSummary = new InventoryAlertSummary
+        {
+            LowStockCount = 1,
+            ExpiringSoonCount = 0,
+            ExpiredCount = 0,
+            LowStockAlerts = new List<LowStockAlertResponse>
+            {
+                new LowStockAlertResponse { MedicineId = Guid.NewGuid(), MedicineName = "Test", CurrentStock = 10, Threshold = 20, BaseUnitName = "Viên", Severity = "WARNING" }
+            }
+        };
+
+        _inventoryService.Setup(s => s.GetAlertSummaryAsync())
+            .ReturnsAsync(mockSummary);
+
+        // Act
+        var response = await client.GetAsync("/api/v1/inventory/alerts");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<InventoryAlertSummary>();
+        Assert.NotNull(body);
+        Assert.Equal(1, body.LowStockCount);
+        _inventoryService.Verify(s => s.GetAlertSummaryAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAlerts_AsPatient_ReturnsForbidden()
+    {
+        // Arrange
+        using var app = CreateApp();
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Patient);
+
+        // Act
+        var response = await client.GetAsync("/api/v1/inventory/alerts");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
 }

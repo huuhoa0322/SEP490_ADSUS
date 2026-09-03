@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, PlusCircle, Pencil, PlayCircle, Ban, Search, Package } from "lucide-react";
+import { Loader2, PlusCircle, Pencil, PlayCircle, Ban, Search, Package, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -86,13 +86,22 @@ export function MedicineList() {
     <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">Quản lý danh mục thuốc</h1>
-        <button
-          onClick={handleOpenCreate}
-          className="flex h-12 items-center justify-center gap-2 rounded-full bg-accent px-6 font-heading text-sm font-semibold tracking-wider text-white transition-colors hover:bg-accent/90"
-        >
-          <PlusCircle className="size-4" />
-          Thêm thuốc mới
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => router.push('/admin/medicines/inventory-alerts')}
+            className="flex h-12 items-center justify-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-6 font-heading text-sm font-semibold tracking-wider text-orange-700 transition-colors hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400 dark:hover:bg-orange-900/40"
+          >
+            <AlertTriangle className="size-4" />
+            Cảnh báo kho
+          </button>
+          <button
+            onClick={handleOpenCreate}
+            className="flex h-12 items-center justify-center gap-2 rounded-full bg-accent px-6 font-heading text-sm font-semibold tracking-wider text-white transition-colors hover:bg-accent/90"
+          >
+            <PlusCircle className="size-4" />
+            Thêm thuốc mới
+          </button>
+        </div>
       </div>
 
       <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm border border-border">

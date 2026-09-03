@@ -145,3 +145,42 @@ export const usePagedMedicineBatches = (filter: MedicineBatchFilter) => {
     enabled: !!filter.medicineId,
   });
 };
+
+export interface LowStockAlertResponse {
+  medicineId: string;
+  medicineName: string;
+  currentStock: number;
+  threshold: number;
+  baseUnitName: string;
+  severity: 'WARNING' | 'CRITICAL';
+}
+
+export interface ExpiryAlertResponse {
+  batchId: string;
+  medicineId: string;
+  medicineName: string;
+  lotNumber: string;
+  expiryDate: string;
+  daysUntilExpiry: number;
+  quantityBase: number;
+  baseUnitName: string;
+  severity: 'WARNING' | 'CRITICAL' | 'EXPIRED';
+}
+
+export interface InventoryAlertSummary {
+  lowStockCount: number;
+  expiringSoonCount: number;
+  expiredCount: number;
+  lowStockAlerts: LowStockAlertResponse[];
+  expiryAlerts: ExpiryAlertResponse[];
+}
+
+export const useInventoryAlerts = () => {
+  return useQuery({
+    queryKey: ['inventory-alerts'],
+    queryFn: async () => {
+      const response = await apiClient.get<InventoryAlertSummary>('/api/v1/inventory/alerts');
+      return response.data;
+    },
+  });
+};

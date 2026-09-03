@@ -23,5 +23,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Interfaces
         /// ghi InventoryTransaction type Adjustment kèm lý do.
         /// </summary>
         Task<AdjustInventoryResponse> AdjustAsync(AdjustInventoryRequest request);
+
+        Task<InventoryAlertSummary> GetAlertSummaryAsync();
     }
 }

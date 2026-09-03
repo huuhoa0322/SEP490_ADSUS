@@ -59,5 +59,12 @@ namespace ADSUS_BE.Controllers
             var result = await _inventoryService.AdjustAsync(request);
             return Ok(result);
         }
+
+        [HttpGet("alerts")]
+        public async Task<IActionResult> GetAlerts()
+        {
+            var result = await _inventoryService.GetAlertSummaryAsync();
+            return Ok(result);
+        }
     }
 }

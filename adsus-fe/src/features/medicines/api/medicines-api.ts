@@ -6,6 +6,7 @@ export interface MedicineResponse {
   usageUnit?: string;       // Đơn vị kê đơn
   baseUnitName?: string;   // Tên đơn vị cơ bản kho (IsBaseUnit=true)
   volumePerBaseUnit?: number;
+  lowStockThreshold: number;
   status: string;
   createdAt: string;
   totalInventoryBase: number;
@@ -25,12 +26,14 @@ export interface CreateMedicineRequest {
   salePrice: number;
   usageUnit?: string;
   volumePerBaseUnit?: number;
+  lowStockThreshold: number;
 }
 
 export interface UpdateMedicineRequest {
   name: string;
   usageUnit?: string;
   volumePerBaseUnit?: number;
+  lowStockThreshold: number;
 }
 
 export async function getPagedMedicines(page: number, pageSize: number, search?: string, inStock?: boolean) {

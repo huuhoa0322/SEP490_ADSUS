@@ -704,5 +704,76 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             var ex = await Assert.ThrowsAsync<BusinessException>(() => _service.AdjustAsync(request));
             Assert.Contains("Số lượng thực tế không thay đổi", ex.Message);
         }
+
+        [Fact]
+        public async Task GetAlertSummaryAsync_ReturnsCorrectAlerts()
+        {
+            // Arrange
+            var medicineId1 = Guid.NewGuid();
+            var medicineId2 = Guid.NewGuid();
+            var baseUnitId = Guid.NewGuid();
+            
+            var baseUnit = new MedicineUnit { MedicineUnitId = baseUnitId, Name = "Viên" };
+            
+            // Med1: Ngưỡng 100, tồn kho 50 -> Low stock (WARNING)
+            // Lô của Med1: Hạn trong 40 ngày -> Expiring soon (CRITICAL)
+            var med1 = new Medicine { MedicineId = medicineId1, Name = "Med1", UsageUnit = "Viên", LowStockThreshold = 100, Status = MedicineStatus.Active };
+            
+            // Med2: Ngưỡng 50, tồn kho 10 -> Low stock (CRITICAL vì <= 50/5)
+            // Lô của Med2: Đã hết hạn -> Expired (EXPIRED)
+            var med2 = new Medicine { MedicineId = medicineId2, Name = "Med2", UsageUnit = "Viên", LowStockThreshold = 50, Status = MedicineStatus.Active };
+
+            var pack1 = new MedicinePackaging { Id = Guid.NewGuid(), MedicineId = medicineId1, MedicineUnitId = baseUnitId, ConversionFactor = 1, IsBaseUnit = true, Medicine = med1, MedicineUnit = baseUnit };
+            var pack2 = new MedicinePackaging { Id = Guid.NewGuid(), MedicineId = medicineId2, MedicineUnitId = baseUnitId, ConversionFactor = 1, IsBaseUnit = true, Medicine = med2, MedicineUnit = baseUnit };
+
+            var batch1 = new MedicineBatch
+            {
+                Id = Guid.NewGuid(), MedicineId = medicineId1, LotNumber = "LOT1", 
+                QuantityBase = 50, ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(40)),
+                Medicine = med1
+            };
+            
+            var batch2 = new MedicineBatch
+            {
+                Id = Guid.NewGuid(), MedicineId = medicineId2, LotNumber = "LOT2", 
+                QuantityBase = 10, ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-5)),
+                Medicine = med2
+            };
+
+            _dbContext.MedicineUnits.Add(baseUnit);
+            _dbContext.Medicines.AddRange(med1, med2);
+            _dbContext.MedicinePackagings.AddRange(pack1, pack2);
+            _dbContext.MedicineBatches.AddRange(batch1, batch2);
+            await _dbContext.SaveChangesAsync();
+
+            // Act
+            var summary = await _service.GetAlertSummaryAsync();
+
+            // Assert
+            Assert.NotNull(summary);
+            
+            // Low stock asserts
+            // Cả Med1 và Med2 đều vào danh sách LowStock vì Med2 có tồn kho hợp lệ = 0 (lô đã hết hạn)
+            Assert.Equal(2, summary.LowStockCount);
+            Assert.Equal(2, summary.LowStockAlerts.Count);
+            
+            var alert1 = summary.LowStockAlerts.First(a => a.MedicineId == medicineId1);
+            Assert.Equal("WARNING", alert1.Severity); // 50 > 100/5 = 20
+
+            var alert2 = summary.LowStockAlerts.First(a => a.MedicineId == medicineId2);
+            Assert.Equal("CRITICAL", alert2.Severity); // 0 <= 50/5 = 10
+
+            // Expiry asserts
+            Assert.Equal(2, summary.ExpiryAlerts.Count);
+            Assert.Equal(1, summary.ExpiredCount);
+            Assert.Equal(1, summary.ExpiringSoonCount);
+            
+            var expiredAlert = summary.ExpiryAlerts.First(a => a.Severity == "EXPIRED");
+            Assert.Equal(medicineId2, expiredAlert.MedicineId);
+            
+            var warningAlert = summary.ExpiryAlerts.First(a => a.Severity == "WARNING" || a.Severity == "CRITICAL");
+            Assert.Equal(medicineId1, warningAlert.MedicineId);
+            Assert.Equal("WARNING", warningAlert.Severity); // > 30 ngày => WARNING (40 ngày)
+        }
     }
 }
