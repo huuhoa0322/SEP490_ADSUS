@@ -15,19 +15,17 @@ public partial class AiModelVersion
     public string? Description { get; set; }
 
     /// <summary>
-    /// Chỉ số đo offline khi đăng ký, đơn vị %. Chỉ để Admin tham khảo khi quyết định
-    /// Activate/Rollback — không còn là ngưỡng KPI bắt buộc (ngưỡng cứng Sensitivity/Accuracy/AUC
-    /// cũ đã bị bỏ 08/08/2026, xem Report3 EN IV.2 Quality Attributes).
+    /// Chỉ số đo offline khi đăng ký, đơn vị %. Ngưỡng KPI nghiên cứu: &gt; 90%.
     /// </summary>
     public decimal? MetricsPrecision { get; set; }
 
     /// <summary>
-    /// Đơn vị %. Chỉ để Admin tham khảo — không còn là ngưỡng KPI bắt buộc (đã bỏ 08/08/2026).
+    /// Đơn vị %. Ngưỡng KPI: &gt; 85%.
     /// </summary>
     public decimal? MetricsMap50 { get; set; }
 
     /// <summary>
-    /// Thang 0–1. Chỉ để Admin tham khảo — không còn là ngưỡng KPI bắt buộc (đã bỏ 08/08/2026).
+    /// Thang 0–1. Ngưỡng KPI: &gt; 0.90.
     /// </summary>
     public decimal? MetricsRecall { get; set; }
 

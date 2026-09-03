@@ -495,5 +495,214 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             var exception = await Assert.ThrowsAsync<BusinessException>(() => _service.DispenseAsync(caseId));
             Assert.Contains("không đủ tồn kho hợp lệ", exception.Message);
         }
+        [Fact]
+        public async Task AdjustAsync_IncreaseQuantity_Success()
+        {
+            // Arrange
+            var batchId = Guid.NewGuid();
+            var medicineId = Guid.NewGuid();
+            var baseUnitId = Guid.NewGuid();
+
+            var baseUnit = new MedicineUnit { MedicineUnitId = baseUnitId, Name = "Viên" };
+            var medicine = new Medicine { MedicineId = medicineId, Name = "Aspirin", UsageUnit = "Viên", VolumePerBaseUnit = 1 };
+            var basePack = new MedicinePackaging { Id = Guid.NewGuid(), MedicineId = medicineId, MedicineUnitId = baseUnitId, ConversionFactor = 1, IsBaseUnit = true, IsSellable = true, SalePrice = 6000, Medicine = medicine, MedicineUnit = baseUnit };
+
+            var batch = new MedicineBatch
+            {
+                Id = batchId,
+                MedicineId = medicineId,
+                LotNumber = "LOTA",
+                ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(5)),
+                QuantityBase = 50,
+                BaseUnitAvgImportPrice = 4500,
+                Medicine = medicine
+            };
+
+            _dbContext.MedicineUnits.Add(baseUnit);
+            _dbContext.Medicines.Add(medicine);
+            _dbContext.MedicinePackagings.Add(basePack);
+            _dbContext.MedicineBatches.Add(batch);
+            await _dbContext.SaveChangesAsync();
+
+            var request = new AdjustInventoryRequest
+            {
+                BatchId = batchId,
+                NewQuantityBase = 55, // Tăng 5 viên
+                Reason = "Tìm thấy thêm 5 viên trong góc tủ"
+            };
+
+            // Act
+            var response = await _service.AdjustAsync(request);
+
+            // Assert
+            Assert.NotNull(response);
+            Assert.Equal(50, response.PreviousQuantity);
+            Assert.Equal(55, response.NewQuantity);
+            Assert.Equal(5, response.Delta);
+
+            var updatedBatch = await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batchId);
+            Assert.Equal(55, updatedBatch.QuantityBase);
+
+            var txn = await _dbContext.InventoryTransactions.FirstAsync(t => t.Id == response.TransactionId);
+            Assert.Equal(InventoryTxnType.Adjustment, txn.TxnType);
+            Assert.Equal(5, txn.QuantityBase); // Dương = tăng
+            Assert.Equal(5, txn.QuantityInUnit);
+            Assert.Equal(batchId, txn.BatchId);
+            Assert.Equal("Tìm thấy thêm 5 viên trong góc tủ", txn.Reason);
+        }
+
+        [Fact]
+        public async Task AdjustAsync_DecreaseQuantity_Success()
+        {
+            // Arrange
+            var batchId = Guid.NewGuid();
+            var medicineId = Guid.NewGuid();
+            var baseUnitId = Guid.NewGuid();
+
+            var baseUnit = new MedicineUnit { MedicineUnitId = baseUnitId, Name = "Viên" };
+            var medicine = new Medicine { MedicineId = medicineId, Name = "Aspirin", UsageUnit = "Viên", VolumePerBaseUnit = 1 };
+            var basePack = new MedicinePackaging { Id = Guid.NewGuid(), MedicineId = medicineId, MedicineUnitId = baseUnitId, ConversionFactor = 1, IsBaseUnit = true, IsSellable = true, SalePrice = 6000, Medicine = medicine, MedicineUnit = baseUnit };
+
+            var batch = new MedicineBatch
+            {
+                Id = batchId,
+                MedicineId = medicineId,
+                LotNumber = "LOTA",
+                ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(5)),
+                QuantityBase = 50,
+                BaseUnitAvgImportPrice = 4500,
+                Medicine = medicine
+            };
+
+            _dbContext.MedicineUnits.Add(baseUnit);
+            _dbContext.Medicines.Add(medicine);
+            _dbContext.MedicinePackagings.Add(basePack);
+            _dbContext.MedicineBatches.Add(batch);
+            await _dbContext.SaveChangesAsync();
+
+            var request = new AdjustInventoryRequest
+            {
+                BatchId = batchId,
+                NewQuantityBase = 45, // Giảm 5 viên
+                Reason = "Bị hỏng do ẩm 5 viên"
+            };
+
+            // Act
+            var response = await _service.AdjustAsync(request);
+
+            // Assert
+            Assert.NotNull(response);
+            Assert.Equal(50, response.PreviousQuantity);
+            Assert.Equal(45, response.NewQuantity);
+            Assert.Equal(-5, response.Delta);
+
+            var updatedBatch = await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batchId);
+            Assert.Equal(45, updatedBatch.QuantityBase);
+
+            var txn = await _dbContext.InventoryTransactions.FirstAsync(t => t.Id == response.TransactionId);
+            Assert.Equal(InventoryTxnType.Adjustment, txn.TxnType);
+            Assert.Equal(-5, txn.QuantityBase); // Âm = giảm
+            Assert.Equal(5, txn.QuantityInUnit); // Math.Abs(delta)
+            Assert.Equal(batchId, txn.BatchId);
+            Assert.Equal("Bị hỏng do ẩm 5 viên", txn.Reason);
+        }
+
+        [Fact]
+        public async Task AdjustAsync_BatchNotFound_ThrowsException()
+        {
+            // Arrange
+            var request = new AdjustInventoryRequest
+            {
+                BatchId = Guid.NewGuid(),
+                NewQuantityBase = 10,
+                Reason = "Lỗi"
+            };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<BusinessException>(() => _service.AdjustAsync(request));
+            Assert.Contains("Lô thuốc không tồn tại", ex.Message);
+        }
+
+        [Fact]
+        public async Task AdjustAsync_NegativeQuantity_ThrowsException()
+        {
+            // Arrange
+            var batchId = Guid.NewGuid();
+            var medicineId = Guid.NewGuid();
+            var baseUnitId = Guid.NewGuid();
+
+            var baseUnit = new MedicineUnit { MedicineUnitId = baseUnitId, Name = "Viên" };
+            var medicine = new Medicine { MedicineId = medicineId, Name = "Aspirin", UsageUnit = "Viên", VolumePerBaseUnit = 1 };
+            var basePack = new MedicinePackaging { Id = Guid.NewGuid(), MedicineId = medicineId, MedicineUnitId = baseUnitId, ConversionFactor = 1, IsBaseUnit = true, IsSellable = true, SalePrice = 6000, Medicine = medicine, MedicineUnit = baseUnit };
+
+            var batch = new MedicineBatch
+            {
+                Id = batchId,
+                MedicineId = medicineId,
+                LotNumber = "LOTA",
+                ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(5)),
+                QuantityBase = 50,
+                BaseUnitAvgImportPrice = 4500,
+                Medicine = medicine
+            };
+
+            _dbContext.MedicineUnits.Add(baseUnit);
+            _dbContext.Medicines.Add(medicine);
+            _dbContext.MedicinePackagings.Add(basePack);
+            _dbContext.MedicineBatches.Add(batch);
+            await _dbContext.SaveChangesAsync();
+
+            var request = new AdjustInventoryRequest
+            {
+                BatchId = batchId,
+                NewQuantityBase = -5, // Giá trị âm
+                Reason = "Lỗi"
+            };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<BusinessException>(() => _service.AdjustAsync(request));
+            Assert.Contains("Số lượng thực tế không được âm", ex.Message);
+        }
+
+        [Fact]
+        public async Task AdjustAsync_NoDelta_ThrowsException()
+        {
+            // Arrange
+            var batchId = Guid.NewGuid();
+            var medicineId = Guid.NewGuid();
+            var baseUnitId = Guid.NewGuid();
+
+            var baseUnit = new MedicineUnit { MedicineUnitId = baseUnitId, Name = "Viên" };
+            var medicine = new Medicine { MedicineId = medicineId, Name = "Aspirin", UsageUnit = "Viên", VolumePerBaseUnit = 1 };
+            var basePack = new MedicinePackaging { Id = Guid.NewGuid(), MedicineId = medicineId, MedicineUnitId = baseUnitId, ConversionFactor = 1, IsBaseUnit = true, IsSellable = true, SalePrice = 6000, Medicine = medicine, MedicineUnit = baseUnit };
+
+            var batch = new MedicineBatch
+            {
+                Id = batchId,
+                MedicineId = medicineId,
+                LotNumber = "LOTA",
+                ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(5)),
+                QuantityBase = 50,
+                BaseUnitAvgImportPrice = 4500,
+                Medicine = medicine
+            };
+
+            _dbContext.MedicineUnits.Add(baseUnit);
+            _dbContext.Medicines.Add(medicine);
+            _dbContext.MedicinePackagings.Add(basePack);
+            _dbContext.MedicineBatches.Add(batch);
+            await _dbContext.SaveChangesAsync();
+
+            var request = new AdjustInventoryRequest
+            {
+                BatchId = batchId,
+                NewQuantityBase = 50, // Số lượng không đổi
+                Reason = "Kiểm kê khớp"
+            };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<BusinessException>(() => _service.AdjustAsync(request));
+            Assert.Contains("Số lượng thực tế không thay đổi", ex.Message);
+        }
     }
 }

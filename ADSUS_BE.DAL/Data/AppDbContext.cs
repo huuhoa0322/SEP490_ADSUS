@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using ADSUS_BE.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -107,7 +107,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("medicines_status", new[] { "ACTIVE", "INACTIVE" })
             .HasPostgresEnum("model_version_status", new[] { "ACTIVE", "INACTIVE" })
             .HasPostgresEnum("notification_status", new[] { "SENT", "DELIVERED", "FAILED", "READ", "UNREAD" })
-            .HasPostgresEnum("notification_type", new[] { "medication_reminder", "medication_confirmation", "appointment_booking", "appointment_reminder", "appointment_cancellation", "healthlog_reminder", "general" })
+            .HasPostgresEnum("notification_type", new[] { "medication_reminder", "medication_confirmation", "appointment_booking", "appointment_reminder", "appointment_cancellation", "healthlog_reminder", "general", "inventory_alert" })
             .HasPostgresEnum("payment_method", new[] { "CASH", "BANK_TRANSFER" })
             .HasPostgresEnum("prescription_status", new[] { "ACTIVE", "COMPLETED" })
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
@@ -504,7 +504,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.PrescriptionItemId).HasColumnName("prescription_item_id");
             entity.Property(e => e.QuantityBase).HasColumnName("quantity_base");
             entity.Property(e => e.QuantityInUnit).HasColumnName("quantity_in_unit");
-            entity.Property(e => e.TxnType).HasColumnName("txn_type");
+            entity.Property(e => e.Reason)
+                .HasMaxLength(500)
+                .HasColumnName("reason");
             entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
             entity.Property(e => e.TxnDate)
                 .HasDefaultValueSql("now()")
@@ -539,12 +541,13 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("id");
+            entity.Property(e => e.CancelledReason)
+                .HasMaxLength(500)
+                .HasColumnName("cancelled_reason");
             entity.Property(e => e.CaseId).HasColumnName("case_id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
-            entity.Property(e => e.Status).HasColumnName("status");
-            entity.Property(e => e.PaymentMethod).HasColumnName("payment_method");
             entity.Property(e => e.PaidAt).HasColumnName("paid_at");
             entity.Property(e => e.TotalAmount)
                 .HasPrecision(18, 2)
@@ -655,6 +658,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
+            entity.Property(e => e.LowStockThreshold)
+                .HasDefaultValue(50)
+                .HasColumnName("low_stock_threshold");
             entity.Property(e => e.Name)
                 .HasMaxLength(200)
                 .HasColumnName("name");

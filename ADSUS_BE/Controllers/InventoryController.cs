@@ -52,5 +52,12 @@ namespace ADSUS_BE.Controllers
             var result = await _inventoryService.GetMedicineBatchesAsync(filter);
             return Ok(result);
         }
+
+        [HttpPut("adjust")]
+        public async Task<IActionResult> AdjustInventory([FromBody] AdjustInventoryRequest request)
+        {
+            var result = await _inventoryService.AdjustAsync(request);
+            return Ok(result);
+        }
     }
 }

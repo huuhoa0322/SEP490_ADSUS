@@ -243,7 +243,8 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                     QuantityInUnit = q.txn.QuantityInUnit,
                     TxnDate = q.txn.TxnDate,
                     UnitImportPrice = (q.txn.ActualImportPrice ?? q.txn.Batch.BaseUnitAvgImportPrice) * q.mp.ConversionFactor,
-                    PrescriptionItemId = q.txn.PrescriptionItemId
+                    PrescriptionItemId = q.txn.PrescriptionItemId,
+                    Reason = q.txn.Reason
                 })
                 .ToListAsync();
 
@@ -416,6 +417,62 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
             }
 
             await _dbContext.SaveChangesAsync();
+        }
+        public async Task<AdjustInventoryResponse> AdjustAsync(AdjustInventoryRequest request)
+        {
+            var batch = await _dbContext.MedicineBatches
+                .Include(b => b.Medicine)
+                    .ThenInclude(m => m.MedicinePackagings)
+                .FirstOrDefaultAsync(b => b.Id == request.BatchId);
+
+            if (batch == null)
+            {
+                throw new BusinessException("Lô thuốc không tồn tại.");
+            }
+
+            if (request.NewQuantityBase < 0)
+            {
+                throw new BusinessException("Số lượng thực tế không được âm.");
+            }
+
+            int previousQty = batch.QuantityBase;
+            int delta = request.NewQuantityBase - previousQty;
+
+            if (delta == 0)
+            {
+                throw new BusinessException("Số lượng thực tế không thay đổi so với hệ thống.");
+            }
+
+            var baseUnitPack = batch.Medicine.MedicinePackagings.FirstOrDefault(mp => mp.IsBaseUnit);
+            if (baseUnitPack == null)
+            {
+                throw new BusinessException($"Thuốc '{batch.Medicine.Name}' chưa được cấu hình Base Unit.");
+            }
+
+            batch.QuantityBase = request.NewQuantityBase;
+
+            var txn = new InventoryTransaction
+            {
+                Id = Guid.NewGuid(),
+                BatchId = batch.Id,
+                MedicinePackagingId = baseUnitPack.Id,
+                QuantityInUnit = Math.Abs(delta),
+                QuantityBase = delta, // Dương = tăng, Âm = giảm
+                TxnDate = DateTime.UtcNow,
+                TxnType = InventoryTxnType.Adjustment,
+                Reason = request.Reason
+            };
+
+            _dbContext.InventoryTransactions.Add(txn);
+            await _dbContext.SaveChangesAsync();
+
+            return new AdjustInventoryResponse
+            {
+                TransactionId = txn.Id,
+                PreviousQuantity = previousQty,
+                NewQuantity = request.NewQuantityBase,
+                Delta = delta
+            };
         }
     }
 }

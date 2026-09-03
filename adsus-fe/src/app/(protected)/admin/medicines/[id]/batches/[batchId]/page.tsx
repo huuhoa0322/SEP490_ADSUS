@@ -8,12 +8,14 @@ import {
   ArrowLeft, Search, Activity, ArrowDownToLine, ArrowUpFromLine,
   ChevronUp, ChevronDown, ChevronsUpDown,
 } from 'lucide-react';
-import { useInventoryHistory } from '@/features/medicines/api/inventory.api';
+import { useInventoryHistory, useMedicineBatches } from '@/features/medicines/api/inventory.api';
 import { useMedicineById } from '@/features/medicines/hooks/use-medicines';
 import { formatCurrency } from '@/lib/utils';
+import { AdjustInventoryModal } from '@/features/medicines/components/adjust-inventory-modal';
+import { Edit } from 'lucide-react';
 
 type SortKey = 'txnDate' | 'quantityBase';
-type TxnTypeFilter = '' | 'Import' | 'Dispense';
+type TxnTypeFilter = '' | 'Import' | 'Dispense' | 'Adjustment';
 
 function SortIcon({ field, current, dir }: { field: SortKey; current: SortKey; dir: 'asc' | 'desc' }) {
   if (field !== current) return <ChevronsUpDown className="ml-1 inline size-3.5 text-muted-foreground/40" />;
@@ -45,8 +47,12 @@ export default function BatchHistoryPage() {
   const pageSize = 25;
   const [sortBy, setSortBy] = useState<SortKey>('txnDate');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [isAdjustOpen, setIsAdjustOpen] = useState(false);
 
   const { data: medicine } = useMedicineById(medicineId);
+  const { data: batches } = useMedicineBatches(medicineId);
+  // @ts-expect-error - BE trả về PagedResult mặc dù type API đang định nghĩa là Array
+  const currentBatch = (batches?.items || batches)?.find((b: { batchId: string }) => b.batchId === batchId);
 
   const { data, isLoading, isError } = useInventoryHistory({
     batchId,
@@ -88,15 +94,26 @@ export default function BatchHistoryPage() {
         >
           <ArrowLeft className="size-4" />
         </button>
-        <div>
-          <p className="text-sm text-muted-foreground">
-            <button onClick={() => router.push(`/admin/medicines/${medicineId}/batches`)} className="hover:text-accent transition-colors">
-              {medicine?.name ?? 'Thuốc'} / Danh sách lô
+        <div className="flex-1 flex justify-between items-start">
+          <div>
+            <p className="text-sm text-muted-foreground">
+              <button onClick={() => router.push(`/admin/medicines/${medicineId}/batches`)} className="hover:text-accent transition-colors">
+                {medicine?.name ?? 'Thuốc'} / Danh sách lô
+              </button>
+            </p>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              Lịch sử giao dịch — Lô #{currentBatch?.lotNumber || batchId.split('-')[0].toUpperCase()}
+            </h1>
+          </div>
+          {currentBatch && (
+            <button
+              onClick={() => setIsAdjustOpen(true)}
+              className="flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600"
+            >
+              <Edit className="size-4" />
+              Kiểm kê / Điều chỉnh
             </button>
-          </p>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
-            Lịch sử giao dịch — Lô #{batchId.split('-')[0].toUpperCase()}
-          </h1>
+          )}
         </div>
       </div>
 
@@ -116,7 +133,7 @@ export default function BatchHistoryPage() {
 
         {/* Type filter */}
         <div className="flex gap-1.5">
-          {(['', 'Import', 'Dispense'] as TxnTypeFilter[]).map(type => (
+          {(['', 'Import', 'Dispense', 'Adjustment'] as TxnTypeFilter[]).map(type => (
             <button
               key={type}
               onClick={() => handleTypeChange(type)}
@@ -126,7 +143,7 @@ export default function BatchHistoryPage() {
                   : 'border-border hover:bg-secondary text-foreground'
               }`}
             >
-              {type === '' ? 'Tất cả' : type === 'Import' ? 'Nhập kho' : 'Xuất kho'}
+              {type === '' ? 'Tất cả' : type === 'Import' ? 'Nhập kho' : type === 'Dispense' ? 'Xuất kho' : 'Điều chỉnh'}
             </button>
           ))}
         </div>
@@ -184,6 +201,10 @@ export default function BatchHistoryPage() {
             ) : (
               data.items.map(txn => {
                 const isImport = txn.txnType === 'Import';
+                const isDispense = txn.txnType === 'Dispense';
+                const isAdjustment = txn.txnType === 'Adjustment';
+                const isIncrease = txn.quantityBase > 0;
+                
                 return (
                   <tr key={txn.transactionId} className="border-b border-border last:border-0 transition-colors hover:bg-secondary/20">
                     <td className="px-5 py-4 text-foreground whitespace-nowrap">
@@ -193,27 +214,33 @@ export default function BatchHistoryPage() {
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
                         isImport
                           ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-orange-100 text-orange-800'
+                          : isDispense
+                          ? 'bg-orange-100 text-orange-800'
+                          : 'bg-blue-100 text-blue-800'
                       }`}>
                         {isImport
                           ? <><ArrowDownToLine className="size-3" /> Nhập kho</>
-                          : <><ArrowUpFromLine className="size-3" /> Xuất kho</>}
+                          : isDispense
+                          ? <><ArrowUpFromLine className="size-3" /> Xuất kho</>
+                          : <><Edit className="size-3" /> Điều chỉnh</>}
                       </span>
                     </td>
-                    <td className={`px-5 py-4 text-right font-semibold ${isImport ? 'text-emerald-600' : 'text-orange-600'}`}>
-                      {isImport ? '+' : '-'}{txn.quantityBase.toLocaleString()}
+                    <td className={`px-5 py-4 text-right font-semibold ${isImport || (isAdjustment && isIncrease) ? 'text-emerald-600' : 'text-orange-600'}`}>
+                      {isImport || (isAdjustment && isIncrease) ? '+' : '-'}{Math.abs(txn.quantityBase).toLocaleString()}
                       {txn.baseUnitName && (
                         <span className="ml-1 text-xs font-normal text-muted-foreground">{txn.baseUnitName}</span>
                       )}
                     </td>
                     <td className="px-5 py-4 text-right text-muted-foreground">
-                      {isImport ? '+' : '-'}{txn.quantityInUnit} {txn.unitName}
+                      {isImport || (isAdjustment && isIncrease) ? '+' : '-'}{Math.abs(txn.quantityInUnit)} {txn.unitName}
                     </td>
                     <td className="px-5 py-4 text-right text-muted-foreground">
                       {isImport && txn.unitImportPrice ? formatCurrency(txn.unitImportPrice) : '—'}
                     </td>
-                    <td className="px-5 py-4 text-muted-foreground">
-                      {txn.supplierName ?? (txn.prescriptionItemId ? 'Bán thuốc theo đơn' : '—')}
+                    <td className="px-5 py-4 text-muted-foreground max-w-[200px] truncate" title={isAdjustment ? (txn.reason || 'Điều chỉnh kho') : (txn.supplierName ?? (txn.prescriptionItemId ? 'Bán thuốc theo đơn' : '—'))}>
+                      {isAdjustment 
+                        ? (txn.reason || 'Điều chỉnh kho')
+                        : (txn.supplierName ?? (txn.prescriptionItemId ? 'Bán thuốc theo đơn' : '—'))}
                     </td>
                   </tr>
                 );
@@ -257,6 +284,18 @@ export default function BatchHistoryPage() {
             <PagerButton disabled={page >= data.totalPages} onClick={() => setPage(p => p + 1)}>Sau →</PagerButton>
           </div>
         </div>
+      )}
+      
+      {currentBatch && (
+        <AdjustInventoryModal
+          isOpen={isAdjustOpen}
+          onClose={() => setIsAdjustOpen(false)}
+          batchId={currentBatch.batchId}
+          medicineName={medicine?.name || ''}
+          lotNumber={currentBatch.lotNumber}
+          currentQuantity={currentBatch.quantityBase}
+          baseUnitName={medicine?.baseUnitName || 'đv'}
+        />
       )}
     </div>
   );

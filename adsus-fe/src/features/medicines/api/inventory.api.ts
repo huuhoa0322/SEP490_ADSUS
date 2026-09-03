@@ -39,6 +39,28 @@ export const useBulkImportInventory = () => {
   });
 };
 
+export interface AdjustInventoryRequest {
+  batchId: string;
+  newQuantityBase: number;
+  reason: string;
+}
+
+export interface AdjustInventoryResponse {
+  transactionId: string;
+  previousQuantity: number;
+  newQuantity: number;
+  delta: number;
+}
+
+export const useAdjustInventory = () => {
+  return useMutation({
+    mutationFn: async (data: AdjustInventoryRequest) => {
+      const response = await apiClient.put<AdjustInventoryResponse>('/api/v1/inventory/adjust', data);
+      return response.data;
+    },
+  });
+};
+
 export interface InventoryHistoryFilter {
   search?: string;
   type?: string;
@@ -63,6 +85,7 @@ export interface InventoryHistoryResponse {
   txnDate: string;
   unitImportPrice?: number;
   prescriptionItemId?: string;
+  reason?: string;
 }
 
 export const useInventoryHistory = (filter: InventoryHistoryFilter) => {
