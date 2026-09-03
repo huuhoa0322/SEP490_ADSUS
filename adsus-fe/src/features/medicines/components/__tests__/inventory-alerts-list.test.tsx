@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { InventoryAlertsList } from '../inventory-alerts-list';
 import { useInventoryAlerts } from '@/features/medicines/api/inventory.api';
+import { describe, it, expect, vi } from 'vitest';
 
 // Mock the hook
 vi.mock('@/features/medicines/api/inventory.api', () => ({
@@ -22,7 +23,7 @@ describe('InventoryAlertsList', () => {
       data: undefined,
       isLoading: true,
       isError: false,
-    });
+    } as any);
 
     render(<InventoryAlertsList />);
     expect(screen.getByText('Đang tải dữ liệu cảnh báo...')).toBeInTheDocument();
@@ -33,7 +34,7 @@ describe('InventoryAlertsList', () => {
       data: undefined,
       isLoading: false,
       isError: true,
-    });
+    } as any);
 
     render(<InventoryAlertsList />);
     expect(screen.getByText('Lỗi khi tải dữ liệu cảnh báo.')).toBeInTheDocument();
@@ -50,7 +51,7 @@ describe('InventoryAlertsList', () => {
       },
       isLoading: false,
       isError: false,
-    });
+    } as any);
 
     render(<InventoryAlertsList />);
     expect(screen.getByText('Kho hoạt động ổn định')).toBeInTheDocument();
@@ -89,7 +90,7 @@ describe('InventoryAlertsList', () => {
       },
       isLoading: false,
       isError: false,
-    });
+    } as any);
 
     render(<InventoryAlertsList />);
     

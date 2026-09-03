@@ -240,7 +240,7 @@ export function AiModelList() {
       {data && data.totalPages > 1 && (
         <div className="mt-5 flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            Đang xem {data.items.length} / {data.totalCount} kết quả
+            Đang xem {data.items.length} / {data.totalItems} kết quả
           </span>
           <PaginationNumbered
             currentPage={data.page}
