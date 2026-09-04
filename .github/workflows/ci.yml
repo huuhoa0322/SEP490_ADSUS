@@ -54,7 +54,7 @@ jobs:
             # with their own counts, instead of one merged "750 passed" number. if: always() so
             # a report still shows which tests failed, not just a silent job failure.
             - name: Publish Unit Test Report
-              uses: dorny/test-reporter@v3
+              uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
               if: always()
               with:
                   name: "Backend Unit Test Report"
@@ -63,7 +63,7 @@ jobs:
                   fail-on-empty: "false"
 
             - name: Publish Integration Test Report
-              uses: dorny/test-reporter@v3
+              uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
               if: always()
               with:
                   name: "Backend Integration Test Report"
@@ -100,7 +100,7 @@ jobs:
                   node-version: 26
                   cache: npm
                   cache-dependency-path: adsus-fe/package-lock.json
-            - run: npm ci
+            - run: npm ci --ignore-scripts
             - run: npm run lint
 
             # Split by an existing, already-consistent directory convention (verified across
@@ -135,7 +135,7 @@ jobs:
             - uses: actions/setup-python@v5
               with:
                   python-version: "3.12"
-            - run: pip install -r requirements.txt
+            - run: pip install --only-binary=:all: -r requirements.txt
             - run: python -m py_compile main.py geometry.py
 
     mobile-ci:
@@ -151,7 +151,7 @@ jobs:
                 working-directory: ADSUS_Mobile
         steps:
             - uses: actions/checkout@v4
-            - uses: subosito/flutter-action@v2
+            - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
               with:
                   flutter-version: "3.47.x"
 
@@ -213,7 +213,7 @@ jobs:
               run: flutter test test/widget --file-reporter="json:widget-test-results.json"
 
             - name: Publish Unit Test Report
-              uses: dorny/test-reporter@v3
+              uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
               if: always()
               with:
                   name: "Mobile Unit Test Report"
@@ -222,7 +222,7 @@ jobs:
                   fail-on-empty: "false"
 
             - name: Publish Repository Integration Test Report
-              uses: dorny/test-reporter@v3
+              uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
               if: always()
               with:
                   name: "Mobile Repository Integration Test Report"
@@ -231,7 +231,7 @@ jobs:
                   fail-on-empty: "false"
 
             - name: Publish Widget Test Report
-              uses: dorny/test-reporter@v3
+              uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
               if: always()
               with:
                   name: "Mobile Widget Test Report"
@@ -304,7 +304,7 @@ jobs:
 
             - name: Install Frontend dependencies
               working-directory: adsus-fe
-              run: npm ci
+              run: npm ci --ignore-scripts
 
             # sonar.sources is scoped to real production code on both platforms — excludes
             # the test projects themselves (coverage, not source, tracks what THEY exercise),
@@ -332,7 +332,7 @@ jobs:
                   /k:"huuhoa0322_SEP490_ADSUS"
                   /o:"huuhoa0322"
                   /d:sonar.host.url="https://sonarcloud.io"
-                  /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+                  /d:sonar.token="$SONAR_TOKEN"
                   /d:sonar.sources="ADSUS_BE,ADSUS_BE.BLL,ADSUS_BE.DAL,adsus-fe/src"
                   /d:sonar.exclusions="**/bin/**,**/obj/**,adsus-fe/node_modules/**,adsus-fe/.next/**"
                   /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
@@ -367,7 +367,7 @@ jobs:
             - name: SonarCloud - End analysis
               env:
                   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-              run: dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+              run: dotnet-sonarscanner end /d:sonar.token="$SONAR_TOKEN"
 
     docker-build-check:
         name: "Docker - Confirm Images Still Build"
