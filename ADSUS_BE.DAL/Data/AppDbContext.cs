@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using ADSUS_BE.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -70,6 +70,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<ServiceFeedback> ServiceFeedbacks { get; set; }
 
+    public virtual DbSet<ShiftRequest> ShiftRequests { get; set; }
+
     public virtual DbSet<Supplier> Suppliers { get; set; }
 
     public virtual DbSet<Symptom> Symptoms { get; set; }
@@ -113,6 +115,9 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
             .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in", "like", "ilike", "is", "match", "imatch", "isdistinct" })
             .HasPostgresEnum("reminder_slot", new[] { "MORNING", "NOON", "EVENING" })
+            .HasPostgresEnum("shift_request_status", new[] { "PENDING", "APPROVED", "REJECTED" })
+            .HasPostgresEnum("shift_request_type", new[] { "LEAVE", "OVERTIME" })
+            .HasPostgresEnum("shift_type", new[] { "MORNING", "AFTERNOON", "EVENING", "FULL_DAY" })
             .HasPostgresEnum("slot_status", new[] { "OPEN", "CLOSED", "BOOKED" })
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
             .HasPostgresEnum("user_role", new[] { "ADMIN", "DOCTOR", "PATIENT", "NURSE" })
@@ -1056,6 +1061,56 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.PatientProfileId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_service_feedbacks_patient");
+        });
+
+        modelBuilder.Entity<ShiftRequest>(entity =>
+        {
+            entity.HasKey(e => e.RequestId).HasName("shift_requests_pkey");
+
+            entity.ToTable("shift_requests", tb => tb.HasComment("Yêu cầu nghỉ ca / tăng ca của bác sĩ — Admin duyệt trước khi hệ thống tự đóng/mở slot tương ứng."));
+
+            entity.HasIndex(e => new { e.UserId, e.RequestDate }, "idx_shift_requests_doctor_date");
+
+            entity.HasIndex(e => e.Status, "idx_shift_requests_status");
+
+            entity.HasIndex(e => new { e.UserId, e.RequestDate, e.ShiftType, e.RequestType }, "uq_shift_requests_active")
+                .IsUnique()
+                .HasFilter("(status <> 'REJECTED'::shift_request_status)");
+
+            entity.Property(e => e.RequestId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("request_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Reason)
+                .HasMaxLength(500)
+                .HasColumnName("reason");
+            entity.Property(e => e.RejectReason)
+                .HasMaxLength(500)
+                .HasColumnName("reject_reason");
+            entity.Property(e => e.RequestType).HasColumnName("request_type");
+            entity.Property(e => e.ShiftType).HasColumnName("shift_type");
+            entity.Property(e => e.Status)
+                .HasDefaultValue(ShiftRequestStatus.Pending)
+                .HasColumnName("status");
+            entity.Property(e => e.RequestDate).HasColumnName("request_date");
+            entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.ReviewedByNavigation).WithMany(p => p.ShiftRequestReviewedByNavigations)
+                .HasForeignKey(d => d.ReviewedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_shift_requests_reviewer");
+
+            entity.HasOne(d => d.User).WithMany(p => p.ShiftRequestUsers)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("shift_requests_user_id_fkey");
         });
 
         modelBuilder.Entity<Supplier>(entity =>

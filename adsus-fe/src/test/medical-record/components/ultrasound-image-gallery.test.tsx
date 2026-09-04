@@ -1,8 +1,18 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { UltrasoundImageGallery } from "@/features/medical-record/components/ultrasound-image-gallery";
+
+vi.mock("next/image", () => {
+  return {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    default: ({ fill, ...props }: React.ComponentProps<"img"> & { fill?: boolean | string }) => {
+      // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+      return <img {...props} />;
+    },
+  };
+});
 
 const okImage = {
   imageId: "img-1",

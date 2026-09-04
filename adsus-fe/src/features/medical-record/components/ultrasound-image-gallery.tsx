@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { formatIsoDateTime } from "../lib/medical-record-labels";
 import type { UltrasoundImage } from "../types/medical-record.types";
 
@@ -27,13 +28,18 @@ export function UltrasoundImageGallery({ images }: { images: UltrasoundImage[] }
         {images.map((image) => (
         <li key={image.imageId} className="overflow-hidden rounded-lg border border-border">
           {image.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={image.imageUrl}
-              alt={`Ảnh siêu âm tải lên lúc ${formatIsoDateTime(image.uploadedAt)}`}
-              className="aspect-[4/3] w-full bg-black object-contain cursor-pointer transition-opacity hover:opacity-85"
+            <div 
+              className="relative aspect-[4/3] w-full bg-black cursor-pointer transition-opacity hover:opacity-85"
               onClick={() => setSelectedImage(image.imageUrl!)}
-            />
+            >
+              <Image
+                src={image.imageUrl}
+                alt={`Ảnh siêu âm tải lên lúc ${formatIsoDateTime(image.uploadedAt)}`}
+                fill
+                className="object-contain"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              />
+            </div>
           ) : (
             <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-1 bg-destructive/10 p-4 text-center">
               <p className="text-sm font-semibold text-destructive">Không tải được ảnh</p>
@@ -67,12 +73,15 @@ export function UltrasoundImageGallery({ images }: { images: UltrasoundImage[] }
             >
               ×
             </button>
-            <img 
-              src={selectedImage} 
-              alt="Ảnh phóng to" 
-              className="max-w-full max-h-full object-contain rounded-md shadow-2xl" 
-              onClick={(e) => e.stopPropagation()}
-            />
+            <div className="relative w-full h-full max-h-[90vh]">
+              <Image 
+                src={selectedImage} 
+                alt="Ảnh phóng to" 
+                fill
+                className="object-contain rounded-md shadow-2xl" 
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
           </div>
         </div>
       )}
