@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { useDebounce } from 'use-debounce';
 import { Search } from 'lucide-react';
 
+import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -93,7 +94,13 @@ export default function InventoryHistoryPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  data?.items?.map((item) => (
+                  data?.items?.map((item) => {
+                    const isImport = item.txnType.toLowerCase() === 'import';
+                    const isDispense = item.txnType.toLowerCase() === 'dispense';
+                    const isIncrease = item.quantityBase > 0;
+                    const isPositive = isImport || (!isDispense && isIncrease);
+
+                    return (
                     <TableRow key={item.transactionId}>
                       <TableCell className="font-medium">
                         {format(new Date(item.txnDate), 'dd/MM/yyyy HH:mm')}
@@ -110,44 +117,34 @@ export default function InventoryHistoryPage() {
                         {item.unitImportPrice ? item.unitImportPrice.toLocaleString() + ' đ' : '—'}
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className={item.txnType.toLowerCase() === 'import' ? 'text-emerald-600 font-semibold' : 'text-orange-600 font-semibold'}>
-                          {item.txnType.toLowerCase() === 'import' ? '+' : '-'}{item.quantityBase.toLocaleString()}
+                        <span className={isPositive ? 'text-emerald-600 font-semibold' : 'text-orange-600 font-semibold'}>
+                          {isPositive ? '+' : '-'}{Math.abs(item.quantityBase).toLocaleString()}
                         </span>
                         {item.baseUnitName && (
                           <span className="ml-1 text-xs text-muted-foreground">{item.baseUnitName}</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground text-sm">
-                        {item.txnType.toLowerCase() === 'import' ? '+' : '-'}{item.quantityInUnit} {item.unitName}
+                        {isPositive ? '+' : '-'}{Math.abs(item.quantityInUnit)} {item.unitName}
                       </TableCell>
                     </TableRow>
-                  ))
+                  );
+                })
                 )}
               </TableBody>
             </Table>
           </div>
           
           {data && data.totalItems > pageSize && (
-            <div className="flex items-center justify-end space-x-2 py-4">
+            <div className="flex items-center justify-between py-4">
               <div className="flex-1 text-sm text-muted-foreground">
                 Đang hiển thị {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, data.totalItems)} trên tổng số {data.totalItems} giao dịch.
               </div>
-              <div className="space-x-2">
-                <button
-                  className="px-3 py-1 text-sm border rounded-md disabled:opacity-50"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  Trang trước
-                </button>
-                <button
-                  className="px-3 py-1 text-sm border rounded-md disabled:opacity-50"
-                  onClick={() => setPage(p => p + 1)}
-                  disabled={page * pageSize >= data.totalItems}
-                >
-                  Trang sau
-                </button>
-              </div>
+              <PaginationNumbered
+                currentPage={page}
+                totalPages={Math.ceil(data.totalItems / pageSize)}
+                setPage={setPage}
+              />
             </div>
           )}
         </CardContent>

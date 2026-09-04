@@ -660,6 +660,24 @@ namespace ADSUS_BE
                     .WithCronSchedule(cronExpression));
             });
 
+            // ---------- Quartz JOB-07: Inventory Alert ----------
+            builder.Services.AddQuartz(q =>
+            {
+                // Chạy 7h sáng mỗi ngày
+                var cronExpression = "0 0 7 * * ?"; // At 07:00 every day
+
+                var jobKey = new Quartz.JobKey("InventoryAlertJob", "inventory");
+
+                q.AddJob<InventoryAlertJob>(opts => opts
+                    .WithIdentity(jobKey)
+                    .StoreDurably());
+
+                q.AddTrigger(opts => opts
+                    .ForJob(jobKey)
+                    .WithIdentity("InventoryAlertTrigger", "inventory")
+                    .WithCronSchedule(cronExpression));
+            });
+
             // Scans the whole BLL assembly, so validators added by other modules are picked
             // up automatically.
             builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();

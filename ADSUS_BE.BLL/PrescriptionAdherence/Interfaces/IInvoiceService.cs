@@ -18,4 +18,9 @@ public interface IInvoiceService
     Task<PagedResult<InvoiceResponse>> GetInvoicesAsync(InvoiceFilter filter);
     Task<InvoiceDetailResponse> GetInvoiceDetailAsync(Guid id);
     Task PayAndDispenseAsync(Guid invoiceId, PaymentMethod method);
+    
+    /// <summary>
+    /// Hủy hóa đơn. Nếu đã PAID → reverse dispense (hoàn kho tự động).
+    /// </summary>
+    Task CancelInvoiceAsync(Guid invoiceId, CancelInvoiceRequest request);
 }

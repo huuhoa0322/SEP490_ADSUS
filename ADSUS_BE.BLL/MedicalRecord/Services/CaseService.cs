@@ -418,8 +418,8 @@ public sealed class CaseService : ICaseService
         string? note,
         CancellationToken ct)
     {
-        var images = new List<UltrasoundImage>(files.Count);
-        var uploadedPaths = new List<string>(files.Count);
+        var images = new List<UltrasoundImage>();
+        var uploadedPaths = new List<string>();
         var now = DateTime.UtcNow;
 
         try

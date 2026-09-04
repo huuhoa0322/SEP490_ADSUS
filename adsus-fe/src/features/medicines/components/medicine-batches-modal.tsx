@@ -13,6 +13,8 @@ import { useMedicineBatches } from "../api/inventory.api";
 import { formatCurrency } from "@/lib/utils";
 import type { MedicineResponse } from "../api/medicines-api";
 import { BatchHistoryModal } from "./batch-history-modal";
+import { AdjustInventoryModal } from "./adjust-inventory-modal";
+import { Edit } from "lucide-react";
 
 interface MedicineBatchesModalProps {
   medicine: MedicineResponse | null;
@@ -25,7 +27,8 @@ export function MedicineBatchesModal({
   isOpen,
   onClose,
 }: MedicineBatchesModalProps) {
-  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [selectedHistoryBatchId, setSelectedHistoryBatchId] = useState<string | null>(null);
+  const [adjustBatch, setAdjustBatch] = useState<{ id: string; lotNumber: string; quantity: number } | null>(null);
   
   const { data: batches, isLoading } = useMedicineBatches(medicine?.medicineId ?? "");
 
@@ -62,7 +65,7 @@ export function MedicineBatchesModal({
                       <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Hạn sử dụng</th>
                       <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Số lượng tồn</th>
                       <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Giá nhập TB</th>
-                      <th className="px-4 py-3 text-center font-semibold text-muted-foreground">Lịch sử</th>
+                      <th className="px-4 py-3 text-center font-semibold text-muted-foreground">Hành động</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -87,13 +90,22 @@ export function MedicineBatchesModal({
                             {formatCurrency(batch.baseUnitAvgImportPrice)} / {medicine.usageUnit || "đv"}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <button
-                              onClick={() => setSelectedBatchId(batch.batchId)}
-                              title="Xem lịch sử xuất nhập"
-                              className="inline-flex size-8 items-center justify-center rounded-full text-blue-600 transition-colors hover:bg-blue-50"
-                            >
-                              <Clock className="size-4" />
-                            </button>
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => setSelectedHistoryBatchId(batch.batchId)}
+                                title="Xem lịch sử xuất nhập"
+                                className="inline-flex size-8 items-center justify-center rounded-full text-blue-600 transition-colors hover:bg-blue-50"
+                              >
+                                <Clock className="size-4" />
+                              </button>
+                              <button
+                                onClick={() => setAdjustBatch({ id: batch.batchId, lotNumber: batch.lotNumber, quantity: batch.quantityBase })}
+                                title="Kiểm kê / Điều chỉnh"
+                                className="inline-flex size-8 items-center justify-center rounded-full text-amber-600 transition-colors hover:bg-amber-50"
+                              >
+                                <Edit className="size-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -107,10 +119,20 @@ export function MedicineBatchesModal({
       </Dialog>
       
       <BatchHistoryModal
-        batchId={selectedBatchId}
-        isOpen={!!selectedBatchId}
-        onClose={() => setSelectedBatchId(null)}
+        batchId={selectedHistoryBatchId}
+        isOpen={!!selectedHistoryBatchId}
+        onClose={() => setSelectedHistoryBatchId(null)}
         medicineName={medicine.name}
+      />
+      
+      <AdjustInventoryModal
+        isOpen={!!adjustBatch}
+        onClose={() => setAdjustBatch(null)}
+        batchId={adjustBatch?.id || null}
+        medicineName={medicine.name}
+        lotNumber={adjustBatch?.lotNumber || ""}
+        currentQuantity={adjustBatch?.quantity || 0}
+        baseUnitName={medicine.baseUnitName || "đv"}
       />
     </>
   );

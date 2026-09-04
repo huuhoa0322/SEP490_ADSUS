@@ -23,6 +23,8 @@ public partial class InventoryTransaction
 
     public decimal? ActualImportPrice { get; set; }
 
+    public string? Reason { get; set; }
+
     public virtual MedicineBatch Batch { get; set; } = null!;
 
     public virtual MedicinePackaging MedicinePackaging { get; set; } = null!;
