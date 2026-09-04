@@ -6,7 +6,8 @@ import { UltrasoundImageGallery } from "@/features/medical-record/components/ult
 
 vi.mock("next/image", () => {
   return {
-    default: ({ fill, ...props }: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    default: ({ fill, ...props }: React.ComponentProps<"img"> & { fill?: boolean | string }) => {
       // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
       return <img {...props} />;
     },
