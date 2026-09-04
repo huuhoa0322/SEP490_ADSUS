@@ -32,6 +32,7 @@ export function AppSidebar() {
           <>
             <NavItem expanded={expanded} href="/dashboard" icon={<LayoutDashboard className="size-5" />} label="Dashboard" active={pathname.startsWith("/dashboard")} />
             <NavItem expanded={expanded} href="/admin/users" icon={<Users className="size-5" />} label="Tài khoản" active={pathname.startsWith("/admin/users")} />
+            <NavItem expanded={expanded} href="/admin/shift-requests" icon={<CalendarClock className="size-5" />} label="Duyệt nghỉ phép" active={pathname.startsWith("/admin/shift-requests")} />
             <NavItem expanded={expanded} href="/admin/medicines" icon={<Pill className="size-5" />} label="Danh mục thuốc" active={pathname.startsWith("/admin/medicines")} />
             <NavItem expanded={expanded} href="/admin/suppliers" icon={<Truck className="size-5" />} label="Nhà cung cấp" active={pathname.startsWith("/admin/suppliers")} />
             <NavItem expanded={expanded} href="/inventory/import" icon={<PackagePlus className="size-5" />} label="Nhập kho" active={pathname.startsWith("/inventory/import")} />

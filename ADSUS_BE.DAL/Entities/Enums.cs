@@ -208,3 +208,24 @@ public enum PaymentMethod
     [PgName("CASH")] CASH,
     [PgName("BANK_TRANSFER")] BANK_TRANSFER,
 }
+
+public enum ShiftRequestType
+{
+    [PgName("LEAVE")] Leave,
+    [PgName("OVERTIME")] Overtime,
+}
+
+public enum ShiftRequestStatus
+{
+    [PgName("PENDING")] Pending,
+    [PgName("APPROVED")] Approved,
+    [PgName("REJECTED")] Rejected,
+}
+
+public enum ShiftType
+{
+    [PgName("MORNING")] Morning,
+    [PgName("AFTERNOON")] Afternoon,
+    [PgName("EVENING")] Evening,
+    [PgName("FULL_DAY")] FullDay,
+}

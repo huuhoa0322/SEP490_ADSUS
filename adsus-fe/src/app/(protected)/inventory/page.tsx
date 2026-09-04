@@ -17,11 +17,20 @@ export default function InventoryHistoryPage() {
   const [page, setPage] = useState(1);
   const pageSize = 15;
 
+  type TxnTypeFilter = '' | 'Import' | 'Dispense' | 'Adjustment';
+  const [txnType, setTxnType] = useState<TxnTypeFilter>('');
+
   const { data, isLoading, isError } = useInventoryHistory({
-    search: debouncedSearch,
+    search: debouncedSearch || undefined,
+    type: txnType || undefined,
     page,
     pageSize,
   });
+
+  const handleTypeChange = (val: TxnTypeFilter) => {
+    setTxnType(val);
+    setPage(1);
+  };
 
   const getTxnTypeLabel = (type: string) => {
     switch (type.toLowerCase()) {
@@ -46,7 +55,7 @@ export default function InventoryHistoryPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex flex-wrap items-center gap-3 mb-6">
             <div className="relative w-full md:w-96">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -59,6 +68,22 @@ export default function InventoryHistoryPage() {
                 }}
               />
             </div>
+            
+            <div className="flex gap-1.5 ml-0 md:ml-auto">
+              {(['', 'Import', 'Dispense', 'Adjustment'] as TxnTypeFilter[]).map(type => (
+                <button
+                  key={type}
+                  onClick={() => handleTypeChange(type)}
+                  className={`h-9 rounded-full px-4 text-sm font-medium transition-colors border ${
+                    txnType === type
+                      ? 'border-accent bg-accent text-white shadow-sm'
+                      : 'border-border hover:bg-secondary text-foreground'
+                  }`}
+                >
+                  {type === '' ? 'Tất cả' : type === 'Import' ? 'Nhập kho' : type === 'Dispense' ? 'Xuất kho' : 'Điều chỉnh'}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="rounded-md border">
@@ -68,7 +93,7 @@ export default function InventoryHistoryPage() {
                   <TableHead className="w-[180px]">Thời gian</TableHead>
                   <TableHead>Loại giao dịch</TableHead>
                   <TableHead>Thuốc (Số lô)</TableHead>
-                  <TableHead>Nhà cung cấp</TableHead>
+                  <TableHead>Đối tác / Ghi chú</TableHead>
                   <TableHead className="text-right">Đơn giá nhập</TableHead>
                   <TableHead className="text-right">Số lượng (Đơn vị cơ bản)</TableHead>
                   <TableHead className="text-right">Số lượng (Đơn vị đóng gói)</TableHead>
@@ -112,7 +137,15 @@ export default function InventoryHistoryPage() {
                         <div className="font-medium text-primary">{item.medicineName}</div>
                         <div className="text-xs text-muted-foreground">Lô: {item.lotNumber}</div>
                       </TableCell>
-                      <TableCell>{item.supplierName || '—'}</TableCell>
+                      <TableCell>
+                        {item.supplierName ? (
+                          item.supplierName
+                        ) : item.txnType.toLowerCase() === 'adjustment' && item.reason ? (
+                          item.reason
+                        ) : (
+                          '—'
+                        )}
+                      </TableCell>
                       <TableCell className="text-right font-mono">
                         {item.unitImportPrice ? item.unitImportPrice.toLocaleString() + ' đ' : '—'}
                       </TableCell>

@@ -216,6 +216,9 @@ namespace ADSUS_BE
             dataSourceBuilder.MapEnum<PaymentMethod>("payment_method");
             dataSourceBuilder.MapEnum<NotificationStatus>("notification_status");
             dataSourceBuilder.MapEnum<NotificationType>("notification_type");
+            dataSourceBuilder.MapEnum<ShiftRequestType>("shift_request_type");
+            dataSourceBuilder.MapEnum<ShiftRequestStatus>("shift_request_status");
+            dataSourceBuilder.MapEnum<ShiftType>("shift_type");
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);
@@ -420,6 +423,8 @@ namespace ADSUS_BE
             // BLL — Module 8: Appointment Scheduling (UC-15)
             builder.Services.AddScoped<IScheduleSlotRepository, ScheduleSlotRepository>();
             builder.Services.AddScoped<IScheduleSlotService, ScheduleSlotService>();
+            builder.Services.AddScoped<IShiftRequestRepository, ShiftRequestRepository>();
+            builder.Services.AddScoped<IShiftRequestService, ShiftRequestService>();
             // UC-13, UC-14
             builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
             builder.Services.AddScoped<IAppointmentService, AppointmentService>();
