@@ -29,7 +29,7 @@ jobs:
               with:
                   flutter-version: "3.47.x"
 
-            - run: flutter pub get
+            - run: flutter pub get --enforce-lockfile
 
             # google-services.json không commit vào git (chứa cấu hình Firebase thật) — dựng
             # lại từ secret base64 trước khi Gradle chạy, cùng cách ci.yml (mobile-ci) đã làm.
