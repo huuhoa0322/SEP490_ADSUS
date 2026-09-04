@@ -19,7 +19,7 @@ namespace ADSUS_BE.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/schedule-slots")]
-[Authorize(Roles = "DOCTOR")]
+[Authorize(Roles = "DOCTOR,ADMIN")]
 [Produces("application/json")]
 public sealed class ScheduleSlotsController : ControllerBase
 {
@@ -37,6 +37,7 @@ public sealed class ScheduleSlotsController : ControllerBase
 
     /// <summary>GET /api/v1/schedule-slots — Danh sách slot của Doctor đang đăng nhập.</summary>
     [HttpGet]
+    [Authorize(Roles = "DOCTOR")]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<ScheduleSlotResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> List(
         [FromQuery] DateOnly? fromDate = null,
@@ -57,6 +58,7 @@ public sealed class ScheduleSlotsController : ControllerBase
 
     /// <summary>GET /api/v1/schedule-slots/{id}</summary>
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = "DOCTOR")]
     [ProducesResponseType(typeof(ApiResponse<ScheduleSlotResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
@@ -72,6 +74,7 @@ public sealed class ScheduleSlotsController : ControllerBase
 
     /// <summary>POST /api/v1/schedule-slots — Tạo slot cho chính mình.</summary>
     [HttpPost]
+    [Authorize(Roles = "DOCTOR")]
     [ProducesResponseType(typeof(ApiResponse<ScheduleSlotResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create(
@@ -96,6 +99,7 @@ public sealed class ScheduleSlotsController : ControllerBase
 
     /// <summary>PUT /api/v1/schedule-slots/{id} — Sửa giờ slot (tách ca).</summary>
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "DOCTOR")]
     [ProducesResponseType(typeof(ApiResponse<ScheduleSlotResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -128,25 +132,19 @@ public sealed class ScheduleSlotsController : ControllerBase
         }
     }
 
-    /// <summary>POST /api/v1/schedule-slots/overtime — Tạo 6 ca tăng ca (17:00-20:00).</summary>
+    /// <summary>POST /api/v1/schedule-slots/overtime — (DEPRECATED) Dùng luồng Shift Request thay thế.</summary>
     [HttpPost("overtime")]
+    [Obsolete("Sử dụng ShiftRequestsController thay thế.")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateOvertime([FromBody] CreateOvertimeSlotsRequest request, CancellationToken ct = default)
     {
-        try
-        {
-            var (successCount, errorCount) = await _slots.CreateOvertimeSlotsAsync(request, CurrentDoctorId, ct);
-            return Ok(ApiResponse<object>.Ok(new { successCount, errorCount }, "Overtime slots created."));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
-        }
+        return BadRequest(ApiResponse<object>.Fail(400, "Vui lòng sử dụng tính năng Yêu cầu Tăng ca mới."));
     }
 
-    /// <summary>PUT /api/v1/schedule-slots/{id}/close — Đóng slot (xin nghỉ/bận).</summary>
+    /// <summary>PUT /api/v1/schedule-slots/{id}/close — Đóng slot (xin nghỉ/bận). Chỉ Admin được dùng.</summary>
     [HttpPut("{id:guid}/close")]
+    [Authorize(Roles = "ADMIN")]
     [ProducesResponseType(typeof(ApiResponse<CloseSlotImpactResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
@@ -161,8 +159,9 @@ public sealed class ScheduleSlotsController : ControllerBase
             var existing = await _slots.GetSlotAsync(id, ct);
             if (existing is null)
                 return NotFound(ApiResponse<object>.Fail(404, $"Slot '{id}' not found."));
-            if (existing.DoctorId != CurrentDoctorId)
-                return StatusCode(403, ApiResponse<object>.Fail(403, "Not your slot."));
+            // Bỏ check DoctorId vì Admin đang thao tác
+            // if (existing.DoctorId != CurrentDoctorId)
+            //    return StatusCode(403, ApiResponse<object>.Fail(403, "Not your slot."));
 
             var impact = await _slots.CloseSlotAsync(id, force, ct);
             if (impact.AffectedBookingsCount > 0 && !force)
@@ -205,8 +204,9 @@ public sealed class ScheduleSlotsController : ControllerBase
         }
     }
 
-    /// <summary>PUT /api/v1/schedule-slots/{id}/reopen — Mở lại slot đã đóng.</summary>
+    /// <summary>PUT /api/v1/schedule-slots/{id}/reopen — Mở lại slot đã đóng. Chỉ Admin được dùng.</summary>
     [HttpPut("{id:guid}/reopen")]
+    [Authorize(Roles = "ADMIN")]
     [ProducesResponseType(typeof(ApiResponse<ScheduleSlotResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
@@ -217,8 +217,9 @@ public sealed class ScheduleSlotsController : ControllerBase
             var existing = await _slots.GetSlotAsync(id, ct);
             if (existing is null)
                 return NotFound(ApiResponse<object>.Fail(404, $"Slot '{id}' not found."));
-            if (existing.DoctorId != CurrentDoctorId)
-                return StatusCode(403, ApiResponse<object>.Fail(403, "Not your slot."));
+            // Bỏ check DoctorId vì Admin đang thao tác
+            // if (existing.DoctorId != CurrentDoctorId)
+            //    return StatusCode(403, ApiResponse<object>.Fail(403, "Not your slot."));
 
             var slot = await _slots.ReopenSlotAsync(id, ct);
             return Ok(ApiResponse<ScheduleSlotResponse>.Ok(slot));
