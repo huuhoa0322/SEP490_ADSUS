@@ -20,8 +20,16 @@ import '../widgets/adherence_pill_badge.dart';
 ///
 /// Backend: GET /api/v1/me/medication-intakes → IntakeLog[]
 ///          POST /api/v1/me/medication-intakes/{id}/confirm
+///
+/// T-5.1: [intakeIdToHighlight] — khi user tap vào widget row → deep-link vào đây,
+/// scroll đến và highlight liều tương ứng.
 class MedicationReminderScreen extends ConsumerStatefulWidget {
-  const MedicationReminderScreen({super.key});
+  const MedicationReminderScreen({
+    super.key,
+    this.intakeIdToHighlight,
+  });
+
+  final String? intakeIdToHighlight;
 
   @override
   ConsumerState<MedicationReminderScreen> createState() =>
@@ -32,6 +40,10 @@ class _MedicationReminderScreenState
     extends ConsumerState<MedicationReminderScreen> {
   Timer? _timer;
   late DateTime _now;
+
+  // T-5.1: Scroll to highlighted intake when deep-link arrives.
+  final _scrollController = ScrollController();
+  bool _hasScrolled = false;
 
   @override
   void initState() {
@@ -45,6 +57,7 @@ class _MedicationReminderScreenState
   @override
   void dispose() {
     _timer?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -68,11 +81,46 @@ class _MedicationReminderScreenState
               message: error.toString(),
               onRetry: () => ref.invalidate(intakeLogsProvider),
             ),
-            data: (logs) => _MedicationBody(logs: logs, now: _now, prefAsync: prefAsync),
+            data: (logs) {
+              // T-5.1: Scroll to highlighted intake card once data loads.
+              _maybeScrollToHighlight(logs);
+              return _MedicationBody(
+                logs: logs,
+                now: _now,
+                prefAsync: prefAsync,
+                scrollController: _scrollController,
+                highlightIntakeId: widget.intakeIdToHighlight,
+              );
+            },
           ),
         ),
       ),
     );
+  }
+
+  void _maybeScrollToHighlight(List<IntakeLog> logs) {
+    final target = widget.intakeIdToHighlight;
+    if (target == null || _hasScrolled) return;
+
+    final index = logs.indexWhere((l) => l.intakeId == target);
+    if (index < 0) return;
+
+    // Approximate position: header area (≈ 350px) + adherence card (≈ 100px) +
+    // section header (≈ 32px) + each row (≈ 120px per card) before target.
+    const headerOffset = 350.0;
+    const rowHeight = 120.0;
+    final targetOffset = headerOffset + (index * rowHeight);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+    _hasScrolled = true;
   }
 }
 
@@ -81,11 +129,15 @@ class _MedicationBody extends ConsumerWidget {
     required this.logs,
     required this.now,
     required this.prefAsync,
+    required this.scrollController,
+    this.highlightIntakeId,
   });
 
   final List<IntakeLog> logs;
   final DateTime now;
   final AsyncValue<ReminderPreference> prefAsync;
+  final ScrollController scrollController;
+  final String? highlightIntakeId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -105,7 +157,6 @@ class _MedicationBody extends ConsumerWidget {
         .where((l) => _isSameDay(l.scheduledTimeUtc.toLocal(), now))
         .toList();
 
-    // Adherence = taken / (taken + pending) — OVERTIME excluded from denominator (still pending)
     final adherencePct = (pendingToday.length + takenToday.length) > 0
         ? (takenToday.length / (pendingToday.length + takenToday.length) * 100).round()
         : null;
@@ -139,6 +190,7 @@ class _MedicationBody extends ConsumerWidget {
     ];
 
     return CustomScrollView(
+      controller: scrollController,
       slivers: [
         SliverAppBar(
           backgroundColor: Colors.white,
@@ -195,7 +247,10 @@ class _MedicationBody extends ConsumerWidget {
             delegate: SliverChildBuilderDelegate(
               (context, index) => Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: _IntakePendingCard(log: pendingToday[index]),
+                child: _IntakePendingCard(
+                  log: pendingToday[index],
+                  highlight: pendingToday[index].intakeId == highlightIntakeId,
+                ),
               ),
               childCount: pendingToday.length,
             ),
@@ -226,7 +281,10 @@ class _MedicationBody extends ConsumerWidget {
             delegate: SliverChildBuilderDelegate(
               (context, index) => Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: _IntakeOvertimeCard(log: overtimeToday[index]),
+                child: _IntakeOvertimeCard(
+                  log: overtimeToday[index],
+                  highlight: overtimeToday[index].intakeId == highlightIntakeId,
+                ),
               ),
               childCount: overtimeToday.length,
             ),
@@ -593,9 +651,10 @@ class _AdherenceSummaryCard extends StatelessWidget {
 }
 
 class _IntakePendingCard extends ConsumerWidget {
-  const _IntakePendingCard({required this.log});
+  const _IntakePendingCard({required this.log, this.highlight = false});
 
   final IntakeLog log;
+  final bool highlight;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -610,12 +669,14 @@ class _IntakePendingCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border(
-          left: BorderSide(
-            color: canConfirm ? AppColors.amberWarn : AppColors.muted,
-            width: 4,
-          ),
-        ),
+        border: highlight
+            ? Border.all(color: AppColors.teal.withValues(alpha: 0.7), width: 2)
+            : Border(
+                left: BorderSide(
+                  color: canConfirm ? AppColors.amberWarn : AppColors.muted,
+                  width: 4,
+                ),
+              ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -665,10 +726,7 @@ class _IntakePendingCard extends ConsumerWidget {
                         log.instructions != null
                             ? '${log.dosage} · ${log.instructions}'
                             : log.dosage,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.muted,
-                        ),
+                        style: TextStyle(fontSize: 12, color: AppColors.muted),
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -742,9 +800,10 @@ class _IntakePendingCard extends ConsumerWidget {
 }
 
 class _IntakeOvertimeCard extends ConsumerWidget {
-  const _IntakeOvertimeCard({required this.log});
+  const _IntakeOvertimeCard({required this.log, this.highlight = false});
 
   final IntakeLog log;
+  final bool highlight;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -757,9 +816,11 @@ class _IntakeOvertimeCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: const Border(
-          left: BorderSide(color: AppColors.danger, width: 4),
-        ),
+        border: highlight
+            ? Border.all(color: AppColors.teal.withValues(alpha: 0.7), width: 2)
+            : const Border(
+                left: BorderSide(color: AppColors.danger, width: 4),
+              ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
