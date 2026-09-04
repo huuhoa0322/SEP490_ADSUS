@@ -135,7 +135,7 @@ jobs:
             - uses: actions/setup-python@v5
               with:
                   python-version: "3.12"
-            - run: "pip install --only-binary=:all: -r requirements.txt"
+            - run: "pip install --require-hashes --only-binary=:all: -r requirements.txt"
             - run: python -m py_compile main.py geometry.py
 
     mobile-ci:
@@ -163,7 +163,7 @@ jobs:
               run: |
                   echo "$GOOGLE_SERVICES_BASE64" | base64 -d > android/app/google-services.json
 
-            - run: flutter pub get
+            - run: flutter pub get --enforce-lockfile
             - run: flutter analyze
 
             # Split like backend-ci/frontend-ci: test/widget/ holds the 2 files that actually
