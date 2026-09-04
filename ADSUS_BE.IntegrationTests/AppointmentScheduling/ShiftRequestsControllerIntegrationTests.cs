@@ -80,6 +80,9 @@ public class ShiftRequestsControllerIntegrationTests
         _shiftRequests.Setup(r => r.UpdateAsync(It.IsAny<ShiftRequest>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        var doctor = new User { UserId = _doctorId, FullName = "Dr. Test" };
+        _users.Setup(u => u.GetByIdAsync(_doctorId, It.IsAny<CancellationToken>())).ReturnsAsync(doctor);
+
         var reviewDto = new ReviewShiftRequestDto
         {
             Decision = "REJECTED",
@@ -111,6 +114,14 @@ public class ShiftRequestsControllerIntegrationTests
                 
                 services.RemoveAll<IUserRepository>();
                 services.AddScoped(_ => _users.Object);
+                
+                var notifMock = new Mock<ADSUS_BE.BLL.Common.Interfaces.INotificationService>();
+                notifMock.Setup(n => n.SendAsync(It.IsAny<ADSUS_BE.BLL.Common.Interfaces.SendNotificationRequest>(), It.IsAny<CancellationToken>()))
+                         .ReturnsAsync(Guid.NewGuid());
+                notifMock.Setup(n => n.SendBulkAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<ADSUS_BE.BLL.Common.Interfaces.SendNotificationRequest>(), It.IsAny<CancellationToken>()))
+                         .Returns(Task.CompletedTask);
+                services.RemoveAll<ADSUS_BE.BLL.Common.Interfaces.INotificationService>();
+                services.AddScoped(_ => notifMock.Object);
             });
         });
     }
