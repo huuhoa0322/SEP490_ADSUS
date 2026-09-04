@@ -2,9 +2,9 @@ name: ADSUS CI Pipeline
 
 on:
     pull_request:
-        branches: [develop, master]
+        branches: [master]
     push:
-        branches: [develop]
+        branches: [master]
 
 jobs:
     backend-ci:
