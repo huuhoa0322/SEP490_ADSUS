@@ -204,7 +204,8 @@ public sealed class ChatIntentDetector : IIntentDetector
         // để tránh false-positive: keyword "ho" (AdditionalHealthLog) phải match từ
         // "ho" đứng riêng, không phải substring "ho" trong "hom nay" (hôm nay).
         var pattern = @"\b" + System.Text.RegularExpressions.Regex.Escape(StripDiacritics(keyword)) + @"\b";
-        return System.Text.RegularExpressions.Regex.IsMatch(normalized, pattern);
+        return System.Text.RegularExpressions.Regex.IsMatch(
+            normalized, pattern, System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
     }
 
     private static bool IsGreeting(string normalized)
