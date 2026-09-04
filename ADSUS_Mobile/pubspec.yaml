@@ -60,6 +60,12 @@ dependencies:
   # dùng markdown thay vì render HTML thô.
   flutter_markdown: ^0.7.6+1
 
+  # ADSUS Widget — Android Home Screen Widget (T-1.1).
+  # home_widget: giao tiếp Flutter ↔ Android widget qua SharedPreferences.
+  home_widget: ^0.7.0
+  # workmanager: background periodic sync mỗi 15 phút (Android O+ battery-compliant).
+  workmanager: ^0.10.9
+
   # Lưu cờ "đã sync vào lịch" cho mỗi appointment — xem CalendarSyncServiceImpl.
   # Không dùng secure storage vì đây là UI bookkeeping, không phải thông tin nhạy cảm.
 

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/presentation/views/home_screen.dart';
 import '../../features/medication_reminder/presentation/views/medication_reminder_screen.dart';
 import '../../features/auth/presentation/views/profile_screen.dart';
 import '../../features/ai_chatbot/presentation/views/ai_chatbot_screen.dart';
+import '../../features/medication_reminder/presentation/providers/medication_tab_provider.dart';
+import 'providers/app_providers.dart';
 import '../../core/theme/app_theme.dart';
 
 /// Main shell chứa bottom navigation cố định.
@@ -13,15 +16,43 @@ import '../../core/theme/app_theme.dart';
 ///   1 — Thuốc      (MedicationReminderScreen)
 ///   2 — Chat Bot   (AiChatbotScreen)
 ///   3 — Cá nhân   (ProfileScreen)
-class MainShell extends StatefulWidget {
+class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Change 1: Listen widget open → tab Thuốc signal.
+    // Khi user tap widget, MainActivity gọi MethodChannel "openMedicationTab"
+    // → Flutter set initialMedicationTabProvider = true → listener đặt flag.
+    // build() phát hiện flag → setState _currentIndex = 1 → reset flag.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.listen<bool>(initialMedicationTabProvider, (_, shouldOpen) {
+        if (shouldOpen) {
+          setState(() => _currentIndex = 1);
+          // Reset provider sau khi đã set tab — tránh side-effect lần sau
+          Future.microtask(() {
+            ref.read(initialMedicationTabProvider.notifier).state = false;
+          });
+        }
+      });
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // T-3.3: Mỗi khi MainShell mount (app mở / quay lại từ background),
+    // trigger widget sync để widget luôn có data mới nhất.
+    ref.read(widgetSyncServiceProvider).triggerSync();
+  }
 
   static const _navItems = [
     _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Trang chủ'),
