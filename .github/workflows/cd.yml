@@ -25,11 +25,11 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
-            - uses: subosito/flutter-action@v2
+            - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
               with:
-                  flutter-version: "3.47.x"
+                  flutter-version: "3.47.2"
 
-            - run: flutter pub get
+            - run: flutter pub get --enforce-lockfile
 
             # google-services.json không commit vào git (chứa cấu hình Firebase thật) — dựng
             # lại từ secret base64 trước khi Gradle chạy, cùng cách ci.yml (mobile-ci) đã làm.
@@ -54,7 +54,7 @@ jobs:
                      build/app/outputs/flutter-apk/adsus-mobile-${{ steps.version.outputs.version }}.apk
 
             - name: Create GitHub Release
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
               with:
                   files: ADSUS_Mobile/build/app/outputs/flutter-apk/adsus-mobile-*.apk
                   generate_release_notes: true
