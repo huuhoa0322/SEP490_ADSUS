@@ -29,10 +29,15 @@ class HomeScreen extends ConsumerWidget {
 
     final intakeLogs = intakeLogsAsync.valueOrNull ?? [];
 
-    // Gom nhóm PENDING + TAKEN của hôm nay.
+    // Gom nhóm PENDING + OVERTIME + TAKEN của hôm nay.
     final pendingToday = intakeLogs
-        .where((l) => l.status.name == 'pending')
+        .where((l) =>
+            l.status.name == 'pending' || l.status.name == 'overtime')
         .where((l) => _isSameDay(l.scheduledTimeUtc.toLocal(), now))
+        .toList();
+
+    final overtimeToday = pendingToday
+        .where((l) => l.status.name == 'overtime')
         .toList();
     final takenToday = intakeLogs
         .where((l) => l.status.name == 'taken')
@@ -92,6 +97,7 @@ class HomeScreen extends ConsumerWidget {
               _TodayMedicationCard(
                 adherencePct: adherencePct,
                 pendingCount: pendingToday.length,
+                overtimeCount: overtimeToday.length,
                 takenCount: takenToday.length,
               ),
               const SizedBox(height: 20),
@@ -169,11 +175,13 @@ class _TodayMedicationCard extends StatelessWidget {
   const _TodayMedicationCard({
     required this.adherencePct,
     required this.pendingCount,
+    required this.overtimeCount,
     required this.takenCount,
   });
 
   final int? adherencePct;
   final int pendingCount;
+  final int overtimeCount;
   final int takenCount;
 
   @override
@@ -215,11 +223,26 @@ class _TodayMedicationCard extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
             )
+          else if (pendingCount > 0)
+            overtimeCount > 0
+                ? Text(
+                    'Còn tổng cộng $pendingCount liều thuốc hôm nay, trong đó đang có $overtimeCount liều quá hạn!',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.danger,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  )
+                : Text(
+                    'Còn $pendingCount liều chưa uống hôm nay.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.muted,
+                    ),
+                  )
           else
             Text(
-              pendingCount > 0
-                  ? 'Còn $pendingCount liều chưa uống hôm nay.'
-                  : 'Chưa có lịch uống thuốc hôm nay.',
+              'Chưa có lịch uống thuốc hôm nay.',
               style: TextStyle(
                 fontSize: 13,
                 color: AppColors.muted,
