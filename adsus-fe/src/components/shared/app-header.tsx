@@ -13,6 +13,7 @@ const ROLE_LABEL: Record<Role, string> = {
   DOCTOR: "Bác sĩ",
   NURSE: "Điều dưỡng",
   PATIENT: "Bệnh nhân",
+  PHARMACIST: "Dược sĩ",
 };
 
 export function AppHeader() {
@@ -50,9 +51,16 @@ export function AppHeader() {
             <>
               <HeaderNav href="/dashboard" icon={<LayoutDashboard className="size-4" />} label="Dashboard" active={pathname.startsWith("/dashboard")} />
               <HeaderNav href="/admin/users" icon={<Users className="size-4" />} label="Tài khoản" active={pathname.startsWith("/admin/users")} />
-              <HeaderNav href="/admin/medicines" icon={<Pill className="size-4" />} label="Danh mục thuốc" active={pathname.startsWith("/admin/medicines")} />
+              <HeaderNav href="/medicines" icon={<Pill className="size-4" />} label="Danh mục thuốc" active={pathname.startsWith("/medicines")} />
               <HeaderNav href="/admin/ai-models" icon={<BrainCircuit className="size-4" />} label="Mô hình AI" active={pathname.startsWith("/admin/ai-models")} />
               <HeaderNav href="/admin/blog" icon={<FileText className="size-4" />} label="Blog" active={pathname.startsWith("/admin/blog")} />
+            </>
+          )}
+
+          {user?.role === "PHARMACIST" && (
+            <>
+              <HeaderNav href="/medicines" icon={<Pill className="size-4" />} label="Danh mục thuốc" active={pathname.startsWith("/medicines")} />
+              <HeaderNav href="/suppliers" icon={<Users className="size-4" />} label="Nhà cung cấp" active={pathname.startsWith("/suppliers")} />
             </>
           )}
 

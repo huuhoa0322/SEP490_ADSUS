@@ -14,6 +14,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   DOCTOR: "Bác sĩ",
   NURSE: "Điều dưỡng",
   PATIENT: "Bệnh nhân",
+  PHARMACIST: "Dược sĩ",
 };
 
 export const STATUS_LABEL: Record<AccountStatus, string> = {

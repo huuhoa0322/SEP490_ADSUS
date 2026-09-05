@@ -9,12 +9,13 @@ export type AccountStatus = "ACTIVE" | "DEACTIVATED";
  * Cố ý KHÔNG có ADMIN: theo UC-04, tài khoản quản trị được cấp lúc dựng hệ thống chứ không
  * tạo qua màn này. Backend cũng từ chối, đây chỉ là lớp chặn thứ hai cho gọn.
  */
-export type AssignableRole = Extract<Role, "DOCTOR" | "NURSE" | "PATIENT">;
+export type AssignableRole = Extract<Role, "DOCTOR" | "NURSE" | "PATIENT" | "PHARMACIST">;
 
 export const ASSIGNABLE_ROLES: readonly AssignableRole[] = [
   "DOCTOR",
   "NURSE",
   "PATIENT",
+  "PHARMACIST",
 ] as const;
 
 /** Một dòng trong danh sách tài khoản (SCR-06). */

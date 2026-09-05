@@ -99,4 +99,15 @@ public static class TestAuthHelper
     {
         return CreateAuthenticatedClient(app, userRepo, UserRole.Admin, adminId);
     }
+
+    /// <summary>
+    /// Creates an HTTP client for a Pharmacist user.
+    /// </summary>
+    public static HttpClient CreatePharmacistClient(
+        WebApplicationFactory<Program> app,
+        Mock<IUserRepository> userRepo,
+        Guid? pharmacistId = null)
+    {
+        return CreateAuthenticatedClient(app, userRepo, UserRole.Pharmacist, pharmacistId);
+    }
 }

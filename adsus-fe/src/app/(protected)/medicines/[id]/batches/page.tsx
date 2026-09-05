@@ -183,7 +183,7 @@ export default function MedicineBatchesPage() {
                     </td>
                     <td className="px-5 py-4 text-center">
                       <button
-                        onClick={() => router.push(`/admin/medicines/${medicineId}/batches/${batch.batchId}`)}
+                        onClick={() => router.push(`/medicines/${medicineId}/batches/${batch.batchId}`)}
                         title="Xem lịch sử giao dịch lô này"
                         className="inline-flex size-8 items-center justify-center rounded-full text-blue-600 transition-colors hover:bg-blue-50"
                       >

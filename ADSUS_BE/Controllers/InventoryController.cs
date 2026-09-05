@@ -8,7 +8,7 @@ namespace ADSUS_BE.Controllers
 {
     [ApiController]
     [Route("api/v1/inventory")]
-    [Authorize(Roles = "ADMIN")] // Temporary admin permission as requested
+    [Authorize(Roles = "ADMIN,PHARMACIST")] // Temporary admin permission as requested
     public class InventoryController : ControllerBase
     {
         private readonly IInventoryService _inventoryService;

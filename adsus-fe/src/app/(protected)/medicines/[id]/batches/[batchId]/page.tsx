@@ -87,7 +87,7 @@ export default function BatchHistoryPage() {
         <div className="flex-1 flex justify-between items-start">
           <div>
             <p className="text-sm text-muted-foreground">
-              <button onClick={() => router.push(`/admin/medicines/${medicineId}/batches`)} className="hover:text-accent transition-colors">
+              <button onClick={() => router.push(`/medicines/${medicineId}/batches`)} className="hover:text-accent transition-colors">
                 {medicine?.name ?? 'Thuốc'} / Danh sách lô
               </button>
             </p>
