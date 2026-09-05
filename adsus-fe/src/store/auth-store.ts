@@ -113,6 +113,8 @@ export function getHomePathForRole(role: Role): string {
       // Bệnh nhân dùng ứng dụng di động, không có giao diện web. Trường hợp này đã bị chặn
       // ngay từ lúc đăng nhập, nên thực tế không đi tới đây.
       return "/login";
+    case "PHARMACIST":
+      return "/medicines";
     default:
       return "/login";
   }
@@ -135,7 +137,14 @@ const ROUTE_ROLES: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
   { prefix: "/cases", roles: ["DOCTOR", "NURSE"] },
   // UC-04 (SCR-06, SCR-07): "Create", "Lock / Deactivate" và "Assign role" đều là No cho
   // Doctor/Nurse/Patient. Đây là chỗ đầu tiên NURSE khác DOCTOR.
-  { prefix: "/admin", roles: ["ADMIN"] },
+  { prefix: "/admin/users", roles: ["ADMIN"] },
+  { prefix: "/admin/blog", roles: ["ADMIN"] },
+  { prefix: "/admin/ai-models", roles: ["ADMIN"] },
+  { prefix: "/admin/shift-requests", roles: ["ADMIN"] },
+  // Quản lý thuốc — Admin + Dược sĩ (URL mới, không còn /admin prefix)
+  { prefix: "/medicines", roles: ["ADMIN", "PHARMACIST"] },
+  { prefix: "/suppliers", roles: ["ADMIN", "PHARMACIST"] },
+  { prefix: "/inventory", roles: ["ADMIN", "PHARMACIST"] },
   // UC-18: Doctor kê đơn thuốc (Module 7 Task 8 / SCR-17). Nurse có thể xem danh sách
   // tuân thủ nhưng không được kê đơn — kê đơn là hành vi y khoa chỉ Doctor được phép.
   { prefix: "/prescriptions", roles: ["DOCTOR"] },

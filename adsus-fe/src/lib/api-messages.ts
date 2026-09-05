@@ -47,7 +47,7 @@ const MESSAGES: Record<string, string> = {
   "Role is required.": "Vui lòng chọn vai trò.",
   "Role must be one of DOCTOR, NURSE or PATIENT.":
     "Vai trò chỉ được là Bác sĩ, Điều dưỡng hoặc Bệnh nhân.",
-  "Role must be one of ADMIN, DOCTOR, NURSE or PATIENT.":
+  "Role must be one of ADMIN, DOCTOR, NURSE, PHARMACIST or PATIENT.":
     "Vai trò không hợp lệ.",
   "Email is required.": "Vui lòng nhập email.",
   "Email is not a valid address.": "Email không đúng định dạng.",

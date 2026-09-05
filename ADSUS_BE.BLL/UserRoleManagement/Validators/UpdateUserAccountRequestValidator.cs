@@ -18,7 +18,7 @@ public class UpdateUserAccountRequestValidator : AbstractValidator<UpdateUserAcc
     /// lại đúng vai trò hiện tại, mà nếu validator không nhận "ADMIN" thì giao diện buộc
     /// phải gửi một vai trò khác — tức là nói dối trên đường truyền để đi qua được kiểm tra.
     /// </summary>
-    private static readonly string[] AllowedRoles = { "ADMIN", "DOCTOR", "NURSE", "PATIENT" };
+    private static readonly string[] AllowedRoles = { "ADMIN", "DOCTOR", "NURSE", "PATIENT", "PHARMACIST" };
 
     public UpdateUserAccountRequestValidator()
     {
@@ -29,7 +29,7 @@ public class UpdateUserAccountRequestValidator : AbstractValidator<UpdateUserAcc
         RuleFor(x => x.Role)
             .NotEmpty().WithMessage("Role is required.")
             .Must(r => AllowedRoles.Contains(r?.Trim().ToUpperInvariant()))
-            .WithMessage("Role must be one of ADMIN, DOCTOR, NURSE or PATIENT.");
+            .WithMessage("Role must be one of ADMIN, DOCTOR, NURSE, PATIENT or PHARMACIST.");
 
         RuleFor(x => x.Email)
             .EmailAddress().WithMessage("Email is not a valid address.")

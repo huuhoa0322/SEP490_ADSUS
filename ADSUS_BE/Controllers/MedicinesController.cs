@@ -39,7 +39,7 @@ public class MedicinesController : ControllerBase
     /// L?y danh s�ch thu?c ph�n trang (Admin).
     /// </summary>
     [HttpGet("admin")]
-    [Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = "ADMIN,PHARMACIST")]
     [ProducesResponseType(typeof(PagedResult<MedicineResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPagedMedicines([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool? inStock = null, CancellationToken ct = default)
     {
@@ -51,7 +51,7 @@ public class MedicinesController : ControllerBase
     /// Lấy chi tiết 1 thuốc theo ID (Admin).
     /// </summary>
     [HttpGet("{id}")]
-    [Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = "ADMIN,PHARMACIST")]
     [ProducesResponseType(typeof(MedicineResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetMedicineById(Guid id, CancellationToken ct = default)
@@ -65,7 +65,7 @@ public class MedicinesController : ControllerBase
     /// Th�m thu?c m?i (Admin).
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = "ADMIN,PHARMACIST")]
     [ProducesResponseType(typeof(MedicineResponse), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateMedicine([FromBody] CreateMedicineRequest request, CancellationToken ct = default)
     {
@@ -77,7 +77,7 @@ public class MedicinesController : ControllerBase
     /// C?p nh?t t�n thu?c (Admin).
     /// </summary>
     [HttpPut("{id}")]
-    [Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = "ADMIN,PHARMACIST")]
     [ProducesResponseType(typeof(MedicineResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateMedicine(Guid id, [FromBody] UpdateMedicineRequest request, CancellationToken ct = default)
     {
@@ -89,7 +89,7 @@ public class MedicinesController : ControllerBase
     /// X�a m?m thu?c (Admin).
     /// </summary>
     [HttpDelete("{id}")]
-    [Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = "ADMIN,PHARMACIST")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DeleteMedicine(Guid id, CancellationToken ct = default)
     {
@@ -100,7 +100,7 @@ public class MedicinesController : ControllerBase
     /// K�ch ho?t l?i thu?c (Admin).
     /// </summary>
     [HttpPatch("{id}/activate")]
-    [Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = "ADMIN,PHARMACIST")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ActivateMedicine(Guid id, CancellationToken ct = default)
     {
@@ -110,7 +110,7 @@ public class MedicinesController : ControllerBase
     // --- Packaging Endpoints ---
 
     [HttpGet("units")]
-    [Authorize(Roles = "ADMIN,DOCTOR")]
+    [Authorize(Roles = "ADMIN,DOCTOR,PHARMACIST")]
     [ProducesResponseType(typeof(IEnumerable<MedicineUnitResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMedicineUnits(CancellationToken ct = default)
     {
@@ -119,7 +119,7 @@ public class MedicinesController : ControllerBase
     }
 
     [HttpGet("{id}/packagings")]
-    [Authorize(Roles = "ADMIN,DOCTOR")]
+    [Authorize(Roles = "ADMIN,DOCTOR,PHARMACIST")]
     [ProducesResponseType(typeof(IEnumerable<MedicinePackagingResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPackagingsByMedicineId(Guid id, CancellationToken ct = default)
     {
@@ -128,7 +128,7 @@ public class MedicinesController : ControllerBase
     }
 
     [HttpPost("{id}/packagings")]
-    [Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = "ADMIN,PHARMACIST")]
     [ProducesResponseType(typeof(MedicinePackagingResponse), StatusCodes.Status201Created)]
     public async Task<IActionResult> AddPackaging(Guid id, [FromBody] CreateMedicinePackagingRequest request, CancellationToken ct = default)
     {
@@ -137,7 +137,7 @@ public class MedicinesController : ControllerBase
     }
 
     [HttpPut("packagings/{packagingId}")]
-    [Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = "ADMIN,PHARMACIST")]
     [ProducesResponseType(typeof(MedicinePackagingResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdatePackaging(Guid packagingId, [FromBody] UpdateMedicinePackagingRequest request, CancellationToken ct = default)
     {
@@ -146,7 +146,7 @@ public class MedicinesController : ControllerBase
     }
 
     [HttpDelete("packagings/{packagingId}")]
-    [Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = "ADMIN,PHARMACIST")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DeletePackaging(Guid packagingId, CancellationToken ct = default)
     {

@@ -12,7 +12,7 @@ namespace ADSUS_BE.API.Controllers;
 
 [Route("api/v1/[controller]")]
 [ApiController]
-[Authorize(Roles = "ADMIN")]
+[Authorize(Roles = "ADMIN,PHARMACIST")]
 public class SuppliersController : ControllerBase
 {
     private readonly ISupplierService _supplierService;
