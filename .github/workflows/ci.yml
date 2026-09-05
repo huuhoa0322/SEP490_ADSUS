@@ -18,9 +18,9 @@ jobs:
             actions: read
             checks: write
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
 
-            - uses: actions/setup-dotnet@v4
+            - uses: actions/setup-dotnet@v6
               with:
                   dotnet-version: "8.0.x"
 
@@ -71,7 +71,7 @@ jobs:
                   reporter: dotnet-trx
                   fail-on-empty: "false"
 
-            - uses: actions/upload-artifact@v4
+            - uses: actions/upload-artifact@v7
               if: always()
               with:
                   name: backend-test-results
@@ -86,8 +86,8 @@ jobs:
             run:
                 working-directory: adsus-fe
         steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-node@v4
+            - uses: actions/checkout@v7
+            - uses: actions/setup-node@v7
               with:
                   # jsdom ^30's bundled undici needs a newer Node webidl implementation
                   # (webidl.util.markAsUncloneable) than Node 20 has — vitest's worker pool
@@ -131,8 +131,8 @@ jobs:
             run:
                 working-directory: ADSUS_AIBE/backend
         steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-python@v5
+            - uses: actions/checkout@v7
+            - uses: actions/setup-python@v7
               with:
                   python-version: "3.12"
             - run: "pip install --require-hashes --only-binary=:all: -r requirements.txt"
@@ -150,7 +150,7 @@ jobs:
             run:
                 working-directory: ADSUS_Mobile
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
             - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
               with:
                   flutter-version: "3.47.2"
@@ -262,13 +262,13 @@ jobs:
         # confirmed by hitting that exact error locally before writing this job.
         needs: [backend-ci, frontend-ci]
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
               with:
                   # SonarCloud's new-code/blame features want real history, not a 1-commit
                   # shallow clone (actions/checkout's default).
                   fetch-depth: 0
 
-            - uses: actions/setup-java@v4
+            - uses: actions/setup-java@v6
               with:
                   # dotnet-sonarscanner is a wrapper around the underlying Java scanner
                   # engine — it needs a JDK on PATH even though the code being analyzed is
@@ -276,18 +276,18 @@ jobs:
                   distribution: "zulu"
                   java-version: "25"
 
-            - uses: actions/setup-dotnet@v4
+            - uses: actions/setup-dotnet@v6
               with:
                   dotnet-version: "8.0.x"
 
-            - uses: actions/setup-node@v4
+            - uses: actions/setup-node@v7
               with:
                   node-version: 26
                   cache: npm
                   cache-dependency-path: adsus-fe/package-lock.json
 
             - name: Cache SonarCloud packages
-              uses: actions/cache@v4
+              uses: actions/cache@v6
               with:
                   path: ~/.sonar/cache
                   key: ${{ runner.os }}-sonar
@@ -376,6 +376,6 @@ jobs:
             contents: read
         needs: [backend-ci, ai-backend-ci]
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
             - run: docker build -f ADSUS_BE/Dockerfile -t api-adsus:ci .
             - run: docker build -t adsus-ai:ci ADSUS_AIBE/backend
