@@ -78,7 +78,7 @@ export function InventoryAlertsList() {
                 {summary.expiryAlerts.slice((expiryPage - 1) * pageSize, expiryPage * pageSize).map((alert) => (
                   <div key={alert.batchId} className="flex flex-col space-y-1 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
                     <div className="flex items-center justify-between">
-                      <Link href={`/admin/medicines/${alert.medicineId}/batches`} className="font-medium hover:underline">
+                      <Link href={`/medicines/${alert.medicineId}/batches`} className="font-medium hover:underline">
                         {alert.medicineName}
                       </Link>
                       <Badge variant={alert.severity === 'EXPIRED' ? 'destructive' : alert.severity === 'CRITICAL' ? 'destructive' : 'secondary'} className={alert.severity === 'WARNING' ? 'bg-amber-500 text-white' : ''}>
@@ -116,7 +116,7 @@ export function InventoryAlertsList() {
                 {summary.lowStockAlerts.slice((lowStockPage - 1) * pageSize, lowStockPage * pageSize).map((alert) => (
                   <div key={alert.medicineId} className="flex flex-col space-y-1 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
                     <div className="flex items-center justify-between">
-                      <Link href={`/admin/medicines/${alert.medicineId}/batches`} className="font-medium hover:underline">
+                      <Link href={`/medicines/${alert.medicineId}/batches`} className="font-medium hover:underline">
                         {alert.medicineName}
                       </Link>
                       <Badge variant={alert.severity === 'CRITICAL' ? 'destructive' : 'secondary'} className={alert.severity === 'WARNING' ? 'bg-amber-500 text-white' : ''}>

@@ -33,13 +33,23 @@ export function AppSidebar() {
             <NavItem expanded={expanded} href="/dashboard" icon={<LayoutDashboard className="size-5" />} label="Dashboard" active={pathname.startsWith("/dashboard")} />
             <NavItem expanded={expanded} href="/admin/users" icon={<Users className="size-5" />} label="Tài khoản" active={pathname.startsWith("/admin/users")} />
             <NavItem expanded={expanded} href="/admin/shift-requests" icon={<CalendarClock className="size-5" />} label="Duyệt nghỉ phép" active={pathname.startsWith("/admin/shift-requests")} />
-            <NavItem expanded={expanded} href="/admin/medicines" icon={<Pill className="size-5" />} label="Danh mục thuốc" active={pathname.startsWith("/admin/medicines")} />
-            <NavItem expanded={expanded} href="/admin/suppliers" icon={<Truck className="size-5" />} label="Nhà cung cấp" active={pathname.startsWith("/admin/suppliers")} />
+            <NavItem expanded={expanded} href="/medicines" icon={<Pill className="size-5" />} label="Danh mục thuốc" active={pathname.startsWith("/medicines")} />
+            <NavItem expanded={expanded} href="/suppliers" icon={<Truck className="size-5" />} label="Nhà cung cấp" active={pathname.startsWith("/suppliers")} />
             <NavItem expanded={expanded} href="/inventory/import" icon={<PackagePlus className="size-5" />} label="Nhập kho" active={pathname.startsWith("/inventory/import")} />
             <NavItem expanded={expanded} href="/inventory" icon={<ClipboardList className="size-5" />} label="Lịch sử kho" active={pathname === "/inventory"} />
-            <NavItem expanded={expanded} href="/admin/medicines/inventory-alerts" icon={<AlertTriangle className="size-5" />} label="Cảnh báo kho" active={pathname.startsWith("/admin/medicines/inventory-alerts")} />
+            <NavItem expanded={expanded} href="/medicines/inventory-alerts" icon={<AlertTriangle className="size-5" />} label="Cảnh báo kho" active={pathname.startsWith("/medicines/inventory-alerts")} />
             <NavItem expanded={expanded} href="/admin/ai-models" icon={<BrainCircuit className="size-5" />} label="Mô hình AI" active={pathname.startsWith("/admin/ai-models")} />
             <NavItem expanded={expanded} href="/admin/blog" icon={<FileText className="size-5" />} label="Blog" active={pathname.startsWith("/admin/blog")} />
+          </>
+        )}
+
+        {user?.role === "PHARMACIST" && (
+          <>
+            <NavItem expanded={expanded} href="/medicines" icon={<Pill className="size-5" />} label="Danh mục thuốc" active={pathname.startsWith("/medicines")} />
+            <NavItem expanded={expanded} href="/suppliers" icon={<Truck className="size-5" />} label="Nhà cung cấp" active={pathname.startsWith("/suppliers")} />
+            <NavItem expanded={expanded} href="/inventory/import" icon={<PackagePlus className="size-5" />} label="Nhập kho" active={pathname.startsWith("/inventory/import")} />
+            <NavItem expanded={expanded} href="/inventory" icon={<ClipboardList className="size-5" />} label="Lịch sử kho" active={pathname === "/inventory"} />
+            <NavItem expanded={expanded} href="/medicines/inventory-alerts" icon={<AlertTriangle className="size-5" />} label="Cảnh báo kho" active={pathname.startsWith("/medicines/inventory-alerts")} />
           </>
         )}
 

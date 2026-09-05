@@ -17,6 +17,7 @@ public enum UserRole
     [PgName("DOCTOR")] Doctor,
     [PgName("PATIENT")] Patient,
     [PgName("NURSE")] Nurse,
+    [PgName("PHARMACIST")] Pharmacist,
 }
 
 /// <summary>

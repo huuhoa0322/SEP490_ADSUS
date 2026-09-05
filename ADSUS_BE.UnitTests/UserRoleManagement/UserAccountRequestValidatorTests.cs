@@ -42,6 +42,43 @@ public class UserAccountRequestValidatorTests
     }
 
     [Fact]
+    public void Create_PharmacistRole_IsAccepted()
+    {
+        var request = CreateRequest(ClinicClock.Today().AddYears(-25));
+        request.Role = "PHARMACIST";
+
+        var result = _create.Validate(request);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void Update_PharmacistRole_IsAccepted()
+    {
+        var request = new UpdateUserAccountRequest
+        {
+            FullName = "Name",
+            Role = "PHARMACIST"
+        };
+        var result = _update.Validate(request);
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void Update_InvalidRole_ReturnsError()
+    {
+        var request = new UpdateUserAccountRequest
+        {
+            FullName = "Name",
+            Role = "INVALID"
+        };
+        var result = _update.Validate(request);
+        Assert.Contains(result.Errors, error =>
+            error.PropertyName == "Role" &&
+            error.ErrorMessage.Equals("Role must be one of ADMIN, DOCTOR, NURSE, PATIENT or PHARMACIST."));
+    }
+
+    [Fact]
     public void UpdateValidate_DateOfBirthUnder18_IsRejected()
     {
         var request = new UpdateUserAccountRequest

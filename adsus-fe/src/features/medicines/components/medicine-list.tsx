@@ -77,7 +77,7 @@ export function MedicineList() {
         <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">Quản lý danh mục thuốc</h1>
         <div className="flex gap-3">
           <button
-            onClick={() => router.push('/admin/medicines/inventory-alerts')}
+            onClick={() => router.push('/medicines/inventory-alerts')}
             className="flex h-12 items-center justify-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-6 font-heading text-sm font-semibold tracking-wider text-orange-700 transition-colors hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400 dark:hover:bg-orange-900/40"
           >
             <AlertTriangle className="size-4" />
@@ -174,7 +174,7 @@ export function MedicineList() {
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => router.push(`/admin/medicines/${medicine.medicineId}/batches`)}
+                        onClick={() => router.push(`/medicines/${medicine.medicineId}/batches`)}
                         title="Xem lô tồn kho"
                         className="flex size-9 items-center justify-center rounded-full text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
                       >
