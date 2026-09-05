@@ -51,10 +51,10 @@ public class PharmacistAuthorizationTests : IClassFixture<WebApplicationFactory<
 
     [Theory]
     [InlineData("/api/v1/dashboard/statistics")]
-    [InlineData("/api/v1/auditlogs")]
+    [InlineData("/api/v1/admin/audit-logs")]
     [InlineData("/api/v1/admin/users")]
-    [InlineData("/api/v1/aimodels")]
-    [InlineData("/api/v1/admin/blog/posts")]
+    [InlineData("/api/v1/ai-model-versions")]
+    [InlineData("/api/v1/admin/blog-posts")]
     public async Task Pharmacist_CannotAccess_OtherAdminEndpoints(string url)
     {
         // Arrange

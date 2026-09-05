@@ -137,10 +137,7 @@ const ROUTE_ROLES: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
   { prefix: "/cases", roles: ["DOCTOR", "NURSE"] },
   // UC-04 (SCR-06, SCR-07): "Create", "Lock / Deactivate" và "Assign role" đều là No cho
   // Doctor/Nurse/Patient. Đây là chỗ đầu tiên NURSE khác DOCTOR.
-  { prefix: "/admin/users", roles: ["ADMIN"] },
-  { prefix: "/admin/blog", roles: ["ADMIN"] },
-  { prefix: "/admin/ai-models", roles: ["ADMIN"] },
-  { prefix: "/admin/shift-requests", roles: ["ADMIN"] },
+  { prefix: "/admin", roles: ["ADMIN"] },
   // Quản lý thuốc — Admin + Dược sĩ (URL mới, không còn /admin prefix)
   { prefix: "/medicines", roles: ["ADMIN", "PHARMACIST"] },
   { prefix: "/suppliers", roles: ["ADMIN", "PHARMACIST"] },
