@@ -89,6 +89,10 @@ public class AiModelService : IAiModelService
         };
 
         await _aiModelVersionRepository.AddAsync(newVersion, cancellationToken);
+
+        var safeVersionCodeForLog = (newVersion.VersionCode ?? string.Empty)
+            .Replace("\r", string.Empty)
+            .Replace("\n", string.Empty);
         
         // BR-05: Audit Log
         await _auditLogRepository.AddAsync(new AuditLog
@@ -96,7 +100,7 @@ public class AiModelService : IAiModelService
             LogId = Guid.NewGuid(),
             ActorId = adminId,
             Action = "REGISTER_AI_MODEL",
-            Detail = $"Registered AI model version {newVersion.VersionCode}",
+            Detail = $"Registered AI model version {safeVersionCodeForLog}",
             PerformedAt = DateTime.UtcNow
         }, cancellationToken);
 
@@ -104,7 +108,7 @@ public class AiModelService : IAiModelService
 
         _logger.LogInformation(
             "AI model version {ModelVersionId} ({VersionCode}) registered by admin {AdminId}",
-            newVersion.ModelVersionId, newVersion.VersionCode, adminId);
+            newVersion.ModelVersionId, safeVersionCodeForLog, adminId);
 
         return AiModelVersionMapper.ToDto(newVersion);
     }
