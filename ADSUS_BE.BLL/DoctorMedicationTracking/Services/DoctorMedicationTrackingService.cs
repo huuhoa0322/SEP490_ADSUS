@@ -74,10 +74,14 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
         var todayStart = DateTime.SpecifyKind(todayStartUtc.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
         var todayEnd = DateTime.SpecifyKind(todayEndUtc.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
 
-        // Query: Active prescriptions by doctor, with all necessary navigation
+        // Query: Active prescriptions by doctor, with all necessary navigation.
+        // Filter chỉ giữ đơn còn trong vòng ngày hôm nay (endDate = StartDate + DurationDays - 1 >= today).
+        // Đơn đã hết hạn không đếm vào ActivePrescriptionCount ở màn danh sách.
         var prescriptions = await _db.Prescriptions
             .AsNoTracking()
             .Where(p => p.DoctorId == doctorId && p.Status == PrescriptionStatus.Active)
+            .Where(p => p.PrescriptionItems
+                .Any(pi => pi.StartDate.AddDays(pi.DurationDays - 1) >= todayStartUtc))
             .Include(p => p.Case)
                 .ThenInclude(c => c.PatientProfile)
                     .ThenInclude(pp => pp.User)
