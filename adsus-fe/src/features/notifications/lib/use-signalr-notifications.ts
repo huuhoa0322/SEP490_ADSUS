@@ -151,16 +151,25 @@ export function useSignalRNotifications() {
 
   // Start/stop connection based on auth state
   useEffect(() => {
-    if (user && accessToken) {
-      startConnection();
-    } else {
-      stopConnection();
-    }
+    let mounted = true;
+
+    const manageConnection = async () => {
+      if (!mounted) return;
+
+      if (user && accessToken) {
+        await startConnection();
+      } else {
+        await stopConnection();
+      }
+    };
+
+    manageConnection();
 
     return () => {
+      mounted = false;
       stopConnection();
     };
-  }, [user, accessToken, startConnection, stopConnection]);
+  }, [user, accessToken]);
 
   // Listen for token refresh via localStorage change
   useEffect(() => {
