@@ -102,7 +102,7 @@ function makeCase(
 }
 
 function signInAs(role: "DOCTOR" | "NURSE", userId: string) {
-  useAuthStore.getState().signIn("token", {
+  useAuthStore.getState().signIn("access-token", "refresh-token", {
     userId,
     fullName: "Người dùng",
     email: null,
