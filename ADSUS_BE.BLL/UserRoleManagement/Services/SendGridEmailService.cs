@@ -70,27 +70,29 @@ public class SendGridEmailService : IEmailService
                 // chưa qua Single Sender Verification, 400 = payload sai định dạng).
                 _logger.LogError(
                     "SendGrid returned an error while sending the temporary password to {Email}: HTTP {StatusCode}.",
-                    MaskEmail(toEmail), (int)response.StatusCode);
+                    HashEmailForLog(toEmail), (int)response.StatusCode);
                 return false;
             }
 
-            _logger.LogInformation("Sent the temporary password to {Email} via SendGrid.", MaskEmail(toEmail));
+            _logger.LogInformation("Sent the temporary password to {Email} via SendGrid.", HashEmailForLog(toEmail));
             return true;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             // Hợp đồng của IEmailService: KHÔNG ném ngoại lệ ra ngoài.
-            _logger.LogError(ex, "Could not reach SendGrid to send the temporary password to {Email}.", MaskEmail(toEmail));
+            _logger.LogError(ex, "Could not reach SendGrid to send the temporary password to {Email}.", HashEmailForLog(toEmail));
             return false;
         }
     }
 
-    // Log không phải nơi lưu PII đầy đủ (CWE-359) — nhưng vẫn cần đủ dấu vết để tra cứu sự
-    // cố (đúng người/đúng domain) mà không lộ nguyên văn địa chỉ email.
-    private static string MaskEmail(string email)
+    // Log không phải nơi lưu PII (CWE-359). Một hàm che ký tự (giữ lại ký tự đầu/domain) vẫn
+    // bị CodeQL coi là "bắt nguồn từ dữ liệu nhạy cảm" vì kết quả vẫn chứa substring của chuỗi
+    // gốc — chỉ hash một chiều mới thật sự cắt đứt luồng taint. Hash rút gọn vẫn đủ để so
+    // khớp 2 dòng log có cùng người nhận khi tra cứu sự cố, mà không thể suy ngược ra email.
+    private static string HashEmailForLog(string email)
     {
-        var atIndex = email.IndexOf('@');
-        return atIndex <= 1 ? "***" : $"{email[0]}***{email[atIndex..]}";
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(email));
+        return Convert.ToHexString(hash)[..12];
     }
 
     /// <summary>
