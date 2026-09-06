@@ -334,7 +334,20 @@ public class DoctorMedicationTrackingServiceTests
         var caseEntity = NewCase(Guid.NewGuid(), profile.PatientProfileId, doctorId, doctorUser);
         var prescription = NewPrescription(Guid.NewGuid(), caseEntity.CaseId, doctorId, caseEntity, doctorUser);
         var med = new Medicine { MedicineId = Guid.NewGuid(), Name = "Amoxicillin", CreatedAt = DateTime.UtcNow };
-        var item = NewItem(Guid.NewGuid(), prescription.PrescriptionId, prescription, med);
+        // StartDate = _today - 2, DurationDays = 3 → endDate = _today (còn trong vòng)
+        var item = new PrescriptionItem
+        {
+            PrescriptionItemId = Guid.NewGuid(),
+            PrescriptionId = prescription.PrescriptionId,
+            Prescription = prescription,
+            MedicineId = med.MedicineId,
+            Medicine = med,
+            Dosage = "1 viên",
+            DurationDays = 3,
+            StartDate = _today.AddDays(-2),
+            ScheduleSlots = new[] { ReminderSlot.Morning, ReminderSlot.Evening },
+            MedicationIntakeLogs = new List<MedicationIntakeLog>(),
+        };
         prescription.PrescriptionItems.Add(item);
 
         var todayMorning = _today.ToDateTime(new TimeOnly(8, 0), DateTimeKind.Utc);
@@ -361,6 +374,100 @@ public class DoctorMedicationTrackingServiceTests
         Assert.Equal("Amoxicillin", card.TodayDoses[0].MedicineName);
         Assert.Equal("TAKEN", card.TodayDoses[0].Status);
         Assert.Equal("PENDING", card.TodayDoses[1].Status);
+    }
+
+    [Fact]
+    public async Task GetPatientDetailAsync_ExcludesExpiredPrescriptions()
+    {
+        // Đơn có StartDate = _today - 3, DurationDays = 3
+        // → endDate = _today - 3 + 3 - 1 = _today - 1 (< today) → bị loại
+        using var db = CreateContext();
+        var doctorId = Guid.NewGuid();
+        var doctorUser = NewUser(doctorId, "Dr. Test", UserRole.Doctor);
+
+        var patientUser = NewUser(Guid.NewGuid(), "Nguyễn Văn C", UserRole.Patient);
+        var profile = NewProfile(Guid.NewGuid(), patientUser.UserId, patientUser);
+        var caseEntity = NewCase(Guid.NewGuid(), profile.PatientProfileId, doctorId, doctorUser);
+
+        var expiredPrescription = NewPrescription(Guid.NewGuid(), caseEntity.CaseId, doctorId, caseEntity, doctorUser);
+        var med = new Medicine { MedicineId = Guid.NewGuid(), Name = "Expired Med", CreatedAt = DateTime.UtcNow };
+        var expiredItem = new PrescriptionItem
+        {
+            PrescriptionItemId = Guid.NewGuid(),
+            PrescriptionId = expiredPrescription.PrescriptionId,
+            Prescription = expiredPrescription,
+            MedicineId = med.MedicineId,
+            Medicine = med,
+            Dosage = "1 viên",
+            DurationDays = 3,
+            StartDate = _today.AddDays(-3), // endDate = _today - 1 → quá hạn
+            ScheduleSlots = new[] { ReminderSlot.Morning },
+            MedicationIntakeLogs = new List<MedicationIntakeLog>(),
+        };
+        expiredPrescription.PrescriptionItems.Add(expiredItem);
+
+        db.Users.AddRange(doctorUser, patientUser);
+        db.PatientProfiles.Add(profile);
+        db.Cases.Add(caseEntity);
+        db.Medicines.Add(med);
+        db.Prescriptions.Add(expiredPrescription);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+
+        var result = await service.GetPatientDetailAsync(doctorId, profile.PatientProfileId, _nowUtc);
+
+        // Đơn hết hạn không xuất hiện
+        Assert.Empty(result.Prescriptions);
+    }
+
+    [Fact]
+    public async Task GetPatientDetailAsync_IncludesPrescriptionEndingToday()
+    {
+        // Đơn có StartDate = _today - 2, DurationDays = 3
+        // → endDate = _today - 2 + 3 - 1 = _today (hôm nay) → >= today, còn hiệu lực
+        using var db = CreateContext();
+        var doctorId = Guid.NewGuid();
+        var doctorUser = NewUser(doctorId, "Dr. Test", UserRole.Doctor);
+
+        var patientUser = NewUser(Guid.NewGuid(), "Nguyễn Văn D", UserRole.Patient);
+        var profile = NewProfile(Guid.NewGuid(), patientUser.UserId, patientUser);
+        var caseEntity = NewCase(Guid.NewGuid(), profile.PatientProfileId, doctorId, doctorUser);
+
+        var activePrescription = NewPrescription(Guid.NewGuid(), caseEntity.CaseId, doctorId, caseEntity, doctorUser);
+        var med = new Medicine { MedicineId = Guid.NewGuid(), Name = "Active Med", CreatedAt = DateTime.UtcNow };
+        var activeItem = new PrescriptionItem
+        {
+            PrescriptionItemId = Guid.NewGuid(),
+            PrescriptionId = activePrescription.PrescriptionId,
+            Prescription = activePrescription,
+            MedicineId = med.MedicineId,
+            Medicine = med,
+            Dosage = "1 viên",
+            DurationDays = 3,
+            StartDate = _today.AddDays(-2),
+            ScheduleSlots = new[] { ReminderSlot.Morning },
+            MedicationIntakeLogs = new List<MedicationIntakeLog>(),
+        };
+        activePrescription.PrescriptionItems.Add(activeItem);
+
+        var todayMorning = _today.ToDateTime(new TimeOnly(8, 0), DateTimeKind.Utc);
+        var takenLog = NewLog(Guid.NewGuid(), activeItem.PrescriptionItemId, activeItem, todayMorning, _nowUtc.AddHours(-1));
+        activeItem.MedicationIntakeLogs.Add(takenLog);
+
+        db.Users.AddRange(doctorUser, patientUser);
+        db.PatientProfiles.Add(profile);
+        db.Cases.Add(caseEntity);
+        db.Medicines.Add(med);
+        db.Prescriptions.Add(activePrescription);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+
+        var result = await service.GetPatientDetailAsync(doctorId, profile.PatientProfileId, _nowUtc);
+
+        Assert.Single(result.Prescriptions);
+        Assert.Equal("Active Med", result.Prescriptions[0].TodayDoses[0].MedicineName);
     }
 
     #endregion

@@ -182,6 +182,9 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
         var patientName = patientProfile.User?.FullName ?? "Bệnh nhân";
 
         // Query Active prescriptions by doctor and patient
+        // Filter: chỉ đơn còn trong vòng ngày hôm nay (endDate >= today).
+        // Đơn đã hết hạn (tất cả items đều có StartDate + DurationDays - 1 < today)
+        // không hiển thị ở đây — xem ở case detail.
         var prescriptions = await _db.Prescriptions
             .AsNoTracking()
             .Where(p => p.DoctorId == doctorId &&
@@ -192,6 +195,8 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
                 .ThenInclude(pi => pi.MedicationIntakeLogs)
             .Include(p => p.PrescriptionItems)
                 .ThenInclude(pi => pi.Medicine)
+            .Where(p => p.PrescriptionItems
+                .Any(pi => pi.StartDate.AddDays(pi.DurationDays - 1) >= todayStartUtc))
             .ToListAsync(ct);
 
         var cards = new List<PrescriptionCardDto>();
