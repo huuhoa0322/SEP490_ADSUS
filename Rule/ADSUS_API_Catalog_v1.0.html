@@ -39,8 +39,8 @@
   header.doc-header h1{margin:0 0 6px; font-size:1.7rem;}
   header.doc-header .sub{color:var(--muted); font-size:0.95rem;}
   .meta-table{width:100%; border-collapse:collapse; margin-top:18px; font-size:0.9rem;}
-  .meta-table td{padding:6px 10px; border-top:1px solid var(--border); vertical-align:top;}
-  .meta-table td:first-child{color:var(--muted); width:190px; font-weight:600;}
+  .meta-table td, .meta-table th{padding:6px 10px; border-top:1px solid var(--border); vertical-align:top;}
+  .meta-table th{color:var(--muted); width:190px; font-weight:600; text-align:left;}
   h2{
     font-size:1.2rem; margin-top:36px; padding-bottom:8px;
     border-bottom:2px solid var(--accent); color:var(--text);
@@ -116,12 +116,12 @@
     <h1>ADSUS — RESTful API Catalog</h1>
     <div class="sub">Full endpoint inventory derived from the PRD (Report 3.0) and the Use Case Specification (Report 3.1), applying the routing/contract rules already ratified in <code>api_design_rules_v0.2.md</code>.</div>
     <table class="meta-table">
-      <tr><td>Document version</td><td>v1.0 — 2026-07-30</td></tr>
-      <tr><td>Role</td><td>Senior API Architect pass — endpoint extraction &amp; contract mapping, not detailed schema design</td></tr>
-      <tr><td>Prepared for</td><td>ADSUS (AI Automated Detection and Segmentation of Abnormal Structures Based on Ultrasound Images and Clinical Information)</td></tr>
-      <tr><td>Source — L1/L2 context</td><td><code>.ai-context/project_context.md</code>, <code>.ai-context/api_design_rule/api_design_rules_v0.2.md</code></td></tr>
-      <tr><td>Source — business/UC</td><td><code>Reports_md/Report_3.0_PRD_ADSUS_md.md</code> (v1.23) · <code>Reports_md/Report_3.1_UCS_ADSUS.md</code> (v1.2, 26/26 UCs + Appendix A)</td></tr>
-      <tr><td>Coverage</td><td>All 26 UCs (UC-01–UC-26), 40 FTs, 10 modules — every UC maps to ≥1 endpoint below</td></tr>
+      <tr><th scope="row">Document version</th><td>v1.0 — 2026-07-30</td></tr>
+      <tr><th scope="row">Role</th><td>Senior API Architect pass — endpoint extraction &amp; contract mapping, not detailed schema design</td></tr>
+      <tr><th scope="row">Prepared for</th><td>ADSUS (AI Automated Detection and Segmentation of Abnormal Structures Based on Ultrasound Images and Clinical Information)</td></tr>
+      <tr><th scope="row">Source — L1/L2 context</th><td><code>.ai-context/project_context.md</code>, <code>.ai-context/api_design_rule/api_design_rules_v0.2.md</code></td></tr>
+      <tr><th scope="row">Source — business/UC</th><td><code>Reports_md/Report_3.0_PRD_ADSUS_md.md</code> (v1.23) · <code>Reports_md/Report_3.1_UCS_ADSUS.md</code> (v1.2, 26/26 UCs + Appendix A)</td></tr>
+      <tr><th scope="row">Coverage</th><td>All 26 UCs (UC-01–UC-26), 40 FTs, 10 modules — every UC maps to ≥1 endpoint below</td></tr>
     </table>
     <div class="note-box flag">
       <strong>Source substitution note:</strong> the linked <code>Report_3.1_UCS_Template_md.md</code> is the <em>blank</em> UCS template (all fields are literal <code>{{placeholders}}</code>, no ADSUS content). The actual filled Use Case Specification — 26/26 UCs, version 1.2, dated 2026-07-23 — lives at <code>Reports_md/Report_3.1_UCS_ADSUS.md</code>. This catalog was built from that document instead, since it is the one containing ADSUS's real Main Flows, Business Rules, and Request Fields per UC.

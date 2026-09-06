@@ -98,15 +98,16 @@
                 margin-top: 18px;
                 font-size: 0.9rem;
             }
-            .meta-table td {
+            .meta-table td, .meta-table th {
                 padding: 6px 10px;
                 border-top: 1px solid var(--border);
                 vertical-align: top;
             }
-            .meta-table td:first-child {
+            .meta-table th {
                 color: var(--muted);
                 width: 190px;
                 font-weight: 600;
+                text-align: left;
             }
             h2 {
                 font-size: 1.2rem;
@@ -361,18 +362,18 @@
                 </div>
                 <table class="meta-table">
                     <tr>
-                        <td>Phiên bản tài liệu</td>
+                        <th scope="row">Phiên bản tài liệu</th>
                         <td>v1.0 — 2026-07-30</td>
                     </tr>
                     <tr>
-                        <td>Vai trò thực hiện</td>
+                        <th scope="row">Vai trò thực hiện</th>
                         <td>
                             Senior API Architect — trích xuất endpoint &amp; ánh
                             xạ contract, không thiết kế chi tiết schema
                         </td>
                     </tr>
                     <tr>
-                        <td>Chuẩn bị cho</td>
+                        <th scope="row">Chuẩn bị cho</th>
                         <td>
                             ADSUS (AI Automated Detection and Segmentation of
                             Abnormal Structures Based on Ultrasound Images and
@@ -380,7 +381,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <td>Nguồn — ngữ cảnh L1/L2</td>
+                        <th scope="row">Nguồn — ngữ cảnh L1/L2</th>
                         <td>
                             <code>.ai-context/project_context.md</code>,
                             <code
@@ -389,7 +390,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <td>Nguồn — nghiệp vụ/UC</td>
+                        <th scope="row">Nguồn — nghiệp vụ/UC</th>
                         <td>
                             <code>Reports_md/Report_3.0_PRD_ADSUS_md.md</code>
                             (v1.23) ·
@@ -398,7 +399,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <td>Phạm vi bao phủ</td>
+                        <th scope="row">Phạm vi bao phủ</th>
                         <td>
                             Toàn bộ 26 UC (UC-01–UC-26), 40 FT, 10 module — mỗi
                             UC đều ánh xạ tới ≥1 endpoint bên dưới

@@ -759,5 +759,3 @@ namespace ADSUS_BE
         }
     }
 }
-
-public partial class Program { }
