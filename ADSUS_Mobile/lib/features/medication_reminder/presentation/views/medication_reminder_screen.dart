@@ -315,7 +315,7 @@ class _MedicationBody extends ConsumerWidget {
             ),
           ),
         ],
-        if (pendingToday.isEmpty && takenToday.isEmpty)
+        if (pendingToday.isEmpty && overtimeToday.isEmpty && takenToday.isEmpty)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(32),
