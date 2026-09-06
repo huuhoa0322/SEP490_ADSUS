@@ -70,19 +70,27 @@ public class SendGridEmailService : IEmailService
                 // chưa qua Single Sender Verification, 400 = payload sai định dạng).
                 _logger.LogError(
                     "SendGrid returned an error while sending the temporary password to {Email}: HTTP {StatusCode}.",
-                    toEmail, (int)response.StatusCode);
+                    MaskEmail(toEmail), (int)response.StatusCode);
                 return false;
             }
 
-            _logger.LogInformation("Sent the temporary password to {Email} via SendGrid.", toEmail);
+            _logger.LogInformation("Sent the temporary password to {Email} via SendGrid.", MaskEmail(toEmail));
             return true;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             // Hợp đồng của IEmailService: KHÔNG ném ngoại lệ ra ngoài.
-            _logger.LogError(ex, "Could not reach SendGrid to send the temporary password to {Email}.", toEmail);
+            _logger.LogError(ex, "Could not reach SendGrid to send the temporary password to {Email}.", MaskEmail(toEmail));
             return false;
         }
+    }
+
+    // Log không phải nơi lưu PII đầy đủ (CWE-359) — nhưng vẫn cần đủ dấu vết để tra cứu sự
+    // cố (đúng người/đúng domain) mà không lộ nguyên văn địa chỉ email.
+    private static string MaskEmail(string email)
+    {
+        var atIndex = email.IndexOf('@');
+        return atIndex <= 1 ? "***" : $"{email[0]}***{email[atIndex..]}";
     }
 
     /// <summary>
