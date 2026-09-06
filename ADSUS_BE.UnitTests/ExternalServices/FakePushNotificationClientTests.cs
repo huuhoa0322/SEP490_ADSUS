@@ -80,6 +80,9 @@ public class FakePushNotificationClientTests
 
         // Act + Assert — FakePush implementation KHÔNG throw OperationCanceledException
         // vì không có async work thật; đây chỉ là contract test.
-        await client.SendToUserAsync(Guid.NewGuid(), new PushMessage("T", "B"), cts.Token);
+        var exception = await Record.ExceptionAsync(
+            () => client.SendToUserAsync(Guid.NewGuid(), new PushMessage("T", "B"), cts.Token));
+
+        Assert.Null(exception);
     }
 }

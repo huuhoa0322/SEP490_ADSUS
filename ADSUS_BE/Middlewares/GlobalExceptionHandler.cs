@@ -76,7 +76,7 @@ public class GlobalExceptionHandler
 
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)statusCode;
-        await context.Response.WriteAsync(JsonSerializer.Serialize(response, JsonOptions));
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response, JsonOptions), context.RequestAborted);
     }
 
     private static string SanitizeForLog(string? value) =>

@@ -21,6 +21,7 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
             .Include(p => p.User)
             .Include(p => p.PatientDiseases).ThenInclude(x => x.Disease)
             .Include(p => p.PatientAllergies).ThenInclude(x => x.AllergyType)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.PatientProfileId == patientProfileId, ct);
 
     public Task<PatientProfile?> GetForUpdateAsync(Guid patientProfileId, CancellationToken ct = default) =>
@@ -28,6 +29,7 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
             .Include(p => p.User)
             .Include(p => p.PatientDiseases)
             .Include(p => p.PatientAllergies)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.PatientProfileId == patientProfileId, ct);
 
     public Task<PatientProfile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
@@ -36,6 +38,7 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
             .Include(p => p.User)
             .Include(p => p.PatientDiseases).ThenInclude(x => x.Disease)
             .Include(p => p.PatientAllergies).ThenInclude(x => x.AllergyType)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
     public Task<bool> ExistsForUserAsync(Guid userId, CancellationToken ct = default) =>
