@@ -69,8 +69,8 @@ public class SendGridEmailService : IEmailService
                 // ngược địa chỉ người nhận — log status là đủ (401 = sai API key, 403 = FromAddress
                 // chưa qua Single Sender Verification, 400 = payload sai định dạng).
                 _logger.LogError(
-                    "SendGrid returned an error while sending the temporary password to {Email}: HTTP {StatusCode}.",
-                    HashEmailForLog(toEmail), (int)response.StatusCode);
+                    "SendGrid returned an error while sending the temporary password: HTTP {StatusCode}.",
+                    (int)response.StatusCode);
                 return false;
             }
 
@@ -80,7 +80,7 @@ public class SendGridEmailService : IEmailService
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             // Hợp đồng của IEmailService: KHÔNG ném ngoại lệ ra ngoài.
-            _logger.LogError(ex, "Could not reach SendGrid to send the temporary password to {Email}.", HashEmailForLog(toEmail));
+            _logger.LogError(ex, "Could not reach SendGrid to send the temporary password.");
             return false;
         }
     }
