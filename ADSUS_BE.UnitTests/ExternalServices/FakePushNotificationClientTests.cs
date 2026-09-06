@@ -31,9 +31,9 @@ public class FakePushNotificationClientTests
         // Assert
         Assert.Equal(1, sent);
         Assert.Single(client.SentMessages);
-        Assert.Equal(userId, client.SentMessages.First().UserId);
-        Assert.Equal("Nhắc uống thuốc", client.SentMessages.First().Message.Title);
-        Assert.Equal("/reminders/abc", client.SentMessages.First().Message.DeepLink);
+        Assert.Equal(userId, client.SentMessages[0].UserId);
+        Assert.Equal("Nhắc uống thuốc", client.SentMessages[0].Message.Title);
+        Assert.Equal("/reminders/abc", client.SentMessages[0].Message.DeepLink);
     }
 
     [Fact]

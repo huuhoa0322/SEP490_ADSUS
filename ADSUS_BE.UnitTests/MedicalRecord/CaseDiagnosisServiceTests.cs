@@ -70,9 +70,10 @@ public class CaseDiagnosisServiceTests : IDisposable
     {
         try { _db.Database.EnsureDeleted(); } catch { }
         _db.Dispose();
+        GC.SuppressFinalize(this);
     }
 
-    private static Stream MakeFakeImageStream() => new MemoryStream(new byte[] { 1, 2, 3 });
+    private static MemoryStream MakeFakeImageStream() => new(new byte[] { 1, 2, 3 });
 
     // =========================================================================
     // AnalyzeImageAsync
@@ -198,7 +199,7 @@ public class CaseDiagnosisServiceTests : IDisposable
     // ConfirmAnalysisAsync
     // =========================================================================
 
-    private ConfirmAnalysisRequest MakeValidConfirmRequest(string aiJson = "[]", string docJson = "[]")
+    private static ConfirmAnalysisRequest MakeValidConfirmRequest(string aiJson = "[]", string docJson = "[]")
     {
         return new ConfirmAnalysisRequest
         {

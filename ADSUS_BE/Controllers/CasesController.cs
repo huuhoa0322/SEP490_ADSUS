@@ -23,6 +23,9 @@ namespace ADSUS_BE.Controllers;
 [Produces("application/json")]
 public sealed class CasesController : ControllerBase
 {
+    private static readonly System.Text.Json.JsonSerializerOptions SymptomsJsonOptions =
+        new() { PropertyNameCaseInsensitive = true };
+
     private readonly ICaseService _cases;
     private readonly System.Lazy<ICaseReportService> _reportsLazy;
     private readonly IPrescriptionService _prescriptions;
@@ -176,7 +179,7 @@ public sealed class CasesController : ControllerBase
             try
             {
                 symptoms = System.Text.Json.JsonSerializer.Deserialize<List<CreateCaseSymptomRequest>>(
-                    symptomsJson, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    symptomsJson, SymptomsJsonOptions);
             }
             catch
             {
@@ -308,7 +311,7 @@ public sealed class CasesController : ControllerBase
     {
         var prescription = await _prescriptions.GetByCaseIdAsync(caseId, ct);
         if (prescription is null)
-            return Ok(ApiResponse<object>.Ok(null, "No prescription for this case."));
+            return Ok(ApiResponse<object>.Ok(null!, "No prescription for this case."));
         return Ok(ApiResponse<PrescriptionResponse>.Ok(prescription));
     }
 

@@ -53,6 +53,7 @@ public class AppointmentServiceTests : IDisposable
     public void Dispose()
     {
         _db.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     #region ListOpenSlotsAsync Tests

@@ -59,7 +59,7 @@ public sealed class FirebasePushNotificationClient : IPushNotificationClient, ID
             {
                 _logger.LogInformation("[FCM] Initializing Firebase from FIREBASE_CREDENTIALS_JSON environment variable");
                 using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(credentialsJson));
-                var credential = GoogleCredential.FromStream(stream);
+                var credential = ServiceAccountCredential.FromServiceAccountData(stream).ToGoogleCredential();
                 FirebaseApp.Create(new AppOptions
                 {
                     Credential = credential,

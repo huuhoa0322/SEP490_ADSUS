@@ -305,8 +305,8 @@ public class ShiftRequestService : IShiftRequestService
             results.Add(new DayShiftSummary
             {
                 Date = day,
-                Morning = ComputeShiftInfo(day, ShiftType.Morning, daySlots, dayRequests, nowLocal),
-                Afternoon = ComputeShiftInfo(day, ShiftType.Afternoon, daySlots, dayRequests, nowLocal),
+                Morning = ComputeShiftInfo(day, ShiftType.Morning, daySlots, dayRequests, nowLocal)!,
+                Afternoon = ComputeShiftInfo(day, ShiftType.Afternoon, daySlots, dayRequests, nowLocal)!,
                 Evening = ComputeShiftInfo(day, ShiftType.Evening, daySlots, dayRequests, nowLocal, isEvening: true)
             });
         }
@@ -314,7 +314,7 @@ public class ShiftRequestService : IShiftRequestService
         return results;
     }
 
-    private ShiftInfo? ComputeShiftInfo(
+    private static ShiftInfo? ComputeShiftInfo(
         DateOnly day, ShiftType shiftType, 
         List<ScheduleSlot> daySlots, 
         List<ShiftRequest> dayRequests,
@@ -387,7 +387,7 @@ public class ShiftRequestService : IShiftRequestService
         };
     }
 
-    private ShiftRequestResponse MapToResponse(ShiftRequest req, User doctor)
+    private static ShiftRequestResponse MapToResponse(ShiftRequest req, User doctor)
     {
         return new ShiftRequestResponse
         {
