@@ -15,8 +15,8 @@ export function useCheckin() {
 
   return useMutation({
     mutationFn: ({ appointmentId, caseId }: { appointmentId: string; caseId: string }) =>
-      checkinAppointment(appointmentId, caseId),
-    onSuccess: (data: ApiResponse<CheckinResponse> | undefined) => {
+      checkinAppointment(appointmentId, caseId) as Promise<ApiResponse<CheckinResponse>>,
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: nurseCheckinQueryKeys.all });
       if (data?.data?.message?.includes("tự động hủy")) {
         toast.error(data.data.message, { duration: 5000 });
