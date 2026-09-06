@@ -196,7 +196,7 @@ public sealed class ScheduleSlotsController : ControllerBase
         try
         {
             await _slots.EnsureDefaultSlotsAsync(CurrentDoctorId, weekStart, ct);
-            return Ok(ApiResponse<object>.Ok(null, "Default slots ensured."));
+            return Ok(ApiResponse<object>.Ok(null!, "Default slots ensured."));
         }
         catch (InvalidOperationException ex)
         {

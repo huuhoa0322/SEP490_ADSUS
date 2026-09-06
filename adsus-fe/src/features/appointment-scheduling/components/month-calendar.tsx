@@ -124,7 +124,15 @@ export function MonthCalendar({
           return (
             <div
               key={day.toString()}
+              role="button"
+              tabIndex={0}
               onClick={() => onDayClick(summary, day)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onDayClick(summary, day);
+                }
+              }}
               className={cn(
                 'min-h-[100px] border-r border-b p-2 transition-colors cursor-pointer hover:bg-slate-50',
                 !isCurrentMonth && 'bg-slate-50 opacity-50',

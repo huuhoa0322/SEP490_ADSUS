@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/popover"
 
 interface DatePickerProps {
+  id?: string;
   value?: string | Date | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onChange: (value: any) => void;
@@ -23,7 +24,7 @@ interface DatePickerProps {
   className?: string;
 }
 
-export function DatePicker({ value, onChange, placeholder = "dd/mm/yyyy", disabled = false, maxDate, minDate, className }: DatePickerProps) {
+export function DatePicker({ id, value, onChange, placeholder = "dd/mm/yyyy", disabled = false, maxDate, minDate, className }: DatePickerProps) {
   const parsedDate = value ? new Date(value) : undefined;
   const [isOpen, setIsOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState("");
@@ -31,7 +32,7 @@ export function DatePicker({ value, onChange, placeholder = "dd/mm/yyyy", disabl
   // Sync input value when external value changes
   React.useEffect(() => {
     const pDate = value ? new Date(value) : undefined;
-    if (pDate && !isNaN(pDate.getTime())) {
+    if (pDate && !Number.isNaN(pDate.getTime())) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setInputValue(format(pDate, "dd/MM/yyyy"));
     } else {
@@ -78,6 +79,7 @@ export function DatePicker({ value, onChange, placeholder = "dd/mm/yyyy", disabl
   return (
     <div className={cn("relative", className)}>
       <Input
+        id={id}
         type="text"
         placeholder={placeholder}
         value={inputValue}

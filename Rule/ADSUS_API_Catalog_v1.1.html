@@ -98,15 +98,16 @@
                 margin-top: 18px;
                 font-size: 0.9rem;
             }
-            .meta-table td {
+            .meta-table td, .meta-table th {
                 padding: 6px 10px;
                 border-top: 1px solid var(--border);
                 vertical-align: top;
             }
-            .meta-table td:first-child {
+            .meta-table th {
                 color: var(--muted);
                 width: 190px;
                 font-weight: 600;
+                text-align: left;
             }
             h2 {
                 font-size: 1.2rem;
@@ -382,18 +383,18 @@
                 </div>
                 <table class="meta-table">
                     <tr>
-                        <td>Document version</td>
+                        <th scope="row">Document version</th>
                         <td>v1.1 — 2026-07-30</td>
                     </tr>
                     <tr>
-                        <td>Role</td>
+                        <th scope="row">Role</th>
                         <td>
                             Senior API Architect pass — endpoint extraction
                             &amp; contract mapping, not detailed schema design
                         </td>
                     </tr>
                     <tr>
-                        <td>Prepared for</td>
+                        <th scope="row">Prepared for</th>
                         <td>
                             ADSUS (AI Automated Detection and Segmentation of
                             Abnormal Structures Based on Ultrasound Images and
@@ -401,7 +402,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <td>Source — L1/L2 context</td>
+                        <th scope="row">Source — L1/L2 context</th>
                         <td>
                             <code>.ai-context/project_context.md</code>,
                             <code
@@ -410,7 +411,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <td>Source — business/UC</td>
+                        <th scope="row">Source — business/UC</th>
                         <td>
                             <code>Reports_md/Report_3.0_PRD_ADSUS_md.md</code>
                             (v1.23) ·
@@ -419,7 +420,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <td>Coverage</td>
+                        <th scope="row">Coverage</th>
                         <td>
                             All 26 UCs (UC-01–UC-26), 40 FTs, 10 modules — every
                             UC maps to ≥1 endpoint below

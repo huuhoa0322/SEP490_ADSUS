@@ -28,9 +28,17 @@ export function UltrasoundImageGallery({ images }: { images: UltrasoundImage[] }
         {images.map((image) => (
         <li key={image.imageId} className="overflow-hidden rounded-lg border border-border">
           {image.imageUrl ? (
-            <div 
+            <div
+              role="button"
+              tabIndex={0}
               className="relative aspect-[4/3] w-full bg-black cursor-pointer transition-opacity hover:opacity-85"
               onClick={() => setSelectedImage(image.imageUrl!)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedImage(image.imageUrl!);
+                }
+              }}
             >
               <Image
                 src={image.imageUrl}
@@ -62,12 +70,14 @@ export function UltrasoundImageGallery({ images }: { images: UltrasoundImage[] }
       </ul>
 
       {selectedImage && (
-        <div 
+        <div
+          role="presentation"
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
           onClick={() => setSelectedImage(null)}
         >
           <div className="relative max-w-5xl w-full h-full max-h-[90vh] flex flex-col items-center justify-center">
-            <button 
+            <button
+              aria-label="Đóng ảnh phóng to"
               className="absolute -top-2 right-0 md:-top-4 md:-right-4 m-4 h-10 w-10 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/40 transition-colors z-10 text-xl font-bold"
               onClick={() => setSelectedImage(null)}
             >

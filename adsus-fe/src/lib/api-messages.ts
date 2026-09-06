@@ -98,8 +98,15 @@ export function translateApiMessage(message: string): string {
   const exact = MESSAGES[message.trim()];
   if (exact) return exact;
 
-  const parts = message.match(/[^.]+\./g);
-  if (!parts || parts.length < 2) return message;
+  const parts: string[] = [];
+  let start = 0;
+  let dotIndex = message.indexOf(".", start);
+  while (dotIndex !== -1) {
+    if (dotIndex > start) parts.push(message.slice(start, dotIndex + 1));
+    start = dotIndex + 1;
+    dotIndex = message.indexOf(".", start);
+  }
+  if (parts.length < 2) return message;
 
   return parts
     .map((part) => MESSAGES[part.trim()] ?? part.trim())

@@ -9,7 +9,7 @@ namespace ADSUS_BE.BLL.Engagement.Services;
 /// </summary>
 public sealed class FakeChatClient : IChatClient
 {
-    private static readonly IReadOnlyList<string> MockResponses = new[]
+    private static readonly string[] MockResponses =
     {
         "Dựa trên thông tin bạn cung cấp, đây là thông tin tham khảo chung về vấn đề bạn hỏi. " +
         "Tuy nhiên, mỗi tình huống sức khỏe là khác nhau, bạn nên tham khảo ý kiến bác sĩ để có kết luận chính xác nhất.",
@@ -30,7 +30,7 @@ public sealed class FakeChatClient : IChatClient
         CancellationToken ct = default)
     {
         // Fake: trả lời lần lượt theo round-robin để test nhiều response khác nhau.
-        var response = MockResponses[_responseIndex % MockResponses.Count];
+        var response = MockResponses[_responseIndex % MockResponses.Length];
         _responseIndex++;
         return Task.FromResult(response);
     }

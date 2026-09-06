@@ -116,7 +116,7 @@ namespace ADSUS_BE
             // Verify config is present:
             var openAiKey = builder.Configuration["OpenAi:ApiKey"];
             var openAiModel = builder.Configuration["OpenAi:Model"];
-            Console.WriteLine($"[DEBUG CONFIG] OpenAi:ApiKey = '{(string.IsNullOrEmpty(openAiKey) ? "NULL/EMPTY" : openAiKey.Substring(0, Math.Min(10, openAiKey.Length)) + "...")}'");
+            Console.WriteLine($"[DEBUG CONFIG] OpenAi:ApiKey = '{(string.IsNullOrEmpty(openAiKey) ? "NULL/EMPTY" : string.Concat(openAiKey.AsSpan(0, Math.Min(10, openAiKey.Length)), "..."))}'");
             Console.WriteLine($"[DEBUG CONFIG] OpenAi:Model = '{(openAiModel ?? "NULL")}'");
 
             builder.Host.UseSerilog((context, configuration) =>
@@ -759,5 +759,3 @@ namespace ADSUS_BE
         }
     }
 }
-
-public partial class Program { }

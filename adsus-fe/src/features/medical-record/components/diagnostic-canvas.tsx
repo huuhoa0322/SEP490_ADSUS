@@ -728,8 +728,13 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
           </div>
         </div>
 
-        <div 
-          className={`relative flex-1 overflow-hidden bg-muted/20 select-none ${addingMode ? 'cursor-crosshair' : 'cursor-grab'}`} 
+        {/* Vùng vẽ điểm chú thích theo tọa độ chuột (đặt caliper lên đúng vị trí pixel người
+            dùng bấm) — không có tương đương bàn phím hợp lý cho thao tác chọn tọa độ tự do
+            này, giống mọi công cụ vẽ/canvas khác. role/tabIndex chỉ đảm bảo có thể focus tới. */}
+        <div
+          role="button"
+          tabIndex={0}
+          className={`relative flex-1 overflow-hidden bg-muted/20 select-none ${addingMode ? 'cursor-crosshair' : 'cursor-grab'}`}
           ref={editWrapRef}
           onClick={handleEditWrapClick}
         >
@@ -770,9 +775,10 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
       {/* Custom Modal Notification */}
       {toastMessage && (
         <>
-          <div 
-            className="fixed inset-0 z-[150] bg-black/20 backdrop-blur-sm animate-in fade-in duration-200" 
-            onClick={() => setToastMessage(null)} 
+          <div
+            role="presentation"
+            className="fixed inset-0 z-[150] bg-black/20 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setToastMessage(null)}
           />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[200] w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
             <div className="flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/5">

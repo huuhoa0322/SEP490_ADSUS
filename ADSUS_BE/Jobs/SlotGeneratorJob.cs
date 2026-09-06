@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using Npgsql;
 using Quartz;
 
+namespace ADSUS_BE.Jobs;
+
 /// <summary>
 /// JOB-02 — Tự sinh slot mỗi ngày.
 /// Chạy lúc 00:05 sáng hàng ngày.

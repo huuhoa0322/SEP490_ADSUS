@@ -144,7 +144,7 @@ function AuditRow({ entry }: { entry: AuditLogEntry }) {
 function formatWhen(iso: string): string {
   // Chuỗi từ .NET không phải lúc nào cũng có hậu tố Z; thiếu nó thì trình duyệt hiểu là giờ
   // địa phương và mốc thời gian sai đúng 7 tiếng.
-  const date = new Date(/[Zz]|[+-]\d{2}:\d{2}$/.test(iso) ? iso : `${iso}Z`);
+  const date = new Date(/(?:[Zz])|(?:[+-]\d{2}:\d{2}$)/.test(iso) ? iso : `${iso}Z`);
   if (Number.isNaN(date.getTime())) return "—";
 
   return date.toLocaleString("vi-VN", {

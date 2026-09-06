@@ -305,8 +305,8 @@ public class ShiftRequestService : IShiftRequestService
             results.Add(new DayShiftSummary
             {
                 Date = day,
-                Morning = ComputeShiftInfo(day, ShiftType.Morning, daySlots, dayRequests, nowLocal),
-                Afternoon = ComputeShiftInfo(day, ShiftType.Afternoon, daySlots, dayRequests, nowLocal),
+                Morning = ComputeShiftInfo(day, ShiftType.Morning, daySlots, dayRequests, nowLocal)!,
+                Afternoon = ComputeShiftInfo(day, ShiftType.Afternoon, daySlots, dayRequests, nowLocal)!,
                 Evening = ComputeShiftInfo(day, ShiftType.Evening, daySlots, dayRequests, nowLocal, isEvening: true)
             });
         }
@@ -314,7 +314,7 @@ public class ShiftRequestService : IShiftRequestService
         return results;
     }
 
-    private ShiftInfo? ComputeShiftInfo(
+    private static ShiftInfo? ComputeShiftInfo(
         DateOnly day, ShiftType shiftType, 
         List<ScheduleSlot> daySlots, 
         List<ShiftRequest> dayRequests,
@@ -327,7 +327,7 @@ public class ShiftRequestService : IShiftRequestService
         // Nếu là ca Tối và không có slot nào + không có request nào, trả về null (trống, không hiện ô Ca Tối)
         var relevantRequests = dayRequests.Where(r => r.ShiftType == shiftType || r.ShiftType == ShiftType.FullDay).ToList();
         
-        if (isEvening && !slotsInShift.Any() && !relevantRequests.Any())
+        if (isEvening && slotsInShift.Count == 0 && relevantRequests.Count == 0)
         {
             return null; 
         }
@@ -375,7 +375,7 @@ public class ShiftRequestService : IShiftRequestService
         };
     }
 
-    private List<(TimeOnly Start, TimeOnly End)> GetTimeRangesForShift(ShiftType type)
+    private static List<(TimeOnly Start, TimeOnly End)> GetTimeRangesForShift(ShiftType type)
     {
         return type switch
         {
@@ -387,7 +387,7 @@ public class ShiftRequestService : IShiftRequestService
         };
     }
 
-    private ShiftRequestResponse MapToResponse(ShiftRequest req, User doctor)
+    private static ShiftRequestResponse MapToResponse(ShiftRequest req, User doctor)
     {
         return new ShiftRequestResponse
         {
@@ -407,7 +407,7 @@ public class ShiftRequestService : IShiftRequestService
         };
     }
 
-    private string GetShiftLabel(ShiftType type)
+    private static string GetShiftLabel(ShiftType type)
     {
         return type switch
         {
