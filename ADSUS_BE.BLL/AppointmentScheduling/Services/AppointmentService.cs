@@ -151,7 +151,7 @@ public sealed class AppointmentService : IAppointmentService
         };
 
         // Tạo Case nếu có symptoms (từ Mobile booking)
-        if (request.Symptoms?.Any() == true)
+        if (request.Symptoms?.Count > 0)
         {
             var caseId = await _caseService.CreateFromBookingAsync(
                 patientProfileId,

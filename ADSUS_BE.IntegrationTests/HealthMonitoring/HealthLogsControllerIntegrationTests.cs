@@ -37,7 +37,7 @@ public class HealthLogsControllerIntegrationTests
 
     #region Test Data Factory
 
-    private User NewUser(Guid userId, UserRole role)
+    private static User NewUser(Guid userId, UserRole role)
         => new()
         {
             UserId = userId,

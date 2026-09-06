@@ -230,19 +230,19 @@ export function PatientAccountForm() {
       <div className="mt-6 space-y-5 border-t border-border pt-5">
         <h3 className="text-xs font-semibold uppercase text-muted-foreground">Hồ sơ nền</h3>
 
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
+        <fieldset className="m-0 border-0 p-0">
+          <legend className="mb-1.5 block text-sm font-medium">
             Tiền sử bệnh
-          </label>
+          </legend>
           <MedicalHistorySelector value={diseases} onChange={setDiseases} />
-        </div>
+        </fieldset>
 
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
+        <fieldset className="m-0 border-0 p-0">
+          <legend className="mb-1.5 block text-sm font-medium">
             Dị ứng đã biết
-          </label>
+          </legend>
           <AllergySelector value={allergies} onChange={setAllergies} />
-        </div>
+        </fieldset>
       </div>
 
       {errorMessage ? (

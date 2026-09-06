@@ -124,7 +124,7 @@ public class MedicationIntakeLogRepositoryTests
     }
 
     // Helper: tạo full navigation chain PatientProfile → Case → Prescription → PrescriptionItem → log
-    private async Task<(MedicationIntakeLogRepository repo, Guid patientProfileId)> CreateRepoWithNavChain(
+    private static async Task<(MedicationIntakeLogRepository repo, Guid patientProfileId)> CreateRepoWithNavChain(
         AppDbContext db,
         params MedicationIntakeLog[] logs)
     {

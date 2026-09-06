@@ -187,8 +187,9 @@ export const InventoryImportForm = () => {
                     name="medicineId"
                     render={({ field, fieldState }) => (
                       <div className="space-y-2 md:col-span-2">
-                        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Thuốc</label>
+                        <label htmlFor="medicineId" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Thuốc</label>
                       <SearchableSelect
+                        id="medicineId"
                         disabled={isLoadingMedicines}
                         placeholder="Chọn thuốc..."
                         value={field.value}
@@ -209,8 +210,9 @@ export const InventoryImportForm = () => {
                   name="medicinePackagingId"
                   render={({ field, fieldState }) => (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Đơn vị nhập</label>
+                      <label htmlFor="medicinePackagingId" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Đơn vị nhập</label>
                       <SearchableSelect
+                        id="medicinePackagingId"
                         disabled={!watchMedicineId || packagings.length === 0}
                         placeholder="Chọn đơn vị đóng gói..."
                         value={field.value}
@@ -228,8 +230,9 @@ export const InventoryImportForm = () => {
                   name="supplierId"
                   render={({ field, fieldState }) => (
                     <div className="space-y-2 md:col-span-2">
-                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Nhà cung cấp</label>
+                      <label htmlFor="supplierId" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Nhà cung cấp</label>
                       <SearchableSelect
+                        id="supplierId"
                         disabled={isLoadingSuppliers}
                         placeholder="Chọn nhà cung cấp..."
                         value={field.value}
@@ -247,8 +250,8 @@ export const InventoryImportForm = () => {
                   name="lotNumber"
                   render={({ field, fieldState }) => (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Số Lô</label>
-                      <Input placeholder="VD: LOT-123" {...field} />
+                      <label htmlFor="lotNumber" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Số Lô</label>
+                      <Input id="lotNumber" placeholder="VD: LOT-123" {...field} />
                       {fieldState.error && <p className="text-sm font-medium text-destructive">{fieldState.error.message}</p>}
                     </div>
                   )}
@@ -260,8 +263,9 @@ export const InventoryImportForm = () => {
                   name="expiryDate"
                   render={({ field, fieldState }) => (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Hạn sử dụng</label>
+                      <label htmlFor="expiryDate" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Hạn sử dụng</label>
                       <DatePicker
+                        id="expiryDate"
                         value={field.value}
                         onChange={field.onChange}
                       />
@@ -276,8 +280,9 @@ export const InventoryImportForm = () => {
                   name="quantity"
                   render={({ field, fieldState }) => (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Số lượng</label>
+                      <label htmlFor="quantity" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Số lượng</label>
                       <Input
+                        id="quantity"
                         type="number"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
@@ -293,8 +298,9 @@ export const InventoryImportForm = () => {
                   name="importPricePerUnit"
                   render={({ field, fieldState }) => (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Giá nhập trên 1 đơn vị nhập (VND)</label>
+                      <label htmlFor="importPricePerUnit" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Giá nhập trên 1 đơn vị nhập (VND)</label>
                       <Input
+                        id="importPricePerUnit"
                         type="number"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}

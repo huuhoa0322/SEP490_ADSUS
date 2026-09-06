@@ -72,7 +72,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         _db.Dispose();
     }
 
-    private Stream MakeFakeImageStream() => new MemoryStream(new byte[] { 1, 2, 3 });
+    private static Stream MakeFakeImageStream() => new MemoryStream(new byte[] { 1, 2, 3 });
 
     // =========================================================================
     // AnalyzeImageAsync

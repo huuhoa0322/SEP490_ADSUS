@@ -667,7 +667,7 @@ public class AppointmentsControllerIntegrationTests
 
     private Guid GetPatientProfileId() => _patientId;
 
-    private User CreateDoctor()
+    private static User CreateDoctor()
     {
         return new User
         {

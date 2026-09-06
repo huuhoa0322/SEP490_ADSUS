@@ -77,21 +77,21 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
         return;
       }
       
-      const priceVal = parseFloat(salePrice);
-      if (isNaN(priceVal) || priceVal < 0) {
+      const priceVal = Number.parseFloat(salePrice);
+      if (Number.isNaN(priceVal) || priceVal < 0) {
         toast.error("Giá bán không hợp lệ");
         return;
       }
     }
 
-    const thresholdVal = parseInt(lowStockThreshold, 10);
-    if (isNaN(thresholdVal) || thresholdVal < 0) {
+    const thresholdVal = Number.parseInt(lowStockThreshold, 10);
+    if (Number.isNaN(thresholdVal) || thresholdVal < 0) {
       toast.error("Ngưỡng cảnh báo hết hàng không hợp lệ");
       return;
     }
 
     let finalUsageUnit = usageUnit.trim();
-    let finalVolume = parseFloat(volume);
+    let finalVolume = Number.parseFloat(volume);
 
     if (!isLiquid) {
       // Smart Defaults: usage unit = base unit name, volume = 1
@@ -100,7 +100,7 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
       finalVolume = 1;
     }
 
-    if (isLiquid && (!finalUsageUnit || isNaN(finalVolume) || finalVolume <= 0)) {
+    if (isLiquid && (!finalUsageUnit || Number.isNaN(finalVolume) || finalVolume <= 0)) {
       toast.error("Vui lòng nhập đúng Đơn vị dùng và Hàm lượng (Dung tích)");
       return;
     }
@@ -122,7 +122,7 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
         const newMed = await createMutation.mutateAsync({ 
           name: name.trim(),
           medicineUnitId,
-          salePrice: parseFloat(salePrice) || 0,
+          salePrice: Number.parseFloat(salePrice) || 0,
           usageUnit: finalUsageUnit,
           volumePerBaseUnit: finalVolume,
           lowStockThreshold: thresholdVal

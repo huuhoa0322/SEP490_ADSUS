@@ -90,24 +90,24 @@ export function ExcelImportModal({ isOpen, onClose, onConfirm, isPending }: Exce
           const str = rawExpiry.toString().trim();
           const parts = str.split(/[\/-]/);
           if (parts.length === 3) {
-            const day = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1;
-            const year = parseInt(parts[2], 10);
+            const day = Number.parseInt(parts[0], 10);
+            const month = Number.parseInt(parts[1], 10) - 1;
+            const year = Number.parseInt(parts[2], 10);
             const d = new Date(year, month, day);
-            if (!isNaN(d.getTime())) {
+            if (!Number.isNaN(d.getTime())) {
               expiryStr = d.toISOString();
             }
           } else {
             const d = new Date(str);
-            if (!isNaN(d.getTime())) {
+            if (!Number.isNaN(d.getTime())) {
               expiryStr = d.toISOString();
             }
           }
         }
 
         const unitName = getVal(row, 'Đơn vị nhập')?.toString().trim();
-        const quantity = parseFloat(String(getVal(row, 'Số lượng')));
-        const price = parseFloat(String(getVal(row, 'Giá Nhập')));
+        const quantity = Number.parseFloat(String(getVal(row, 'Số lượng')));
+        const price = Number.parseFloat(String(getVal(row, 'Giá Nhập')));
 
         const missingFields = [];
         if (!medName) missingFields.push("Tên Thuốc");
@@ -115,8 +115,8 @@ export function ExcelImportModal({ isOpen, onClose, onConfirm, isPending }: Exce
         if (!lotNumber) missingFields.push("Số Lô");
         if (!expiryStr) missingFields.push("Hạn Sử Dụng (hoặc sai định dạng)");
         if (!unitName) missingFields.push("Đơn vị nhập");
-        if (isNaN(quantity)) missingFields.push("Số lượng (không hợp lệ)");
-        if (isNaN(price)) missingFields.push("Giá Nhập (không hợp lệ)");
+        if (Number.isNaN(quantity)) missingFields.push("Số lượng (không hợp lệ)");
+        if (Number.isNaN(price)) missingFields.push("Giá Nhập (không hợp lệ)");
 
         if (missingFields.length > 0) {
           errors.push(`Dòng ${i + 2}: Thiếu/Sai thông tin - ${missingFields.join(', ')}.`);
