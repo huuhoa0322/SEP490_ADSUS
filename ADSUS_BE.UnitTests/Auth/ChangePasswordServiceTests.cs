@@ -26,11 +26,12 @@ public class ChangePasswordServiceTests
 
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IJwtTokenService> _tokens = new();
+    private readonly Mock<IRefreshTokenRepository> _refreshTokens = new();
     private readonly AuthService _sut;
 
     public ChangePasswordServiceTests()
     {
-        _sut = new AuthService(_users.Object, _tokens.Object, new Mock<ILogger<AuthService>>().Object);
+        _sut = new AuthService(_users.Object, _refreshTokens.Object, _tokens.Object, new Mock<ILogger<AuthService>>().Object);
     }
 
     [Fact]

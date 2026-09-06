@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using ADSUS_BE.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -84,82 +84,43 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<UserFcmToken> UserFcmTokens { get; set; }
 
-    // Enum values Postgres — tách thành static readonly field (thay vì literal array) để
-    // tránh cấp phát mảng mới mỗi lần OnModelCreating chạy (CA1861).
-    private static readonly string[] AiResultStatusValues = { "PENDING_REVIEW", "CONFIRMED", "REJECTED" };
-    private static readonly string[] AppointmentStatusValues = { "BOOKED", "CANCELLED", "COMPLETED", "APPROVED" };
-    private static readonly string[] AuthAalLevelValues = { "aal1", "aal2", "aal3" };
-    private static readonly string[] AuthCodeChallengeMethodValues = { "s256", "plain" };
-    private static readonly string[] AuthFactorStatusValues = { "unverified", "verified" };
-    private static readonly string[] AuthFactorTypeValues = { "totp", "webauthn", "phone" };
-    private static readonly string[] AuthOauthAuthorizationStatusValues = { "pending", "approved", "denied", "expired" };
-    private static readonly string[] AuthOauthClientTypeValues = { "public", "confidential" };
-    private static readonly string[] AuthOauthRegistrationTypeValues = { "dynamic", "manual" };
-    private static readonly string[] AuthOauthResponseTypeValues = { "code" };
-    private static readonly string[] AuthOneTimeTokenTypeValues = { "confirmation_token", "reauthentication_token", "recovery_token", "email_change_token_new", "email_change_token_current", "phone_change_token" };
-    private static readonly string[] BlogStatusValues = { "DRAFT", "PUBLISHED" };
-    private static readonly string[] CaseStatusValues = { "CREATED", "END", "CONFIRMED", "BOOKED" };
-    private static readonly string[] ChatRoleValues = { "USER", "ASSISTANT" };
-    private static readonly string[] GenderTypeValues = { "FEMALE", "MALE", "OTHER" };
-    private static readonly string[] HealthLogTypeValues = { "EXERCISE", "DIET" };
-    private static readonly string[] IntakeStatusValues = { "PENDING", "TAKEN", "OVERTIME" };
-    private static readonly string[] InventoryTxnTypeValues = { "IMPORT", "DISPENSE", "ADJUSTMENT" };
-    private static readonly string[] InvoiceStatusValues = { "PENDING", "PAID", "CANCELLED" };
-    private static readonly string[] MedicinesStatusValues = { "ACTIVE", "INACTIVE" };
-    private static readonly string[] ModelVersionStatusValues = { "ACTIVE", "INACTIVE" };
-    private static readonly string[] NotificationStatusValues = { "SENT", "DELIVERED", "FAILED", "READ", "UNREAD" };
-    private static readonly string[] NotificationTypeValues = { "medication_reminder", "medication_confirmation", "appointment_booking", "appointment_reminder", "appointment_cancellation", "healthlog_reminder", "general", "inventory_alert" };
-    private static readonly string[] PaymentMethodValues = { "CASH", "BANK_TRANSFER" };
-    private static readonly string[] PrescriptionStatusValues = { "ACTIVE", "COMPLETED" };
-    private static readonly string[] RealtimeActionValues = { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" };
-    private static readonly string[] RealtimeEqualityOpValues = { "eq", "neq", "lt", "lte", "gt", "gte", "in", "like", "ilike", "is", "match", "imatch", "isdistinct" };
-    private static readonly string[] ReminderSlotValues = { "MORNING", "NOON", "EVENING" };
-    private static readonly string[] ShiftRequestStatusValues = { "PENDING", "APPROVED", "REJECTED" };
-    private static readonly string[] ShiftRequestTypeValues = { "LEAVE", "OVERTIME" };
-    private static readonly string[] ShiftTypeValues = { "MORNING", "AFTERNOON", "EVENING", "FULL_DAY" };
-    private static readonly string[] SlotStatusValues = { "OPEN", "CLOSED", "BOOKED" };
-    private static readonly string[] StorageBucketTypeValues = { "STANDARD", "ANALYTICS", "VECTOR" };
-    private static readonly string[] UserRoleValues = { "ADMIN", "DOCTOR", "PATIENT", "NURSE" };
-    private static readonly string[] UserStatusValues = { "ACTIVE", "DEACTIVATED" };
+    public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
-            .HasPostgresEnum("ai_result_status", AiResultStatusValues)
-            .HasPostgresEnum("appointment_status", AppointmentStatusValues)
-            .HasPostgresEnum("auth", "aal_level", AuthAalLevelValues)
-            .HasPostgresEnum("auth", "code_challenge_method", AuthCodeChallengeMethodValues)
-            .HasPostgresEnum("auth", "factor_status", AuthFactorStatusValues)
-            .HasPostgresEnum("auth", "factor_type", AuthFactorTypeValues)
-            .HasPostgresEnum("auth", "oauth_authorization_status", AuthOauthAuthorizationStatusValues)
-            .HasPostgresEnum("auth", "oauth_client_type", AuthOauthClientTypeValues)
-            .HasPostgresEnum("auth", "oauth_registration_type", AuthOauthRegistrationTypeValues)
-            .HasPostgresEnum("auth", "oauth_response_type", AuthOauthResponseTypeValues)
-            .HasPostgresEnum("auth", "one_time_token_type", AuthOneTimeTokenTypeValues)
-            .HasPostgresEnum("blog_status", BlogStatusValues)
-            .HasPostgresEnum("case_status", CaseStatusValues)
-            .HasPostgresEnum("chat_role", ChatRoleValues)
-            .HasPostgresEnum("gender_type", GenderTypeValues)
-            .HasPostgresEnum("health_log_type", HealthLogTypeValues)
-            .HasPostgresEnum("intake_status", IntakeStatusValues)
-            .HasPostgresEnum("inventory_txn_type", InventoryTxnTypeValues)
-            .HasPostgresEnum("invoice_status", InvoiceStatusValues)
-            .HasPostgresEnum("medicines_status", MedicinesStatusValues)
-            .HasPostgresEnum("model_version_status", ModelVersionStatusValues)
-            .HasPostgresEnum("notification_status", NotificationStatusValues)
-            .HasPostgresEnum("notification_type", NotificationTypeValues)
-            .HasPostgresEnum("payment_method", PaymentMethodValues)
-            .HasPostgresEnum("prescription_status", PrescriptionStatusValues)
-            .HasPostgresEnum("realtime", "action", RealtimeActionValues)
-            .HasPostgresEnum("realtime", "equality_op", RealtimeEqualityOpValues)
-            .HasPostgresEnum("reminder_slot", ReminderSlotValues)
-            .HasPostgresEnum("shift_request_status", ShiftRequestStatusValues)
-            .HasPostgresEnum("shift_request_type", ShiftRequestTypeValues)
-            .HasPostgresEnum("shift_type", ShiftTypeValues)
-            .HasPostgresEnum("slot_status", SlotStatusValues)
-            .HasPostgresEnum("storage", "buckettype", StorageBucketTypeValues)
-            .HasPostgresEnum("user_role", UserRoleValues)
-            .HasPostgresEnum("user_status", UserStatusValues)
+            .HasPostgresEnum("ai_result_status", new[] { "PENDING_REVIEW", "CONFIRMED", "REJECTED" })
+            .HasPostgresEnum("appointment_status", new[] { "BOOKED", "CANCELLED", "COMPLETED", "APPROVED", "NO_SHOW" })
+            .HasPostgresEnum("auth", "aal_level", new[] { "aal1", "aal2", "aal3" })
+            .HasPostgresEnum("auth", "code_challenge_method", new[] { "s256", "plain" })
+            .HasPostgresEnum("auth", "factor_status", new[] { "unverified", "verified" })
+            .HasPostgresEnum("auth", "factor_type", new[] { "totp", "webauthn", "phone" })
+            .HasPostgresEnum("auth", "oauth_authorization_status", new[] { "pending", "approved", "denied", "expired" })
+            .HasPostgresEnum("auth", "oauth_client_type", new[] { "public", "confidential" })
+            .HasPostgresEnum("auth", "oauth_registration_type", new[] { "dynamic", "manual" })
+            .HasPostgresEnum("auth", "oauth_response_type", new[] { "code" })
+            .HasPostgresEnum("auth", "one_time_token_type", new[] { "confirmation_token", "reauthentication_token", "recovery_token", "email_change_token_new", "email_change_token_current", "phone_change_token" })
+            .HasPostgresEnum("blog_status", new[] { "DRAFT", "PUBLISHED" })
+            .HasPostgresEnum("case_status", new[] { "CREATED", "END", "CONFIRMED", "BOOKED" })
+            .HasPostgresEnum("chat_role", new[] { "USER", "ASSISTANT" })
+            .HasPostgresEnum("gender_type", new[] { "FEMALE", "MALE", "OTHER" })
+            .HasPostgresEnum("health_log_type", new[] { "EXERCISE", "DIET" })
+            .HasPostgresEnum("intake_status", new[] { "PENDING", "TAKEN", "OVERTIME" })
+            .HasPostgresEnum("inventory_txn_type", new[] { "IMPORT", "DISPENSE", "ADJUSTMENT" })
+            .HasPostgresEnum("invoice_status", new[] { "PENDING", "PAID", "CANCELLED" })
+            .HasPostgresEnum("medicines_status", new[] { "ACTIVE", "INACTIVE" })
+            .HasPostgresEnum("model_version_status", new[] { "ACTIVE", "INACTIVE" })
+            .HasPostgresEnum("notification_status", new[] { "SENT", "DELIVERED", "FAILED", "READ", "UNREAD" })
+            .HasPostgresEnum("notification_type", new[] { "medication_reminder", "medication_confirmation", "appointment_booking", "appointment_reminder", "appointment_cancellation", "healthlog_reminder", "general", "inventory_alert" })
+            .HasPostgresEnum("payment_method", new[] { "CASH", "BANK_TRANSFER" })
+            .HasPostgresEnum("prescription_status", new[] { "ACTIVE", "COMPLETED" })
+            .HasPostgresEnum("realtime", "action", new[] { "INSERT", "UPDATE", "DELETE", "TRUNCATE", "ERROR" })
+            .HasPostgresEnum("realtime", "equality_op", new[] { "eq", "neq", "lt", "lte", "gt", "gte", "in", "like", "ilike", "is", "match", "imatch", "isdistinct" })
+            .HasPostgresEnum("reminder_slot", new[] { "MORNING", "NOON", "EVENING" })
+            .HasPostgresEnum("slot_status", new[] { "OPEN", "CLOSED", "BOOKED" })
+            .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
+            .HasPostgresEnum("user_role", new[] { "ADMIN", "DOCTOR", "NURSE", "PATIENT", "PHARMACIST" })
+            .HasPostgresEnum("user_status", new[] { "ACTIVE", "DEACTIVATED" })
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
             .HasPostgresExtension("extensions", "uuid-ossp")
@@ -1101,56 +1062,6 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("fk_service_feedbacks_patient");
         });
 
-        modelBuilder.Entity<ShiftRequest>(entity =>
-        {
-            entity.HasKey(e => e.RequestId).HasName("shift_requests_pkey");
-
-            entity.ToTable("shift_requests", tb => tb.HasComment("Yêu cầu nghỉ ca / tăng ca của bác sĩ — Admin duyệt trước khi hệ thống tự đóng/mở slot tương ứng."));
-
-            entity.HasIndex(e => new { e.UserId, e.RequestDate }, "idx_shift_requests_doctor_date");
-
-            entity.HasIndex(e => e.Status, "idx_shift_requests_status");
-
-            entity.HasIndex(e => new { e.UserId, e.RequestDate, e.ShiftType, e.RequestType }, "uq_shift_requests_active")
-                .IsUnique()
-                .HasFilter("(status <> 'REJECTED'::shift_request_status)");
-
-            entity.Property(e => e.RequestId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("request_id");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.Reason)
-                .HasMaxLength(500)
-                .HasColumnName("reason");
-            entity.Property(e => e.RejectReason)
-                .HasMaxLength(500)
-                .HasColumnName("reject_reason");
-            entity.Property(e => e.RequestType).HasColumnName("request_type");
-            entity.Property(e => e.ShiftType).HasColumnName("shift_type");
-            entity.Property(e => e.Status)
-                .HasDefaultValue(ShiftRequestStatus.Pending)
-                .HasColumnName("status");
-            entity.Property(e => e.RequestDate).HasColumnName("request_date");
-            entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
-            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("updated_at");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-
-            entity.HasOne(d => d.ReviewedByNavigation).WithMany(p => p.ShiftRequestReviewedByNavigations)
-                .HasForeignKey(d => d.ReviewedBy)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("fk_shift_requests_reviewer");
-
-            entity.HasOne(d => d.User).WithMany(p => p.ShiftRequestUsers)
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("shift_requests_user_id_fkey");
-        });
-
         modelBuilder.Entity<Supplier>(entity =>
         {
             entity.HasKey(e => e.SupplierId).HasName("supplier_pkey");
@@ -1204,6 +1115,56 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.Category).WithMany(p => p.Symptoms)
                 .HasForeignKey(d => d.CategoryId)
                 .HasConstraintName("symptoms_category_id_fkey");
+        });
+
+        modelBuilder.Entity<ShiftRequest>(entity =>
+        {
+            entity.HasKey(e => e.RequestId).HasName("shift_requests_pkey");
+
+            entity.ToTable("shift_requests", tb => tb.HasComment("Yêu cầu nghỉ ca / tăng ca của bác sĩ — Admin duyệt trước khi hệ thống tự đóng/mở slot tương ứng."));
+
+            entity.HasIndex(e => new { e.UserId, e.RequestDate }, "idx_shift_requests_doctor_date");
+
+            entity.HasIndex(e => e.Status, "idx_shift_requests_status");
+
+            entity.HasIndex(e => new { e.UserId, e.RequestDate, e.ShiftType, e.RequestType }, "uq_shift_requests_active")
+                .IsUnique()
+                .HasFilter("(status <> 'REJECTED'::shift_request_status)");
+
+            entity.Property(e => e.RequestId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("request_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Reason)
+                .HasMaxLength(500)
+                .HasColumnName("reason");
+            entity.Property(e => e.RejectReason)
+                .HasMaxLength(500)
+                .HasColumnName("reject_reason");
+            entity.Property(e => e.RequestType).HasColumnName("request_type");
+            entity.Property(e => e.ShiftType).HasColumnName("shift_type");
+            entity.Property(e => e.Status)
+                .HasDefaultValue(ShiftRequestStatus.Pending)
+                .HasColumnName("status");
+            entity.Property(e => e.RequestDate).HasColumnName("request_date");
+            entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.ReviewedByNavigation).WithMany(p => p.ShiftRequestReviewedByNavigations)
+                .HasForeignKey(d => d.ReviewedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_shift_requests_reviewer");
+
+            entity.HasOne(d => d.User).WithMany(p => p.ShiftRequestUsers)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("shift_requests_user_id_fkey");
         });
 
         modelBuilder.Entity<SymptomCategory>(entity =>
@@ -1324,6 +1285,26 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.UserFcmTokens)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("user_fcm_tokens_user_id_fkey");
+        });
+
+        // RefreshToken entity configuration
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.ToTable("refresh_tokens");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.TokenHash).HasColumnName("token_hash");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.RevokedAt).HasColumnName("revoked_at");
+            entity.Property(e => e.DeviceInfo).HasColumnName("device_info");
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         OnModelCreatingPartial(modelBuilder);

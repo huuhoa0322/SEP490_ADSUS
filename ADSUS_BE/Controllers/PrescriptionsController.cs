@@ -41,7 +41,7 @@ public class PrescriptionsController : ControllerBase
     /// <summary>UC-17 — Lấy chi tiết đơn thuốc.</summary>
     [HttpGet("{id:guid}")]
     [Authorize(Roles = "DOCTOR,PATIENT")]
-    public async Task<ActionResult<PrescriptionResponse>> GetById(
+    public ActionResult<PrescriptionResponse> GetById(
         Guid id,
         CancellationToken ct)
     {
@@ -50,7 +50,7 @@ public class PrescriptionsController : ControllerBase
             return Unauthorized();
 
         // TODO(capstone-extension): implement GetByIdAsync in IPrescriptionService
-        return Ok((object?)null);
+        return Ok((PrescriptionResponse?)(object?)null);
     }
 
     private bool TryGetUserId(out Guid userId) =>

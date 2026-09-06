@@ -34,7 +34,7 @@ export function useSignIn() {
       // Store the token first so the axios interceptor can attach it to the next request.
       window.localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
 
-      signIn(data.accessToken, {
+      signIn(data.accessToken, data.refreshToken, {
         userId: data.userId,
         fullName: data.fullName,
         email: data.email,

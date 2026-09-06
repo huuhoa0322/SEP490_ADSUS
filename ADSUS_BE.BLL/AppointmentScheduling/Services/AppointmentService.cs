@@ -20,6 +20,7 @@ public sealed class AppointmentService : IAppointmentService
     private readonly IPatientProfileRepository _profileRepo;
     private readonly INotificationService _notificationService;
     private readonly ICaseService _caseService;
+    private readonly NoShowService _noShowService;
     private readonly AppDbContext _db;
     private readonly ILogger<AppointmentService> _logger;
 
@@ -29,6 +30,7 @@ public sealed class AppointmentService : IAppointmentService
         IPatientProfileRepository profileRepo,
         INotificationService notificationService,
         ICaseService caseService,
+        NoShowService noShowService,
         AppDbContext db,
         ILogger<AppointmentService> logger)
     {
@@ -37,6 +39,7 @@ public sealed class AppointmentService : IAppointmentService
         _profileRepo = profileRepo;
         _notificationService = notificationService;
         _caseService = caseService;
+        _noShowService = noShowService;
         _db = db;
         _logger = logger;
     }
@@ -138,6 +141,77 @@ public sealed class AppointmentService : IAppointmentService
             throw new InvalidOperationException("Slot này đã có người đặt.");
         }
 
+        // =====================================================
+        // VALIDATION RULES - Chống spam đặt lịch
+        // =====================================================
+
+        // Rule 4: Minimum 2h advance booking
+        var slotDateTime = slot.SlotDate.ToDateTime(slot.StartTime);
+        var now = DateTime.UtcNow;
+        var hoursUntilSlot = (slotDateTime - now).TotalHours;
+        if (hoursUntilSlot < 2)
+        {
+            throw new InvalidOperationException(
+                "Phải đặt lịch trước tối thiểu 2 giờ. Vui lòng chọn ca khám khác.");
+        }
+
+        // Rule 1: Max 3 active appointments
+        var activeAppointments = await _db.Appointments
+            .Where(a => a.PatientProfileId == patientProfileId
+                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved))
+            .CountAsync(ct);
+        if (activeAppointments >= 3)
+        {
+            throw new InvalidOperationException(
+                "Bạn đã có 3 lịch hẹn đang chờ. Vui lòng hoàn thành hoặc hủy lịch cũ trước khi đặt mới.");
+        }
+
+        // Rule 3: Không đặt trùng ngày (QUAN TRỌNG NHẤT)
+        var hasSameDayAppointment = await _db.Appointments
+            .Include(a => a.Slot)
+            .AnyAsync(a =>
+                a.PatientProfileId == patientProfileId
+                && a.Slot.SlotDate == slot.SlotDate
+                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
+                ct);
+        if (hasSameDayAppointment)
+        {
+            throw new InvalidOperationException(
+                $"Bạn đã có lịch khám vào ngày {slot.SlotDate:dd/MM/yyyy}. Vui lòng hủy lịch cũ trước khi đặt lịch mới.");
+        }
+
+        // Rule 2: Giới hạn đặt trong phạm vi 3 ngày
+        var next3Days = DateOnly.FromDateTime(now.AddDays(3));
+        var hasAppointmentWithin3Days = await _db.Appointments
+            .Include(a => a.Slot)
+            .AnyAsync(a =>
+                a.PatientProfileId == patientProfileId
+                && a.Slot.SlotDate > slot.SlotDate
+                && a.Slot.SlotDate <= next3Days
+                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
+                ct);
+        if (hasAppointmentWithin3Days)
+        {
+            throw new InvalidOperationException(
+                "Bạn đã có lịch hẹn trong vòng 3 ngày tới. Vui lòng đặt lịch sau khi đã hoàn thành lịch hiện tại.");
+        }
+
+        // Rule 5: Max 2 appointments/day cho cùng ngày (bao gồm slot đang đặt)
+        var todayAppointments = await _db.Appointments
+            .Where(a => a.PatientProfileId == patientProfileId
+                && a.Slot.SlotDate == slot.SlotDate
+                && a.Status == AppointmentStatus.Booked)
+            .CountAsync(ct);
+        if (todayAppointments >= 2)
+        {
+            throw new InvalidOperationException(
+                $"Ngày {slot.SlotDate:dd/MM/yyyy} đã có 2 lịch hẹn. Vui lòng chọn ngày khác.");
+        }
+
+        // =====================================================
+        // END VALIDATION RULES
+        // =====================================================
+
         // Tạo appointment
         var appointment = new Appointment
         {
@@ -219,6 +293,27 @@ public sealed class AppointmentService : IAppointmentService
                 appointment.AppointmentId, ex.Message);
         }
 
+        // Gửi notification cho doctor phụ trách
+        try
+        {
+            await _notificationService.SendAsync(new SendNotificationRequest
+            {
+                UserId = slot.DoctorId,
+                Type = "new_appointment_booking",
+                Title = "Có lịch hẹn mới",
+                Body = $"Bệnh nhân đã đặt lịch khám ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
+                DeepLink = $"/appointments",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["appointmentId"] = appointment.AppointmentId.ToString()
+                }
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[NOTIF-ERROR] Failed to send booking notification to doctor for appointment {AppointmentId}", appointment.AppointmentId);
+        }
+
         return ToAppointmentResponse(appointment);
     }
 
@@ -289,6 +384,27 @@ public sealed class AppointmentService : IAppointmentService
             _logger.LogWarning(ex, "Failed to send cancellation notification for appointment {AppointmentId}", appointment.AppointmentId);
         }
 
+        // Gửi notification cho doctor khi bệnh nhân hủy lịch
+        try
+        {
+            await _notificationService.SendAsync(new SendNotificationRequest
+            {
+                UserId = slot.DoctorId,
+                Type = "appointment_cancelled_by_patient",
+                Title = "Bệnh nhân hủy lịch khám",
+                Body = $"Bệnh nhân đã hủy lịch khám ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
+                DeepLink = $"/appointments",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["appointmentId"] = appointment.AppointmentId.ToString()
+                }
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send cancellation notification to doctor for appointment {AppointmentId}", appointment.AppointmentId);
+        }
+
         return ToAppointmentResponse(appointment);
     }
 
@@ -309,6 +425,14 @@ public sealed class AppointmentService : IAppointmentService
             throw new InvalidOperationException("Chỉ lịch hẹn đang ở trạng thái ĐÃ ĐẶT mới được checkin.");
         }
 
+        // Xử lý No-Show nếu đã quá grace time
+        var noShowResult = await _noShowService.ProcessNoShowAsync(appointment, ct);
+        if (noShowResult.WasProcessed)
+        {
+            throw new InvalidOperationException(
+                $"Lịch hẹn đã tự động hủy do không check-in trong 15 phút kể từ lịch hẹn.");
+        }
+
         // Cập nhật Appointment: Booked → Approved
         appointment.Status = AppointmentStatus.Approved;
         appointment.UpdatedAt = DateTime.UtcNow;
@@ -318,6 +442,146 @@ public sealed class AppointmentService : IAppointmentService
         _logger.LogInformation(
             "Appointment {AppointmentId} checked in by nurse. Status: {Status}",
             appointmentId, appointment.Status);
+
+        // Gửi notification cho patient khi checkin thành công
+        try
+        {
+            var patientProfile = await _profileRepo.GetByIdAsync(appointment.PatientProfileId, ct);
+            if (patientProfile != null)
+            {
+                await _notificationService.SendAsync(new SendNotificationRequest
+                {
+                    UserId = patientProfile.UserId,
+                    Type = "appointment_checkin",
+                    Title = "Đã check-in thành công",
+                    Body = $"Bạn đã được check-in cho lịch khám ngày {appointment.Slot.SlotDate:dd/MM/yyyy} lúc {appointment.Slot.StartTime} với BS. {appointment.Slot.Doctor.FullName}.",
+                    DeepLink = $"/appointments/{appointment.AppointmentId}",
+                    Metadata = new Dictionary<string, object>
+                    {
+                        ["appointmentId"] = appointment.AppointmentId.ToString()
+                    }
+                }, ct);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send checkin notification to patient for appointment {AppointmentId}", appointmentId);
+        }
+
+        // Gửi notification cho doctor khi patient checkin
+        try
+        {
+            await _notificationService.SendAsync(new SendNotificationRequest
+            {
+                UserId = appointment.Slot.DoctorId,
+                Type = "patient_checked_in",
+                Title = "Bệnh nhân đã check-in",
+                Body = $"Bệnh nhân đã check-in cho lịch khám ngày {appointment.Slot.SlotDate:dd/MM/yyyy} lúc {appointment.Slot.StartTime}.",
+                DeepLink = $"/appointments/{appointment.AppointmentId}",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["appointmentId"] = appointment.AppointmentId.ToString()
+                }
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send checkin notification to doctor for appointment {AppointmentId}", appointmentId);
+        }
+
+        return ToAppointmentResponse(appointment);
+    }
+
+    public async Task<AppointmentResponse> CheckinByCaseIdAsync(
+        Guid caseId,
+        CancellationToken ct = default)
+    {
+        // Tìm appointment đang BOOKED liên quan đến case này
+        var appointment = await _db.Appointments
+            .Include(a => a.Slot)
+                .ThenInclude(s => s.Doctor)
+            .FirstOrDefaultAsync(a => a.CaseId == caseId, ct)
+            ?? throw new InvalidOperationException($"Không tìm thấy lịch hẹn cho case '{caseId}'.");
+
+        // Kiểm tra status hợp lệ
+        if (appointment.Status == AppointmentStatus.Approved)
+        {
+            throw new InvalidOperationException("Bệnh nhân đã được check-in trước đó.");
+        }
+
+        if (appointment.Status == AppointmentStatus.Completed)
+        {
+            throw new InvalidOperationException("Lịch hẹn đã hoàn thành, không thể check-in.");
+        }
+
+        if (appointment.Status == AppointmentStatus.Cancelled || appointment.Status == AppointmentStatus.NoShow)
+        {
+            throw new InvalidOperationException($"Lịch hẹn đã bị hủy (status: {appointment.Status}), không thể check-in.");
+        }
+
+        // Xử lý No-Show nếu đã quá grace time
+        var noShowResult = await _noShowService.ProcessNoShowAsync(appointment, ct);
+        if (noShowResult.WasProcessed)
+        {
+            throw new InvalidOperationException(
+                $"Lịch hẹn đã tự động hủy do không check-in trong 15 phút kể từ lịch hẹn.");
+        }
+
+        // Chuyển sang Approved
+        appointment.Status = AppointmentStatus.Approved;
+        appointment.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Appointment {AppointmentId} checked in by nurse via CaseId {CaseId}. Status: {Status}",
+            appointment.AppointmentId, caseId, appointment.Status);
+
+        // Gửi notification cho patient khi checkin thành công
+        try
+        {
+            var patientProfile = await _profileRepo.GetByIdAsync(appointment.PatientProfileId, ct);
+            if (patientProfile != null)
+            {
+                await _notificationService.SendAsync(new SendNotificationRequest
+                {
+                    UserId = patientProfile.UserId,
+                    Type = "appointment_checkin",
+                    Title = "Đã check-in thành công",
+                    Body = $"Bạn đã được check-in cho lịch khám ngày {appointment.Slot.SlotDate:dd/MM/yyyy} lúc {appointment.Slot.StartTime} với BS. {appointment.Slot.Doctor.FullName}.",
+                    DeepLink = $"/appointments/{appointment.AppointmentId}",
+                    Metadata = new Dictionary<string, object>
+                    {
+                        ["appointmentId"] = appointment.AppointmentId.ToString()
+                    }
+                }, ct);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send checkin notification to patient for appointment {AppointmentId}", appointment.AppointmentId);
+        }
+
+        // Gửi notification cho doctor khi patient checkin
+        try
+        {
+            await _notificationService.SendAsync(new SendNotificationRequest
+            {
+                UserId = appointment.Slot.DoctorId,
+                Type = "patient_checked_in",
+                Title = "Bệnh nhân đã check-in",
+                Body = $"Bệnh nhân đã check-in cho lịch khám ngày {appointment.Slot.SlotDate:dd/MM/yyyy} lúc {appointment.Slot.StartTime}.",
+                DeepLink = $"/appointments/{appointment.AppointmentId}",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["appointmentId"] = appointment.AppointmentId.ToString()
+                }
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send checkin notification to doctor for appointment {AppointmentId}", appointment.AppointmentId);
+        }
 
         return ToAppointmentResponse(appointment);
     }
@@ -334,7 +598,7 @@ public sealed class AppointmentService : IAppointmentService
         // Lý do: Approved = bệnh nhân đã đến (nurse checkin) — vẫn cần hiện trên màn "Lịch bệnh nhân"
         // để bác sĩ biết ai đã đến, không bị mất khỏi danh sách khám ngay từ khi được checkin.
         return appointments
-            .Where(a => a.Status is AppointmentStatus.Booked or AppointmentStatus.Approved)
+            .Where(a => a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved)
             .Select(a => new DoctorPatientAppointmentResponse
             {
                 AppointmentId = a.AppointmentId,
@@ -346,6 +610,53 @@ public sealed class AppointmentService : IAppointmentService
                 Reason = a.Reason,
             })
             .ToList();
+    }
+
+    public async Task<CheckinQueueResponse> GetCheckinQueueAsync(
+        DateOnly date,
+        string? search = null,
+        CancellationToken ct = default)
+    {
+        // Lấy tất cả appointments trong ngày đang ở Booked hoặc Approved
+        var appointments = await _db.Appointments
+            .Include(a => a.Slot)
+                .ThenInclude(s => s.Doctor)
+            .Include(a => a.PatientProfile)
+                .ThenInclude(p => p.User)
+            .Where(a => a.Slot.SlotDate == date)
+            .Where(a => a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved)
+            .Where(a => a.Slot.Status != SlotStatus.Closed)
+            .OrderBy(a => a.Slot.StartTime)
+            .ToListAsync(ct);
+
+        // Filter by search if provided
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchLower = search.ToLowerInvariant();
+            appointments = appointments
+                .Where(a => a.PatientProfile.User.FullName.ToLower().Contains(searchLower)
+                    || (a.PatientProfile.User.Phone != null && a.PatientProfile.User.Phone.Contains(search)))
+                .ToList();
+        }
+
+        var items = appointments.Select(a => new CheckinQueueItemResponse
+        {
+            AppointmentId = a.AppointmentId,
+            SlotTime = a.Slot.SlotDate.ToDateTime(a.Slot.StartTime),
+            PatientFullName = a.PatientProfile.User.FullName,
+            PatientPhone = a.PatientProfile.User.Phone,
+            PatientProfileId = a.PatientProfileId,
+            CaseId = a.CaseId ?? Guid.Empty,
+            Reason = a.Reason,
+            DoctorName = a.Slot.Doctor.FullName,
+            Status = a.Status,
+        }).ToList();
+
+        return new CheckinQueueResponse
+        {
+            Items = items,
+            TotalCount = items.Count,
+        };
     }
 
     private static AppointmentResponse ToAppointmentResponse(Appointment a, Guid? caseId = null)

@@ -40,4 +40,10 @@ public interface IAppointmentRepository
     /// Update appointment (dùng khi cancel).
     /// </summary>
     Task UpdateAsync(Appointment appointment, CancellationToken ct = default);
+
+    /// <summary>
+    /// Cancel all appointments associated with a case.
+    /// Called when a case is ended.
+    /// </summary>
+    Task CancelByCaseAsync(Guid caseId, CancellationToken ct = default);
 }

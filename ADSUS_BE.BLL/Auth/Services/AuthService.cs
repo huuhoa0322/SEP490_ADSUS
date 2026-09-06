@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using ADSUS_BE.BLL.Auth.DTOs;
 using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Mappers;
@@ -11,6 +13,7 @@ namespace ADSUS_BE.BLL.Auth.Services;
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _users;
+    private readonly IRefreshTokenRepository _refreshTokens;
     private readonly IJwtTokenService _tokens;
     private readonly ILogger<AuthService> _logger;
 
@@ -25,9 +28,14 @@ public class AuthService : IAuthService
     /// </summary>
     private static readonly string DummyHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString());
 
-    public AuthService(IUserRepository users, IJwtTokenService tokens, ILogger<AuthService> logger)
+    public AuthService(
+        IUserRepository users,
+        IRefreshTokenRepository refreshTokens,
+        IJwtTokenService tokens,
+        ILogger<AuthService> logger)
     {
         _users = users;
+        _refreshTokens = refreshTokens;
         _tokens = tokens;
         _logger = logger;
     }
@@ -53,7 +61,7 @@ public class AuthService : IAuthService
             // Locked, và có hẳn kịch bản kiểm thử cho luật này. Nhóm đã quyết bỏ vì hệ thống
             // nhỏ. Hệ quả: hiện KHÔNG có gì chặn dò mật khẩu, gọi bao nhiêu lần cũng được.
             //
-            // Hướng đang bàn (chờ họp chốt): sai 5 lần thì khoá 15 phút. Nếu làm thì đừng
+            // Hướng đang bàn (chờ học chốt): sai 5 lần thì khoá 15 phút. Nếu làm thì đừng
             // đụng vào cột status — "Admin khoá" và "hệ thống tự khoá tạm" là hai việc khác
             // nhau, chính UCS cũng ghi là distinct. Thêm hai cột riêng: failed_login_count
             // và locked_until.
@@ -67,7 +75,101 @@ public class AuthService : IAuthService
             "User {UserId} signed in successfully with role {Role}", user.UserId, user.Role);
 
         var accessToken = _tokens.GenerateAccessToken(user);
-        return UserMapper.ToLoginResponse(user, accessToken);
+
+        // Generate refresh token on login
+        var refreshToken = GenerateSecureToken();
+        await _refreshTokens.CreateAsync(new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.UserId,
+            TokenHash = HashToken(refreshToken),
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            CreatedAt = DateTime.UtcNow,
+            DeviceInfo = null
+        });
+
+        return UserMapper.ToLoginResponse(user, accessToken, refreshToken);
+    }
+
+    public async Task<RefreshTokenResponse?> RefreshTokensAsync(
+        string refreshToken,
+        CancellationToken cancellationToken = default)
+    {
+        Console.WriteLine("[Auth] 🔄 Token refresh requested");
+
+        // 1. Hash the incoming refresh token
+        var tokenHash = HashToken(refreshToken);
+
+        // 2. Get stored refresh token from DB
+        var storedToken = await _refreshTokens.GetByTokenHashAsync(tokenHash, cancellationToken);
+
+        // 3. Validate: must exist, not revoked, not expired
+        if (storedToken == null || storedToken.RevokedAt != null || storedToken.ExpiresAt < DateTime.UtcNow)
+        {
+            Console.WriteLine("[Auth] ❌ Token refresh FAILED - Invalid/revoked/expired token");
+            _logger.LogWarning("Invalid refresh token attempted");
+            return null;
+        }
+
+        // 4. Get user
+        var user = await _users.GetByIdReadOnlyAsync(storedToken.UserId, cancellationToken);
+        if (user == null || user.Status != UserStatus.Active)
+        {
+            Console.WriteLine($"[Auth] ❌ Token refresh FAILED - User inactive or deleted (UserId: {storedToken.UserId}, Status: {user?.Status})");
+            _logger.LogWarning("Refresh token for inactive/deleted user: {UserId}", storedToken.UserId);
+            return null;
+        }
+
+        // 5. Revoke old token (rotation)
+        await _refreshTokens.RevokeAsync(storedToken.Id, cancellationToken);
+        Console.WriteLine($"[Auth] 🔒 Revoked old refresh token for user {user.UserId}");
+
+        // 6. Generate new tokens
+        var newAccessToken = _tokens.GenerateAccessToken(user);
+        var newRefreshToken = GenerateSecureToken();
+
+        // 7. Save new refresh token
+        await _refreshTokens.CreateAsync(new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.UserId,
+            TokenHash = HashToken(newRefreshToken),
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            CreatedAt = DateTime.UtcNow,
+            DeviceInfo = storedToken.DeviceInfo
+        }, cancellationToken);
+
+        Console.WriteLine($"[Auth] ✅ Token refresh SUCCESS for user {user.UserId}");
+        _logger.LogInformation("Tokens refreshed for user {UserId}", user.UserId);
+
+        return new RefreshTokenResponse(
+            AccessToken: newAccessToken,
+            RefreshToken: newRefreshToken,
+            ExpiresAt: DateTime.UtcNow.AddMinutes(15)
+        );
+    }
+
+    public async Task RevokeAllRefreshTokensAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        await _refreshTokens.RevokeAllForUserAsync(userId, cancellationToken);
+        _logger.LogInformation("All refresh tokens revoked for user {UserId}", userId);
+    }
+
+    private static string GenerateSecureToken()
+    {
+        var bytes = new byte[64];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(bytes);
+        return Convert.ToBase64String(bytes);
+    }
+
+    private static string HashToken(string token)
+    {
+        var bytes = Encoding.UTF8.GetBytes(token);
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToBase64String(hash);
     }
 
     public async Task<ChangePasswordResult> ChangePasswordAsync(

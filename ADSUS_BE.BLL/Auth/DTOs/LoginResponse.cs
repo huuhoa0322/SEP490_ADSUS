@@ -9,6 +9,12 @@ public class LoginResponse
     public string AccessToken { get; set; } = string.Empty;
 
     /// <summary>
+    /// Refresh token for renewing access token without re-login.
+    /// Used by SignalR to maintain persistent connections.
+    /// </summary>
+    public string RefreshToken { get; set; } = string.Empty;
+
+    /// <summary>
     /// Id tài khoản đang đăng nhập.
     ///
     /// Có mặt ở đây thay vì để client gọi thêm GET /users/me: giá trị này rơi thẳng vào
