@@ -74,7 +74,7 @@ public class SendGridEmailService : IEmailService
                 return false;
             }
 
-            _logger.LogInformation("Sent the temporary password to {Email} via SendGrid.", HashEmailForLog(toEmail));
+            _logger.LogInformation("Sent the temporary password via SendGrid.");
             return true;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
