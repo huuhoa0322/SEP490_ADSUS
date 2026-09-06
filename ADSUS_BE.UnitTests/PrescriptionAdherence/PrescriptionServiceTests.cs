@@ -39,8 +39,7 @@ public class PrescriptionServiceTests
             _intakeLogRepoMock.Object,
             _caseRepoMock.Object,
             _userRepoMock.Object,
-            _medicineRepoMock.Object,
-            _scheduleGeneratorMock.Object
+            _medicineRepoMock.Object
         );
     }
 
@@ -100,8 +99,7 @@ public class PrescriptionServiceTests
             _intakeLogRepoMock.Object,
             _caseRepoMock.Object,
             _userRepoMock.Object,
-            _medicineRepoMock.Object,
-            _scheduleGeneratorMock.Object
+            _medicineRepoMock.Object
         );
 
         var doctorId = Guid.NewGuid();
@@ -150,6 +148,83 @@ public class PrescriptionServiceTests
         Assert.Contains("không đủ số lượng trong kho", ex.Message);
         Assert.Contains("Yêu cầu: 15", ex.Message);
         Assert.Contains("Hiện còn: 10", ex.Message);
+    }
+
+    [Fact]
+    public async Task CreateAsync_Success_NoIntakeLogsCreated()
+    {
+        // Arrange
+        var service = CreateService();
+        var doctorId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
+        var medicineId = Guid.NewGuid();
+
+        _userRepoMock.Setup(r => r.GetByIdAsync(doctorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { UserId = doctorId, Role = UserRole.Doctor, Status = UserStatus.Active });
+
+        _caseRepoMock.Setup(r => r.GetByIdAsync(caseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Case { CaseId = caseId, DoctorId = doctorId, Status = CaseStatus.Confirmed, PatientProfileId = Guid.NewGuid() });
+
+        _caseRepoMock.Setup(r => r.GetForUpdateAsync(caseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Case { CaseId = caseId, DoctorId = doctorId, Status = CaseStatus.Confirmed, PatientProfileId = Guid.NewGuid() });
+
+        _prescriptionRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken ct) => new Prescription { PrescriptionId = id, Case = new Case { PatientProfile = new PatientProfile { User = new User { FullName = "Test User" } } } });
+
+        _medicineRepoMock.Setup(r => r.FindByNameAsync("Paracetamol", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Medicine { MedicineId = medicineId, Name = "Paracetamol", Status = MedicineStatus.Active, UsageUnit = "viên" });
+
+        // Database setup for MedicineBatch
+        var dbName = Guid.NewGuid().ToString();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(dbName)
+            .Options;
+        using var db = new AppDbContext(options);
+        
+        db.MedicineBatches.Add(new MedicineBatch
+        {
+            Id = Guid.NewGuid(),
+            MedicineId = medicineId,
+            QuantityBase = 100,
+            ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
+            LotNumber = "LOT01"
+        });
+        await db.SaveChangesAsync();
+
+        var serviceWithDb = new PrescriptionService(
+            db,
+            _prescriptionRepoMock.Object,
+            _itemRepoMock.Object,
+            _intakeLogRepoMock.Object,
+            _caseRepoMock.Object,
+            _userRepoMock.Object,
+            _medicineRepoMock.Object
+        );
+
+        var request = new CreatePrescriptionRequest(
+            CaseId: caseId,
+            Items: new[]
+            {
+                new CreatePrescriptionItemDto(
+                    MedicineName: "Paracetamol",
+                    QuantityPerDose: 1,
+                    DurationDays: 1,
+                    StartDate: DateOnly.FromDateTime(DateTime.UtcNow),
+                    Instructions: null,
+                    ScheduleSlots: new[] { ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot.Morning }
+                )
+            },
+            GeneralNote: null
+        );
+
+        // Act
+        var result = await serviceWithDb.CreateAsync(doctorId, request);
+
+        // Assert
+        Assert.NotNull(result);
+        
+        // Ensure no intake logs were added to repository
+        _intakeLogRepoMock.Verify(r => r.AddRangeAsync(It.IsAny<IEnumerable<MedicationIntakeLog>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ─────────────────────────────────────────────────────────────────────

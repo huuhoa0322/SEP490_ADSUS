@@ -25,7 +25,6 @@ public sealed class PrescriptionService : IPrescriptionService
     private readonly ICaseRepository _caseRepo;
     private readonly IUserRepository _userRepo;
     private readonly IMedicineRepository _medicineRepo;
-    private readonly IMedicationIntakeScheduleGenerator _scheduleGenerator;
 
     public PrescriptionService(
         AppDbContext db,
@@ -34,8 +33,7 @@ public sealed class PrescriptionService : IPrescriptionService
         IMedicationIntakeLogRepository intakeLogRepo,
         ICaseRepository caseRepo,
         IUserRepository userRepo,
-        IMedicineRepository medicineRepo,
-        IMedicationIntakeScheduleGenerator scheduleGenerator)
+        IMedicineRepository medicineRepo)
     {
         _db = db;
         _prescriptionRepo = prescriptionRepo;
@@ -44,7 +42,6 @@ public sealed class PrescriptionService : IPrescriptionService
         _caseRepo = caseRepo;
         _userRepo = userRepo;
         _medicineRepo = medicineRepo;
-        _scheduleGenerator = scheduleGenerator;
     }
 
     public async Task<PrescriptionResponse> CreateAsync(
@@ -79,15 +76,6 @@ public sealed class PrescriptionService : IPrescriptionService
         // Handles doctor picks from catalog.
         var medicineCache = new Dictionary<string, (Guid Id, string? Unit, decimal VolumePerBaseUnit)>(StringComparer.OrdinalIgnoreCase);
 
-        // Get patient reminder preferences
-        var patientPref = await _db.PatientReminderPreferences
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.PatientProfileId == caseEntity.PatientProfileId, ct);
-
-        var morningTime = patientPref?.MorningTime ?? new TimeOnly(7, 0);
-        var middayTime  = patientPref?.MiddayTime ?? new TimeOnly(12, 0);
-        var eveningTime = patientPref?.EveningTime ?? new TimeOnly(20, 0);
-
         var now = DateTime.UtcNow;
 
         // Create prescription
@@ -104,9 +92,6 @@ public sealed class PrescriptionService : IPrescriptionService
         };
 
         await _prescriptionRepo.AddAsync(prescription, ct);
-
-        // Create items + generate intake logs
-        var allLogs = new List<MedicationIntakeLog>();
 
         foreach (var itemDto in request.Items)
         {
@@ -153,42 +138,7 @@ public sealed class PrescriptionService : IPrescriptionService
                     .ToArray(),
             };
             await _itemRepo.AddAsync(prescriptionItem, ct);
-
-            // Generate intake logs
-            var itemWithPatient = new PrescriptionItemWithPatient(
-                itemId,
-                caseEntity.PatientProfileId,
-                itemDto.StartDate,
-                itemDto.DurationDays);
-
-            var scheduledDoses = await _scheduleGenerator.GenerateAsync(
-                itemWithPatient,
-                itemDto.ScheduleSlots,
-                morningTime,
-                middayTime,
-                eveningTime,
-                DateTime.UtcNow,
-                ct);
-
-            foreach (var dose in scheduledDoses)
-            {
-                // Idempotent: skip if already exists in DB
-                var existing = await _intakeLogRepo.FindByItemAndTimeAsync(
-                    dose.PrescriptionItemId, dose.ScheduledTimeUtc, ct);
-                if (existing is not null) continue;
-
-                allLogs.Add(new MedicationIntakeLog
-                {
-                    IntakeId = Guid.NewGuid(),
-                    PrescriptionItemId = dose.PrescriptionItemId,
-                    ScheduledTime = dose.ScheduledTimeUtc,
-                    ConfirmedAt = null,
-                });
-            }
         }
-
-        if (allLogs.Count > 0)
-            await _intakeLogRepo.AddRangeAsync(allLogs, ct);
 
         // Sau khi tạo đơn thuốc → tự động chuyển ca sang END (trạng thái cuối).
         // Dùng GetForUpdateAsync để lấy entity có theo dõi thay đổi.
@@ -226,7 +176,7 @@ public sealed class PrescriptionService : IPrescriptionService
         var ownPrescriptions = prescriptions.Where(p => p.DoctorId == actorId).ToList();
         var otherPrescriptions = prescriptions.Where(p => p.DoctorId != actorId).ToList();
 
-        // Lấy stats cho đơn của actor
+        // Get stats for actor's prescriptions
         var ownItemIds = ownPrescriptions
             .SelectMany(p => p.PrescriptionItems)
             .Select(i => i.PrescriptionItemId)
