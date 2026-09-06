@@ -16,7 +16,7 @@ vi.mock("@/features/medical-record/hooks/use-patients", () => ({
 }));
 
 function signInAs(role: "DOCTOR" | "NURSE") {
-  useAuthStore.getState().signIn("token", {
+  useAuthStore.getState().signIn("access-token", "refresh-token", {
     userId: "user-1",
     fullName: role === "NURSE" ? "ĐD. Võ Thị Thu Hà" : "BS. Nguyễn Văn An",
     email: null,
