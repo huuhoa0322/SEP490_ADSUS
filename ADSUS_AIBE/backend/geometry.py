@@ -80,7 +80,18 @@ def suggest_calipers_from_mask(mask: np.ndarray) -> tuple[CaliperPair, CaliperPa
     if not contours:
         raise ValueError("Mask rỗng, không tìm được contour nào để gợi ý caliper.")
     largest = max(contours, key=cv2.contourArea)
-    (cx, cy), (w, h), angle_deg = cv2.minAreaRect(largest)
+    return suggest_calipers_from_contour(largest)
+
+
+def suggest_calipers_from_contour(contour: np.ndarray) -> tuple[CaliperPair, CaliperPair]:
+    """
+    contour: polygon coordinates (N, 1, 2) in original image pixel scale.
+    Dùng cv2.minAreaRect để tìm hình chữ nhật xoay khít nhất bao quanh contour.
+    """
+    if len(contour) == 0:
+        raise ValueError("Contour rỗng, không thể gợi ý caliper.")
+    contour = contour.astype(np.float32)
+    (cx, cy), (w, h), angle_deg = cv2.minAreaRect(contour)
     return _pairs_from_oriented_rect(cx, cy, w, h, angle_deg)
 
 

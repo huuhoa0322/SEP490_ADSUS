@@ -28,7 +28,7 @@ public class InvoiceServiceTests
         // Arrange
         var options = GetInMemoryOptions("Invoice_Test_Exact");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!);
+        var service = new InvoiceService(context, null!, null!, null!);
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -74,7 +74,7 @@ public class InvoiceServiceTests
         // Arrange
         var options = GetInMemoryOptions("Invoice_Test_UsageUnit");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!);
+        var service = new InvoiceService(context, null!, null!, null!);
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -119,7 +119,7 @@ public class InvoiceServiceTests
         // Arrange
         var options = GetInMemoryOptions("Invoice_Test_RoundUp");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!);
+        var service = new InvoiceService(context, null!, null!, null!);
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -171,7 +171,7 @@ public class InvoiceServiceTests
         // Remainder 4 < 50 → round up → merge into Gói row: total 2 Gói (not 1 Gói + "(Làm tròn lên)" Gói)
         var options = GetInMemoryOptions("Invoice_Test_RemainderMerge");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!);
+        var service = new InvoiceService(context, null!, null!, null!);
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -213,7 +213,7 @@ public class InvoiceServiceTests
         //         Remainder 4 > 0 → merge 1 into Gói row → 4 Gói total, single row
         var options = GetInMemoryOptions("Invoice_Test_MultiLevelMerge");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!);
+        var service = new InvoiceService(context, null!, null!, null!);
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -256,7 +256,7 @@ public class InvoiceServiceTests
         // Arrange
         var options = GetInMemoryOptions("Invoice_Test_Exception");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!);
+        var service = new InvoiceService(context, null!, null!, null!);
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -292,7 +292,7 @@ public class InvoiceServiceTests
         // Arrange — CaseId không có Prescription nào
         var options = GetInMemoryOptions("Invoice_Test_NoPrescription");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!);
+        var service = new InvoiceService(context, null!, null!, null!);
 
         var caseId = Guid.NewGuid();
 
@@ -308,7 +308,7 @@ public class InvoiceServiceTests
         // Arrange — Case đã có Invoice PENDING → idempotent, trả lại ID cũ
         var options = GetInMemoryOptions("Invoice_Test_Idempotent");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!);
+        var service = new InvoiceService(context, null!, null!, null!);
 
         var caseId = Guid.NewGuid();
         var existingInvoiceId = Guid.NewGuid();
@@ -337,7 +337,7 @@ public class InvoiceServiceTests
         // Arrange — Case đã có Invoice PAID → idempotent
         var options = GetInMemoryOptions("Invoice_Test_IdempotentPaid");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!);
+        var service = new InvoiceService(context, null!, null!, null!);
 
         var caseId = Guid.NewGuid();
         var existingInvoiceId = Guid.NewGuid();
@@ -370,7 +370,7 @@ public class InvoiceServiceTests
     {
         var options = GetInMemoryOptions("Invoice_Test_GetDetail_NotFound");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!);
+        var service = new InvoiceService(context, null!, null!, null!);
 
         var nonExistentId = Guid.NewGuid();
 
@@ -390,7 +390,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Pay_NotFound");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object);
+        var service = new InvoiceService(context, inventoryMock.Object, null!, null!);
 
         var nonExistentId = Guid.NewGuid();
 
@@ -406,7 +406,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Pay_AlreadyPaid");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object);
+        var service = new InvoiceService(context, inventoryMock.Object, null!, null!);
 
         var invoiceId = Guid.NewGuid();
         var caseId   = Guid.NewGuid();
@@ -439,7 +439,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Cancel_Pending");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object);
+        var service = new InvoiceService(context, inventoryMock.Object, null!, null!);
 
         var invoiceId = Guid.NewGuid();
         context.Invoices.Add(new Invoice
@@ -464,7 +464,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Cancel_Paid");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object);
+        var service = new InvoiceService(context, inventoryMock.Object, null!, null!);
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();
@@ -536,7 +536,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Cancel_NotFound");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object);
+        var service = new InvoiceService(context, inventoryMock.Object, null!, null!);
 
         var request = new CancelInvoiceRequest { Reason = "Lý do" };
         var ex = await Assert.ThrowsAsync<BusinessException>(
@@ -550,7 +550,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Cancel_Already");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object);
+        var service = new InvoiceService(context, inventoryMock.Object, null!, null!);
 
         var invoiceId = Guid.NewGuid();
         context.Invoices.Add(new Invoice
@@ -564,5 +564,241 @@ public class InvoiceServiceTests
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => service.CancelInvoiceAsync(invoiceId, request));
         Assert.Contains("đã bị hủy", ex.Message);
+    }
+    [Fact]
+    public async Task PayAndDispenseAsync_Success_CreatesIntakeLogs()
+    {
+        var options = GetInMemoryOptions("Invoice_Test_Pay_CreatesLogs");
+        using var context = new AppDbContext(options);
+        var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
+        var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
+        var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
+        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object);
+
+        var caseId = Guid.NewGuid();
+        var invoiceId = Guid.NewGuid();
+        var patientProfileId = Guid.NewGuid();
+        var pItemId = Guid.NewGuid();
+
+        context.Cases.Add(new Case { CaseId = caseId, PatientProfileId = patientProfileId });
+        context.Invoices.Add(new Invoice { Id = invoiceId, CaseId = caseId, Status = InvoiceStatus.PENDING });
+        var prescriptionId = Guid.NewGuid();
+        context.Prescriptions.Add(new Prescription { PrescriptionId = prescriptionId, CaseId = caseId, Status = PrescriptionStatus.Active });
+        context.PrescriptionItems.Add(new PrescriptionItem
+        {
+            PrescriptionItemId = pItemId,
+            PrescriptionId = prescriptionId,
+            Dosage = "1 viên",
+            DurationDays = 5,
+            ScheduleSlots = new[] { ADSUS_BE.DAL.Entities.ReminderSlot.Morning, ADSUS_BE.DAL.Entities.ReminderSlot.Noon, ADSUS_BE.DAL.Entities.ReminderSlot.Evening }
+        });
+        await context.SaveChangesAsync();
+
+        var scheduledDoses = Enumerable.Range(0, 15).Select(i => new ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.ScheduledDose(pItemId, DateTime.UtcNow.AddHours(i))).ToList();
+        
+        scheduleMock.Setup(s => s.GenerateAsync(It.IsAny<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.PrescriptionItemWithPatient>(), It.IsAny<IReadOnlyList<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()))
+            .ReturnsAsync(scheduledDoses);
+
+        await service.PayAndDispenseAsync(invoiceId, PaymentMethod.CASH);
+
+        logRepoMock.Verify(r => r.AddRangeAsync(It.Is<IEnumerable<MedicationIntakeLog>>(logs => logs.Count() == 15 && logs.All(l => l.ConfirmedAt == null)), default), Moq.Times.Once);
+        var invoice = await context.Invoices.FindAsync(invoiceId);
+        Assert.Equal(InvoiceStatus.PAID, invoice!.Status);
+    }
+
+    [Fact]
+    public async Task PayAndDispenseAsync_Success_NoPatientPreference_UsesDefaults()
+    {
+        var options = GetInMemoryOptions("Invoice_Test_Pay_NoPref");
+        using var context = new AppDbContext(options);
+        var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
+        var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
+        var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
+        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object);
+
+        var caseId = Guid.NewGuid();
+        var invoiceId = Guid.NewGuid();
+
+        context.Cases.Add(new Case { CaseId = caseId, PatientProfileId = Guid.NewGuid() });
+        context.Invoices.Add(new Invoice { Id = invoiceId, CaseId = caseId, Status = InvoiceStatus.PENDING });
+        context.Prescriptions.Add(new Prescription { PrescriptionId = Guid.NewGuid(), CaseId = caseId, Status = PrescriptionStatus.Active });
+        context.PrescriptionItems.Add(new PrescriptionItem
+        {
+            PrescriptionItemId = Guid.NewGuid(),
+            PrescriptionId = context.Prescriptions.Local.First().PrescriptionId,
+            Dosage = "1 viên",
+            DurationDays = 1,
+            ScheduleSlots = new[] { ADSUS_BE.DAL.Entities.ReminderSlot.Morning }
+        });
+        await context.SaveChangesAsync();
+
+        scheduleMock.Setup(s => s.GenerateAsync(It.IsAny<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.PrescriptionItemWithPatient>(), It.IsAny<IReadOnlyList<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()))
+            .ReturnsAsync(new List<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.ScheduledDose>());
+
+        await service.PayAndDispenseAsync(invoiceId, PaymentMethod.CASH);
+
+        scheduleMock.Verify(s => s.GenerateAsync(It.IsAny<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.PrescriptionItemWithPatient>(), It.IsAny<IReadOnlyList<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>>(), new TimeOnly(7, 0), new TimeOnly(12, 0), new TimeOnly(20, 0), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()), Moq.Times.Once);
+    }
+
+    [Fact]
+    public async Task PayAndDispenseAsync_Success_WithPatientPreference_UsesCustomTimes()
+    {
+        var options = GetInMemoryOptions("Invoice_Test_Pay_WithPref");
+        using var context = new AppDbContext(options);
+        var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
+        var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
+        var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
+        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object);
+
+        var caseId = Guid.NewGuid();
+        var invoiceId = Guid.NewGuid();
+        var patientProfileId = Guid.NewGuid();
+
+        context.Cases.Add(new Case { CaseId = caseId, PatientProfileId = patientProfileId });
+        context.PatientReminderPreferences.Add(new PatientReminderPreference { PreferenceId = Guid.NewGuid(), PatientProfileId = patientProfileId, MorningTime = new TimeOnly(6, 30), MiddayTime = new TimeOnly(11, 30), EveningTime = new TimeOnly(21, 0) });
+        context.Invoices.Add(new Invoice { Id = invoiceId, CaseId = caseId, Status = InvoiceStatus.PENDING });
+        context.Prescriptions.Add(new Prescription { PrescriptionId = Guid.NewGuid(), CaseId = caseId, Status = PrescriptionStatus.Active });
+        context.PrescriptionItems.Add(new PrescriptionItem
+        {
+            PrescriptionItemId = Guid.NewGuid(),
+            PrescriptionId = context.Prescriptions.Local.First().PrescriptionId,
+            Dosage = "1 viên",
+            DurationDays = 1,
+            ScheduleSlots = new[] { ADSUS_BE.DAL.Entities.ReminderSlot.Morning }
+        });
+        await context.SaveChangesAsync();
+
+        scheduleMock.Setup(s => s.GenerateAsync(It.IsAny<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.PrescriptionItemWithPatient>(), It.IsAny<IReadOnlyList<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()))
+            .ReturnsAsync(new List<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.ScheduledDose>());
+
+        await service.PayAndDispenseAsync(invoiceId, PaymentMethod.CASH);
+
+        scheduleMock.Verify(s => s.GenerateAsync(It.IsAny<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.PrescriptionItemWithPatient>(), It.IsAny<IReadOnlyList<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>>(), new TimeOnly(6, 30), new TimeOnly(11, 30), new TimeOnly(21, 0), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()), Moq.Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelInvoiceAsync_Paid_DeletesPendingLogs()
+    {
+        var options = GetInMemoryOptions("Invoice_Test_Cancel_DeletesPending");
+        using var context = new AppDbContext(options);
+        var service = new InvoiceService(context, null!, null!, null!);
+
+        var caseId = Guid.NewGuid();
+        var invoiceId = Guid.NewGuid();
+        var pItemId = Guid.NewGuid();
+
+        context.Invoices.Add(new Invoice { Id = invoiceId, CaseId = caseId, Status = InvoiceStatus.PAID });
+        context.Prescriptions.Add(new Prescription { PrescriptionId = Guid.NewGuid(), CaseId = caseId, Status = PrescriptionStatus.Active });
+        context.PrescriptionItems.Add(new PrescriptionItem { PrescriptionItemId = pItemId, PrescriptionId = context.Prescriptions.Local.First().PrescriptionId, Dosage = "1 viên" });
+        
+        for (int i = 0; i < 10; i++)
+        {
+            context.MedicationIntakeLogs.Add(new MedicationIntakeLog { IntakeId = Guid.NewGuid(), PrescriptionItemId = pItemId, ConfirmedAt = null });
+        }
+        await context.SaveChangesAsync();
+
+        await service.CancelInvoiceAsync(invoiceId, new CancelInvoiceRequest { Reason = "Test" });
+
+        Assert.Empty(context.MedicationIntakeLogs);
+        var invoice = await context.Invoices.FindAsync(invoiceId);
+        Assert.Equal(InvoiceStatus.CANCELLED, invoice!.Status);
+        var prescription = await context.Prescriptions.FirstAsync();
+        Assert.Equal(PrescriptionStatus.Cancelled, prescription.Status);
+    }
+
+    [Fact]
+    public async Task CancelInvoiceAsync_Paid_KeepsTakenLogs()
+    {
+        var options = GetInMemoryOptions("Invoice_Test_Cancel_KeepsTaken");
+        using var context = new AppDbContext(options);
+        var service = new InvoiceService(context, null!, null!, null!);
+
+        var caseId = Guid.NewGuid();
+        var invoiceId = Guid.NewGuid();
+        var pItemId = Guid.NewGuid();
+
+        context.Invoices.Add(new Invoice { Id = invoiceId, CaseId = caseId, Status = InvoiceStatus.PAID });
+        context.Prescriptions.Add(new Prescription { PrescriptionId = Guid.NewGuid(), CaseId = caseId, Status = PrescriptionStatus.Active });
+        context.PrescriptionItems.Add(new PrescriptionItem { PrescriptionItemId = pItemId, PrescriptionId = context.Prescriptions.Local.First().PrescriptionId, Dosage = "1 viên" });
+        
+        // 3 Taken, 7 Pending
+        for (int i = 0; i < 3; i++) context.MedicationIntakeLogs.Add(new MedicationIntakeLog { IntakeId = Guid.NewGuid(), PrescriptionItemId = pItemId, ConfirmedAt = DateTime.UtcNow });
+        for (int i = 0; i < 7; i++) context.MedicationIntakeLogs.Add(new MedicationIntakeLog { IntakeId = Guid.NewGuid(), PrescriptionItemId = pItemId, ConfirmedAt = null });
+        await context.SaveChangesAsync();
+
+        await service.CancelInvoiceAsync(invoiceId, new CancelInvoiceRequest { Reason = "Test" });
+
+        var remainingLogs = await context.MedicationIntakeLogs.ToListAsync();
+        Assert.Equal(3, remainingLogs.Count);
+        Assert.All(remainingLogs, l => Assert.NotNull(l.ConfirmedAt));
+    }
+
+    [Fact]
+    public async Task CancelInvoiceAsync_Paid_PartialRefund_OnlyRefundsUntakenDoses()
+    {
+        var options = GetInMemoryOptions("Invoice_Test_Cancel_PartialRefund");
+        using var context = new AppDbContext(options);
+        var service = new InvoiceService(context, null!, null!, null!);
+
+        var caseId = Guid.NewGuid();
+        var invoiceId = Guid.NewGuid();
+        var pItemId = Guid.NewGuid();
+        var batchId = Guid.NewGuid();
+
+        context.Invoices.Add(new Invoice { Id = invoiceId, CaseId = caseId, Status = InvoiceStatus.PAID });
+        context.Prescriptions.Add(new Prescription { PrescriptionId = Guid.NewGuid(), CaseId = caseId, Status = PrescriptionStatus.Active });
+        context.PrescriptionItems.Add(new PrescriptionItem { PrescriptionItemId = pItemId, PrescriptionId = context.Prescriptions.Local.First().PrescriptionId, Dosage = "1 viên" });
+        
+        context.MedicineBatches.Add(new MedicineBatch { Id = batchId, QuantityBase = 50, LotNumber = "LOT123" });
+        context.InventoryTransactions.Add(new InventoryTransaction { Id = Guid.NewGuid(), BatchId = batchId, TxnType = InventoryTxnType.Dispense, QuantityBase = 10, PrescriptionItemId = pItemId });
+
+        // 3 Taken, 7 Pending out of 10 total logs
+        for (int i = 0; i < 3; i++) context.MedicationIntakeLogs.Add(new MedicationIntakeLog { IntakeId = Guid.NewGuid(), PrescriptionItemId = pItemId, ConfirmedAt = DateTime.UtcNow });
+        for (int i = 0; i < 7; i++) context.MedicationIntakeLogs.Add(new MedicationIntakeLog { IntakeId = Guid.NewGuid(), PrescriptionItemId = pItemId, ConfirmedAt = null });
+        
+        await context.SaveChangesAsync();
+
+        await service.CancelInvoiceAsync(invoiceId, new CancelInvoiceRequest { Reason = "Test" });
+
+        var reverseTxn = await context.InventoryTransactions.FirstOrDefaultAsync(t => t.TxnType == InventoryTxnType.Adjustment);
+        Assert.NotNull(reverseTxn);
+        // Refund = (7 / 10) * 10 = 7
+        Assert.Equal(7, reverseTxn.QuantityBase);
+        
+        var batch = await context.MedicineBatches.FindAsync(batchId);
+        Assert.Equal(57, batch!.QuantityBase);
+    }
+
+    [Fact]
+    public async Task CancelInvoiceAsync_Paid_AllTaken_NoRefund()
+    {
+        var options = GetInMemoryOptions("Invoice_Test_Cancel_AllTaken");
+        using var context = new AppDbContext(options);
+        var service = new InvoiceService(context, null!, null!, null!);
+
+        var caseId = Guid.NewGuid();
+        var invoiceId = Guid.NewGuid();
+        var pItemId = Guid.NewGuid();
+        var batchId = Guid.NewGuid();
+
+        context.Invoices.Add(new Invoice { Id = invoiceId, CaseId = caseId, Status = InvoiceStatus.PAID });
+        context.Prescriptions.Add(new Prescription { PrescriptionId = Guid.NewGuid(), CaseId = caseId, Status = PrescriptionStatus.Active });
+        context.PrescriptionItems.Add(new PrescriptionItem { PrescriptionItemId = pItemId, PrescriptionId = context.Prescriptions.Local.First().PrescriptionId, Dosage = "1 viên" });
+        
+        context.MedicineBatches.Add(new MedicineBatch { Id = batchId, QuantityBase = 50, LotNumber = "LOT123" });
+        context.InventoryTransactions.Add(new InventoryTransaction { Id = Guid.NewGuid(), BatchId = batchId, TxnType = InventoryTxnType.Dispense, QuantityBase = 10, PrescriptionItemId = pItemId });
+
+        // 10 Taken
+        for (int i = 0; i < 10; i++) context.MedicationIntakeLogs.Add(new MedicationIntakeLog { IntakeId = Guid.NewGuid(), PrescriptionItemId = pItemId, ConfirmedAt = DateTime.UtcNow });
+        
+        await context.SaveChangesAsync();
+
+        await service.CancelInvoiceAsync(invoiceId, new CancelInvoiceRequest { Reason = "Test" });
+
+        var reverseTxn = await context.InventoryTransactions.FirstOrDefaultAsync(t => t.TxnType == InventoryTxnType.Adjustment);
+        Assert.Null(reverseTxn); // No refund
+        
+        var batch = await context.MedicineBatches.FindAsync(batchId);
+        Assert.Equal(50, batch!.QuantityBase); // Remains 50
     }
 }

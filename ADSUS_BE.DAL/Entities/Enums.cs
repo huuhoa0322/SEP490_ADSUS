@@ -88,6 +88,7 @@ public enum PrescriptionStatus
 {
     [PgName("ACTIVE")] Active,
     [PgName("COMPLETED")] Completed,
+    [PgName("CANCELLED")] Cancelled,
 }
 
 /// <summary>
