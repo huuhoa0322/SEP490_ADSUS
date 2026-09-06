@@ -279,8 +279,6 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
     wrap.appendChild(inner);
 
     const svg = makeSVG();
-    const fontSize = Math.max(18, Math.round(imgDims.h * 0.05));
-    const padX = 6, padY = 4;
 
     aiDetections.forEach(d => {
       const b = {
@@ -289,7 +287,6 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         x2: d.bbox.xmax * imgDims.w,
         y2: d.bbox.ymax * imgDims.h,
       };
-      const confStr = (d.confidence * 100).toFixed(0) + '%';
 
       const rect = svgEl('rect', {
         x: b.x1, y: b.y1,
@@ -299,26 +296,6 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         'stroke-width': 2,
       });
       svg.appendChild(rect);
-
-      const lblH = fontSize + padY * 2;
-      const lblW = confStr.length * fontSize * 0.62 + padX * 2;
-      const lblTop = Math.max(b.y1 - lblH - 2, 0);
-
-      const bg = svgEl('rect', {
-        x: b.x1, y: lblTop, width: lblW, height: lblH,
-        fill: '#000000cc', rx: 4,
-      });
-      svg.appendChild(bg);
-
-      const lbl = svgEl('text', {
-        x: b.x1 + padX, y: lblTop + fontSize + padY * 0.5,
-        fill: '#e8934a',
-        'font-size': fontSize,
-        'font-weight': 'bold',
-        'font-family': 'monospace',
-      });
-      lbl.textContent = confStr;
-      svg.appendChild(lbl);
     });
 
     inner.appendChild(svg);
@@ -674,11 +651,11 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         .caliper-line { pointer-events: none; }
       `}} />
 
-      {/* AI Panel (40%) */}
-      <section className="flex flex-col border-r border-border" style={{ flex: '4 4 40%', maxWidth: '40%' }}>
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#e8934a]"></span>
-          Kết quả AI phát hiện
+      {/* AI Panel (50%) */}
+      <section className="flex flex-col border-r-2 border-border/80 shadow-[2px_0_15px_-3px_rgba(0,0,0,0.1)] z-10 bg-slate-50/30" style={{ flex: '5 5 50%', maxWidth: '50%' }}>
+        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-foreground shadow-sm">
+          <span className="h-2 w-2 shrink-0 rounded-full bg-[#e8934a] shadow-[0_0_8px_#e8934a]"></span>
+          Kết quả AI phân tích
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
           
@@ -723,11 +700,11 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         </div>
       </section>
 
-      {/* Edit Panel (60%) */}
-      <section className="flex flex-col" style={{ flex: '6 6 60%', maxWidth: '60%' }}>
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#00ff00]"></span>
-          Ảnh gốc — xác nhận / chỉnh sửa caliper
+      {/* Edit Panel (50%) */}
+      <section className="flex flex-col bg-background" style={{ flex: '5 5 50%', maxWidth: '50%' }}>
+        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-foreground shadow-sm">
+          <span className="h-2 w-2 shrink-0 rounded-full bg-[#00ff00] shadow-[0_0_8px_#00ff00]"></span>
+          Vùng xác nhận của bác sĩ
         </div>
         
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
