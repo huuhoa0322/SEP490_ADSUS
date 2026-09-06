@@ -169,7 +169,7 @@ public sealed class GeminiChatClient : IChatClient
             Contents = contents,
             GenerationConfig = new GeminiGenerationConfig
             {
-                MaxOutputTokens = 1024,
+                MaxOutputTokens = 2048,
                 Temperature = 0.7f,
             },
         };
