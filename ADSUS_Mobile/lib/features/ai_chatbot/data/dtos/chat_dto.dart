@@ -20,6 +20,7 @@ class ChatMessageDto {
     required this.createdAt,
     required this.isSafetyResponse,
     this.detectedIntent,
+    this.isRateLimitExceeded = false,
   });
 
   final String messageId;
@@ -28,6 +29,7 @@ class ChatMessageDto {
   final DateTime createdAt;
   final bool isSafetyResponse;
   final String? detectedIntent; // ChatIntent string from BE
+  final bool isRateLimitExceeded;
 
   factory ChatMessageDto.fromJson(Map<String, dynamic> json) {
     return ChatMessageDto(
@@ -37,6 +39,7 @@ class ChatMessageDto {
       createdAt: DateTime.parse(json['createdAt'] as String),
       isSafetyResponse: json['isSafetyResponse'] as bool? ?? false,
       detectedIntent: json['detectedIntent'] as String?,
+      isRateLimitExceeded: json['isRateLimitExceeded'] as bool? ?? false,
     );
   }
 }

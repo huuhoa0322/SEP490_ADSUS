@@ -297,58 +297,91 @@ class _AssistantBubble extends StatelessWidget {
               bottom: BorderSide(color: AppColors.border),
             ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Context badge (intent) + AI disclaimer side by side
-                Row(
-                  children: [
-                    // Intent badge (nếu có context)
-                    if (ctx != null && ctx != entity.ChatIntent.unknown)
-                      Container(
-                        margin: const EdgeInsets.only(right: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: badgeColor,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Rate limit warning banner (nếu bị limit)
+              if (message.isRateLimitExceeded)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  color: AppColors.amberTint,
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.hourglass_empty,
+                        color: AppColors.amber,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
                         child: Text(
-                          _intentLabel(ctx),
+                          'Bạn đã sử dụng hết 15 lượt trong 5 giờ qua. Vui lòng chờ 5 giờ trước khi tiếp tục.',
                           style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: textColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.amber,
                           ),
                         ),
                       ),
-                    // AI disclaimer badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.aiVioletTint,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Text(
-                        '⚠️ Trợ lý AI — chỉ mang tính tham khảo',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.aiViolet,
+                    ],
+                  ),
+                ),
+
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Context badge (intent) + AI disclaimer side by side
+                    Row(
+                      children: [
+                        // Intent badge (nếu có context)
+                        if (ctx != null && ctx != entity.ChatIntent.unknown)
+                          Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: badgeColor,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              _intentLabel(ctx),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: textColor,
+                              ),
+                            ),
+                          ),
+                        // AI disclaimer badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.aiVioletTint,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Text(
+                            '⚠️ Trợ lý AI — chỉ mang tính tham khảo',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.aiViolet,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Nội dung
+                    Text(
+                      message.content,
+                      style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.navy),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                // Nội dung
-                Text(
-                  message.content,
-                  style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.navy),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
