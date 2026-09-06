@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs.Invoice;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
+using ADSUS_BE.DAL.Repositories.Interfaces;
 
 namespace ADSUS_BE.BLL.PrescriptionAdherence.Services;
 
@@ -16,11 +17,19 @@ public class InvoiceService : IInvoiceService
 {
     private readonly AppDbContext _context;
     private readonly IInventoryService _inventoryService;
+    private readonly IMedicationIntakeLogRepository _intakeLogRepo;
+    private readonly IMedicationIntakeScheduleGenerator _scheduleGenerator;
 
-    public InvoiceService(AppDbContext context, IInventoryService inventoryService)
+    public InvoiceService(
+        AppDbContext context,
+        IInventoryService inventoryService,
+        IMedicationIntakeLogRepository intakeLogRepo,
+        IMedicationIntakeScheduleGenerator scheduleGenerator)
     {
         _context = context;
         _inventoryService = inventoryService;
+        _intakeLogRepo = intakeLogRepo;
+        _scheduleGenerator = scheduleGenerator;
     }
 
     public async Task<Guid> GenerateInvoiceForCaseAsync(Guid caseId)
@@ -232,8 +241,70 @@ public class InvoiceService : IInvoiceService
         // 2. Dispense items (FEFO, Inventory deduct)
         await _inventoryService.DispenseAsync(invoice.CaseId);
 
+        // 3. Sinh MedicationIntakeLog sau khi đã xuất kho
+        await GenerateIntakeLogsForPrescriptionAsync(invoice.CaseId);
+
         // Lưu trạng thái hóa đơn (giao dịch Inventory đã được add bên trong DispenseAsync)
         await _context.SaveChangesAsync();
+    }
+
+    private async Task GenerateIntakeLogsForPrescriptionAsync(Guid caseId)
+    {
+        var prescription = await _context.Prescriptions
+            .Include(p => p.PrescriptionItems)
+            .Include(p => p.Case)
+            .FirstOrDefaultAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active);
+
+        if (prescription == null || !prescription.PrescriptionItems.Any()) return;
+
+        var patientPref = await _context.PatientReminderPreferences
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.PatientProfileId == prescription.Case.PatientProfileId);
+
+        var morningTime = patientPref?.MorningTime ?? new TimeOnly(7, 0);
+        var middayTime  = patientPref?.MiddayTime ?? new TimeOnly(12, 0);
+        var eveningTime = patientPref?.EveningTime ?? new TimeOnly(20, 0);
+
+        var allLogs = new List<MedicationIntakeLog>();
+
+        foreach (var pItem in prescription.PrescriptionItems)
+        {
+            var itemWithPatient = new PrescriptionItemWithPatient(
+                pItem.PrescriptionItemId,
+                prescription.Case.PatientProfileId,
+                pItem.StartDate,
+                pItem.DurationDays);
+
+            // Chuyển mảng enum int về List<ScheduleSlot>
+            var slots = pItem.ScheduleSlots?.Select(s => (ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot)(int)s).ToList() 
+                ?? new List<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>();
+            
+            if (!slots.Any()) continue;
+
+            var scheduledDoses = await _scheduleGenerator.GenerateAsync(
+                itemWithPatient,
+                slots,
+                morningTime,
+                middayTime,
+                eveningTime,
+                DateTime.UtcNow);
+
+            foreach (var dose in scheduledDoses)
+            {
+                allLogs.Add(new MedicationIntakeLog
+                {
+                    IntakeId = Guid.NewGuid(),
+                    PrescriptionItemId = dose.PrescriptionItemId,
+                    ScheduledTime = dose.ScheduledTimeUtc,
+                    ConfirmedAt = null,
+                });
+            }
+        }
+
+        if (allLogs.Count > 0)
+        {
+            await _intakeLogRepo.AddRangeAsync(allLogs);
+        }
     }
 
     public async Task CancelInvoiceAsync(Guid invoiceId, CancelInvoiceRequest request)
@@ -251,45 +322,74 @@ public class InvoiceService : IInvoiceService
         }
         else if (invoice.Status == InvoiceStatus.PAID)
         {
-            // Lấy danh sách PrescriptionItemIds của Case này
-            var prescriptionItemIds = await _context.PrescriptionItems
-                .Where(pi => pi.Prescription.CaseId == invoice.CaseId && pi.Prescription.Status == PrescriptionStatus.Active)
-                .Select(pi => pi.PrescriptionItemId)
+            // Lấy danh sách PrescriptionItems của Case này
+            var prescriptionItems = await _context.PrescriptionItems
+                .Include(pi => pi.Prescription)
+                .Where(pi => pi.Prescription.CaseId == invoice.CaseId)
                 .ToListAsync();
 
-            if (prescriptionItemIds.Any())
+            if (prescriptionItems.Any())
             {
-                // Tìm tất cả giao dịch Dispense liên quan
+                var prescription = prescriptionItems.First().Prescription;
+                prescription.Status = PrescriptionStatus.Cancelled;
+
+                var itemIds = prescriptionItems.Select(p => p.PrescriptionItemId).ToList();
+
+                var allLogs = await _context.MedicationIntakeLogs
+                    .Where(l => itemIds.Contains(l.PrescriptionItemId))
+                    .ToListAsync();
+
+                var pendingLogs = allLogs.Where(l => l.ConfirmedAt == null).ToList();
+                if (pendingLogs.Any())
+                {
+                    _context.MedicationIntakeLogs.RemoveRange(pendingLogs);
+                }
+
                 var dispenseTransactions = await _context.InventoryTransactions
                     .Include(t => t.Batch)
                     .Where(t => t.TxnType == InventoryTxnType.Dispense 
                                 && t.PrescriptionItemId.HasValue 
-                                && prescriptionItemIds.Contains(t.PrescriptionItemId.Value))
+                                && itemIds.Contains(t.PrescriptionItemId.Value))
                     .ToListAsync();
 
-                foreach (var txn in dispenseTransactions)
+                foreach (var pi in prescriptionItems)
                 {
-                    var batch = txn.Batch;
-                    if (batch != null)
-                    {
-                        // Hoàn lại số lượng vào lô
-                        batch.QuantityBase += txn.QuantityBase;
+                    var itemLogs = allLogs.Where(l => l.PrescriptionItemId == pi.PrescriptionItemId).ToList();
+                    var totalLogsCount = itemLogs.Count;
+                    var pendingLogsCount = itemLogs.Count(l => l.ConfirmedAt == null);
 
-                        // Tạo giao dịch Adjustment để lưu vết hoàn kho
-                        var reverseTxn = new InventoryTransaction
+                    if (totalLogsCount > 0 && pendingLogsCount == 0) continue; // Đã uống hết, không hoàn kho
+
+                    var txnsForItem = dispenseTransactions.Where(t => t.PrescriptionItemId == pi.PrescriptionItemId).ToList();
+                    
+                    foreach (var txn in txnsForItem)
+                    {
+                        var batch = txn.Batch;
+                        if (batch != null)
                         {
-                            Id = Guid.NewGuid(),
-                            BatchId = txn.BatchId,
-                            MedicinePackagingId = txn.MedicinePackagingId,
-                            TxnType = InventoryTxnType.Adjustment,
-                            QuantityInUnit = txn.QuantityInUnit,
-                            QuantityBase = txn.QuantityBase, // Dương vì cộng lại
-                            TxnDate = DateTime.UtcNow,
-                            Reason = "Hoàn kho tự động do hủy hóa đơn",
-                            PrescriptionItemId = txn.PrescriptionItemId
-                        };
-                        
-                        _context.InventoryTransactions.Add(reverseTxn);
+                            var refundQtyBase = totalLogsCount == 0 
+                                ? txn.QuantityBase // Nếu chưa sinh log nào, hoàn lại toàn bộ
+                                : (int)Math.Round((double)txn.QuantityBase * pendingLogsCount / totalLogsCount);
+                            
+                            if (refundQtyBase <= 0) continue;
+
+                            batch.QuantityBase += refundQtyBase;
+
+                            var reverseTxn = new InventoryTransaction
+                            {
+                                Id = Guid.NewGuid(),
+                                BatchId = txn.BatchId,
+                                MedicinePackagingId = txn.MedicinePackagingId,
+                                TxnType = InventoryTxnType.Adjustment,
+                                QuantityInUnit = refundQtyBase,
+                                QuantityBase = refundQtyBase,
+                                TxnDate = DateTime.UtcNow,
+                                Reason = "Hoàn kho tự động do hủy hóa đơn",
+                                PrescriptionItemId = txn.PrescriptionItemId
+                            };
+                            
+                            _context.InventoryTransactions.Add(reverseTxn);
+                        }
                     }
                 }
             }
