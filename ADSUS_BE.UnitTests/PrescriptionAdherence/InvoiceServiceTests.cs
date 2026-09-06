@@ -15,7 +15,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence;
 
 public class InvoiceServiceTests
 {
-    private DbContextOptions<AppDbContext> GetInMemoryOptions(string dbName)
+    private static DbContextOptions<AppDbContext> GetInMemoryOptions(string dbName)
     {
         return new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(databaseName: dbName)

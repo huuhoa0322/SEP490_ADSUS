@@ -147,7 +147,7 @@ public sealed class ChatIntentDetector : IIntentDetector
     /// <summary>
     /// Detect intent from user message (synchronous, no I/O).
     /// </summary>
-    public IntentResult Detect(string? message)
+    public static IntentResult Detect(string? message)
     {
         if (string.IsNullOrWhiteSpace(message))
             return new IntentResult { Intent = ChatIntent.General, TriggeredSources = DataSource.None };

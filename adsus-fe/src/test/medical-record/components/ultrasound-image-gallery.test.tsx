@@ -59,7 +59,7 @@ describe("UltrasoundImageGallery", () => {
     await userEvent.click(screen.getByRole("img", { name: /ảnh siêu âm tải lên/i }));
     expect(screen.getByRole("img", { name: /ảnh phóng to/i })).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button"));
+    await userEvent.click(screen.getByRole("button", { name: /đóng ảnh phóng to/i }));
     expect(screen.queryByRole("img", { name: /ảnh phóng to/i })).not.toBeInTheDocument();
   });
 });

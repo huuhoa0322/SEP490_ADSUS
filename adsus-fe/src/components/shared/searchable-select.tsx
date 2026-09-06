@@ -10,6 +10,7 @@ export interface Option {
 }
 
 interface SearchableSelectProps {
+  id?: string;
   options: Option[];
   value?: string;
   onChange: (value: string) => void;
@@ -18,6 +19,7 @@ interface SearchableSelectProps {
 }
 
 export function SearchableSelect({
+  id,
   options,
   value,
   onChange,
@@ -49,6 +51,7 @@ export function SearchableSelect({
   return (
     <div className="relative w-full" ref={wrapperRef}>
       <Button
+        id={id}
         type="button"
         variant="outline"
         role="combobox"
@@ -74,13 +77,16 @@ export function SearchableSelect({
               autoFocus
             />
           </div>
-          <div className="mt-1">
+          <div className="mt-1" role="listbox">
             {filteredOptions.length === 0 ? (
               <div className="py-6 text-center text-sm">Không tìm thấy kết quả.</div>
             ) : (
               filteredOptions.map((option) => (
                 <div
                   key={option.value}
+                  role="option"
+                  aria-selected={value === option.value}
+                  tabIndex={0}
                   className={cn(
                     "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
                     value === option.value && "bg-accent text-accent-foreground"
@@ -89,6 +95,14 @@ export function SearchableSelect({
                     onChange(option.value);
                     setIsOpen(false);
                     setSearchTerm('');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onChange(option.value);
+                      setIsOpen(false);
+                      setSearchTerm('');
+                    }
                   }}
                 >
                   <Check

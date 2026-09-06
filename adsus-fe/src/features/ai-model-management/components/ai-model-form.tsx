@@ -87,9 +87,9 @@ export function AiModelFormDialog({ id, open, onClose, onSuccess }: AiModelFormD
           description: parsed.description ?? prev.description,
           hfRepoId: parsed.hfRepoId ?? prev.hfRepoId,
           hfFilename: parsed.hfFilename ?? prev.hfFilename,
-          metricsPrecision: parsed.metricsPrecision ? parseFloat(parsed.metricsPrecision) : prev.metricsPrecision,
-          metricsMap50: parsed.metricsMap50 ? parseFloat(parsed.metricsMap50) : prev.metricsMap50,
-          metricsRecall: parsed.metricsRecall ? parseFloat(parsed.metricsRecall) : prev.metricsRecall,
+          metricsPrecision: parsed.metricsPrecision ? Number.parseFloat(parsed.metricsPrecision) : prev.metricsPrecision,
+          metricsMap50: parsed.metricsMap50 ? Number.parseFloat(parsed.metricsMap50) : prev.metricsMap50,
+          metricsRecall: parsed.metricsRecall ? Number.parseFloat(parsed.metricsRecall) : prev.metricsRecall,
         }));
         
         if (fileInputRef.current) fileInputRef.current.value = '';

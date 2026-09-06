@@ -64,15 +64,15 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
   }
 
   const handleUpdateGeneralInfo = async () => {
-    const finalVolume = parseFloat(volume);
+    const finalVolume = Number.parseFloat(volume);
     const finalUsageUnit = usageUnit.trim();
 
-      if (finalUsageUnit && (isNaN(finalVolume) || finalVolume <= 0)) {
+      if (finalUsageUnit && (Number.isNaN(finalVolume) || finalVolume <= 0)) {
         toast.error("Vui lòng nhập đúng Hàm lượng (lớn hơn 0) khi đã nhập Đơn vị dùng.");
         return;
       }
       
-      if (!isNaN(finalVolume) && finalVolume > 0 && !finalUsageUnit) {
+      if (!Number.isNaN(finalVolume) && finalVolume > 0 && !finalUsageUnit) {
         toast.error("Vui lòng nhập Đơn vị dùng (Usage Unit) khi đã nhập Hàm lượng.");
         return;
       }
@@ -83,8 +83,8 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
         request: {
           name: medicine.name,
           usageUnit: finalUsageUnit,
-          volumePerBaseUnit: isNaN(finalVolume) ? undefined : finalVolume,
-          lowStockThreshold: parseInt(lowStockThreshold) || 0
+          volumePerBaseUnit: Number.isNaN(finalVolume) ? undefined : finalVolume,
+          lowStockThreshold: Number.parseInt(lowStockThreshold) || 0
         }
       });
       toast.success("Cập nhật thông tin cơ bản thành công.");
@@ -131,8 +131,8 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
     
     const req = {
       medicineUnitId: unitId,
-      conversionFactor: parseInt(conversion) || 1,
-      salePrice: parseFloat(price) || 0,
+      conversionFactor: Number.parseInt(conversion) || 1,
+      salePrice: Number.parseFloat(price) || 0,
       isBaseUnit: isBase,
       isSellable: isSellable,
     };

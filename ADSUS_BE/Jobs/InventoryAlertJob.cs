@@ -62,7 +62,7 @@ namespace ADSUS_BE.Jobs
                 .Select(u => u.UserId)
                 .ToListAsync(stoppingToken);
             
-            if (!adminNurseIds.Any())
+            if (adminNurseIds.Count == 0)
             {
                 _logger.LogWarning("[InventoryAlertJob] No active admin/nurse found to send alerts to.");
                 return;
