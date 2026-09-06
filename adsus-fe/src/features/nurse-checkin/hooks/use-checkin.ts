@@ -15,7 +15,7 @@ export function useCheckin() {
 
   return useMutation({
     mutationFn: ({ appointmentId, caseId }: { appointmentId: string; caseId: string }) =>
-      checkinAppointment(appointmentId, caseId) as Promise<ApiResponse<CheckinResponse>>,
+      checkinAppointment(appointmentId, caseId) as unknown as Promise<ApiResponse<CheckinResponse>>,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: nurseCheckinQueryKeys.all });
       if (data?.data?.message?.includes("tự động hủy")) {
