@@ -77,6 +77,7 @@ public class ChatDataAggregatorTests : IDisposable
     public void Dispose()
     {
         _db.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     // ── Setup helpers ────────────────────────────────────────────────────────

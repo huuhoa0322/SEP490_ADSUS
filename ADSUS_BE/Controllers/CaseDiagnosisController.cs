@@ -77,6 +77,6 @@ public sealed class CaseDiagnosisController : ControllerBase
         };
 
         await _diagnosisService.ConfirmAnalysisAsync(caseId, bllRequest, ct);
-        return Ok(ApiResponse<object>.Ok(null, "Image and annotations saved successfully"));
+        return Ok(ApiResponse<object>.Ok(null!, "Image and annotations saved successfully"));
     }
 }

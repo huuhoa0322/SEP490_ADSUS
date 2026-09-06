@@ -53,7 +53,7 @@ public sealed class MedicationIntakeScheduleGenerator : IMedicationIntakeSchedul
                     ScheduleSlot.Morning => morningTime,
                     ScheduleSlot.Noon    => middayTime,
                     ScheduleSlot.Evening => eveningTime,
-                    _ => throw new ArgumentOutOfRangeException(nameof(slot), slot, "Unknown slot.")
+                    _ => throw new ArgumentOutOfRangeException(nameof(slots), slot, "Unknown slot.")
                 };
 
                 // timeOfDay là giờ sinh hoạt bệnh nhân VN. Đổi sang UTC thật trước khi lưu DB

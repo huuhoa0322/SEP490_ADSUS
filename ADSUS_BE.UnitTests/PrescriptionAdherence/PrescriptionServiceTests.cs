@@ -75,7 +75,7 @@ public class PrescriptionServiceTests
 
         // Giả lập DB không tìm thấy thuốc
         _medicineRepoMock.Setup(r => r.FindByNameAsync("ThuocKhongTonTai", It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Medicine)null);
+            .ReturnsAsync((Medicine?)null);
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(() => service.CreateAsync(doctorId, request));

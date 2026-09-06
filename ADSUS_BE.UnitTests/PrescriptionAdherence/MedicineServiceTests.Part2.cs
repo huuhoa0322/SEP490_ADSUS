@@ -29,7 +29,7 @@ public partial class MedicineServiceTests
         };
 
         _medicineRepoMock.Setup(repo => repo.FindByNameAsync(request.Name, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Medicine)null);
+            .ReturnsAsync((Medicine?)null);
 
         var result = await _sut.CreateMedicineAsync(request);
 
@@ -52,7 +52,7 @@ public partial class MedicineServiceTests
         };
 
         _medicineRepoMock.Setup(repo => repo.FindByNameAsync(request.Name, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Medicine)null);
+            .ReturnsAsync((Medicine?)null);
 
         var result = await _sut.CreateMedicineAsync(request);
 
@@ -123,7 +123,7 @@ public partial class MedicineServiceTests
     {
         var request = new UpdateMedicineRequest { Name = "Aspirin" };
         _medicineRepoMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Medicine)null);
+            .ReturnsAsync((Medicine?)null);
         var exception = await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.UpdateMedicineAsync(Guid.NewGuid(), request));
         Assert.Equal("Không tìm thấy thuốc.", exception.Message);
     }

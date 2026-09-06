@@ -235,7 +235,7 @@ public class AdminUsersController : ControllerBase
     private bool TryGetActingAdminId(out Guid adminId) =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out adminId);
 
-    private IActionResult MapFailure<T>(AccountOperationResult result) => result switch
+    private ObjectResult MapFailure<T>(AccountOperationResult result) => result switch
     {
         AccountOperationResult.NotFound =>
             NotFound(ApiResponse<T>.Fail(StatusCodes.Status404NotFound, "Account not found.")),
