@@ -58,13 +58,18 @@ public class GlobalExceptionHandler
 
         // Full detail always goes to the log (Serilog sinks) — the message above is what the
         // client sees, and for a 500 it is deliberately generic; never leak the raw exception.
+        // Method/Path come straight from the request, so strip CR/LF before logging them —
+        // otherwise a path like "/x%0D%0AFake log line" could forge extra log entries.
+        var method = SanitizeForLog(context.Request.Method);
+        var path = SanitizeForLog(context.Request.Path.Value);
+
         if (statusCode == HttpStatusCode.InternalServerError)
         {
-            _logger.LogError(exception, "Unhandled exception on {Method} {Path}", context.Request.Method, context.Request.Path);
+            _logger.LogError(exception, "Unhandled exception on {Method} {Path}", method, path);
         }
         else
         {
-            _logger.LogWarning(exception, "{ExceptionType} on {Method} {Path}", exception.GetType().Name, context.Request.Method, context.Request.Path);
+            _logger.LogWarning(exception, "{ExceptionType} on {Method} {Path}", exception.GetType().Name, method, path);
         }
 
         var response = ApiResponse<object?>.Fail((int)statusCode, message);
@@ -73,4 +78,7 @@ public class GlobalExceptionHandler
         context.Response.StatusCode = (int)statusCode;
         await context.Response.WriteAsync(JsonSerializer.Serialize(response, JsonOptions));
     }
+
+    private static string SanitizeForLog(string? value) =>
+        string.IsNullOrEmpty(value) ? string.Empty : value.Replace('\r', '_').Replace('\n', '_');
 }
