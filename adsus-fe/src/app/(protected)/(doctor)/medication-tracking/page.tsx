@@ -233,11 +233,16 @@ export default function MedicationTrackingPage() {
   return (
     <div className="w-full px-4 py-6 sm:px-6">
       {/* Header */}
-      <div className="mb-6 flex items-center gap-3">
-        <Pill className="size-7 shrink-0 text-primary" />
-        <h1 className="font-heading text-2xl font-semibold text-primary">
-          Theo dõi tiến độ uống thuốc
-        </h1>
+      <div className="mb-6">
+        <div className="flex items-center gap-3">
+          <Pill className="size-7 shrink-0 text-primary" />
+          <h1 className="font-heading text-2xl font-semibold text-primary">
+            Theo dõi tiến độ uống thuốc
+          </h1>
+        </div>
+        <p className="mt-1 ml-10 text-sm text-muted-foreground">
+          Chỉ hiển thị những bệnh nhân đang có ít nhất 1 đơn thuốc active
+        </p>
       </div>
 
       {/* Summary tiles */}
