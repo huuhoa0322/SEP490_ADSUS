@@ -78,8 +78,8 @@ public class FeedbackServiceTests
 
         var result = await sut.GetAllAsync(TestContext.Current.CancellationToken);
 
-        Assert.Single(result);
-        Assert.Equal("Nguyen Van A", result[0].PatientName);
+        var feedback = Assert.Single(result);
+        Assert.Equal("Nguyen Van A", feedback.PatientName);
     }
 
     // ==================== FT-37: Case Feedback ====================

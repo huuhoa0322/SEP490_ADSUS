@@ -79,7 +79,7 @@ public class NotificationsControllerTests
             .ReturnsAsync(2);
 
         // Act
-        var result = await _sut.GetNotifications();
+        var result = await _sut.GetNotifications(cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
@@ -103,7 +103,7 @@ public class NotificationsControllerTests
             .ReturnsAsync(0);
 
         // Act
-        var result = await _sut.GetNotifications();
+        var result = await _sut.GetNotifications(cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
@@ -129,7 +129,7 @@ public class NotificationsControllerTests
             .ReturnsAsync(1);
 
         // Act
-        var result = await _sut.GetNotifications();
+        var result = await _sut.GetNotifications(cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
@@ -231,7 +231,7 @@ public class NotificationsControllerTests
         };
 
         // Act
-        var result = await controller.GetNotifications();
+        var result = await controller.GetNotifications(cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
@@ -253,7 +253,7 @@ public class NotificationsControllerTests
             .ReturnsAsync(0);
 
         // Act
-        var result = await _sut.GetNotifications(page: 2, pageSize: 10);
+        var result = await _sut.GetNotifications(page: 2, pageSize: 10, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         _notificationLogRepo.Verify(r => r.GetByUserIdAsync(_userId, 2, 10, false, It.IsAny<CancellationToken>()), Times.Once);

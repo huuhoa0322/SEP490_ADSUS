@@ -162,8 +162,8 @@ public class PrescriptionRepositoryTests
         var repo = new PrescriptionRepository(db);
         var d1List = await repo.ListByDoctorAsync(doctor1, TestContext.Current.CancellationToken);
 
-        Assert.Single(d1List);
-        Assert.Equal(doctor1, d1List[0].DoctorId);
+        var prescription = Assert.Single(d1List);
+        Assert.Equal(doctor1, prescription.DoctorId);
     }
 
     [Fact]

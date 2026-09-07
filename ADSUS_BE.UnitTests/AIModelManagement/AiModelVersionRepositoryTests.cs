@@ -99,7 +99,7 @@ public class AiModelVersionRepositoryTests
 
         var (items, _) = await sut.SearchAsync(null, page: 1, pageSize: 20, CancellationToken.None);
 
-        Assert.Single(items);
-        Assert.Equal(EntityState.Detached, db.Entry(items[0]).State);
+        var item = Assert.Single(items);
+        Assert.Equal(EntityState.Detached, db.Entry(item).State);
     }
 }

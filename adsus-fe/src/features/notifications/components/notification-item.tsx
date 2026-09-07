@@ -49,12 +49,20 @@ export function NotificationItem({ notification }: NotificationItemProps) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       className={`relative cursor-pointer px-4 py-3 transition-colors hover:bg-muted/50 ${
         isUnread ? "bg-blue-50/50" : ""
       }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
     >
       {/* Unread indicator */}
       {isUnread && (

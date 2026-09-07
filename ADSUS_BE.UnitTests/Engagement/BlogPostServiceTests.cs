@@ -52,8 +52,8 @@ public class BlogPostServiceTests
         var result = await sut.ListPublishedAsync(ct: TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(result.Items);
-        Assert.Equal("Test Title", result.Items[0].Title);
+        var item = Assert.Single(result.Items);
+        Assert.Equal("Test Title", item.Title);
     }
 
     [Fact]
@@ -156,8 +156,8 @@ public class BlogPostServiceTests
 
         var result = await sut.ListAllAsync(statusFilter: BlogPostStatus.Draft, ct: TestContext.Current.CancellationToken);
 
-        Assert.Single(result.Items);
-        Assert.Equal(BlogPostStatus.Draft, result.Items[0].Status);
+        var item = Assert.Single(result.Items);
+        Assert.Equal(BlogPostStatus.Draft, item.Status);
     }
 
     [Fact]

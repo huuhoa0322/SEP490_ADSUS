@@ -77,8 +77,8 @@ public partial class MedicineServiceTests
         // Assert
         Assert.NotNull(result);
         var list = result as List<MedicineResponse> ?? new List<MedicineResponse>(result);
-        Assert.Single(list);
-        Assert.Equal("Aspirin", list[0].Name);
+        var medicine = Assert.Single(list);
+        Assert.Equal("Aspirin", medicine.Name);
     }
     [Fact]
     public async Task ActivateMedicineAsync_ValidId_SetsStatusToActive()

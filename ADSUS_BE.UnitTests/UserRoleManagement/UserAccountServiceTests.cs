@@ -91,7 +91,7 @@ public class UserAccountServiceTests
     }
 
     [Fact]
-    public async Task TemporaryPasswordGenerator_Generate_AlwaysMeetsPasswordPolicy()
+    public void TemporaryPasswordGenerator_Generate_AlwaysMeetsPasswordPolicy()
     {
         // TDS §4.3: 8–72 ký tự, ít nhất 1 chữ hoa, ít nhất 1 chữ số.
         // Sinh nhiều lần vì đây là hàm ngẫu nhiên — chạy một lần không chứng minh được gì.

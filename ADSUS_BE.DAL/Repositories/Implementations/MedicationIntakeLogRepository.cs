@@ -160,7 +160,7 @@ public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogReposito
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, IntakeStats>> GetIntakeStatsByPrescriptionAsync(
+    public async Task<ImmutableDictionary<Guid, IntakeStats>> GetIntakeStatsByPrescriptionAsync(
         IReadOnlyList<Guid> prescriptionItemIds,
         CancellationToken ct = default)
     {
@@ -201,6 +201,6 @@ public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogReposito
             }
         }
 
-        return result;
+        return result.ToImmutableDictionary();
     }
 }

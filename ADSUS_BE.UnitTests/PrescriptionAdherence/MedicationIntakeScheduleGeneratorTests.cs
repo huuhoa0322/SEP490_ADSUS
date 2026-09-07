@@ -163,9 +163,9 @@ public class MedicationIntakeScheduleGeneratorTests
             _frozenUtc,
             CancellationToken.None);
 
-        Assert.Single(result);
-        Assert.Equal(_today, DateOnly.FromDateTime(result[0].ScheduledTimeUtc));
-        Assert.Equal(13, result[0].ScheduledTimeUtc.Hour);
+        var dose = Assert.Single(result);
+        Assert.Equal(_today, DateOnly.FromDateTime(dose.ScheduledTimeUtc));
+        Assert.Equal(13, dose.ScheduledTimeUtc.Hour);
     }
 
     /// <summary>
@@ -239,8 +239,8 @@ public class MedicationIntakeScheduleGeneratorTests
         var day1 = result.Where(d => DateOnly.FromDateTime(d.ScheduledTimeUtc) == startDate.AddDays(1)).ToList();
         var day2 = result.Where(d => DateOnly.FromDateTime(d.ScheduledTimeUtc) == startDate.AddDays(2)).ToList();
 
-        Assert.Single(day0); // Only Evening (19h)
-        Assert.Equal(12, day0[0].ScheduledTimeUtc.Hour);
+        var day0Dose = Assert.Single(day0); // Only Evening (19h)
+        Assert.Equal(12, day0Dose.ScheduledTimeUtc.Hour);
 
         Assert.Equal(3, day1.Count); // Morning, Noon, Evening
 

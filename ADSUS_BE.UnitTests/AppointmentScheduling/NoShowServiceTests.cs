@@ -148,7 +148,7 @@ public class NoShowServiceTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act
-        var result = await _sut.ProcessNoShowAsync(appointment);
+        var result = await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(result.WasProcessed);
@@ -182,7 +182,7 @@ public class NoShowServiceTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act
-        var result = await _sut.ProcessNoShowAsync(appointment);
+        var result = await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
 
         // Assert - Future appointment, no processing
         Assert.False(result.WasProcessed);
@@ -214,14 +214,14 @@ public class NoShowServiceTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act
-        var result = await _sut.ProcessNoShowAsync(appointment);
+        var result = await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.WasProcessed);
         Assert.Equal(AppointmentStatus.Booked, result.PreviousStatus);
 
         // Verify DB was updated
-        var updatedAppointment = await _db.Appointments.FindAsync(appointment.AppointmentId);
+        var updatedAppointment = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal(AppointmentStatus.NoShow, updatedAppointment!.Status);
         Assert.NotNull(updatedAppointment.CancelledReason);
         Assert.Contains("15 phút", updatedAppointment.CancelledReason);
@@ -254,7 +254,7 @@ public class NoShowServiceTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act
-        await _sut.ProcessNoShowAsync(appointment);
+        await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
 
         // Assert
         _notificationService.Verify(
@@ -293,7 +293,7 @@ public class NoShowServiceTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act
-        await _sut.ProcessNoShowAsync(appointment);
+        await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
 
         // Assert
         _notificationService.Verify(
@@ -336,11 +336,11 @@ public class NoShowServiceTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act - Không throw
-        var result = await _sut.ProcessNoShowAsync(appointment);
+        var result = await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.WasProcessed);
-        var updatedAppointment = await _db.Appointments.FindAsync(appointment.AppointmentId);
+        var updatedAppointment = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal(AppointmentStatus.NoShow, updatedAppointment!.Status);
     }
 
@@ -382,7 +382,7 @@ public class NoShowServiceTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act - Không throw
-        var result = await _sut.ProcessNoShowAsync(appointment);
+        var result = await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.WasProcessed);
@@ -415,11 +415,11 @@ public class NoShowServiceTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act
-        var result = await _sut.ProcessNoShowAsync(appointment);
+        var result = await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.WasProcessed);
-        var updatedAppointment = await _db.Appointments.FindAsync(appointment.AppointmentId);
+        var updatedAppointment = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal(AppointmentStatus.NoShow, updatedAppointment!.Status);
     }
 
@@ -448,7 +448,7 @@ public class NoShowServiceTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act
-        var result = await _sut.ProcessNoShowAsync(appointment);
+        var result = await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(result.WasProcessed);
@@ -479,7 +479,7 @@ public class NoShowServiceTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act
-        var result = await _sut.ProcessNoShowAsync(appointment);
+        var result = await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(result.WasProcessed);
@@ -510,13 +510,13 @@ public class NoShowServiceTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         var originalUpdatedAt = appointment.UpdatedAt;
-        await Task.Delay(10); // Ensure timestamp difference
+        await Task.Delay(10, TestContext.Current.CancellationToken); // Ensure timestamp difference
 
         // Act
-        await _sut.ProcessNoShowAsync(appointment);
+        await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
 
         // Assert
-        var updatedAppointment = await _db.Appointments.FindAsync(appointment.AppointmentId);
+        var updatedAppointment = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.True(updatedAppointment!.UpdatedAt >= originalUpdatedAt);
     }
 
@@ -546,7 +546,7 @@ public class NoShowServiceTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act
-        var result = await _sut.ProcessNoShowAsync(appointment);
+        var result = await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
 
         // Assert - At exactly grace time should be processed
         Assert.True(result.WasProcessed);

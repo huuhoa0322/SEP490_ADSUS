@@ -167,7 +167,7 @@ public class AuthServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.RefreshTokensAsync("valid_refresh_token");
+        var result = await _sut.RefreshTokensAsync("valid_refresh_token", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -193,7 +193,7 @@ public class AuthServiceTests
             .ReturnsAsync(storedToken);
 
         // Act
-        var result = await _sut.RefreshTokensAsync("expired_refresh_token");
+        var result = await _sut.RefreshTokensAsync("expired_refresh_token", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Null(result);
@@ -217,7 +217,7 @@ public class AuthServiceTests
             .ReturnsAsync(storedToken);
 
         // Act
-        var result = await _sut.RefreshTokensAsync("revoked_refresh_token");
+        var result = await _sut.RefreshTokensAsync("revoked_refresh_token", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Null(result);
@@ -246,7 +246,7 @@ public class AuthServiceTests
             .ReturnsAsync(inactiveUser);
 
         // Act
-        var result = await _sut.RefreshTokensAsync("valid_token_for_inactive_user");
+        var result = await _sut.RefreshTokensAsync("valid_token_for_inactive_user", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Null(result);
@@ -260,7 +260,7 @@ public class AuthServiceTests
             .ReturnsAsync((RefreshToken?)null);
 
         // Act
-        var result = await _sut.RefreshTokensAsync("nonexistent_token");
+        var result = await _sut.RefreshTokensAsync("nonexistent_token", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Null(result);
@@ -290,7 +290,7 @@ public class AuthServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        await _sut.RefreshTokensAsync("valid_refresh_token");
+        await _sut.RefreshTokensAsync("valid_refresh_token", TestContext.Current.CancellationToken);
 
         // Assert
         _refreshTokens.Verify(r => r.RevokeAsync(storedToken.Id, It.IsAny<CancellationToken>()), Times.Once);
@@ -309,7 +309,7 @@ public class AuthServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        await _sut.RevokeAllRefreshTokensAsync(userId);
+        await _sut.RevokeAllRefreshTokensAsync(userId, TestContext.Current.CancellationToken);
 
         // Assert
         _refreshTokens.Verify(r => r.RevokeAllForUserAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
@@ -337,7 +337,7 @@ public class AuthServiceTests
         };
 
         // Act
-        var result = await _sut.ChangePasswordAsync(user.UserId, request);
+        var result = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(ChangePasswordResult.Success, result);
@@ -357,7 +357,7 @@ public class AuthServiceTests
         };
 
         // Act
-        var result = await _sut.ChangePasswordAsync(Guid.NewGuid(), request);
+        var result = await _sut.ChangePasswordAsync(Guid.NewGuid(), request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(ChangePasswordResult.UserNotFound, result);
@@ -378,7 +378,7 @@ public class AuthServiceTests
         };
 
         // Act
-        var result = await _sut.ChangePasswordAsync(user.UserId, request);
+        var result = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(ChangePasswordResult.AccountNotActive, result);
@@ -400,7 +400,7 @@ public class AuthServiceTests
         };
 
         // Act
-        var result = await _sut.ChangePasswordAsync(user.UserId, request);
+        var result = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(ChangePasswordResult.CurrentPasswordIncorrect, result);
@@ -424,7 +424,7 @@ public class AuthServiceTests
         };
 
         // Act
-        var result = await _sut.ChangePasswordAsync(user.UserId, request);
+        var result = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(ChangePasswordResult.Success, result);
@@ -447,7 +447,7 @@ public class AuthServiceTests
         };
 
         // Act
-        await _sut.ChangePasswordAsync(user.UserId, request);
+        await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(user.MustChangePassword);
@@ -472,7 +472,7 @@ public class AuthServiceTests
         };
 
         // Act
-        await _sut.ChangePasswordAsync(user.UserId, request);
+        await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(originalHash, user.PasswordHash);
@@ -492,7 +492,7 @@ public class AuthServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.LoginAsync(Request(CorrectPassword));
+        var result = await _sut.LoginAsync(Request(CorrectPassword), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);

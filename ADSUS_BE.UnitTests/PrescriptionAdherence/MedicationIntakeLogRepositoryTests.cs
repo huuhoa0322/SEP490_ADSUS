@@ -209,8 +209,8 @@ public class MedicationIntakeLogRepositoryTests
 
         var result = await repo.ListUpcomingAsync(patientProfileId, TestContext.Current.CancellationToken);
 
-        Assert.Single(result);
-        Assert.Equal(today.AddHours(8), result[0].ScheduledTime);
+        var log = Assert.Single(result);
+        Assert.Equal(today.AddHours(8), log.ScheduledTime);
     }
 
     [Fact]
@@ -226,8 +226,8 @@ public class MedicationIntakeLogRepositoryTests
 
         var result = await repo.ListUpcomingAsync(patientProfileId, TestContext.Current.CancellationToken);
 
-        Assert.Single(result);
-        Assert.Equal(today.AddHours(8), result[0].ScheduledTime);
+        var log = Assert.Single(result);
+        Assert.Equal(today.AddHours(8), log.ScheduledTime);
     }
 
     [Fact]
