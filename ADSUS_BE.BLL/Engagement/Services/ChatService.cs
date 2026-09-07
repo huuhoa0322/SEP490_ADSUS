@@ -90,6 +90,7 @@ public sealed class ChatService : IChatService
         var unsafeTopic = _psychologyFilter.DetectUnsafeTopic(content);
         string assistantContent;
         bool isSafety;
+        bool isRateLimitExceeded = false;
         IntentResult? intent = null;
 
         if (unsafeTopic is not null)
@@ -106,14 +107,47 @@ public sealed class ChatService : IChatService
             // Phase 2: detect intent → selective query data sources
             intent = await _intentDetector.DetectAsync(content, ct);
 
-            // Safe: gọi LLM. Disclaimer đã hiển thị ở Flutter UI (banner cố định + badge đầu bubble),
-            // nên BE không ghép DisclaimerText.General vào nữa — tránh lặp khi LLM tự thêm.
-            var history = await BuildHistoryForLlm(userId, ct);
-            var effectivePrompt = await BuildSystemPromptAsync(userId, intent, ct);
-            var llmResponse = await _chatClient.SendMessageAsync(
-                effectivePrompt, history, content, ct);
-            assistantContent = llmResponse.Trim();
-            isSafety = false;
+            // Rate limit check — đếm số lần gọi LLM trong giờ qua
+            var rateLimitSince = now.Subtract(ChatRateLimitConstants.RateLimitWindow);
+            var recentCalls = await _repo.CountAssistantMessagesSinceAsync(userId, rateLimitSince, ct);
+
+            if (recentCalls >= ChatRateLimitConstants.MaxCallsPerHour)
+            {
+                _logger.LogInformation(
+                    "User {UserId} hit rate limit ({Count} calls in last hour). Skipping LLM call.",
+                    userId, recentCalls);
+                assistantContent =
+                    $"Bạn đã sử dụng hết {ChatRateLimitConstants.MaxCallsPerHour} lượt hỏi trong 5 giờ qua. " +
+                    "Vui lòng chờ ít nhất 5 giờ trước khi tiếp tục. " +
+                    "Nếu cần hỗ trợ gấp, hãy liên hệ bác sĩ trực tiếp.";
+                isRateLimitExceeded = true;
+                isSafety = false;
+            }
+            else if (recentCalls >= ChatRateLimitConstants.WarningThreshold)
+            {
+                _logger.LogInformation(
+                    "User {UserId} approaching rate limit ({Count}/{Max} calls). Proceeding with warning.",
+                    userId, recentCalls, ChatRateLimitConstants.MaxCallsPerHour);
+                // Vẫn gọi LLM nhưng thêm warning vào prompt
+                var history = await BuildHistoryForLlm(userId, ct);
+                var effectivePrompt = await BuildSystemPromptAsync(userId, intent, ct) +
+                    $"\n\n[LƯU Ý: Người dùng đã hỏi {recentCalls}/{ChatRateLimitConstants.MaxCallsPerHour} lần trong 5 giờ qua. Hãy trả lời NGẮN GỌN hơn bình thường.]";
+                var llmResponse = await _chatClient.SendMessageAsync(
+                    effectivePrompt, history, content, ct);
+                assistantContent = llmResponse.Trim();
+                isSafety = false;
+            }
+            else
+            {
+                // Normal: gọi LLM. Disclaimer đã hiển thị ở Flutter UI (banner cố định + badge đầu bubble),
+                // nên BE không ghép DisclaimerText.General vào nữa — tránh lặp khi LLM tự thêm.
+                var history = await BuildHistoryForLlm(userId, ct);
+                var effectivePrompt = await BuildSystemPromptAsync(userId, intent, ct);
+                var llmResponse = await _chatClient.SendMessageAsync(
+                    effectivePrompt, history, content, ct);
+                assistantContent = llmResponse.Trim();
+                isSafety = false;
+            }
         }
 
         // 4. Save ASSISTANT message
@@ -135,6 +169,7 @@ public sealed class ChatService : IChatService
             CreatedAt = assistantMsg.CreatedAt,
             IsSafetyResponse = isSafety,
             DetectedIntent = isSafety ? null : intent?.Intent,
+            IsRateLimitExceeded = isRateLimitExceeded,
         };
     }
 

@@ -20,6 +20,7 @@ enum ChatRole {
 /// Mot tin nhan trong hoi thoai chatbot (FT-39).
 ///
 /// isSafety = true → render safety card thay vi assistant bubble thong thuong.
+/// isRateLimitExceeded = true → render amber banner thông báo giới hạn.
 class ChatMessage {
   const ChatMessage({
     required this.messageId,
@@ -28,6 +29,7 @@ class ChatMessage {
     required this.createdAt,
     required this.isSafety,
     this.detectedIntent,
+    this.isRateLimitExceeded = false,
   });
 
   final String messageId;
@@ -39,6 +41,10 @@ class ChatMessage {
   /// Intent BE detect cho tin nhắn assistant này.
   /// Dùng để hiển thị context badge + suggestion chips.
   final ChatIntent? detectedIntent;
+
+  /// True khi LLM bị skip do user đã vượt ngưỡng rate limit.
+  /// Dùng để hiển thị banner giới hạn.
+  final bool isRateLimitExceeded;
 }
 
 /// Intent chatbot — khớp với BE ChatIntent enum.
@@ -90,6 +96,7 @@ extension ChatMessageDtoX on ChatMessageDto {
       createdAt: createdAt,
       isSafety: isSafetyResponse,
       detectedIntent: ChatIntent.fromString(detectedIntent),
+      isRateLimitExceeded: isRateLimitExceeded,
     );
   }
 }
