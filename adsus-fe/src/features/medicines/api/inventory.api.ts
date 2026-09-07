@@ -168,6 +168,9 @@ export interface ExpiryAlertResponse {
 }
 
 export interface InventoryAlertSummary {
+  totalMedicinesCount: number;
+  inStockCount: number;
+  outOfStockCount: number;
   lowStockCount: number;
   expiringSoonCount: number;
   expiredCount: number;

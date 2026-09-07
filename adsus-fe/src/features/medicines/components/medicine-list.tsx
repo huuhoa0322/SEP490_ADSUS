@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, PlusCircle, Pencil, PlayCircle, Ban, Search, Package, AlertTriangle } from "lucide-react";
+import { Loader2, PlusCircle, Pencil, PlayCircle, Ban, Search, Package, AlertTriangle, Pill, CheckCircle, XCircle } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -10,6 +10,7 @@ import {
   useActivateMedicine,
   useDeleteMedicine 
 } from "../hooks/use-medicines";
+import { useInventoryAlerts } from "@/features/medicines/api/inventory.api";
 import { formatDateTime } from "@/features/user-role-management/lib/user-labels";
 import type { MedicineResponse } from "../api/medicines-api";
 import { getApiErrorMessage } from "@/lib/api-client";
@@ -18,6 +19,7 @@ import { ConfirmDialog } from "@/features/user-role-management/components/confir
 import { MedicineFormModal } from "./medicine-form-modal";
 import { MedicineDetailModal } from "./medicine-detail-modal";
 import { PaginationNumbered } from "@/components/ui/pagination-numbered";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 
 export function MedicineList() {
@@ -34,6 +36,8 @@ export function MedicineList() {
     inStockFilter === "all" ? undefined : inStockFilter === "in_stock"
   );
   
+  const { data: alertSummary } = useInventoryAlerts();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [detailMedicine, setDetailMedicine] = useState<MedicineResponse | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -72,7 +76,7 @@ export function MedicineList() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">Quản lý danh mục thuốc</h1>
         <div className="flex gap-3">
@@ -93,7 +97,57 @@ export function MedicineList() {
         </div>
       </div>
 
-      <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm border border-border">
+      <div className="grid gap-4 md:grid-cols-4 mb-6">
+        <Card className="border-indigo-100 bg-indigo-50/50 shadow-sm border-none">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-indigo-800">Tổng thuốc</CardTitle>
+            <div className="rounded-full bg-indigo-100 p-2">
+              <Pill className="h-4 w-4 text-indigo-600" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-indigo-600">{alertSummary?.totalMedicinesCount ?? 0}</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-green-100 bg-green-50/50 shadow-sm border-none">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-green-800">Còn hàng</CardTitle>
+            <div className="rounded-full bg-green-100 p-2">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{alertSummary?.inStockCount ?? 0}</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-orange-100 bg-orange-50/50 shadow-sm border-none">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-orange-800">Sắp hết</CardTitle>
+            <div className="rounded-full bg-orange-100 p-2">
+              <AlertTriangle className="h-4 w-4 text-orange-600" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{alertSummary?.lowStockCount ?? 0}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-red-100 bg-red-50/50 shadow-sm border-none">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-red-800">Hết hàng</CardTitle>
+            <div className="rounded-full bg-red-100 p-2">
+              <XCircle className="h-4 w-4 text-red-600" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{alertSummary?.outOfStockCount ?? 0}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mb-6 rounded-2xl bg-white p-4 shadow-[0px_0px_35px_0px_rgba(104,134,177,0.15)] border border-[#E7E8EB]">
         <div className="flex gap-4 mb-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

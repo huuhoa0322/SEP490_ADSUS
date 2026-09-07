@@ -56,7 +56,7 @@ export default function InventoryHistoryPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-center gap-3 mb-6">
-            <div className="relative w-full md:w-96">
+            <div className="flex-1 relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Tìm kiếm theo Tên thuốc, Số lô, Nhà cung cấp..."
@@ -90,13 +90,13 @@ export default function InventoryHistoryPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[180px]">Thời gian</TableHead>
-                  <TableHead>Loại giao dịch</TableHead>
-                  <TableHead>Thuốc (Số lô)</TableHead>
-                  <TableHead>Đối tác / Ghi chú</TableHead>
-                  <TableHead className="text-right">Đơn giá nhập</TableHead>
-                  <TableHead className="text-right">Số lượng (Đơn vị cơ bản)</TableHead>
-                  <TableHead className="text-right">Số lượng (Đơn vị đóng gói)</TableHead>
+                  <TableHead className="w-[180px] px-5 py-4">Thời gian</TableHead>
+                  <TableHead className="px-5 py-4">Loại giao dịch</TableHead>
+                  <TableHead className="px-5 py-4">Thuốc (Số lô)</TableHead>
+                  <TableHead className="px-5 py-4">Đối tác / Ghi chú</TableHead>
+                  <TableHead className="text-right px-5 py-4">Đơn giá nhập</TableHead>
+                  <TableHead className="text-right px-5 py-4">Số lượng (Đơn vị cơ bản)</TableHead>
+                  <TableHead className="text-right px-5 py-4">Số lượng (Đơn vị đóng gói)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -127,17 +127,17 @@ export default function InventoryHistoryPage() {
 
                     return (
                     <TableRow key={item.transactionId}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium px-5 py-4">
                         {format(new Date(item.txnDate), 'dd/MM/yyyy HH:mm')}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-5 py-4">
                         {getTxnTypeLabel(item.txnType)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-5 py-4">
                         <div className="font-medium text-primary">{item.medicineName}</div>
                         <div className="text-xs text-muted-foreground">Lô: {item.lotNumber}</div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-5 py-4">
                         {item.supplierName ? (
                           item.supplierName
                         ) : item.txnType.toLowerCase() === 'adjustment' && item.reason ? (
@@ -146,10 +146,10 @@ export default function InventoryHistoryPage() {
                           '—'
                         )}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono px-5 py-4">
                         {item.unitImportPrice ? item.unitImportPrice.toLocaleString() + ' đ' : '—'}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right px-5 py-4">
                         <span className={isPositive ? 'text-emerald-600 font-semibold' : 'text-orange-600 font-semibold'}>
                           {isPositive ? '+' : '-'}{Math.abs(item.quantityBase).toLocaleString()}
                         </span>
@@ -157,8 +157,13 @@ export default function InventoryHistoryPage() {
                           <span className="ml-1 text-xs text-muted-foreground">{item.baseUnitName}</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right text-muted-foreground text-sm">
-                        {isPositive ? '+' : '-'}{Math.abs(item.quantityInUnit)} {item.unitName}
+                      <TableCell className="text-right text-muted-foreground text-sm px-5 py-4">
+                        <span className={isPositive ? 'text-emerald-600 font-semibold' : 'text-orange-600 font-semibold'}>
+                          {isPositive ? '+' : '-'}{Math.abs(item.quantityInUnit).toLocaleString()}
+                        </span>
+                        {item.unitName && (
+                          <span className="ml-1 text-xs text-muted-foreground">{item.unitName}</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

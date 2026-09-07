@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+﻿import { render, screen, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { InventoryAlertsList } from '../inventory-alerts-list';
 import { useInventoryAlerts } from '@/features/medicines/api/inventory.api';
 import { describe, it, expect, vi } from 'vitest';
@@ -94,19 +95,62 @@ describe('InventoryAlertsList', () => {
 
     render(<InventoryAlertsList />);
     
-    // Check summary numbers
-    expect(screen.getAllByText('Đã hết hạn')[0].parentElement?.nextElementSibling?.textContent).toBe('1'); // expiredCount
-    expect(screen.getByText('Sắp hết hạn').parentElement?.nextElementSibling?.textContent).toBe('1'); // expiringSoonCount
-    expect(screen.getByText('Sắp hết hàng').parentElement?.nextElementSibling?.textContent).toBe('1'); // lowStockCount
+    // Check summary numbers in the cards
+    expect(screen.getAllByText('Đã hết hạn')[0].parentElement?.nextElementSibling?.textContent).toBe('1'); 
+    expect(screen.getAllByText('Sắp hết hạn')[0].parentElement?.nextElementSibling?.textContent).toBe('1'); 
+    expect(screen.getAllByText('Sắp hết hàng')[0].parentElement?.nextElementSibling?.textContent).toBe('1'); 
 
-    // Check low stock alert
+    // Check low stock alert table row
     expect(screen.getByText('Paracetamol')).toBeInTheDocument();
-    expect(screen.getByText('Tồn: 10 Viên')).toBeInTheDocument();
-    expect(screen.getByText('Ngưỡng: 100')).toBeInTheDocument();
+    expect(screen.getByText('10 Viên')).toBeInTheDocument();
+    expect(screen.getByText('Critical Low')).toBeInTheDocument();
 
-    // Check expiry alert
+    // Check expiry alert table row
     expect(screen.getByText('Aspirin')).toBeInTheDocument();
-    expect(screen.getByText('Lô: LOT-123')).toBeInTheDocument();
-    expect(screen.getByText('Tồn: 50 Viên')).toBeInTheDocument();
+    expect(screen.getByText('LOT-123')).toBeInTheDocument();
+    expect(screen.getByText('50 Viên')).toBeInTheDocument();
+    expect(screen.getByText('Expired')).toBeInTheDocument();
+  });
+  
+  it('should render alerts and paginate correctly', async () => {
+    const lowStockAlerts = Array.from({ length: 25 }).map((_, i) => ({
+      medicineId: `med-${i}`,
+      medicineName: `Medicine ${i}`,
+      currentStock: 10,
+      threshold: 100,
+      baseUnitName: 'Viên',
+      severity: 'CRITICAL',
+    }));
+
+    vi.mocked(useInventoryAlerts).mockReturnValue({
+      data: {
+        lowStockCount: 25,
+        expiringSoonCount: 0,
+        expiredCount: 0,
+        lowStockAlerts,
+        expiryAlerts: [],
+      },
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useInventoryAlerts>);
+
+    render(<InventoryAlertsList />);
+    
+    // Page 1 should show Med 0 to Med 9 (pageSize is 10 now)
+    expect(screen.getByText('Medicine 0')).toBeInTheDocument();
+    expect(screen.getByText('Medicine 9')).toBeInTheDocument();
+    expect(screen.queryByText('Medicine 10')).not.toBeInTheDocument();
+    
+    // Click page 2
+    const user = userEvent.setup();
+    const page2Button = screen.getByText('2');
+    await act(async () => {
+      await user.click(page2Button);
+    });
+    
+    // Page 2 should show Med 10 to Med 19
+    expect(screen.getByText('Medicine 10')).toBeInTheDocument();
+    expect(screen.getByText('Medicine 19')).toBeInTheDocument();
+    expect(screen.queryByText('Medicine 9')).not.toBeInTheDocument();
   });
 });

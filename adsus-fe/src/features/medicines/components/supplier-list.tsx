@@ -60,7 +60,7 @@ export function SupplierList() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">Quản lý nhà cung cấp</h1>
         <button

@@ -480,11 +480,10 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
             var summary = new InventoryAlertSummary();
             var now = DateTime.UtcNow;
 
-            // 1. LOW STOCK (bao gồm cả thuốc chưa từng nhập kho hoặc đã xuất hết)
-            var lowStockQuery = await _dbContext.Medicines
+            var allMedicinesQuery = await _dbContext.Medicines
                 .Include(m => m.MedicinePackagings)
                     .ThenInclude(mp => mp.MedicineUnit)
-                .Where(m => m.Status == MedicineStatus.Active && m.LowStockThreshold > 0)
+                .Where(m => m.Status == MedicineStatus.Active)
                 .Select(m => new
                 {
                     Medicine = m,
@@ -492,8 +491,18 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                         .Where(b => b.QuantityBase > 0 && b.ExpiryDate >= DateOnly.FromDateTime(now))
                         .Sum(b => (int?)b.QuantityBase) ?? 0
                 })
-                .Where(x => x.TotalStock <= x.Medicine.LowStockThreshold)
                 .ToListAsync();
+
+            summary.TotalMedicinesCount = allMedicinesQuery.Count;
+            summary.OutOfStockCount = allMedicinesQuery.Count(x => x.TotalStock == 0);
+            
+            // "Còn hàng" là những thuốc tồn kho > ngưỡng cảnh báo
+            summary.InStockCount = allMedicinesQuery.Count(x => x.TotalStock > x.Medicine.LowStockThreshold);
+
+            // 1. LOW STOCK (những thuốc tồn <= ngưỡng, ngoại trừ trường hợp không có ngưỡng và hết hàng)
+            var lowStockQuery = allMedicinesQuery
+                .Where(x => x.Medicine.LowStockThreshold > 0 && x.TotalStock <= x.Medicine.LowStockThreshold)
+                .ToList();
 
             foreach (var stock in lowStockQuery)
             {
