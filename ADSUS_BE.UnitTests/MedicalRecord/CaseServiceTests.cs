@@ -786,5 +786,103 @@ public class CaseServiceTests
         Assert.Equal("Only confirmed cases can be ended without prescription.", ex.Message);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    // ---------- CreateFromBookingAsync ----------
+
+    [Fact]
+    public async Task CreateFromBookingAsync_ValidInput_CreatesCaseWithBookedStatus()
+    {
+        // Arrange
+        var patientProfileId = Guid.NewGuid();
+        var doctorId = Guid.NewGuid();
+        var visitDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        var symptoms = new List<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>
+        {
+            new() { CategoryId = Guid.NewGuid(), SymptomId = Guid.NewGuid(), OtherNote = null }
+        };
+
+        Case? createdCase = null;
+        _cases.Setup(r => r.CreateAsync(It.IsAny<Case>(), It.IsAny<CancellationToken>()))
+              .Callback<Case, CancellationToken>((c, _) => createdCase = c)
+              .ReturnsAsync((Case c, CancellationToken _) => c);
+
+        // Act
+        var result = await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate, symptoms);
+
+        // Assert
+        Assert.NotEqual(Guid.Empty, result);
+        Assert.NotNull(createdCase);
+        Assert.Equal(CaseStatus.Booked, createdCase.Status);
+        Assert.Equal(patientProfileId, createdCase.PatientProfileId);
+        Assert.Equal(doctorId, createdCase.DoctorId);
+        Assert.Equal(visitDate, createdCase.VisitDate);
+        Assert.Null(createdCase.ClinicalInfo);
+        Assert.Single(createdCase.CaseSymptoms);
+    }
+
+    [Fact]
+    public async Task CreateFromBookingAsync_EmptySymptoms_CreatesCaseWithoutSymptoms()
+    {
+        // Arrange
+        var patientProfileId = Guid.NewGuid();
+        var doctorId = Guid.NewGuid();
+        var visitDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+
+        Case? createdCase = null;
+        _cases.Setup(r => r.CreateAsync(It.IsAny<Case>(), It.IsAny<CancellationToken>()))
+              .Callback<Case, CancellationToken>((c, _) => createdCase = c)
+              .ReturnsAsync((Case c, CancellationToken _) => c);
+
+        // Act
+        var result = await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate,
+            Array.Empty<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>());
+
+        // Assert
+        Assert.NotEqual(Guid.Empty, result);
+        Assert.NotNull(createdCase);
+        Assert.Empty(createdCase.CaseSymptoms);
+    }
+
+    [Fact]
+    public async Task CreateFromBookingAsync_SendsNotificationToDoctor()
+    {
+        // Arrange
+        var patientProfileId = Guid.NewGuid();
+        var doctorId = Guid.NewGuid();
+        var visitDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+
+        _cases.Setup(r => r.CreateAsync(It.IsAny<Case>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((Case c, CancellationToken _) => c);
+
+        // Act
+        await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate, Array.Empty<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>());
+
+        // Assert
+        _notificationService.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r =>
+                r.UserId == doctorId &&
+                r.Type == "new_case_created"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateFromBookingAsync_NotificationFails_DoesNotThrow()
+    {
+        // Arrange
+        var patientProfileId = Guid.NewGuid();
+        var doctorId = Guid.NewGuid();
+        var visitDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+
+        _notificationService.Setup(n => n.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("Notification failed"));
+
+        _cases.Setup(r => r.CreateAsync(It.IsAny<Case>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((Case c, CancellationToken _) => c);
+
+        // Act & Assert - Should not throw even if notification fails
+        var result = await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate,
+            Array.Empty<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>());
+        Assert.NotEqual(Guid.Empty, result);
+    }
 }
 
