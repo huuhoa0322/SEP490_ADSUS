@@ -75,11 +75,11 @@ public class SymptomsControllerIntegrationTests
         var client = MakeClientWithToken(app, _nurseCaller);
 
         // Act
-        var response = await client.GetAsync("/api/v1/symptoms/categories");
+        var response = await client.GetAsync("/api/v1/symptoms/categories", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<SymptomCategoryResponse>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<SymptomCategoryResponse>>>(TestContext.Current.CancellationToken);
         var category = body!.Data!.Single();
         Assert.Equal("Đau vú", category.Name);
         Assert.Equal("Đau khi chạm", category.Symptoms.Single().Name);
@@ -93,7 +93,7 @@ public class SymptomsControllerIntegrationTests
         var client = app.CreateClient();
 
         // Act
-        var response = await client.GetAsync("/api/v1/symptoms/categories");
+        var response = await client.GetAsync("/api/v1/symptoms/categories", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

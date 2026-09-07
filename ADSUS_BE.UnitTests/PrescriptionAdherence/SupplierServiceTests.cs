@@ -54,7 +54,7 @@ public class SupplierServiceTests : IDisposable
             new Supplier { SupplierId = Guid.NewGuid(), Name = "A", PhoneNumber = "123", Email = "a@a", Address = "A", TaxCode = "0000000001", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
             new Supplier { SupplierId = Guid.NewGuid(), Name = "B", PhoneNumber = "123", Email = "b@b", Address = "B", TaxCode = "0000000002", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
         );
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
         var result = await _sut.GetSuppliersAsync(1, 10, null, CancellationToken.None);
@@ -72,7 +72,7 @@ public class SupplierServiceTests : IDisposable
             new Supplier { SupplierId = Guid.NewGuid(), Name = "Dược Hậu Giang", PhoneNumber = "0987654321", Email = "a@a", Address = "A", TaxCode = "1234567890", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
             new Supplier { SupplierId = Guid.NewGuid(), Name = "Imexpharm", PhoneNumber = "0999999999", Email = "b@b", Address = "B", TaxCode = "0987654321", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
         );
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
         var resultByName = await _sut.GetSuppliersAsync(1, 10, "hậu giang", CancellationToken.None);
@@ -96,7 +96,7 @@ public class SupplierServiceTests : IDisposable
         // Arrange
         var id = Guid.NewGuid();
         _db.Suppliers.Add(new Supplier { SupplierId = id, Name = "Test", PhoneNumber = "123", Email = "a", Address = "a", TaxCode = "0000000001", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
         var result = await _sut.GetSupplierByIdAsync(id, CancellationToken.None);
@@ -131,7 +131,7 @@ public class SupplierServiceTests : IDisposable
         Assert.Equal("New Supplier", result.Name);
         Assert.True(result.IsActive);
         
-        var dbItem = await _db.Suppliers.FindAsync(result.SupplierId);
+        var dbItem = await _db.Suppliers.FindAsync(new object[] { result.SupplierId }, TestContext.Current.CancellationToken);
         Assert.NotNull(dbItem);
         Assert.Equal("New Supplier", dbItem.Name);
     }
@@ -141,7 +141,7 @@ public class SupplierServiceTests : IDisposable
     {
         // Arrange
         _db.Suppliers.Add(new Supplier { SupplierId = Guid.NewGuid(), Name = "Duplicate", PhoneNumber = "0980000111", Email = "111", Address = "1", TaxCode = "1111111111", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var request = new CreateSupplierRequest("  duplicate ", "0981234567", "email@test.com", "Address", "1234567890");
 
@@ -155,7 +155,7 @@ public class SupplierServiceTests : IDisposable
     {
         // Arrange
         _db.Suppliers.Add(new Supplier { SupplierId = Guid.NewGuid(), Name = "Other", PhoneNumber = "0981234567", Email = "111", Address = "1", TaxCode = "1111111111", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var request = new CreateSupplierRequest("New", "0981234567", "email@test.com", "Address", "1234567890");
 
@@ -169,7 +169,7 @@ public class SupplierServiceTests : IDisposable
     {
         // Arrange
         _db.Suppliers.Add(new Supplier { SupplierId = Guid.NewGuid(), Name = "Other", PhoneNumber = "0980000111", Email = "email@test.com", Address = "1", TaxCode = "1111111111", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var request = new CreateSupplierRequest("New", "0981234567", "  Email@test.com ", "Address", "1234567890");
 
@@ -183,7 +183,7 @@ public class SupplierServiceTests : IDisposable
     {
         // Arrange
         _db.Suppliers.Add(new Supplier { SupplierId = Guid.NewGuid(), Name = "Other", PhoneNumber = "0980000111", Email = "111", Address = "1", TaxCode = "1234567890", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var request = new CreateSupplierRequest("New", "0981234567", "email@test.com", "Address", "1234567890");
 
@@ -198,7 +198,7 @@ public class SupplierServiceTests : IDisposable
         // Arrange
         var id = Guid.NewGuid();
         _db.Suppliers.Add(new Supplier { SupplierId = id, Name = "Old Name", PhoneNumber = "0900000001", Email = "1", Address = "1", TaxCode = "0000000001", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var request = new UpdateSupplierRequest("New Name", "0981234567", "new@test.com", "New Address");
 
@@ -210,7 +210,7 @@ public class SupplierServiceTests : IDisposable
         Assert.Equal("0981234567", result.PhoneNumber);
         Assert.Equal("new@test.com", result.Email);
 
-        var dbItem = await _db.Suppliers.FindAsync(id);
+        var dbItem = await _db.Suppliers.FindAsync(new object[] { id }, TestContext.Current.CancellationToken);
         Assert.NotNull(dbItem);
         Assert.Equal("New Name", dbItem.Name);
     }
@@ -234,7 +234,7 @@ public class SupplierServiceTests : IDisposable
         var id2 = Guid.NewGuid();
         _db.Suppliers.Add(new Supplier { SupplierId = id1, Name = "Supplier 1", PhoneNumber = "0980000111", Email = "111", Address = "1", TaxCode = "1111111111", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
         _db.Suppliers.Add(new Supplier { SupplierId = id2, Name = "Supplier 2", PhoneNumber = "0900000222", Email = "222", Address = "2", TaxCode = "0000000002", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var request = new UpdateSupplierRequest("  supplier 1 ", "0981234567", "new@test.com", "New Address");
 
@@ -249,13 +249,13 @@ public class SupplierServiceTests : IDisposable
         // Arrange
         var id = Guid.NewGuid();
         _db.Suppliers.Add(new Supplier { SupplierId = id, Name = "Test", PhoneNumber = "0900000001", Email = "1", Address = "1", TaxCode = "0000000001", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
         await _sut.UpdateSupplierStatusAsync(id, false, CancellationToken.None);
 
         // Assert
-        var dbItem = await _db.Suppliers.FindAsync(id);
+        var dbItem = await _db.Suppliers.FindAsync(new object[] { id }, TestContext.Current.CancellationToken);
         Assert.NotNull(dbItem);
         Assert.False(dbItem.IsActive);
     }

@@ -75,11 +75,11 @@ public class MedicalDictionariesControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctorCaller);
 
         // Act
-        var response = await client.GetAsync("/api/v1/medical-dictionaries/diseases");
+        var response = await client.GetAsync("/api/v1/medical-dictionaries/diseases", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<MedicalDiseaseResponse>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<MedicalDiseaseResponse>>>(TestContext.Current.CancellationToken);
         Assert.Equal("Tiểu đường", body!.Data!.Single().Name);
     }
 
@@ -91,7 +91,7 @@ public class MedicalDictionariesControllerIntegrationTests
         var client = app.CreateClient();
 
         // Act
-        var response = await client.GetAsync("/api/v1/medical-dictionaries/diseases");
+        var response = await client.GetAsync("/api/v1/medical-dictionaries/diseases", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -112,11 +112,11 @@ public class MedicalDictionariesControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctorCaller);
 
         // Act
-        var response = await client.GetAsync("/api/v1/medical-dictionaries/allergy-types");
+        var response = await client.GetAsync("/api/v1/medical-dictionaries/allergy-types", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<MedicalAllergyTypeResponse>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<MedicalAllergyTypeResponse>>>(TestContext.Current.CancellationToken);
         Assert.Equal("Dị ứng thuốc kháng sinh", body!.Data!.Single().Name);
     }
 
@@ -128,7 +128,7 @@ public class MedicalDictionariesControllerIntegrationTests
         var client = app.CreateClient();
 
         // Act
-        var response = await client.GetAsync("/api/v1/medical-dictionaries/allergy-types");
+        var response = await client.GetAsync("/api/v1/medical-dictionaries/allergy-types", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

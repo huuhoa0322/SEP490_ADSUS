@@ -21,7 +21,7 @@ public class ChatIntentDetectorTests
     [InlineData("hi there")]
     public async Task Detect_Greeting_ReturnsGreeting(string message)
     {
-        var result = await _sut.DetectAsync(message);
+        var result = await _sut.DetectAsync(message, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatIntent.Greeting, result.Intent);
         Assert.Equal(DataSource.None, result.TriggeredSources);
@@ -41,7 +41,7 @@ public class ChatIntentDetectorTests
     [InlineData("lịch uống thuốc hôm nay của tôi là gì")]
     public async Task Detect_PrescriptionKeywords_ReturnsPrescription(string message)
     {
-        var result = await _sut.DetectAsync(message);
+        var result = await _sut.DetectAsync(message, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatIntent.Prescription, result.Intent);
         Assert.True(result.TriggeredSources.HasFlag(DataSource.ActivePrescriptions));
@@ -59,7 +59,7 @@ public class ChatIntentDetectorTests
     [InlineData("gặp bác sĩ")]
     public async Task Detect_AppointmentKeywords_ReturnsAppointment(string message)
     {
-        var result = await _sut.DetectAsync(message);
+        var result = await _sut.DetectAsync(message, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatIntent.Appointment, result.Intent);
         Assert.True(result.TriggeredSources.HasFlag(DataSource.UpcomingAppointments));
@@ -75,7 +75,7 @@ public class ChatIntentDetectorTests
     [InlineData("xem lịch sử khám")]
     public async Task Detect_CaseKeywords_ReturnsCase(string message)
     {
-        var result = await _sut.DetectAsync(message);
+        var result = await _sut.DetectAsync(message, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatIntent.CaseHistory, result.Intent);
         Assert.True(result.TriggeredSources.HasFlag(DataSource.RecentCases));
@@ -92,7 +92,7 @@ public class ChatIntentDetectorTests
     [InlineData("tôi bị dị ứng penicillin")]
     public async Task Detect_AllergyKeywords_ReturnsAllergy(string message)
     {
-        var result = await _sut.DetectAsync(message);
+        var result = await _sut.DetectAsync(message, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatIntent.Allergy, result.Intent);
         Assert.True(result.TriggeredSources.HasFlag(DataSource.Allergies));
@@ -106,7 +106,7 @@ public class ChatIntentDetectorTests
     [InlineData("tôi mắc bệnh gì?")]
     public async Task Detect_DiseaseKeywords_ReturnsDisease(string message)
     {
-        var result = await _sut.DetectAsync(message);
+        var result = await _sut.DetectAsync(message, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatIntent.Disease, result.Intent);
         Assert.True(result.TriggeredSources.HasFlag(DataSource.Diseases));
@@ -121,7 +121,7 @@ public class ChatIntentDetectorTests
     [InlineData("hôm qua tôi bị đau đầu")]
     public async Task Detect_HealthLogKeywords_ReturnsHealthLog(string message)
     {
-        var result = await _sut.DetectAsync(message);
+        var result = await _sut.DetectAsync(message, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatIntent.HealthLog, result.Intent);
         Assert.True(result.TriggeredSources.HasFlag(DataSource.RecentHealthLogs));
@@ -136,7 +136,7 @@ public class ChatIntentDetectorTests
     [InlineData("kiến thức sức khỏe")]
     public async Task Detect_BlogKeywords_ReturnsBlog(string message)
     {
-        var result = await _sut.DetectAsync(message);
+        var result = await _sut.DetectAsync(message, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatIntent.Blog, result.Intent);
         Assert.True(result.TriggeredSources.HasFlag(DataSource.RecentBlogs));
@@ -152,7 +152,7 @@ public class ChatIntentDetectorTests
     [InlineData("cảm ơn bạn")]
     public async Task Detect_GeneralTopic_ReturnsGeneral(string message)
     {
-        var result = await _sut.DetectAsync(message);
+        var result = await _sut.DetectAsync(message, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatIntent.General, result.Intent);
         Assert.Equal(DataSource.None, result.TriggeredSources);
@@ -163,7 +163,7 @@ public class ChatIntentDetectorTests
     [Fact]
     public async Task Detect_Null_ReturnsGeneral()
     {
-        var result = await _sut.DetectAsync(null!);
+        var result = await _sut.DetectAsync(null!, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatIntent.General, result.Intent);
     }
@@ -171,7 +171,7 @@ public class ChatIntentDetectorTests
     [Fact]
     public async Task Detect_Whitespace_ReturnsGeneral()
     {
-        var result = await _sut.DetectAsync("   ");
+        var result = await _sut.DetectAsync("   ", TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatIntent.General, result.Intent);
     }

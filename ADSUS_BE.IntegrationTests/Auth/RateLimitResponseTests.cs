@@ -34,17 +34,17 @@ public class RateLimitResponseTests
 
         for (var attempt = 0; attempt < 10; attempt++)
         {
-            using var allowedResponse = await client.PostAsJsonAsync(LoginPath, request);
+            using var allowedResponse = await client.PostAsJsonAsync(LoginPath, request, TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.Unauthorized, allowedResponse.StatusCode);
         }
 
-        using var rejectedResponse = await client.PostAsJsonAsync(LoginPath, request);
+        using var rejectedResponse = await client.PostAsJsonAsync(LoginPath, request, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.TooManyRequests, rejectedResponse.StatusCode);
         Assert.Equal("application/json", rejectedResponse.Content.Headers.ContentType?.MediaType);
         Assert.True(rejectedResponse.Headers.Contains("Retry-After"));
 
-        var body = await rejectedResponse.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        var body = await rejectedResponse.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
         Assert.NotNull(body);
         Assert.Equal(StatusCodes.Status429TooManyRequests, body.Code);
         Assert.Equal(RateLimitMessage, body.Message);

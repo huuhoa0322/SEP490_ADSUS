@@ -28,7 +28,7 @@ public class AuditLogServiceTests
         _auditLogs.Setup(r => r.GetRecentAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(Array.Empty<AuditLogEntry>());
 
-        await _sut.GetRecentAsync(requestedLimit);
+        await _sut.GetRecentAsync(requestedLimit, TestContext.Current.CancellationToken);
 
         _auditLogs.Verify(r => r.GetRecentAsync(10, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -39,7 +39,7 @@ public class AuditLogServiceTests
         _auditLogs.Setup(r => r.GetRecentAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(Array.Empty<AuditLogEntry>());
 
-        await _sut.GetRecentAsync(50);
+        await _sut.GetRecentAsync(50, TestContext.Current.CancellationToken);
 
         _auditLogs.Verify(r => r.GetRecentAsync(50, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -58,7 +58,7 @@ public class AuditLogServiceTests
         _auditLogs.Setup(r => r.GetRecentAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(new[] { entry });
 
-        var result = await _sut.GetRecentAsync(10);
+        var result = await _sut.GetRecentAsync(10, TestContext.Current.CancellationToken);
 
         var mapped = Assert.Single(result);
         Assert.Equal(entry.LogId, mapped.LogId);

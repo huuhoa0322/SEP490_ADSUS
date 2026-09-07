@@ -82,7 +82,7 @@ public class AppointmentServiceTests : IDisposable
             .ReturnsAsync(new List<ScheduleSlot> { openSlot });
 
         // Act
-        var result = await _sut.ListOpenSlotsAsync();
+        var result = await _sut.ListOpenSlotsAsync(ct: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(result);
@@ -101,7 +101,7 @@ public class AppointmentServiceTests : IDisposable
             .ReturnsAsync(new List<ScheduleSlot> { slot1 });
 
         // Act
-        var result = await _sut.ListOpenSlotsAsync(doctorId: doctor1.UserId.ToString());
+        var result = await _sut.ListOpenSlotsAsync(doctorId: doctor1.UserId.ToString(), ct: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(result);
@@ -123,7 +123,8 @@ public class AppointmentServiceTests : IDisposable
         // Act
         var result = await _sut.ListOpenSlotsAsync(
             fromDate: today,
-            toDate: today);
+            toDate: today,
+            ct: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(result);
@@ -154,7 +155,7 @@ public class AppointmentServiceTests : IDisposable
             .ReturnsAsync(new List<ScheduleSlot> { slot });
 
         // Act
-        var result = await _sut.ListOpenSlotsAsync();
+        var result = await _sut.ListOpenSlotsAsync(ct: TestContext.Current.CancellationToken);
 
         // Assert - slot with BOOKED appointment should be excluded
         Assert.Empty(result);
@@ -171,7 +172,7 @@ public class AppointmentServiceTests : IDisposable
         SetupPatientAppointmentRepository();
 
         // Act
-        var result = await _sut.ListMyAppointmentsAsync(_patientId);
+        var result = await _sut.ListMyAppointmentsAsync(_patientId, ct: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(result);
@@ -187,7 +188,8 @@ public class AppointmentServiceTests : IDisposable
         // Act
         var result = await _sut.ListMyAppointmentsAsync(
             _patientId,
-            statusFilter: AppointmentStatus.Booked);
+            statusFilter: AppointmentStatus.Booked,
+            ct: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(result);
@@ -203,7 +205,8 @@ public class AppointmentServiceTests : IDisposable
         // Act
         var result = await _sut.ListMyAppointmentsAsync(
             _patientId,
-            statusFilter: AppointmentStatus.Cancelled);
+            statusFilter: AppointmentStatus.Cancelled,
+            ct: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(result);
@@ -220,7 +223,7 @@ public class AppointmentServiceTests : IDisposable
         SetupGetByIdRepository();
 
         // Act
-        var result = await _sut.GetByIdAsync(_appointmentId);
+        var result = await _sut.GetByIdAsync(_appointmentId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -235,7 +238,7 @@ public class AppointmentServiceTests : IDisposable
             .ReturnsAsync((Appointment?)null);
 
         // Act
-        var result = await _sut.GetByIdAsync(Guid.NewGuid());
+        var result = await _sut.GetByIdAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Null(result);
@@ -253,7 +256,7 @@ public class AppointmentServiceTests : IDisposable
 
         // Act
         var result = await _sut.BookAppointmentAsync(_patientId,
-            new BookAppointmentRequest { ScheduleSlotId = _slotId });
+            new BookAppointmentRequest { ScheduleSlotId = _slotId }, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -271,7 +274,7 @@ public class AppointmentServiceTests : IDisposable
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _sut.BookAppointmentAsync(_patientId,
-                new BookAppointmentRequest { ScheduleSlotId = Guid.NewGuid() }));
+                new BookAppointmentRequest { ScheduleSlotId = Guid.NewGuid() }, TestContext.Current.CancellationToken));
 
         Assert.Contains("not found", ex.Message);
     }
@@ -298,7 +301,7 @@ public class AppointmentServiceTests : IDisposable
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _sut.BookAppointmentAsync(_patientId,
-                new BookAppointmentRequest { ScheduleSlotId = _slotId }));
+                new BookAppointmentRequest { ScheduleSlotId = _slotId }, TestContext.Current.CancellationToken));
 
         Assert.Contains("không còn nhận đặt lịch", ex.Message);
     }
@@ -334,7 +337,7 @@ public class AppointmentServiceTests : IDisposable
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _sut.BookAppointmentAsync(_patientId,
-                new BookAppointmentRequest { ScheduleSlotId = _slotId }));
+                new BookAppointmentRequest { ScheduleSlotId = _slotId }, TestContext.Current.CancellationToken));
 
         Assert.Contains("đã có người đặt", ex.Message);
     }
@@ -347,7 +350,7 @@ public class AppointmentServiceTests : IDisposable
 
         // Act
         await _sut.BookAppointmentAsync(_patientId,
-            new BookAppointmentRequest { ScheduleSlotId = _slotId });
+            new BookAppointmentRequest { ScheduleSlotId = _slotId }, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(SlotStatus.Booked, slot.Status);
@@ -368,7 +371,8 @@ public class AppointmentServiceTests : IDisposable
         var result = await _sut.CancelAppointmentAsync(
             _appointmentId,
             _patientId,
-            new CancelAppointmentRequest { CancellationReason = "Schedule conflict" });
+            new CancelAppointmentRequest { CancellationReason = "Schedule conflict" },
+            TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(AppointmentStatus.Cancelled, result.Status);
@@ -386,7 +390,8 @@ public class AppointmentServiceTests : IDisposable
             () => _sut.CancelAppointmentAsync(
                 _appointmentId,
                 _patientId,
-                new CancelAppointmentRequest { CancellationReason = "" }));
+                new CancelAppointmentRequest { CancellationReason = "" },
+                TestContext.Current.CancellationToken));
 
         Assert.Contains("bắt buộc", ex.Message);
     }
@@ -402,7 +407,8 @@ public class AppointmentServiceTests : IDisposable
             () => _sut.CancelAppointmentAsync(
                 _appointmentId,
                 _patientId,
-                new CancelAppointmentRequest { CancellationReason = "   " }));
+                new CancelAppointmentRequest { CancellationReason = "   " },
+                TestContext.Current.CancellationToken));
 
         Assert.Contains("bắt buộc", ex.Message);
     }
@@ -419,14 +425,15 @@ public class AppointmentServiceTests : IDisposable
             Status = AppointmentStatus.Booked,
             CreatedAt = DateTime.UtcNow,
         });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _sut.CancelAppointmentAsync(
                 Guid.NewGuid(), // Different ID
                 _patientId,
-                new CancelAppointmentRequest { CancellationReason = "Test" }));
+                new CancelAppointmentRequest { CancellationReason = "Test" },
+                TestContext.Current.CancellationToken));
 
         Assert.Contains("not found", ex.Message);
     }
@@ -442,7 +449,8 @@ public class AppointmentServiceTests : IDisposable
             () => _sut.CancelAppointmentAsync(
                 _appointmentId,
                 _otherPatientId, // Different patient
-                new CancelAppointmentRequest { CancellationReason = "Test" }));
+                new CancelAppointmentRequest { CancellationReason = "Test" },
+                TestContext.Current.CancellationToken));
 
         Assert.Contains("không có quyền", ex.Message);
     }
@@ -467,14 +475,15 @@ public class AppointmentServiceTests : IDisposable
 
         _db.Appointments.Add(appointment);
         _db.ScheduleSlots.Add(slot);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _sut.CancelAppointmentAsync(
                 _appointmentId,
                 _patientId,
-                new CancelAppointmentRequest { CancellationReason = "Test" }));
+                new CancelAppointmentRequest { CancellationReason = "Test" },
+                TestContext.Current.CancellationToken));
 
         Assert.Contains("đang đặt mới được hủy", ex.Message);
     }
@@ -489,7 +498,8 @@ public class AppointmentServiceTests : IDisposable
         await _sut.CancelAppointmentAsync(
             _appointmentId,
             _patientId,
-            new CancelAppointmentRequest { CancellationReason = "Schedule conflict" });
+            new CancelAppointmentRequest { CancellationReason = "Schedule conflict" },
+            TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(SlotStatus.Open, appointment.Slot!.Status);
@@ -540,7 +550,7 @@ public class AppointmentServiceTests : IDisposable
             .Setup(r => r.ListByDoctorAsync(_doctorId, fromDate, toDate, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { bookedAppointment, cancelledAppointment });
 
-        var result = await _sut.ListForDoctorAsync(_doctorId, fromDate, toDate);
+        var result = await _sut.ListForDoctorAsync(_doctorId, fromDate, toDate, TestContext.Current.CancellationToken);
 
         var item = Assert.Single(result);
         Assert.Equal(bookedAppointment.AppointmentId, item.AppointmentId);
@@ -559,7 +569,7 @@ public class AppointmentServiceTests : IDisposable
             .Setup(r => r.ListByDoctorAsync(_doctorId, fromDate, toDate, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<Appointment>());
 
-        var result = await _sut.ListForDoctorAsync(_doctorId, fromDate, toDate);
+        var result = await _sut.ListForDoctorAsync(_doctorId, fromDate, toDate, TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -600,7 +610,7 @@ public class AppointmentServiceTests : IDisposable
             .ReturnsAsync(new[] { approvedAppointment });
 
         // Act
-        var result = await _sut.ListForDoctorAsync(_doctorId, fromDate, toDate);
+        var result = await _sut.ListForDoctorAsync(_doctorId, fromDate, toDate, TestContext.Current.CancellationToken);
 
         // Assert — Approved appointment should be included
         var item = Assert.Single(result);
@@ -643,7 +653,7 @@ public class AppointmentServiceTests : IDisposable
             .ReturnsAsync(new[] { completedAppointment });
 
         // Act
-        var result = await _sut.ListForDoctorAsync(_doctorId, fromDate, toDate);
+        var result = await _sut.ListForDoctorAsync(_doctorId, fromDate, toDate, TestContext.Current.CancellationToken);
 
         // Assert — Completed appointment should be excluded
         Assert.Empty(result);

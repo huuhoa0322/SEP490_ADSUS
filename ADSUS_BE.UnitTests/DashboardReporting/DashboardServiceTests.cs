@@ -49,7 +49,7 @@ public class DashboardServiceTests
     [Fact]
     public async Task NoData_ReturnsAllZeros_DoesNotThrow()
     {
-        var result = await _sut.GetStatisticsAsync(null, null);
+        var result = await _sut.GetStatisticsAsync(null, null, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, result.Accounts.Total);
         Assert.Equal(0, result.Accounts.ActiveRate);
@@ -67,7 +67,7 @@ public class DashboardServiceTests
     public async Task MalformedDates_FallsBackToDefault_DoesNotThrow(string? from, string? to)
     {
         // Bỏ qua giá trị sai và dùng mặc định, thay vì trả 400 làm màn hình trắng xoá.
-        var result = await _sut.GetStatisticsAsync(from, to);
+        var result = await _sut.GetStatisticsAsync(from, to, TestContext.Current.CancellationToken);
 
         Assert.False(string.IsNullOrEmpty(result.FromDate));
         Assert.False(string.IsNullOrEmpty(result.ToDate));
@@ -78,7 +78,7 @@ public class DashboardServiceTests
     [Fact]
     public async Task NothingSelected_UsesDefaultLast30Days()
     {
-        var result = await _sut.GetStatisticsAsync(null, null);
+        var result = await _sut.GetStatisticsAsync(null, null, TestContext.Current.CancellationToken);
 
         var from = DateOnly.Parse(result.FromDate);
         var to = DateOnly.Parse(result.ToDate);
@@ -95,7 +95,7 @@ public class DashboardServiceTests
     [Fact]
     public async Task DateRange_PassedDownIntactBothEnds()
     {
-        await _sut.GetStatisticsAsync("2026-07-01", "2026-07-31");
+        await _sut.GetStatisticsAsync("2026-07-01", "2026-07-31", TestContext.Current.CancellationToken);
 
         Assert.Equal(new DateOnly(2026, 7, 1), _capturedFrom);
         Assert.Equal(new DateOnly(2026, 7, 31), _capturedTo);
@@ -106,7 +106,7 @@ public class DashboardServiceTests
     {
         // Người dùng chọn "từ 31/07 đến 01/07" thì hiểu là họ chọn nhầm thứ tự, chứ không
         // phải muốn xem một khoảng rỗng.
-        var result = await _sut.GetStatisticsAsync("2026-07-31", "2026-07-01");
+        var result = await _sut.GetStatisticsAsync("2026-07-31", "2026-07-01", TestContext.Current.CancellationToken);
 
         Assert.Equal("2026-07-01", result.FromDate);
         Assert.Equal("2026-07-31", result.ToDate);
@@ -116,7 +116,7 @@ public class DashboardServiceTests
     public async Task RangeTooLong_IsClampedShorter()
     {
         // Chặn một cú bấm nhầm quét cả bảng nhiều năm trên Supabase.
-        var result = await _sut.GetStatisticsAsync("2000-01-01", "2026-07-31");
+        var result = await _sut.GetStatisticsAsync("2000-01-01", "2026-07-31", TestContext.Current.CancellationToken);
 
         var from = DateOnly.Parse(result.FromDate);
         var to = DateOnly.Parse(result.ToDate);
@@ -152,7 +152,7 @@ public class DashboardServiceTests
                  Total: 10, AdminCount: 1, DoctorCount: 3, NurseCount: 2, PatientCount: 4,
                  ActiveCount: 8, DeactivatedCount: 1));
 
-        var result = await _sut.GetStatisticsAsync(null, null);
+        var result = await _sut.GetStatisticsAsync(null, null, TestContext.Current.CancellationToken);
 
         Assert.Equal(80.0, result.Accounts.ActiveRate);
         Assert.Equal(2, result.Accounts.NurseCount);
@@ -166,7 +166,7 @@ public class DashboardServiceTests
         // thực tế chỉ là có nhiều ca mới chưa kịp duyệt.
         SetupActivity(aiConfirmed: 6, aiRejected: 2, aiPending: 92, aiRun: 100);
 
-        var result = await _sut.GetStatisticsAsync(null, null);
+        var result = await _sut.GetStatisticsAsync(null, null, TestContext.Current.CancellationToken);
 
         Assert.Equal(75.0, result.Clinical.AiConfirmRate);
         Assert.Equal(92, result.Clinical.AiPendingCount);
@@ -177,7 +177,7 @@ public class DashboardServiceTests
     {
         SetupActivity(aiConfirmed: 0, aiRejected: 0, aiPending: 50, aiRun: 50);
 
-        var result = await _sut.GetStatisticsAsync(null, null);
+        var result = await _sut.GetStatisticsAsync(null, null, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, result.Clinical.AiConfirmRate);
     }
@@ -187,7 +187,7 @@ public class DashboardServiceTests
     {
         SetupActivity(booked: 30, cancelled: 10, slots: 20);
 
-        var result = await _sut.GetStatisticsAsync(null, null);
+        var result = await _sut.GetStatisticsAsync(null, null, TestContext.Current.CancellationToken);
 
         // 10 huỷ trên tổng 40 lượt đặt.
         Assert.Equal(25.0, result.Appointments.CancellationRate);
@@ -217,7 +217,7 @@ public class DashboardServiceTests
     {
         SetupActivity(doses: 200, taken: 173);
 
-        var result = await _sut.GetStatisticsAsync(null, null);
+        var result = await _sut.GetStatisticsAsync(null, null, TestContext.Current.CancellationToken);
 
         Assert.Equal(86.5, result.Adherence.AdherenceRate);
     }
@@ -237,7 +237,7 @@ public class DashboardServiceTests
                  new(new DateOnly(2026, 7, 3), NewAccounts: 2, Cases: 1, Appointments: 0),
              });
 
-        var result = await _sut.GetStatisticsAsync("2026-07-01", "2026-07-05");
+        var result = await _sut.GetStatisticsAsync("2026-07-01", "2026-07-05", TestContext.Current.CancellationToken);
 
         // 1,2,3,4,5 tháng 7 — cả hai đầu đều được tính vào.
         Assert.Equal(5, result.Trend.Count);
@@ -254,7 +254,7 @@ public class DashboardServiceTests
     public async Task Trend_NoData_StillProducesAllZeroPoints()
     {
         // AF-01 — khoảng trống vẫn phải vẽ được, không được ném lỗi hay trả dãy rỗng.
-        var result = await _sut.GetStatisticsAsync("2026-07-01", "2026-07-03");
+        var result = await _sut.GetStatisticsAsync("2026-07-01", "2026-07-03", TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result.Trend.Count);
         Assert.All(result.Trend, p =>

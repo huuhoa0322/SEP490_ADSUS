@@ -56,7 +56,7 @@ public class UserAccountServiceTests
     [Fact]
     public async Task CreateAsync_ValidDoctorRequest_CreatesActiveAccountAndForcesPasswordChange()
     {
-        var (result, account, _) = await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId);
+        var (result, account, _) = await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal("ACTIVE", account!.Status);
@@ -73,7 +73,7 @@ public class UserAccountServiceTests
     {
         // Sửa 12/08/2026 — thống nhất với UC-03 AF-02/UC-06 AF-01/AF-03: mật khẩu tạm không
         // còn gửi email, mà trả plaintext MỘT LẦN qua phần tử thứ ba của tuple.
-        var (_, account, temporaryPassword) = await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId);
+        var (_, account, temporaryPassword) = await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId, TestContext.Current.CancellationToken);
 
         var user = Assert.Single(_saved);
 
@@ -114,7 +114,7 @@ public class UserAccountServiceTests
         var request = BuildCreateRequest("DOCTOR");
         request.Email = null;
 
-        var (result, account, temporaryPassword) = await _sut.CreateAsync(request, _adminId);
+        var (result, account, temporaryPassword) = await _sut.CreateAsync(request, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.NotNull(account);
@@ -129,7 +129,7 @@ public class UserAccountServiceTests
         _users.Setup(r => r.PhoneExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(true);
 
-        var (result, account, temporaryPassword) = await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId);
+        var (result, account, temporaryPassword) = await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.PhoneAlreadyUsed, result);
         Assert.Null(account);
@@ -144,7 +144,7 @@ public class UserAccountServiceTests
     public async Task CreateAsync_InvalidRole_IsRejected(string vaiTro)
     {
         // UC-04: tài khoản ADMIN được cấp lúc dựng hệ thống, KHÔNG tạo qua màn này.
-        var (result, _, _) = await _sut.CreateAsync(BuildCreateRequest(vaiTro), _adminId);
+        var (result, _, _) = await _sut.CreateAsync(BuildCreateRequest(vaiTro), _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.InvalidRole, result);
         Assert.Empty(_saved);
@@ -156,7 +156,7 @@ public class UserAccountServiceTests
         _users.Setup(r => r.IsEmailUsedAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(true);
 
-        var (result, account, temporaryPassword) = await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId);
+        var (result, account, temporaryPassword) = await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.EmailAlreadyUsed, result);
         Assert.Null(account);
@@ -176,7 +176,7 @@ public class UserAccountServiceTests
                   It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync((Array.Empty<User>(), 0));
 
-        var result = await _sut.SearchAsync(null, null, null, requestedPage, 20, _adminId);
+        var result = await _sut.SearchAsync(null, null, null, requestedPage, 20, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(expectedPage, result.Page);
         _users.Verify(r => r.SearchAsync(
@@ -195,7 +195,7 @@ public class UserAccountServiceTests
                   It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync((Array.Empty<User>(), 0));
 
-        var result = await _sut.SearchAsync(null, null, null, 1, requestedPageSize, _adminId);
+        var result = await _sut.SearchAsync(null, null, null, 1, requestedPageSize, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(expectedPageSize, result.PageSize);
     }
@@ -208,7 +208,7 @@ public class UserAccountServiceTests
                   It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync((Array.Empty<User>(), 0));
 
-        var result = await _sut.SearchAsync(null, null, null, 3, 50, _adminId);
+        var result = await _sut.SearchAsync(null, null, null, 3, 50, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result.Page);
         Assert.Equal(50, result.PageSize);
@@ -224,7 +224,7 @@ public class UserAccountServiceTests
         var request = BuildCreateRequest("PATIENT");
         request.DateOfBirth = "1990-05-20";
 
-        var (result, account, _) = await _sut.CreateAsync(request, _adminId);
+        var (result, account, _) = await _sut.CreateAsync(request, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Null(Assert.Single(_saved).DateOfBirth);
@@ -238,7 +238,7 @@ public class UserAccountServiceTests
         var request = BuildCreateRequest("DOCTOR");
         request.DateOfBirth = "1985-03-10";
 
-        var (_, account, _) = await _sut.CreateAsync(request, _adminId);
+        var (_, account, _) = await _sut.CreateAsync(request, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(new DateOnly(1985, 3, 10), Assert.Single(_saved).DateOfBirth);
         Assert.Equal("1985-03-10", account!.DateOfBirth);
@@ -253,7 +253,7 @@ public class UserAccountServiceTests
         user.DateOfBirth = new DateOnly(1990, 5, 20);
         SetupGetById(user);
 
-        var account = await _sut.GetByIdAsync(user.UserId, Guid.NewGuid());
+        var account = await _sut.GetByIdAsync(user.UserId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Null(account!.DateOfBirth);
     }
@@ -263,7 +263,7 @@ public class UserAccountServiceTests
     {
         SetupGetById(null);
 
-        var account = await _sut.GetByIdAsync(Guid.NewGuid(), _adminId);
+        var account = await _sut.GetByIdAsync(Guid.NewGuid(), _adminId, TestContext.Current.CancellationToken);
 
         Assert.Null(account);
     }
@@ -276,8 +276,8 @@ public class UserAccountServiceTests
         var user = BuildDbUser(UserRole.Admin);
         SetupGetById(user);
 
-        var chinhMinh = await _sut.GetByIdAsync(user.UserId, user.UserId);
-        var nguoiKhac = await _sut.GetByIdAsync(user.UserId, Guid.NewGuid());
+        var chinhMinh = await _sut.GetByIdAsync(user.UserId, user.UserId, TestContext.Current.CancellationToken);
+        var nguoiKhac = await _sut.GetByIdAsync(user.UserId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.True(chinhMinh!.IsCurrentUser);
         Assert.False(nguoiKhac!.IsCurrentUser);
@@ -292,7 +292,7 @@ public class UserAccountServiceTests
         var user = BuildDbUser(UserRole.Patient);
         SetupGetById(user);
 
-        var result = await _sut.DeactivateAsync(user.UserId, Guid.NewGuid());
+        var result = await _sut.DeactivateAsync(user.UserId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal(UserStatus.Deactivated, user.Status);
@@ -307,7 +307,7 @@ public class UserAccountServiceTests
         var adminKhac = BuildDbUser(UserRole.Admin);
         SetupGetById(adminKhac);
 
-        var result = await _sut.DeactivateAsync(adminKhac.UserId, Guid.NewGuid());
+        var result = await _sut.DeactivateAsync(adminKhac.UserId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal(UserStatus.Deactivated, adminKhac.Status);
@@ -318,7 +318,7 @@ public class UserAccountServiceTests
     {
         var adminId = Guid.NewGuid();
 
-        var result = await _sut.DeactivateAsync(adminId, adminId);
+        var result = await _sut.DeactivateAsync(adminId, adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.CannotTargetSelf, result);
     }
@@ -328,7 +328,7 @@ public class UserAccountServiceTests
     {
         SetupGetById(null);
 
-        var result = await _sut.DeactivateAsync(Guid.NewGuid(), Guid.NewGuid());
+        var result = await _sut.DeactivateAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.NotFound, result);
     }
@@ -342,7 +342,7 @@ public class UserAccountServiceTests
         user.Status = UserStatus.Deactivated;
         SetupGetById(user);
 
-        var result = await _sut.ReactivateAsync(_adminId, user.UserId, "khôi phục theo yêu cầu");
+        var result = await _sut.ReactivateAsync(_adminId, user.UserId, "khôi phục theo yêu cầu", TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal(UserStatus.Active, user.Status);
@@ -354,7 +354,7 @@ public class UserAccountServiceTests
     {
         var adminId = Guid.NewGuid();
 
-        var result = await _sut.ReactivateAsync(adminId, adminId, "lý do bất kỳ");
+        var result = await _sut.ReactivateAsync(adminId, adminId, "lý do bất kỳ", TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.CannotTargetSelf, result);
     }
@@ -364,7 +364,7 @@ public class UserAccountServiceTests
     {
         SetupGetById(null);
 
-        var result = await _sut.ReactivateAsync(_adminId, Guid.NewGuid(), "lý do bất kỳ");
+        var result = await _sut.ReactivateAsync(_adminId, Guid.NewGuid(), "lý do bất kỳ", TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.NotFound, result);
     }
@@ -378,7 +378,7 @@ public class UserAccountServiceTests
         user.Status = UserStatus.Active;
         SetupGetById(user);
 
-        var result = await _sut.ReactivateAsync(_adminId, user.UserId, "lý do bất kỳ");
+        var result = await _sut.ReactivateAsync(_adminId, user.UserId, "lý do bất kỳ", TestContext.Current.CancellationToken);
 
         Assert.NotEqual(AccountOperationResult.Success, result);
         _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -395,7 +395,7 @@ public class UserAccountServiceTests
         {
             FullName = "Nguyễn Văn A",
             Role = "DOCTOR",
-        }, _adminId);
+        }, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.NotFound, result);
     }
@@ -410,7 +410,7 @@ public class UserAccountServiceTests
         {
             FullName = "Nguyễn Văn A",
             Role = "SUPERUSER",
-        }, _adminId);
+        }, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.InvalidRole, result);
     }
@@ -429,7 +429,7 @@ public class UserAccountServiceTests
             FullName = "Nguyễn Văn A",
             Role = "DOCTOR",
             Email = "da-dung@example.com",
-        }, _adminId);
+        }, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.EmailAlreadyUsed, result);
     }
@@ -444,7 +444,7 @@ public class UserAccountServiceTests
         {
             FullName = "Vũ Thị Cẩm Tú",
             Role = "NURSE",
-        }, _adminId);
+        }, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal(UserRole.Nurse, user.Role);
@@ -464,7 +464,7 @@ public class UserAccountServiceTests
         {
             FullName = "Tên Mới",
             Role = "DOCTOR",
-        }, _adminId);
+        }, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(soCu, user.Phone);
         Assert.Equal(UserStatus.Deactivated, user.Status);
@@ -484,13 +484,13 @@ public class UserAccountServiceTests
             FullName = "Nguyễn Văn A",
             Role = "PATIENT",
             DateOfBirth = "1985-03-10",
-        }, _adminId);
+        }, _adminId, TestContext.Current.CancellationToken);
 
         // Dữ liệu còn nguyên trong database...
         Assert.Equal(new DateOnly(1985, 3, 10), user.DateOfBirth);
 
         // ...nhưng Admin vẫn không đọc được. Đó mới là chỗ BR-01 được thi hành.
-        var response = await _sut.GetByIdAsync(user.UserId, _adminId);
+        var response = await _sut.GetByIdAsync(user.UserId, _adminId, TestContext.Current.CancellationToken);
         Assert.Null(response!.DateOfBirth);
     }
 
@@ -511,7 +511,7 @@ public class UserAccountServiceTests
             Role = "PATIENT",
             // Form của Admin ẩn hẳn ô ngày sinh nên luôn gửi lên null.
             DateOfBirth = null,
-        }, _adminId);
+        }, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(new DateOnly(1992, 7, 15), user.DateOfBirth);
         Assert.Equal("Nguyễn Thị Hoa", user.FullName);
@@ -534,7 +534,7 @@ public class UserAccountServiceTests
         {
             FullName = "Quản trị viên",
             Role = vaiTroMoi,
-        }, _adminId);
+        }, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.CannotChangeAdminRole, result);
         Assert.Equal(UserRole.Admin, user.Role);
@@ -553,7 +553,7 @@ public class UserAccountServiceTests
         {
             FullName = "Nguyễn Văn A",
             Role = "ADMIN",
-        }, _adminId);
+        }, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.CannotChangeAdminRole, result);
         Assert.Equal(UserRole.Doctor, user.Role);
@@ -572,7 +572,7 @@ public class UserAccountServiceTests
             FullName = "Nguyễn Quý Hiếu",
             Role = "ADMIN",
             Email = "admin@example.com",
-        }, _adminId);
+        }, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal("Nguyễn Quý Hiếu", user.FullName);
@@ -585,7 +585,7 @@ public class UserAccountServiceTests
     [Fact]
     public async Task CreateAsync_RecordsAuditLogWithCorrectActor()
     {
-        await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId);
+        await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId, TestContext.Current.CancellationToken);
 
         var log = Assert.Single(_audited);
         Assert.Equal("CREATE_ACCOUNT", log.Action);
@@ -606,7 +606,7 @@ public class UserAccountServiceTests
         user.Status = UserStatus.Active;
         SetupGetById(user);
 
-        await _sut.DeactivateAsync(user.UserId, _adminId);
+        await _sut.DeactivateAsync(user.UserId, _adminId, TestContext.Current.CancellationToken);
 
         var log = Assert.Single(_audited);
         Assert.Equal("DEACTIVATE_ACCOUNT", log.Action);
@@ -623,7 +623,7 @@ public class UserAccountServiceTests
         {
             FullName = "Vũ Thị Cẩm Tú",
             Role = "NURSE",
-        }, _adminId);
+        }, _adminId, TestContext.Current.CancellationToken);
 
         var log = Assert.Single(_audited);
         Assert.Equal("UPDATE_ACCOUNT", log.Action);
@@ -643,9 +643,9 @@ public class UserAccountServiceTests
         {
             FullName = "Quản trị viên",
             Role = "DOCTOR",
-        }, _adminId);
+        }, _adminId, TestContext.Current.CancellationToken);
 
-        await _sut.DeactivateAsync(_adminId, _adminId);
+        await _sut.DeactivateAsync(_adminId, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Empty(_audited);
     }
@@ -660,7 +660,7 @@ public class UserAccountServiceTests
         user.Status = UserStatus.Deactivated;
         SetupGetById(user);
 
-        await _sut.ReactivateAsync(_adminId, user.UserId, "Reactivated by admin via UI");
+        await _sut.ReactivateAsync(_adminId, user.UserId, "Reactivated by admin via UI", TestContext.Current.CancellationToken);
 
         var log = Assert.Single(_audited);
         Assert.Equal(AccountAuditTrail.ReactivateAccount, log.Action);
@@ -675,7 +675,7 @@ public class UserAccountServiceTests
         var request = BuildCreateRequest("DOCTOR");
         request.DateOfBirth = "1985-03-10";
 
-        await _sut.CreateAsync(request, _adminId);
+        await _sut.CreateAsync(request, _adminId, TestContext.Current.CancellationToken);
 
         var log = Assert.Single(_audited);
         Assert.DoesNotContain("1985", log.Detail);

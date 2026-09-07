@@ -144,7 +144,7 @@ public class ChatDataAggregatorTests : IDisposable
     [Fact]
     public async Task BuildContextAsync_UnknownUserId_ReturnsNull()
     {
-        var result = await _sut.BuildContextAsync(Guid.NewGuid(), Ir(ChatIntent.General));
+        var result = await _sut.BuildContextAsync(Guid.NewGuid(), Ir(ChatIntent.General), TestContext.Current.CancellationToken);
         Assert.Null(result);
     }
 
@@ -156,7 +156,7 @@ public class ChatDataAggregatorTests : IDisposable
         NewPatientProfile(user);
 
         // Act
-        var result = await _sut.BuildContextAsync(user.UserId, Ir(ChatIntent.General));
+        var result = await _sut.BuildContextAsync(user.UserId, Ir(ChatIntent.General), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -173,7 +173,7 @@ public class ChatDataAggregatorTests : IDisposable
         var user = NewUser("Lê Văn C", dob: null);
         NewPatientProfile(user);
 
-        var result = await _sut.BuildContextAsync(user.UserId, Ir(ChatIntent.General));
+        var result = await _sut.BuildContextAsync(user.UserId, Ir(ChatIntent.General), TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Null(result!.BasicInfo!.Age);
@@ -189,7 +189,7 @@ public class ChatDataAggregatorTests : IDisposable
 
         var result = await _sut.BuildContextAsync(
             user.UserId,
-            Ir(ChatIntent.Allergy, DataSource.Allergies));
+            Ir(ChatIntent.Allergy, DataSource.Allergies), TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.NotNull(result!.Allergies);
@@ -208,7 +208,7 @@ public class ChatDataAggregatorTests : IDisposable
 
         var result = await _sut.BuildContextAsync(
             user.UserId,
-            Ir(ChatIntent.Disease, DataSource.Diseases));
+            Ir(ChatIntent.Disease, DataSource.Diseases), TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.NotNull(result!.Diseases);
@@ -222,7 +222,7 @@ public class ChatDataAggregatorTests : IDisposable
         var user = NewUser();
         NewPatientProfile(user);
 
-        var result = await _sut.BuildContextAsync(user.UserId, Ir(ChatIntent.General));
+        var result = await _sut.BuildContextAsync(user.UserId, Ir(ChatIntent.General), TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         // Selective query: Allergies/Diseases not triggered → null (not queried)
@@ -237,7 +237,7 @@ public class ChatDataAggregatorTests : IDisposable
         NewPatientProfile(user);
 
         // General intent → DataSource.None → only BasicInfo populated
-        var result = await _sut.BuildContextAsync(user.UserId, Ir(ChatIntent.General));
+        var result = await _sut.BuildContextAsync(user.UserId, Ir(ChatIntent.General), TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.NotNull(result!.BasicInfo);
@@ -264,7 +264,7 @@ public class ChatDataAggregatorTests : IDisposable
         // Request only Allergies source
         var result = await _sut.BuildContextAsync(
             user.UserId,
-            Ir(ChatIntent.Allergy, DataSource.Allergies));
+            Ir(ChatIntent.Allergy, DataSource.Allergies), TestContext.Current.CancellationToken);
 
         Assert.NotNull(result!.Allergies);
         Assert.Single(result.Allergies);

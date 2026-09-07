@@ -32,7 +32,7 @@ public class ProfileServiceTests
         user.DateOfBirth = new DateOnly(1990, 5, 20);
         SetupUser(user);
 
-        var result = await _sut.GetOwnProfileAsync(user.UserId);
+        var result = await _sut.GetOwnProfileAsync(user.UserId, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal("Nguyễn Văn A", result!.FullName);
@@ -46,7 +46,7 @@ public class ProfileServiceTests
     {
         SetupUser(null);
 
-        var result = await _sut.GetOwnProfileAsync(Guid.NewGuid());
+        var result = await _sut.GetOwnProfileAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -61,7 +61,7 @@ public class ProfileServiceTests
         user.MustChangePassword = true;
         SetupUser(user);
 
-        var result = await _sut.GetOwnProfileAsync(user.UserId);
+        var result = await _sut.GetOwnProfileAsync(user.UserId, TestContext.Current.CancellationToken);
 
         Assert.True(result!.MustChangePassword);
     }
@@ -79,7 +79,7 @@ public class ProfileServiceTests
         user.Status = status;
         SetupUser(user);
 
-        var result = await _sut.GetOwnProfileAsync(user.UserId);
+        var result = await _sut.GetOwnProfileAsync(user.UserId, TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -96,7 +96,7 @@ public class ProfileServiceTests
             FullName = "Tên Mới",
             Email = "moi@example.com",
             DateOfBirth = "1995-03-15",
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(ProfileOperationResult.Success, result);
         Assert.Equal("Tên Mới", user.FullName);
@@ -117,7 +117,7 @@ public class ProfileServiceTests
         await _sut.UpdateOwnProfileAsync(user.UserId, new UpdateProfileRequest
         {
             FullName = "Tên Mới",
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(originalPhone, user.Phone);
     }
@@ -134,7 +134,7 @@ public class ProfileServiceTests
         await _sut.UpdateOwnProfileAsync(user.UserId, new UpdateProfileRequest
         {
             FullName = "Tên Mới",
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(UserRole.Patient, user.Role);
         Assert.Equal(UserStatus.Active, user.Status);
@@ -152,7 +152,7 @@ public class ProfileServiceTests
         {
             FullName = "Nguyễn Văn A",
             Email = "   ",
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(ProfileOperationResult.Success, result);
         Assert.Null(user.Email);
@@ -171,7 +171,7 @@ public class ProfileServiceTests
         {
             FullName = "Nguyễn Văn A",
             Email = "datontai@example.com",
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(ProfileOperationResult.EmailAlreadyUsed, result);
         _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -188,7 +188,7 @@ public class ProfileServiceTests
         var result = await _sut.UpdateOwnProfileAsync(user.UserId, new UpdateProfileRequest
         {
             FullName = "Tên Mới",
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(ProfileOperationResult.AccountNotActive, result);
         _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -203,7 +203,7 @@ public class ProfileServiceTests
         user.BiometricEnabled = !enabled;
         SetupUser(user);
 
-        var result = await _sut.SetBiometricEnabledAsync(user.UserId, enabled);
+        var result = await _sut.SetBiometricEnabledAsync(user.UserId, enabled, TestContext.Current.CancellationToken);
 
         Assert.Equal(ProfileOperationResult.Success, result);
         Assert.Equal(enabled, user.BiometricEnabled);
@@ -218,7 +218,7 @@ public class ProfileServiceTests
         user.Status = status;
         SetupUser(user);
 
-        var result = await _sut.SetBiometricEnabledAsync(user.UserId, true);
+        var result = await _sut.SetBiometricEnabledAsync(user.UserId, true, TestContext.Current.CancellationToken);
 
         Assert.Equal(ProfileOperationResult.AccountNotActive, result);
     }

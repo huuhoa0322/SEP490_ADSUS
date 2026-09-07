@@ -46,7 +46,7 @@ public class InvoicesControllerAuthorizationTests
             .ReturnsAsync(mockResult);
 
         // Act
-        var response = await client.GetAsync("/api/v1/invoices");
+        var response = await client.GetAsync("/api/v1/invoices", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -60,7 +60,7 @@ public class InvoicesControllerAuthorizationTests
         var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Patient);
 
         // Act
-        var response = await client.GetAsync("/api/v1/invoices");
+        var response = await client.GetAsync("/api/v1/invoices", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -79,7 +79,7 @@ public class InvoicesControllerAuthorizationTests
             .ReturnsAsync(mockResult);
 
         // Act
-        var response = await client.GetAsync("/api/v1/invoices");
+        var response = await client.GetAsync("/api/v1/invoices", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -93,7 +93,7 @@ public class InvoicesControllerAuthorizationTests
         var client = app.CreateClient();
 
         // Act
-        var response = await client.GetAsync("/api/v1/invoices");
+        var response = await client.GetAsync("/api/v1/invoices", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

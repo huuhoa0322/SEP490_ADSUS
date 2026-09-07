@@ -93,13 +93,13 @@ public class PatientAccountsControllerIntegrationTests
         var client = MakeClientWithToken(app, _nurse);
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/patients", ValidCreateBody());
+        var response = await client.PostAsJsonAsync("/api/v1/patients", ValidCreateBody(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         // ApiResponse.Ok hard-code Code = 200 bất kể HTTP status thật — quy ước toàn repo.
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientAccountCreatedResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientAccountCreatedResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
         Assert.Equal(new DateOnly(1984, 3, 12), body.Data!.DateOfBirth);
         Assert.Equal("Ab3xyz9pqr", body.Data!.TemporaryPassword);
@@ -113,7 +113,7 @@ public class PatientAccountsControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctor);
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/patients", ValidCreateBody());
+        var response = await client.PostAsJsonAsync("/api/v1/patients", ValidCreateBody(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -136,11 +136,11 @@ public class PatientAccountsControllerIntegrationTests
         var client = MakeClientWithToken(app, _nurse);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/patients/{targetId}");
+        var response = await client.GetAsync($"/api/v1/patients/{targetId}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientAccountResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientAccountResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal("hoa@example.com", body!.Data!.Email);
     }
 
@@ -152,7 +152,7 @@ public class PatientAccountsControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctor);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/patients/{Guid.NewGuid()}");
+        var response = await client.GetAsync($"/api/v1/patients/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -168,7 +168,7 @@ public class PatientAccountsControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctor);
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/patients/{Guid.NewGuid()}", ValidUpdateBody());
+        var response = await client.PutAsJsonAsync($"/api/v1/patients/{Guid.NewGuid()}", ValidUpdateBody(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -186,11 +186,11 @@ public class PatientAccountsControllerIntegrationTests
         var client = MakeClientWithToken(app, _nurse);
 
         // Act
-        var response = await client.PutAsync($"/api/v1/patients/{targetId}/reset-password", null);
+        var response = await client.PutAsync($"/api/v1/patients/{targetId}/reset-password", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<string>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<string>>(TestContext.Current.CancellationToken);
         Assert.Equal("Ab3xyz9pqr2K", body!.Data);
         _accounts.Verify(s => s.ResetPasswordAsync(
             targetId, _nurse.UserId, It.IsAny<CancellationToken>()), Times.Once);
@@ -204,7 +204,7 @@ public class PatientAccountsControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctor);
 
         // Act
-        var response = await client.PutAsync($"/api/v1/patients/{Guid.NewGuid()}/reset-password", null);
+        var response = await client.PutAsync($"/api/v1/patients/{Guid.NewGuid()}/reset-password", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -219,7 +219,7 @@ public class PatientAccountsControllerIntegrationTests
         var body = ValidCreateBody() with { PhoneNumber = "123" };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/patients", body);
+        var response = await client.PostAsJsonAsync("/api/v1/patients", body, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

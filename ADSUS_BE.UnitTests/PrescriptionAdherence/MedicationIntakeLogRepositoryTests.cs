@@ -42,11 +42,11 @@ public class MedicationIntakeLogRepositoryTests
         var itemId = Guid.NewGuid();
         var scheduled = new DateTime(2026, 7, 28, 7, 0, 0, DateTimeKind.Utc);
         var log = NewLog(itemId, scheduled);
-        await db.MedicationIntakeLogs.AddAsync(log);
-        await db.SaveChangesAsync();
+        await db.MedicationIntakeLogs.AddAsync(log, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var repo = new MedicationIntakeLogRepository(db);
-        var found = await repo.FindByItemAndTimeAsync(itemId, scheduled);
+        var found = await repo.FindByItemAndTimeAsync(itemId, scheduled, TestContext.Current.CancellationToken);
 
         Assert.NotNull(found);
         Assert.Equal(log.IntakeId, found!.IntakeId);
@@ -58,7 +58,7 @@ public class MedicationIntakeLogRepositoryTests
         using var db = CreateContext();
         var repo = new MedicationIntakeLogRepository(db);
 
-        var found = await repo.FindByItemAndTimeAsync(Guid.NewGuid(), DateTime.UtcNow);
+        var found = await repo.FindByItemAndTimeAsync(Guid.NewGuid(), DateTime.UtcNow, TestContext.Current.CancellationToken);
 
         Assert.Null(found);
     }
@@ -72,10 +72,10 @@ public class MedicationIntakeLogRepositoryTests
             NewLog(itemId, new DateTime(2026, 7, 28, 20, 0, 0, DateTimeKind.Utc)),
             NewLog(itemId, new DateTime(2026, 7, 28, 7, 0, 0, DateTimeKind.Utc)),
             NewLog(itemId, new DateTime(2026, 7, 28, 12, 0, 0, DateTimeKind.Utc)));
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var repo = new MedicationIntakeLogRepository(db);
-        var logs = await repo.ListByItemAsync(itemId);
+        var logs = await repo.ListByItemAsync(itemId, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, logs.Count);
         Assert.Equal(new DateTime(2026, 7, 28, 7, 0, 0, DateTimeKind.Utc), logs[0].ScheduledTime);
@@ -95,10 +95,10 @@ public class MedicationIntakeLogRepositoryTests
             NewLog(itemId, from.AddDays(-1)),     // ngoài range (trước)
             NewLog(itemId, from.AddDays(5)),      // trong range
             NewLog(itemId, to.AddDays(1)));       // ngoài range (sau)
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var repo = new MedicationIntakeLogRepository(db);
-        var logs = await repo.ListByPatientRangeAsync(Guid.NewGuid(), from, to);
+        var logs = await repo.ListByPatientRangeAsync(Guid.NewGuid(), from, to, TestContext.Current.CancellationToken);
 
         Assert.Single(logs);
     }
@@ -116,10 +116,10 @@ public class MedicationIntakeLogRepositoryTests
         };
 
         var repo = new MedicationIntakeLogRepository(db);
-        await repo.AddRangeAsync(logs);
-        await db.SaveChangesAsync();
+        await repo.AddRangeAsync(logs, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var fetched = await db.MedicationIntakeLogs.Where(l => l.PrescriptionItemId == itemId).ToListAsync();
+        var fetched = await db.MedicationIntakeLogs.Where(l => l.PrescriptionItemId == itemId).ToListAsync(TestContext.Current.CancellationToken);
         Assert.Equal(3, fetched.Count);
     }
 
@@ -173,7 +173,7 @@ public class MedicationIntakeLogRepositoryTests
             log.PrescriptionItemId = itemId;
             db.MedicationIntakeLogs.Add(log);
         }
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         return (new MedicationIntakeLogRepository(db), patientProfileId);
     }
@@ -190,7 +190,7 @@ public class MedicationIntakeLogRepositoryTests
 
         var (repo, patientProfileId) = await CreateRepoWithNavChain(db, todayLog1, todayLog2, tomorrowLog);
 
-        var result = await repo.ListUpcomingAsync(patientProfileId);
+        var result = await repo.ListUpcomingAsync(patientProfileId, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Count);
         Assert.All(result, l => Assert.Equal(today, l.ScheduledTime.Date));
@@ -207,7 +207,7 @@ public class MedicationIntakeLogRepositoryTests
 
         var (repo, patientProfileId) = await CreateRepoWithNavChain(db, yesterdayLog, todayLog);
 
-        var result = await repo.ListUpcomingAsync(patientProfileId);
+        var result = await repo.ListUpcomingAsync(patientProfileId, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         Assert.Equal(today.AddHours(8), result[0].ScheduledTime);
@@ -224,7 +224,7 @@ public class MedicationIntakeLogRepositoryTests
 
         var (repo, patientProfileId) = await CreateRepoWithNavChain(db, todayLog, tomorrowLog);
 
-        var result = await repo.ListUpcomingAsync(patientProfileId);
+        var result = await repo.ListUpcomingAsync(patientProfileId, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         Assert.Equal(today.AddHours(8), result[0].ScheduledTime);
@@ -265,7 +265,7 @@ public class MedicationIntakeLogRepositoryTests
         log2Taken.ConfirmedAt = DateTime.UtcNow;
 
         await db.MedicationIntakeLogs.AddRangeAsync(new[] { log1Taken1, log1Taken2, log1Pending, log2Taken });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var repo = new MedicationIntakeLogRepository(db);
 
@@ -312,7 +312,7 @@ public class MedicationIntakeLogRepositoryTests
         db.Medicines.Add(new Medicine { MedicineId = medicineId, Name = "Thuốc A", CreatedAt = DateTime.UtcNow });
         db.Prescriptions.Add(new Prescription { PrescriptionId = prescriptionId, CaseId = caseId, DoctorId = Guid.NewGuid(), PrescribedDate = DateOnly.FromDateTime(DateTime.UtcNow) });
         db.PrescriptionItems.Add(new PrescriptionItem { PrescriptionItemId = itemId, PrescriptionId = prescriptionId, MedicineId = medicineId, Dosage = "1 viên", DurationDays = 3, StartDate = DateOnly.FromDateTime(DateTime.UtcNow) });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var repo = new MedicationIntakeLogRepository(db);
 

@@ -44,7 +44,7 @@ public class PatientProfileServiceTests
                  .ReturnsAsync(() => saved); // PatientProfile là class, không phải record — không dùng `with`
 
         // Act
-        var response = await _sut.CreateAsync(request, actingDoctorId);
+        var response = await _sut.CreateAsync(request, actingDoctorId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(patient.UserId, response.PatientUserId);
@@ -72,7 +72,7 @@ public class PatientProfileServiceTests
                  .ReturnsAsync(() => saved);
 
         // Act
-        await _sut.CreateAsync(request, actingNurseId);
+        await _sut.CreateAsync(request, actingNurseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(actingNurseId, saved!.CreatedBy);
@@ -88,7 +88,7 @@ public class PatientProfileServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.CreateAsync(request, Guid.NewGuid()));
+            () => _sut.CreateAsync(request, Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class PatientProfileServiceTests
               .ReturnsAsync(doctorAccount);
 
         // Act & Assert
-        await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateAsync(request, Guid.NewGuid()));
+        await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateAsync(request, Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public class PatientProfileServiceTests
                  .ReturnsAsync(true);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ConflictException>(() => _sut.CreateAsync(request, Guid.NewGuid()));
+        await Assert.ThrowsAsync<ConflictException>(() => _sut.CreateAsync(request, Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     // ---------- UpdateAsync ----------
@@ -131,7 +131,7 @@ public class PatientProfileServiceTests
                  .ReturnsAsync(profile);
 
         // Act
-        var response = await _sut.UpdateAsync(profile.PatientProfileId, request);
+        var response = await _sut.UpdateAsync(profile.PatientProfileId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("MALE", response.Gender);
@@ -149,7 +149,7 @@ public class PatientProfileServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.UpdateAsync(Guid.NewGuid(), request));
+            () => _sut.UpdateAsync(Guid.NewGuid(), request, TestContext.Current.CancellationToken));
     }
 
     // ---------- GetByIdAsync ----------
@@ -163,7 +163,7 @@ public class PatientProfileServiceTests
                  .ReturnsAsync(profile);
 
         // Act
-        var response = await _sut.GetByIdAsync(profile.PatientProfileId);
+        var response = await _sut.GetByIdAsync(profile.PatientProfileId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(profile.PatientProfileId, response.PatientProfileId);
@@ -177,7 +177,7 @@ public class PatientProfileServiceTests
                  .ReturnsAsync((PatientProfile?)null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.GetByIdAsync(Guid.NewGuid()));
+        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.GetByIdAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     // ---------- SearchPatientsAsync ----------
@@ -199,7 +199,7 @@ public class PatientProfileServiceTests
                  .ReturnsAsync((rows, 1));
 
         // Act
-        var result = await _sut.SearchPatientsAsync("hoa", null, null, 1, 20);
+        var result = await _sut.SearchPatientsAsync("hoa", null, null, 1, 20, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(result.Items);
@@ -216,7 +216,7 @@ public class PatientProfileServiceTests
                  .ReturnsAsync((new List<PatientListRow>(), 0));
 
         // Act
-        var result = await _sut.SearchPatientsAsync(null, null, null, 1, 20);
+        var result = await _sut.SearchPatientsAsync(null, null, null, 1, 20, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(result.Items);
@@ -233,7 +233,7 @@ public class PatientProfileServiceTests
                  .ReturnsAsync((new List<PatientListRow>(), 0));
 
         // Act
-        await _sut.SearchPatientsAsync(null, null, false, 1, 20);
+        await _sut.SearchPatientsAsync(null, null, false, 1, 20, TestContext.Current.CancellationToken);
 
         // Assert
         _profiles.Verify(r => r.SearchAsync(null, null, false, 1, 20, It.IsAny<CancellationToken>()), Times.Once);
@@ -256,7 +256,7 @@ public class PatientProfileServiceTests
                  .ReturnsAsync((rows, 1));
 
         // Act
-        var result = await _sut.SearchPatientsAsync(null, null, false, 1, 20);
+        var result = await _sut.SearchPatientsAsync(null, null, false, 1, 20, TestContext.Current.CancellationToken);
 
         // Assert — giao diện dựa vào null này để đổi nút thành "Tạo hồ sơ nền".
         Assert.Null(result.Items.Single().PatientProfileId);

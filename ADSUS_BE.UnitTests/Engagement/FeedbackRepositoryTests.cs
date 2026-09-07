@@ -59,11 +59,11 @@ public class FeedbackRepositoryTests
             patientProfileId: patientProfile.PatientProfileId,
             caseId: caseId);
         ctx.ServiceFeedbacks.Add(feedback);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new FeedbackRepository(ctx);
 
-        var result = await sut.GetByCaseIdAsync(caseId);
+        var result = await sut.GetByCaseIdAsync(caseId, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(caseId, result.CaseId);
@@ -77,7 +77,7 @@ public class FeedbackRepositoryTests
         using var ctx = CreateContext();
         var sut = new FeedbackRepository(ctx);
 
-        var result = await sut.GetByCaseIdAsync(Guid.NewGuid());
+        var result = await sut.GetByCaseIdAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }

@@ -152,11 +152,11 @@ public class HealthLogsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request);
+        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<HealthLogResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<HealthLogResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code); // ApiResponse.Code is still 200
         Assert.Equal("EXERCISE", body.Data!.Type);
         Assert.Equal("Walked 30 minutes", body.Data!.Content);
@@ -183,11 +183,11 @@ public class HealthLogsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request);
+        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<HealthLogResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<HealthLogResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal("DIET", body!.Data!.Type);
     }
 
@@ -211,10 +211,10 @@ public class HealthLogsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request);
+        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
 
         // Assert
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<HealthLogResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<HealthLogResponse>>(TestContext.Current.CancellationToken);
         Assert.NotEqual(Guid.Empty, body!.Data!.HealthLogId);
         Assert.Equal(profile.PatientProfileId, body.Data.PatientProfileId);
         Assert.Equal("EXERCISE", body.Data.Type);
@@ -234,7 +234,7 @@ public class HealthLogsControllerIntegrationTests
         var request = new LogHealthDataRequest { Type = null, Content = "Test" };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request);
+        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -254,7 +254,7 @@ public class HealthLogsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request);
+        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -274,7 +274,7 @@ public class HealthLogsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request);
+        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -294,7 +294,7 @@ public class HealthLogsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request);
+        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -308,7 +308,7 @@ public class HealthLogsControllerIntegrationTests
         var client = CreatePatientClient(app);
 
         // Act
-        var response = await client.PostAsJsonAsync<LogHealthDataRequest>("/api/v1/health-logs", null!);
+        var response = await client.PostAsJsonAsync<LogHealthDataRequest>("/api/v1/health-logs", null!, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -324,7 +324,7 @@ public class HealthLogsControllerIntegrationTests
         var request = new LogHealthDataRequest(); // Both fields null
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request);
+        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -344,7 +344,7 @@ public class HealthLogsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request);
+        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -364,7 +364,7 @@ public class HealthLogsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request);
+        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -384,7 +384,7 @@ public class HealthLogsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request);
+        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -404,7 +404,7 @@ public class HealthLogsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request);
+        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -433,7 +433,7 @@ public class HealthLogsControllerIntegrationTests
                 Type = i % 2 == 0 ? "Exercise" : "DIET",
                 Content = $"Log entry {i + 1}"
             };
-            await client.PostAsJsonAsync("/api/v1/health-logs", request);
+            await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
         }
 
         // Assert - All 3 should be created (accumulate behavior)
@@ -464,11 +464,11 @@ public class HealthLogsControllerIntegrationTests
             .ReturnsAsync(logs);
 
         // Act
-        var response = await client.GetAsync("/api/v1/health-logs");
+        var response = await client.GetAsync("/api/v1/health-logs", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<HealthLogResponse>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<HealthLogResponse>>>(TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
         Assert.Equal(2, body.Data!.Count);
     }
@@ -492,11 +492,11 @@ public class HealthLogsControllerIntegrationTests
             .ReturnsAsync(logs);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/health-logs?date={specificDate:yyyy-MM-dd}");
+        var response = await client.GetAsync($"/api/v1/health-logs?date={specificDate:yyyy-MM-dd}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<HealthLogResponse>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<HealthLogResponse>>>(TestContext.Current.CancellationToken);
         Assert.Single(body!.Data!);
         Assert.Equal("Old log", body.Data![0].Content);
     }
@@ -516,11 +516,11 @@ public class HealthLogsControllerIntegrationTests
             .ReturnsAsync(new List<HealthLog>());
 
         // Act
-        var response = await client.GetAsync("/api/v1/health-logs");
+        var response = await client.GetAsync("/api/v1/health-logs", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<HealthLogResponse>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<HealthLogResponse>>>(TestContext.Current.CancellationToken);
         Assert.Empty(body!.Data!);
     }
 
@@ -539,10 +539,10 @@ public class HealthLogsControllerIntegrationTests
             .ReturnsAsync(new List<HealthLog>());
 
         // Act
-        var response = await client.GetAsync("/api/v1/health-logs");
+        var response = await client.GetAsync("/api/v1/health-logs", TestContext.Current.CancellationToken);
 
         // Assert
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<HealthLogResponse>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<HealthLogResponse>>>(TestContext.Current.CancellationToken);
         Assert.NotNull(body!.Data);
         Assert.IsType<List<HealthLogResponse>>(body.Data);
     }
@@ -568,10 +568,10 @@ public class HealthLogsControllerIntegrationTests
             .ReturnsAsync(logs);
 
         // Act
-        var response = await client.GetAsync("/api/v1/health-logs");
+        var response = await client.GetAsync("/api/v1/health-logs", TestContext.Current.CancellationToken);
 
         // Assert
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<HealthLogResponse>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<HealthLogResponse>>>(TestContext.Current.CancellationToken);
         var log = body!.Data![0];
         Assert.Equal(logId, log.HealthLogId);
         Assert.Equal(profile.PatientProfileId, log.PatientProfileId);
@@ -589,7 +589,7 @@ public class HealthLogsControllerIntegrationTests
         var client = CreatePatientClient(app);
 
         // Act
-        var response = await client.GetAsync("/api/v1/health-logs?date=invalid");
+        var response = await client.GetAsync("/api/v1/health-logs?date=invalid", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -603,7 +603,7 @@ public class HealthLogsControllerIntegrationTests
         var client = CreatePatientClient(app);
 
         // Act
-        var response = await client.GetAsync("/api/v1/health-logs?date=01-08-2026");
+        var response = await client.GetAsync("/api/v1/health-logs?date=01-08-2026", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -624,11 +624,11 @@ public class HealthLogsControllerIntegrationTests
             .ReturnsAsync(new List<HealthLog>());
 
         // Act
-        var response = await client.GetAsync($"/api/v1/health-logs?date={futureDate:yyyy-MM-dd}");
+        var response = await client.GetAsync($"/api/v1/health-logs?date={futureDate:yyyy-MM-dd}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<HealthLogResponse>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<HealthLogResponse>>>(TestContext.Current.CancellationToken);
         Assert.Empty(body!.Data!);
     }
 
@@ -640,7 +640,7 @@ public class HealthLogsControllerIntegrationTests
         var client = app.CreateClient(); // No auth
 
         // Act
-        var response = await client.GetAsync("/api/v1/health-logs");
+        var response = await client.GetAsync("/api/v1/health-logs", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -654,7 +654,7 @@ public class HealthLogsControllerIntegrationTests
         var client = CreateDoctorClient(app);
 
         // Act
-        var response = await client.GetAsync("/api/v1/health-logs");
+        var response = await client.GetAsync("/api/v1/health-logs", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -668,7 +668,7 @@ public class HealthLogsControllerIntegrationTests
         var client = CreateNurseClient(app);
 
         // Act
-        var response = await client.GetAsync("/api/v1/health-logs");
+        var response = await client.GetAsync("/api/v1/health-logs", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);

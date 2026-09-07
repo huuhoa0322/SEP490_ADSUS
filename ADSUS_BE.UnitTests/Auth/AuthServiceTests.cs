@@ -40,7 +40,7 @@ public class AuthServiceTests
         SetupUser(BuildUser(UserStatus.Active, UserRole.Admin));
 
         // Act
-        var result = await _sut.LoginAsync(Request(CorrectPassword));
+        var result = await _sut.LoginAsync(Request(CorrectPassword), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -53,7 +53,7 @@ public class AuthServiceTests
     {
         SetupUser(BuildUser(UserStatus.Active, UserRole.Doctor));
 
-        var result = await _sut.LoginAsync(Request("WrongPassword1"));
+        var result = await _sut.LoginAsync(Request("WrongPassword1"), TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -64,7 +64,7 @@ public class AuthServiceTests
         // Repository returns null — no account with that phone number.
         SetupUser(null);
 
-        var result = await _sut.LoginAsync(Request(CorrectPassword));
+        var result = await _sut.LoginAsync(Request(CorrectPassword), TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -74,7 +74,7 @@ public class AuthServiceTests
     {
         SetupUser(BuildUser(UserStatus.Deactivated, UserRole.Doctor));
 
-        var result = await _sut.LoginAsync(Request(CorrectPassword));
+        var result = await _sut.LoginAsync(Request(CorrectPassword), TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -85,7 +85,7 @@ public class AuthServiceTests
         // A token must never be minted for a rejected sign-in.
         SetupUser(BuildUser(UserStatus.Deactivated, UserRole.Doctor));
 
-        await _sut.LoginAsync(Request(CorrectPassword));
+        await _sut.LoginAsync(Request(CorrectPassword), TestContext.Current.CancellationToken);
 
         _tokens.Verify(t => t.GenerateAccessToken(It.IsAny<User>()), Times.Never);
     }
@@ -98,7 +98,7 @@ public class AuthServiceTests
         user.MustChangePassword = true;
         SetupUser(user);
 
-        var result = await _sut.LoginAsync(Request(CorrectPassword));
+        var result = await _sut.LoginAsync(Request(CorrectPassword), TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.True(result!.MustChangePassword);
@@ -114,7 +114,7 @@ public class AuthServiceTests
         // The client and the database both use uppercase labels; C# uses PascalCase.
         SetupUser(BuildUser(UserStatus.Active, role));
 
-        var result = await _sut.LoginAsync(Request(CorrectPassword));
+        var result = await _sut.LoginAsync(Request(CorrectPassword), TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, result!.Role);
     }

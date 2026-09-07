@@ -31,7 +31,7 @@ public class AiMetricsServiceTests
     [Fact]
     public async Task CalculateMap50Async_VersionNotFound_ThrowsInvalidOperationException()
     {
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CalculateMap50Async(Guid.NewGuid()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CalculateMap50Async(Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     // UT_Metrics_02: CalculateMap50Async -> Empty Predictions or GTs -> Sets LiveMap50 to 0
@@ -41,11 +41,11 @@ public class AiMetricsServiceTests
         var versionId = Guid.NewGuid();
         var model = new AiModelVersion { ModelVersionId = versionId, VersionCode = "v1", HfFilename = "f", HfRepoId = "r" };
         _db.AiModelVersions.Add(model);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _sut.CalculateMap50Async(versionId);
+        await _sut.CalculateMap50Async(versionId, TestContext.Current.CancellationToken);
 
-        var updatedModel = await _db.AiModelVersions.FindAsync(versionId);
+        var updatedModel = await _db.AiModelVersions.FindAsync(new object[] { versionId }, TestContext.Current.CancellationToken);
         Assert.Equal(0, updatedModel!.LiveMap50);
         Assert.True(updatedModel.LastEvaluatedAt > DateTime.MinValue);
     }
@@ -85,12 +85,12 @@ public class AiMetricsServiceTests
             BboxXmin = 200, BboxYmin = 200, BboxXmax = 300, BboxYmax = 300
         });
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Calculate Map50
-        await _sut.CalculateMap50Async(versionId);
+        await _sut.CalculateMap50Async(versionId, TestContext.Current.CancellationToken);
 
-        var updatedModel = await _db.AiModelVersions.FindAsync(versionId);
+        var updatedModel = await _db.AiModelVersions.FindAsync(new object[] { versionId }, TestContext.Current.CancellationToken);
         
         // TP list is [1, 0]
         // Precisions: [1/1, 1/2] -> [1.0, 0.5]

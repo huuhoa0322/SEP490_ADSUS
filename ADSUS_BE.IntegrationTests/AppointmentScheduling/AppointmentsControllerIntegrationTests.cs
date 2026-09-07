@@ -65,11 +65,11 @@ public class AppointmentsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/appointments", request);
+        var response = await client.PostAsJsonAsync("/api/v1/appointments", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<AppointmentResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<AppointmentResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Equal(201, body!.Code);
         Assert.Equal(AppointmentStatus.Booked, body.Data!.Status);
     }
@@ -90,11 +90,11 @@ public class AppointmentsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/appointments", request);
+        var response = await client.PostAsJsonAsync("/api/v1/appointments", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Contains("not found", body!.Message!, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -123,11 +123,11 @@ public class AppointmentsControllerIntegrationTests
         var request = new BookAppointmentRequest { ScheduleSlotId = slotId };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/appointments", request);
+        var response = await client.PostAsJsonAsync("/api/v1/appointments", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Contains("không còn nhận đặt lịch", body!.Message!);
     }
 
@@ -165,11 +165,11 @@ public class AppointmentsControllerIntegrationTests
         var request = new BookAppointmentRequest { ScheduleSlotId = slotId };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/appointments", request);
+        var response = await client.PostAsJsonAsync("/api/v1/appointments", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Contains("đã có người đặt", body!.Message!);
     }
 
@@ -186,7 +186,7 @@ public class AppointmentsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/appointments", request);
+        var response = await client.PostAsJsonAsync("/api/v1/appointments", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -209,7 +209,7 @@ public class AppointmentsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/appointments", request);
+        var response = await client.PostAsJsonAsync("/api/v1/appointments", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -228,7 +228,7 @@ public class AppointmentsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/appointments", request);
+        var response = await client.PostAsJsonAsync("/api/v1/appointments", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -242,7 +242,7 @@ public class AppointmentsControllerIntegrationTests
         var client = app.CreateClient(); // No auth header
 
         // Act
-        var response = await client.GetAsync("/api/v1/appointments");
+        var response = await client.GetAsync("/api/v1/appointments", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -293,7 +293,8 @@ public class AppointmentsControllerIntegrationTests
         // Act
         var response = await client.PostAsJsonAsync(
             $"/api/v1/appointments/{appointmentId}/cancel",
-            new CancelAppointmentRequest { CancellationReason = "Schedule conflict" });
+            new CancelAppointmentRequest { CancellationReason = "Schedule conflict" },
+            TestContext.Current.CancellationToken);
 
         // Assert - Will return 400 because we need to mock DbContext properly
         // For a proper test, we'd need to mock the database context
@@ -319,7 +320,8 @@ public class AppointmentsControllerIntegrationTests
         // Act
         var response = await client.PostAsJsonAsync(
             $"/api/v1/appointments/{Guid.NewGuid()}/cancel",
-            request);
+            request,
+            TestContext.Current.CancellationToken);
 
         // Assert - Will return 400 due to validation
         Assert.True(true || 
@@ -342,7 +344,8 @@ public class AppointmentsControllerIntegrationTests
         // Act
         var response = await client.PostAsJsonAsync(
             $"/api/v1/appointments/{Guid.NewGuid()}/cancel",
-            request);
+            request,
+            TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -363,7 +366,8 @@ public class AppointmentsControllerIntegrationTests
         // Act
         var response = await client.PostAsJsonAsync(
             $"/api/v1/appointments/{Guid.NewGuid()}/cancel",
-            request);
+            request,
+            TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -382,11 +386,11 @@ public class AppointmentsControllerIntegrationTests
 
         // Act
                   _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<ScheduleSlot>());
-          var response = await client.GetAsync("/api/v1/appointments/slots");
+          var response = await client.GetAsync("/api/v1/appointments/slots", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<OpenSlotResponse>>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<OpenSlotResponse>>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
     }
 
@@ -400,7 +404,7 @@ public class AppointmentsControllerIntegrationTests
 
         // Act
         _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<ScheduleSlot>());
-        var response = await client.GetAsync($"/api/v1/appointments/slots?doctorId={doctorId}");
+        var response = await client.GetAsync($"/api/v1/appointments/slots?doctorId={doctorId}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -418,7 +422,7 @@ public class AppointmentsControllerIntegrationTests
         // Act
         _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<ScheduleSlot>());
         var response = await client.GetAsync(
-            $"/api/v1/appointments/slots?fromDate={fromDate:yyyy-MM-dd}&toDate={toDate:yyyy-MM-dd}");
+            $"/api/v1/appointments/slots?fromDate={fromDate:yyyy-MM-dd}&toDate={toDate:yyyy-MM-dd}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -433,7 +437,7 @@ public class AppointmentsControllerIntegrationTests
 
         // Act
                   _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<ScheduleSlot>());
-          var response = await client.GetAsync("/api/v1/appointments/slots");
+          var response = await client.GetAsync("/api/v1/appointments/slots", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -454,11 +458,11 @@ public class AppointmentsControllerIntegrationTests
             .ReturnsAsync(new List<Appointment>());
 
         // Act
-        var response = await client.GetAsync("/api/v1/appointments");
+        var response = await client.GetAsync("/api/v1/appointments", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<AppointmentSummaryResponse>>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<IReadOnlyList<AppointmentSummaryResponse>>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
     }
 
@@ -473,7 +477,7 @@ public class AppointmentsControllerIntegrationTests
             .ReturnsAsync(new List<Appointment>());
 
         // Act
-        var response = await client.GetAsync("/api/v1/appointments?status=Booked");
+        var response = await client.GetAsync("/api/v1/appointments?status=Booked", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -487,7 +491,7 @@ public class AppointmentsControllerIntegrationTests
         var client = CreateDoctorClient(app);
 
         // Act
-        var response = await client.GetAsync("/api/v1/appointments");
+        var response = await client.GetAsync("/api/v1/appointments", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -509,11 +513,11 @@ public class AppointmentsControllerIntegrationTests
             .ReturnsAsync((Appointment?)null);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/appointments/{appointmentId}");
+        var response = await client.GetAsync($"/api/v1/appointments/{appointmentId}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Equal(404, body!.Code);
     }
 
@@ -525,7 +529,7 @@ public class AppointmentsControllerIntegrationTests
         var client = CreateDoctorClient(app);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/appointments/{Guid.NewGuid()}");
+        var response = await client.GetAsync($"/api/v1/appointments/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -546,7 +550,7 @@ public class AppointmentsControllerIntegrationTests
                 It.IsAny<Guid>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<Appointment>());
 
-        var response = await client.GetAsync("/api/v1/appointments/doctor?fromDate=2026-07-10&toDate=2026-07-16");
+        var response = await client.GetAsync("/api/v1/appointments/doctor?fromDate=2026-07-10&toDate=2026-07-16", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -613,8 +617,8 @@ public class AppointmentsControllerIntegrationTests
                 It.IsAny<Guid>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { appointment });
 
-        var response = await client.GetAsync("/api/v1/appointments/doctor?fromDate=2026-07-10&toDate=2026-07-16");
-        var rawBody = await response.Content.ReadAsStringAsync();
+        var response = await client.GetAsync("/api/v1/appointments/doctor?fromDate=2026-07-10&toDate=2026-07-16", TestContext.Current.CancellationToken);
+        var rawBody = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("\"slotDate\":\"2026-07-10\"", rawBody);
@@ -636,7 +640,7 @@ public class AppointmentsControllerIntegrationTests
             _ => TestAuthHelper.CreateAdminClient(app, _users),
         };
 
-        var response = await client.GetAsync("/api/v1/appointments/doctor?fromDate=2026-07-10&toDate=2026-07-16");
+        var response = await client.GetAsync("/api/v1/appointments/doctor?fromDate=2026-07-10&toDate=2026-07-16", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }

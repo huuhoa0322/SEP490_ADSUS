@@ -39,7 +39,7 @@ public class LoginResponseUserIdTests
 
         // Act
         var response = await sut.LoginAsync(
-            new ADSUS_BE.BLL.Auth.DTOs.LoginRequest { PhoneNumber = doctor.Phone, Password = "password" });
+            new ADSUS_BE.BLL.Auth.DTOs.LoginRequest { PhoneNumber = doctor.Phone, Password = "password" }, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(response);

@@ -26,7 +26,7 @@ public class FakePushNotificationClientTests
             DeepLink: "/reminders/abc");
 
         // Act
-        var sent = await client.SendToUserAsync(userId, msg);
+        var sent = await client.SendToUserAsync(userId, msg, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(1, sent);
@@ -45,9 +45,9 @@ public class FakePushNotificationClientTests
         var user2 = Guid.NewGuid();
 
         // Act
-        await client.SendToUserAsync(user1, new PushMessage("T1", "B1"));
-        await client.SendToUserAsync(user2, new PushMessage("T2", "B2"));
-        await client.SendToUserAsync(user1, new PushMessage("T3", "B3"));
+        await client.SendToUserAsync(user1, new PushMessage("T1", "B1"), TestContext.Current.CancellationToken);
+        await client.SendToUserAsync(user2, new PushMessage("T2", "B2"), TestContext.Current.CancellationToken);
+        await client.SendToUserAsync(user1, new PushMessage("T3", "B3"), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(3, client.SentMessages.Count);
@@ -65,7 +65,7 @@ public class FakePushNotificationClientTests
         var msg = new PushMessage("T", "B");
 
         // Act + Assert
-        await client.SendToUserAsync(Guid.NewGuid(), msg); // không throw
+        await client.SendToUserAsync(Guid.NewGuid(), msg, TestContext.Current.CancellationToken); // không throw
         Assert.Single(client.SentMessages);
     }
 

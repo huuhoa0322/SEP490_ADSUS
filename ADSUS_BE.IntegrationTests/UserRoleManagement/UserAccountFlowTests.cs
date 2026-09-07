@@ -39,17 +39,17 @@ public class UserAccountFlowTests
             fullName = "Nguyễn Thị Bệnh Nhân",
             role = "PATIENT",
             dateOfBirth = "1990-05-20",
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         var created = await createResponse.Content
-            .ReadFromJsonAsync<ApiResponse<CreatedUserAccountResponse>>();
+            .ReadFromJsonAsync<ApiResponse<CreatedUserAccountResponse>>(TestContext.Current.CancellationToken);
         Assert.NotNull(created!.Data);
         Assert.Null(created.Data!.Account.DateOfBirth);
         Assert.False(string.IsNullOrEmpty(created.Data.TemporaryPassword));
 
-        var getResponse = await client.GetAsync($"/api/v1/admin/users/{created.Data.Account.UserId}");
-        var fetched = await getResponse.Content.ReadFromJsonAsync<ApiResponse<UserAccountResponse>>();
+        var getResponse = await client.GetAsync($"/api/v1/admin/users/{created.Data.Account.UserId}", TestContext.Current.CancellationToken);
+        var fetched = await getResponse.Content.ReadFromJsonAsync<ApiResponse<UserAccountResponse>>(TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
         Assert.Null(fetched!.Data!.DateOfBirth);
@@ -67,13 +67,13 @@ public class UserAccountFlowTests
             role = "DOCTOR",
         };
 
-        var firstResponse = await client.PostAsJsonAsync("/api/v1/admin/users", request);
+        var firstResponse = await client.PostAsJsonAsync("/api/v1/admin/users", request, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
 
-        var secondResponse = await client.PostAsJsonAsync("/api/v1/admin/users", request);
+        var secondResponse = await client.PostAsJsonAsync("/api/v1/admin/users", request, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, secondResponse.StatusCode);
-        var body = await secondResponse.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        var body = await secondResponse.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
         Assert.Contains("already used", body!.Message);
     }
 
@@ -88,25 +88,25 @@ public class UserAccountFlowTests
             phoneNumber = "0933333333",
             fullName = "BS. Lê Văn C",
             role = "DOCTOR",
-        });
+        }, TestContext.Current.CancellationToken);
         var created = await createResponse.Content
-            .ReadFromJsonAsync<ApiResponse<CreatedUserAccountResponse>>();
+            .ReadFromJsonAsync<ApiResponse<CreatedUserAccountResponse>>(TestContext.Current.CancellationToken);
         var userId = created!.Data!.Account.UserId;
 
-        var deactivateResponse = await client.PutAsync($"/api/v1/admin/users/{userId}/deactivate", null);
+        var deactivateResponse = await client.PutAsync($"/api/v1/admin/users/{userId}/deactivate", null, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, deactivateResponse.StatusCode);
 
-        var afterDeactivate = await client.GetAsync($"/api/v1/admin/users/{userId}");
+        var afterDeactivate = await client.GetAsync($"/api/v1/admin/users/{userId}", TestContext.Current.CancellationToken);
         var afterDeactivateBody = await afterDeactivate.Content
-            .ReadFromJsonAsync<ApiResponse<UserAccountResponse>>();
+            .ReadFromJsonAsync<ApiResponse<UserAccountResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal("DEACTIVATED", afterDeactivateBody!.Data!.Status);
 
-        var reactivateResponse = await client.PutAsync($"/api/v1/admin/users/{userId}/reactivate", null);
+        var reactivateResponse = await client.PutAsync($"/api/v1/admin/users/{userId}/reactivate", null, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, reactivateResponse.StatusCode);
 
-        var afterReactivate = await client.GetAsync($"/api/v1/admin/users/{userId}");
+        var afterReactivate = await client.GetAsync($"/api/v1/admin/users/{userId}", TestContext.Current.CancellationToken);
         var afterReactivateBody = await afterReactivate.Content
-            .ReadFromJsonAsync<ApiResponse<UserAccountResponse>>();
+            .ReadFromJsonAsync<ApiResponse<UserAccountResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal("ACTIVE", afterReactivateBody!.Data!.Status);
     }
 
@@ -121,21 +121,21 @@ public class UserAccountFlowTests
             phoneNumber = "0944444444",
             fullName = "BS. Phạm Văn D",
             role = "DOCTOR",
-        });
+        }, TestContext.Current.CancellationToken);
         var created = await createResponse.Content
-            .ReadFromJsonAsync<ApiResponse<CreatedUserAccountResponse>>();
+            .ReadFromJsonAsync<ApiResponse<CreatedUserAccountResponse>>(TestContext.Current.CancellationToken);
         var userId = created!.Data!.Account.UserId;
 
         var updateResponse = await client.PutAsJsonAsync($"/api/v1/admin/users/{userId}", new
         {
             fullName = "BS. Phạm Văn D",
             role = "ADMIN",
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, updateResponse.StatusCode);
 
-        var getResponse = await client.GetAsync($"/api/v1/admin/users/{userId}");
-        var fetched = await getResponse.Content.ReadFromJsonAsync<ApiResponse<UserAccountResponse>>();
+        var getResponse = await client.GetAsync($"/api/v1/admin/users/{userId}", TestContext.Current.CancellationToken);
+        var fetched = await getResponse.Content.ReadFromJsonAsync<ApiResponse<UserAccountResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal("DOCTOR", fetched!.Data!.Role);
     }
 

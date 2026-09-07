@@ -40,7 +40,7 @@ public class AdminOnlyAccessTests
         using var app = CreateApp();
         var client = CreateClient(app, role);
 
-        var response = await client.GetAsync(UsersPath);
+        var response = await client.GetAsync(UsersPath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -51,7 +51,7 @@ public class AdminOnlyAccessTests
         using var app = CreateApp();
         var client = CreateClient(app, UserRole.Admin);
 
-        var response = await client.GetAsync(UsersPath);
+        var response = await client.GetAsync(UsersPath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -69,7 +69,7 @@ public class AdminOnlyAccessTests
             phoneNumber = "0988776655",
             fullName = "BS. Trần Văn B",
             role = "DOCTOR",
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -79,7 +79,7 @@ public class AdminOnlyAccessTests
     {
         using var app = CreateApp();
 
-        var response = await app.CreateClient().GetAsync(UsersPath);
+        var response = await app.CreateClient().GetAsync(UsersPath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

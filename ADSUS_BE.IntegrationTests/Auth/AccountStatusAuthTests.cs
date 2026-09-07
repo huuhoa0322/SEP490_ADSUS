@@ -45,7 +45,7 @@ public class AccountStatusAuthTests
         using var app = CreateApp();
         var client = CreateClientWithToken(app);
 
-        var response = await client.GetAsync(OwnProfilePath);
+        var response = await client.GetAsync(OwnProfilePath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -62,7 +62,7 @@ public class AccountStatusAuthTests
         // ...rồi Admin vô hiệu hoá tài khoản. Token trong tay người dùng KHÔNG đổi.
         _account.Status = status;
 
-        var response = await client.GetAsync(OwnProfilePath);
+        var response = await client.GetAsync(OwnProfilePath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -77,7 +77,7 @@ public class AccountStatusAuthTests
         _users.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync((User?)null);
 
-        var response = await client.GetAsync(OwnProfilePath);
+        var response = await client.GetAsync(OwnProfilePath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

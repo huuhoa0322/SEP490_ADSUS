@@ -110,12 +110,12 @@ public class PrescriptionServiceComplianceTests
             VisitDate = DateOnly.FromDateTime(DateTime.UtcNow),
         };
         db.Cases.Add(caseEntity);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var intakeRepo = new Mock<IMedicationIntakeLogRepository>();
         var service = CreateService(db, intakeRepo.Object);
 
-        var result = await service.GetCasePrescriptionsWithComplianceAsync(actorId, caseId);
+        var result = await service.GetCasePrescriptionsWithComplianceAsync(actorId, caseId, TestContext.Current.CancellationToken);
 
         Assert.Empty(result);
     }
@@ -136,7 +136,7 @@ public class PrescriptionServiceComplianceTests
         };
         db.Cases.Add(caseEntity);
         var (p, item) = SeedPrescription(db, doctorId, caseEntity);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // 2 TAKEN + 1 PENDING = 3 total → 66.7%
         var intakeRepo = new Mock<IMedicationIntakeLogRepository>();
@@ -150,7 +150,7 @@ public class PrescriptionServiceComplianceTests
 
         var service = CreateService(db, intakeRepo.Object);
 
-        var result = await service.GetCasePrescriptionsWithComplianceAsync(doctorId, caseId);
+        var result = await service.GetCasePrescriptionsWithComplianceAsync(doctorId, caseId, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         Assert.NotNull(result[0].AdherencePercent);
@@ -177,12 +177,12 @@ public class PrescriptionServiceComplianceTests
         };
         db.Cases.Add(caseEntity);
         var (p, _) = SeedPrescription(db, otherDoctorId, caseEntity);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var intakeRepo = new Mock<IMedicationIntakeLogRepository>();
         var service = CreateService(db, intakeRepo.Object);
 
-        var result = await service.GetCasePrescriptionsWithComplianceAsync(ownDoctorId, caseId);
+        var result = await service.GetCasePrescriptionsWithComplianceAsync(ownDoctorId, caseId, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         Assert.Null(result[0].AdherencePercent);
@@ -207,7 +207,7 @@ public class PrescriptionServiceComplianceTests
         };
         db.Cases.Add(caseEntity);
         var (p, item) = SeedPrescription(db, doctorId, caseEntity);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var intakeRepo = new Mock<IMedicationIntakeLogRepository>();
         intakeRepo.Setup(r => r.GetIntakeStatsByPrescriptionAsync(
@@ -219,7 +219,7 @@ public class PrescriptionServiceComplianceTests
 
         var service = CreateService(db, intakeRepo.Object);
 
-        var result = await service.GetCasePrescriptionsWithComplianceAsync(doctorId, caseId);
+        var result = await service.GetCasePrescriptionsWithComplianceAsync(doctorId, caseId, TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         Assert.NotNull(result[0].AdherencePercent);

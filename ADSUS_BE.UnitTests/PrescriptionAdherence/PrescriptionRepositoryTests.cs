@@ -62,10 +62,10 @@ public class PrescriptionRepositoryTests
     {
         using var db = CreateContext();
         var medicine = NewMedicine();
-        await db.Medicines.AddAsync(medicine);
+        await db.Medicines.AddAsync(medicine, TestContext.Current.CancellationToken);
 
         var doctor = NewDoctor();
-        await db.Users.AddAsync(doctor);
+        await db.Users.AddAsync(doctor, TestContext.Current.CancellationToken);
 
         // GetByIdAsync includes Case — InMemory enforces FK, so Case must exist.
         var patientProfile = new PatientProfile
@@ -76,7 +76,7 @@ public class PrescriptionRepositoryTests
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
-        await db.PatientProfiles.AddAsync(patientProfile);
+        await db.PatientProfiles.AddAsync(patientProfile, TestContext.Current.CancellationToken);
 
         var @case = new Case
         {
@@ -88,7 +88,7 @@ public class PrescriptionRepositoryTests
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
-        await db.Cases.AddAsync(@case);
+        await db.Cases.AddAsync(@case, TestContext.Current.CancellationToken);
 
         var prescription = NewPrescription(doctor.UserId, @case.CaseId, DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow);
         var item = new PrescriptionItem
@@ -101,11 +101,11 @@ public class PrescriptionRepositoryTests
             StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
         };
         prescription.PrescriptionItems.Add(item);
-        await db.Prescriptions.AddAsync(prescription);
-        await db.SaveChangesAsync();
+        await db.Prescriptions.AddAsync(prescription, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var repo = new PrescriptionRepository(db);
-        var fetched = await repo.GetByIdAsync(prescription.PrescriptionId);
+        var fetched = await repo.GetByIdAsync(prescription.PrescriptionId, TestContext.Current.CancellationToken);
 
         Assert.NotNull(fetched);
         Assert.Single(fetched!.PrescriptionItems);
@@ -119,7 +119,7 @@ public class PrescriptionRepositoryTests
         using var db = CreateContext();
         var repo = new PrescriptionRepository(db);
 
-        var fetched = await repo.GetByIdAsync(Guid.NewGuid());
+        var fetched = await repo.GetByIdAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Null(fetched);
     }
@@ -139,10 +139,10 @@ public class PrescriptionRepositoryTests
             new DateOnly(2026, 7, 28),
             new DateTime(2026, 7, 28, 10, 0, 0, DateTimeKind.Utc));
         await db.Prescriptions.AddRangeAsync(oldPrescription, newPrescription);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var repo = new PrescriptionRepository(db);
-        var list = await repo.ListByDoctorAsync(doctor);
+        var list = await repo.ListByDoctorAsync(doctor, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, list.Count);
         Assert.Equal(newPrescription.PrescriptionId, list[0].PrescriptionId);
@@ -157,10 +157,10 @@ public class PrescriptionRepositoryTests
         await db.Prescriptions.AddRangeAsync(
             NewPrescription(doctor1, Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow),
             NewPrescription(doctor2, Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow));
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var repo = new PrescriptionRepository(db);
-        var d1List = await repo.ListByDoctorAsync(doctor1);
+        var d1List = await repo.ListByDoctorAsync(doctor1, TestContext.Current.CancellationToken);
 
         Assert.Single(d1List);
         Assert.Equal(doctor1, d1List[0].DoctorId);
@@ -173,10 +173,10 @@ public class PrescriptionRepositoryTests
         var repo = new PrescriptionRepository(db);
 
         var p = NewPrescription(Guid.NewGuid(), Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), DateTime.UtcNow);
-        await repo.AddAsync(p);
-        await db.SaveChangesAsync();
+        await repo.AddAsync(p, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var fetched = await db.Prescriptions.FindAsync(p.PrescriptionId);
+        var fetched = await db.Prescriptions.FindAsync(new object[] { p.PrescriptionId }, TestContext.Current.CancellationToken);
         Assert.NotNull(fetched);
     }
 }

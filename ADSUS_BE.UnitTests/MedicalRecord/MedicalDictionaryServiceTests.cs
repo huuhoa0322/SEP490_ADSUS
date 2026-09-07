@@ -28,7 +28,7 @@ public class MedicalDictionaryServiceTests
             .ReturnsAsync(new List<MedicalDisease> { disease });
 
         // Act
-        var result = await _sut.GetDiseasesAsync();
+        var result = await _sut.GetDiseasesAsync(TestContext.Current.CancellationToken);
 
         // Assert — field "Id" (không phải "DiseaseId") khớp đúng contract JSON FE đang đọc
         // (xem MedicalDictionaryDTOs.cs).
@@ -47,7 +47,7 @@ public class MedicalDictionaryServiceTests
             .ReturnsAsync(new List<MedicalDisease>());
 
         // Act
-        var result = await _sut.GetDiseasesAsync();
+        var result = await _sut.GetDiseasesAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -69,7 +69,7 @@ public class MedicalDictionaryServiceTests
             .ReturnsAsync(new List<MedicalAllergyType> { allergyType });
 
         // Act
-        var result = await _sut.GetAllergyTypesAsync();
+        var result = await _sut.GetAllergyTypesAsync(TestContext.Current.CancellationToken);
 
         // Assert
         var row = Assert.Single(result);
@@ -86,7 +86,7 @@ public class MedicalDictionaryServiceTests
             .ReturnsAsync(new List<MedicalAllergyType>());
 
         // Act
-        var result = await _sut.GetAllergyTypesAsync();
+        var result = await _sut.GetAllergyTypesAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);

@@ -58,7 +58,7 @@ public class ScheduleSlotServiceTests
             .ReturnsAsync((ScheduleSlot s, CancellationToken _) => s);
 
         // Act
-        var (items, totalCount) = await _sut.ListSlotsAsync(doctorId: _doctorId);
+        var (items, totalCount) = await _sut.ListSlotsAsync(doctorId: _doctorId, ct: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(items);
@@ -70,7 +70,7 @@ public class ScheduleSlotServiceTests
     {
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.ListSlotsAsync(doctorId: Guid.Empty));
+            () => _sut.ListSlotsAsync(doctorId: Guid.Empty, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("doctorId is required", ex.Message);
     }
@@ -87,7 +87,8 @@ public class ScheduleSlotServiceTests
             () => _sut.ListSlotsAsync(
                 fromDate: fromDate,
                 toDate: toDate,
-                doctorId: _doctorId));
+                doctorId: _doctorId,
+                ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("toDate must not be before fromDate", ex.Message);
     }
@@ -109,7 +110,7 @@ public class ScheduleSlotServiceTests
             .ReturnsAsync((ScheduleSlot s, CancellationToken _) => s);
 
         // Act
-        await _sut.EnsureUpcomingSlotsAsync(_doctorId);
+        await _sut.EnsureUpcomingSlotsAsync(_doctorId, TestContext.Current.CancellationToken);
 
         // Assert
         _slotRepo.Verify(r => r.AddAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()),
@@ -121,7 +122,7 @@ public class ScheduleSlotServiceTests
     {
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.EnsureUpcomingSlotsAsync(Guid.Empty));
+            () => _sut.EnsureUpcomingSlotsAsync(Guid.Empty, TestContext.Current.CancellationToken));
 
         Assert.Contains("doctorId is required", ex.Message);
     }
@@ -141,7 +142,7 @@ public class ScheduleSlotServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.EnsureUpcomingSlotsAsync(_patientId));
+            () => _sut.EnsureUpcomingSlotsAsync(_patientId, TestContext.Current.CancellationToken));
 
         Assert.Contains("not a valid Doctor", ex.Message);
     }
@@ -161,7 +162,7 @@ public class ScheduleSlotServiceTests
             .ReturnsAsync(slot);
 
         // Act
-        var result = await _sut.GetSlotAsync(_slotId);
+        var result = await _sut.GetSlotAsync(_slotId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -176,7 +177,7 @@ public class ScheduleSlotServiceTests
             .ReturnsAsync((ScheduleSlot?)null);
 
         // Act
-        var result = await _sut.GetSlotAsync(Guid.NewGuid());
+        var result = await _sut.GetSlotAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Null(result);
@@ -207,7 +208,7 @@ public class ScheduleSlotServiceTests
             .ReturnsAsync((ScheduleSlot s, CancellationToken _) => s);
 
         // Act
-        var result = await _sut.CreateSlotAsync(_doctorId, request);
+        var result = await _sut.CreateSlotAsync(_doctorId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -229,7 +230,7 @@ public class ScheduleSlotServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ValidationException>(
-            () => _sut.CreateSlotAsync(_doctorId, request));
+            () => _sut.CreateSlotAsync(_doctorId, request, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -246,7 +247,7 @@ public class ScheduleSlotServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ValidationException>(
-            () => _sut.CreateSlotAsync(_doctorId, request));
+            () => _sut.CreateSlotAsync(_doctorId, request, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -272,7 +273,7 @@ public class ScheduleSlotServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CreateSlotAsync(_patientId, request));
+            () => _sut.CreateSlotAsync(_patientId, request, TestContext.Current.CancellationToken));
 
         Assert.Contains("not a valid Doctor", ex.Message);
     }
@@ -296,7 +297,7 @@ public class ScheduleSlotServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CreateSlotAsync(_doctorId, request));
+            () => _sut.CreateSlotAsync(_doctorId, request, TestContext.Current.CancellationToken));
 
         Assert.Contains("overlaps", ex.Message);
     }
@@ -334,7 +335,7 @@ public class ScheduleSlotServiceTests
         };
 
         // Act
-        var result = await _sut.UpdateSlotAsync(_slotId, request);
+        var result = await _sut.UpdateSlotAsync(_slotId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -360,7 +361,7 @@ public class ScheduleSlotServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.UpdateSlotAsync(_slotId, request));
+            () => _sut.UpdateSlotAsync(_slotId, request, TestContext.Current.CancellationToken));
 
         Assert.Contains("Cannot update a closed slot", ex.Message);
     }
@@ -380,7 +381,7 @@ public class ScheduleSlotServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.UpdateSlotAsync(Guid.NewGuid(), request));
+            () => _sut.UpdateSlotAsync(Guid.NewGuid(), request, TestContext.Current.CancellationToken));
 
         Assert.Contains("not found", ex.Message);
     }
@@ -409,7 +410,7 @@ public class ScheduleSlotServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.UpdateSlotAsync(_slotId, request));
+            () => _sut.UpdateSlotAsync(_slotId, request, TestContext.Current.CancellationToken));
 
         Assert.Contains("overlaps", ex.Message);
     }
@@ -433,7 +434,7 @@ public class ScheduleSlotServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.CloseSlotAsync(_slotId, forceClose: false);
+        var result = await _sut.CloseSlotAsync(_slotId, forceClose: false, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -463,7 +464,7 @@ public class ScheduleSlotServiceTests
             .ReturnsAsync(slot);
 
         // Act
-        var result = await _sut.CloseSlotAsync(_slotId, forceClose: false);
+        var result = await _sut.CloseSlotAsync(_slotId, forceClose: false, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(1, result.AffectedBookingsCount);
@@ -495,7 +496,7 @@ public class ScheduleSlotServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.CloseSlotAsync(_slotId, forceClose: true);
+        var result = await _sut.CloseSlotAsync(_slotId, forceClose: true, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(1, result.AffectedBookingsCount);
@@ -514,7 +515,7 @@ public class ScheduleSlotServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CloseSlotAsync(_slotId, forceClose: false));
+            () => _sut.CloseSlotAsync(_slotId, forceClose: false, TestContext.Current.CancellationToken));
 
         Assert.Contains("already closed", ex.Message);
     }
@@ -537,7 +538,7 @@ public class ScheduleSlotServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await _sut.ReopenSlotAsync(_slotId);
+        var result = await _sut.ReopenSlotAsync(_slotId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -556,7 +557,7 @@ public class ScheduleSlotServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.ReopenSlotAsync(_slotId));
+            () => _sut.ReopenSlotAsync(_slotId, TestContext.Current.CancellationToken));
 
         Assert.Contains("already open", ex.Message);
     }
@@ -570,7 +571,7 @@ public class ScheduleSlotServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.ReopenSlotAsync(Guid.NewGuid()));
+            () => _sut.ReopenSlotAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
 
         Assert.Contains("not found", ex.Message);
     }
@@ -604,7 +605,7 @@ public class ScheduleSlotServiceTests
             .ReturnsAsync((ScheduleSlot s, CancellationToken _) => s);
 
         // Act
-        await _sut.EnsureDefaultSlotsAsync(_doctorId, weekStart);
+        await _sut.EnsureDefaultSlotsAsync(_doctorId, weekStart, TestContext.Current.CancellationToken);
 
         // Assert
         _slotRepo.Verify(r => r.AddAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()),
@@ -623,7 +624,7 @@ public class ScheduleSlotServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.EnsureDefaultSlotsAsync(_doctorId, notMonday));
+            () => _sut.EnsureDefaultSlotsAsync(_doctorId, notMonday, TestContext.Current.CancellationToken));
 
         Assert.Contains("weekStart must be a Monday", ex.Message);
     }

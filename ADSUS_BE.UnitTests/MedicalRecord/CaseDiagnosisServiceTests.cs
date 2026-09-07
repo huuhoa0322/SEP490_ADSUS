@@ -88,7 +88,7 @@ public class CaseDiagnosisServiceTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png"));
+            () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png", TestContext.Current.CancellationToken));
         Assert.Contains("Hệ thống chưa có phiên bản AI nào được kích hoạt", ex.Message);
     }
 
@@ -114,7 +114,7 @@ public class CaseDiagnosisServiceTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png"));
+            () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png", TestContext.Current.CancellationToken));
         Assert.Contains("Lỗi từ hệ thống AI: Model Server Down", ex.Message);
     }
 
@@ -140,7 +140,7 @@ public class CaseDiagnosisServiceTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAnyAsync<JsonException>(
-            () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png"));
+            () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public class CaseDiagnosisServiceTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<TaskCanceledException>(
-            () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png"));
+            () => _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -186,7 +186,7 @@ public class CaseDiagnosisServiceTests : IDisposable
             });
 
         // Act
-        var result = await _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png");
+        var result = await _sut.AnalyzeImageAsync(_caseId, MakeFakeImageStream(), "test.png", "image/png", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(JsonValueKind.Array, result.ValueKind);
@@ -224,7 +224,7 @@ public class CaseDiagnosisServiceTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.ConfirmAnalysisAsync(_caseId, MakeValidConfirmRequest()));
+            () => _sut.ConfirmAnalysisAsync(_caseId, MakeValidConfirmRequest(), TestContext.Current.CancellationToken));
         Assert.Contains("Hệ thống chưa có phiên bản AI nào được kích hoạt", ex.Message);
     }
 
@@ -239,7 +239,7 @@ public class CaseDiagnosisServiceTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAnyAsync<JsonException>(
-            () => _sut.ConfirmAnalysisAsync(_caseId, request));
+            () => _sut.ConfirmAnalysisAsync(_caseId, request, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -251,7 +251,7 @@ public class CaseDiagnosisServiceTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<Exception>(
-            () => _sut.ConfirmAnalysisAsync(_caseId, MakeValidConfirmRequest()));
+            () => _sut.ConfirmAnalysisAsync(_caseId, MakeValidConfirmRequest(), TestContext.Current.CancellationToken));
         
         Assert.Equal("S3 Bucket down", ex.Message);
         Assert.Empty(_db.UltrasoundImages); // Transaction not started
@@ -274,7 +274,7 @@ public class CaseDiagnosisServiceTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.ConfirmAnalysisAsync(_caseId, MakeValidConfirmRequest()));
+            () => _sut.ConfirmAnalysisAsync(_caseId, MakeValidConfirmRequest(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -283,7 +283,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         // Arrange
         var activeModel = new AiModelVersion { ModelVersionId = _activeModelId, LiveTp = 0, LiveFp = 0, LiveFn = 0, VersionCode = "v1", HfRepoId = "repo", HfFilename = "file" };
         _db.AiModelVersions.Add(activeModel);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeModel);
@@ -298,20 +298,20 @@ public class CaseDiagnosisServiceTests : IDisposable
         var request = MakeValidConfirmRequest(aiJson, docJson);
 
         // Act
-        await _sut.ConfirmAnalysisAsync(_caseId, request);
+        await _sut.ConfirmAnalysisAsync(_caseId, request, TestContext.Current.CancellationToken);
 
         // Assert
         // Storage should be called 3 times (original, yolo txt, burnt)
         _storageMock.Verify(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
 
         // Verify Database Records
-        var image = await _db.UltrasoundImages.SingleAsync();
+        var image = await _db.UltrasoundImages.SingleAsync(TestContext.Current.CancellationToken);
         Assert.Equal(_caseId, image.CaseId);
         
-        var aiPreds = await _db.AiPredictions.ToListAsync();
+        var aiPreds = await _db.AiPredictions.ToListAsync(TestContext.Current.CancellationToken);
         Assert.Equal(2, aiPreds.Count);
 
-        var docAnns = await _db.DoctorAnnotations.ToListAsync();
+        var docAnns = await _db.DoctorAnnotations.ToListAsync(TestContext.Current.CancellationToken);
         Assert.Equal(2, docAnns.Count);
 
         // Verify Metrics (TP=1, FP=1, FN=1)
@@ -326,7 +326,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         // Arrange
         var activeModel = new AiModelVersion { ModelVersionId = _activeModelId, LiveTp = 0, LiveFp = 0, LiveFn = 0, VersionCode = "v1", HfRepoId = "repo", HfFilename = "file" };
         _db.AiModelVersions.Add(activeModel);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeModel);
@@ -341,7 +341,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         var request = MakeValidConfirmRequest(aiJson, docJson);
 
         // Act
-        await _sut.ConfirmAnalysisAsync(_caseId, request);
+        await _sut.ConfirmAnalysisAsync(_caseId, request, TestContext.Current.CancellationToken);
 
         // Assert
         // Only 1 TP because matchedGtIndices prevents double counting.
@@ -357,7 +357,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         // Arrange
         var activeModel = new AiModelVersion { ModelVersionId = _activeModelId, LiveTp = 0, LiveFp = 0, LiveFn = 0, VersionCode = "v1", HfRepoId = "repo", HfFilename = "file" };
         _db.AiModelVersions.Add(activeModel);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeModel);
@@ -368,7 +368,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         var request = MakeValidConfirmRequest(aiJson, docJson);
 
         // Act
-        await _sut.ConfirmAnalysisAsync(_caseId, request);
+        await _sut.ConfirmAnalysisAsync(_caseId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(0, activeModel.LiveTp);
@@ -382,7 +382,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         // Arrange - Bao phủ logic khi AI không dự đoán được gì nhưng bác sĩ lại vẽ tay (False Negative hoàn toàn)
         var activeModel = new AiModelVersion { ModelVersionId = _activeModelId, LiveTp = 0, LiveFp = 0, LiveFn = 0, VersionCode = "v1", HfRepoId = "repo", HfFilename = "file" };
         _db.AiModelVersions.Add(activeModel);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeModel);
@@ -393,7 +393,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         var request = MakeValidConfirmRequest(aiJson, docJson);
 
         // Act
-        await _sut.ConfirmAnalysisAsync(_caseId, request);
+        await _sut.ConfirmAnalysisAsync(_caseId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(0, activeModel.LiveTp);

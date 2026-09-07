@@ -51,13 +51,13 @@ public class InvoiceServiceTests
         context.MedicinePackagings.AddRange(blisterPack, pillPack);
         context.Prescriptions.Add(prescription);
         context.PrescriptionItems.Add(pItem);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
         var invoiceId = await service.GenerateInvoiceForCaseAsync(caseId);
 
         // Assert
-        var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId);
+        var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId, TestContext.Current.CancellationToken);
         Assert.Equal(InvoiceStatus.PENDING, invoice.Status);
         Assert.Single(invoice.InvoiceItems); // Should only have 1 item: 2 Vỉ
         
@@ -97,13 +97,13 @@ public class InvoiceServiceTests
         context.MedicinePackagings.Add(packPack);
         context.Prescriptions.Add(prescription);
         context.PrescriptionItems.Add(pItem);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
         var invoiceId = await service.GenerateInvoiceForCaseAsync(caseId);
 
         // Assert
-        var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId);
+        var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId, TestContext.Current.CancellationToken);
         Assert.Single(invoice.InvoiceItems);
         
         var item = invoice.InvoiceItems.First();
@@ -143,13 +143,13 @@ public class InvoiceServiceTests
         context.MedicinePackagings.AddRange(blisterPack, pillPack);
         context.Prescriptions.Add(prescription);
         context.PrescriptionItems.Add(pItem);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
         var invoiceId = await service.GenerateInvoiceForCaseAsync(caseId);
 
         // Assert
-        var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId);
+        var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId, TestContext.Current.CancellationToken);
         Assert.Equal(2, invoice.InvoiceItems.Count); // 1 item cho Vỉ, 1 item cho Viên
         
         var blisterItem = invoice.InvoiceItems.First(i => i.Description.Contains("Vỉ"));
@@ -189,11 +189,11 @@ public class InvoiceServiceTests
         context.MedicinePackagings.Add(packPack);
         context.Prescriptions.Add(prescription);
         context.PrescriptionItems.Add(pItem);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var invoiceId = await service.GenerateInvoiceForCaseAsync(caseId);
 
-        var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId);
+        var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId, TestContext.Current.CancellationToken);
         // Must be exactly 1 row (no separate "(Làm tròn lên)" row)
         Assert.Single(invoice.InvoiceItems);
         var item = invoice.InvoiceItems.Single();
@@ -235,11 +235,11 @@ public class InvoiceServiceTests
         context.MedicinePackagings.AddRange(boxPack, packPack);
         context.Prescriptions.Add(prescription);
         context.PrescriptionItems.Add(pItem);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var invoiceId = await service.GenerateInvoiceForCaseAsync(caseId);
 
-        var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId);
+        var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId, TestContext.Current.CancellationToken);
         // Only 1 row (all Gói, no Hộp since 154 < 250)
         Assert.Single(invoice.InvoiceItems);
         var item = invoice.InvoiceItems.Single();
@@ -276,7 +276,7 @@ public class InvoiceServiceTests
         context.MedicinePackagings.Add(pillPack);
         context.Prescriptions.Add(prescription);
         context.PrescriptionItems.Add(pItem);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act & Assert
         await Assert.ThrowsAsync<BusinessException>(() => service.GenerateInvoiceForCaseAsync(caseId));
@@ -321,7 +321,7 @@ public class InvoiceServiceTests
             TotalAmount = 50000,
             CreatedAt = DateTime.UtcNow
         });
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
         var returnedId = await service.GenerateInvoiceForCaseAsync(caseId);
@@ -351,7 +351,7 @@ public class InvoiceServiceTests
             CreatedAt = DateTime.UtcNow,
             PaidAt = DateTime.UtcNow
         });
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
         var returnedId = await service.GenerateInvoiceForCaseAsync(caseId);
@@ -420,7 +420,7 @@ public class InvoiceServiceTests
             CreatedAt = DateTime.UtcNow,
             PaidAt = DateTime.UtcNow
         });
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(
@@ -448,12 +448,12 @@ public class InvoiceServiceTests
             Status = InvoiceStatus.PENDING,
             TotalAmount = 50000
         });
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var request = new CancelInvoiceRequest { Reason = "Bệnh nhân đổi ý" };
         await service.CancelInvoiceAsync(invoiceId, request);
 
-        var invoice = await context.Invoices.FindAsync(invoiceId);
+        var invoice = await context.Invoices.FindAsync(new object[] { invoiceId }, TestContext.Current.CancellationToken);
         Assert.Equal(InvoiceStatus.CANCELLED, invoice!.Status);
         Assert.Equal("Bệnh nhân đổi ý", invoice.CancelledReason);
     }
@@ -511,20 +511,20 @@ public class InvoiceServiceTests
             PrescriptionItemId = pItemId
         });
 
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var request = new CancelInvoiceRequest { Reason = "Nhầm lẫn kê đơn" };
         await service.CancelInvoiceAsync(invoiceId, request);
 
-        var invoice = await context.Invoices.FindAsync(invoiceId);
+        var invoice = await context.Invoices.FindAsync(new object[] { invoiceId }, TestContext.Current.CancellationToken);
         Assert.Equal(InvoiceStatus.CANCELLED, invoice!.Status);
         Assert.Equal("Nhầm lẫn kê đơn", invoice.CancelledReason);
 
-        var batch = await context.MedicineBatches.FindAsync(batchId);
+        var batch = await context.MedicineBatches.FindAsync(new object[] { batchId }, TestContext.Current.CancellationToken);
         Assert.Equal(70, batch!.QuantityBase); // 50 + 20
 
         var reverseTxn = await context.InventoryTransactions
-            .FirstOrDefaultAsync(t => t.TxnType == InventoryTxnType.Adjustment && t.Reason == "Hoàn kho tự động do hủy hóa đơn");
+            .FirstOrDefaultAsync(t => t.TxnType == InventoryTxnType.Adjustment && t.Reason == "Hoàn kho tự động do hủy hóa đơn", TestContext.Current.CancellationToken);
         Assert.NotNull(reverseTxn);
         Assert.Equal(20, reverseTxn.QuantityBase);
         Assert.Equal(pItemId, reverseTxn.PrescriptionItemId);
@@ -558,7 +558,7 @@ public class InvoiceServiceTests
             Id = invoiceId,
             Status = InvoiceStatus.CANCELLED
         });
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var request = new CancelInvoiceRequest { Reason = "Lý do" };
         var ex = await Assert.ThrowsAsync<BusinessException>(
@@ -592,7 +592,7 @@ public class InvoiceServiceTests
             DurationDays = 5,
             ScheduleSlots = new[] { ADSUS_BE.DAL.Entities.ReminderSlot.Morning, ADSUS_BE.DAL.Entities.ReminderSlot.Noon, ADSUS_BE.DAL.Entities.ReminderSlot.Evening }
         });
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var scheduledDoses = Enumerable.Range(0, 15).Select(i => new ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.ScheduledDose(pItemId, DateTime.UtcNow.AddHours(i))).ToList();
         
@@ -602,7 +602,7 @@ public class InvoiceServiceTests
         await service.PayAndDispenseAsync(invoiceId, PaymentMethod.CASH);
 
         logRepoMock.Verify(r => r.AddRangeAsync(It.Is<IEnumerable<MedicationIntakeLog>>(logs => logs.Count() == 15 && logs.All(l => l.ConfirmedAt == null)), default), Moq.Times.Once);
-        var invoice = await context.Invoices.FindAsync(invoiceId);
+        var invoice = await context.Invoices.FindAsync(new object[] { invoiceId }, TestContext.Current.CancellationToken);
         Assert.Equal(InvoiceStatus.PAID, invoice!.Status);
     }
 
@@ -630,7 +630,7 @@ public class InvoiceServiceTests
             DurationDays = 1,
             ScheduleSlots = new[] { ADSUS_BE.DAL.Entities.ReminderSlot.Morning }
         });
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         scheduleMock.Setup(s => s.GenerateAsync(It.IsAny<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.PrescriptionItemWithPatient>(), It.IsAny<IReadOnlyList<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(new List<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.ScheduledDose>());
@@ -666,7 +666,7 @@ public class InvoiceServiceTests
             DurationDays = 1,
             ScheduleSlots = new[] { ADSUS_BE.DAL.Entities.ReminderSlot.Morning }
         });
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         scheduleMock.Setup(s => s.GenerateAsync(It.IsAny<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.PrescriptionItemWithPatient>(), It.IsAny<IReadOnlyList<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(new List<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.ScheduledDose>());
@@ -695,14 +695,14 @@ public class InvoiceServiceTests
         {
             context.MedicationIntakeLogs.Add(new MedicationIntakeLog { IntakeId = Guid.NewGuid(), PrescriptionItemId = pItemId, ConfirmedAt = null });
         }
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await service.CancelInvoiceAsync(invoiceId, new CancelInvoiceRequest { Reason = "Test" });
 
         Assert.Empty(context.MedicationIntakeLogs);
-        var invoice = await context.Invoices.FindAsync(invoiceId);
+        var invoice = await context.Invoices.FindAsync(new object[] { invoiceId }, TestContext.Current.CancellationToken);
         Assert.Equal(InvoiceStatus.CANCELLED, invoice!.Status);
-        var prescription = await context.Prescriptions.FirstAsync();
+        var prescription = await context.Prescriptions.FirstAsync(TestContext.Current.CancellationToken);
         Assert.Equal(PrescriptionStatus.Cancelled, prescription.Status);
     }
 
@@ -724,11 +724,11 @@ public class InvoiceServiceTests
         // 3 Taken, 7 Pending
         for (int i = 0; i < 3; i++) context.MedicationIntakeLogs.Add(new MedicationIntakeLog { IntakeId = Guid.NewGuid(), PrescriptionItemId = pItemId, ConfirmedAt = DateTime.UtcNow });
         for (int i = 0; i < 7; i++) context.MedicationIntakeLogs.Add(new MedicationIntakeLog { IntakeId = Guid.NewGuid(), PrescriptionItemId = pItemId, ConfirmedAt = null });
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await service.CancelInvoiceAsync(invoiceId, new CancelInvoiceRequest { Reason = "Test" });
 
-        var remainingLogs = await context.MedicationIntakeLogs.ToListAsync();
+        var remainingLogs = await context.MedicationIntakeLogs.ToListAsync(TestContext.Current.CancellationToken);
         Assert.Equal(3, remainingLogs.Count);
         Assert.All(remainingLogs, l => Assert.NotNull(l.ConfirmedAt));
     }
@@ -756,16 +756,16 @@ public class InvoiceServiceTests
         for (int i = 0; i < 3; i++) context.MedicationIntakeLogs.Add(new MedicationIntakeLog { IntakeId = Guid.NewGuid(), PrescriptionItemId = pItemId, ConfirmedAt = DateTime.UtcNow });
         for (int i = 0; i < 7; i++) context.MedicationIntakeLogs.Add(new MedicationIntakeLog { IntakeId = Guid.NewGuid(), PrescriptionItemId = pItemId, ConfirmedAt = null });
         
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await service.CancelInvoiceAsync(invoiceId, new CancelInvoiceRequest { Reason = "Test" });
 
-        var reverseTxn = await context.InventoryTransactions.FirstOrDefaultAsync(t => t.TxnType == InventoryTxnType.Adjustment);
+        var reverseTxn = await context.InventoryTransactions.FirstOrDefaultAsync(t => t.TxnType == InventoryTxnType.Adjustment, TestContext.Current.CancellationToken);
         Assert.NotNull(reverseTxn);
         // Refund = (7 / 10) * 10 = 7
         Assert.Equal(7, reverseTxn.QuantityBase);
         
-        var batch = await context.MedicineBatches.FindAsync(batchId);
+        var batch = await context.MedicineBatches.FindAsync(new object[] { batchId }, TestContext.Current.CancellationToken);
         Assert.Equal(57, batch!.QuantityBase);
     }
 
@@ -791,14 +791,14 @@ public class InvoiceServiceTests
         // 10 Taken
         for (int i = 0; i < 10; i++) context.MedicationIntakeLogs.Add(new MedicationIntakeLog { IntakeId = Guid.NewGuid(), PrescriptionItemId = pItemId, ConfirmedAt = DateTime.UtcNow });
         
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await service.CancelInvoiceAsync(invoiceId, new CancelInvoiceRequest { Reason = "Test" });
 
-        var reverseTxn = await context.InventoryTransactions.FirstOrDefaultAsync(t => t.TxnType == InventoryTxnType.Adjustment);
+        var reverseTxn = await context.InventoryTransactions.FirstOrDefaultAsync(t => t.TxnType == InventoryTxnType.Adjustment, TestContext.Current.CancellationToken);
         Assert.Null(reverseTxn); // No refund
         
-        var batch = await context.MedicineBatches.FindAsync(batchId);
+        var batch = await context.MedicineBatches.FindAsync(new object[] { batchId }, TestContext.Current.CancellationToken);
         Assert.Equal(50, batch!.QuantityBase); // Remains 50
     }
 }

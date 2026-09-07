@@ -64,7 +64,7 @@ public class AppointmentRepositoryTests
             BuildAppointment(slotForDoctorInRange.SlotId, patientProfile.PatientProfileId, AppointmentStatus.Booked),
             BuildAppointment(slotForDoctorOutOfRange.SlotId, patientProfile.PatientProfileId, AppointmentStatus.Booked),
             BuildAppointment(slotForOtherDoctor.SlotId, patientProfile.PatientProfileId, AppointmentStatus.Booked));
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new AppointmentRepository(db);
         var result = await sut.ListByDoctorAsync(doctorId, inRangeDate, inRangeDate, CancellationToken.None);

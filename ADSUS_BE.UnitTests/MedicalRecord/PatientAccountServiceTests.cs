@@ -51,7 +51,7 @@ public class PatientAccountServiceTests
               .Returns(Task.CompletedTask);
 
         // Act
-        var response = await _sut.CreateAsync(request, _actingNurseId);
+        var response = await _sut.CreateAsync(request, _actingNurseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(UserRole.Patient, saved!.Role);
@@ -73,7 +73,7 @@ public class PatientAccountServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ConflictException>(
-            () => _sut.CreateAsync(ValidCreateRequest(), _actingNurseId));
+            () => _sut.CreateAsync(ValidCreateRequest(), _actingNurseId, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class PatientAccountServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ConflictException>(
-            () => _sut.CreateAsync(ValidCreateRequest(), _actingNurseId));
+            () => _sut.CreateAsync(ValidCreateRequest(), _actingNurseId, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class PatientAccountServiceTests
               .Returns(Task.CompletedTask);
 
         // Act
-        await _sut.CreateAsync(request, _actingNurseId);
+        await _sut.CreateAsync(request, _actingNurseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(logged);
@@ -131,7 +131,7 @@ public class PatientAccountServiceTests
               .Returns(Task.CompletedTask);
 
         // Act
-        var response = await _sut.CreateAsync(request, _actingNurseId);
+        var response = await _sut.CreateAsync(request, _actingNurseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Null(saved!.Email);
@@ -154,7 +154,7 @@ public class PatientAccountServiceTests
               .Returns(Task.CompletedTask);
 
         // Act
-        var response = await _sut.CreateAsync(request, _actingNurseId);
+        var response = await _sut.CreateAsync(request, _actingNurseId, TestContext.Current.CancellationToken);
 
         // Assert
         var pwd = response.TemporaryPassword;
@@ -192,7 +192,7 @@ public class PatientAccountServiceTests
               .ReturnsAsync(account);
 
         // Act
-        var response = await _sut.GetAccountAsync(account.UserId);
+        var response = await _sut.GetAccountAsync(account.UserId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(account.UserId, response.UserId);
@@ -210,7 +210,7 @@ public class PatientAccountServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.GetAccountAsync(doctorAccount.UserId));
+            () => _sut.GetAccountAsync(doctorAccount.UserId, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -222,7 +222,7 @@ public class PatientAccountServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.GetAccountAsync(Guid.NewGuid()));
+            () => _sut.GetAccountAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -237,7 +237,7 @@ public class PatientAccountServiceTests
               .ReturnsAsync(false);
 
         // Act
-        var response = await _sut.UpdateContactAsync(account.UserId, ValidUpdateRequest(), _actingNurseId);
+        var response = await _sut.UpdateContactAsync(account.UserId, ValidUpdateRequest(), _actingNurseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("Lê Thị Hoà", account.FullName);
@@ -258,7 +258,7 @@ public class PatientAccountServiceTests
               .ReturnsAsync(false);
 
         // Act
-        await _sut.UpdateContactAsync(account.UserId, ValidUpdateRequest(), _actingNurseId);
+        await _sut.UpdateContactAsync(account.UserId, ValidUpdateRequest(), _actingNurseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(UserRole.Patient, account.Role);
@@ -277,7 +277,7 @@ public class PatientAccountServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.UpdateContactAsync(doctorAccount.UserId, ValidUpdateRequest(), _actingNurseId));
+            () => _sut.UpdateContactAsync(doctorAccount.UserId, ValidUpdateRequest(), _actingNurseId, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -289,7 +289,7 @@ public class PatientAccountServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.UpdateContactAsync(Guid.NewGuid(), ValidUpdateRequest(), _actingNurseId));
+            () => _sut.UpdateContactAsync(Guid.NewGuid(), ValidUpdateRequest(), _actingNurseId, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -306,7 +306,7 @@ public class PatientAccountServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ConflictException>(
-            () => _sut.UpdateContactAsync(account.UserId, request, _actingNurseId));
+            () => _sut.UpdateContactAsync(account.UserId, request, _actingNurseId, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -326,7 +326,7 @@ public class PatientAccountServiceTests
               .Returns(Task.CompletedTask);
 
         // Act
-        await _sut.UpdateContactAsync(account.UserId, ValidUpdateRequest(), _actingNurseId);
+        await _sut.UpdateContactAsync(account.UserId, ValidUpdateRequest(), _actingNurseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(_actingNurseId, logged!.ActorId);
@@ -348,7 +348,7 @@ public class PatientAccountServiceTests
                           ADSUS_BE.BLL.UserRoleManagement.DTOs.AccountOperationResult.Success, "Ab3xyz9pqr2K"));
 
         // Act
-        await _sut.ResetPasswordAsync(account.UserId, _actingNurseId);
+        await _sut.ResetPasswordAsync(account.UserId, _actingNurseId, TestContext.Current.CancellationToken);
 
         // Assert
         _passwordReset.Verify(p => p.AdminResetAsync(
@@ -366,7 +366,7 @@ public class PatientAccountServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.ResetPasswordAsync(adminAccount.UserId, _actingNurseId));
+            () => _sut.ResetPasswordAsync(adminAccount.UserId, _actingNurseId, TestContext.Current.CancellationToken));
 
         _passwordReset.Verify(p => p.AdminResetAsync(
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -387,7 +387,7 @@ public class PatientAccountServiceTests
                           ADSUS_BE.BLL.UserRoleManagement.DTOs.AccountOperationResult.Success,
                           "Ab3xyz9pqr2K"));
 
-        var result = await _sut.ResetPasswordAsync(account.UserId, _actingNurseId);
+        var result = await _sut.ResetPasswordAsync(account.UserId, _actingNurseId, TestContext.Current.CancellationToken);
 
         Assert.Equal("Ab3xyz9pqr2K", result);
     }
@@ -401,7 +401,7 @@ public class PatientAccountServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.ResetPasswordAsync(Guid.NewGuid(), _actingNurseId));
+            () => _sut.ResetPasswordAsync(Guid.NewGuid(), _actingNurseId, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -422,7 +422,7 @@ public class PatientAccountServiceTests
               .Returns(Task.CompletedTask);
 
         // Act
-        await _sut.ResetPasswordAsync(account.UserId, _actingNurseId);
+        await _sut.ResetPasswordAsync(account.UserId, _actingNurseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(_actingNurseId, logged!.ActorId);

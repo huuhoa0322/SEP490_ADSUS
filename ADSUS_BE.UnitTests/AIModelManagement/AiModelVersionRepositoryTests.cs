@@ -37,7 +37,7 @@ public class AiModelVersionRepositoryTests
             ModelVersionId = Guid.NewGuid(), VersionCode = "v3", Status = ModelVersionStatus.Inactive,
             HfRepoId = "r", HfFilename = "f", RegisteredAt = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc)
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var (items, totalItems) = await sut.SearchAsync(null, page: 1, pageSize: 20, CancellationToken.None);
 
@@ -69,7 +69,7 @@ public class AiModelVersionRepositoryTests
             ModelVersionId = Guid.NewGuid(), VersionCode = "unrelated", Status = ModelVersionStatus.Inactive,
             HfRepoId = "r", HfFilename = "resnet.pt", RegisteredAt = DateTime.UtcNow
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var (items, totalItems) = await sut.SearchAsync("yolo26", page: 1, pageSize: 20, CancellationToken.None);
 
@@ -94,7 +94,7 @@ public class AiModelVersionRepositoryTests
             HfRepoId = "r", HfFilename = "f", RegisteredAt = DateTime.UtcNow
         };
         db.AiModelVersions.Add(version);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         db.ChangeTracker.Clear();
 
         var (items, _) = await sut.SearchAsync(null, page: 1, pageSize: 20, CancellationToken.None);

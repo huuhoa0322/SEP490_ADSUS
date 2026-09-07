@@ -52,7 +52,7 @@ public class CaseServiceTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await _sut.GetForStaffAsync(medicalCase.CaseId);
+        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(medicalCase.CaseId, response.CaseId);
@@ -67,7 +67,7 @@ public class CaseServiceTests
               .ReturnsAsync((Case?)null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.GetForStaffAsync(Guid.NewGuid()));
+        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.GetForStaffAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     // ---------- GetForPatientAsync (GB-05: 3 kịch bản trượt phải trả CÙNG 1 lỗi) ----------
@@ -87,7 +87,7 @@ public class CaseServiceTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await _sut.GetForPatientAsync(medicalCase.CaseId, patientUser.UserId);
+        var response = await _sut.GetForPatientAsync(medicalCase.CaseId, patientUser.UserId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(medicalCase.CaseId, response.CaseId);
@@ -120,7 +120,7 @@ public class CaseServiceTests
                 .ReturnsAsync("https://signed-url.example/anh.png");
 
         // Act
-        var response = await _sut.GetForPatientAsync(medicalCase.CaseId, patientUser.UserId);
+        var response = await _sut.GetForPatientAsync(medicalCase.CaseId, patientUser.UserId, TestContext.Current.CancellationToken);
 
         // Assert
         var single = Assert.Single(response.UltrasoundImages);
@@ -146,7 +146,7 @@ public class CaseServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.GetForPatientAsync(confirmedNotEndedCase.CaseId, patientUser.UserId));
+            () => _sut.GetForPatientAsync(confirmedNotEndedCase.CaseId, patientUser.UserId, TestContext.Current.CancellationToken));
         Assert.Equal("Case not found.", ex.Message);
     }
 
@@ -159,7 +159,7 @@ public class CaseServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.GetForPatientAsync(Guid.NewGuid(), Guid.NewGuid()));
+            () => _sut.GetForPatientAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken));
         Assert.Equal("Case not found.", ex.Message);
     }
 
@@ -178,7 +178,7 @@ public class CaseServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.GetForPatientAsync(someoneElsesCase.CaseId, callerUser.UserId));
+            () => _sut.GetForPatientAsync(someoneElsesCase.CaseId, callerUser.UserId, TestContext.Current.CancellationToken));
         Assert.Equal("Case not found.", ex.Message);
     }
 
@@ -198,7 +198,7 @@ public class CaseServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.GetForPatientAsync(pendingCase.CaseId, patientUser.UserId));
+            () => _sut.GetForPatientAsync(pendingCase.CaseId, patientUser.UserId, TestContext.Current.CancellationToken));
         Assert.Equal("Case not found.", ex.Message);
     }
 
@@ -217,7 +217,7 @@ public class CaseServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.GetForPatientAsync(Guid.NewGuid(), patientUser.UserId));
+            () => _sut.GetForPatientAsync(Guid.NewGuid(), patientUser.UserId, TestContext.Current.CancellationToken));
         Assert.Equal("Case not found.", ex.Message);
     }
 
@@ -237,7 +237,7 @@ public class CaseServiceTests
               .ReturnsAsync((new List<Case>(), 0));
 
         // Act
-        await _sut.ListByPatientProfileAsync(profile.PatientProfileId, "confirmed", "desc", 1, 20);
+        await _sut.ListByPatientProfileAsync(profile.PatientProfileId, "confirmed", "desc", 1, 20, TestContext.Current.CancellationToken);
 
         // Assert
         _cases.Verify(r => r.SearchByPatientAsync(
@@ -256,7 +256,7 @@ public class CaseServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.ListByPatientProfileAsync(profile.PatientProfileId, "BOGUS", "desc", 1, 20));
+            () => _sut.ListByPatientProfileAsync(profile.PatientProfileId, "BOGUS", "desc", 1, 20, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -273,7 +273,7 @@ public class CaseServiceTests
                   profile.PatientProfileId, null, "desc", 1, 20, It.IsAny<CancellationToken>()))
               .ReturnsAsync((new List<Case> { medicalCase }, 1));
 
-        var result = await _sut.ListByPatientProfileAsync(profile.PatientProfileId, null, "desc", 1, 20);
+        var result = await _sut.ListByPatientProfileAsync(profile.PatientProfileId, null, "desc", 1, 20, TestContext.Current.CancellationToken);
 
         Assert.Equal(medicalCase.CreatedAt, result.Items.Single().CreatedAt);
     }
@@ -287,7 +287,7 @@ public class CaseServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.ListByPatientProfileAsync(Guid.NewGuid(), null, "desc", 1, 20));
+            () => _sut.ListByPatientProfileAsync(Guid.NewGuid(), null, "desc", 1, 20, TestContext.Current.CancellationToken));
     }
 
     // ---------- ListMineAsync ----------
@@ -310,7 +310,7 @@ public class CaseServiceTests
               .ReturnsAsync((new List<Case>(), 0));
 
         // Act
-        await _sut.ListMineAsync(patientUser.UserId, 1, 20);
+        await _sut.ListMineAsync(patientUser.UserId, 1, 20, TestContext.Current.CancellationToken);
 
         // Assert
         _cases.Verify(r => r.SearchByPatientAsync(
@@ -336,7 +336,7 @@ public class CaseServiceTests
               .ReturnsAsync((new List<Case> { endedCase }, 1));
 
         // Act
-        var result = await _sut.ListMineAsync(patientUser.UserId, 1, 20);
+        var result = await _sut.ListMineAsync(patientUser.UserId, 1, 20, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(result.Items);
@@ -351,7 +351,7 @@ public class CaseServiceTests
                  .ReturnsAsync((PatientProfile?)null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.ListMineAsync(Guid.NewGuid(), 1, 20));
+        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.ListMineAsync(Guid.NewGuid(), 1, 20, TestContext.Current.CancellationToken));
     }
 
     // ---------- ListImagesAsync ----------
@@ -374,7 +374,7 @@ public class CaseServiceTests
                 .ReturnsAsync("https://signed-url.example/anh.png");
 
         // Act
-        var result = await _sut.ListImagesAsync(medicalCase.CaseId);
+        var result = await _sut.ListImagesAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
 
         // Assert
         var single = Assert.Single(result);
@@ -389,7 +389,7 @@ public class CaseServiceTests
               .ReturnsAsync((Case?)null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.ListImagesAsync(Guid.NewGuid()));
+        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.ListImagesAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     // ---------- CreateAsync ----------
@@ -426,7 +426,7 @@ public class CaseServiceTests
               .ReturnsAsync(() => createdCase);
 
         // Act
-        var response = await _sut.CreateAsync(request);
+        var response = await _sut.CreateAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("CREATED", response.Status);
@@ -467,7 +467,7 @@ public class CaseServiceTests
               .ReturnsAsync(() => createdCase);
 
         // Act
-        var response = await _sut.CreateAsync(request);
+        var response = await _sut.CreateAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("CREATED", response.Status);
@@ -486,7 +486,7 @@ public class CaseServiceTests
             Guid.NewGuid(), Guid.NewGuid(), null, null, new[] { MakeValidPngUpload() });
 
         // Act & Assert
-        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.CreateAsync(request));
+        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.CreateAsync(request, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -502,7 +502,7 @@ public class CaseServiceTests
             profile.PatientProfileId, Guid.NewGuid(), null, null, new[] { MakeValidPngUpload() });
 
         // Act & Assert
-        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.CreateAsync(request));
+        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.CreateAsync(request, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -520,7 +520,7 @@ public class CaseServiceTests
             profile.PatientProfileId, nurse.UserId, null, null, new[] { MakeValidPngUpload() });
 
         // Act & Assert
-        await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateAsync(request));
+        await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateAsync(request, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -541,7 +541,7 @@ public class CaseServiceTests
               .ReturnsAsync(doctor);
 
         // Act & Assert
-        await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateAsync(request));
+        await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateAsync(request, TestContext.Current.CancellationToken));
         _storage.Verify(s => s.UploadAsync(
             It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -574,7 +574,7 @@ public class CaseServiceTests
               .ThrowsAsync(new InvalidOperationException("giả lập DB hỏng"));
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateAsync(request));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateAsync(request, TestContext.Current.CancellationToken));
         Assert.NotNull(uploadedPath);
         _storage.Verify(s => s.DeleteAsync(uploadedPath!, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -598,7 +598,7 @@ public class CaseServiceTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await _sut.ConfirmAsync(medicalCase.CaseId, doctor.UserId, request);
+        var response = await _sut.ConfirmAsync(medicalCase.CaseId, doctor.UserId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("CONFIRMED", response.Status);
@@ -621,7 +621,7 @@ public class CaseServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.ConfirmAsync(medicalCase.CaseId, doctor.UserId, MakeConfirmRequest()));
+            () => _sut.ConfirmAsync(medicalCase.CaseId, doctor.UserId, MakeConfirmRequest(), TestContext.Current.CancellationToken));
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -639,7 +639,7 @@ public class CaseServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.ConfirmAsync(medicalCase.CaseId, otherDoctor.UserId, MakeConfirmRequest()));
+            () => _sut.ConfirmAsync(medicalCase.CaseId, otherDoctor.UserId, MakeConfirmRequest(), TestContext.Current.CancellationToken));
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -652,7 +652,7 @@ public class CaseServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.ConfirmAsync(Guid.NewGuid(), Guid.NewGuid(), MakeConfirmRequest()));
+            () => _sut.ConfirmAsync(Guid.NewGuid(), Guid.NewGuid(), MakeConfirmRequest(), TestContext.Current.CancellationToken));
     }
 
     // ---------- SaveConclusionAsync (sửa lại 07/08/2026, tách khỏi ConfirmAsync) ----------
@@ -672,7 +672,7 @@ public class CaseServiceTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await _sut.SaveConclusionAsync(medicalCase.CaseId, doctor.UserId, request);
+        var response = await _sut.SaveConclusionAsync(medicalCase.CaseId, doctor.UserId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("END", response.Status);
@@ -695,7 +695,7 @@ public class CaseServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.SaveConclusionAsync(medicalCase.CaseId, doctor.UserId, MakeConfirmRequest()));
+            () => _sut.SaveConclusionAsync(medicalCase.CaseId, doctor.UserId, MakeConfirmRequest(), TestContext.Current.CancellationToken));
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -712,7 +712,7 @@ public class CaseServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.SaveConclusionAsync(medicalCase.CaseId, otherDoctor.UserId, MakeConfirmRequest()));
+            () => _sut.SaveConclusionAsync(medicalCase.CaseId, otherDoctor.UserId, MakeConfirmRequest(), TestContext.Current.CancellationToken));
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -725,7 +725,7 @@ public class CaseServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.SaveConclusionAsync(Guid.NewGuid(), Guid.NewGuid(), MakeConfirmRequest()));
+            () => _sut.SaveConclusionAsync(Guid.NewGuid(), Guid.NewGuid(), MakeConfirmRequest(), TestContext.Current.CancellationToken));
     }
 
     // ---------- EndWithoutPrescriptionAsync ----------
@@ -745,7 +745,7 @@ public class CaseServiceTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, doctor.UserId);
+        var response = await _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, doctor.UserId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(CaseStatus.End, medicalCase.Status);
@@ -765,7 +765,7 @@ public class CaseServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, otherDoctor.UserId));
+            () => _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, otherDoctor.UserId, TestContext.Current.CancellationToken));
         Assert.Equal("Only the responsible doctor can end this case.", ex.Message);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -782,7 +782,7 @@ public class CaseServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, doctor.UserId));
+            () => _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, doctor.UserId, TestContext.Current.CancellationToken));
         Assert.Equal("Only confirmed cases can be ended without prescription.", ex.Message);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }

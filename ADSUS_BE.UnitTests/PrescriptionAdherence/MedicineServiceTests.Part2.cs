@@ -31,7 +31,7 @@ public partial class MedicineServiceTests
         _medicineRepoMock.Setup(repo => repo.FindByNameAsync(request.Name, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Medicine?)null);
 
-        var result = await _sut.CreateMedicineAsync(request);
+        var result = await _sut.CreateMedicineAsync(request, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal("Aspirin", result.Name);
@@ -54,7 +54,7 @@ public partial class MedicineServiceTests
         _medicineRepoMock.Setup(repo => repo.FindByNameAsync(request.Name, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Medicine?)null);
 
-        var result = await _sut.CreateMedicineAsync(request);
+        var result = await _sut.CreateMedicineAsync(request, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal("ml", result.UsageUnit);
@@ -66,7 +66,7 @@ public partial class MedicineServiceTests
     public async Task CreateMedicineAsync_Fail_VolumeProvided_WithoutUsageUnit()
     {
         var request = new CreateMedicineRequest { Name = "Syrup", VolumePerBaseUnit = 100, UsageUnit = "   " };
-        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateMedicineAsync(request));
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateMedicineAsync(request, TestContext.Current.CancellationToken));
         Assert.Equal("Vui lòng nhập Đơn vị dùng (Usage Unit) khi đã nhập Hàm lượng.", exception.Message);
     }
 
@@ -74,7 +74,7 @@ public partial class MedicineServiceTests
     public async Task CreateMedicineAsync_Fail_UsageUnitProvided_WithoutVolume()
     {
         var request = new CreateMedicineRequest { Name = "Syrup", VolumePerBaseUnit = -5, UsageUnit = "ml" };
-        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateMedicineAsync(request));
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateMedicineAsync(request, TestContext.Current.CancellationToken));
         Assert.Equal("Vui lòng nhập đúng Hàm lượng (lớn hơn 0) khi đã nhập Đơn vị dùng.", exception.Message);
     }
 
@@ -84,7 +84,7 @@ public partial class MedicineServiceTests
         var request = new CreateMedicineRequest { Name = "Aspirin" };
         _medicineRepoMock.Setup(repo => repo.FindByNameAsync(request.Name, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Medicine { Name = "Aspirin" });
-        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateMedicineAsync(request));
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateMedicineAsync(request, TestContext.Current.CancellationToken));
         Assert.Contains("đã tồn tại", exception.Message);
     }
 
@@ -92,7 +92,7 @@ public partial class MedicineServiceTests
     public async Task CreateMedicineAsync_Fail_NegativeLowStockThreshold()
     {
         var request = new CreateMedicineRequest { Name = "Aspirin", LowStockThreshold = -10 };
-        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateMedicineAsync(request));
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.CreateMedicineAsync(request, TestContext.Current.CancellationToken));
         Assert.Equal("Ngưỡng cảnh báo hết hàng không được nhỏ hơn 0.", exception.Message);
     }
 
@@ -108,7 +108,7 @@ public partial class MedicineServiceTests
 
         _medicineRepoMock.Setup(repo => repo.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
 
-        var result = await _sut.UpdateMedicineAsync(id, request);
+        var result = await _sut.UpdateMedicineAsync(id, request, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal("mg", result.UsageUnit);
@@ -124,7 +124,7 @@ public partial class MedicineServiceTests
         var request = new UpdateMedicineRequest { Name = "Aspirin" };
         _medicineRepoMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Medicine?)null);
-        var exception = await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.UpdateMedicineAsync(Guid.NewGuid(), request));
+        var exception = await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.UpdateMedicineAsync(Guid.NewGuid(), request, TestContext.Current.CancellationToken));
         Assert.Equal("Không tìm thấy thuốc.", exception.Message);
     }
 
@@ -135,7 +135,7 @@ public partial class MedicineServiceTests
         var existing = new Medicine { MedicineId = id, Name = "Aspirin" };
         var request = new UpdateMedicineRequest { Name = "Aspirin 500mg" };
         _medicineRepoMock.Setup(repo => repo.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
-        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdateMedicineAsync(id, request));
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdateMedicineAsync(id, request, TestContext.Current.CancellationToken));
         Assert.Equal("Tên thuốc là Master Data gốc, tuyệt đối không được sửa sau khi tạo.", exception.Message);
     }
 
@@ -146,7 +146,7 @@ public partial class MedicineServiceTests
         var existing = new Medicine { MedicineId = id, Name = "Aspirin" };
         var request = new UpdateMedicineRequest { Name = "Aspirin", LowStockThreshold = -5 };
         _medicineRepoMock.Setup(repo => repo.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
-        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdateMedicineAsync(id, request));
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdateMedicineAsync(id, request, TestContext.Current.CancellationToken));
         Assert.Equal("Ngưỡng cảnh báo hết hàng không được nhỏ hơn 0.", exception.Message);
     }
 
@@ -154,7 +154,7 @@ public partial class MedicineServiceTests
     public async Task UpdateMedicineAsync_Fail_VolumeProvided_WithoutUsageUnit()
     {
         var request = new UpdateMedicineRequest { VolumePerBaseUnit = 100, UsageUnit = "" };
-        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdateMedicineAsync(Guid.NewGuid(), request));
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdateMedicineAsync(Guid.NewGuid(), request, TestContext.Current.CancellationToken));
         Assert.Equal("Vui lòng nhập Đơn vị dùng (Usage Unit) khi đã nhập Hàm lượng.", exception.Message);
     }
 
@@ -162,7 +162,7 @@ public partial class MedicineServiceTests
     public async Task UpdateMedicineAsync_Fail_UsageUnitProvided_WithoutVolume()
     {
         var request = new UpdateMedicineRequest { VolumePerBaseUnit = 0, UsageUnit = "ml" };
-        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdateMedicineAsync(Guid.NewGuid(), request));
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdateMedicineAsync(Guid.NewGuid(), request, TestContext.Current.CancellationToken));
         Assert.Equal("Vui lòng nhập đúng Hàm lượng (lớn hơn 0) khi đã nhập Đơn vị dùng.", exception.Message);
     }
 
@@ -178,9 +178,9 @@ public partial class MedicineServiceTests
         
         // Add a mock existing packaging in db with the same unit
         _db.Set<MedicinePackaging>().Add(new MedicinePackaging { MedicineId = medId, MedicineUnitId = unitId });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.AddPackagingAsync(medId, request));
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.AddPackagingAsync(medId, request, TestContext.Current.CancellationToken));
         Assert.Equal("Đơn vị tính này đã được sử dụng cho thuốc. Không thể thêm trùng.", exception.Message);
     }
 
@@ -191,7 +191,7 @@ public partial class MedicineServiceTests
         var unitId = Guid.NewGuid();
         var request = new CreateMedicinePackagingRequest { MedicineUnitId = unitId, IsBaseUnit = true };
 
-        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.AddPackagingAsync(medId, request));
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.AddPackagingAsync(medId, request, TestContext.Current.CancellationToken));
         Assert.Equal("Thuốc đã có đơn vị cơ sở và không thể thiết lập thêm đơn vị cơ sở khác.", exception.Message);
     }
 
@@ -208,10 +208,10 @@ public partial class MedicineServiceTests
 
         var existing = new MedicinePackaging { Id = packagingId, MedicineId = medId, MedicineUnitId = oldUnitId };
         _db.Set<MedicinePackaging>().Add(existing);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var request = new UpdateMedicinePackagingRequest { MedicineUnitId = newUnitId, ConversionFactor = 2 };
-        var result = await _sut.UpdatePackagingAsync(packagingId, request);
+        var result = await _sut.UpdatePackagingAsync(packagingId, request, TestContext.Current.CancellationToken);
         
         Assert.NotNull(result);
         Assert.Equal(newUnitId, existing.MedicineUnitId);
@@ -228,10 +228,10 @@ public partial class MedicineServiceTests
         
         _db.Set<MedicinePackaging>().Add(new MedicinePackaging { Id = packagingIdToUpdate, MedicineId = medId, MedicineUnitId = existingUnitId });
         _db.Set<MedicinePackaging>().Add(new MedicinePackaging { Id = Guid.NewGuid(), MedicineId = medId, MedicineUnitId = duplicateUnitId });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var request = new UpdateMedicinePackagingRequest { MedicineUnitId = duplicateUnitId };
-        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdatePackagingAsync(packagingIdToUpdate, request));
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdatePackagingAsync(packagingIdToUpdate, request, TestContext.Current.CancellationToken));
         Assert.Equal("Đơn vị tính này đã được sử dụng bởi một quy cách khác của cùng loại thuốc.", exception.Message);
     }
 
@@ -244,21 +244,21 @@ public partial class MedicineServiceTests
         var newUnitId = Guid.NewGuid();
         
         _db.Set<MedicinePackaging>().Add(new MedicinePackaging { Id = packagingIdToUpdate, MedicineId = medId, MedicineUnitId = existingUnitId, IsBaseUnit = true });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // 1. Try to uncheck IsBaseUnit
         var req1 = new UpdateMedicinePackagingRequest { MedicineUnitId = existingUnitId, IsBaseUnit = false, ConversionFactor = 1 };
-        var ex1 = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdatePackagingAsync(packagingIdToUpdate, req1));
+        var ex1 = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdatePackagingAsync(packagingIdToUpdate, req1, TestContext.Current.CancellationToken));
         Assert.Equal("Không thể gỡ bỏ trạng thái đơn vị cơ sở của quy cách này.", ex1.Message);
 
         // 2. Try to change MedicineUnitId
         var req2 = new UpdateMedicinePackagingRequest { MedicineUnitId = newUnitId, IsBaseUnit = true, ConversionFactor = 1 };
-        var ex2 = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdatePackagingAsync(packagingIdToUpdate, req2));
+        var ex2 = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdatePackagingAsync(packagingIdToUpdate, req2, TestContext.Current.CancellationToken));
         Assert.Equal("Không thể thay đổi đơn vị tính của đơn vị cơ sở.", ex2.Message);
 
         // 3. Try to change ConversionFactor
         var req3 = new UpdateMedicinePackagingRequest { MedicineUnitId = existingUnitId, IsBaseUnit = true, ConversionFactor = 2 };
-        var ex3 = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdatePackagingAsync(packagingIdToUpdate, req3));
+        var ex3 = await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdatePackagingAsync(packagingIdToUpdate, req3, TestContext.Current.CancellationToken));
         Assert.Equal("Hệ số quy đổi của đơn vị cơ sở luôn bằng 1.", ex3.Message);
     }
     [Fact]
@@ -268,11 +268,11 @@ public partial class MedicineServiceTests
         var packagingId = Guid.NewGuid();
         
         _db.Set<MedicinePackaging>().Add(new MedicinePackaging { Id = packagingId, MedicineId = medId, IsBaseUnit = false });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await _sut.DeletePackagingAsync(packagingId);
+        await _sut.DeletePackagingAsync(packagingId, TestContext.Current.CancellationToken);
 
-        var exists = await _db.Set<MedicinePackaging>().AnyAsync(p => p.Id == packagingId);
+        var exists = await _db.Set<MedicinePackaging>().AnyAsync(p => p.Id == packagingId, TestContext.Current.CancellationToken);
         Assert.False(exists);
     }
 
@@ -283,9 +283,9 @@ public partial class MedicineServiceTests
         var packagingId = Guid.NewGuid();
         
         _db.Set<MedicinePackaging>().Add(new MedicinePackaging { Id = packagingId, MedicineId = medId, IsBaseUnit = true });
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.DeletePackagingAsync(packagingId));
+        var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.DeletePackagingAsync(packagingId, TestContext.Current.CancellationToken));
         Assert.Equal("Không thể xóa đơn vị cơ sở của thuốc.", exception.Message);
     }
 }
