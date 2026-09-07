@@ -75,7 +75,7 @@ export default function BatchHistoryPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       {/* Header */}
       <div className="mb-6 flex items-center gap-4">
         <button

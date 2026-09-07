@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using ADSUS_BE.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -151,6 +151,9 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("realtime", "action", RealtimeActionValues)
             .HasPostgresEnum("realtime", "equality_op", RealtimeEqualityOpValues)
             .HasPostgresEnum("reminder_slot", ReminderSlotValues)
+            .HasPostgresEnum("shift_request_status", new[] { "PENDING", "APPROVED", "REJECTED" })
+            .HasPostgresEnum("shift_request_type", new[] { "LEAVE", "OVERTIME" })
+            .HasPostgresEnum("shift_type", new[] { "MORNING", "AFTERNOON", "EVENING", "FULL_DAY" })
             .HasPostgresEnum("slot_status", SlotStatusValues)
             .HasPostgresEnum("storage", "buckettype", StorageBucketTypeValues)
             .HasPostgresEnum("user_role", UserRoleValues)

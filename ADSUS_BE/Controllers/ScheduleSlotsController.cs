@@ -137,7 +137,7 @@ public sealed class ScheduleSlotsController : ControllerBase
     [Obsolete("Sử dụng ShiftRequestsController thay thế.")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateOvertime([FromBody] CreateOvertimeSlotsRequest request, CancellationToken ct = default)
+    public IActionResult CreateOvertime([FromBody] CreateOvertimeSlotsRequest request, CancellationToken ct = default)
     {
         return BadRequest(ApiResponse<object>.Fail(400, "Vui lòng sử dụng tính năng Yêu cầu Tăng ca mới."));
     }

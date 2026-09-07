@@ -13,7 +13,6 @@ import {
   useUpdateBlogPost,
 } from "../hooks/use-admin-blog";
 import type {
-  AdminBlogPostDetailResponse,
   AdminBlogPostListItemResponse,
   BlogStatus,
 } from "../types/blog.types";
@@ -377,6 +376,4 @@ function BlogPostModal({ postId, initialMode, onClose }: { postId: string; initi
     </div>
   );
 }
-
-// Use AdminBlogPostDetailResponse indirectly via useAdminBlogPost's return type
-type _Detail = AdminBlogPostDetailResponse;
+

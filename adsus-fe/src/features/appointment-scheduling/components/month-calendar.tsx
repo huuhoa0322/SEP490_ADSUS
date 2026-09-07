@@ -118,7 +118,7 @@ export function MonthCalendar({
       <div className="grid grid-cols-7 grid-rows-5 lg:grid-rows-6">
         {days.map((day, idx) => {
           const dateStr = format(day, 'yyyy-MM-dd');
-          const summary = summaries.find((s) => s.date === dateStr);
+          const summary = summaries.find((s) => { if (!s || !s.date) return false; const sDate = typeof s.date === 'string' ? s.date.split('T')[0] : s.date; return sDate === dateStr; });
           const isCurrentMonth = isSameMonth(day, monthStart);
 
           return (
