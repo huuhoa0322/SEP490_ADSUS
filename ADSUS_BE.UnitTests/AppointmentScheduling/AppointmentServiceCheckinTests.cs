@@ -62,6 +62,7 @@ public class AppointmentServiceCheckinTests : IDisposable
     public void Dispose()
     {
         _db.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     #region Helper Methods
@@ -94,7 +95,7 @@ public class AppointmentServiceCheckinTests : IDisposable
         };
     }
 
-    private PatientProfile CreatePatientProfile(User user)
+    private static PatientProfile CreatePatientProfile(User user)
     {
         return new PatientProfile
         {

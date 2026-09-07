@@ -173,7 +173,7 @@ public class AuthServiceTests
         Assert.NotNull(result);
         Assert.NotNull(result!.AccessToken);
         Assert.NotNull(result.RefreshToken);
-        Assert.NotNull(result.ExpiresAt);
+        Assert.True(result.ExpiresAt > DateTime.UtcNow); // ExpiresAt should be in the future
     }
 
     [Fact]

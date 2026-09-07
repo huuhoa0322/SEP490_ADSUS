@@ -48,7 +48,7 @@ public class AppointmentReminderJobTests
         return context.Object;
     }
 
-    private PatientListRow CreatePatientListRow(Guid userId, Guid? profileId)
+    private static PatientListRow CreatePatientListRow(Guid userId, Guid? profileId)
     {
         return new PatientListRow(
             PatientProfileId: profileId,
@@ -59,7 +59,7 @@ public class AppointmentReminderJobTests
             LatestVisitStatus: null);
     }
 
-    private Appointment CreateAppointment(Guid slotId, AppointmentStatus status, DateTime slotDateTime)
+    private static Appointment CreateAppointment(Guid slotId, AppointmentStatus status, DateTime slotDateTime)
     {
         var slot = new ScheduleSlot
         {

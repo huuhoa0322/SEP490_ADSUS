@@ -632,10 +632,9 @@ public sealed class AppointmentService : IAppointmentService
         // Filter by search if provided
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var searchLower = search.ToLowerInvariant();
             appointments = appointments
-                .Where(a => a.PatientProfile.User.FullName.ToLower().Contains(searchLower)
-                    || (a.PatientProfile.User.Phone != null && a.PatientProfile.User.Phone.Contains(search)))
+                .Where(a => a.PatientProfile.User.FullName.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || (a.PatientProfile.User.Phone != null && a.PatientProfile.User.Phone.Contains(search, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
         }
 

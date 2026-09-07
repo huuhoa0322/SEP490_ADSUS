@@ -53,11 +53,12 @@ public class NoShowCancellationJobTests : IDisposable
     public void Dispose()
     {
         _db.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     #region Helper Methods
 
-    private User CreateDoctor(string name = "Dr. Test")
+    private static User CreateDoctor(string name = "Dr. Test")
     {
         return new User
         {
@@ -70,7 +71,7 @@ public class NoShowCancellationJobTests : IDisposable
         };
     }
 
-    private User CreatePatient(string name = "Patient Test")
+    private static User CreatePatient(string name = "Patient Test")
     {
         return new User
         {
@@ -83,7 +84,7 @@ public class NoShowCancellationJobTests : IDisposable
         };
     }
 
-    private PatientProfile CreatePatientProfile(User user)
+    private static PatientProfile CreatePatientProfile(User user)
     {
         return new PatientProfile
         {
@@ -95,7 +96,7 @@ public class NoShowCancellationJobTests : IDisposable
         };
     }
 
-    private ScheduleSlot CreateSlot(User doctor, DateOnly date, TimeOnly startTime)
+    private static ScheduleSlot CreateSlot(User doctor, DateOnly date, TimeOnly startTime)
     {
         return new ScheduleSlot
         {
@@ -109,7 +110,7 @@ public class NoShowCancellationJobTests : IDisposable
         };
     }
 
-    private Appointment CreateAppointment(ScheduleSlot slot, PatientProfile profile, AppointmentStatus status)
+    private static Appointment CreateAppointment(ScheduleSlot slot, PatientProfile profile, AppointmentStatus status)
     {
         return new Appointment
         {

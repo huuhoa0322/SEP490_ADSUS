@@ -83,7 +83,7 @@ public sealed class AppointmentRepository : IAppointmentRepository
             appointment.Status = AppointmentStatus.Completed;
         }
 
-        if (appointments.Any())
+        if (appointments.Count > 0)
         {
             await _db.SaveChangesAsync(ct);
         }

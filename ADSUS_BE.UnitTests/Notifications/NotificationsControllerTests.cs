@@ -43,7 +43,7 @@ public class NotificationsControllerTests
         };
     }
 
-    private NotificationLog CreateNotificationLog(Guid logId, Guid userId, bool isRead = false)
+    private static NotificationLog CreateNotificationLog(Guid logId, Guid userId, bool isRead = false)
     {
         return new NotificationLog
         {

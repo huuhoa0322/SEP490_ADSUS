@@ -86,7 +86,7 @@ public class AuthService : IAuthService
             ExpiresAt = DateTime.UtcNow.AddDays(7),
             CreatedAt = DateTime.UtcNow,
             DeviceInfo = null
-        });
+        }, cancellationToken);
 
         return UserMapper.ToLoginResponse(user, accessToken, refreshToken);
     }

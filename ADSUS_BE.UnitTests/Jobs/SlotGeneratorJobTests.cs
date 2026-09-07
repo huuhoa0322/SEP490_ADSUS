@@ -47,11 +47,12 @@ public class SlotGeneratorJobTests : IDisposable
     public void Dispose()
     {
         _db.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     #region Helper Methods
 
-    private User CreateDoctor(string name = "Dr. Test")
+    private static User CreateDoctor(string name = "Dr. Test")
     {
         return new User
         {

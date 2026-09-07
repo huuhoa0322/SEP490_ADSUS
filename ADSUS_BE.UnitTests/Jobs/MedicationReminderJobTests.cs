@@ -52,11 +52,12 @@ public class MedicationReminderJobTests : IDisposable
     public void Dispose()
     {
         _db.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     #region Helper Methods
 
-    private User CreatePatient(string name = "Patient Test")
+    private static User CreatePatient(string name = "Patient Test")
     {
         return new User
         {
@@ -69,7 +70,7 @@ public class MedicationReminderJobTests : IDisposable
         };
     }
 
-    private PatientProfile CreatePatientProfile(User user)
+    private static PatientProfile CreatePatientProfile(User user)
     {
         return new PatientProfile
         {
