@@ -1,0 +1,558 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.Common.Exceptions;
+using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
+using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
+using ADSUS_BE.DAL.Data;
+using ADSUS_BE.DAL.Entities;
+
+namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
+{
+    public class InventoryService : IInventoryService
+    {
+        private readonly AppDbContext _dbContext;
+        private readonly ILogger<InventoryService> _logger;
+
+        public InventoryService(AppDbContext dbContext, ILogger<InventoryService> logger)
+        {
+            _dbContext = dbContext;
+            _logger = logger;
+        }
+
+        public async Task ImportMedicineAsync(ImportInventoryRequest request)
+        {
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                await ProcessSingleImportAsync(request);
+                await transaction.CommitAsync();
+            }
+            catch (BusinessException)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Lỗi nghiêm trọng khi nhập kho cho thuốc {MedicineId}", request.MedicineId);
+                throw new Exception("Đã xảy ra lỗi hệ thống trong quá trình nhập kho. Vui lòng thử lại sau.");
+            }
+        }
+
+        public async Task ImportMedicineBulkAsync(System.Collections.Generic.List<ImportInventoryRequest> requests)
+        {
+            if (requests == null || requests.Count == 0) return;
+
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                for (int i = 0; i < requests.Count; i++)
+                {
+                    try
+                    {
+                        await ProcessSingleImportAsync(requests[i]);
+                    }
+                    catch (BusinessException ex)
+                    {
+                        throw new BusinessException($"Lỗi ở Hàng số {i + 1}: {ex.Message}");
+                    }
+                }
+                await transaction.CommitAsync();
+            }
+            catch (BusinessException)
+            {
+                await transaction.RollbackAsync();
+                throw; // Rethrow business exceptions to show validation error to user
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Lỗi nghiêm trọng khi nhập kho hàng loạt");
+                throw new Exception("Đã xảy ra lỗi hệ thống trong quá trình nhập kho hàng loạt. Vui lòng thử lại sau.");
+            }
+        }
+
+        private async Task ProcessSingleImportAsync(ImportInventoryRequest request)
+        {
+                var medicine = await _dbContext.Medicines
+                    .FirstOrDefaultAsync(m => m.MedicineId == request.MedicineId);
+                
+                if (medicine == null || medicine.Status != MedicineStatus.Active)
+                {
+                    throw new BusinessException("Thuốc không tồn tại hoặc đã ngừng sử dụng.");
+                }
+
+                var supplier = await _dbContext.Suppliers
+                    .FirstOrDefaultAsync(s => s.SupplierId == request.SupplierId);
+                
+                if (supplier == null || !supplier.IsActive)
+                {
+                    throw new BusinessException("Nhà cung cấp không tồn tại hoặc đã bị khóa.");
+                }
+
+                if (request.ExpiryDate.Date <= DateTime.UtcNow.Date)
+                {
+                    throw new BusinessException("Hạn sử dụng phải lớn hơn ngày hiện tại.");
+                }
+
+                // 2. Validate Packaging & Calculate Base Unit
+                var packaging = await _dbContext.MedicinePackagings
+                    .FirstOrDefaultAsync(p => p.Id == request.MedicinePackagingId);
+                
+                if (packaging == null || packaging.MedicineId != request.MedicineId)
+                {
+                    throw new BusinessException("Đơn vị đóng gói không hợp lệ cho thuốc này.");
+                }
+
+                var quantityBase = request.Quantity * packaging.ConversionFactor;
+                var unitImportPrice = request.ImportPricePerUnit / packaging.ConversionFactor;
+
+                // 3. Upsert MedicineBatch - Validate Lot Number uniqueness across medicines
+                var existingLotBatch = await _dbContext.MedicineBatches
+                    .FirstOrDefaultAsync(b => b.LotNumber == request.LotNumber);
+                
+                MedicineBatch batch;
+                if (existingLotBatch != null)
+                {
+                    if (existingLotBatch.MedicineId != request.MedicineId)
+                    {
+                        throw new BusinessException($"Mã lô {request.LotNumber} đã được sử dụng cho một loại thuốc khác trong hệ thống. Vui lòng kiểm tra lại.");
+                    }
+
+                    // Trùng Lô và trùng Thuốc: So sánh Expiry Date
+                    if (existingLotBatch.ExpiryDate != DateOnly.FromDateTime(request.ExpiryDate))
+                    {
+                        throw new BusinessException("Số lô này đã tồn tại trong kho nhưng khác Hạn sử dụng. Vui lòng kiểm tra lại số lô.");
+                    }
+
+                    // Tính giá nhập trung bình gia quyền (Weighted Average)
+                    var totalNewQuantity = existingLotBatch.QuantityBase + quantityBase;
+                    if (totalNewQuantity > 0)
+                    {
+                        existingLotBatch.BaseUnitAvgImportPrice = ((existingLotBatch.QuantityBase * existingLotBatch.BaseUnitAvgImportPrice) + (quantityBase * unitImportPrice)) / totalNewQuantity;
+                    }
+
+                    existingLotBatch.QuantityBase += quantityBase;
+                    batch = existingLotBatch;
+                }
+                else
+                {
+                    // Tạo lô mới
+                    batch = new MedicineBatch
+                    {
+                        MedicineId = request.MedicineId,
+                        LotNumber = request.LotNumber,
+                        ExpiryDate = DateOnly.FromDateTime(request.ExpiryDate),
+                        QuantityBase = quantityBase,
+                        BaseUnitAvgImportPrice = unitImportPrice
+                    };
+                    _dbContext.MedicineBatches.Add(batch);
+                }
+
+                // Chờ lưu Batch nếu là Batch mới để có ID
+                await _dbContext.SaveChangesAsync();
+
+                // 4. Ghi log InventoryTransaction
+                var txn = new InventoryTransaction
+                {
+                    BatchId = batch.Id,
+                    MedicinePackagingId = request.MedicinePackagingId,
+                    QuantityInUnit = request.Quantity,
+                    QuantityBase = quantityBase,
+                    TxnType = InventoryTxnType.Import,
+                    TxnDate = DateTime.UtcNow,
+                    SupplierId = request.SupplierId,
+                    ActualImportPrice = unitImportPrice
+                };
+                _dbContext.InventoryTransactions.Add(txn);
+
+                // Lưu lại thay đổi của lệnh Import này
+                await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task<PagedResult<InventoryHistoryResponse>> GetInventoryHistoryAsync(InventoryHistoryFilter filter)
+        {
+            var query = _dbContext.InventoryTransactions
+                .Include(t => t.Batch)
+                .ThenInclude(b => b.Medicine)
+                .Include(t => t.Supplier)
+                .Join(_dbContext.MedicinePackagings.Include(mp => mp.MedicineUnit),
+                    txn => txn.MedicinePackagingId,
+                    mp => mp.Id,
+                    (txn, mp) => new { txn, mp })
+                .AsQueryable();
+
+            if (filter.Type.HasValue)
+            {
+                query = query.Where(q => q.txn.TxnType == filter.Type.Value);
+            }
+
+            if (filter.BatchId.HasValue)
+            {
+                query = query.Where(q => q.txn.BatchId == filter.BatchId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.Search))
+            {
+                var lowerSearch = filter.Search.Trim().ToLower();
+                query = query.Where(q => 
+                    q.txn.Batch.Medicine.Name.ToLower().Contains(lowerSearch) ||
+                    q.txn.Batch.LotNumber.ToLower().Contains(lowerSearch) ||
+                    (q.txn.Supplier != null && q.txn.Supplier.Name.ToLower().Contains(lowerSearch))
+                );
+            }
+
+            // Sắp xếp động theo filter
+            bool desc = !string.Equals(filter.SortDir, "asc", StringComparison.OrdinalIgnoreCase);
+            query = filter.SortBy?.ToLower() switch
+            {
+                "quantitybase" => desc
+                    ? query.OrderByDescending(q => q.txn.QuantityBase)
+                    : query.OrderBy(q => q.txn.QuantityBase),
+                _ => desc
+                    ? query.OrderByDescending(q => q.txn.TxnDate)
+                    : query.OrderBy(q => q.txn.TxnDate),
+            };
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((filter.Page - 1) * filter.PageSize)
+                .Take(filter.PageSize)
+                .Select(q => new InventoryHistoryResponse
+                {
+                    TransactionId = q.txn.Id,
+                    BatchId = q.txn.BatchId,
+                    LotNumber = q.txn.Batch.LotNumber,
+                    MedicineName = q.txn.Batch.Medicine.Name,
+                    SupplierName = q.txn.Supplier != null ? q.txn.Supplier.Name : null,
+                    UnitName = q.mp.MedicineUnit.Name,
+                    // Lấy tên đơn vị cơ bản từ MedicinePackaging có IsBaseUnit = true
+                    BaseUnitName = _dbContext.MedicinePackagings
+                        .Where(bp => bp.MedicineId == q.txn.Batch.MedicineId && bp.IsBaseUnit)
+                        .Select(bp => bp.MedicineUnit.Name)
+                        .FirstOrDefault(),
+                    TxnType = q.txn.TxnType,
+                    QuantityBase = q.txn.QuantityBase,
+                    QuantityInUnit = q.txn.QuantityInUnit,
+                    TxnDate = q.txn.TxnDate,
+                    UnitImportPrice = (q.txn.ActualImportPrice ?? q.txn.Batch.BaseUnitAvgImportPrice) * q.mp.ConversionFactor,
+                    PrescriptionItemId = q.txn.PrescriptionItemId,
+                    Reason = q.txn.Reason
+                })
+                .ToListAsync();
+
+            return new PagedResult<InventoryHistoryResponse>(items, filter.Page, filter.PageSize, totalCount, (int)Math.Ceiling(totalCount / (double)filter.PageSize));
+        }
+
+        public async Task<ImportValidationResponse> ValidateImportAsync(ImportInventoryRequest request)
+        {
+            var medicine = await _dbContext.Medicines
+                .FirstOrDefaultAsync(m => m.MedicineId == request.MedicineId);
+            
+            if (medicine == null || medicine.Status != MedicineStatus.Active)
+            {
+                return new ImportValidationResponse { IsValid = false, ErrorMessage = "Thuốc không tồn tại hoặc đã ngừng sử dụng." };
+            }
+
+            var supplier = await _dbContext.Suppliers
+                .FirstOrDefaultAsync(s => s.SupplierId == request.SupplierId);
+            
+            if (supplier == null || !supplier.IsActive)
+            {
+                return new ImportValidationResponse { IsValid = false, ErrorMessage = "Nhà cung cấp không tồn tại hoặc đã bị khóa." };
+            }
+
+            if (request.ExpiryDate.Date <= DateTime.UtcNow.Date)
+            {
+                return new ImportValidationResponse { IsValid = false, ErrorMessage = "Hạn sử dụng phải lớn hơn ngày hiện tại." };
+            }
+
+            var packaging = await _dbContext.MedicinePackagings
+                .FirstOrDefaultAsync(p => p.Id == request.MedicinePackagingId);
+            
+            if (packaging == null || packaging.MedicineId != request.MedicineId)
+            {
+                return new ImportValidationResponse { IsValid = false, ErrorMessage = "Đơn vị đóng gói không hợp lệ cho thuốc này." };
+            }
+
+            var existingLotBatch = await _dbContext.MedicineBatches
+                .FirstOrDefaultAsync(b => b.LotNumber == request.LotNumber);
+            
+            if (existingLotBatch != null)
+            {
+                if (existingLotBatch.MedicineId != request.MedicineId)
+                {
+                    return new ImportValidationResponse { IsValid = false, ErrorMessage = $"Mã lô {request.LotNumber} đã được sử dụng cho một loại thuốc khác trong hệ thống." };
+                }
+
+                if (existingLotBatch.ExpiryDate != DateOnly.FromDateTime(request.ExpiryDate))
+                {
+                    return new ImportValidationResponse { IsValid = false, ErrorMessage = "Số lô này đã tồn tại trong kho nhưng khác Hạn sử dụng." };
+                }
+            }
+
+            return new ImportValidationResponse { IsValid = true };
+        }
+
+        public async Task<PagedResult<MedicineBatchResponse>> GetMedicineBatchesAsync(MedicineBatchFilter filter)
+        {
+            var query = _dbContext.MedicineBatches
+                .Where(b => b.MedicineId == filter.MedicineId)
+                .AsQueryable();
+
+            // Search theo Số lô
+            if (!string.IsNullOrWhiteSpace(filter.Search))
+            {
+                var lower = filter.Search.Trim().ToLower();
+                query = query.Where(b => b.LotNumber.ToLower().Contains(lower));
+            }
+
+            // Sort động
+            bool desc = string.Equals(filter.SortDir, "desc", StringComparison.OrdinalIgnoreCase);
+            query = filter.SortBy?.ToLower() switch
+            {
+                "quantitybase" => desc
+                    ? query.OrderByDescending(b => b.QuantityBase)
+                    : query.OrderBy(b => b.QuantityBase),
+                "avgprice" => desc
+                    ? query.OrderByDescending(b => b.BaseUnitAvgImportPrice)
+                    : query.OrderBy(b => b.BaseUnitAvgImportPrice),
+                _ => desc
+                    ? query.OrderByDescending(b => b.ExpiryDate)
+                    : query.OrderBy(b => b.ExpiryDate), // mặc định: hạn gần nhất lên trước
+            };
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .Skip((filter.Page - 1) * filter.PageSize)
+                .Take(filter.PageSize)
+                .Select(b => new MedicineBatchResponse
+                {
+                    BatchId = b.Id,
+                    MedicineId = b.MedicineId,
+                    LotNumber = b.LotNumber,
+                    ExpiryDate = b.ExpiryDate.ToDateTime(TimeOnly.MinValue),
+                    QuantityBase = b.QuantityBase,
+                    BaseUnitAvgImportPrice = b.BaseUnitAvgImportPrice,
+                    // Lấy tên đơn vị cơ bản từ MedicinePackaging có IsBaseUnit = true
+                    UsageUnit = _dbContext.MedicinePackagings
+                        .Where(mp => mp.MedicineId == b.MedicineId && mp.IsBaseUnit)
+                        .Select(mp => mp.MedicineUnit.Name)
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            return new PagedResult<MedicineBatchResponse>(
+                items, filter.Page, filter.PageSize, totalCount,
+                (int)Math.Ceiling(totalCount / (double)filter.PageSize));
+        }
+        public async Task DispenseAsync(Guid caseId)
+        {
+            var prescription = await _dbContext.Prescriptions
+                .Include(p => p.PrescriptionItems)
+                    .ThenInclude(pi => pi.Medicine)
+                        .ThenInclude(m => m.MedicinePackagings)
+                .FirstOrDefaultAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active);
+
+            if (prescription == null || prescription.PrescriptionItems.Count == 0)
+            {
+                throw new BusinessException("Không tìm thấy đơn thuốc hoặc đơn thuốc trống.");
+            }
+
+            foreach (var pItem in prescription.PrescriptionItems)
+            {
+                decimal volumePerBaseUnit = pItem.Medicine.VolumePerBaseUnit ?? 1m;
+                var quantityNeededBS = (int)Math.Ceiling(pItem.QuantityBase / (double)volumePerBaseUnit);
+                if (quantityNeededBS <= 0) continue;
+
+                var baseUnitPack = pItem.Medicine.MedicinePackagings.FirstOrDefault(mp => mp.IsBaseUnit);
+                if (baseUnitPack == null)
+                {
+                    throw new BusinessException($"Thuốc '{pItem.Medicine.Name}' chưa được cấu hình Base Unit.");
+                }
+
+                // FEFO: Lấy các lô còn hạn, còn hàng, sắp xếp theo Hạn sử dụng tăng dần
+                var batches = await _dbContext.MedicineBatches
+                    .Where(b => b.MedicineId == pItem.MedicineId && b.QuantityBase > 0 && b.ExpiryDate >= DateOnly.FromDateTime(DateTime.UtcNow))
+                    .OrderBy(b => b.ExpiryDate)
+                    .ToListAsync();
+
+                foreach (var batch in batches)
+                {
+                    if (quantityNeededBS <= 0) break;
+
+                    int cutQtyBS = Math.Min(batch.QuantityBase, quantityNeededBS);
+                    
+                    batch.QuantityBase -= cutQtyBS;
+                    quantityNeededBS -= cutQtyBS;
+
+                    var txn = new InventoryTransaction
+                    {
+                        Id = Guid.NewGuid(),
+                        BatchId = batch.Id,
+                        MedicinePackagingId = baseUnitPack.Id,
+                        QuantityInUnit = cutQtyBS,
+                        QuantityBase = cutQtyBS,
+                        TxnDate = DateTime.UtcNow,
+                        PrescriptionItemId = pItem.PrescriptionItemId,
+                        ActualImportPrice = batch.BaseUnitAvgImportPrice, // ĐÓNG BĂNG GIÁ VỐN
+                        TxnType = InventoryTxnType.Dispense
+                    };
+
+                    _dbContext.InventoryTransactions.Add(txn);
+                }
+
+                if (quantityNeededBS > 0)
+                {
+                    throw new BusinessException($"Thuốc '{pItem.Medicine.Name}' không đủ tồn kho hợp lệ. Thiếu {quantityNeededBS} {baseUnitPack?.MedicineUnit?.Name ?? "đơn vị BS"}.");
+                }
+            }
+
+            await _dbContext.SaveChangesAsync();
+        }
+        public async Task<AdjustInventoryResponse> AdjustAsync(AdjustInventoryRequest request)
+        {
+            var batch = await _dbContext.MedicineBatches
+                .Include(b => b.Medicine)
+                    .ThenInclude(m => m.MedicinePackagings)
+                .FirstOrDefaultAsync(b => b.Id == request.BatchId);
+
+            if (batch == null)
+            {
+                throw new BusinessException("Lô thuốc không tồn tại.");
+            }
+
+            if (request.NewQuantityBase < 0)
+            {
+                throw new BusinessException("Số lượng thực tế không được âm.");
+            }
+
+            int previousQty = batch.QuantityBase;
+            int delta = request.NewQuantityBase - previousQty;
+
+            if (delta == 0)
+            {
+                throw new BusinessException("Số lượng thực tế không thay đổi so với hệ thống.");
+            }
+
+            var baseUnitPack = batch.Medicine.MedicinePackagings.FirstOrDefault(mp => mp.IsBaseUnit);
+            if (baseUnitPack == null)
+            {
+                throw new BusinessException($"Thuốc '{batch.Medicine.Name}' chưa được cấu hình Base Unit.");
+            }
+
+            batch.QuantityBase = request.NewQuantityBase;
+
+            var txn = new InventoryTransaction
+            {
+                Id = Guid.NewGuid(),
+                BatchId = batch.Id,
+                MedicinePackagingId = baseUnitPack.Id,
+                QuantityInUnit = Math.Abs(delta),
+                QuantityBase = delta, // Dương = tăng, Âm = giảm
+                TxnDate = DateTime.UtcNow,
+                TxnType = InventoryTxnType.Adjustment,
+                Reason = request.Reason
+            };
+
+            _dbContext.InventoryTransactions.Add(txn);
+            await _dbContext.SaveChangesAsync();
+
+            return new AdjustInventoryResponse
+            {
+                TransactionId = txn.Id,
+                PreviousQuantity = previousQty,
+                NewQuantity = request.NewQuantityBase,
+                Delta = delta
+            };
+        }
+
+        public async Task<InventoryAlertSummary> GetAlertSummaryAsync()
+        {
+            var summary = new InventoryAlertSummary();
+            var now = DateTime.UtcNow;
+
+            // 1. LOW STOCK (bao gồm cả thuốc chưa từng nhập kho hoặc đã xuất hết)
+            var lowStockQuery = await _dbContext.Medicines
+                .Include(m => m.MedicinePackagings)
+                    .ThenInclude(mp => mp.MedicineUnit)
+                .Where(m => m.Status == MedicineStatus.Active && m.LowStockThreshold > 0)
+                .Select(m => new
+                {
+                    Medicine = m,
+                    TotalStock = m.MedicineBatches
+                        .Where(b => b.QuantityBase > 0 && b.ExpiryDate >= DateOnly.FromDateTime(now))
+                        .Sum(b => (int?)b.QuantityBase) ?? 0
+                })
+                .Where(x => x.TotalStock <= x.Medicine.LowStockThreshold)
+                .ToListAsync();
+
+            foreach (var stock in lowStockQuery)
+            {
+                var med = stock.Medicine;
+                var baseUnitPack = med.MedicinePackagings.FirstOrDefault(mp => mp.IsBaseUnit);
+                
+                summary.LowStockAlerts.Add(new LowStockAlertResponse
+                {
+                    MedicineId = med.MedicineId,
+                    MedicineName = med.Name,
+                    CurrentStock = stock.TotalStock,
+                    Threshold = med.LowStockThreshold,
+                    BaseUnitName = baseUnitPack?.MedicineUnit?.Name ?? "Đơn vị cơ sở",
+                    Severity = stock.TotalStock <= med.LowStockThreshold / 5 ? "CRITICAL" : "WARNING"
+                });
+            }
+
+            summary.LowStockCount = summary.LowStockAlerts.Count;
+
+            // 2. EXPIRY
+            var batches = await _dbContext.MedicineBatches
+                .Include(b => b.Medicine)
+                    .ThenInclude(m => m.MedicinePackagings)
+                        .ThenInclude(mp => mp.MedicineUnit)
+                .Where(b => b.QuantityBase > 0)
+                .ToListAsync();
+
+            foreach (var batch in batches)
+            {
+                var daysUntilExpiry = batch.ExpiryDate.DayNumber - DateOnly.FromDateTime(now).DayNumber;
+
+                if (daysUntilExpiry <= 60)
+                {
+                    var baseUnitPack = batch.Medicine.MedicinePackagings.FirstOrDefault(mp => mp.IsBaseUnit);
+                    string severity;
+                    if (daysUntilExpiry <= 0) severity = "EXPIRED";
+                    else if (daysUntilExpiry <= 30) severity = "CRITICAL";
+                    else severity = "WARNING";
+
+                    summary.ExpiryAlerts.Add(new ExpiryAlertResponse
+                    {
+                        BatchId = batch.Id,
+                        MedicineId = batch.MedicineId,
+                        MedicineName = batch.Medicine.Name,
+                        LotNumber = batch.LotNumber,
+                        ExpiryDate = batch.ExpiryDate.ToDateTime(TimeOnly.MinValue),
+                        DaysUntilExpiry = daysUntilExpiry,
+                        QuantityBase = batch.QuantityBase,
+                        BaseUnitName = baseUnitPack?.MedicineUnit?.Name ?? "Đơn vị cơ sở",
+                        Severity = severity
+                    });
+                }
+            }
+
+            summary.ExpiryAlerts = summary.ExpiryAlerts.OrderBy(a => a.ExpiryDate).ToList();
+            summary.ExpiredCount = summary.ExpiryAlerts.Count(a => a.Severity == "EXPIRED");
+            summary.ExpiringSoonCount = summary.ExpiryAlerts.Count(a => a.Severity != "EXPIRED");
+
+            return summary;
+        }
+    }
+}

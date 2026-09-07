@@ -11,6 +11,8 @@ export interface LoginResponse {
   /** Id tài khoản — GB-04: form tạo ca khám cần nó để điền sẵn ô "Bác sĩ phụ trách". */
   userId: string;
   accessToken: string;
+  /** Refresh token for renewing access token without re-login. Used by SignalR. */
+  refreshToken: string;
   role: Role;
   fullName: string;
   email: string | null;

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 import { getApiErrorMessage } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
@@ -199,24 +200,11 @@ export function PatientListView() {
           <p className="font-mono text-xs tabular-nums text-muted-foreground">
             Trang {data.page} / {data.totalPages} · {data.totalItems} bệnh nhân
           </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
-              disabled={data.page <= 1}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium disabled:opacity-50"
-            >
-              Trước
-            </button>
-            <button
-              type="button"
-              onClick={() => setPage((current) => current + 1)}
-              disabled={data.page >= data.totalPages}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium disabled:opacity-50"
-            >
-              Sau
-            </button>
-          </div>
+          <PaginationNumbered
+            currentPage={data.page}
+            totalPages={data.totalPages}
+            setPage={setPage}
+          />
         </div>
       ) : null}
     </div>

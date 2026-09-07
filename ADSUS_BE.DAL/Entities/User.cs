@@ -63,5 +63,9 @@ public partial class User
 
     public virtual ICollection<ScheduleSlot> ScheduleSlots { get; set; } = new List<ScheduleSlot>();
 
+    public virtual ICollection<ShiftRequest> ShiftRequestReviewedByNavigations { get; set; } = new List<ShiftRequest>();
+
+    public virtual ICollection<ShiftRequest> ShiftRequestUsers { get; set; } = new List<ShiftRequest>();
+
     public virtual ICollection<UserFcmToken> UserFcmTokens { get; set; } = new List<UserFcmToken>();
 }

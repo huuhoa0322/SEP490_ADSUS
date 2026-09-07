@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
 import '../../features/auth/presentation/views/change_password_screen.dart';
 import '../../features/auth/presentation/views/sign_in_screen.dart';
+import '../../features/medication_reminder/presentation/views/medication_reminder_screen.dart';
 import '../../shared/main_shell.dart';
 
 /// Chuyển thay đổi của [authViewModelProvider] thành sự kiện GoRouter hiểu được.
@@ -62,6 +63,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      // ADSUS Medication Widget — deep-link target (T-5.1).
+      // Widget tap dose row → adsus://reminders?intakeId=xxx → navigates here.
+      GoRoute(
+        path: '/reminders',
+        builder: (context, state) {
+          final intakeId = state.uri.queryParameters['intakeId'];
+          return MedicationReminderScreen(intakeIdToHighlight: intakeId);
+        },
+      ),
       GoRoute(path: '/sign-in', builder: (context, state) => const SignInScreen()),
       GoRoute(
         path: '/change-password',

@@ -24,4 +24,4 @@ export interface PagedResult<T> {
  * Vai trò tài khoản. Khớp với enum user_role trong database.
  * NURSE có quyền giống hệt DOCTOR (theo quyết định ghi đè PRD trong UCS).
  */
-export type Role = "ADMIN" | "DOCTOR" | "PATIENT" | "NURSE";
+export type Role = "ADMIN" | "DOCTOR" | "PATIENT" | "NURSE" | "PHARMACIST";

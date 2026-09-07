@@ -29,31 +29,80 @@ public sealed class MedicineService : IMedicineService
     {
         var medicines = await _medicineRepository.SearchByNameAsync(keyword, limit, ct);
         
+        var medicineIds = medicines.Select(m => m.MedicineId).ToList();
+        
+        var baseUnitNames = await _db.MedicinePackagings
+            .Where(mp => medicineIds.Contains(mp.MedicineId) && mp.IsBaseUnit)
+            .Select(mp => new { mp.MedicineId, mp.MedicineUnit.Name })
+            .ToDictionaryAsync(x => x.MedicineId, x => x.Name, ct);
+
         return medicines.Select(m => new MedicineResponse
         {
             MedicineId = m.MedicineId,
             Name = m.Name,
+            UsageUnit = !string.IsNullOrWhiteSpace(m.UsageUnit) ? m.UsageUnit : baseUnitNames.GetValueOrDefault(m.MedicineId),
+            BaseUnitName = baseUnitNames.GetValueOrDefault(m.MedicineId),
             Status = m.Status.ToString().ToUpperInvariant(),
-            CreatedAt = m.CreatedAt
+            CreatedAt = m.CreatedAt,
+            LowStockThreshold = m.LowStockThreshold,
+            TotalInventoryBase = m.MedicineBatches?.Sum(b => b.QuantityBase) ?? 0
         });
     }
 
-    public async Task<PagedResult<MedicineResponse>> GetPagedAsync(int page, int pageSize, string? keyword, CancellationToken ct = default)
+    public async Task<PagedResult<MedicineResponse>> GetPagedAsync(int page, int pageSize, string? keyword, bool? inStock = null, CancellationToken ct = default)
     {
-        var (items, totalCount) = await _medicineRepository.GetPagedAsync(page, pageSize, keyword, ct);
+        var (items, totalCount) = await _medicineRepository.GetPagedAsync(page, pageSize, keyword, inStock, ct);
+        
+        var medicineIds = items.Select(m => m.MedicineId).ToList();
+
+        // Lấy tên đơn vị cơ bản cho từng thuốc (IsBaseUnit = true)
+        var baseUnitNames = await _db.MedicinePackagings
+            .Where(mp => medicineIds.Contains(mp.MedicineId) && mp.IsBaseUnit)
+            .Select(mp => new { mp.MedicineId, mp.MedicineUnit.Name })
+            .ToDictionaryAsync(x => x.MedicineId, x => x.Name, ct);
         
         var dtos = items.Select(m => new MedicineResponse
         {
             MedicineId = m.MedicineId,
             Name = m.Name,
-            UsageUnit = m.UsageUnit,
+            UsageUnit = !string.IsNullOrWhiteSpace(m.UsageUnit) ? m.UsageUnit : baseUnitNames.GetValueOrDefault(m.MedicineId),
+            BaseUnitName = baseUnitNames.GetValueOrDefault(m.MedicineId),
             VolumePerBaseUnit = m.VolumePerBaseUnit,
             Status = m.Status.ToString().ToUpperInvariant(),
-            CreatedAt = m.CreatedAt
+            CreatedAt = m.CreatedAt,
+            LowStockThreshold = m.LowStockThreshold,
+            TotalInventoryBase = m.MedicineBatches?.Sum(b => b.QuantityBase) ?? 0
         }).ToList();
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
         return new PagedResult<MedicineResponse>(dtos, page, pageSize, totalCount, totalPages);
+    }
+
+    public async Task<MedicineResponse?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var m = await _db.Medicines
+            .Include(x => x.MedicineBatches)
+            .FirstOrDefaultAsync(x => x.MedicineId == id, ct);
+
+        if (m == null) return null;
+
+        var baseUnitName = await _db.MedicinePackagings
+            .Where(mp => mp.MedicineId == id && mp.IsBaseUnit)
+            .Select(mp => mp.MedicineUnit.Name)
+            .FirstOrDefaultAsync(ct);
+
+        return new MedicineResponse
+        {
+            MedicineId = m.MedicineId,
+            Name = m.Name,
+            UsageUnit = !string.IsNullOrWhiteSpace(m.UsageUnit) ? m.UsageUnit : baseUnitName,
+            BaseUnitName = baseUnitName,
+            VolumePerBaseUnit = m.VolumePerBaseUnit,
+            Status = m.Status.ToString().ToUpperInvariant(),
+            CreatedAt = m.CreatedAt,
+            LowStockThreshold = m.LowStockThreshold,
+            TotalInventoryBase = m.MedicineBatches?.Sum(b => b.QuantityBase) ?? 0
+        };
     }
 
     public async Task<MedicineResponse> CreateMedicineAsync(CreateMedicineRequest request, CancellationToken ct = default)
@@ -65,6 +114,10 @@ public sealed class MedicineService : IMedicineService
         if (!string.IsNullOrWhiteSpace(request.UsageUnit) && (request.VolumePerBaseUnit == null || request.VolumePerBaseUnit <= 0))
         {
             throw new BusinessException("Vui lòng nhập đúng Hàm lượng (lớn hơn 0) khi đã nhập Đơn vị dùng.");
+        }
+        if (request.LowStockThreshold < 0)
+        {
+            throw new BusinessException("Ngưỡng cảnh báo hết hàng không được nhỏ hơn 0.");
         }
 
         var existing = await _medicineRepository.FindByNameAsync(request.Name, ct);
@@ -79,6 +132,7 @@ public sealed class MedicineService : IMedicineService
             Name = request.Name.Trim(),
             UsageUnit = request.UsageUnit?.Trim(),
             VolumePerBaseUnit = request.VolumePerBaseUnit,
+            LowStockThreshold = request.LowStockThreshold,
             CreatedAt = DateTime.UtcNow,
             Status = MedicineStatus.Active
         };
@@ -105,6 +159,7 @@ public sealed class MedicineService : IMedicineService
             Name = medicine.Name,
             UsageUnit = medicine.UsageUnit,
             VolumePerBaseUnit = medicine.VolumePerBaseUnit,
+            LowStockThreshold = medicine.LowStockThreshold,
             Status = medicine.Status.ToString().ToUpperInvariant(),
             CreatedAt = medicine.CreatedAt
         };
@@ -120,6 +175,10 @@ public sealed class MedicineService : IMedicineService
         {
             throw new BusinessException("Vui lòng nhập đúng Hàm lượng (lớn hơn 0) khi đã nhập Đơn vị dùng.");
         }
+        if (request.LowStockThreshold < 0)
+        {
+            throw new BusinessException("Ngưỡng cảnh báo hết hàng không được nhỏ hơn 0.");
+        }
 
         var existing = await _medicineRepository.GetByIdAsync(id, ct);
         if (existing == null)
@@ -134,6 +193,7 @@ public sealed class MedicineService : IMedicineService
 
         existing.UsageUnit = request.UsageUnit?.Trim();
         existing.VolumePerBaseUnit = request.VolumePerBaseUnit;
+        existing.LowStockThreshold = request.LowStockThreshold;
 
         await _medicineRepository.UpdateAsync(existing, ct);
         await _db.SaveChangesAsync(ct);
@@ -144,6 +204,7 @@ public sealed class MedicineService : IMedicineService
             Name = existing.Name,
             UsageUnit = existing.UsageUnit,
             VolumePerBaseUnit = existing.VolumePerBaseUnit,
+            LowStockThreshold = existing.LowStockThreshold,
             Status = existing.Status.ToString().ToUpperInvariant(),
             CreatedAt = existing.CreatedAt
         };
@@ -219,13 +280,7 @@ public sealed class MedicineService : IMedicineService
 
         if (request.IsBaseUnit)
         {
-            var existingBase = await _db.Set<MedicinePackaging>().FirstOrDefaultAsync(p => p.MedicineId == medicineId && p.IsBaseUnit, ct);
-            if (existingBase != null)
-            {
-                existingBase.IsBaseUnit = false;
-                _db.Set<MedicinePackaging>().Update(existingBase);
-            }
-            request.ConversionFactor = 1;
+            throw new BusinessException("Thuốc đã có đơn vị cơ sở và không thể thiết lập thêm đơn vị cơ sở khác.");
         }
 
         var packaging = new MedicinePackaging
@@ -250,24 +305,36 @@ public sealed class MedicineService : IMedicineService
         var packaging = await _db.Set<MedicinePackaging>().FindAsync(new object[] { id }, ct);
         if (packaging == null) throw new ResourceNotFoundException("Không tìm thấy quy cách đóng gói.");
 
-        if (request.MedicineUnitId != packaging.MedicineUnitId)
+        if (packaging.IsBaseUnit)
         {
-            var duplicateUnit = await _db.Set<MedicinePackaging>().FirstOrDefaultAsync(p => p.MedicineId == packaging.MedicineId && p.MedicineUnitId == request.MedicineUnitId && p.Id != id, ct);
-            if (duplicateUnit != null)
+            if (!request.IsBaseUnit)
             {
-                throw new BusinessException("Đơn vị tính này đã được sử dụng bởi một quy cách khác của cùng loại thuốc.");
+                throw new BusinessException("Không thể gỡ bỏ trạng thái đơn vị cơ sở của quy cách này.");
+            }
+            if (request.MedicineUnitId != packaging.MedicineUnitId)
+            {
+                throw new BusinessException("Không thể thay đổi đơn vị tính của đơn vị cơ sở.");
+            }
+            if (request.ConversionFactor != 1)
+            {
+                throw new BusinessException("Hệ số quy đổi của đơn vị cơ sở luôn bằng 1.");
             }
         }
-
-        if (request.IsBaseUnit && !packaging.IsBaseUnit)
+        else
         {
-            var existingBase = await _db.Set<MedicinePackaging>().FirstOrDefaultAsync(p => p.MedicineId == packaging.MedicineId && p.IsBaseUnit && p.Id != id, ct);
-            if (existingBase != null)
+            if (request.MedicineUnitId != packaging.MedicineUnitId)
             {
-                existingBase.IsBaseUnit = false;
-                _db.Set<MedicinePackaging>().Update(existingBase);
+                var duplicateUnit = await _db.Set<MedicinePackaging>().FirstOrDefaultAsync(p => p.MedicineId == packaging.MedicineId && p.MedicineUnitId == request.MedicineUnitId && p.Id != id, ct);
+                if (duplicateUnit != null)
+                {
+                    throw new BusinessException("Đơn vị tính này đã được sử dụng bởi một quy cách khác của cùng loại thuốc.");
+                }
             }
-            request.ConversionFactor = 1;
+
+            if (request.IsBaseUnit)
+            {
+                throw new BusinessException("Không thể thay đổi đơn vị cơ sở của thuốc sau khi đã tạo.");
+            }
         }
 
         packaging.MedicineUnitId = request.MedicineUnitId;
@@ -285,11 +352,11 @@ public sealed class MedicineService : IMedicineService
     public async Task DeletePackagingAsync(Guid id, CancellationToken ct = default)
     {
         var packaging = await _db.Set<MedicinePackaging>().FindAsync(new object[] { id }, ct);
-        if (packaging == null) throw new ResourceNotFoundException("Khong tim thay quy cach dong goi.");
+        if (packaging == null) throw new ResourceNotFoundException("Không tìm thấy quy cách đóng gói.");
 
         if (packaging.IsBaseUnit)
         {
-            throw new BusinessException("Khong the xoa don vi co so. Vui long chon don vi khac lam don vi co so truoc khi xoa.");
+            throw new BusinessException("Không thể xóa đơn vị cơ sở của thuốc.");
         }
 
         _db.Set<MedicinePackaging>().Remove(packaging);

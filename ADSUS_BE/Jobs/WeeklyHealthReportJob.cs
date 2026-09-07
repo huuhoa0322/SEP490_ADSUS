@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
 
+namespace ADSUS_BE.Jobs;
+
 /// <summary>
 /// JOB-05 — Gửi báo cáo sức khỏe hàng tuần.
 /// Chạy vào 9h sáng thứ 6 hàng tuần.

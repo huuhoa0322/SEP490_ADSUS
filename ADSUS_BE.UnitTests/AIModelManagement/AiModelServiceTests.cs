@@ -5,6 +5,7 @@ using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Moq.Protected;
@@ -18,7 +19,8 @@ public class AiModelServiceTests
     private readonly Mock<IAuditLogRepository> _auditMock = new();
     private readonly Mock<IHttpClientFactory> _httpMock = new();
     private readonly Mock<HttpMessageHandler> _httpHandlerMock = new();
-    
+    private readonly Mock<ILogger<AiModelService>> _loggerMock = new();
+
     private readonly AiBackendSettings _settings = new() { WebhookUrl = "http://fake-ai-backend", Token = "fake-token" };
     private readonly AiModelService _sut;
 
@@ -30,7 +32,7 @@ public class AiModelServiceTests
         var client = new HttpClient(_httpHandlerMock.Object);
         _httpMock.Setup(f => f.CreateClient("AiBackend")).Returns(client);
 
-        _sut = new AiModelService(_modelRepoMock.Object, _auditMock.Object, _httpMock.Object, optionsMock.Object);
+        _sut = new AiModelService(_modelRepoMock.Object, _auditMock.Object, _httpMock.Object, optionsMock.Object, _loggerMock.Object);
     }
 
     private void SetupHttpResponse(HttpStatusCode statusCode, string content, Exception? exceptionToThrow = null)
@@ -126,6 +128,40 @@ public class AiModelServiceTests
 
         Assert.Equal("v1", result.VersionCode);
         Assert.Equal("Inactive", result.Status);
+    }
+
+    // UT_Ai_05b: GetActiveVersionAsync -> No Active Version -> Returns Null
+    [Fact]
+    public async Task GetActiveVersionAsync_NoActiveVersion_ReturnsNull()
+    {
+        _modelRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AiModelVersion?)null);
+
+        var result = await _sut.GetActiveVersionAsync();
+
+        Assert.Null(result);
+    }
+
+    // UT_Ai_05c: GetActiveVersionAsync -> Has Active Version -> Returns Slim Doctor-facing Dto (UC-20: code/status only)
+    [Fact]
+    public async Task GetActiveVersionAsync_HasActiveVersion_ReturnsVersionCodeAndStatusOnly()
+    {
+        var v = new AiModelVersion
+        {
+            ModelVersionId = Guid.NewGuid(),
+            VersionCode = "v3",
+            Status = ModelVersionStatus.Active,
+            MetricsPrecision = 99.9m,
+            RegisteredBy = Guid.NewGuid()
+        };
+        _modelRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(v);
+
+        var result = await _sut.GetActiveVersionAsync();
+
+        Assert.NotNull(result);
+        Assert.Equal("v3", result!.VersionCode);
+        Assert.Equal("Active", result.Status);
     }
 
     // UT_Ai_06: UpdateVersionAsync -> Not Found -> Throws ResourceNotFoundException

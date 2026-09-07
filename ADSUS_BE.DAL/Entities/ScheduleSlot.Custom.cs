@@ -3,12 +3,12 @@
 namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
-/// Bá»• sung cá»™t <c>status</c> mÃ  scaffold khÃ´ng sinh Ä‘Æ°á»£c (enum PostgreSQL).
+/// Bổ sung cột <c>status</c> mà scaffold không sinh được (enum PostgreSQL).
 ///
-/// Äá»ƒ trong lá»›p partial riÃªng nÃªn cháº¡y láº¡i <c>scaffold --force</c> cÅ©ng khÃ´ng máº¥t â€” file
-/// ScheduleSlot.cs sinh tá»± Ä‘á»™ng sáº½ bá»‹ ghi Ä‘Ã¨, file nÃ y thÃ¬ khÃ´ng.
+/// Để trong lớp partial riêng nên chạy lại <c>scaffold --force</c> cũng không mất — file
+/// ScheduleSlot.cs sinh tự động sẽ bị ghi đè, file này thì không.
 ///
-/// KhÃ´ng cÃ³ "Full" â€” sá»‘ Appointment/slot khÃ´ng giá»›i háº¡n (quyáº¿t Ä‘á»‹nh UCS 3.1, 23/07/2026).
+/// Không có "Full" — số Appointment/slot không giới hạn (quyết định UCS 3.1, 23/07/2026).
 /// </summary>
 public partial class ScheduleSlot
 {

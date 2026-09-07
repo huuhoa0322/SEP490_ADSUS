@@ -1,3 +1,4 @@
+using ADSUS_BE.BLL.Common.Events;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Services;
@@ -17,7 +18,7 @@ public class CaseServiceTests
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IFileStorageService> _storage = new();
     private readonly Mock<INotificationService> _notificationService = new();
-    private readonly Mock<IAppointmentRepository> _appointments = new();
+    private readonly Mock<IEventPublisher> _eventPublisher = new();
     private readonly CaseService _sut;
 
     public CaseServiceTests()
@@ -26,7 +27,7 @@ public class CaseServiceTests
             _cases.Object, _images.Object, _profiles.Object, _users.Object,
             new System.Lazy<IFileStorageService>(() => _storage.Object),
             _notificationService.Object,
-            _appointments.Object,
+            _eventPublisher.Object,
             Mock.Of<ILogger<CaseService>>());
 
         // Setup notification service mock for all tests
@@ -578,115 +579,6 @@ public class CaseServiceTests
         _storage.Verify(s => s.DeleteAsync(uploadedPath!, It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    // ---------- AddImagesAsync ----------
-
-    [Fact]
-    public async Task AddImagesAsync_CaseNotYetConfirmed_UploadsAndAppendsImages()
-    {
-        // Arrange
-        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Created);
-        var request = new ADSUS_BE.BLL.MedicalRecord.DTOs.AddUltrasoundImagesRequest(
-            new[] { MakeValidPngUpload() }, "Ảnh bổ sung");
-
-        _cases.Setup(r => r.GetByIdAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(medicalCase);
-        _storage.Setup(s => s.UploadAsync(
-                    It.IsAny<Stream>(), It.IsAny<string>(), "image/png", It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Stream _, string path, string _, CancellationToken _) => path);
-
-        // Act
-        var result = await _sut.AddImagesAsync(medicalCase.CaseId, request);
-
-        // Assert
-        Assert.Single(result);
-        Assert.Equal("Ảnh bổ sung", result[0].Note);
-        _images.Verify(r => r.AddRangeAsync(
-            It.IsAny<IReadOnlyList<UltrasoundImage>>(), It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task AddImagesAsync_CaseAlreadyConfirmed_ThrowsBusinessExceptionWithoutUploading()
-    {
-        // Arrange — GB-01: ca đã chốt không mở lại để nhận thêm ảnh.
-        var confirmedCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Confirmed);
-        var request = new ADSUS_BE.BLL.MedicalRecord.DTOs.AddUltrasoundImagesRequest(
-            new[] { MakeValidPngUpload() }, null);
-        _cases.Setup(r => r.GetByIdAsync(confirmedCase.CaseId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(confirmedCase);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.AddImagesAsync(confirmedCase.CaseId, request));
-        _storage.Verify(s => s.UploadAsync(
-            It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task AddImagesAsync_CaseNotFound_ThrowsResourceNotFoundException()
-    {
-        // Arrange
-        _cases.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync((Case?)null);
-        var request = new ADSUS_BE.BLL.MedicalRecord.DTOs.AddUltrasoundImagesRequest(
-            new[] { MakeValidPngUpload() }, null);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.AddImagesAsync(Guid.NewGuid(), request));
-    }
-
-    [Fact]
-    public async Task AddImagesAsync_DatabaseWriteFailsAfterUpload_DeletesUploadedObjectBeforeRethrowing()
-    {
-        // Arrange — cùng quy tắc rollback với CreateAsync, áp cho #21.
-        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Created);
-        var request = new ADSUS_BE.BLL.MedicalRecord.DTOs.AddUltrasoundImagesRequest(
-            new[] { MakeValidPngUpload() }, null);
-        _cases.Setup(r => r.GetByIdAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(medicalCase);
-
-        string? uploadedPath = null;
-        _storage.Setup(s => s.UploadAsync(
-                    It.IsAny<Stream>(), It.IsAny<string>(), "image/png", It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Stream _, string path, string _, CancellationToken _) =>
-                {
-                    uploadedPath = path;
-                    return path;
-                });
-        _images.Setup(r => r.AddRangeAsync(It.IsAny<IReadOnlyList<UltrasoundImage>>(), It.IsAny<CancellationToken>()))
-               .ThrowsAsync(new InvalidOperationException("giả lập DB hỏng"));
-
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.AddImagesAsync(medicalCase.CaseId, request));
-        Assert.NotNull(uploadedPath);
-        _storage.Verify(s => s.DeleteAsync(uploadedPath!, It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task AddImagesAsync_StorageDeleteDuringCleanupAlsoFails_OriginalExceptionStillPropagates()
-    {
-        // Arrange — test khoá lại fix thứ 2 của Task 7 review: dọn dẹp thất bại không được
-        // che mất lỗi gốc đã kích hoạt việc dọn dẹp.
-        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Created);
-        var request = new ADSUS_BE.BLL.MedicalRecord.DTOs.AddUltrasoundImagesRequest(
-            new[] { MakeValidPngUpload() }, null);
-        _cases.Setup(r => r.GetByIdAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(medicalCase);
-        _storage.Setup(s => s.UploadAsync(
-                    It.IsAny<Stream>(), It.IsAny<string>(), "image/png", It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Stream _, string path, string _, CancellationToken _) => path);
-        _images.Setup(r => r.AddRangeAsync(It.IsAny<IReadOnlyList<UltrasoundImage>>(), It.IsAny<CancellationToken>()))
-               .ThrowsAsync(new InvalidOperationException("loi DB goc"));
-        _storage.Setup(s => s.DeleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new InvalidOperationException("loi xoa Storage"));
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.AddImagesAsync(medicalCase.CaseId, request));
-        Assert.Equal("loi DB goc", ex.Message);
-    }
-
     // ---------- ConfirmAsync (thêm 07/08/2026) ----------
 
     private static ADSUS_BE.BLL.MedicalRecord.DTOs.CaseConclusionRequest MakeConfirmRequest() => new(
@@ -851,8 +743,6 @@ public class CaseServiceTests
               .ReturnsAsync(medicalCase); // GetForStaffAsync internally calls GetDetailAsync
         _cases.Setup(r => r.GetByIdAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
-        _appointments.Setup(r => r.ListByPatientAsync(medicalCase.PatientProfileId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(new List<Appointment>());
 
         // Act
         var response = await _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, doctor.UserId);
@@ -895,6 +785,104 @@ public class CaseServiceTests
             () => _sut.EndWithoutPrescriptionAsync(medicalCase.CaseId, doctor.UserId));
         Assert.Equal("Only confirmed cases can be ended without prescription.", ex.Message);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ---------- CreateFromBookingAsync ----------
+
+    [Fact]
+    public async Task CreateFromBookingAsync_ValidInput_CreatesCaseWithBookedStatus()
+    {
+        // Arrange
+        var patientProfileId = Guid.NewGuid();
+        var doctorId = Guid.NewGuid();
+        var visitDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        var symptoms = new List<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>
+        {
+            new() { CategoryId = Guid.NewGuid(), SymptomId = Guid.NewGuid(), OtherNote = null }
+        };
+
+        Case? createdCase = null;
+        _cases.Setup(r => r.CreateAsync(It.IsAny<Case>(), It.IsAny<CancellationToken>()))
+              .Callback<Case, CancellationToken>((c, _) => createdCase = c)
+              .ReturnsAsync((Case c, CancellationToken _) => c);
+
+        // Act
+        var result = await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate, symptoms);
+
+        // Assert
+        Assert.NotEqual(Guid.Empty, result);
+        Assert.NotNull(createdCase);
+        Assert.Equal(CaseStatus.Booked, createdCase.Status);
+        Assert.Equal(patientProfileId, createdCase.PatientProfileId);
+        Assert.Equal(doctorId, createdCase.DoctorId);
+        Assert.Equal(visitDate, createdCase.VisitDate);
+        Assert.Null(createdCase.ClinicalInfo);
+        Assert.Single(createdCase.CaseSymptoms);
+    }
+
+    [Fact]
+    public async Task CreateFromBookingAsync_EmptySymptoms_CreatesCaseWithoutSymptoms()
+    {
+        // Arrange
+        var patientProfileId = Guid.NewGuid();
+        var doctorId = Guid.NewGuid();
+        var visitDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+
+        Case? createdCase = null;
+        _cases.Setup(r => r.CreateAsync(It.IsAny<Case>(), It.IsAny<CancellationToken>()))
+              .Callback<Case, CancellationToken>((c, _) => createdCase = c)
+              .ReturnsAsync((Case c, CancellationToken _) => c);
+
+        // Act
+        var result = await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate,
+            Array.Empty<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>());
+
+        // Assert
+        Assert.NotEqual(Guid.Empty, result);
+        Assert.NotNull(createdCase);
+        Assert.Empty(createdCase.CaseSymptoms);
+    }
+
+    [Fact]
+    public async Task CreateFromBookingAsync_SendsNotificationToDoctor()
+    {
+        // Arrange
+        var patientProfileId = Guid.NewGuid();
+        var doctorId = Guid.NewGuid();
+        var visitDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+
+        _cases.Setup(r => r.CreateAsync(It.IsAny<Case>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((Case c, CancellationToken _) => c);
+
+        // Act
+        await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate, Array.Empty<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>());
+
+        // Assert
+        _notificationService.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r =>
+                r.UserId == doctorId &&
+                r.Type == "new_case_created"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateFromBookingAsync_NotificationFails_DoesNotThrow()
+    {
+        // Arrange
+        var patientProfileId = Guid.NewGuid();
+        var doctorId = Guid.NewGuid();
+        var visitDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+
+        _notificationService.Setup(n => n.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("Notification failed"));
+
+        _cases.Setup(r => r.CreateAsync(It.IsAny<Case>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((Case c, CancellationToken _) => c);
+
+        // Act & Assert - Should not throw even if notification fails
+        var result = await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate,
+            Array.Empty<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>());
+        Assert.NotEqual(Guid.Empty, result);
     }
 }
 

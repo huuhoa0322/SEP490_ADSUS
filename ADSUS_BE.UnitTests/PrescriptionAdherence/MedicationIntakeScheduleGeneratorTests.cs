@@ -135,8 +135,9 @@ public class MedicationIntakeScheduleGeneratorTests
             _frozenUtc,
             CancellationToken.None);
 
-        Assert.Single(result);
+        Assert.Equal(2, result.Count);
         Assert.Equal(_today.AddDays(1), DateOnly.FromDateTime(result[0].ScheduledTimeUtc));
+        Assert.Equal(_today.AddDays(2), DateOnly.FromDateTime(result[1].ScheduledTimeUtc));
     }
 
     /// <summary>
@@ -196,6 +197,55 @@ public class MedicationIntakeScheduleGeneratorTests
             _frozenUtc,
             CancellationToken.None);
 
-        Assert.Empty(result);
+        Assert.Equal(3, result.Count);
+        var tomorrow = _today.AddDays(1);
+        Assert.All(result, d => Assert.Equal(tomorrow, DateOnly.FromDateTime(d.ScheduledTimeUtc)));
+    }
+
+    /// <summary>
+    /// Kịch bản thực tế: Kê thuốc lúc 13h (06:00 UTC) cho 2 ngày. 3 khung giờ 7h, 12h, 19h.
+    /// Sáng (7h) và Trưa (12h) của ngày 0 đã qua -> bị skip.
+    /// Kỳ vọng: Ngày 0 có 1 cữ (Tối). Ngày 1 có 3 cữ (Sáng, Trưa, Tối). Ngày 2 có 2 cữ (Sáng, Trưa) để bù.
+    /// Tổng = 6 cữ.
+    /// </summary>
+    [Fact]
+    public async Task Generate_PrescribeAt13h_For2Days_Generates6DosesAcross3Days()
+    {
+        var prescribeUtc = new DateTime(2026, 8, 28, 6, 0, 0, DateTimeKind.Utc); // 13:00 ICT
+        var startDate = DateOnly.FromDateTime(prescribeUtc);
+        
+        var morning = new TimeOnly(7, 0);   // 00:00 UTC
+        var midday   = new TimeOnly(12, 0); // 05:00 UTC
+        var evening  = new TimeOnly(19, 0); // 12:00 UTC
+
+        var item = new PrescriptionItemWithPatient(
+            PrescriptionItemId: Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            PatientProfileId: Guid.Parse("00000000-0000-0000-0000-000000000002"),
+            StartDate: startDate,
+            DurationDays: 2);
+
+        var result = await _generator.GenerateAsync(
+            item,
+            slots: new[] { ScheduleSlot.Morning, ScheduleSlot.Noon, ScheduleSlot.Evening },
+            patientMorningTime: morning,
+            patientMiddayTime: midday,
+            patientEveningTime: evening,
+            utcNow: prescribeUtc,
+            CancellationToken.None);
+
+        Assert.Equal(6, result.Count);
+
+        var day0 = result.Where(d => DateOnly.FromDateTime(d.ScheduledTimeUtc) == startDate).ToList();
+        var day1 = result.Where(d => DateOnly.FromDateTime(d.ScheduledTimeUtc) == startDate.AddDays(1)).ToList();
+        var day2 = result.Where(d => DateOnly.FromDateTime(d.ScheduledTimeUtc) == startDate.AddDays(2)).ToList();
+
+        Assert.Single(day0); // Only Evening (19h)
+        Assert.Equal(12, day0[0].ScheduledTimeUtc.Hour);
+
+        Assert.Equal(3, day1.Count); // Morning, Noon, Evening
+
+        Assert.Equal(2, day2.Count); // Morning, Noon
+        Assert.Equal(0, day2[0].ScheduledTimeUtc.Hour); // Morning
+        Assert.Equal(5, day2[1].ScheduledTimeUtc.Hour); // Noon
     }
 }

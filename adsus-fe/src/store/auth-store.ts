@@ -2,8 +2,11 @@ import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 
-import { ACCESS_TOKEN_KEY } from "@/lib/api-client";
+import { ACCESS_TOKEN_KEY, API_BASE_URL } from "@/lib/api-client";
 import type { Role } from "@/types/api.types";
+
+/** Storage key for refresh token, shared with the refresh logic below. */
+export const REFRESH_TOKEN_KEY = "adsus.refreshToken";
 
 /**
  * window.localStorage luôn tồn tại trên trình duyệt thật. Bọc lại chỉ để không crash trong
@@ -38,10 +41,13 @@ export interface AuthUser {
 interface AuthState {
   user: AuthUser | null;
   accessToken: string | null;
-  signIn: (token: string, user: AuthUser) => void;
+  refreshToken: string | null;
+  signIn: (accessToken: string, refreshToken: string, user: AuthUser) => void;
   signOut: () => void;
   /** Called after a successful password change — the backend already cleared the flag. */
   clearMustChangePassword: () => void;
+  /** Update tokens after a refresh - returns true if successful */
+  refreshAccessToken: () => Promise<boolean>;
 }
 
 /**
@@ -57,23 +63,97 @@ interface AuthState {
  */
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       accessToken: null,
+      refreshToken: null,
 
-      signIn: (token, user) => set({ accessToken: token, user }),
+      signIn: (accessToken, refreshToken, user) => {
+        // Save to localStorage for API calls
+        if (typeof window !== "undefined" && window.localStorage) {
+          window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+          window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+        }
+        set({ accessToken, refreshToken, user });
+      },
 
-      signOut: () => {
-        set({ accessToken: null, user: null });
+      signOut: async () => {
+        // Stop SignalR connection FIRST to prevent reconnect attempts with old token
+        // This is done by clearing the tokens BEFORE the state update
         if (typeof window !== "undefined" && window.localStorage) {
           window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+          window.localStorage.removeItem(REFRESH_TOKEN_KEY);
         }
+
+        // Try to revoke refresh token on backend
+        const refreshToken = get().refreshToken;
+        const accessToken = get().accessToken;
+        if (refreshToken && accessToken) {
+          fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+          }).catch(() => {
+            // Ignore errors - user should be logged out locally anyway
+          });
+        }
+
+        set({ accessToken: null, refreshToken: null, user: null });
       },
 
       clearMustChangePassword: () =>
         set((state) =>
           state.user ? { user: { ...state.user, mustChangePassword: false } } : state,
         ),
+
+      /**
+       * Refresh the access token using the refresh token.
+       * Returns true if successful, false otherwise.
+       * NOTE: Only logs out on 401 (invalid/revoked token), not on network errors.
+       */
+      refreshAccessToken: async () => {
+        const { refreshToken } = get();
+        if (!refreshToken) return false;
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken }),
+          });
+
+          // 401 = refresh token invalid/revoked → logout
+          // Other errors (network) = retry later, don't logout
+          if (response.status === 401) {
+            console.warn("[Auth] Refresh token invalid/revoked, logging out");
+            get().signOut();
+            return false;
+          }
+
+          if (!response.ok) {
+            console.warn("Token refresh failed:", response.status);
+            return false;
+          }
+
+          const result = await response.json();
+          const { data } = result as { data: { accessToken: string; refreshToken: string } };
+
+          // Update tokens
+          if (typeof window !== "undefined" && window.localStorage) {
+            window.localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
+            window.localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+          }
+
+          set({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+          console.log("Token refreshed successfully");
+          return true;
+        } catch (error) {
+          console.error("Token refresh error:", error);
+          return false;
+        }
+      },
     }),
     {
       name: "adsus.auth",
@@ -113,6 +193,8 @@ export function getHomePathForRole(role: Role): string {
       // Bệnh nhân dùng ứng dụng di động, không có giao diện web. Trường hợp này đã bị chặn
       // ngay từ lúc đăng nhập, nên thực tế không đi tới đây.
       return "/login";
+    case "PHARMACIST":
+      return "/medicines";
     default:
       return "/login";
   }
@@ -136,9 +218,18 @@ const ROUTE_ROLES: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
   // UC-04 (SCR-06, SCR-07): "Create", "Lock / Deactivate" và "Assign role" đều là No cho
   // Doctor/Nurse/Patient. Đây là chỗ đầu tiên NURSE khác DOCTOR.
   { prefix: "/admin", roles: ["ADMIN"] },
+  // Quản lý thuốc — Admin + Dược sĩ (URL mới, không còn /admin prefix)
+  { prefix: "/medicines", roles: ["ADMIN", "PHARMACIST"] },
+  { prefix: "/suppliers", roles: ["ADMIN", "PHARMACIST"] },
+  { prefix: "/inventory", roles: ["ADMIN", "PHARMACIST"] },
   // UC-18: Doctor kê đơn thuốc (Module 7 Task 8 / SCR-17). Nurse có thể xem danh sách
   // tuân thủ nhưng không được kê đơn — kê đơn là hành vi y khoa chỉ Doctor được phép.
   { prefix: "/prescriptions", roles: ["DOCTOR"] },
+  // SCR mới (28/08/2026) — "Lịch bệnh nhân": Doctor xem lịch bệnh nhân đã đặt, chỉ đọc. Phải
+  // đứng TRƯỚC "/schedule" bên dưới vì isRoleAllowedOnPath dùng .find() (khớp luật đầu tiên) —
+  // nếu để sau, cả hai luật đều cho DOCTOR nên không lộ bug, nhưng thứ tự đúng ngăn một luật
+  // "/schedule" mới hơn (nếu sau này đổi role) vô tình khớp nhầm trước.
+  { prefix: "/schedule/patients", roles: ["DOCTOR"] },
   // UC-15: Chỉ Bác sĩ mới được quyền quản lý lịch khám của mình, Admin và Nurse không được vào.
   { prefix: "/schedule", roles: ["DOCTOR"] },
 ];

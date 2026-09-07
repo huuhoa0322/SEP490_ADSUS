@@ -37,7 +37,7 @@ public class HealthLogsControllerIntegrationTests
 
     #region Test Data Factory
 
-    private User NewUser(Guid userId, UserRole role)
+    private static User NewUser(Guid userId, UserRole role)
         => new()
         {
             UserId = userId,
@@ -48,7 +48,7 @@ public class HealthLogsControllerIntegrationTests
             Status = UserStatus.Active,
         };
 
-    private PatientProfile NewPatientProfile(Guid userId)
+    private static PatientProfile NewPatientProfile(Guid userId)
         => new()
         {
             PatientProfileId = Guid.NewGuid(),
@@ -215,7 +215,7 @@ public class HealthLogsControllerIntegrationTests
 
         // Assert
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<HealthLogResponse>>();
-        Assert.NotNull(body!.Data!.HealthLogId);
+        Assert.NotEqual(Guid.Empty, body!.Data!.HealthLogId);
         Assert.Equal(profile.PatientProfileId, body.Data.PatientProfileId);
         Assert.Equal("EXERCISE", body.Data.Type);
         Assert.Equal("Running", body.Data.Content);
@@ -308,7 +308,7 @@ public class HealthLogsControllerIntegrationTests
         var client = CreatePatientClient(app);
 
         // Act
-        var response = await client.PostAsJsonAsync<LogHealthDataRequest>("/api/v1/health-logs", null);
+        var response = await client.PostAsJsonAsync<LogHealthDataRequest>("/api/v1/health-logs", null!);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

@@ -48,6 +48,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
   // === General Info State ===
   const [usageUnit, setUsageUnit] = useState(medicine.usageUnit || "");
   const [volume, setVolume] = useState(medicine.volumePerBaseUnit ? medicine.volumePerBaseUnit.toString() : "");
+  const [lowStockThreshold, setLowStockThreshold] = useState(medicine.lowStockThreshold?.toString() || "0");
 
   // Sync general info state when medicine changes
   const [prevMedicineId, setPrevMedicineId] = useState(medicine.medicineId);
@@ -58,19 +59,20 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
     if (isOpen) {
       setUsageUnit(medicine.usageUnit || "");
       setVolume(medicine.volumePerBaseUnit ? medicine.volumePerBaseUnit.toString() : "");
+      setLowStockThreshold(medicine.lowStockThreshold?.toString() || "0");
     }
   }
 
   const handleUpdateGeneralInfo = async () => {
-    const finalVolume = parseFloat(volume);
+    const finalVolume = Number.parseFloat(volume);
     const finalUsageUnit = usageUnit.trim();
 
-      if (finalUsageUnit && (isNaN(finalVolume) || finalVolume <= 0)) {
+      if (finalUsageUnit && (Number.isNaN(finalVolume) || finalVolume <= 0)) {
         toast.error("Vui lòng nhập đúng Hàm lượng (lớn hơn 0) khi đã nhập Đơn vị dùng.");
         return;
       }
       
-      if (!isNaN(finalVolume) && finalVolume > 0 && !finalUsageUnit) {
+      if (!Number.isNaN(finalVolume) && finalVolume > 0 && !finalUsageUnit) {
         toast.error("Vui lòng nhập Đơn vị dùng (Usage Unit) khi đã nhập Hàm lượng.");
         return;
       }
@@ -81,7 +83,8 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
         request: {
           name: medicine.name,
           usageUnit: finalUsageUnit,
-          volumePerBaseUnit: isNaN(finalVolume) ? undefined : finalVolume
+          volumePerBaseUnit: Number.isNaN(finalVolume) ? undefined : finalVolume,
+          lowStockThreshold: Number.parseInt(lowStockThreshold) || 0
         }
       });
       toast.success("Cập nhật thông tin cơ bản thành công.");
@@ -97,6 +100,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
   const [price, setPrice] = useState("0");
   const [isBase, setIsBase] = useState(false);
   const [isSellable, setIsSellable] = useState(true);
+  const [editingOriginalIsBase, setEditingOriginalIsBase] = useState(false);
 
   const resetPackagingForm = () => {
     setEditingId(null);
@@ -105,6 +109,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
     setPrice("0");
     setIsBase(false);
     setIsSellable(true);
+    setEditingOriginalIsBase(false);
   };
 
   const handleEditPackaging = (p: MedicinePackagingResponse) => {
@@ -114,6 +119,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
     setPrice(p.salePrice.toString());
     setIsBase(p.isBaseUnit);
     setIsSellable(p.isSellable);
+    setEditingOriginalIsBase(p.isBaseUnit);
   };
 
   const handleSubmitPackaging = (e: React.FormEvent) => {
@@ -125,8 +131,8 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
     
     const req = {
       medicineUnitId: unitId,
-      conversionFactor: parseInt(conversion) || 1,
-      salePrice: parseFloat(price) || 0,
+      conversionFactor: Number.parseInt(conversion) || 1,
+      salePrice: Number.parseFloat(price) || 0,
       isBaseUnit: isBase,
       isSellable: isSellable,
     };
@@ -196,7 +202,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
             </div>
             
             <div className="bg-slate-50 p-5 rounded-lg border">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="space-y-2">
                   <Label>Tên thuốc (Master Data)</Label>
                   <Input 
@@ -223,6 +229,17 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
                     value={volume} 
                     onChange={e => setVolume(e.target.value)} 
                     className="bg-white font-mono"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ngưỡng cảnh báo hết hàng</Label>
+                  <Input 
+                    type="number"
+                    min="0"
+                    placeholder="Nhập 0 để bỏ qua" 
+                    value={lowStockThreshold} 
+                    onChange={e => setLowStockThreshold(e.target.value)} 
+                    className="bg-orange-50/50 border-orange-200 font-mono"
                   />
                 </div>
               </div>
@@ -298,7 +315,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
                           <Button variant="ghost" size="icon" onClick={() => handleEditPackaging(p)}>
                             <Edit2 className="w-4 h-4 text-blue-600" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeletePackaging(p.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeletePackaging(p.id)} disabled={p.isBaseUnit} title={p.isBaseUnit ? "Không thể xóa đơn vị cơ sở" : ""}>
                             <Trash2 className="w-4 h-4 text-red-600" />
                           </Button>
                         </td>
@@ -320,8 +337,8 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                   <div className="space-y-2">
                     <Label>Đơn vị tính <span className="text-red-500">*</span></Label>
-                    <Select value={unitId} onValueChange={setUnitId}>
-                      <SelectTrigger className="bg-white">
+                    <Select value={unitId} onValueChange={setUnitId} disabled={editingOriginalIsBase}>
+                      <SelectTrigger className="bg-white disabled:opacity-50">
                         <SelectValue placeholder="Chọn đơn vị" />
                       </SelectTrigger>
                       <SelectContent>
@@ -362,12 +379,12 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
                       id="isBase" 
                       checked={isBase} 
                       onCheckedChange={(c) => {
-                        setIsBase(!!c);
-                        if (c) setConversion("1");
+                        // isBase is now locked and cannot be changed by the user
                       }} 
+                      disabled={true}
                       className="h-5 w-5"
                     />
-                    <Label htmlFor="isBase" className="font-medium cursor-pointer text-base">
+                    <Label htmlFor="isBase" className="font-medium text-base cursor-not-allowed opacity-50" title="Trạng thái đơn vị cơ sở không thể thay đổi">
                       Là đơn vị cơ sở
                     </Label>
                   </div>

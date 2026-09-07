@@ -3,10 +3,10 @@
 namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
-/// Bá»• sung cá»™t <c>status</c> mÃ  scaffold khÃ´ng sinh Ä‘Æ°á»£c (enum PostgreSQL).
+/// Bổ sung cột <c>status</c> mà scaffold không sinh được (enum PostgreSQL).
 ///
-/// Báº£ng appointments thuá»™c Module 8. á»ž Ä‘Ã¢y chá»‰ THÃŠM thuá»™c tÃ­nh Ä‘á»ƒ Dashboard (UC-05) Ä‘áº¿m
-/// Ä‘Æ°á»£c tá»· lá»‡ Booked/Cancelled, khÃ´ng Ä‘á»•i gÃ¬ khÃ¡c.
+/// Bảng appointments thuộc Module 8. Ở đây chỉ THÊM thuộc tính để Dashboard (UC-05) đếm
+/// được tỉ lệ Booked/Cancelled, không đổi gì khác.
 /// </summary>
 public partial class Appointment
 {

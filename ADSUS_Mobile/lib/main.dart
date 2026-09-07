@@ -1,11 +1,16 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/notification/services/notification_service.dart';
+import 'features/medication_reminder/data/services/widget_sync_service.dart';
+import 'features/medication_reminder/presentation/providers/medication_tab_provider.dart';
 
 void main() async {
   // Đảm bảo Flutter engine đã sẵn sàng trước khi gọi plugin channel.
@@ -23,6 +28,13 @@ void main() async {
   // trên main thread UI; kết quả được cache trong plugin và dùng lại ngay sau đó.
   await SharedPreferences.getInstance();
 
+  // ADSUS Medication Widget (T-3.1): Khởi tạo WorkManager background periodic sync.
+  // isInDebugMode=true để WorkManager chạy được trong debug build.
+  await Workmanager().initialize(adsusCallbackDispatcher);
+
+  // ADSUS Medication Widget (T-3.1): Đăng ký periodic task — 15 phút.
+  await HomeWidget.initiallyLaunchedFromHomeWidget();
+
   // ProviderScope là gốc của Riverpod, phải bọc toàn bộ ứng dụng.
   runApp(const ProviderScope(child: AdsusApp()));
 }
@@ -32,6 +44,11 @@ class AdsusApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Change 1: Đăng ký MethodChannel handler để nhận "openMedicationTab"
+    // từ MainActivity khi user tap widget.
+    // Dùng static guard để tránh đăng ký nhiều lần khi widget rebuild.
+    _registerWidgetOpenMedicationHandler(ref);
+
     return MaterialApp.router(
       title: 'ADSUS',
       debugShowCheckedModeBanner: false,
@@ -40,5 +57,21 @@ class AdsusApp extends ConsumerWidget {
       // chính — xem core/router/app_router.dart.
       routerConfig: ref.watch(goRouterProvider),
     );
+  }
+
+  static bool _widgetHandlerRegistered = false;
+
+  static void _registerWidgetOpenMedicationHandler(WidgetRef ref) {
+    if (_widgetHandlerRegistered) return;
+    _widgetHandlerRegistered = true;
+    // Dùng BasicMessageChannel với JSONMessageCodec — an toàn hơn setMessageHandler thuần.
+    const channel = BasicMessageChannel<dynamic>(
+        'com.adsus.adsus_mobile/deep_link', JSONMessageCodec());
+    channel.setMessageHandler((message) async {
+      if (message is Map && message['method'] == 'openMedicationTab') {
+        ref.read(initialMedicationTabProvider.notifier).state = true;
+      }
+      return null;
+    });
   }
 }

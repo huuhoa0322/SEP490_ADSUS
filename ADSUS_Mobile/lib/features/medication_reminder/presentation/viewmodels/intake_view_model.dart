@@ -65,6 +65,8 @@ class IntakeListViewModel extends StateNotifier<IntakeListState> {
     state = state.copyWith(isSubmittingIds: next, clearError: true);
     try {
       await _ref.read(medicationIntakeRepositoryProvider).confirmIntake(intakeId);
+      // T-6.2: Sau khi confirm thành công → cập nhật widget ngay.
+      _ref.read(widgetSyncServiceProvider).triggerSync();
       // Server đã chuyển status → TAKEN (§22.2 fix #7). Refetch lại danh sách để UI
       // đồng bộ. Optimistic update ở tầng use-prescriptions Web làm tương tự.
       _ref.invalidate(intakeLogsProvider);

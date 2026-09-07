@@ -16,6 +16,8 @@ import '../../features/appointment_scheduling/domain/repositories/symptom_reposi
 import '../../features/appointment_scheduling/domain/services/calendar_sync_service.dart';
 import '../../features/medication_reminder/data/repositories/medication_intake_repository_impl.dart';
 import '../../features/medication_reminder/data/repositories/reminder_preference_repository_impl.dart';
+import '../../features/medication_reminder/data/repositories/widget_data_repository.dart';
+export '../../features/medication_reminder/data/services/widget_sync_service.dart';
 import '../../features/medication_reminder/domain/repositories/medication_intake_repository.dart';
 import '../../features/medication_reminder/domain/repositories/reminder_preference_repository.dart';
 import '../../features/health_log/data/repositories/health_log_repository.dart';
@@ -92,6 +94,11 @@ final medicationIntakeRepositoryProvider =
 final reminderPreferenceRepositoryProvider =
     Provider<ReminderPreferenceRepository>((ref) {
   return ReminderPreferenceRepositoryImpl(ref.watch(dioProvider));
+});
+
+/// ADSUS Medication Widget — sync doses to SharedPreferences for Android widget (T-2.2).
+final widgetDataRepositoryProvider = Provider<WidgetDataRepository>((ref) {
+  return WidgetDataRepository(ref.watch(medicationIntakeRepositoryProvider));
 });
 
 /// Module 9 — Health Log (FT-35, FT-40, FT-41).

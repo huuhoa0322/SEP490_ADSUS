@@ -16,7 +16,7 @@ namespace ADSUS_BE.IntegrationTests.AppointmentScheduling;
 /// Integration tests for ScheduleSlotsController (UC-15 - Manage Clinic Schedule).
 /// Tests HTTP endpoints with mocked repositories to avoid hitting team database.
 ///
-/// Allowed roles: Doctor only.
+/// Allowed roles: Admin only for Close/Reopen. Doctor only for Create/List.
 /// BR-01: VisitDate + StartTime > now (UTC); range > 15 phút; không overlap.
 /// BR-02: Closed có thể mở lại.
 /// </summary>
@@ -266,11 +266,11 @@ public class ScheduleSlotsControllerIntegrationTests
     #region Close Slot Tests
 
     [Fact]
-    public async Task CloseSlot_NoBookings_ReturnsOk()
+    public async Task CloseSlot_NoBookings_Admin_ReturnsOk()
     {
         // Arrange
         using var app = CreateApp();
-        var client = CreateDoctorClient(app);
+        var client = CreateAdminClient(app);
         var slotId = Guid.NewGuid();
         var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
 
@@ -303,11 +303,11 @@ public class ScheduleSlotsControllerIntegrationTests
     }
 
     [Fact]
-    public async Task CloseSlot_HasBookingsWithoutForce_ReturnsConflict()
+    public async Task CloseSlot_HasBookingsWithoutForce_Admin_ReturnsConflict()
     {
         // Arrange
         using var app = CreateApp();
-        var client = CreateDoctorClient(app);
+        var client = CreateAdminClient(app);
         var slotId = Guid.NewGuid();
         var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
 
@@ -347,11 +347,11 @@ public class ScheduleSlotsControllerIntegrationTests
     }
 
     [Fact]
-    public async Task CloseSlot_WithForce_ClosesSlot()
+    public async Task CloseSlot_WithForce_Admin_ClosesSlot()
     {
         // Arrange
         using var app = CreateApp();
-        var client = CreateDoctorClient(app);
+        var client = CreateAdminClient(app);
         var slotId = Guid.NewGuid();
         var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
 
@@ -393,11 +393,11 @@ public class ScheduleSlotsControllerIntegrationTests
     }
 
     [Fact]
-    public async Task CloseSlot_AlreadyClosed_ReturnsBadRequest()
+    public async Task CloseSlot_AlreadyClosed_Admin_ReturnsBadRequest()
     {
         // Arrange
         using var app = CreateApp();
-        var client = CreateDoctorClient(app);
+        var client = CreateAdminClient(app);
         var slotId = Guid.NewGuid();
 
         var slot = new ScheduleSlot
@@ -428,11 +428,11 @@ public class ScheduleSlotsControllerIntegrationTests
     #region Reopen Slot Tests
 
     [Fact]
-    public async Task ReopenSlot_ClosedSlot_ReturnsOk()
+    public async Task ReopenSlot_ClosedSlot_Admin_ReturnsOk()
     {
         // Arrange
         using var app = CreateApp();
-        var client = CreateDoctorClient(app);
+        var client = CreateAdminClient(app);
         var slotId = Guid.NewGuid();
         var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
 
@@ -465,11 +465,11 @@ public class ScheduleSlotsControllerIntegrationTests
     }
 
     [Fact]
-    public async Task ReopenSlot_AlreadyOpen_ReturnsBadRequest()
+    public async Task ReopenSlot_AlreadyOpen_Admin_ReturnsBadRequest()
     {
         // Arrange
         using var app = CreateApp();
-        var client = CreateDoctorClient(app);
+        var client = CreateAdminClient(app);
         var slotId = Guid.NewGuid();
 
         var slot = new ScheduleSlot
@@ -516,6 +516,21 @@ public class ScheduleSlotsControllerIntegrationTests
 
         _slots.Setup(r => r.GetByIdAsync(slotId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(slot);
+
+        // Act
+        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/reopen", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReopenSlot_AsDoctor_ReturnsForbidden()
+    {
+        // Arrange
+        using var app = CreateApp();
+        var client = CreateDoctorClient(app);
+        var slotId = Guid.NewGuid();
 
         // Act
         var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/reopen", null);
@@ -637,6 +652,32 @@ public class ScheduleSlotsControllerIntegrationTests
         using var scope = app.Services.CreateScope();
         var token = scope.ServiceProvider.GetRequiredService<IJwtTokenService>()
             .GenerateAccessToken(patient);
+
+        var client = app.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        return client;
+    }
+
+    private HttpClient CreateAdminClient(WebApplicationFactory<Program> app)
+    {
+        var adminId = Guid.NewGuid();
+        var admin = new User
+        {
+            UserId = adminId,
+            Phone = "0900000004",
+            FullName = "Admin Test",
+            PasswordHash = "hash",
+            Role = UserRole.Admin,
+            Status = UserStatus.Active,
+        };
+
+        _users.Setup(r => r.GetByIdAsync(adminId, It.IsAny<CancellationToken>())).ReturnsAsync(admin);
+        _users.Setup(r => r.GetByIdReadOnlyAsync(adminId, It.IsAny<CancellationToken>())).ReturnsAsync(admin);
+
+        using var scope = app.Services.CreateScope();
+        var token = scope.ServiceProvider.GetRequiredService<IJwtTokenService>()
+            .GenerateAccessToken(admin);
 
         var client = app.CreateClient();
         client.DefaultRequestHeaders.Authorization =

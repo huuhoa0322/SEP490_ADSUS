@@ -25,6 +25,24 @@ namespace ADSUS_BE.Middlewares;
 /// </summary>
 public class AccountStatusJwtEvents : JwtBearerEvents
 {
+    /// <summary>
+    /// Hỗ trợ SignalR nhận JWT token từ query string.
+    /// SignalR không hỗ trợ Authorization header, nên cần đọc từ query string.
+    /// </summary>
+    public override Task MessageReceived(MessageReceivedContext context)
+    {
+        // SignalR: extract token from query string (SignalR can't use Authorization header)
+        var accessToken = context.Request.Query["access_token"];
+        var path = context.Request.Path;
+
+        if (path.StartsWithSegments("/hubs") && !string.IsNullOrEmpty(accessToken))
+        {
+            context.Token = accessToken;
+        }
+
+        return Task.CompletedTask;
+    }
+
     public override async Task TokenValidated(TokenValidatedContext context)
     {
         var rawUserId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -38,9 +56,7 @@ public class AccountStatusJwtEvents : JwtBearerEvents
 
         var users = context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
 
-        // Chỉ đọc để kiểm tra trạng thái, không sửa/lưu gì ở đây — dùng bản AsNoTracking. Chạy
-        // trên MỌI request có token nên đáng để tránh tracking không cần thiết (P11 review
-        // Module 1, 14/08/2026).
+        // Chỉ đọc để kiểm tra trạng thái, không sửa/lưu gì ở đây — dùng bản AsNoTracking.
         var user = await users.GetByIdReadOnlyAsync(userId, context.HttpContext.RequestAborted);
 
         // GB-06: không phân biệt tài khoản không tồn tại, bị khoá hay bị vô hiệu hoá —

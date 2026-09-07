@@ -7,12 +7,14 @@ import { usePathname } from "next/navigation";
 import { getHomePathForRole, useAuthStore } from "@/store/auth-store";
 import { useUiStore } from "@/store/ui-store";
 import type { Role } from "@/types/api.types";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 
 const ROLE_LABEL: Record<Role, string> = {
   ADMIN: "Quản trị viên",
   DOCTOR: "Bác sĩ",
   NURSE: "Điều dưỡng",
   PATIENT: "Bệnh nhân",
+  PHARMACIST: "Dược sĩ",
 };
 
 export function AppHeader() {
@@ -50,9 +52,16 @@ export function AppHeader() {
             <>
               <HeaderNav href="/dashboard" icon={<LayoutDashboard className="size-4" />} label="Dashboard" active={pathname.startsWith("/dashboard")} />
               <HeaderNav href="/admin/users" icon={<Users className="size-4" />} label="Tài khoản" active={pathname.startsWith("/admin/users")} />
-              <HeaderNav href="/admin/medicines" icon={<Pill className="size-4" />} label="Danh mục thuốc" active={pathname.startsWith("/admin/medicines")} />
+              <HeaderNav href="/medicines" icon={<Pill className="size-4" />} label="Danh mục thuốc" active={pathname.startsWith("/medicines")} />
               <HeaderNav href="/admin/ai-models" icon={<BrainCircuit className="size-4" />} label="Mô hình AI" active={pathname.startsWith("/admin/ai-models")} />
               <HeaderNav href="/admin/blog" icon={<FileText className="size-4" />} label="Blog" active={pathname.startsWith("/admin/blog")} />
+            </>
+          )}
+
+          {user?.role === "PHARMACIST" && (
+            <>
+              <HeaderNav href="/medicines" icon={<Pill className="size-4" />} label="Danh mục thuốc" active={pathname.startsWith("/medicines")} />
+              <HeaderNav href="/suppliers" icon={<Users className="size-4" />} label="Nhà cung cấp" active={pathname.startsWith("/suppliers")} />
             </>
           )}
 
@@ -66,8 +75,9 @@ export function AppHeader() {
         </div>
 
         {user && (
-          <div className="flex shrink-0 items-center text-right">
-            <div>
+          <div className="flex shrink-0 items-center gap-3">
+            <NotificationBell />
+            <div className="text-right">
               <p className="font-heading text-base font-bold leading-tight text-foreground">
                 {user.fullName}
               </p>

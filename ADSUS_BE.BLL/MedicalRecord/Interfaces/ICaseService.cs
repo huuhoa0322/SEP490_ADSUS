@@ -35,9 +35,6 @@ public interface ICaseService
     Task<CaseResponse> CreateAsync(
         CreateCaseRequest request, CancellationToken ct = default);
 
-    Task<IReadOnlyList<UltrasoundImageResponse>> AddImagesAsync(
-        Guid caseId, AddUltrasoundImagesRequest request, CancellationToken ct = default);
-
     /// <summary>
     /// Thêm 07/08/2026 — "Lưu kết luận". Chỉ lưu nội dung, KHÔNG đổi trạng thái ca — sửa lại
     /// được nhiều lần. Cùng hai điều kiện với ConfirmAsync: chỉ Bác sĩ phụ trách CA NÀY (GB-04),

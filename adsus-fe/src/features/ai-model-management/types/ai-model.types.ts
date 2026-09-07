@@ -46,6 +46,12 @@ export interface ActivateVersionRequest {
   status: "ACTIVE";
 }
 
+// Doctor-facing (UC-20): chỉ code/status của phiên bản đang Active, không có Metrics/Live/RegisteredBy.
+export interface ActiveAiModelVersion {
+  versionCode: string;
+  status: ModelVersionStatus;
+}
+
 export interface PagedResult<T> {
   items: T[];
   page: number;

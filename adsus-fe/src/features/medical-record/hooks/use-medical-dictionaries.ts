@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api-client";
-import { MedicalDisease, MedicalAllergyType } from "../types/medical-record.types";
-import { ApiResponse } from "@/types/api.types";
+
+import { listAllergyTypes, listDiseases } from "../api/medical-dictionaries.api";
 
 export const medicalDictionariesKeys = {
   all: ["medical-dictionaries"] as const,
@@ -12,12 +11,7 @@ export const medicalDictionariesKeys = {
 export const useDiseases = () => {
   return useQuery({
     queryKey: medicalDictionariesKeys.diseases(),
-    queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<MedicalDisease[]>>(
-        "/api/v1/medical-dictionaries/diseases"
-      );
-      return response.data.data;
-    },
+    queryFn: listDiseases,
     staleTime: 24 * 60 * 60 * 1000, // 24h
   });
 };
@@ -25,12 +19,7 @@ export const useDiseases = () => {
 export const useAllergyTypes = () => {
   return useQuery({
     queryKey: medicalDictionariesKeys.allergyTypes(),
-    queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<MedicalAllergyType[]>>(
-        "/api/v1/medical-dictionaries/allergy-types"
-      );
-      return response.data.data;
-    },
+    queryFn: listAllergyTypes,
     staleTime: 24 * 60 * 60 * 1000, // 24h
   });
 };

@@ -31,6 +31,10 @@ public class AiModelsController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > 100) pageSize = 100;
+
         var result = await _aiModelService.SearchVersionsAsync(keyword, page, pageSize, cancellationToken);
         return Ok(ApiResponse<PagedResult<AiModelVersionDto>>.Ok(result));
     }
@@ -39,10 +43,10 @@ public class AiModelsController : ControllerBase
     // Doctor has no access to the full list/history above or to any other version's detail below.
     [HttpGet("active")]
     [Authorize(Roles = "ADMIN,DOCTOR")]
-    public async Task<ActionResult<ApiResponse<AiModelVersionDto?>>> GetActiveVersion(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<ActiveAiModelVersionDto?>>> GetActiveVersion(CancellationToken cancellationToken)
     {
         var version = await _aiModelService.GetActiveVersionAsync(cancellationToken);
-        return Ok(ApiResponse<AiModelVersionDto?>.Ok(version));
+        return Ok(ApiResponse<ActiveAiModelVersionDto?>.Ok(version));
     }
 
     [HttpGet("{id:guid}")]

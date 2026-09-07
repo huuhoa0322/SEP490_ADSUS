@@ -52,7 +52,7 @@ vi.mock("@/features/medical-record/hooks/use-patient-profile", () => ({
 }));
 
 function signInAs(role: "DOCTOR" | "NURSE", userId: string, fullName: string) {
-  useAuthStore.getState().signIn("token", {
+  useAuthStore.getState().signIn("access-token", "refresh-token", {
     userId,
     fullName,
     email: null,

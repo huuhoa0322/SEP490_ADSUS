@@ -7,7 +7,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Validators;
 /// Validation cho POST /api/v1/prescriptions (UC-18). Áp dụng:
 /// - CaseId, DoctorId, Items không được rỗng
 /// - DurationDays trong [1, 365] (§3.1)
-/// - Dosage không rỗng, tối đa 100 ký tự (master PrescriptionItem schema)
+/// - QuantityPerDose trong [1, 1000]
 /// - ScheduleSlots phải có ít nhất 1 giá trị (§3.1: ≥1 khung uống)
 /// - GeneralNote tối đa 2000 ký tự (master schema)
 /// - Instructions tối đa 1000 ký tự (consistency với IntakeLogResponse)
@@ -18,9 +18,6 @@ public sealed class CreatePrescriptionRequestValidator : AbstractValidator<Creat
     {
         RuleFor(r => r.CaseId)
             .NotEmpty().WithMessage("CaseId không được để trống.");
-
-        RuleFor(r => r.DoctorId)
-            .NotEmpty().WithMessage("DoctorId không được để trống.");
 
         RuleFor(r => r.GeneralNote)
             .MaximumLength(2000).WithMessage("Ghi chú đơn tối đa 2000 ký tự.")
@@ -41,13 +38,11 @@ public sealed class CreatePrescriptionItemDtoValidator : AbstractValidator<Creat
             .NotEmpty().WithMessage("Tên thuốc không được để trống.")
             .MaximumLength(200).WithMessage("Tên thuốc tối đa 200 ký tự.");
 
-        RuleFor(i => i.Dosage)
-            .NotEmpty().WithMessage("Liều lượng không được để trống.")
-            .MaximumLength(100).WithMessage("Liều lượng tối đa 100 ký tự.");
+        RuleFor(i => i.QuantityPerDose)
+            .InclusiveBetween(1, 1000).WithMessage("Số lượng mỗi liều phải từ 1 đến 1000.");
 
         RuleFor(i => i.DurationDays)
-            .InclusiveBetween((short)1, (short)365)
-            .WithMessage("DurationDays phải nằm trong khoảng [1, 365].");
+            .InclusiveBetween((short)1, (short)365).WithMessage("DurationDays phải nằm trong khoảng [1, 365].");
 
         RuleFor(i => i.Instructions)
             .MaximumLength(1000).WithMessage("Hướng dẫn tối đa 1000 ký tự.")

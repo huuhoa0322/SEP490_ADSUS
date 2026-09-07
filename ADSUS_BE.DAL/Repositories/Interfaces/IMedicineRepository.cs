@@ -27,7 +27,7 @@ public interface IMedicineRepository
     Task UpdateAsync(Medicine medicine, CancellationToken ct = default);
 
     /// <summary>Lấy danh sách phân trang (cho Admin).</summary>
-    Task<(IReadOnlyList<Medicine> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? keyword, CancellationToken ct = default);
+    Task<(IReadOnlyList<Medicine> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? keyword, bool? inStock = null, CancellationToken ct = default);
 
     /// <summary>Kiểm tra xem thuốc đã từng được sử dụng trong đơn thuốc nào chưa.</summary>
     Task<bool> HasBeenPrescribedAsync(Guid medicineId, CancellationToken ct = default);

@@ -58,10 +58,10 @@ function PreviousCaseSummary({ caseId }: { caseId: string }) {
         <div>
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Triệu chứng chi tiết:</span>
           <ul className="list-disc list-inside text-sm text-foreground space-y-1.5 ml-1">
-            {caseDetail.symptoms.map((sym, idx) => {
+            {caseDetail.symptoms.map((sym) => {
               const text = sym.symptomName || sym.otherNote;
               return text ? (
-                <li key={idx} className="leading-snug">
+                <li key={`${sym.categoryId}-${sym.symptomId ?? "other"}`} className="leading-snug">
                   <span className="font-medium">{sym.categoryName}:</span> {text} {sym.symptomName && sym.otherNote ? `(${sym.otherNote})` : ''}
                 </li>
               ) : null;
@@ -269,12 +269,12 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
       )}
 
       <section className="mt-6 space-y-5 rounded-xl border border-border p-5">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
+        <fieldset className="m-0 border-0 p-0">
+          <legend className="mb-1.5 block text-sm font-medium">
             Triệu chứng chi tiết
-          </label>
+          </legend>
           <SymptomSelector value={symptoms} onChange={setSymptoms} />
-        </div>
+        </fieldset>
       </section>
 
       {errorMessage ? (

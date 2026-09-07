@@ -17,6 +17,17 @@ public interface IAuthService
     Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Refresh tokens - exchanges a valid refresh token for new access + refresh tokens.
+    /// Supports SignalR persistent connections without re-login.
+    /// </summary>
+    Task<RefreshTokenResponse?> RefreshTokensAsync(string refreshToken, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Revoke all refresh tokens for a user (used on logout).
+    /// </summary>
+    Task RevokeAllRefreshTokensAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// UC-25 — a signed-in user changes their own password.
     /// A successful change also clears the mandatory-change flag if one was set.
     /// </summary>

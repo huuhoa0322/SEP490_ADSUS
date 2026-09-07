@@ -36,4 +36,17 @@ public sealed class AiChatMessageRepository : IAiChatMessageRepository
             .Take(limit)
             .ToListAsync(ct);
     }
+
+    public async Task<int> CountAssistantMessagesSinceAsync(
+        Guid userId,
+        DateTime since,
+        CancellationToken ct = default)
+    {
+        return await _db.AiChatMessages
+            .AsNoTracking()
+            .Where(m => m.UserId == userId
+                && m.Role == ChatRole.Assistant
+                && m.CreatedAt >= since)
+            .CountAsync(ct);
+    }
 }

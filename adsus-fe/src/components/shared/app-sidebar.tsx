@@ -1,6 +1,6 @@
 "use client";
 
-import { BrainCircuit, CalendarClock, FileText, KeyRound, LogOut, LayoutDashboard, ClipboardList, Users, Pill, Truck } from "lucide-react";
+import { BrainCircuit, CalendarClock, FileText, KeyRound, LogOut, LayoutDashboard, ClipboardList, ClipboardCheck, Users, Pill, Truck, PackagePlus, Receipt, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -32,10 +32,24 @@ export function AppSidebar() {
           <>
             <NavItem expanded={expanded} href="/dashboard" icon={<LayoutDashboard className="size-5" />} label="Dashboard" active={pathname.startsWith("/dashboard")} />
             <NavItem expanded={expanded} href="/admin/users" icon={<Users className="size-5" />} label="Tài khoản" active={pathname.startsWith("/admin/users")} />
-            <NavItem expanded={expanded} href="/admin/medicines" icon={<Pill className="size-5" />} label="Danh mục thuốc" active={pathname.startsWith("/admin/medicines")} />
-            <NavItem expanded={expanded} href="/admin/suppliers" icon={<Truck className="size-5" />} label="Nhà cung cấp" active={pathname.startsWith("/admin/suppliers")} />
+            <NavItem expanded={expanded} href="/admin/shift-requests" icon={<CalendarClock className="size-5" />} label="Duyệt nghỉ phép" active={pathname.startsWith("/admin/shift-requests")} />
+            <NavItem expanded={expanded} href="/medicines" icon={<Pill className="size-5" />} label="Danh mục thuốc" active={pathname.startsWith("/medicines")} />
+            <NavItem expanded={expanded} href="/suppliers" icon={<Truck className="size-5" />} label="Nhà cung cấp" active={pathname.startsWith("/suppliers")} />
+            <NavItem expanded={expanded} href="/inventory/import" icon={<PackagePlus className="size-5" />} label="Nhập kho" active={pathname.startsWith("/inventory/import")} />
+            <NavItem expanded={expanded} href="/inventory" icon={<ClipboardList className="size-5" />} label="Lịch sử kho" active={pathname === "/inventory"} />
+            <NavItem expanded={expanded} href="/medicines/inventory-alerts" icon={<AlertTriangle className="size-5" />} label="Cảnh báo kho" active={pathname.startsWith("/medicines/inventory-alerts")} />
             <NavItem expanded={expanded} href="/admin/ai-models" icon={<BrainCircuit className="size-5" />} label="Mô hình AI" active={pathname.startsWith("/admin/ai-models")} />
             <NavItem expanded={expanded} href="/admin/blog" icon={<FileText className="size-5" />} label="Blog" active={pathname.startsWith("/admin/blog")} />
+          </>
+        )}
+
+        {user?.role === "PHARMACIST" && (
+          <>
+            <NavItem expanded={expanded} href="/medicines" icon={<Pill className="size-5" />} label="Danh mục thuốc" active={pathname.startsWith("/medicines")} />
+            <NavItem expanded={expanded} href="/suppliers" icon={<Truck className="size-5" />} label="Nhà cung cấp" active={pathname.startsWith("/suppliers")} />
+            <NavItem expanded={expanded} href="/inventory/import" icon={<PackagePlus className="size-5" />} label="Nhập kho" active={pathname.startsWith("/inventory/import")} />
+            <NavItem expanded={expanded} href="/inventory" icon={<ClipboardList className="size-5" />} label="Lịch sử kho" active={pathname === "/inventory"} />
+            <NavItem expanded={expanded} href="/medicines/inventory-alerts" icon={<AlertTriangle className="size-5" />} label="Cảnh báo kho" active={pathname.startsWith("/medicines/inventory-alerts")} />
           </>
         )}
 
@@ -43,8 +57,19 @@ export function AppSidebar() {
           <NavItem expanded={expanded} href="/patients" icon={<ClipboardList className="size-5" />} label="Danh sách bệnh nhân" active={pathname.startsWith("/patients")} />
         )}
 
+        {user?.role === "NURSE" && (
+          <>
+            <NavItem expanded={expanded} href="/checkin" icon={<ClipboardCheck className="size-5" />} label="Check-in" active={pathname.startsWith("/checkin")} />
+            <NavItem expanded={expanded} href="/invoices" icon={<Receipt className="size-5" />} label="Quản lý hóa đơn" active={pathname.startsWith("/invoices")} />
+          </>
+        )}
+
         {user?.role === "DOCTOR" && (
-          <NavItem expanded={expanded} href="/schedule" icon={<CalendarClock className="size-5" />} label="Quản lý lịch" active={pathname.startsWith("/schedule")} />
+          <>
+            <NavItem expanded={expanded} href="/schedule" icon={<CalendarClock className="size-5" />} label="Quản lý lịch" active={pathname.startsWith("/schedule") && !pathname.startsWith("/schedule/patients")} />
+            <NavItem expanded={expanded} href="/schedule/patients" icon={<Users className="size-5" />} label="Lịch bệnh nhân" active={pathname.startsWith("/schedule/patients")} />
+            <NavItem expanded={expanded} href="/medication-tracking" icon={<Pill className="size-5" />} label="Theo dõi và nhắc nhở uống thuốc" active={pathname.startsWith("/medication-tracking")} />
+          </>
         )}
       </div>
 
@@ -82,7 +107,7 @@ function NavItem({ href, icon, label, active, expanded }: { href: string; icon: 
       }`}
     >
       <div className="shrink-0">{icon}</div>
-      {expanded && <span className="truncate">{label}</span>}
+      {expanded && <span className="whitespace-normal leading-tight">{label}</span>}
     </Link>
   );
 }

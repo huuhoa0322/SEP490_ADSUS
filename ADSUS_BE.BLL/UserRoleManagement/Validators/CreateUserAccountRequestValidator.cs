@@ -20,7 +20,7 @@ public class CreateUserAccountRequestValidator : AbstractValidator<CreateUserAcc
     /// Vai trò hợp lệ. Cố ý KHÔNG có ADMIN: theo UC-04, tài khoản quản trị được cấp lúc dựng
     /// hệ thống chứ không tạo qua màn này.
     /// </summary>
-    private static readonly string[] AllowedRoles = { "DOCTOR", "NURSE", "PATIENT" };
+    private static readonly string[] AllowedRoles = { "DOCTOR", "NURSE", "PATIENT", "PHARMACIST" };
 
     public CreateUserAccountRequestValidator()
     {
@@ -36,7 +36,7 @@ public class CreateUserAccountRequestValidator : AbstractValidator<CreateUserAcc
         RuleFor(x => x.Role)
             .NotEmpty().WithMessage("Role is required.")
             .Must(r => AllowedRoles.Contains(r?.Trim().ToUpperInvariant()))
-            .WithMessage("Role must be one of DOCTOR, NURSE or PATIENT.");
+            .WithMessage("Role must be one of DOCTOR, NURSE, PATIENT or PHARMACIST.");
 
         // Email không bắt buộc, nhưng đã nhập thì phải đúng dạng — đó là kênh DUY NHẤT để
         // gửi mật khẩu tạm, gõ sai là chủ tài khoản không bao giờ nhận được.

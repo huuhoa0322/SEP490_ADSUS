@@ -124,11 +124,6 @@ public sealed record CreateCaseRequest(
     IReadOnlyList<CreateCaseSymptomRequest>? Symptoms,
     IReadOnlyList<UploadedFile> Images);
 
-/// <summary>#21 — bổ sung ảnh vào một ca chưa được chốt (UC-07).</summary>
-public sealed record AddUltrasoundImagesRequest(
-    IReadOnlyList<UploadedFile> Images,
-    string? Note);
-
 /// <summary>
 /// Thêm 07/08/2026, sửa lại cùng ngày (tách Lưu/Kết thúc) — Bác sĩ phụ trách nhập/sửa kết
 /// luận cho ca khám ngay tại màn chi tiết ca (Module 04), không đợi màn duyệt kết quả AI

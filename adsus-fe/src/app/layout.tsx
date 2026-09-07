@@ -4,6 +4,7 @@ import "./globals.css";
 import "react-hot-toast";
 
 import { QueryProvider } from "@/providers/query-provider";
+import { SignalRProvider } from "@/providers/signalr-provider";
 import { Toaster } from "react-hot-toast";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -43,7 +44,9 @@ export default function RootLayout({
   return (
     <html lang="vi" className={htmlClassName}>
       <body className={bodyClassName}>
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <SignalRProvider>{children}</SignalRProvider>
+        </QueryProvider>
         <Toaster
           position="bottom-center"
           toastOptions={{

@@ -54,6 +54,10 @@ class AppColors {
   static const Color success = Color(0xFF1CBA9F); // adherence ≥80%
   static const Color amberWarn = Color(0xFFE0912F); // adherence <80%
 
+  /// Màu amber/warning (rate limit banner).
+  static const Color amber = Color(0xFFE0912F);
+  static const Color amberTint = Color(0xFFFFF8EE);
+
   static const Color background = Color(0xFFF7F9FB);
   static const Color border = Color(0xFFDDE5EF);
   static const Color muted = Color(0xFF5B6B85);

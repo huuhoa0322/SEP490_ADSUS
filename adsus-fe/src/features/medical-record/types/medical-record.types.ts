@@ -268,13 +268,6 @@ export interface CreateCaseInput {
   images: File[];
 }
 
-/** #21 — bổ sung ảnh vào ca chưa chốt. */
-export interface AddUltrasoundImagesInput {
-  caseId: string;
-  images: File[];
-  note: string | null;
-}
-
 /**
  * Thêm 07/08/2026, sửa lại cùng ngày (tách Lưu/Kết thúc) — Bác sĩ phụ trách nhập/sửa kết luận
  * ngay tại màn chi tiết ca. Cả hai trường bắt buộc (validator backend), không giống

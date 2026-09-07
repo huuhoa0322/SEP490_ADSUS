@@ -21,6 +21,7 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
             .Include(p => p.User)
             .Include(p => p.PatientDiseases).ThenInclude(x => x.Disease)
             .Include(p => p.PatientAllergies).ThenInclude(x => x.AllergyType)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.PatientProfileId == patientProfileId, ct);
 
     public Task<PatientProfile?> GetForUpdateAsync(Guid patientProfileId, CancellationToken ct = default) =>
@@ -28,6 +29,7 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
             .Include(p => p.User)
             .Include(p => p.PatientDiseases)
             .Include(p => p.PatientAllergies)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.PatientProfileId == patientProfileId, ct);
 
     public Task<PatientProfile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
@@ -36,6 +38,7 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
             .Include(p => p.User)
             .Include(p => p.PatientDiseases).ThenInclude(x => x.Disease)
             .Include(p => p.PatientAllergies).ThenInclude(x => x.AllergyType)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
     public Task<bool> ExistsForUserAsync(Guid userId, CancellationToken ct = default) =>
@@ -69,8 +72,7 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
         foreach(var a in deletedAllergies) _db.Entry(a).State = EntityState.Detached;
 
         // 3. Xóa trực tiếp bằng ExecuteDeleteAsync để đảm bảo an toàn, không sợ concurrency
-        await _db.PatientDiseases.Where(d => d.PatientProfileId == profile.PatientProfileId).ExecuteDeleteAsync(ct);
-        await _db.PatientAllergies.Where(a => a.PatientProfileId == profile.PatientProfileId).ExecuteDeleteAsync(ct);
+        await ClearCollectionsAsync(profile.PatientProfileId, ct);
 
         // 4. Các item mới được thêm vào profile (State = Added) sẽ được EF xử lý bằng INSERT bình thường.
         if (_db.Entry(profile).State == EntityState.Detached)

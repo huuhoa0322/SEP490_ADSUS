@@ -4,9 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import {
   KeyRound,
   Loader2,
-  Lock,
-  LockOpen,
   PencilLine,
+  RefreshCcw,
   UserMinus,
   UserPlus,
 } from "lucide-react";
@@ -35,20 +34,15 @@ const ACTIONS: Record<string, { label: string; icon: ReactNode; tone: string }> 
     icon: <PencilLine className="size-4" />,
     tone: "text-muted-foreground",
   },
-  LOCK_ACCOUNT: {
-    label: "Khoá tài khoản",
-    icon: <Lock className="size-4" />,
-    tone: "text-[var(--status-warning)]",
-  },
-  UNLOCK_ACCOUNT: {
-    label: "Mở khoá tài khoản",
-    icon: <LockOpen className="size-4" />,
-    tone: "text-[var(--status-good)]",
-  },
   DEACTIVATE_ACCOUNT: {
     label: "Vô hiệu hoá tài khoản",
     icon: <UserMinus className="size-4" />,
     tone: "text-[var(--status-critical)]",
+  },
+  REACTIVATE_ACCOUNT: {
+    label: "Khôi phục tài khoản",
+    icon: <RefreshCcw className="size-4" />,
+    tone: "text-[var(--status-good)]",
   },
   ADMIN_RESET_PASSWORD: {
     label: "Cấp lại mật khẩu",
@@ -146,7 +140,7 @@ function AuditRow({ entry }: { entry: AuditLogEntry }) {
 function formatWhen(iso: string): string {
   // Chuỗi từ .NET không phải lúc nào cũng có hậu tố Z; thiếu nó thì trình duyệt hiểu là giờ
   // địa phương và mốc thời gian sai đúng 7 tiếng.
-  const date = new Date(/[Zz]|[+-]\d{2}:\d{2}$/.test(iso) ? iso : `${iso}Z`);
+  const date = new Date(/(?:[Zz])|(?:[+-]\d{2}:\d{2}$)/.test(iso) ? iso : `${iso}Z`);
   if (Number.isNaN(date.getTime())) return "—";
 
   return date.toLocaleString("vi-VN", {

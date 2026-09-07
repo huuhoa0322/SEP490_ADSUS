@@ -5,8 +5,10 @@ using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Services;
 using ADSUS_BE.BLL.Auth.Validators;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.Common.Events;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.Common.Services;
+using ADSUS_BE.Hubs;
 using ADSUS_BE.BLL.DashboardReporting.Interfaces;
 using ADSUS_BE.BLL.DashboardReporting.Services;
 using ADSUS_BE.BLL.Engagement.Interfaces;
@@ -15,14 +17,18 @@ using ADSUS_BE.BLL.AIModelManagement.Interfaces;
 using ADSUS_BE.BLL.AIModelManagement.Services;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
 using ADSUS_BE.BLL.PrescriptionAdherence.Services;
+using ADSUS_BE.BLL.DoctorMedicationTracking.Interfaces;
+using ADSUS_BE.BLL.DoctorMedicationTracking.Services;
 using ADSUS_BE.Jobs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
+using ADSUS_BE.BLL.MedicalRecord.Events;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Services;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.AppointmentScheduling.Services;
+using ADSUS_BE.BLL.AppointmentScheduling.Handlers;
 using ADSUS_BE.BLL.HealthMonitoring.Interfaces;
 using ADSUS_BE.BLL.HealthMonitoring.Services;
 using ADSUS_BE.BLL.MedicalRecord.Validators;
@@ -114,7 +120,7 @@ namespace ADSUS_BE
             // Verify config is present:
             var openAiKey = builder.Configuration["OpenAi:ApiKey"];
             var openAiModel = builder.Configuration["OpenAi:Model"];
-            Console.WriteLine($"[DEBUG CONFIG] OpenAi:ApiKey = '{(string.IsNullOrEmpty(openAiKey) ? "NULL/EMPTY" : openAiKey.Substring(0, Math.Min(10, openAiKey.Length)) + "...")}'");
+            Console.WriteLine($"[DEBUG CONFIG] OpenAi:ApiKey = '{(string.IsNullOrEmpty(openAiKey) ? "NULL/EMPTY" : string.Concat(openAiKey.AsSpan(0, Math.Min(10, openAiKey.Length)), "..."))}'");
             Console.WriteLine($"[DEBUG CONFIG] OpenAi:Model = '{(openAiModel ?? "NULL")}'");
 
             builder.Host.UseSerilog((context, configuration) =>
@@ -209,6 +215,14 @@ namespace ADSUS_BE
             dataSourceBuilder.MapEnum<HealthLogType>("health_log_type");
             dataSourceBuilder.MapEnum<MedicineStatus>("medicines_status");
             dataSourceBuilder.MapEnum<ChatRole>("chat_role");
+            dataSourceBuilder.MapEnum<InventoryTxnType>("inventory_txn_type");
+            dataSourceBuilder.MapEnum<InvoiceStatus>("invoice_status");
+            dataSourceBuilder.MapEnum<PaymentMethod>("payment_method");
+            dataSourceBuilder.MapEnum<NotificationStatus>("notification_status");
+            dataSourceBuilder.MapEnum<NotificationType>("notification_type");
+            dataSourceBuilder.MapEnum<ShiftRequestType>("shift_request_type");
+            dataSourceBuilder.MapEnum<ShiftRequestStatus>("shift_request_status");
+            dataSourceBuilder.MapEnum<ShiftType>("shift_type");
             var dataSource = dataSourceBuilder.Build();
 
             builder.Services.AddSingleton(dataSource);
@@ -248,8 +262,8 @@ namespace ADSUS_BE
                 })
                 .AddJwtBearer(options =>
                 {
-                    // Sau khi chữ ký hợp lệ, còn phải hỏi thêm DB xem tài khoản có bị khoá
-                    // hay vô hiệu hoá không. Xem AccountStatusJwtEvents để biết lý do.
+                    // AccountStatusJwtEvents xử lý cả SignalR token extraction (MessageReceived)
+                    // và kiểm tra account status (TokenValidated).
                     options.EventsType = typeof(AccountStatusJwtEvents);
 
                     options.TokenValidationParameters = new TokenValidationParameters
@@ -282,6 +296,13 @@ namespace ADSUS_BE
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy(CorsPolicy, policy => policy
+                    .WithOrigins(corsOrigins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials());
+
+                // SignalR CORS policy (SignalR needs explicit credentials setting)
+                options.AddPolicy("SignalRCors", policy => policy
                     .WithOrigins(corsOrigins)
                     .AllowAnyHeader()
                     .AllowAnyMethod()
@@ -336,15 +357,22 @@ namespace ADSUS_BE
             // ---------- Per-module service registration ----------
             // DAL
             builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
             builder.Services.AddScoped<IAiModelVersionRepository, AiModelVersionRepository>();
             builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+
+            // Common — Domain Events infrastructure (SOLID: removes cross-module dependencies)
+            builder.Services.AddScoped<IEventPublisher, EventPublisher>();
 
             // DAL — Module 4: Medical Record
             builder.Services.AddScoped<IPatientProfileRepository, PatientProfileRepository>();
             builder.Services.AddScoped<ICaseRepository, CaseRepository>();
             builder.Services.AddScoped<IUltrasoundImageRepository, UltrasoundImageRepository>();
             builder.Services.AddScoped<ISymptomCategoryRepository, SymptomCategoryRepository>();
+            builder.Services.AddScoped<IAiPredictionRepository, AiPredictionRepository>();
+            builder.Services.AddScoped<IDoctorAnnotationRepository, DoctorAnnotationRepository>();
+            builder.Services.AddScoped<IMedicalDictionaryRepository, MedicalDictionaryRepository>();
 
             // External services — push notification.
             // DEBUG: dùng FakePush (in-memory stub) cho dev/test/CI không cần Firebase.
@@ -386,6 +414,7 @@ namespace ADSUS_BE
                 new System.Lazy<IFileStorageService>(() => sp.GetRequiredService<IFileStorageService>()));
             builder.Services.AddScoped<ICaseService, CaseService>();
             builder.Services.AddScoped<ISymptomService, SymptomService>();
+            builder.Services.AddScoped<IMedicalDictionaryService, MedicalDictionaryService>();
             builder.Services.AddScoped<ICaseDiagnosisService, CaseDiagnosisService>();
             builder.Services.AddScoped<IAiMetricsService, AiMetricsService>();
             builder.Services.AddScoped<ICaseReportService, CaseReportService>();
@@ -400,11 +429,23 @@ namespace ADSUS_BE
             // BLL — Module 6: AI Model Management
             builder.Services.AddScoped<IAiModelService, AiModelService>();
 
+            // BLL — Module 7: Inventory Management
+            builder.Services.AddScoped<IMedicineService, MedicineService>();
+            builder.Services.AddScoped<ISupplierService, SupplierService>();
+            builder.Services.AddScoped<IInventoryService, InventoryService>();
+            builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+
             // BLL — Module 8: Appointment Scheduling (UC-15)
             builder.Services.AddScoped<IScheduleSlotRepository, ScheduleSlotRepository>();
             builder.Services.AddScoped<IScheduleSlotService, ScheduleSlotService>();
+            builder.Services.AddScoped<IShiftRequestRepository, ShiftRequestRepository>();
+            builder.Services.AddScoped<IShiftRequestService, ShiftRequestService>();
             // UC-13, UC-14
             builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+            // No-Show Service
+            builder.Services.AddScoped<NoShowService>();
+            // Domain Event handler — listens to CaseEndEvent and completes related appointments
+            builder.Services.AddScoped<IEventHandler<CaseEndEvent>, AppointmentStatusHandler>();
             builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 
             // BLL — Module 9: Health Monitoring (UC-21)
@@ -417,6 +458,10 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IUserFcmTokenRepository, UserFcmTokenRepository>();
             builder.Services.AddScoped<IFcmTokenService, FcmTokenService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
+
+            // SignalR — Real-time notifications (thêm sau NotificationService vì NotificationService phụ thuộc vào IRealTimeNotificationService)
+            builder.Services.AddScoped<IRealTimeNotificationService, Services.SignalRNotificationService>();
+            builder.Services.AddSignalR();
 
             // ---------- Cấu hình AI Backend ----------
             builder.Services.Configure<AiBackendSettings>(
@@ -451,6 +496,10 @@ namespace ADSUS_BE
             // ---------- Gửi email (API-04) ----------
             builder.Services.Configure<SendGridSettings>(
                 builder.Configuration.GetSection(SendGridSettings.SectionName));
+
+            // ---------- No-Show Settings ----------
+            builder.Services.Configure<ADSUS_BE.BLL.Common.Settings.NoShowSettings>(
+                builder.Configuration.GetSection("NoShowSettings"));
 
             var sendGridSettings = builder.Configuration
                 .GetSection(SendGridSettings.SectionName)
@@ -522,6 +571,9 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IMedicationIntakeService, MedicationIntakeService>();
             builder.Services.AddScoped<IReminderPreferenceRepository, ReminderPreferenceRepository>();
             builder.Services.AddScoped<IReminderPreferenceService, ReminderPreferenceService>();
+
+            // Doctor Medication Tracking (manual reminder feature)
+            builder.Services.AddScoped<IDoctorMedicationTrackingService, DoctorMedicationTrackingService>();
 
             // ---------- Quartz JOB-01: Medication Reminder ----------
             builder.Services.AddQuartz(q =>
@@ -640,6 +692,38 @@ namespace ADSUS_BE
                     .WithCronSchedule(cronExpression));
             });
 
+            // ---------- Quartz JOB-07: Inventory Alert ----------
+            builder.Services.AddQuartz(q =>
+            {
+                // Chạy 7h sáng mỗi ngày
+                var cronExpression = "0 0 7 * * ?"; // At 07:00 every day
+
+                var jobKey = new Quartz.JobKey("InventoryAlertJob", "inventory");
+
+                q.AddJob<InventoryAlertJob>(opts => opts
+                    .WithIdentity(jobKey)
+                    .StoreDurably());
+
+                q.AddTrigger(opts => opts
+                    .ForJob(jobKey)
+                    .WithIdentity("InventoryAlertTrigger", "inventory")
+                    .WithCronSchedule(cronExpression));
+
+                // JOB-08: No-Show Auto-Cancel — chạy mỗi phút
+                {
+                    var jobKeyNoShow = new Quartz.JobKey("NoShowCancellationJob", "appointments");
+
+                    q.AddJob<NoShowCancellationJob>(opts => opts
+                        .WithIdentity(jobKeyNoShow)
+                        .StoreDurably());
+
+                    q.AddTrigger(opts => opts
+                        .ForJob(jobKeyNoShow)
+                        .WithIdentity("NoShowCancellationTrigger", "appointments")
+                        .WithCronSchedule("0 * * * * ?"));
+                }
+            });
+
             // Scans the whole BLL assembly, so validators added by other modules are picked
             // up automatically.
             builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
@@ -696,6 +780,9 @@ namespace ADSUS_BE
 
             app.MapControllers();
 
+            // SignalR Hub endpoint với CORS
+            app.MapHub<NotificationHub>("/hubs/notifications").RequireCors("SignalRCors");
+
             // Endpoint công khai, không xác thực — dùng cho Health Check Path của Render.
             app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
@@ -716,5 +803,3 @@ namespace ADSUS_BE
         }
     }
 }
-
-public partial class Program { }

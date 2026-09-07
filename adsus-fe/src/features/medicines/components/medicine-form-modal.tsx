@@ -37,6 +37,7 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
   const [isLiquid, setIsLiquid] = useState(false);
   const [usageUnit, setUsageUnit] = useState("");
   const [volume, setVolume] = useState("1");
+  const [lowStockThreshold, setLowStockThreshold] = useState("0");
 
   // Reset form when modal opens or editing changes
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
@@ -50,6 +51,7 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
         setUsageUnit(medicineToEdit.usageUnit || "");
         setVolume(medicineToEdit.volumePerBaseUnit ? medicineToEdit.volumePerBaseUnit.toString() : "1");
         setIsLiquid(medicineToEdit.volumePerBaseUnit !== 1 && medicineToEdit.volumePerBaseUnit != null);
+        setLowStockThreshold(medicineToEdit.lowStockThreshold?.toString() || "0");
       } else {
         setName("");
         setMedicineUnitId("");
@@ -57,6 +59,7 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
         setIsLiquid(false);
         setUsageUnit("");
         setVolume("1");
+        setLowStockThreshold("0");
       }
     }
   }
@@ -74,15 +77,21 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
         return;
       }
       
-      const priceVal = parseFloat(salePrice);
-      if (isNaN(priceVal) || priceVal < 0) {
+      const priceVal = Number.parseFloat(salePrice);
+      if (Number.isNaN(priceVal) || priceVal < 0) {
         toast.error("Giá bán không hợp lệ");
         return;
       }
     }
 
+    const thresholdVal = Number.parseInt(lowStockThreshold, 10);
+    if (Number.isNaN(thresholdVal) || thresholdVal < 0) {
+      toast.error("Ngưỡng cảnh báo hết hàng không hợp lệ");
+      return;
+    }
+
     let finalUsageUnit = usageUnit.trim();
-    let finalVolume = parseFloat(volume);
+    let finalVolume = Number.parseFloat(volume);
 
     if (!isLiquid) {
       // Smart Defaults: usage unit = base unit name, volume = 1
@@ -91,7 +100,7 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
       finalVolume = 1;
     }
 
-    if (isLiquid && (!finalUsageUnit || isNaN(finalVolume) || finalVolume <= 0)) {
+    if (isLiquid && (!finalUsageUnit || Number.isNaN(finalVolume) || finalVolume <= 0)) {
       toast.error("Vui lòng nhập đúng Đơn vị dùng và Hàm lượng (Dung tích)");
       return;
     }
@@ -103,7 +112,8 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
           request: { 
             name: name.trim(),
             usageUnit: finalUsageUnit,
-            volumePerBaseUnit: finalVolume
+            volumePerBaseUnit: finalVolume,
+            lowStockThreshold: thresholdVal
           },
         });
         toast.success("Cập nhật thuốc thành công");
@@ -112,9 +122,10 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
         const newMed = await createMutation.mutateAsync({ 
           name: name.trim(),
           medicineUnitId,
-          salePrice: parseFloat(salePrice) || 0,
+          salePrice: Number.parseFloat(salePrice) || 0,
           usageUnit: finalUsageUnit,
-          volumePerBaseUnit: finalVolume
+          volumePerBaseUnit: finalVolume,
+          lowStockThreshold: thresholdVal
         });
         toast.success("Thêm thuốc thành công");
         onClose();
@@ -137,15 +148,29 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
-          <div className="space-y-2">
-            <Label>Tên thuốc <span className="text-red-500">*</span></Label>
-            <Input 
-              value={name} 
-              onChange={e => setName(e.target.value)} 
-              placeholder="VD: Prospan Syrup 100ml" 
-              disabled={!!medicineToEdit}
-              autoFocus
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Tên thuốc <span className="text-red-500">*</span></Label>
+              <Input 
+                value={name} 
+                onChange={e => setName(e.target.value)} 
+                placeholder="VD: Prospan Syrup 100ml" 
+                disabled={!!medicineToEdit}
+                autoFocus
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Ngưỡng cảnh báo hết hàng (Tính theo Đơn vị tồn kho)</Label>
+              <Input 
+                type="number"
+                min="0"
+                value={lowStockThreshold} 
+                onChange={e => setLowStockThreshold(e.target.value)} 
+                placeholder="Nhập 0 để bỏ qua theo dõi"
+                className="bg-orange-50/50 border-orange-200"
+              />
+            </div>
           </div>
 
           {!medicineToEdit && (

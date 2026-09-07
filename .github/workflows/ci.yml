@@ -2,9 +2,9 @@ name: ADSUS CI Pipeline
 
 on:
     pull_request:
-        branches: [develop, master]
+        branches: [master]
     push:
-        branches: [develop]
+        branches: [master]
 
 jobs:
     backend-ci:
@@ -18,9 +18,9 @@ jobs:
             actions: read
             checks: write
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
 
-            - uses: actions/setup-dotnet@v4
+            - uses: actions/setup-dotnet@v6
               with:
                   dotnet-version: "8.0.x"
 
@@ -54,7 +54,7 @@ jobs:
             # with their own counts, instead of one merged "750 passed" number. if: always() so
             # a report still shows which tests failed, not just a silent job failure.
             - name: Publish Unit Test Report
-              uses: dorny/test-reporter@v3
+              uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
               if: always()
               with:
                   name: "Backend Unit Test Report"
@@ -63,7 +63,7 @@ jobs:
                   fail-on-empty: "false"
 
             - name: Publish Integration Test Report
-              uses: dorny/test-reporter@v3
+              uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
               if: always()
               with:
                   name: "Backend Integration Test Report"
@@ -71,7 +71,7 @@ jobs:
                   reporter: dotnet-trx
                   fail-on-empty: "false"
 
-            - uses: actions/upload-artifact@v4
+            - uses: actions/upload-artifact@v7
               if: always()
               with:
                   name: backend-test-results
@@ -80,12 +80,14 @@ jobs:
     frontend-ci:
         name: "Frontend - Lint, Test & Build"
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
         defaults:
             run:
                 working-directory: adsus-fe
         steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-node@v4
+            - uses: actions/checkout@v7
+            - uses: actions/setup-node@v7
               with:
                   # jsdom ^30's bundled undici needs a newer Node webidl implementation
                   # (webidl.util.markAsUncloneable) than Node 20 has — vitest's worker pool
@@ -98,7 +100,7 @@ jobs:
                   node-version: 26
                   cache: npm
                   cache-dependency-path: adsus-fe/package-lock.json
-            - run: npm ci
+            - run: npm ci --ignore-scripts
             - run: npm run lint
 
             # Split by an existing, already-consistent directory convention (verified across
@@ -123,15 +125,17 @@ jobs:
     ai-backend-ci:
         name: "AI Backend - Lint & Import Check"
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
         defaults:
             run:
                 working-directory: ADSUS_AIBE/backend
         steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-python@v5
+            - uses: actions/checkout@v7
+            - uses: actions/setup-python@v7
               with:
                   python-version: "3.12"
-            - run: pip install -r requirements.txt
+            - run: "pip install --require-hashes --only-binary=:all: -r requirements.txt"
             - run: python -m py_compile main.py geometry.py
 
     mobile-ci:
@@ -146,10 +150,10 @@ jobs:
             run:
                 working-directory: ADSUS_Mobile
         steps:
-            - uses: actions/checkout@v4
-            - uses: subosito/flutter-action@v2
+            - uses: actions/checkout@v7
+            - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
               with:
-                  flutter-version: "3.47.x"
+                  flutter-version: "3.47.2"
 
             # Create google-services.json from base64-encoded secret (never commit the real file)
             # Get the content from: cat google-services.json | base64 -w0
@@ -159,7 +163,7 @@ jobs:
               run: |
                   echo "$GOOGLE_SERVICES_BASE64" | base64 -d > android/app/google-services.json
 
-            - run: flutter pub get
+            - run: flutter pub get --enforce-lockfile
             - run: flutter analyze
 
             # Split like backend-ci/frontend-ci: test/widget/ holds the 2 files that actually
@@ -167,18 +171,49 @@ jobs:
             # file, not assumed); everything else under test/ is plain unit test() logic, no
             # widget pumped. --file-reporter writes JSON ALONGSIDE the normal human-readable
             # console reporter (unlike --reporter json, which would replace it entirely).
+            #
+            # A 2nd split, Unit vs Repository Integration, mirrors backend-ci/frontend-ci's
+            # own Unit/Integration steps: any file under a data/repositories/ folder mocks
+            # Dio directly (confirmed by grepping every file for "extends Mock implements
+            # Dio", not assumed) rather than mocking the repository interface a ViewModel
+            # depends on, so it counts as Integration-style per the project's own convention
+            # — the same folder-based rule frontend-ci already uses for hooks/ and api/. The
+            # find commands build both file lists dynamically so a newly added repository
+            # test is picked up automatically, with no explicit path list to maintain; the
+            # emptiness check on the Repository Integration side exists because an empty
+            # argument list would make `flutter test` silently run the WHOLE suite instead,
+            # mislabeling every test as Integration.
+            #
+            # Named "Repository Integration" (not plain "Integration") on purpose: this repo
+            # ALSO has a real top-level `integration_test/` folder (Flutter's own package of
+            # that name — see integration_test/auth_flow_test.dart), which drives the app on
+            # a real emulator against a real running ADSUS_BE and a real DB row, no mocks at
+            # all. That is System/E2E Test scope (Report 5.3), not Integration Test scope,
+            # and is intentionally NOT run here — see
+            # Plan/2026-09-03-mobile-e2e-integration-test-folder-for-report5-3.md. A step
+            # plainly named "Integration Tests" next to a real `integration_test/` folder
+            # would make it look like that folder is already covered by CI when it isn't.
             - name: Unit Tests
-              # auth_repository_test.dart moved under test/features/auth/data/repositories/
-              # (P_MB9 review, 28/08/2026) — already covered by the test/features argument
-              # below, no longer needs its own explicit path.
-              run: flutter test test/dio_client_test.dart test/features --file-reporter="json:unit-test-results.json"
+              run: |
+                  UNIT_FILES=$(find test/features -name '*_test.dart' -not -path '*/data/repositories/*')
+                  flutter test test/dio_client_test.dart $UNIT_FILES --file-reporter="json:unit-test-results.json"
+
+            - name: Repository Integration Tests
+              if: success() || failure()
+              run: |
+                  INTEGRATION_FILES=$(find test/features -path '*/data/repositories/*_test.dart')
+                  if [ -z "$INTEGRATION_FILES" ]; then
+                    echo "No Repository Integration-style Mobile test files found (expected at least 1 under data/repositories/)."
+                    exit 1
+                  fi
+                  flutter test $INTEGRATION_FILES --file-reporter="json:repository-integration-test-results.json"
 
             - name: Widget Tests
               if: success() || failure()
               run: flutter test test/widget --file-reporter="json:widget-test-results.json"
 
             - name: Publish Unit Test Report
-              uses: dorny/test-reporter@v3
+              uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
               if: always()
               with:
                   name: "Mobile Unit Test Report"
@@ -186,8 +221,17 @@ jobs:
                   reporter: flutter-json
                   fail-on-empty: "false"
 
+            - name: Publish Repository Integration Test Report
+              uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
+              if: always()
+              with:
+                  name: "Mobile Repository Integration Test Report"
+                  path: "ADSUS_Mobile/repository-integration-test-results.json"
+                  reporter: flutter-json
+                  fail-on-empty: "false"
+
             - name: Publish Widget Test Report
-              uses: dorny/test-reporter@v3
+              uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
               if: always()
               with:
                   name: "Mobile Widget Test Report"
@@ -197,11 +241,141 @@ jobs:
 
             - run: flutter build apk --debug
 
+    sonarcloud-scan:
+        name: "SonarCloud - Full Repo Analysis"
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        # Runs as its own job (not folded into backend-ci/frontend-ci) so exactly ONE
+        # analysis submission goes to SonarCloud per commit — backend-ci and frontend-ci
+        # run in parallel, and 2 concurrent `begin`/`end` pairs against the SAME project key
+        # would race each other. needs: waits for both to pass first (no point analyzing a
+        # commit that doesn't even build/test clean), then this job repeats their build/test
+        # steps itself with coverage collection turned on, since dotnet-sonarscanner must
+        # wrap the actual `dotnet build`/`dotnet test` calls to instrument them — it can't
+        # attach after the fact to a build that already happened in a different job/runner.
+        #
+        # Requires Automatic Analysis to be DISABLED for this project on SonarCloud
+        # (Administration/Analysis → Analysis Method) — SonarCloud refuses to accept a
+        # CI-based submission while Automatic Analysis is on for the same project key
+        # ("You are running manual analysis while Automatic Analysis is enabled"),
+        # confirmed by hitting that exact error locally before writing this job.
+        needs: [backend-ci, frontend-ci]
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  # SonarCloud's new-code/blame features want real history, not a 1-commit
+                  # shallow clone (actions/checkout's default).
+                  fetch-depth: 0
+
+            - uses: actions/setup-java@v6
+              with:
+                  # dotnet-sonarscanner is a wrapper around the underlying Java scanner
+                  # engine — it needs a JDK on PATH even though the code being analyzed is
+                  # C#/TypeScript, not Java.
+                  distribution: "zulu"
+                  java-version: "25"
+
+            - uses: actions/setup-dotnet@v6
+              with:
+                  dotnet-version: "8.0.x"
+
+            - uses: actions/setup-node@v7
+              with:
+                  node-version: 26
+                  cache: npm
+                  cache-dependency-path: adsus-fe/package-lock.json
+
+            - name: Cache SonarCloud packages
+              uses: actions/cache@v6
+              with:
+                  path: ~/.sonar/cache
+                  key: ${{ runner.os }}-sonar
+                  restore-keys: ${{ runner.os }}-sonar
+
+            - name: Install SonarScanner for .NET
+              run: dotnet tool install --global dotnet-sonarscanner
+
+            - name: Restore Backend
+              run: |
+                  dotnet restore ADSUS_BE/ADSUS_BE.csproj
+                  dotnet restore ADSUS_BE.UnitTests/ADSUS_BE.UnitTests.csproj
+                  dotnet restore ADSUS_BE.IntegrationTests/ADSUS_BE.IntegrationTests.csproj
+
+            - name: Install Frontend dependencies
+              working-directory: adsus-fe
+              run: npm ci --ignore-scripts
+
+            # sonar.sources is scoped to real production code on both platforms — excludes
+            # the test projects themselves (coverage, not source, tracks what THEY exercise),
+            # build output, and ADSUS_Mobile entirely (Dart isn't a supported language on
+            # SonarCloud's free plan, so including it would only produce "unrecognized file"
+            # noise). sonar.cs.opencover.reportsPaths is a glob resolved AFTER `end` runs, so
+            # it can point at report files the two `dotnet test` steps below haven't
+            # generated yet at the time `begin` executes.
+            #
+            # NOTE (03/09/2026): every real analysis submitted for this project so far — with
+            # and without this reportsPaths line, both from this job and from a manual local
+            # `begin`/`test`/`end` run — uploads successfully (client-side "ANALYSIS
+            # SUCCESSFUL") but then fails during SonarCloud's own server-side background
+            # processing, with no error detail surfaced beyond an opaque analysis ID. Removing
+            # this property was tried as a diagnostic and did NOT fix it, ruling out the
+            # OpenCover import as the cause — the failure is on SonarCloud's infrastructure
+            # side, unrelated to this config, and has been reported to their community forum.
+            # Coverage % for Report 5.1/5.2 comes from a local Coverlet + ReportGenerator run
+            # instead (`dotnet test --collect` + `reportgenerator`), independent of this job.
+            - name: SonarCloud - Begin analysis
+              env:
+                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+              run: >
+                  dotnet-sonarscanner begin
+                  /k:"huuhoa0322_SEP490_ADSUS"
+                  /o:"huuhoa0322"
+                  /d:sonar.host.url="https://sonarcloud.io"
+                  /d:sonar.token="$SONAR_TOKEN"
+                  /d:sonar.sources="ADSUS_BE,ADSUS_BE.BLL,ADSUS_BE.DAL,adsus-fe/src"
+                  /d:sonar.exclusions="**/bin/**,**/obj/**,adsus-fe/node_modules/**,adsus-fe/.next/**"
+                  /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
+                  /d:sonar.javascript.lcov.reportPaths="adsus-fe/coverage/lcov.info"
+
+            # Vitest's default coverage reporters (text/html/clover/json) don't include lcov —
+            # SonarCloud's JS/TS sensor only reads lcov, so it must be requested explicitly.
+            # Runs the FULL suite (not frontend-ci's Unit/Integration split) since Sonar wants
+            # 1 combined coverage number, not 2 separate partial reports.
+            - name: Test Frontend (with coverage)
+              working-directory: adsus-fe
+              run: npm run test -- --run --coverage --coverage.reporter=lcov
+
+            # No separate build step: there is no .sln at the repo root (each project is
+            # restored/built individually, same as backend-ci above) — `dotnet test` builds
+            # its own project graph automatically, and ADSUS_BE.IntegrationTests already
+            # references the ADSUS_BE API project (for `Program` via WebApplicationFactory),
+            # so both dotnet test calls below build all 3 production assemblies between them.
+            - name: Test Backend Unit (with coverage)
+              run: dotnet test ADSUS_BE.UnitTests/ADSUS_BE.UnitTests.csproj --no-restore --collect:"XPlat Code Coverage;Format=opencover"
+
+            - name: Test Backend Integration (with coverage)
+              continue-on-error: true # same flakiness allowance as backend-ci's own Integration Tests step
+              env:
+                  ConnectionStrings__DefaultConnection: ${{ secrets.TEST_DB_CONNECTION_STRING }}
+                  JwtSettings__SecretKey: "ci-only-fake-jwt-signing-key-not-used-anywhere-else-1234567890"
+                  JwtSettings__Issuer: "adsus-ci"
+                  JwtSettings__Audience: "adsus-ci"
+                  JwtSettings__ExpiryMinutes: "60"
+              run: dotnet test ADSUS_BE.IntegrationTests/ADSUS_BE.IntegrationTests.csproj --no-restore --collect:"XPlat Code Coverage;Format=opencover"
+
+            - name: SonarCloud - End analysis
+              env:
+                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+              run: dotnet-sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+
     docker-build-check:
         name: "Docker - Confirm Images Still Build"
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
         needs: [backend-ci, ai-backend-ci]
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
             - run: docker build -f ADSUS_BE/Dockerfile -t api-adsus:ci .
             - run: docker build -t adsus-ai:ci ADSUS_AIBE/backend

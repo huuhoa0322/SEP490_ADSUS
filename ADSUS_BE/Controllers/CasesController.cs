@@ -23,12 +23,14 @@ namespace ADSUS_BE.Controllers;
 [Produces("application/json")]
 public sealed class CasesController : ControllerBase
 {
+    private static readonly System.Text.Json.JsonSerializerOptions SymptomsJsonOptions =
+        new() { PropertyNameCaseInsensitive = true };
+
     private readonly ICaseService _cases;
     private readonly System.Lazy<ICaseReportService> _reportsLazy;
     private readonly IPrescriptionService _prescriptions;
     private readonly IAppointmentService _appointmentService;
     private readonly IValidator<CreateCaseRequest> _createValidator;
-    private readonly IValidator<AddUltrasoundImagesRequest> _addImagesValidator;
     private readonly IValidator<CaseConclusionRequest> _conclusionValidator;
 
     public CasesController(
@@ -37,7 +39,6 @@ public sealed class CasesController : ControllerBase
         IPrescriptionService prescriptions,
         IAppointmentService appointmentService,
         IValidator<CreateCaseRequest> createValidator,
-        IValidator<AddUltrasoundImagesRequest> addImagesValidator,
         IValidator<CaseConclusionRequest> conclusionValidator)
     {
         _cases = cases;
@@ -45,7 +46,6 @@ public sealed class CasesController : ControllerBase
         _prescriptions = prescriptions;
         _appointmentService = appointmentService;
         _createValidator = createValidator;
-        _addImagesValidator = addImagesValidator;
         _conclusionValidator = conclusionValidator;
     }
 
@@ -137,20 +137,56 @@ public sealed class CasesController : ControllerBase
     }
 
     /// <summary>
-    /// Nurse checkin appointment thông qua case.
+    /// Nurse checkin appointment thông qua caseId (áp dụng khi patient có chọn triệu chứng).
     /// Appointment: Booked → Approved
     /// </summary>
     [HttpPost("{caseId:guid}/appointment/checkin")]
-    [Authorize(Roles = "NURSE,ADMIN")]
+    [Authorize(Roles = "NURSE")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> CheckinAppointment(
+    public async Task<IActionResult> CheckinAppointmentByCase(
         Guid caseId,
         CancellationToken ct)
     {
-        var result = await _appointmentService.CheckinAppointmentAsync(caseId, ct);
-        return Ok(ApiResponse<AppointmentResponse>.Ok(result, "Appointment checked in successfully."));
+        try
+        {
+            var result = await _appointmentService.CheckinByCaseIdAsync(caseId, ct);
+            return Ok(ApiResponse<AppointmentResponse>.Ok(result, "Appointment checked in successfully."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                return NotFound(ApiResponse<object>.Fail(404, ex.Message));
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Nurse checkin appointment thông qua appointmentId (áp dụng khi patient KHÔNG chọn triệu chứng,
+    /// lúc này appointment không có caseId).
+    /// Appointment: Booked → Approved
+    /// </summary>
+    [HttpPost("appointment/{appointmentId:guid}/checkin")]
+    [Authorize(Roles = "NURSE")]
+    [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CheckinAppointmentById(
+        Guid appointmentId,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await _appointmentService.CheckinAppointmentAsync(appointmentId, ct);
+            return Ok(ApiResponse<AppointmentResponse>.Ok(result, "Appointment checked in successfully."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                return NotFound(ApiResponse<object>.Fail(404, ex.Message));
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
     }
 
     /// <summary>
@@ -179,7 +215,7 @@ public sealed class CasesController : ControllerBase
             try
             {
                 symptoms = System.Text.Json.JsonSerializer.Deserialize<List<CreateCaseSymptomRequest>>(
-                    symptomsJson, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    symptomsJson, SymptomsJsonOptions);
             }
             catch
             {
@@ -203,40 +239,6 @@ public sealed class CasesController : ControllerBase
             nameof(GetById),
             new { id = result.CaseId },
             ApiResponse<CaseResponse>.Ok(result, "Case created successfully"));
-    }
-
-    /// <summary>Bổ sung ảnh siêu âm vào một ca chưa được chốt (UC-07).</summary>
-    [HttpPost("{caseId:guid}/ultrasound-images")]
-    [Authorize(Roles = "DOCTOR,NURSE")]
-    [Consumes("multipart/form-data")]
-    [RequestSizeLimit(120L * 1024 * 1024)]
-    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<UltrasoundImageResponse>>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> AddImages(
-        Guid caseId,
-        [FromForm] List<IFormFile> images,
-        [FromForm] string? note,
-        CancellationToken ct)
-    {
-        var request = new AddUltrasoundImagesRequest(ToUploadedFiles(images), note);
-
-        // Đặc tả cho #21 quy định lỗi "không đính kèm file" là 400, khác với #20 (422) — nên
-        // ở đây kiểm bằng validator. Bất nhất này đã ghi lại ở flag N2.
-        var validation = await _addImagesValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
-            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
-        }
-
-        var result = await _cases.AddImagesAsync(caseId, request, ct);
-
-        return StatusCode(
-            StatusCodes.Status201Created,
-            ApiResponse<IReadOnlyList<UltrasoundImageResponse>>.Ok(
-                result, "Ultrasound image(s) uploaded successfully"));
     }
 
     /// <summary>
@@ -345,7 +347,7 @@ public sealed class CasesController : ControllerBase
     {
         var prescription = await _prescriptions.GetByCaseIdAsync(caseId, ct);
         if (prescription is null)
-            return Ok(ApiResponse<object>.Ok(null, "No prescription for this case."));
+            return Ok(ApiResponse<object>.Ok(null!, "No prescription for this case."));
         return Ok(ApiResponse<PrescriptionResponse>.Ok(prescription));
     }
 

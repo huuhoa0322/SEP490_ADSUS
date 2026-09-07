@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
+using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
+using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using ADSUS_BE.IntegrationTests.AppointmentScheduling;
@@ -14,7 +16,7 @@ namespace ADSUS_BE.IntegrationTests.PrescriptionAdherence;
 
 public partial class MedicinesControllerIntegrationTests
 {
-    private readonly Mock<IMedicineRepository> _medicines = new();
+    private readonly Mock<IMedicineService> _medicineService = new();
     private readonly Mock<IUserRepository> _users = new();
 
     [Fact]
@@ -25,12 +27,12 @@ public partial class MedicinesControllerIntegrationTests
         var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Doctor);
 
         var keyword = "para";
-        var mockResult = new List<Medicine>
+        var mockResult = new List<MedicineResponse>
         {
-            new Medicine { MedicineId = Guid.NewGuid(), Name = "Paracetamol 500mg" }
+            new MedicineResponse { MedicineId = Guid.NewGuid(), Name = "Paracetamol 500mg", Status = "ACTIVE" }
         };
 
-        _medicines.Setup(r => r.SearchByNameAsync(keyword, 20, It.IsAny<CancellationToken>()))
+        _medicineService.Setup(s => s.SearchMedicinesAsync(keyword, 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockResult);
 
         // Act
@@ -79,8 +81,8 @@ public partial class MedicinesControllerIntegrationTests
         {
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<IMedicineRepository>();
-                services.AddScoped(_ => _medicines.Object);
+                services.RemoveAll<IMedicineService>();
+                services.AddScoped(_ => _medicineService.Object);
                 
                 services.RemoveAll<IUserRepository>();
                 services.AddScoped(_ => _users.Object);
@@ -95,17 +97,14 @@ public partial class MedicinesControllerIntegrationTests
         var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Admin);
 
         var id = Guid.NewGuid();
-        var medicine = new Medicine { MedicineId = id, Status = MedicineStatus.Inactive };
-
-        _medicines.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(medicine);
-
+        _medicineService.Setup(s => s.ActivateMedicineAsync(id, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         // Act
         var response = await client.PatchAsync($"/api/v1/medicines/{id}/activate", null);
 
         // Assert
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-        _medicines.Verify(r => r.UpdateAsync(It.Is<Medicine>(m => m.Status == MedicineStatus.Active), It.IsAny<CancellationToken>()), Times.Once);
+        _medicineService.Verify(s => s.ActivateMedicineAsync(id, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

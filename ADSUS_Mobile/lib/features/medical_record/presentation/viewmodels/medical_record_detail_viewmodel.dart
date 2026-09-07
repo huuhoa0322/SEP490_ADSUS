@@ -88,6 +88,12 @@ class MedicalRecordDetailViewModel extends Notifier<MedicalRecordDetailState> {
           );
       // Reload feedback sau khi submit thành công.
       await loadFeedback(caseId);
+      // Bug fix (29/08/2026, phát hiện qua P_MB10): nhánh thành công thiếu tắt isLoading —
+      // trước đó chỉ nhánh catch mới tắt, khiến state kẹt isLoading=true vĩnh viễn sau khi
+      // gửi feedback thành công.
+      if (caseId == state.caseId) {
+        state = state.copyWith(isLoading: false);
+      }
     } on ApiException catch (e) {
       if (caseId != state.caseId) return;
       state = state.copyWith(

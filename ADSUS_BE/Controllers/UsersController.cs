@@ -120,7 +120,7 @@ public class UsersController : ControllerBase
     private bool TryGetUserId(out Guid userId) =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 
-    private IActionResult MapResult(ProfileOperationResult result, string successMessage) =>
+    private ObjectResult MapResult(ProfileOperationResult result, string successMessage) =>
         result switch
         {
             ProfileOperationResult.Success =>

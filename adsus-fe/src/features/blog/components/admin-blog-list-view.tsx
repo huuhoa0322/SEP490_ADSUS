@@ -17,6 +17,7 @@ import type {
   AdminBlogPostListItemResponse,
   BlogStatus,
 } from "../types/blog.types";
+import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 
 const STATUS_LABELS: Record<BlogStatus, string> = {
   DRAFT: "Bản nháp",
@@ -136,11 +137,12 @@ export function AdminBlogListView() {
 
         {/* Pagination */}
         {data && data.totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-center gap-2">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50">Trước</button>
-            <span className="px-4 text-sm text-[var(--muted-foreground)]">Trang {page} / {data.totalPages}</span>
-            <button onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))} disabled={page === data.totalPages} className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50">Sau</button>
-          </div>
+          <PaginationNumbered
+            currentPage={page}
+            totalPages={data.totalPages}
+            setPage={setPage}
+            className="mt-6 justify-center"
+          />
         )}
       </div>
 
@@ -243,8 +245,8 @@ function BlogPostModal({ postId, initialMode, onClose }: { postId: string; initi
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div role="presentation" className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-white px-6 py-4">
           <div className="flex items-center gap-3">

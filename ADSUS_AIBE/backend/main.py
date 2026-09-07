@@ -235,12 +235,15 @@ async def detect(
         cls_id = d["cls_id"]
 
         if has_mask:
-            mask_arr = r.masks.data[i].cpu().numpy()
-            # Resize mask về đúng kích thước ảnh gốc nếu model output khác size
-            if mask_arr.shape != (img_h, img_w):
-                import cv2
-                mask_arr = cv2.resize(mask_arr, (img_w, img_h))
-            pair_a, pair_b = suggest_calipers_from_mask(mask_arr)
+            # r.masks.xy[i] contains polygon coordinates in original image pixel scale
+            contour = np.array(r.masks.xy[i], dtype=np.float32)
+            if len(contour) > 0:
+                # cv2.minAreaRect expects shape (N, 1, 2)
+                contour = contour.reshape((-1, 1, 2))
+                from geometry import suggest_calipers_from_contour
+                pair_a, pair_b = suggest_calipers_from_contour(contour)
+            else:
+                pair_a, pair_b = suggest_calipers_from_bbox(x1, y1, x2, y2)
         else:
             pair_a, pair_b = suggest_calipers_from_bbox(x1, y1, x2, y2)
 

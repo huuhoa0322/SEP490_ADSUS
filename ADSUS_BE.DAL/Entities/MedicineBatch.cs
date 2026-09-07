@@ -15,11 +15,9 @@ public partial class MedicineBatch
 
     public int QuantityBase { get; set; }
 
-    public Guid? SupplierId { get; set; }
+    public decimal BaseUnitAvgImportPrice { get; set; }
 
     public virtual ICollection<InventoryTransaction> InventoryTransactions { get; set; } = new List<InventoryTransaction>();
 
     public virtual Medicine Medicine { get; set; } = null!;
-
-    public virtual Supplier? Supplier { get; set; }
 }

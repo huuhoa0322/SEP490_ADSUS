@@ -9,7 +9,7 @@ public interface IAiModelService
     
     Task<AiModelVersionDto> GetVersionByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
-    Task<AiModelVersionDto?> GetActiveVersionAsync(CancellationToken cancellationToken = default);
+    Task<ActiveAiModelVersionDto?> GetActiveVersionAsync(CancellationToken cancellationToken = default);
 
     Task<AiModelVersionDto> RegisterVersionAsync(
         RegisterModelVersionRequest request, 

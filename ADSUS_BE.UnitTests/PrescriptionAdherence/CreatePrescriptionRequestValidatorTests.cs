@@ -11,19 +11,18 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence;
 /// - Dosage rỗng
 /// - GeneralNote 2000 / 2001 char
 /// - Instructions 1000 / 1001 char
-/// - CaseId / DoctorId rỗng
+/// - CaseId rỗng
 /// </summary>
 public class CreatePrescriptionRequestValidatorTests
 {
     private static CreatePrescriptionRequest ValidRequest() => new(
         CaseId: Guid.NewGuid(),
-        DoctorId: Guid.NewGuid(),
         GeneralNote: null,
         Items: new[]
         {
             new CreatePrescriptionItemDto(
                 MedicineName: "Paracetamol 500mg",
-                Dosage: "1 viên/lần",
+                QuantityPerDose: 1,
                 DurationDays: 7,
                 StartDate: new DateOnly(2026, 7, 28),
                 Instructions: null,
@@ -49,17 +48,6 @@ public class CreatePrescriptionRequestValidatorTests
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, e => e.PropertyName == "CaseId");
-    }
-
-    [Fact]
-    public void EmptyDoctorId_Fails()
-    {
-        var req = ValidRequest() with { DoctorId = Guid.Empty };
-
-        var result = _validator.Validate(req);
-
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName == "DoctorId");
     }
 
     [Fact]
@@ -173,17 +161,31 @@ public class CreatePrescriptionRequestValidatorTests
     }
 
     [Fact]
-    public void EmptyDosage_Fails()
+    public void QuantityPerDose_Zero_Fails()
     {
         var req = ValidRequest() with
         {
-            Items = new[] { ValidRequest().Items[0] with { Dosage = "" } },
+            Items = new[] { ValidRequest().Items[0] with { QuantityPerDose = 0 } },
         };
 
         var result = _validator.Validate(req);
 
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName == "Items[0].Dosage");
+        Assert.Contains(result.Errors, e => e.PropertyName == "Items[0].QuantityPerDose");
+    }
+
+    [Fact]
+    public void QuantityPerDose_Over1000_Fails()
+    {
+        var req = ValidRequest() with
+        {
+            Items = new[] { ValidRequest().Items[0] with { QuantityPerDose = 1001 } },
+        };
+
+        var result = _validator.Validate(req);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == "Items[0].QuantityPerDose");
     }
 
     [Fact]

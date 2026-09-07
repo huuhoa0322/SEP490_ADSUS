@@ -4,6 +4,7 @@ import { AlertCircle, CalendarCheck, Loader2, ScanLine, Users } from "lucide-rea
 import { useState } from "react";
 
 import { getApiErrorMessage } from "@/lib/api-client";
+import { DatePicker } from "@/components/ui/date-picker";
 
 import { useDashboardStatistics } from "../hooks/use-dashboard";
 
@@ -82,23 +83,19 @@ export function DashboardView() {
             </button>
           ))}
 
-          <input
-            type="date"
+          <DatePicker
             value={fromDate}
-            max={toDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            aria-label="Từ ngày"
-            className="rounded-full border border-[var(--border)] bg-background px-4 py-2 text-sm outline-none focus:border-[var(--cat-navy)]"
+            maxDate={toDate ? new Date(toDate) : undefined}
+            onChange={(val) => setFromDate(val)}
+            className="w-[180px] rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-accent"
           />
           <span className="text-muted-foreground">→</span>
-          <input
-            type="date"
+          <DatePicker
             value={toDate}
-            min={fromDate}
-            max={TODAY}
-            onChange={(e) => setToDate(e.target.value)}
-            aria-label="Đến ngày"
-            className="rounded-full border border-[var(--border)] bg-background px-4 py-2 text-sm outline-none focus:border-[var(--cat-navy)]"
+            minDate={fromDate ? new Date(fromDate) : undefined}
+            maxDate={new Date(TODAY)}
+            onChange={(val) => setToDate(val)}
+            className="w-[180px] rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-accent"
           />
         </div>
       </div>
@@ -203,7 +200,22 @@ export function DashboardView() {
               />
             </ChartCard>
 
-            {/* Right: Lịch hẹn */}
+            <ChartCard
+              title="Trạng thái tài khoản"
+              description="Tính trên toàn hệ thống, không phụ thuộc khoảng thời gian đang chọn."
+            >
+              <StatusBreakdown
+                segments={[
+                  { label: "Đang hoạt động", value: data.accounts.activeCount, tone: "good" },
+                  {
+                    label: "Đã vô hiệu hoá",
+                    value: data.accounts.deactivatedCount,
+                    tone: "critical",
+                  },
+                ]}
+              />
+            </ChartCard>
+
             <ChartCard
               title="Lịch hẹn"
               description={`${data.appointments.slotCount} khung giờ đã mở trong kỳ.`}

@@ -24,6 +24,10 @@ public partial class AppDbContext
                 .HasDefaultValue(UserStatus.Active);
         });
 
+        // Module Kế toán (Billing)
+        modelBuilder.HasPostgresEnum<InvoiceStatus>("public", "invoice_status");
+        modelBuilder.HasPostgresEnum<PaymentMethod>("public", "payment_method");
+
         // Hai enum của module khác, khai ở đây vì Dashboard (UC-05) cần đếm theo trạng thái.
         // Xem chú thích trong Enums.cs. Ai làm Module 5 / Module 8 dùng lại, đừng khai lại.
         modelBuilder.HasPostgresEnum<AppointmentStatus>("public", "appointment_status");

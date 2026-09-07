@@ -34,6 +34,23 @@ public sealed class SupabaseStorageService : IFileStorageService
         request.Headers.Add("apikey", _settings.ServiceKey);
     }
 
+    // objectPath/bucketName cuối cùng đều nằm trong path của URL gọi Supabase Storage —
+    // encode từng segment (và chặn "." / ".." literal) để tránh path traversal hoặc
+    // chèn thêm segment/query/fragment ngoài ý muốn nếu caller truyền dữ liệu không tin cậy.
+    private static string BuildEncodedObjectPath(string bucketName, string objectPath)
+    {
+        var segments = new[] { bucketName }
+            .Concat(objectPath.Split('/', StringSplitOptions.RemoveEmptyEntries))
+            .ToList();
+
+        if (segments.Any(segment => segment is "." or ".."))
+        {
+            throw new ArgumentException("Invalid storage path segment.", nameof(objectPath));
+        }
+
+        return string.Join('/', segments.Select(Uri.EscapeDataString));
+    }
+
     public Task<string> UploadAsync(
         Stream content,
         string objectPath,
@@ -50,10 +67,10 @@ public sealed class SupabaseStorageService : IFileStorageService
         string bucketName,
         CancellationToken ct = default)
     {
-        var targetBucket = bucketName;
+        var encodedPath = BuildEncodedObjectPath(bucketName, objectPath);
         using var request = new HttpRequestMessage(
             HttpMethod.Post,
-            $"{BaseUrl}/storage/v1/object/{targetBucket}/{objectPath}");
+            $"{BaseUrl}/storage/v1/object/{encodedPath}");
         AddAuth(request);
 
         request.Content = new StreamContent(content);
@@ -72,7 +89,7 @@ public sealed class SupabaseStorageService : IFileStorageService
             throw new InvalidOperationException("Could not store the uploaded file.");
         }
 
-        _logger.LogInformation("Uploaded {ObjectPath} to storage bucket {Bucket}", objectPath, targetBucket);
+        _logger.LogInformation("Uploaded {ObjectPath} to storage bucket {Bucket}", objectPath, bucketName);
         return objectPath;
     }
 
@@ -85,10 +102,10 @@ public sealed class SupabaseStorageService : IFileStorageService
     {
         try
         {
-            var targetBucket = bucketName;
+            var encodedPath = BuildEncodedObjectPath(bucketName, objectPath);
             using var request = new HttpRequestMessage(
                 HttpMethod.Post,
-                $"{BaseUrl}/storage/v1/object/sign/{targetBucket}/{objectPath}")
+                $"{BaseUrl}/storage/v1/object/sign/{encodedPath}")
             {
                 Content = JsonContent.Create(new { expiresIn = _settings.SignedUrlTtlSeconds }),
             };
@@ -129,10 +146,10 @@ public sealed class SupabaseStorageService : IFileStorageService
 
     public async Task DeleteAsync(string objectPath, string bucketName, CancellationToken ct = default)
     {
-        var targetBucket = bucketName;
+        var encodedPath = BuildEncodedObjectPath(bucketName, objectPath);
         using var request = new HttpRequestMessage(
             HttpMethod.Delete,
-            $"{BaseUrl}/storage/v1/object/{targetBucket}/{objectPath}");
+            $"{BaseUrl}/storage/v1/object/{encodedPath}");
         AddAuth(request);
 
         using var response = await _http.SendAsync(request, ct);

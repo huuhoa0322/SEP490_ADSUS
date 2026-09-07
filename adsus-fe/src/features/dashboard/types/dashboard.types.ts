@@ -39,7 +39,6 @@ export interface AccountStatistics {
   nurseCount: number;
   patientCount: number;
   activeCount: number;
-  lockedCount: number;
   deactivatedCount: number;
   newInRange: number;
   activeRate: number;

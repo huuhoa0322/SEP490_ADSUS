@@ -18,6 +18,8 @@ public partial class Medicine
 
     public decimal? VolumePerBaseUnit { get; set; }
 
+    public int LowStockThreshold { get; set; }
+
     public virtual ICollection<MedicineBatch> MedicineBatches { get; set; } = new List<MedicineBatch>();
 
     public virtual ICollection<MedicinePackaging> MedicinePackagings { get; set; } = new List<MedicinePackaging>();

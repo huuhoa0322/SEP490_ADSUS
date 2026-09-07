@@ -81,8 +81,12 @@ public class DashboardRepository : IDashboardRepository
         int Appointments(AppointmentStatus status) =>
             appointmentGroups.FirstOrDefault(g => g.Status == status)?.Count ?? 0;
 
+        // FR §3 đòi "currently Open schedule slots", không phải mọi slot rơi vào khoảng ngày
+        // đang chọn bất kể trạng thái — một slot đã Booked/Closed không còn "mở" nữa.
         var slotCount = await _db.ScheduleSlots.AsNoTracking()
-            .CountAsync(s => s.SlotDate >= fromDate && s.SlotDate <= toDate, cancellationToken);
+            .CountAsync(
+                s => s.SlotDate >= fromDate && s.SlotDate <= toDate && s.Status == SlotStatus.Open,
+                cancellationToken);
 
         // Tuân thủ uống thuốc: đếm theo giờ ĐƯỢC HẸN, không phải giờ xác nhận. Liều hẹn hôm
         // qua mà sáng nay mới bấm xác nhận vẫn phải tính vào hôm qua, nếu không tỉ lệ tuân
@@ -146,12 +150,12 @@ public class DashboardRepository : IDashboardRepository
             .Select(g => new { Date = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);
 
-        var ngayCoDuLieu = accountsByDay.Select(x => x.Date)
+        var datesWithData = accountsByDay.Select(x => x.Date)
             .Union(casesByDay.Select(x => x.Date))
             .Union(appointmentsByDay.Select(x => x.Date))
             .OrderBy(d => d);
 
-        return ngayCoDuLieu
+        return datesWithData
             .Select(date => new DailyActivity(
                 date,
                 accountsByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0,

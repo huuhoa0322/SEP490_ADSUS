@@ -1,9 +1,12 @@
+"use client";
+
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import { apiClient, getApiErrorMessage } from "@/lib/api-client";
+import { getApiErrorMessage } from "@/lib/api-client";
 import { Loader2, AlertCircle, CheckCircle2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDiagnosticStore, type AiDetection, type Lesion, type Point } from "../stores/use-diagnostic-store";
 import { checkIntersection, generateBurntImage } from "../utils/canvas-utils";
+import { analyzeImage, confirmAnalysis } from "../api/cases-diagnosis.api";
 
 interface DiagnosticCanvasProps {
   caseId: string;
@@ -99,23 +102,8 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
   const handleRunAi = async () => {
     setIsProcessing(currentIndex, true);
     try {
-      const formData = new FormData();
-      formData.append("image", file);
-
-      const res = await apiClient.post(`/api/v1/cases/${caseId}/analyze`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      if (res.data.code === 200 && res.data.data) {
-        const payload = res.data.data;
-        setAiResult(currentIndex, {
-          sessionId: payload.session_id || 'completed',
-          detections: payload.detections || []
-        });
-      } else {
-        setAiResult(currentIndex, { sessionId: 'failed', detections: [], error: res.data.message });
-        showToast('error', "Kết nối tới model AI thất bại");
-      }
+      const result = await analyzeImage(caseId, file);
+      setAiResult(currentIndex, result);
     } catch (err) {
       setAiResult(currentIndex, { sessionId: 'failed', detections: [], error: getApiErrorMessage(err, "Lỗi hệ thống") });
       showToast('error', "Kết nối tới model AI thất bại");
@@ -291,8 +279,6 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
     wrap.appendChild(inner);
 
     const svg = makeSVG();
-    const fontSize = Math.max(18, Math.round(imgDims.h * 0.05));
-    const padX = 6, padY = 4;
 
     aiDetections.forEach(d => {
       const b = {
@@ -301,7 +287,6 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         x2: d.bbox.xmax * imgDims.w,
         y2: d.bbox.ymax * imgDims.h,
       };
-      const confStr = (d.confidence * 100).toFixed(0) + '%';
 
       const rect = svgEl('rect', {
         x: b.x1, y: b.y1,
@@ -311,26 +296,6 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         'stroke-width': 2,
       });
       svg.appendChild(rect);
-
-      const lblH = fontSize + padY * 2;
-      const lblW = confStr.length * fontSize * 0.62 + padX * 2;
-      const lblTop = Math.max(b.y1 - lblH - 2, 0);
-
-      const bg = svgEl('rect', {
-        x: b.x1, y: lblTop, width: lblW, height: lblH,
-        fill: '#000000cc', rx: 4,
-      });
-      svg.appendChild(bg);
-
-      const lbl = svgEl('text', {
-        x: b.x1 + padX, y: lblTop + fontSize + padY * 0.5,
-        fill: '#e8934a',
-        'font-size': fontSize,
-        'font-weight': 'bold',
-        'font-family': 'monospace',
-      });
-      lbl.textContent = confStr;
-      svg.appendChild(lbl);
     });
 
     inner.appendChild(svg);
@@ -658,27 +623,16 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         confidence: d.confidence
       }));
 
-      const formData = new FormData();
-      formData.append("OriginalImage", file);
-      formData.append("BurntImage", burntFile);
-      formData.append("AiPredictionsJson", JSON.stringify(mappedAiBboxes));
-      formData.append("DoctorAnnotationsJson", JSON.stringify(doctorBboxes));
-      formData.append("ModelVersionId", "00000000-0000-0000-0000-000000000000");
-      if (note.trim()) {
-        formData.append("Note", note.trim());
-      }
-
-      const res = await apiClient.post(`/api/v1/cases/${caseId}/images/confirm`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        timeout: 60000, // Supabase uploads can take longer than the default 15s
+      await confirmAnalysis(caseId, {
+        originalImage: file,
+        burntImage: burntFile,
+        aiPredictions: mappedAiBboxes,
+        doctorAnnotations: doctorBboxes,
+        note: note.trim() || undefined,
       });
 
-      if (res.data.code === 200) {
-        showToast('success', "Đã chốt ảnh thành công!");
-        onConfirm(); // Trigger next image
-      } else {
-        showToast('error', res.data.message);
-      }
+      showToast('success', "Đã chốt ảnh thành công!");
+      onConfirm(); // Trigger next image
     } catch (err) {
       showToast('error', "Lỗi lưu ảnh: " + getErrorMessage(err));
     } finally {
@@ -697,11 +651,11 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         .caliper-line { pointer-events: none; }
       `}} />
 
-      {/* AI Panel (40%) */}
-      <section className="flex flex-col border-r border-border" style={{ flex: '4 4 40%', maxWidth: '40%' }}>
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#e8934a]"></span>
-          Kết quả AI phát hiện
+      {/* AI Panel (50%) */}
+      <section className="flex flex-col border-r-2 border-border/80 shadow-[2px_0_15px_-3px_rgba(0,0,0,0.1)] z-10 bg-slate-50/30" style={{ flex: '5 5 50%', maxWidth: '50%' }}>
+        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-foreground shadow-sm">
+          <span className="h-2 w-2 shrink-0 rounded-full bg-[#e8934a] shadow-[0_0_8px_#e8934a]"></span>
+          Kết quả AI phân tích
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
           
@@ -746,11 +700,11 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         </div>
       </section>
 
-      {/* Edit Panel (60%) */}
-      <section className="flex flex-col" style={{ flex: '6 6 60%', maxWidth: '60%' }}>
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#00ff00]"></span>
-          Ảnh gốc — xác nhận / chỉnh sửa caliper
+      {/* Edit Panel (50%) */}
+      <section className="flex flex-col bg-background" style={{ flex: '5 5 50%', maxWidth: '50%' }}>
+        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-foreground shadow-sm">
+          <span className="h-2 w-2 shrink-0 rounded-full bg-[#00ff00] shadow-[0_0_8px_#00ff00]"></span>
+          Vùng xác nhận của bác sĩ
         </div>
         
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
@@ -774,8 +728,13 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
           </div>
         </div>
 
-        <div 
-          className={`relative flex-1 overflow-hidden bg-muted/20 select-none ${addingMode ? 'cursor-crosshair' : 'cursor-grab'}`} 
+        {/* Vùng vẽ điểm chú thích theo tọa độ chuột (đặt caliper lên đúng vị trí pixel người
+            dùng bấm) — không có tương đương bàn phím hợp lý cho thao tác chọn tọa độ tự do
+            này, giống mọi công cụ vẽ/canvas khác. role/tabIndex chỉ đảm bảo có thể focus tới. */}
+        <div
+          role="button"
+          tabIndex={0}
+          className={`relative flex-1 overflow-hidden bg-muted/20 select-none ${addingMode ? 'cursor-crosshair' : 'cursor-grab'}`}
           ref={editWrapRef}
           onClick={handleEditWrapClick}
         >
@@ -816,9 +775,10 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
       {/* Custom Modal Notification */}
       {toastMessage && (
         <>
-          <div 
-            className="fixed inset-0 z-[150] bg-black/20 backdrop-blur-sm animate-in fade-in duration-200" 
-            onClick={() => setToastMessage(null)} 
+          <div
+            role="presentation"
+            className="fixed inset-0 z-[150] bg-black/20 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setToastMessage(null)}
           />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[200] w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
             <div className="flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/5">

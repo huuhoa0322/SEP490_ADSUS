@@ -23,8 +23,8 @@ export type IntakeStatus = "PENDING" | "TAKEN";
 export interface CreatePrescriptionItemDto {
   /** Tên thuốc nhập bởi bác sĩ. Backend tự tìm hoặc tạo mới trong bảng medicines (Option A). */
   medicineName: string;
-  /** Required string — vd: "1 viên", "2 gói", "bôi ngoài da". */
-  dosage: string;
+  /** Required number — vd: 1, 2, 3... */
+  quantityPerDose: number;
   /** 1..365 — backend validate [Range(1, 365)]. */
   durationDays: number;
   /** ISO yyyy-MM-dd. */
@@ -90,6 +90,7 @@ export interface MedicationCatalogItem {
   /** Tên trường theo entity Medicine — backend chỉ trả MedicineId + Name. */
   medicineId: string;
   name: string;
+  usageUnit: string;
 }
 
 /** 1 dòng thuốc trong response kèm compliance. */

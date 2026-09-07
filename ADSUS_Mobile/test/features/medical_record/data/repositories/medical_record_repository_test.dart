@@ -143,4 +143,84 @@ void main() {
       await expectLater(repo.getRecordDetail('case-1'), throwsA(isA<ApiException>()));
     });
   });
+
+  group('getCaseFeedback (FT-37)', () {
+    test('goi dung endpoint /me/cases/{id}/feedback va map dung feedback', () async {
+      when(() => dio.get<Map<String, dynamic>>(ApiConstants.caseFeedback('case-1')))
+          .thenAnswer((_) async => traVe({
+                'id': 'feedback-1',
+                'rating': 5,
+                'content': 'Bac si rat tan tam',
+                'submittedAt': '2026-08-20T09:30:00Z',
+              }));
+
+      final feedback = await repo.getCaseFeedback('case-1');
+
+      expect(feedback?.id, 'feedback-1');
+      expect(feedback?.rating, 5);
+      verify(() => dio.get<Map<String, dynamic>>(ApiConstants.caseFeedback('case-1')))
+          .called(1);
+    });
+
+    test('404 (chua gui feedback) thi tra ve null, KHONG nem loi', () async {
+      when(() => dio.get<Map<String, dynamic>>(ApiConstants.caseFeedback('case-1'))).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/'),
+          response: Response(
+            requestOptions: RequestOptions(path: '/'),
+            statusCode: 404,
+          ),
+        ),
+      );
+
+      final feedback = await repo.getCaseFeedback('case-1');
+
+      expect(feedback, isNull);
+    });
+
+    test('loi mang khac 404 thi nem ApiException', () async {
+      when(() => dio.get<Map<String, dynamic>>(ApiConstants.caseFeedback('case-1'))).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/'),
+          response: Response(
+            requestOptions: RequestOptions(path: '/'),
+            statusCode: 500,
+          ),
+        ),
+      );
+
+      await expectLater(repo.getCaseFeedback('case-1'), throwsA(isA<ApiException>()));
+    });
+  });
+
+  group('submitCaseFeedback (FT-37)', () {
+    test('goi dung endpoint /me/case-feedbacks kem caseId o query va rating/content o body', () async {
+      when(() => dio.post<Map<String, dynamic>>(
+            ApiConstants.submitCaseFeedback,
+            data: any(named: 'data'),
+            queryParameters: any(named: 'queryParameters'),
+          )).thenAnswer((_) async => traVe(null));
+
+      await repo.submitCaseFeedback('case-1', 4, 'Rat hai long');
+
+      verify(() => dio.post<Map<String, dynamic>>(
+            ApiConstants.submitCaseFeedback,
+            data: {'rating': 4, 'content': 'Rat hai long'},
+            queryParameters: {'caseId': 'case-1'},
+          )).called(1);
+    });
+
+    test('loi mang thi nem ApiException, khong de DioException lot ra ngoai', () async {
+      when(() => dio.post<Map<String, dynamic>>(
+            ApiConstants.submitCaseFeedback,
+            data: any(named: 'data'),
+            queryParameters: any(named: 'queryParameters'),
+          )).thenThrow(DioException(requestOptions: RequestOptions(path: '/')));
+
+      await expectLater(
+        repo.submitCaseFeedback('case-1', 4, null),
+        throwsA(isA<ApiException>()),
+      );
+    });
+  });
 }

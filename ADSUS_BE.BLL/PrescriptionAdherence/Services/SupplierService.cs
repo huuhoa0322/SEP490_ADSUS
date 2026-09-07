@@ -77,12 +77,12 @@ public class SupplierService : ISupplierService
 
     public async Task<SupplierResponse> CreateSupplierAsync(CreateSupplierRequest request, CancellationToken ct = default)
     {
-        if (!Regex.IsMatch(request.PhoneNumber.Trim(), @"^0\d{9}$"))
+        if (!Regex.IsMatch(request.PhoneNumber.Trim(), @"^0\d{9}$", RegexOptions.None, TimeSpan.FromSeconds(1)))
         {
             throw new BusinessException("Số điện thoại không hợp lệ. Số điện thoại phải bắt đầu bằng 0 và gồm đúng 10 chữ số.");
         }
 
-        if (!Regex.IsMatch(request.TaxCode.Trim(), @"^\d{10}$|^\d{10}-\d{3}$"))
+        if (!Regex.IsMatch(request.TaxCode.Trim(), @"^\d{10}$|^\d{10}-\d{3}$", RegexOptions.None, TimeSpan.FromSeconds(1)))
         {
             throw new BusinessException("Mã số thuế phải là 10 chữ số hoặc 13 chữ số có dấu gạch ngang (VD: 1234567890 hoặc 1234567890-123).");
         }
@@ -131,7 +131,7 @@ public class SupplierService : ISupplierService
         if (supplier == null)
             throw new ResourceNotFoundException($"Nhà cung cấp {supplierId} không tồn tại.");
 
-        if (!Regex.IsMatch(request.PhoneNumber.Trim(), @"^0\d{9}$"))
+        if (!Regex.IsMatch(request.PhoneNumber.Trim(), @"^0\d{9}$", RegexOptions.None, TimeSpan.FromSeconds(1)))
         {
             throw new BusinessException("Số điện thoại không hợp lệ. Số điện thoại phải bắt đầu bằng 0 và gồm đúng 10 chữ số.");
         }

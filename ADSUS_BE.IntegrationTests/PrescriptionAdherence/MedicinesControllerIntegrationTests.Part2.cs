@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
+using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.IntegrationTests.AppointmentScheduling;
@@ -37,6 +38,9 @@ public partial class MedicinesControllerIntegrationTests
             SalePrice = 100
         };
 
+        _medicineService.Setup(s => s.CreateMedicineAsync(It.IsAny<CreateMedicineRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new BusinessException("Vui lòng nhập Đơn vị dùng (Usage Unit) khi đã nhập Hàm lượng."));
+
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/medicines", request);
 
@@ -62,6 +66,9 @@ public partial class MedicinesControllerIntegrationTests
             SalePrice = 100
         };
 
+        _medicineService.Setup(s => s.CreateMedicineAsync(It.IsAny<CreateMedicineRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new BusinessException("Vui lòng nhập đúng Hàm lượng"));
+
         // Act
         var response = await client.PostAsJsonAsync("/api/v1/medicines", request);
 
@@ -82,10 +89,11 @@ public partial class MedicinesControllerIntegrationTests
         var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Admin);
 
         var id = Guid.NewGuid();
-        var existing = new Medicine { MedicineId = id, Name = "Aspirin" };
         var request = new UpdateMedicineRequest { Name = "Aspirin", UsageUnit = "mg", VolumePerBaseUnit = 500 };
-
-        _medicines.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+        var mockResponse = new MedicineResponse { MedicineId = id, Name = "Aspirin" };
+        
+        _medicineService.Setup(s => s.UpdateMedicineAsync(It.IsAny<Guid>(), It.IsAny<UpdateMedicineRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockResponse);
 
         // Act
         var response = await client.PutAsJsonAsync($"/api/v1/medicines/{id}", request);
@@ -104,6 +112,9 @@ public partial class MedicinesControllerIntegrationTests
         var id = Guid.NewGuid();
         var request = new UpdateMedicineRequest { Name = "Aspirin", UsageUnit = "ml", VolumePerBaseUnit = 0 };
 
+        _medicineService.Setup(s => s.UpdateMedicineAsync(It.IsAny<Guid>(), It.IsAny<UpdateMedicineRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new BusinessException("Vui lòng nhập đúng Hàm lượng"));
+
         // Act
         var response = await client.PutAsJsonAsync($"/api/v1/medicines/{id}", request);
 
@@ -121,10 +132,10 @@ public partial class MedicinesControllerIntegrationTests
         var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Admin);
 
         var id = Guid.NewGuid();
-        var existing = new Medicine { MedicineId = id, Name = "Aspirin" };
         var request = new UpdateMedicineRequest { Name = "Aspirin Mod" };
 
-        _medicines.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+        _medicineService.Setup(s => s.UpdateMedicineAsync(It.IsAny<Guid>(), It.IsAny<UpdateMedicineRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new BusinessException("Tên thuốc là Master Data gốc, tuyệt đối không được sửa sau khi tạo."));
 
         // Act
         var response = await client.PutAsJsonAsync($"/api/v1/medicines/{id}", request);
@@ -145,7 +156,8 @@ public partial class MedicinesControllerIntegrationTests
         var id = Guid.NewGuid();
         var request = new UpdateMedicineRequest { Name = "Aspirin" };
 
-        _medicines.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync((Medicine)null);
+        _medicineService.Setup(s => s.UpdateMedicineAsync(It.IsAny<Guid>(), It.IsAny<UpdateMedicineRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ResourceNotFoundException("Không tìm thấy thuốc."));
 
         // Act
         var response = await client.PutAsJsonAsync($"/api/v1/medicines/{id}", request);

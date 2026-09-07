@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
 
+namespace ADSUS_BE.Jobs;
+
 /// <summary>
 /// JOB-03 — Nhắc nhở lịch khám trước 24 giờ.
 /// Chạy mỗi giờ.

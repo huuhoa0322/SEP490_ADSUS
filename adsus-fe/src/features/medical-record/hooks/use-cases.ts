@@ -3,7 +3,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
-  addUltrasoundImages,
   confirmCase,
   createCase,
   endCaseWithoutPrescription,
@@ -13,7 +12,6 @@ import {
   saveCaseConclusion,
 } from "../api/cases.api";
 import type {
-  AddUltrasoundImagesInput,
   CaseConclusionInput,
   CaseListQuery,
   CreateCaseInput,
@@ -62,20 +60,6 @@ export function useCreateCase() {
     onSuccess: () => {
       // Ca mới đổi cả danh sách lần khám lẫn "lần khám gần nhất" trên SCR-09.
       queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.all });
-    },
-  });
-}
-
-/** #21 — bổ sung ảnh. Component phải chặn khi ca đã CONFIRMED (GB-01) trước khi gọi. */
-export function useAddUltrasoundImages(caseId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: Omit<AddUltrasoundImagesInput, "caseId">) =>
-      addUltrasoundImages({ ...input, caseId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
-      queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.images(caseId) });
     },
   });
 }

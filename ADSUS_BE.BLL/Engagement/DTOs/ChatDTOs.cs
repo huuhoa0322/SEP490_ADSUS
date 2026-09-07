@@ -40,6 +40,12 @@ public sealed class ChatMessageResponse
     /// Null khi IsSafetyResponse=true hoặc không xác định được intent.
     /// </summary>
     public ChatIntent? DetectedIntent { get; init; }
+
+    /// <summary>
+    /// True khi LLM bị skip do user đã vượt ngưỡng rate limit.
+    /// Client hiển thị banner thông báo giới hạn.
+    /// </summary>
+    public bool IsRateLimitExceeded { get; init; }
 }
 
 /// <summary>
@@ -49,4 +55,19 @@ public sealed class ChatHistoryResponse
 {
     public IReadOnlyList<ChatMessageResponse> Messages { get; init; } =
         Array.Empty<ChatMessageResponse>();
+}
+
+/// <summary>
+/// Constants cho chatbot rate limiting (UC-26 anti-spam).
+/// </summary>
+public static class ChatRateLimitConstants
+{
+    /// <summary>Số lần gọi LLM tối đa mỗi 5 giờ cho mỗi user.</summary>
+    public const int MaxCallsPerHour = 15;
+
+    /// <summary>Ngưỡng bắt đầu hiển thị warning.</summary>
+    public const int WarningThreshold = 10;
+
+    /// <summary>Khoảng thời gian tính rate limit.</summary>
+    public static readonly TimeSpan RateLimitWindow = TimeSpan.FromHours(5);
 }

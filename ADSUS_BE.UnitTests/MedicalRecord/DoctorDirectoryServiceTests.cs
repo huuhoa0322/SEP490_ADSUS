@@ -7,6 +7,8 @@ namespace ADSUS_BE.UnitTests.MedicalRecord;
 
 public class DoctorDirectoryServiceTests
 {
+    private static readonly string[] ExpectedSummaryProperties = { "UserId", "FullName" };
+
     private readonly Mock<IUserRepository> _users = new();
     private readonly DoctorDirectoryService _sut;
 
@@ -35,7 +37,7 @@ public class DoctorDirectoryServiceTests
             .Select(p => p.Name)
             .Where(n => n != "EqualityContract")
             .ToArray();
-        Assert.Equal(new[] { "UserId", "FullName" }, propertyNames);
+        Assert.Equal(ExpectedSummaryProperties, propertyNames);
     }
 
     [Fact]
