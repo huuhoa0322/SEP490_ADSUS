@@ -149,15 +149,18 @@ export const InventoryImportForm = () => {
       setBulkData([]);
       router.push('/inventory');
     } catch (error) {
-      const err = error as any;
+      const err = error as { response?: { data?: { message?: string; errors?: unknown; } | string } };
       let errMsg = 'Có lỗi xảy ra khi nhập kho hàng loạt';
+      
       if (err.response?.data) {
-        if (err.response.data.message) {
-          errMsg = err.response.data.message;
-        } else if (err.response.data.errors) {
-          errMsg = "Lỗi dữ liệu: " + JSON.stringify(err.response.data.errors);
-        } else if (typeof err.response.data === 'string') {
+        if (typeof err.response.data === 'string') {
           errMsg = err.response.data;
+        } else {
+          if (err.response.data.message) {
+            errMsg = err.response.data.message;
+          } else if (err.response.data.errors) {
+            errMsg = "Lỗi dữ liệu: " + JSON.stringify(err.response.data.errors);
+          }
         }
       }
       toast.error(errMsg);
