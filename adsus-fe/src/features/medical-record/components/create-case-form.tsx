@@ -269,12 +269,12 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
       )}
 
       <section className="mt-6 space-y-5 rounded-xl border border-border p-5">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
+        <fieldset className="m-0 border-0 p-0">
+          <legend className="mb-1.5 block text-sm font-medium">
             Triệu chứng chi tiết
-          </label>
+          </legend>
           <SymptomSelector value={symptoms} onChange={setSymptoms} />
-        </div>
+        </fieldset>
       </section>
 
       {errorMessage ? (

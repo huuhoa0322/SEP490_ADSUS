@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
 
+namespace ADSUS_BE.Jobs;
+
 /// <summary>
 /// JOB-04 — Nhắc nhở ghi nhật ký sức khỏe.
 /// Chạy 2 lần mỗi ngày: 8h sáng và 20h tối.

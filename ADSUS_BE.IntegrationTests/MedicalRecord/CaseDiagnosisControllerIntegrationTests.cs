@@ -70,7 +70,7 @@ public class CaseDiagnosisControllerIntegrationTests
         return client;
     }
 
-    private MultipartFormDataContent MakeAnalyzePayload(bool withImage)
+    private static MultipartFormDataContent MakeAnalyzePayload(bool withImage)
     {
         var form = new MultipartFormDataContent();
 
@@ -84,7 +84,7 @@ public class CaseDiagnosisControllerIntegrationTests
         return form;
     }
 
-    private MultipartFormDataContent MakeConfirmPayload(bool missingOrig, bool missingBurnt)
+    private static MultipartFormDataContent MakeConfirmPayload(bool missingOrig, bool missingBurnt)
     {
         var form = new MultipartFormDataContent();
 

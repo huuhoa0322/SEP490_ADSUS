@@ -97,6 +97,7 @@ class AiChatViewModel extends StateNotifier<AiChatState> {
           createdAt: response.createdAt,
           isSafety: response.isSafety,
           detectedIntent: response.detectedIntent,
+          isRateLimitExceeded: response.isRateLimitExceeded,
         );
         state = state.copyWith(
           messages: [...state.messages, assistantMsg],

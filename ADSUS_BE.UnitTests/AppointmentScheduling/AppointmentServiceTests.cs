@@ -6,6 +6,7 @@ using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -23,6 +24,7 @@ public class AppointmentServiceTests : IDisposable
     private readonly Mock<IPatientProfileRepository> _profileRepo = new();
     private readonly Mock<INotificationService> _notificationService = new();
     private readonly Mock<ADSUS_BE.BLL.MedicalRecord.Interfaces.ICaseService> _caseService = new();
+    private readonly NoShowService _noShowService;
     private readonly AppDbContext _db;
     private readonly AppointmentService _sut;
 
@@ -40,12 +42,21 @@ public class AppointmentServiceTests : IDisposable
             .Options;
         _db = new AppDbContext(options);
 
+        var noShowSettings = Options.Create(new ADSUS_BE.BLL.Common.Settings.NoShowSettings { GraceTimeMinutes = 15 });
+        _noShowService = new NoShowService(
+            _db,
+            noShowSettings,
+            _notificationService.Object,
+            _profileRepo.Object,
+            Mock.Of<ILogger<NoShowService>>());
+
         _sut = new AppointmentService(
             _appointmentRepo.Object,
             _slotRepo.Object,
             _profileRepo.Object,
             _notificationService.Object,
             _caseService.Object,
+            _noShowService,
             _db,
             Mock.Of<ILogger<AppointmentService>>());
     }
@@ -53,6 +64,7 @@ public class AppointmentServiceTests : IDisposable
     public void Dispose()
     {
         _db.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     #region ListOpenSlotsAsync Tests

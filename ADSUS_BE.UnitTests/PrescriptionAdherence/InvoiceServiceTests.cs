@@ -15,7 +15,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence;
 
 public class InvoiceServiceTests
 {
-    private DbContextOptions<AppDbContext> GetInMemoryOptions(string dbName)
+    private static DbContextOptions<AppDbContext> GetInMemoryOptions(string dbName)
     {
         return new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(databaseName: dbName)
@@ -454,7 +454,7 @@ public class InvoiceServiceTests
         await service.CancelInvoiceAsync(invoiceId, request);
 
         var invoice = await context.Invoices.FindAsync(invoiceId);
-        Assert.Equal(InvoiceStatus.CANCELLED, invoice.Status);
+        Assert.Equal(InvoiceStatus.CANCELLED, invoice!.Status);
         Assert.Equal("Bệnh nhân đổi ý", invoice.CancelledReason);
     }
 
@@ -517,11 +517,11 @@ public class InvoiceServiceTests
         await service.CancelInvoiceAsync(invoiceId, request);
 
         var invoice = await context.Invoices.FindAsync(invoiceId);
-        Assert.Equal(InvoiceStatus.CANCELLED, invoice.Status);
+        Assert.Equal(InvoiceStatus.CANCELLED, invoice!.Status);
         Assert.Equal("Nhầm lẫn kê đơn", invoice.CancelledReason);
 
         var batch = await context.MedicineBatches.FindAsync(batchId);
-        Assert.Equal(70, batch.QuantityBase); // 50 + 20
+        Assert.Equal(70, batch!.QuantityBase); // 50 + 20
 
         var reverseTxn = await context.InventoryTransactions
             .FirstOrDefaultAsync(t => t.TxnType == InventoryTxnType.Adjustment && t.Reason == "Hoàn kho tự động do hủy hóa đơn");

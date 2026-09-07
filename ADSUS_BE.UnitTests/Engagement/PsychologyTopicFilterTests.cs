@@ -19,7 +19,7 @@ namespace ADSUS_BE.UnitTests.Engagement;
 /// </summary>
 public class PsychologyTopicFilterTests
 {
-    private readonly IPsychologyTopicFilter _filter = new PsychologyTopicFilter();
+    private readonly PsychologyTopicFilter _filter = new();
 
     // ---------- POSITIVE CASES — phát hiện đúng từ khóa ----------
 

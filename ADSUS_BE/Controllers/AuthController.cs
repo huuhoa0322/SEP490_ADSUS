@@ -109,6 +109,47 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Refresh tokens - exchanges a valid refresh token for new access + refresh tokens.
+    /// Supports SignalR persistent connections without re-login.
+    /// </summary>
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResponse<RefreshTokenResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<RefreshTokenResponse>), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RefreshToken(
+        [FromBody] RefreshTokenRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _auth.RefreshTokensAsync(request.RefreshToken, cancellationToken);
+
+        if (result is null)
+        {
+            return Unauthorized(ApiResponse<RefreshTokenResponse>.Fail(
+                StatusCodes.Status401Unauthorized, "Invalid or expired refresh token."));
+        }
+
+        return Ok(ApiResponse<RefreshTokenResponse>.Ok(result, "Tokens refreshed successfully."));
+    }
+
+    /// <summary>
+    /// Logout - revokes all refresh tokens for the current user.
+    /// </summary>
+    [HttpPost("logout")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (Guid.TryParse(userIdClaim, out var userId))
+        {
+            await _auth.RevokeAllRefreshTokensAsync(userId, cancellationToken);
+            Console.WriteLine($"[Auth] User {userId} logged out, all refresh tokens revoked");
+        }
+
+        return Ok(ApiResponse<object>.Ok(null!, "Logged out successfully."));
+    }
+
+    /// <summary>
     /// UC-25 — a signed-in user changes their own password.
     /// Every role is allowed, so [Authorize] alone is enough — no role restriction.
     /// </summary>

@@ -47,7 +47,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
 
         public async Task ImportMedicineBulkAsync(System.Collections.Generic.List<ImportInventoryRequest> requests)
         {
-            if (requests == null || !requests.Any()) return;
+            if (requests == null || requests.Count == 0) return;
 
             using var transaction = await _dbContext.Database.BeginTransactionAsync();
             try
@@ -362,7 +362,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                         .ThenInclude(m => m.MedicinePackagings)
                 .FirstOrDefaultAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active);
 
-            if (prescription == null || !prescription.PrescriptionItems.Any())
+            if (prescription == null || prescription.PrescriptionItems.Count == 0)
             {
                 throw new BusinessException("Không tìm thấy đơn thuốc hoặc đơn thuốc trống.");
             }

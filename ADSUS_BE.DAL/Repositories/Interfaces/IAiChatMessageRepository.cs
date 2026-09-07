@@ -26,4 +26,13 @@ public interface IAiChatMessageRepository
         DateTime to,
         int limit,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Đếm số ASSISTANT message (tức số lần gọi LLM) của user kể từ threshold.
+    /// Dùng để kiểm tra rate limit trước khi gọi LLM.
+    /// </summary>
+    Task<int> CountAssistantMessagesSinceAsync(
+        Guid userId,
+        DateTime since,
+        CancellationToken ct = default);
 }

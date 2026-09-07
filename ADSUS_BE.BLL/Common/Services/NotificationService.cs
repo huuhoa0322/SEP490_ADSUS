@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ADSUS_BE.BLL.Common.DTOs;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
@@ -8,21 +9,24 @@ using Microsoft.Extensions.Logging;
 namespace ADSUS_BE.BLL.Common.Services;
 
 /// <summary>
-/// Implementation gửi notification: lưu DB + push FCM.
+/// Implementation gửi notification: lưu DB + push FCM + SignalR.
 /// </summary>
 public sealed class NotificationService : INotificationService
 {
     private readonly INotificationLogRepository _notificationRepo;
     private readonly IPushNotificationClient _pushClient;
+    private readonly IRealTimeNotificationService _realTimeService;
     private readonly ILogger<NotificationService> _logger;
 
     public NotificationService(
         INotificationLogRepository notificationRepo,
         IPushNotificationClient pushClient,
+        IRealTimeNotificationService realTimeService,
         ILogger<NotificationService> logger)
     {
         _notificationRepo = notificationRepo;
         _pushClient = pushClient;
+        _realTimeService = realTimeService;
         _logger = logger;
     }
 
@@ -88,6 +92,28 @@ public sealed class NotificationService : INotificationService
             // Log lỗi nhưng không throw — notification đã lưu DB, FCM có thể retry sau
             _logger.LogError(ex,
                 "[Notification] FCM push failed for user {UserId}. Type={Type}",
+                request.UserId, request.Type);
+        }
+
+        // 5. Send via SignalR (real-time)
+        try
+        {
+            var notificationMessage = new NotificationMessage
+            {
+                LogId = logId,
+                Type = request.Type,
+                Title = request.Title,
+                Body = request.Body,
+                DeepLink = request.DeepLink,
+                SentAt = now
+            };
+
+            await _realTimeService.SendToUserAsync(request.UserId, notificationMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[Notification] SignalR push failed for user {UserId}. Type={Type}",
                 request.UserId, request.Type);
         }
 

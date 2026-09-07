@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useDeferredValue } from "react";
+import { useState, useDeferredValue, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { Pill, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Pill, AlertCircle, CheckCircle2, Users, TrendingUp, Clock, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,176 @@ const adherenceLevelLabels: Record<string, { label: string; color: "default" | "
   poor: { label: "Kém", color: "destructive" },
 };
 
+// ─── Summary stats derived from patient list ──────────────────────────────────
+interface SummaryStats {
+  totalPatients: number;
+  avgAdherencePercent: number;
+  overdueCount: number;
+  activePrescriptionCount: number;
+}
+
+function deriveStats(patients: DoctorPatientDto[]): SummaryStats {
+  const totalPatients = patients.length;
+  const avgAdherencePercent =
+    totalPatients > 0
+      ? Math.round(
+          patients.reduce((sum, p) => sum + p.todayAdherencePercent, 0) /
+            totalPatients,
+        )
+      : 0;
+  const overdueCount = patients.filter((p) => p.hasOverdueToday).length;
+  const activePrescriptionCount = patients.reduce(
+    (sum, p) => sum + p.activePrescriptionCount,
+    0,
+  );
+  return { totalPatients, avgAdherencePercent, overdueCount, activePrescriptionCount };
+}
+
+// ─── Stat tile ────────────────────────────────────────────────────────────────
+function StatTile({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  sub?: string;
+  accent?: "good" | "warning" | "critical";
+}) {
+  const accentColor = {
+    good: "bg-accent/10 text-accent",
+    warning: "bg-[#e0912f]/10 text-[#e0912f]",
+    critical: "bg-destructive/10 text-destructive",
+  }[accent ?? "good"];
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm">
+      <div className={`rounded-lg p-2.5 ${accentColor}`}>
+        <Icon className="size-5" />
+      </div>
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+        <p className="mt-0.5 font-heading text-2xl font-semibold text-foreground">
+          {value}
+          {sub && <span className="ml-1 text-sm font-normal text-muted-foreground">{sub}</span>}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Progress bar ────────────────────────────────────────────────────────────
+function AdherenceBar({ percent }: { percent: number }) {
+  const color =
+    percent >= 80 ? "bg-accent" : percent >= 50 ? "bg-[#e0912f]" : "bg-destructive";
+  return (
+    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+      <div
+        className={`h-full rounded-full transition-all ${color}`}
+        style={{ width: `${percent}%` }}
+      />
+    </div>
+  );
+}
+
+// ─── Patient card ────────────────────────────────────────────────────────────
+function PatientCard({
+  patient,
+  isFetching,
+  onClick,
+}: {
+  patient: DoctorPatientDto;
+  isFetching: boolean;
+  onClick: () => void;
+}) {
+  const level = adherenceLevelLabels[patient.adherenceLevel] ?? {
+    label: patient.adherenceLevel,
+    color: "secondary" as const,
+  };
+
+  return (
+    <Card
+      className={`cursor-pointer transition-shadow hover:shadow-md ${isFetching ? "opacity-60" : ""}`}
+      onClick={onClick}
+    >
+      <CardContent className="flex items-start gap-4 p-4">
+        {/* Avatar */}
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-semibold text-primary-foreground">
+          {patient.patientName.charAt(0).toUpperCase()}
+        </div>
+
+        {/* Main info */}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">{patient.patientName}</span>
+            <Badge
+              variant={
+                patient.adherenceLevel === "good"
+                  ? "default"
+                  : patient.adherenceLevel === "warning"
+                    ? "secondary"
+                    : "destructive"
+              }
+              className="text-xs"
+            >
+              {level.label}
+            </Badge>
+            {patient.hasOverdueToday && (
+              <Badge variant="destructive" className="gap-1 text-xs">
+                <AlertCircle className="size-3" />
+                Quá giờ
+              </Badge>
+            )}
+          </div>
+
+          {/* Progress bar */}
+          <AdherenceBar percent={patient.todayAdherencePercent} />
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <span>
+              Hôm nay:{" "}
+              <span
+                className={`font-semibold ${
+                  patient.adherenceLevel === "good"
+                    ? "text-accent"
+                    : patient.adherenceLevel === "warning"
+                      ? "text-[#e0912f]"
+                      : "text-destructive"
+                }`}
+              >
+                {patient.todayTaken}/{patient.todayTotal}
+              </span>
+            </span>
+            <span className="text-muted-foreground/60">·</span>
+            <span>Đơn Active: {patient.activePrescriptionCount}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-end gap-2">
+          <span
+            className={`font-heading text-xl font-semibold ${
+              patient.adherenceLevel === "good"
+                ? "text-accent"
+                : patient.adherenceLevel === "warning"
+                  ? "text-[#e0912f]"
+                  : "text-destructive"
+            }`}
+          >
+            {patient.todayAdherencePercent}%
+          </span>
+          <CheckCircle2 className="size-4 text-muted-foreground/30" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 export default function MedicationTrackingPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -41,9 +211,15 @@ export default function MedicationTrackingPage() {
       getPatientList({
         search: deferredSearch || undefined,
         adherenceLevel: adherenceLevel || undefined,
-        hasOverdueDoses: hasOverdue === "true" ? true : hasOverdue === "false" ? false : undefined,
+        hasOverdueDoses:
+          hasOverdue === "true" ? true : hasOverdue === "false" ? false : undefined,
       }),
   });
+
+  const stats = useMemo(
+    () => deriveStats(data?.patients ?? []),
+    [data?.patients],
+  );
 
   const hasActiveFilter =
     search.trim().length > 0 || !!adherenceLevel || !!hasOverdue;
@@ -55,16 +231,65 @@ export default function MedicationTrackingPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
-      <div className="mb-6 flex items-center gap-3">
-        <Pill className="size-7 shrink-0 text-primary" />
-        <h1 className="font-heading text-2xl font-semibold text-primary">
-          Theo dõi tiến độ uống thuốc
-        </h1>
+    <div className="w-full px-4 py-6 sm:px-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-3">
+          <Pill className="size-7 shrink-0 text-primary" />
+          <h1 className="font-heading text-2xl font-semibold text-primary">
+            Theo dõi tiến độ uống thuốc
+          </h1>
+        </div>
+        <p className="mt-1 ml-10 text-sm text-muted-foreground">
+          Chỉ hiển thị những bệnh nhân đang có ít nhất 1 đơn thuốc active
+        </p>
       </div>
 
+      {/* Summary tiles */}
+      {!isLoading ? (
+        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatTile
+            icon={Users}
+            label="Bệnh nhân"
+            value={stats.totalPatients}
+            accent="good"
+          />
+          <StatTile
+            icon={TrendingUp}
+            label="Tuân thủ TB hôm nay"
+            value={stats.avgAdherencePercent}
+            sub="%"
+            accent={
+              stats.avgAdherencePercent >= 80
+                ? "good"
+                : stats.avgAdherencePercent >= 50
+                  ? "warning"
+                  : "critical"
+            }
+          />
+          <StatTile
+            icon={Clock}
+            label="Quá giờ hôm nay"
+            value={stats.overdueCount}
+            accent={stats.overdueCount > 0 ? "critical" : "good"}
+          />
+          <StatTile
+            icon={FileText}
+            label="Đơn đang Active"
+            value={stats.activePrescriptionCount}
+            accent="good"
+          />
+        </div>
+      ) : (
+        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
+        </div>
+      )}
+
       {/* Search + Filter bar */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <Input
           placeholder="Tìm bệnh nhân..."
           value={search}
@@ -72,8 +297,8 @@ export default function MedicationTrackingPage() {
           className="w-full sm:w-56"
         />
         <Select value={adherenceLevel} onValueChange={setAdherenceLevel}>
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Mức tuân thủ mặc định" />
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue placeholder="Mức tuân thủ" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="good">Tốt (≥80%)</SelectItem>
@@ -82,8 +307,8 @@ export default function MedicationTrackingPage() {
           </SelectContent>
         </Select>
         <Select value={hasOverdue} onValueChange={setHasOverdue}>
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Trạng thái mặc định" />
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="Quá giờ" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="true">Có liều quá giờ</SelectItem>
@@ -101,7 +326,7 @@ export default function MedicationTrackingPage() {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            <Skeleton key={i} className="h-28 w-full rounded-xl" />
           ))}
         </div>
       ) : !data?.patients.length ? (
@@ -124,76 +349,5 @@ export default function MedicationTrackingPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function PatientCard({
-  patient,
-  isFetching,
-  onClick,
-}: {
-  patient: DoctorPatientDto;
-  isFetching: boolean;
-  onClick: () => void;
-}) {
-  const level = adherenceLevelLabels[patient.adherenceLevel] ?? {
-    label: patient.adherenceLevel,
-    color: "secondary" as const,
-  };
-  const pct = patient.todayAdherencePercent;
-  const pctColor =
-    patient.adherenceLevel === "good"
-      ? "text-green-600"
-      : patient.adherenceLevel === "warning"
-        ? "text-amber-600"
-        : "text-red-600";
-
-  return (
-    <Card
-      className={`cursor-pointer transition-shadow hover:shadow-md ${isFetching ? "opacity-60" : ""}`}
-      onClick={onClick}
-    >
-      <CardContent className="flex items-center gap-4 p-4">
-        {/* Avatar placeholder */}
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary">
-          {patient.patientName.charAt(0).toUpperCase()}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{patient.patientName}</span>
-            <Badge
-              variant={
-                patient.adherenceLevel === "good"
-                  ? "default"
-                  : patient.adherenceLevel === "warning"
-                    ? "secondary"
-                    : "destructive"
-              }
-            >
-              {level.label}
-            </Badge>
-            {patient.hasOverdueToday && (
-              <Badge variant="destructive" className="gap-1">
-                <AlertCircle className="size-3" />
-                Có liều quá giờ
-              </Badge>
-            )}
-          </div>
-
-          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            <span>
-              Hôm nay:{" "}
-              <span className={`font-medium ${pctColor}`}>
-                {patient.todayTaken}/{patient.todayTotal} ({pct}%)
-              </span>
-            </span>
-            <span>{patient.activePrescriptionCount} đơn Active</span>
-          </div>
-        </div>
-
-        <CheckCircle2 className="size-5 shrink-0 text-muted-foreground/30" />
-      </CardContent>
-    </Card>
   );
 }

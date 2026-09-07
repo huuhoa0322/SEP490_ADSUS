@@ -114,7 +114,7 @@ export function PrescriptionForm({
       <form onSubmit={handleSubmit(onValid)} noValidate>
         {/* ── Bệnh nhân ─────────────────────────────────────────── */}
         <section className="mb-6">
-          <label className="mb-1.5 block text-sm font-semibold text-primary">
+          <label htmlFor="caseId" className="mb-1.5 block text-sm font-semibold text-primary">
             Bệnh nhân / Ca khám <span className="text-red-500">*</span>
           </label>
           {prefilledPatient ? (
@@ -130,6 +130,7 @@ export function PrescriptionForm({
             </div>
           ) : (
             <select
+              id="caseId"
               {...register("caseId")}
               className="w-full rounded-full border border-border bg-surface px-5 py-3 text-sm focus:border-teal focus:outline-none"
             >
@@ -202,10 +203,11 @@ export function PrescriptionForm({
 
         {/* ── Ghi chú ─────────────────────────────────────────── */}
         <section className="mb-8">
-          <label className="mb-1.5 block text-sm font-semibold text-primary">
+          <label htmlFor="generalNote" className="mb-1.5 block text-sm font-semibold text-primary">
             Ghi chú Chuyên môn & Lời dặn Bác sĩ
           </label>
           <input
+            id="generalNote"
             type="text"
             {...register("generalNote")}
             placeholder="Ví dụ: Theo dõi lượng máu kinh hàng ngày trên App Mobile..."

@@ -1,8 +1,10 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.Common.Events;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
+using ADSUS_BE.BLL.MedicalRecord.Events;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Mappers;
 using ADSUS_BE.DAL.Data;
@@ -24,7 +26,7 @@ public sealed class CaseService : ICaseService
     private readonly IUserRepository _users;
     private readonly System.Lazy<IFileStorageService> _storageLazy;
     private readonly INotificationService _notificationService;
-    private readonly IAppointmentRepository _appointments;
+    private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<CaseService> _logger;
 
     private IFileStorageService _storage => _storageLazy.Value;
@@ -36,7 +38,7 @@ public sealed class CaseService : ICaseService
         IUserRepository users,
         System.Lazy<IFileStorageService> storageLazy,
         INotificationService notificationService,
-        IAppointmentRepository appointments,
+        IEventPublisher eventPublisher,
         ILogger<CaseService> logger)
     {
         _cases = cases;
@@ -45,7 +47,7 @@ public sealed class CaseService : ICaseService
         _users = users;
         _storageLazy = storageLazy;
         _notificationService = notificationService;
-        _appointments = appointments;
+        _eventPublisher = eventPublisher;
         _logger = logger;
     }
 
@@ -304,40 +306,19 @@ public sealed class CaseService : ICaseService
         medicalCase.Status = CaseStatus.End;
         medicalCase.UpdatedAt = DateTime.UtcNow;
 
-        // Complete related appointment if exists and is Approved
-        await CompleteRelatedAppointmentAsync(caseId, ct);
+        // Publish CaseEndEvent - handlers will complete related appointments
+        await _eventPublisher.PublishAsync(CaseEndEvent.Create(
+            caseId: caseId,
+            patientProfileId: medicalCase.PatientProfileId,
+            doctorId: actingDoctorId,
+            notes: "Ended without prescription"
+        ), ct);
 
         await _cases.SaveChangesAsync(ct);
 
         _logger.LogInformation("Case {CaseId} ended without prescription by doctor {DoctorId}", caseId, actingDoctorId);
 
         return await GetForStaffAsync(caseId, ct);
-    }
-
-    /// <summary>
-    /// Complete appointment when case is ended.
-    /// </summary>
-    private async Task CompleteRelatedAppointmentAsync(Guid caseId, CancellationToken ct)
-    {
-        // Get all appointments for the patient and find the one linked to this case
-        // Note: This is a simplified approach. In production, you might want to add
-        // a specific method to IAppointmentRepository to query by CaseId.
-        var appointments = await _appointments.ListByPatientAsync(
-            (await _cases.GetByIdAsync(caseId, ct))!.PatientProfileId, ct);
-
-        var appointment = appointments
-            .FirstOrDefault(a => a.CaseId == caseId && a.Status == AppointmentStatus.Approved);
-
-        if (appointment != null)
-        {
-            appointment.Status = AppointmentStatus.Completed;
-            appointment.UpdatedAt = DateTime.UtcNow;
-            await _appointments.UpdateAsync(appointment, ct);
-
-            _logger.LogInformation(
-                "Appointment {AppointmentId} completed when case {CaseId} was ended",
-                appointment.AppointmentId, caseId);
-        }
     }
 
     /// <inheritdoc />
@@ -377,6 +358,27 @@ public sealed class CaseService : ICaseService
         _logger.LogInformation(
             "Case {CaseId} created from appointment booking for patient profile {PatientProfileId} with {SymptomCount} symptoms",
             caseId, patientProfileId, symptoms.Count);
+
+        // Gửi notification cho doctor về case mới được tạo từ booking
+        try
+        {
+            await _notificationService.SendAsync(new SendNotificationRequest
+            {
+                UserId = doctorId,
+                Type = "new_case_created",
+                Title = "Có ca khám mới",
+                Body = $"Bệnh nhân đã đặt lịch khám với triệu chứng. Ca khám đã được tạo tự động.",
+                DeepLink = $"/medical-records/cases/{caseId}",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["caseId"] = caseId.ToString()
+                }
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send new case notification to doctor for case {CaseId}", caseId);
+        }
 
         return caseId;
     }

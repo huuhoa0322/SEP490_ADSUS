@@ -54,7 +54,7 @@ public class InvoiceService : IInvoiceService
 
 
 
-        if (prescription == null || !prescription.PrescriptionItems.Any())
+        if (prescription == null || prescription.PrescriptionItems.Count == 0)
         {
             throw new BusinessException("Không tìm thấy đơn thuốc hoặc đơn thuốc trống cho ca khám này.");
         }
@@ -86,7 +86,7 @@ public class InvoiceService : IInvoiceService
                 .OrderByDescending(mp => mp.ConversionFactor)
                 .ToListAsync();
 
-            if (!packagings.Any())
+            if (packagings.Count == 0)
             {
                 throw new BusinessException($"Thuốc '{pItem.Medicine.Name}' chưa được cấu hình đơn vị bán (IsSellable = true).");
             }
@@ -255,7 +255,7 @@ public class InvoiceService : IInvoiceService
             .Include(p => p.Case)
             .FirstOrDefaultAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active);
 
-        if (prescription == null || !prescription.PrescriptionItems.Any()) return;
+        if (prescription == null || prescription.PrescriptionItems.Count == 0) return;
 
         var patientPref = await _context.PatientReminderPreferences
             .AsNoTracking()
@@ -279,7 +279,7 @@ public class InvoiceService : IInvoiceService
             var slots = pItem.ScheduleSlots?.Select(s => (ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot)(int)s).ToList() 
                 ?? new List<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>();
             
-            if (!slots.Any()) continue;
+            if (slots.Count == 0) continue;
 
             var scheduledDoses = await _scheduleGenerator.GenerateAsync(
                 itemWithPatient,
@@ -328,7 +328,7 @@ public class InvoiceService : IInvoiceService
                 .Where(pi => pi.Prescription.CaseId == invoice.CaseId)
                 .ToListAsync();
 
-            if (prescriptionItems.Any())
+            if (prescriptionItems.Count > 0)
             {
                 var prescription = prescriptionItems.First().Prescription;
                 prescription.Status = PrescriptionStatus.Cancelled;
@@ -340,7 +340,7 @@ public class InvoiceService : IInvoiceService
                     .ToListAsync();
 
                 var pendingLogs = allLogs.Where(l => l.ConfirmedAt == null).ToList();
-                if (pendingLogs.Any())
+                if (pendingLogs.Count > 0)
                 {
                     _context.MedicationIntakeLogs.RemoveRange(pendingLogs);
                 }

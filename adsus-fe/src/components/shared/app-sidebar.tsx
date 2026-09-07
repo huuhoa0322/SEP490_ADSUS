@@ -1,6 +1,6 @@
 "use client";
 
-import { BrainCircuit, CalendarClock, FileText, KeyRound, LogOut, LayoutDashboard, ClipboardList, Users, Pill, Truck, PackagePlus, Receipt, AlertTriangle } from "lucide-react";
+import { BrainCircuit, CalendarClock, FileText, KeyRound, LogOut, LayoutDashboard, ClipboardList, ClipboardCheck, Users, Pill, Truck, PackagePlus, Receipt, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -58,14 +58,17 @@ export function AppSidebar() {
         )}
 
         {user?.role === "NURSE" && (
-          <NavItem expanded={expanded} href="/invoices" icon={<Receipt className="size-5" />} label="Quản lý hóa đơn" active={pathname.startsWith("/invoices")} />
+          <>
+            <NavItem expanded={expanded} href="/checkin" icon={<ClipboardCheck className="size-5" />} label="Check-in" active={pathname.startsWith("/checkin")} />
+            <NavItem expanded={expanded} href="/invoices" icon={<Receipt className="size-5" />} label="Quản lý hóa đơn" active={pathname.startsWith("/invoices")} />
+          </>
         )}
 
         {user?.role === "DOCTOR" && (
           <>
             <NavItem expanded={expanded} href="/schedule" icon={<CalendarClock className="size-5" />} label="Quản lý lịch" active={pathname.startsWith("/schedule") && !pathname.startsWith("/schedule/patients")} />
             <NavItem expanded={expanded} href="/schedule/patients" icon={<Users className="size-5" />} label="Lịch bệnh nhân" active={pathname.startsWith("/schedule/patients")} />
-            <NavItem expanded={expanded} href="/medication-tracking" icon={<Pill className="size-5" />} label="Theo dõi thuốc" active={pathname.startsWith("/medication-tracking")} />
+            <NavItem expanded={expanded} href="/medication-tracking" icon={<Pill className="size-5" />} label="Theo dõi và nhắc nhở uống thuốc" active={pathname.startsWith("/medication-tracking")} />
           </>
         )}
       </div>
@@ -104,7 +107,7 @@ function NavItem({ href, icon, label, active, expanded }: { href: string; icon: 
       }`}
     >
       <div className="shrink-0">{icon}</div>
-      {expanded && <span className="truncate">{label}</span>}
+      {expanded && <span className="whitespace-normal leading-tight">{label}</span>}
     </Link>
   );
 }

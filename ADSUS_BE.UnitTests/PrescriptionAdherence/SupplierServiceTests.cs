@@ -43,6 +43,7 @@ public class SupplierServiceTests : IDisposable
     {
         _db.Database.EnsureDeleted();
         _db.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     [Fact]

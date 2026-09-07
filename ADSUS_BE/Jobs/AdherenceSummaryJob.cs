@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
 
+namespace ADSUS_BE.Jobs;
+
 /// <summary>
 /// JOB-06 — Gửi tổng kết tuân thủ uống thuốc hàng ngày.
 /// Chạy lúc 23h mỗi ngày.
