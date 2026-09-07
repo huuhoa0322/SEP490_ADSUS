@@ -197,7 +197,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task NoSlotUtilizationRateMetric_SlotHasNoCapacityColumn()
+    public void NoSlotUtilizationRateMetric_SlotHasNoCapacityColumn()
     {
         // ScheduleSlot không có cột Capacity, và chính entity ghi rõ "không giới hạn số
         // Appointment/slot" (quyết định UCS 3.1 ngày 23/07/2026). Không có mẫu số thì không

@@ -49,7 +49,7 @@ public class NotificationServiceTests
             .ReturnsAsync((NotificationLog log, CancellationToken _) => log);
 
         // Act
-        var result = await _sut.SendAsync(request);
+        var result = await _sut.SendAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(Guid.Empty, result);
@@ -82,7 +82,7 @@ public class NotificationServiceTests
             .ReturnsAsync((NotificationLog log, CancellationToken _) => log);
 
         // Act
-        await _sut.SendAsync(request);
+        await _sut.SendAsync(request, TestContext.Current.CancellationToken);
 
         // Assert - Push client được gọi
         _pushClient.Verify(s => s.SendToUserAsync(
@@ -113,7 +113,7 @@ public class NotificationServiceTests
             .ReturnsAsync((NotificationLog log, CancellationToken _) => log);
 
         // Act
-        await _sut.SendAsync(request);
+        await _sut.SendAsync(request, TestContext.Current.CancellationToken);
 
         // Assert - Deep link được truyền
         _pushClient.Verify(s => s.SendToUserAsync(
@@ -150,7 +150,7 @@ public class NotificationServiceTests
             .ReturnsAsync((NotificationLog log, CancellationToken _) => log);
 
         // Act
-        await _sut.SendAsync(request);
+        await _sut.SendAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(capturedLog);
@@ -179,7 +179,7 @@ public class NotificationServiceTests
             .ReturnsAsync((NotificationLog log, CancellationToken _) => log);
 
         // Act
-        await _sut.SendBulkAsync(new[] { userId1, userId2 }, request);
+        await _sut.SendBulkAsync(new[] { userId1, userId2 }, request, TestContext.Current.CancellationToken);
 
         // Assert
         _notificationLogRepo.Verify(r => r.CreateAsync(
@@ -212,7 +212,7 @@ public class NotificationServiceTests
             .ThrowsAsync(new Exception("Push failed"));
 
         // Act - Không throw
-        var result = await _sut.SendAsync(request);
+        var result = await _sut.SendAsync(request, TestContext.Current.CancellationToken);
 
         // Assert - Vẫn lưu vào DB
         Assert.NotEqual(Guid.Empty, result);

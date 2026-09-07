@@ -59,9 +59,7 @@ public class InvoiceServiceTests
         // Assert
         var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId, TestContext.Current.CancellationToken);
         Assert.Equal(InvoiceStatus.PENDING, invoice.Status);
-        Assert.Single(invoice.InvoiceItems); // Should only have 1 item: 2 Vỉ
-        
-        var item = invoice.InvoiceItems.First();
+        var item = Assert.Single(invoice.InvoiceItems); // Should only have 1 item: 2 Vỉ
         Assert.Equal(2, item.Quantity);
         Assert.Equal(50000, item.UnitPrice);
         Assert.Equal(100000, item.TotalPrice);
@@ -104,9 +102,7 @@ public class InvoiceServiceTests
 
         // Assert
         var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId, TestContext.Current.CancellationToken);
-        Assert.Single(invoice.InvoiceItems);
-        
-        var item = invoice.InvoiceItems.First();
+        var item = Assert.Single(invoice.InvoiceItems);
         // 4 Viên < 50 Viên (1 Gói) -> rounds up to 1 Gói
         Assert.Equal(1, item.Quantity);
         Assert.Equal(100000, item.UnitPrice);
@@ -195,8 +191,7 @@ public class InvoiceServiceTests
 
         var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId, TestContext.Current.CancellationToken);
         // Must be exactly 1 row (no separate "(Làm tròn lên)" row)
-        Assert.Single(invoice.InvoiceItems);
-        var item = invoice.InvoiceItems.Single();
+        var item = Assert.Single(invoice.InvoiceItems);
         Assert.Equal(2, item.Quantity);        // ceil(54/50) = 2
         Assert.Equal(100000, item.UnitPrice);
         Assert.Equal(200000, item.TotalPrice);
@@ -241,8 +236,7 @@ public class InvoiceServiceTests
 
         var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId, TestContext.Current.CancellationToken);
         // Only 1 row (all Gói, no Hộp since 154 < 250)
-        Assert.Single(invoice.InvoiceItems);
-        var item = invoice.InvoiceItems.Single();
+        var item = Assert.Single(invoice.InvoiceItems);
         Assert.DoesNotContain("Làm tròn lên", item.Description);
         Assert.Equal(4, item.Quantity); // 3 Gói from greedy + 1 for remainder
         Assert.Equal(100000, item.UnitPrice);

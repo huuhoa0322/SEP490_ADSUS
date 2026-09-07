@@ -43,8 +43,8 @@ public partial class MedicinesControllerIntegrationTests
         
         var body = await response.Content.ReadFromJsonAsync<List<MedicineResponse>>(TestContext.Current.CancellationToken);
         Assert.NotNull(body);
-        Assert.Single(body);
-        Assert.Equal("Paracetamol 500mg", body[0].Name);
+        var medicine = Assert.Single(body);
+        Assert.Equal("Paracetamol 500mg", medicine.Name);
     }
     
     [Fact]

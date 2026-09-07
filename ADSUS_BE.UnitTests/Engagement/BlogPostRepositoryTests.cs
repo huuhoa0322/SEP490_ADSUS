@@ -66,8 +66,8 @@ public class BlogPostRepositoryTests
         var result = await sut.ListPublishedAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(result);
-        Assert.Equal(published.PostId, result[0].PostId);
+        var post = Assert.Single(result);
+        Assert.Equal(published.PostId, post.PostId);
     }
 
     [Fact]

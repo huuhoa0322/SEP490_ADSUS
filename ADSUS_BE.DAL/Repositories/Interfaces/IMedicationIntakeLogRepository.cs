@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.PrescriptionAdherence;
 
@@ -67,7 +68,7 @@ public interface IMedicationIntakeLogRepository
     /// <summary>
     /// Tính adherence stats cho 1 list prescription items.
     /// </summary>
-    Task<IReadOnlyDictionary<Guid, IntakeStats>> GetIntakeStatsByPrescriptionAsync(
+    Task<ImmutableDictionary<Guid, IntakeStats>> GetIntakeStatsByPrescriptionAsync(
         IReadOnlyList<Guid> prescriptionItemIds,
         CancellationToken ct = default);
 }

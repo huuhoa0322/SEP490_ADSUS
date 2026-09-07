@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
@@ -143,21 +144,21 @@ public class PrescriptionServiceComplianceTests
         intakeRepo.Setup(r => r.GetIntakeStatsByPrescriptionAsync(
                 It.IsAny<IReadOnlyList<Guid>>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync((IReadOnlyDictionary<Guid, IntakeStats>)new Dictionary<Guid, IntakeStats>
+            .ReturnsAsync(new Dictionary<Guid, IntakeStats>
             {
                 [item.PrescriptionItemId] = new IntakeStats(item.PrescriptionItemId, 3, 2, 1, 66.7),
-            });
+            }.ToImmutableDictionary());
 
         var service = CreateService(db, intakeRepo.Object);
 
         var result = await service.GetCasePrescriptionsWithComplianceAsync(doctorId, caseId, TestContext.Current.CancellationToken);
 
-        Assert.Single(result);
-        Assert.NotNull(result[0].AdherencePercent);
-        Assert.Equal(66.7, result[0].AdherencePercent!.Value, 1);
-        Assert.Single(result[0].Items);
-        Assert.NotNull(result[0].Items[0].AdherencePercent);
-        Assert.Equal(66.7, result[0].Items[0].AdherencePercent!.Value, 1);
+        var caseResult = Assert.Single(result);
+        Assert.NotNull(caseResult.AdherencePercent);
+        Assert.Equal(66.7, caseResult.AdherencePercent!.Value, 1);
+        var itemResult = Assert.Single(caseResult.Items);
+        Assert.NotNull(itemResult.AdherencePercent);
+        Assert.Equal(66.7, itemResult.AdherencePercent!.Value, 1);
     }
 
     [Fact]
@@ -184,9 +185,9 @@ public class PrescriptionServiceComplianceTests
 
         var result = await service.GetCasePrescriptionsWithComplianceAsync(ownDoctorId, caseId, TestContext.Current.CancellationToken);
 
-        Assert.Single(result);
-        Assert.Null(result[0].AdherencePercent);
-        Assert.All(result[0].Items, i => Assert.Null(i.AdherencePercent));
+        var caseResult = Assert.Single(result);
+        Assert.Null(caseResult.AdherencePercent);
+        Assert.All(caseResult.Items, i => Assert.Null(i.AdherencePercent));
         intakeRepo.Verify(r => r.GetIntakeStatsByPrescriptionAsync(
             It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -212,17 +213,17 @@ public class PrescriptionServiceComplianceTests
         var intakeRepo = new Mock<IMedicationIntakeLogRepository>();
         intakeRepo.Setup(r => r.GetIntakeStatsByPrescriptionAsync(
                 It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((IReadOnlyDictionary<Guid, IntakeStats>)new Dictionary<Guid, IntakeStats>
+            .ReturnsAsync(new Dictionary<Guid, IntakeStats>
             {
                 [item.PrescriptionItemId] = new IntakeStats(item.PrescriptionItemId, 0, 0, 0, 0),
-            });
+            }.ToImmutableDictionary());
 
         var service = CreateService(db, intakeRepo.Object);
 
         var result = await service.GetCasePrescriptionsWithComplianceAsync(doctorId, caseId, TestContext.Current.CancellationToken);
 
-        Assert.Single(result);
-        Assert.NotNull(result[0].AdherencePercent);
-        Assert.Equal(0.0, result[0].AdherencePercent!.Value);
+        var caseResult = Assert.Single(result);
+        Assert.NotNull(caseResult.AdherencePercent);
+        Assert.Equal(0.0, caseResult.AdherencePercent!.Value);
     }
 }

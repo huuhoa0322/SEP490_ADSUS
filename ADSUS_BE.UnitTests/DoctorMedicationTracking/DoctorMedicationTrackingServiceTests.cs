@@ -200,8 +200,8 @@ public class DoctorMedicationTrackingServiceTests
 
         var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, TestContext.Current.CancellationToken);
 
-        Assert.Single(result.Patients);
-        Assert.Equal("Nguyễn Văn A", result.Patients[0].PatientName);
+        var patient = Assert.Single(result.Patients);
+        Assert.Equal("Nguyễn Văn A", patient.PatientName);
     }
 
     [Fact]
@@ -238,8 +238,8 @@ public class DoctorMedicationTrackingServiceTests
 
         var result = await service.GetPatientListAsync(doctorId, "Trần", null, null, _nowUtc, TestContext.Current.CancellationToken);
 
-        Assert.Single(result.Patients);
-        Assert.Equal("Trần Thị B", result.Patients[0].PatientName);
+        var patient = Assert.Single(result.Patients);
+        Assert.Equal("Trần Thị B", patient.PatientName);
     }
 
     [Fact]
@@ -315,8 +315,7 @@ public class DoctorMedicationTrackingServiceTests
 
         var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, TestContext.Current.CancellationToken);
 
-        Assert.Single(result.Patients);
-        var patient = result.Patients[0];
+        var patient = Assert.Single(result.Patients);
         Assert.Equal(1, patient.TodayTaken);
         Assert.Equal(2, patient.TodayTotal);
         Assert.Equal(50m, patient.TodayAdherencePercent);
@@ -389,8 +388,7 @@ public class DoctorMedicationTrackingServiceTests
 
         var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, TestContext.Current.CancellationToken);
 
-        Assert.Single(result.Patients);
-        var patient = result.Patients[0];
+        var patient = Assert.Single(result.Patients);
         Assert.Equal(1, patient.ActivePrescriptionCount); // chỉ đếm đơn còn hiệu lực
         Assert.Equal(1, patient.TodayTotal);
         Assert.Equal(1, patient.TodayTaken);
@@ -502,8 +500,7 @@ public class DoctorMedicationTrackingServiceTests
         var result = await service.GetPatientDetailAsync(doctorId, profile.PatientProfileId, _nowUtc, TestContext.Current.CancellationToken);
 
         Assert.Equal("Nguyễn Văn B", result.PatientName);
-        Assert.Single(result.Prescriptions);
-        var card = result.Prescriptions[0];
+        var card = Assert.Single(result.Prescriptions);
         Assert.Equal("Amoxicillin", card.TodayDoses[0].MedicineName);
         Assert.Equal("TAKEN", card.TodayDoses[0].Status);
         Assert.Equal("PENDING", card.TodayDoses[1].Status);
@@ -599,8 +596,8 @@ public class DoctorMedicationTrackingServiceTests
 
         var result = await service.GetPatientDetailAsync(doctorId, profile.PatientProfileId, _nowUtc, TestContext.Current.CancellationToken);
 
-        Assert.Single(result.Prescriptions);
-        Assert.Equal("Active Med", result.Prescriptions[0].TodayDoses[0].MedicineName);
+        var prescription = Assert.Single(result.Prescriptions);
+        Assert.Equal("Active Med", prescription.TodayDoses[0].MedicineName);
     }
 
     #endregion

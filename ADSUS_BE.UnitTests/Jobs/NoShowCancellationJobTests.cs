@@ -127,7 +127,7 @@ public class NoShowCancellationJobTests : IDisposable
     private async Task<Appointment> SeedAppointmentAsync(Appointment appointment)
     {
         _db.Appointments.Add(appointment);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return appointment;
     }
 
@@ -154,7 +154,7 @@ public class NoShowCancellationJobTests : IDisposable
         await _sut.Execute(context);
 
         // Assert - Không có appointment nào bị cancel
-        var appointments = await _db.Appointments.ToListAsync();
+        var appointments = await _db.Appointments.ToListAsync(TestContext.Current.CancellationToken);
         Assert.Empty(appointments);
     }
 
@@ -191,7 +191,7 @@ public class NoShowCancellationJobTests : IDisposable
         await _sut.Execute(context);
 
         // Assert - Appointment vẫn Booked (chưa quá grace time)
-        var updatedAppointment = await _db.Appointments.FindAsync(appointment.AppointmentId);
+        var updatedAppointment = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal(AppointmentStatus.Booked, updatedAppointment!.Status);
     }
 
@@ -227,7 +227,7 @@ public class NoShowCancellationJobTests : IDisposable
         await _sut.Execute(context);
 
         // Assert - Appointment đã bị cancel
-        var updatedAppointment = await _db.Appointments.FindAsync(appointment.AppointmentId);
+        var updatedAppointment = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal(AppointmentStatus.NoShow, updatedAppointment!.Status);
         Assert.NotNull(updatedAppointment.CancelledReason);
     }
@@ -264,7 +264,7 @@ public class NoShowCancellationJobTests : IDisposable
         await _sut.Execute(context);
 
         // Assert - Appointment vẫn Approved
-        var updatedAppointment = await _db.Appointments.FindAsync(appointment.AppointmentId);
+        var updatedAppointment = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal(AppointmentStatus.Approved, updatedAppointment!.Status);
     }
 
@@ -299,7 +299,7 @@ public class NoShowCancellationJobTests : IDisposable
         await _sut.Execute(context);
 
         // Assert - Appointment vẫn Cancelled (không thay đổi)
-        var updatedAppointment = await _db.Appointments.FindAsync(appointment.AppointmentId);
+        var updatedAppointment = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal(AppointmentStatus.Cancelled, updatedAppointment!.Status);
     }
 
@@ -340,7 +340,7 @@ public class NoShowCancellationJobTests : IDisposable
         var appointment3 = CreateAppointment(slot3, profile, AppointmentStatus.Approved);
 
         _db.Appointments.AddRange(appointment1, appointment2, appointment3);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var context = CreateMockJobExecutionContext();
 
@@ -348,9 +348,9 @@ public class NoShowCancellationJobTests : IDisposable
         await _sut.Execute(context);
 
         // Assert
-        var ap1 = await _db.Appointments.FindAsync(appointment1.AppointmentId);
-        var ap2 = await _db.Appointments.FindAsync(appointment2.AppointmentId);
-        var ap3 = await _db.Appointments.FindAsync(appointment3.AppointmentId);
+        var ap1 = await _db.Appointments.FindAsync(new object[] { appointment1.AppointmentId }, TestContext.Current.CancellationToken);
+        var ap2 = await _db.Appointments.FindAsync(new object[] { appointment2.AppointmentId }, TestContext.Current.CancellationToken);
+        var ap3 = await _db.Appointments.FindAsync(new object[] { appointment3.AppointmentId }, TestContext.Current.CancellationToken);
 
         Assert.Equal(AppointmentStatus.NoShow, ap1!.Status); // Đã bị no-show
         Assert.Equal(AppointmentStatus.Booked, ap2!.Status);   // Vẫn Booked
@@ -388,7 +388,7 @@ public class NoShowCancellationJobTests : IDisposable
         await _sut.Execute(context);
 
         // Assert - Slot đã chuyển sang Open
-        var updatedSlot = await _db.ScheduleSlots.FindAsync(slot.SlotId);
+        var updatedSlot = await _db.ScheduleSlots.FindAsync(new object[] { slot.SlotId }, TestContext.Current.CancellationToken);
         Assert.Equal(SlotStatus.Open, updatedSlot!.Status);
     }
 
@@ -463,7 +463,7 @@ public class NoShowCancellationJobTests : IDisposable
         var appointment2 = CreateAppointment(slot2, profile2, AppointmentStatus.Booked);
 
         _db.Appointments.AddRange(appointment1, appointment2);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Setup notification để throw exception cho appointment đầu tiên
         var callCount = 0;
@@ -482,8 +482,8 @@ public class NoShowCancellationJobTests : IDisposable
         await _sut.Execute(context);
 
         // Assert - Cả 2 appointment đều bị no-show dù notification fail
-        var ap1 = await _db.Appointments.FindAsync(appointment1.AppointmentId);
-        var ap2 = await _db.Appointments.FindAsync(appointment2.AppointmentId);
+        var ap1 = await _db.Appointments.FindAsync(new object[] { appointment1.AppointmentId }, TestContext.Current.CancellationToken);
+        var ap2 = await _db.Appointments.FindAsync(new object[] { appointment2.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal(AppointmentStatus.NoShow, ap1!.Status);
         Assert.Equal(AppointmentStatus.NoShow, ap2!.Status);
     }

@@ -255,9 +255,9 @@ public class HealthLogServiceTests
         var result = await sut.GetHealthLogsAsync(patientId, criteria, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(result);
-        Assert.Equal("Old log", result[0].Content);
-        Assert.Equal(specificDate, result[0].LogDate);
+        var log = Assert.Single(result);
+        Assert.Equal("Old log", log.Content);
+        Assert.Equal(specificDate, log.LogDate);
     }
 
     [Fact]
@@ -336,10 +336,10 @@ public class HealthLogServiceTests
         var resultB = await sut.GetHealthLogsAsync(patientBId, criteria, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(resultA);
-        Assert.Single(resultB);
-        Assert.Equal(patientAId, resultA[0].PatientProfileId);
-        Assert.Equal(patientBId, resultB[0].PatientProfileId);
+        var logA = Assert.Single(resultA);
+        var logB = Assert.Single(resultB);
+        Assert.Equal(patientAId, logA.PatientProfileId);
+        Assert.Equal(patientBId, logB.PatientProfileId);
     }
 
     #endregion

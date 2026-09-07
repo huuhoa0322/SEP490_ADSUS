@@ -71,8 +71,8 @@ public class AiModelServiceTests
         var result = await _sut.SearchVersionsAsync("v1", 1, 20, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(result.Items);
-        Assert.Equal("v1", result.Items[0].VersionCode);
+        var item = Assert.Single(result.Items);
+        Assert.Equal("v1", item.VersionCode);
         Assert.Equal(1, result.TotalItems);
         Assert.Equal(1, result.TotalPages);
     }

@@ -89,7 +89,7 @@ public class CasesControllerCheckinIntegrationTests
         var caseId = Guid.NewGuid();
 
         // Act
-        var response = await client.PostAsync($"/api/v1/cases/{caseId}/appointment/checkin", null);
+        var response = await client.PostAsync($"/api/v1/cases/{caseId}/appointment/checkin", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -109,7 +109,7 @@ public class CasesControllerCheckinIntegrationTests
         var caseId = Guid.NewGuid();
 
         // Act
-        var response = await client.PostAsync($"/api/v1/cases/{caseId}/appointment/checkin", null);
+        var response = await client.PostAsync($"/api/v1/cases/{caseId}/appointment/checkin", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -130,7 +130,7 @@ public class CasesControllerCheckinIntegrationTests
         var caseId = Guid.NewGuid();
 
         // Act
-        var response = await client.PostAsync($"/api/v1/cases/{caseId}/appointment/checkin", null);
+        var response = await client.PostAsync($"/api/v1/cases/{caseId}/appointment/checkin", null, TestContext.Current.CancellationToken);
 
         // Assert - Nurse được phép gọi, nhưng case không tồn tại
         Assert.True(
@@ -153,7 +153,7 @@ public class CasesControllerCheckinIntegrationTests
         var caseId = Guid.NewGuid();
 
         // Act
-        var response = await client.PostAsync($"/api/v1/cases/{caseId}/appointment/checkin", null);
+        var response = await client.PostAsync($"/api/v1/cases/{caseId}/appointment/checkin", null, TestContext.Current.CancellationToken);
 
         // Assert - Admin bị cấm, không có quyền checkin
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -173,7 +173,7 @@ public class CasesControllerCheckinIntegrationTests
         var caseId = Guid.NewGuid();
 
         // Act
-        var response = await client.PostAsync($"/api/v1/cases/{caseId}/appointment/checkin", null);
+        var response = await client.PostAsync($"/api/v1/cases/{caseId}/appointment/checkin", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

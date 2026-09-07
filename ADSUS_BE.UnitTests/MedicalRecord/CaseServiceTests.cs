@@ -339,8 +339,8 @@ public class CaseServiceTests
         var result = await _sut.ListMineAsync(patientUser.UserId, 1, 20, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(result.Items);
-        Assert.Equal(endedCase.CaseId, result.Items.Single().CaseId);
+        var item = Assert.Single(result.Items);
+        Assert.Equal(endedCase.CaseId, item.CaseId);
     }
 
     [Fact]
@@ -807,7 +807,7 @@ public class CaseServiceTests
               .ReturnsAsync((Case c, CancellationToken _) => c);
 
         // Act
-        var result = await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate, symptoms);
+        var result = await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate, symptoms, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(Guid.Empty, result);
@@ -835,7 +835,7 @@ public class CaseServiceTests
 
         // Act
         var result = await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate,
-            Array.Empty<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>());
+            Array.Empty<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(Guid.Empty, result);
@@ -855,7 +855,7 @@ public class CaseServiceTests
               .ReturnsAsync((Case c, CancellationToken _) => c);
 
         // Act
-        await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate, Array.Empty<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>());
+        await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate, Array.Empty<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>(), TestContext.Current.CancellationToken);
 
         // Assert
         _notificationService.Verify(n => n.SendAsync(
@@ -881,7 +881,7 @@ public class CaseServiceTests
 
         // Act & Assert - Should not throw even if notification fails
         var result = await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate,
-            Array.Empty<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>());
+            Array.Empty<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>(), TestContext.Current.CancellationToken);
         Assert.NotEqual(Guid.Empty, result);
     }
 }

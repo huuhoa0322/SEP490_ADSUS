@@ -163,7 +163,13 @@ jobs:
               run: |
                   echo "$GOOGLE_SERVICES_BASE64" | base64 -d > android/app/google-services.json
 
-            - run: flutter pub get
+            # --enforce-lockfile fails fast with a clear message when pubspec.lock is out of
+            # sync with pubspec.yaml, instead of silently re-resolving to different transitive
+            # versions than whatever a developer last tested locally — the exact failure mode
+            # that has previously broken this job after an unrelated local change. Whoever
+            # bumps a dependency must run `flutter pub get` (no flag) locally and commit the
+            # updated pubspec.lock alongside pubspec.yaml.
+            - run: flutter pub get --enforce-lockfile
             - run: flutter analyze
 
             # Split like backend-ci/frontend-ci: test/widget/ holds the 2 files that actually

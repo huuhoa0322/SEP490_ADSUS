@@ -252,8 +252,8 @@ public class ChatServiceTests
 
         var result = await sut.GetHistoryAsync(userId, now.AddDays(-1), now, 50, TestContext.Current.CancellationToken);
 
-        Assert.Single(result.Messages);
-        Assert.True(result.Messages[0].IsSafetyResponse);
+        var message = Assert.Single(result.Messages);
+        Assert.True(message.IsSafetyResponse);
     }
 
     // ── RAG: patient context injected into system prompt ───────────────────────

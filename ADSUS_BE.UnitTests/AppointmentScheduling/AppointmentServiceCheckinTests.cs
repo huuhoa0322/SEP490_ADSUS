@@ -165,13 +165,13 @@ public class AppointmentServiceCheckinTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act
-        var result = await _sut.CheckinAppointmentAsync(_appointmentId);
+        var result = await _sut.CheckinAppointmentAsync(_appointmentId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(AppointmentStatus.Approved, result.Status);
 
         // Verify DB was updated
-        var updatedAppointment = await _db.Appointments.FindAsync(_appointmentId);
+        var updatedAppointment = await _db.Appointments.FindAsync(new object[] { _appointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal(AppointmentStatus.Approved, updatedAppointment!.Status);
     }
 
@@ -197,7 +197,7 @@ public class AppointmentServiceCheckinTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CheckinAppointmentAsync(_appointmentId));
+            () => _sut.CheckinAppointmentAsync(_appointmentId, TestContext.Current.CancellationToken));
 
         Assert.Contains("ĐÃ ĐẶT", ex.Message);
     }
@@ -224,7 +224,7 @@ public class AppointmentServiceCheckinTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CheckinAppointmentAsync(_appointmentId));
+            () => _sut.CheckinAppointmentAsync(_appointmentId, TestContext.Current.CancellationToken));
 
         Assert.Contains("ĐÃ ĐẶT", ex.Message);
     }
@@ -251,7 +251,7 @@ public class AppointmentServiceCheckinTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CheckinAppointmentAsync(_appointmentId));
+            () => _sut.CheckinAppointmentAsync(_appointmentId, TestContext.Current.CancellationToken));
 
         Assert.Contains("ĐÃ ĐẶT", ex.Message);
     }
@@ -272,7 +272,7 @@ public class AppointmentServiceCheckinTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CheckinAppointmentAsync(nonExistentId));
+            () => _sut.CheckinAppointmentAsync(nonExistentId, TestContext.Current.CancellationToken));
 
         Assert.Contains("not found", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -302,7 +302,7 @@ public class AppointmentServiceCheckinTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act
-        var result = await _sut.CheckinAppointmentAsync(_appointmentId);
+        var result = await _sut.CheckinAppointmentAsync(_appointmentId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(_appointmentId, result.AppointmentId);
@@ -338,13 +338,13 @@ public class AppointmentServiceCheckinTests : IDisposable
         var originalUpdatedAt = appointment.UpdatedAt;
 
         // Wait a bit to ensure timestamp difference
-        await Task.Delay(10);
+        await Task.Delay(10, TestContext.Current.CancellationToken);
 
         // Act
-        await _sut.CheckinAppointmentAsync(_appointmentId);
+        await _sut.CheckinAppointmentAsync(_appointmentId, TestContext.Current.CancellationToken);
 
         // Assert
-        var updatedAppointment = await _db.Appointments.FindAsync(_appointmentId);
+        var updatedAppointment = await _db.Appointments.FindAsync(new object[] { _appointmentId }, TestContext.Current.CancellationToken);
         Assert.True(updatedAppointment!.UpdatedAt >= originalUpdatedAt);
     }
 
@@ -382,13 +382,13 @@ public class AppointmentServiceCheckinTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act
-        var result = await _sut.CheckinByCaseIdAsync(caseId);
+        var result = await _sut.CheckinByCaseIdAsync(caseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(AppointmentStatus.Approved, result.Status);
 
         // Verify DB was updated
-        var updatedAppointment = await _db.Appointments.FindAsync(appointment.AppointmentId);
+        var updatedAppointment = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal(AppointmentStatus.Approved, updatedAppointment!.Status);
     }
 
@@ -425,7 +425,7 @@ public class AppointmentServiceCheckinTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CheckinByCaseIdAsync(caseId));
+            () => _sut.CheckinByCaseIdAsync(caseId, TestContext.Current.CancellationToken));
 
         Assert.Contains("đã được check-in", ex.Message);
     }
@@ -442,7 +442,7 @@ public class AppointmentServiceCheckinTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CheckinByCaseIdAsync(nonExistentCaseId));
+            () => _sut.CheckinByCaseIdAsync(nonExistentCaseId, TestContext.Current.CancellationToken));
 
         Assert.Contains("Không tìm thấy", ex.Message);
     }
@@ -477,7 +477,7 @@ public class AppointmentServiceCheckinTests : IDisposable
         await SeedAppointmentAsync(appointment);
 
         // Act
-        var result = await _sut.CheckinByCaseIdAsync(caseId);
+        var result = await _sut.CheckinByCaseIdAsync(caseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(caseId, result.CaseId);

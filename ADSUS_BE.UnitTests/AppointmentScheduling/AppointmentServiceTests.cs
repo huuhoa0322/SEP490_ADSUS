@@ -85,8 +85,8 @@ public class AppointmentServiceTests : IDisposable
         var result = await _sut.ListOpenSlotsAsync(ct: TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(result);
-        Assert.Equal(openSlot.SlotId, result[0].SlotId);
+        var slot = Assert.Single(result);
+        Assert.Equal(openSlot.SlotId, slot.SlotId);
     }
 
     [Fact]
@@ -104,8 +104,8 @@ public class AppointmentServiceTests : IDisposable
         var result = await _sut.ListOpenSlotsAsync(doctorId: doctor1.UserId.ToString(), ct: TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(result);
-        Assert.Equal(doctor1.FullName, result[0].DoctorName);
+        var slot = Assert.Single(result);
+        Assert.Equal(doctor1.FullName, slot.DoctorName);
     }
 
     [Fact]
@@ -127,8 +127,8 @@ public class AppointmentServiceTests : IDisposable
             ct: TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(result);
-        Assert.Equal(today, result[0].SlotDate);
+        var slot = Assert.Single(result);
+        Assert.Equal(today, slot.SlotDate);
     }
 
     [Fact]
@@ -175,8 +175,8 @@ public class AppointmentServiceTests : IDisposable
         var result = await _sut.ListMyAppointmentsAsync(_patientId, ct: TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(result);
-        Assert.Equal(_appointmentId, result[0].AppointmentId);
+        var appointment = Assert.Single(result);
+        Assert.Equal(_appointmentId, appointment.AppointmentId);
     }
 
     [Fact]
@@ -192,8 +192,8 @@ public class AppointmentServiceTests : IDisposable
             ct: TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Single(result);
-        Assert.Equal(AppointmentStatus.Booked, result[0].Status);
+        var appointment = Assert.Single(result);
+        Assert.Equal(AppointmentStatus.Booked, appointment.Status);
     }
 
     [Fact]

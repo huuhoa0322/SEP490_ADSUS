@@ -80,14 +80,14 @@ public class SupplierServiceTests : IDisposable
         var resultByTaxCode = await _sut.GetSuppliersAsync(1, 10, "123456", CancellationToken.None);
 
         // Assert
-        Assert.Single(resultByName.Items);
-        Assert.Equal("Dược Hậu Giang", resultByName.Items[0].Name);
+        var supplierByName = Assert.Single(resultByName.Items);
+        Assert.Equal("Dược Hậu Giang", supplierByName.Name);
 
-        Assert.Single(resultByPhone.Items);
-        Assert.Equal("Imexpharm", resultByPhone.Items[0].Name);
+        var supplierByPhone = Assert.Single(resultByPhone.Items);
+        Assert.Equal("Imexpharm", supplierByPhone.Name);
 
-        Assert.Single(resultByTaxCode.Items);
-        Assert.Equal("Dược Hậu Giang", resultByTaxCode.Items[0].Name);
+        var supplierByTaxCode = Assert.Single(resultByTaxCode.Items);
+        Assert.Equal("Dược Hậu Giang", supplierByTaxCode.Name);
     }
 
     [Fact]
