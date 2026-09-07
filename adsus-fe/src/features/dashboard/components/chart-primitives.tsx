@@ -182,15 +182,17 @@ export function DonutChart({
 
   if (total === 0) return null;
 
-  let accumulated = 0;
-  const circles = segments.map((seg, idx) => {
+  const circles = segments.reduce<
+    { label: string; value: number; color: string; dashLen: number; gapLen: number; rotation: number; fraction: number }[]
+  >((acc, seg) => {
+    const previousAccumulated = acc.reduce((s, c) => s + c.value, 0);
     const fraction = seg.value / total;
     const dashLen = fraction * circumference;
     const gapLen = circumference - dashLen;
-    const rotation = (accumulated / total) * 360 - 90;
-    accumulated += seg.value;
-    return { ...seg, dashLen, gapLen, rotation, fraction };
-  });
+    const rotation = (previousAccumulated / total) * 360 - 90;
+    acc.push({ ...seg, dashLen, gapLen, rotation, fraction });
+    return acc;
+  }, []);
 
   return (
     <div className="flex items-center gap-6">
