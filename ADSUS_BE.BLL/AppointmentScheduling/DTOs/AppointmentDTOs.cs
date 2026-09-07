@@ -119,3 +119,28 @@ public sealed class DoctorPatientAppointmentResponse
     public string PatientFullName { get; init; } = string.Empty;
     public string? Reason { get; init; }
 }
+
+/// <summary>
+/// Một dòng trong queue check-in của Nurse.
+/// </summary>
+public sealed class CheckinQueueItemResponse
+{
+    public Guid AppointmentId { get; init; }
+    public DateTime SlotTime { get; init; }
+    public string PatientFullName { get; init; } = string.Empty;
+    public string? PatientPhone { get; init; }
+    public Guid PatientProfileId { get; init; }
+    public Guid CaseId { get; init; }
+    public string? Reason { get; init; }
+    public string DoctorName { get; init; } = string.Empty;
+    public AppointmentStatus Status { get; init; }
+}
+
+/// <summary>
+/// Response cho queue check-in của Nurse.
+/// </summary>
+public sealed class CheckinQueueResponse
+{
+    public IReadOnlyList<CheckinQueueItemResponse> Items { get; init; } = [];
+    public int TotalCount { get; init; }
+}

@@ -36,13 +36,20 @@
     <Folder Include="DashboardReporting\" />
     <Folder Include="Engagement\" />
     <Folder Include="HealthMonitoring\" />
+    <Folder Include="Jobs\" />
     <Folder Include="MedicalRecord\" />
+    <Folder Include="Notifications\" />
     <Folder Include="PrescriptionAdherence\" />
     <Folder Include="UserRoleManagement\" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ADSUS_BE.BLL\ADSUS_BE.BLL.csproj" />
+    <ProjectReference Include="..\ADSUS_BE\ADSUS_BE.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
 </Project>

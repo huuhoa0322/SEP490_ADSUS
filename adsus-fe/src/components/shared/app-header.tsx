@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { getHomePathForRole, useAuthStore } from "@/store/auth-store";
 import { useUiStore } from "@/store/ui-store";
 import type { Role } from "@/types/api.types";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 
 const ROLE_LABEL: Record<Role, string> = {
   ADMIN: "Quản trị viên",
@@ -74,8 +75,9 @@ export function AppHeader() {
         </div>
 
         {user && (
-          <div className="flex shrink-0 items-center text-right">
-            <div>
+          <div className="flex shrink-0 items-center gap-3">
+            <NotificationBell />
+            <div className="text-right">
               <p className="font-heading text-base font-bold leading-tight text-foreground">
                 {user.fullName}
               </p>

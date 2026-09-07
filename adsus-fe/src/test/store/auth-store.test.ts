@@ -92,7 +92,7 @@ describe("AuthUser.userId", () => {
   it("lưu userId vào phiên khi đăng nhập", () => {
     // GB-04 — form tạo ca khám cần id của chính người đang đăng nhập để điền sẵn ô Bác sĩ
     // phụ trách. Backend không suy ra được giá trị này từ token.
-    useAuthStore.getState().signIn("token-abc", {
+    useAuthStore.getState().signIn("token-abc", "refresh-token-xyz", {
       userId: "user-42",
       fullName: "BS. Nguyễn Văn An",
       email: "an@example.com",

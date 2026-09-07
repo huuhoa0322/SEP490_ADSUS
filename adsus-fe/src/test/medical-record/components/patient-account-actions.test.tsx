@@ -50,7 +50,7 @@ const props = {
 };
 
 function signInAs(role: "DOCTOR" | "NURSE") {
-  useAuthStore.getState().signIn("token", {
+  useAuthStore.getState().signIn("access-token", "refresh-token", {
     userId: "me",
     fullName: "Người dùng",
     email: null,

@@ -15,9 +15,10 @@ public static class UserMapper
 {
     private const string DateFormat = "yyyy-MM-dd";
 
-    public static LoginResponse ToLoginResponse(User user, string accessToken) => new()
+    public static LoginResponse ToLoginResponse(User user, string accessToken, string? refreshToken = null) => new()
     {
         AccessToken = accessToken,
+        RefreshToken = refreshToken ?? string.Empty,
         UserId = user.UserId,
         Role = user.Role.ToApiString(),
         FullName = user.FullName,

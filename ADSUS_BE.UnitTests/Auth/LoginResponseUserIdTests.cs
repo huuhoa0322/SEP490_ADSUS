@@ -34,7 +34,8 @@ public class LoginResponseUserIdTests
              .ReturnsAsync(doctor);
         tokens.Setup(t => t.GenerateAccessToken(It.IsAny<User>())).Returns("fake-token");
 
-        var sut = new AuthService(users.Object, tokens.Object, new Mock<ILogger<AuthService>>().Object);
+        var refreshTokens = new Mock<IRefreshTokenRepository>();
+        var sut = new AuthService(users.Object, refreshTokens.Object, tokens.Object, new Mock<ILogger<AuthService>>().Object);
 
         // Act
         var response = await sut.LoginAsync(

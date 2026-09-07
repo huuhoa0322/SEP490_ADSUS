@@ -71,4 +71,21 @@ public sealed class AppointmentRepository : IAppointmentRepository
         _db.Appointments.Update(appointment);
         await _db.SaveChangesAsync(ct);
     }
+
+    public async Task CancelByCaseAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var appointments = await _db.Appointments
+            .Where(a => a.CaseId == caseId && a.Status == AppointmentStatus.Approved)
+            .ToListAsync(ct);
+
+        foreach (var appointment in appointments)
+        {
+            appointment.Status = AppointmentStatus.Completed;
+        }
+
+        if (appointments.Count > 0)
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+    }
 }

@@ -137,20 +137,56 @@ public sealed class CasesController : ControllerBase
     }
 
     /// <summary>
-    /// Nurse checkin appointment thông qua case.
+    /// Nurse checkin appointment thông qua caseId (áp dụng khi patient có chọn triệu chứng).
     /// Appointment: Booked → Approved
     /// </summary>
     [HttpPost("{caseId:guid}/appointment/checkin")]
-    [Authorize(Roles = "NURSE,ADMIN")]
+    [Authorize(Roles = "NURSE")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> CheckinAppointment(
+    public async Task<IActionResult> CheckinAppointmentByCase(
         Guid caseId,
         CancellationToken ct)
     {
-        var result = await _appointmentService.CheckinAppointmentAsync(caseId, ct);
-        return Ok(ApiResponse<AppointmentResponse>.Ok(result, "Appointment checked in successfully."));
+        try
+        {
+            var result = await _appointmentService.CheckinByCaseIdAsync(caseId, ct);
+            return Ok(ApiResponse<AppointmentResponse>.Ok(result, "Appointment checked in successfully."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                return NotFound(ApiResponse<object>.Fail(404, ex.Message));
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Nurse checkin appointment thông qua appointmentId (áp dụng khi patient KHÔNG chọn triệu chứng,
+    /// lúc này appointment không có caseId).
+    /// Appointment: Booked → Approved
+    /// </summary>
+    [HttpPost("appointment/{appointmentId:guid}/checkin")]
+    [Authorize(Roles = "NURSE")]
+    [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CheckinAppointmentById(
+        Guid appointmentId,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await _appointmentService.CheckinAppointmentAsync(appointmentId, ct);
+            return Ok(ApiResponse<AppointmentResponse>.Ok(result, "Appointment checked in successfully."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                return NotFound(ApiResponse<object>.Fail(404, ex.Message));
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
     }
 
     /// <summary>

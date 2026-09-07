@@ -172,4 +172,21 @@ public sealed class AppointmentsController : ControllerBase
         var appointments = await _appointmentService.ListForDoctorAsync(doctorId, fromDate, toDate, ct);
         return Ok(ApiResponse<IReadOnlyList<DoctorPatientAppointmentResponse>>.Ok(appointments));
     }
+
+    /// <summary>
+    /// GET /api/v1/appointments/checkin-queue — Danh sách lịch hẹn chờ check-in cho Nurse.
+    /// Trả về appointments trong ngày hôm nay đang ở trạng thái Booked hoặc Approved.
+    /// </summary>
+    [HttpGet("checkin-queue")]
+    [Authorize(Roles = "NURSE")]
+    [ProducesResponseType(typeof(ApiResponse<CheckinQueueResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCheckinQueue(
+        [FromQuery] DateOnly? date = null,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        var targetDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var result = await _appointmentService.GetCheckinQueueAsync(targetDate, search, ct);
+        return Ok(ApiResponse<CheckinQueueResponse>.Ok(result));
+    }
 }

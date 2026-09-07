@@ -8,15 +8,15 @@ namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
 /// Vai trò tài khoản — enum <c>user_role</c> trong DB.
-/// Thứ tự khai báo phải khớp thứ tự trong DB: ADMIN, DOCTOR, PATIENT, NURSE.
+/// Thứ tự khai báo phải khớp thứ tự trong DB: ADMIN, DOCTOR, NURSE, PATIENT, PHARMACIST.
 /// NURSE có quyền giống hệt DOCTOR (theo quyết định ghi đè PRD trong UCS).
 /// </summary>
 public enum UserRole
 {
     [PgName("ADMIN")] Admin,
     [PgName("DOCTOR")] Doctor,
-    [PgName("PATIENT")] Patient,
     [PgName("NURSE")] Nurse,
+    [PgName("PATIENT")] Patient,
     [PgName("PHARMACIST")] Pharmacist,
 }
 
@@ -52,6 +52,7 @@ public enum AppointmentStatus
     [PgName("APPROVED")] Approved,     // Nurse checkin khi bệnh nhân đến
     [PgName("CANCELLED")] Cancelled,
     [PgName("COMPLETED")] Completed,    // Doctor end case
+    [PgName("NO_SHOW")] NoShow,        // Tự động hủy khi không check-in trong grace time
 }
 
 /// <summary>
@@ -230,4 +231,14 @@ public enum ShiftType
     [PgName("AFTERNOON")] Afternoon,
     [PgName("EVENING")] Evening,
     [PgName("FULL_DAY")] FullDay,
+}
+
+/// <summary>
+/// Trạng thái refresh token — dùng RevokedAt nullable + ExpiresAt để xác định trạng thái thực tế.
+/// Enum này thống nhất style với các entity khác nhưng không dùng làm cột DB.
+/// </summary>
+public enum RefreshTokenStatus
+{
+    [PgName("ACTIVE")] Active,
+    [PgName("REVOKED")] Revoked,
 }
