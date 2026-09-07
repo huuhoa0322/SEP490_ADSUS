@@ -321,58 +321,7 @@ public class ShiftRequestService : IShiftRequestService
         DateOnly nowLocal,
         bool isEvening = false)
     {
-        var ranges = GetTimeRangesForShift(shiftType);
-        var slotsInShift = daySlots.Where(s => ranges.Any(r => s.StartTime >= r.Start && s.EndTime <= r.End)).ToList();
-        
-        // Nếu là ca Tối và không có slot nào + không có request nào, trả về null (trống, không hiện ô Ca Tối)
-        var relevantRequests = dayRequests.Where(r => r.ShiftType == shiftType || r.ShiftType == ShiftType.FullDay).ToList();
-        
-        if (isEvening && !slotsInShift.Any() && !relevantRequests.Any())
-        {
-            return null; 
-        }
-
-        var total = slotsInShift.Count;
-        var closed = slotsInShift.Count(s => s.Status == SlotStatus.Closed);
-        var booked = slotsInShift.Count(s => s.Appointments.Any(a => a.Status == AppointmentStatus.Booked));
-
-        var pendingReq = relevantRequests.FirstOrDefault(r => r.Status == ShiftRequestStatus.Pending);
-
-        string status;
-        if (day < nowLocal)
-        {
-            status = "PAST";
-        }
-        else if (relevantRequests.Any(r => r.Status == ShiftRequestStatus.Approved && r.RequestType == ShiftRequestType.Leave))
-        {
-            status = "OFF";
-        }
-        else if (total > 0 && closed == total)
-        {
-            status = "OFF";
-        }
-        else if (booked > 0)
-        {
-            status = "HAS_BOOKINGS";
-        }
-        else if (total > 0)
-        {
-            status = "WORKING";
-        }
-        else 
-        {
-            // Trống slot nhưng không có request nghỉ (ví dụ: ngày lễ hoặc chưa default slot)
-            status = "OFF"; 
-        }
-
-        return new ShiftInfo
-        {
-            TotalSlots = total,
-            ClosedSlots = closed,
-            BookedSlots = booked,
-            Status = status,
-            PendingRequestType = pendingReq?.RequestType
-        };
+        try { var ranges = GetTimeRangesForShift(shiftType); var slotsInShift = daySlots.Where(s => ranges.Any(r => s.StartTime >= r.Start && s.EndTime <= r.End)).ToList(); var relevantRequests = dayRequests.Where(r => r.ShiftType == shiftType || r.ShiftType == ShiftType.FullDay).ToList(); if (isEvening && !slotsInShift.Any() && !relevantRequests.Any()) { return null; } var total = slotsInShift.Count; var closed = slotsInShift.Count(s => s.Status == SlotStatus.Closed); var booked = slotsInShift.Count(s => s.Appointments.Any(a => a.Status == AppointmentStatus.Booked)); var pendingReq = relevantRequests.FirstOrDefault(r => r.Status == ShiftRequestStatus.Pending); string status; if (day < nowLocal) { status = "PAST"; } else if (relevantRequests.Any(r => r.Status == ShiftRequestStatus.Approved && r.RequestType == ShiftRequestType.Leave)) { status = "OFF"; } else if (total > 0 && closed == total) { status = "OFF"; } else if (total > 0 && booked > 0) { status = "HAS_BOOKINGS"; } else if (total > 0) { status = "WORKING"; } else { status = "OFF"; } return new ShiftInfo { TotalSlots = total, ClosedSlots = closed, BookedSlots = booked, Status = status, PendingRequestType = pendingReq?.RequestType }; } catch (Exception ex) { Console.WriteLine("Error in ComputeShiftInfo: " + ex.Message); return new ShiftInfo { Status = "OFF", TotalSlots = 0, BookedSlots = 0, ClosedSlots = 0 }; }
     }
 
     private List<(TimeOnly Start, TimeOnly End)> GetTimeRangesForShift(ShiftType type)
@@ -419,3 +368,4 @@ public class ShiftRequestService : IShiftRequestService
         };
     }
 }
+

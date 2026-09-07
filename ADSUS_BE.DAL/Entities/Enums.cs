@@ -52,6 +52,7 @@ public enum AppointmentStatus
     [PgName("APPROVED")] Approved,     // Nurse checkin khi bệnh nhân đến
     [PgName("CANCELLED")] Cancelled,
     [PgName("COMPLETED")] Completed,    // Doctor end case
+    [PgName("NO_SHOW")] NoShow,         // Patient didn't show up
 }
 
 /// <summary>

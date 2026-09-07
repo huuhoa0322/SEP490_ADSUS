@@ -24,6 +24,7 @@ public static class EnumExtensions
         CaseStatus.Created => "CREATED",
         CaseStatus.End => "END",
         CaseStatus.Confirmed => "CONFIRMED",
+        CaseStatus.Booked => "BOOKED",
         _ => throw new ArgumentOutOfRangeException(nameof(status)),
     };
 
@@ -45,6 +46,7 @@ public static class EnumExtensions
     {
         PrescriptionStatus.Active => "ACTIVE",
         PrescriptionStatus.Completed => "COMPLETED",
+        PrescriptionStatus.Cancelled => "CANCELLED",
         _ => throw new ArgumentOutOfRangeException(nameof(status)),
     };
 

@@ -27,7 +27,7 @@ export function ScheduleSlotManagementView() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1; // 1-12
 
-  const { data: summaries, isLoading } = useMonthSummary(year, month);
+  const { data: summaries, isLoading, isError, error } = useMonthSummary(year, month);
 
   const handlePrevMonth = () => setCurrentDate(addMonths(currentDate, -1));
   const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
