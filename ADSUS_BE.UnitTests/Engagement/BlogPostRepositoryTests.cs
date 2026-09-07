@@ -58,12 +58,12 @@ public class BlogPostRepositoryTests
         var draft = NewBlogPost(admin.UserId, BlogPostStatus.Draft);
         var published = NewBlogPost(admin.UserId, BlogPostStatus.Published, DateTime.UtcNow);
         ctx.BlogPosts.AddRange(draft, published);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new BlogPostRepository(ctx);
 
         // Act
-        var result = await sut.ListPublishedAsync();
+        var result = await sut.ListPublishedAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(result);
@@ -78,12 +78,12 @@ public class BlogPostRepositoryTests
         var admin = NewAdmin();
         ctx.Users.Add(admin);
         ctx.BlogPosts.Add(NewBlogPost(admin.UserId, BlogPostStatus.Draft));
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new BlogPostRepository(ctx);
 
         // Act
-        var result = await sut.ListPublishedAsync();
+        var result = await sut.ListPublishedAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(result);
@@ -99,12 +99,12 @@ public class BlogPostRepositoryTests
         var older = NewBlogPost(admin.UserId, BlogPostStatus.Published, DateTime.UtcNow.AddDays(-2));
         var newer = NewBlogPost(admin.UserId, BlogPostStatus.Published, DateTime.UtcNow);
         ctx.BlogPosts.AddRange(older, newer);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new BlogPostRepository(ctx);
 
         // Act
-        var result = await sut.ListPublishedAsync();
+        var result = await sut.ListPublishedAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(2, result.Count);
@@ -120,12 +120,12 @@ public class BlogPostRepositoryTests
         ctx.Users.Add(admin);
         var post = NewBlogPost(admin.UserId, BlogPostStatus.Published, DateTime.UtcNow);
         ctx.BlogPosts.Add(post);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new BlogPostRepository(ctx);
 
         // Act
-        var result = await sut.GetByIdAsync(post.PostId);
+        var result = await sut.GetByIdAsync(post.PostId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -140,7 +140,7 @@ public class BlogPostRepositoryTests
         using var ctx = CreateContext();
         var sut = new BlogPostRepository(ctx);
 
-        var result = await sut.GetByIdAsync(Guid.NewGuid());
+        var result = await sut.GetByIdAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -155,12 +155,12 @@ public class BlogPostRepositoryTests
         var draft = NewBlogPost(admin.UserId, BlogPostStatus.Draft);
         var published = NewBlogPost(admin.UserId, BlogPostStatus.Published, DateTime.UtcNow);
         ctx.BlogPosts.AddRange(draft, published);
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new BlogPostRepository(ctx);
 
         // Act
-        var result = await sut.ListAllAsync();
+        var result = await sut.ListAllAsync(ct: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(2, result.Count);

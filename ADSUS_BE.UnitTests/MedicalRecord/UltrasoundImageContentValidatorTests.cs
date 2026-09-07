@@ -20,7 +20,7 @@ public class UltrasoundImageContentValidatorTests
         var file = MakeFile(JpegBytes);
 
         // Act
-        var contentType = await UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(file);
+        var contentType = await UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(file, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("image/jpeg", contentType);
@@ -33,7 +33,7 @@ public class UltrasoundImageContentValidatorTests
         var file = MakeFile(PngBytes, "anh.png");
 
         // Act
-        var contentType = await UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(file);
+        var contentType = await UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(file, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("image/png", contentType);
@@ -48,7 +48,7 @@ public class UltrasoundImageContentValidatorTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(file));
+            () => UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(file, TestContext.Current.CancellationToken));
         Assert.Contains("not a JPEG or PNG image", ex.Message);
     }
 
@@ -60,7 +60,7 @@ public class UltrasoundImageContentValidatorTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(file));
+            () => UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(file, TestContext.Current.CancellationToken));
         Assert.Contains("is empty", ex.Message);
     }
 
@@ -73,7 +73,7 @@ public class UltrasoundImageContentValidatorTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(file));
+            () => UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(file, TestContext.Current.CancellationToken));
         Assert.Contains("20MB limit", ex.Message);
     }
 
@@ -85,7 +85,7 @@ public class UltrasoundImageContentValidatorTests
         var file = MakeFile(PngBytes, "anh.png");
 
         // Act
-        await UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(file);
+        await UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(file, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(0, file.Content.Position);

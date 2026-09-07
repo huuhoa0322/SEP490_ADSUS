@@ -43,11 +43,11 @@ public class PatientsControllerIntegrationTests
                  .ReturnsAsync((new List<PatientListRow>(), 0));
 
         // Act
-        var response = await client.GetAsync("/api/v1/patients");
+        var response = await client.GetAsync("/api/v1/patients", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<PatientSummaryResponse>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<PatientSummaryResponse>>>(TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
         Assert.Empty(body.Data!.Items);
     }
@@ -65,7 +65,7 @@ public class PatientsControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctor);
 
         // Act
-        var response = await client.GetAsync("/api/v1/patients?hasProfile=false");
+        var response = await client.GetAsync("/api/v1/patients?hasProfile=false", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -82,7 +82,7 @@ public class PatientsControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctor);
 
         // Act
-        var response = await client.GetAsync("/api/v1/patients?visitStatus=Bogus");
+        var response = await client.GetAsync("/api/v1/patients?visitStatus=Bogus", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -96,7 +96,7 @@ public class PatientsControllerIntegrationTests
         var client = app.CreateClient();
 
         // Act
-        var response = await client.GetAsync("/api/v1/patients");
+        var response = await client.GetAsync("/api/v1/patients", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -110,7 +110,7 @@ public class PatientsControllerIntegrationTests
         var client = MakeClientWithToken(app, _patientUser);
 
         // Act
-        var response = await client.GetAsync("/api/v1/patients");
+        var response = await client.GetAsync("/api/v1/patients", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);

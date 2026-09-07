@@ -36,7 +36,7 @@ public class DashboardAccessTests
         using var app = CreateApp();
         var client = CreateClient(app, role);
 
-        var response = await client.GetAsync(StatisticsPath);
+        var response = await client.GetAsync(StatisticsPath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -47,7 +47,7 @@ public class DashboardAccessTests
         using var app = CreateApp();
         var client = CreateClient(app, UserRole.Admin);
 
-        var response = await client.GetAsync(StatisticsPath);
+        var response = await client.GetAsync(StatisticsPath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -59,7 +59,7 @@ public class DashboardAccessTests
         using var app = CreateApp();
         var client = CreateClient(app, UserRole.Admin);
 
-        var response = await client.GetAsync($"{StatisticsPath}?fromDate=2000-01-01&toDate=2000-01-31");
+        var response = await client.GetAsync($"{StatisticsPath}?fromDate=2000-01-01&toDate=2000-01-31", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -84,8 +84,8 @@ public class DashboardAccessTests
                       AppointmentBookedCount: 6, AppointmentCancelledCount: 4,
                       ScheduleSlotCount: 8, MedicationDoseCount: 20, MedicationTakenCount: 15));
 
-        var response = await client.GetAsync(StatisticsPath);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<DashboardStatisticsResponse>>();
+        var response = await client.GetAsync(StatisticsPath, TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<DashboardStatisticsResponse>>(TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(body!.Data);
@@ -102,7 +102,7 @@ public class DashboardAccessTests
         using var app = CreateApp();
         var client = CreateClient(app, UserRole.Admin);
 
-        var response = await client.GetAsync($"{StatisticsPath}?fromDate=hom-qua&toDate=!!!");
+        var response = await client.GetAsync($"{StatisticsPath}?fromDate=hom-qua&toDate=!!!", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

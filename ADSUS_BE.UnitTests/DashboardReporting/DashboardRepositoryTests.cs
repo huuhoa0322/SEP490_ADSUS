@@ -38,7 +38,7 @@ public class DashboardRepositoryTests
             BuildUser(UserRole.Patient, UserStatus.Active),
             BuildUser(UserRole.Patient, UserStatus.Active),
             BuildUser(UserRole.Admin, UserStatus.Active));
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new DashboardRepository(db);
         var result = await sut.GetAccountCountsAsync(CancellationToken.None);
@@ -68,7 +68,7 @@ public class DashboardRepositoryTests
             BuildUser(UserRole.Patient, UserStatus.Active, ClinicClock.StartOfDayUtc(to).AddHours(12)), // giữa cuối khoảng — tính
             BuildUser(UserRole.Patient, UserStatus.Active, ClinicClock.StartOfDayUtc(from).AddSeconds(-1)), // trước 1 giây — KHÔNG tính
             BuildUser(UserRole.Patient, UserStatus.Active, ClinicClock.EndOfDayExclusiveUtc(to))); // ngay đầu ngày kế tiếp — KHÔNG tính
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new DashboardRepository(db);
         var result = await sut.GetActivityCountsAsync(from, to, CancellationToken.None);
@@ -88,7 +88,7 @@ public class DashboardRepositoryTests
             BuildCase(to),
             BuildCase(from.AddDays(-1)),
             BuildCase(to.AddDays(1)));
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new DashboardRepository(db);
         var result = await sut.GetActivityCountsAsync(from, to, CancellationToken.None);
@@ -117,7 +117,7 @@ public class DashboardRepositoryTests
             BuildAppointment(slotInRange1.SlotId, patientId, AppointmentStatus.Cancelled),
             BuildAppointment(slotInRange2.SlotId, patientId, AppointmentStatus.Cancelled),
             BuildAppointment(slotOutOfRange.SlotId, patientId, AppointmentStatus.Booked));
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new DashboardRepository(db);
         var result = await sut.GetActivityCountsAsync(from, to, CancellationToken.None);
@@ -139,7 +139,7 @@ public class DashboardRepositoryTests
             BuildSlot(doctorId, today, SlotStatus.Open),
             BuildSlot(doctorId, today, SlotStatus.Booked),
             BuildSlot(doctorId, today, SlotStatus.Closed));
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new DashboardRepository(db);
         var result = await sut.GetActivityCountsAsync(today, today, CancellationToken.None);
@@ -175,7 +175,7 @@ public class DashboardRepositoryTests
                 IntakeId = Guid.NewGuid(), PrescriptionItemId = prescriptionItemId,
                 ScheduledTime = scheduledOutOfRange, ConfirmedAt = scheduledOutOfRange.AddMinutes(10),
             });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new DashboardRepository(db);
         var result = await sut.GetActivityCountsAsync(from, to, CancellationToken.None);
@@ -200,7 +200,7 @@ public class DashboardRepositoryTests
         var slot = BuildSlot(doctorId, day2, SlotStatus.Booked);
         db.ScheduleSlots.Add(slot);
         db.Appointments.Add(BuildAppointment(slot.SlotId, patientId, AppointmentStatus.Booked));
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new DashboardRepository(db);
         var result = await sut.GetDailyActivityAsync(day1, day2, CancellationToken.None);

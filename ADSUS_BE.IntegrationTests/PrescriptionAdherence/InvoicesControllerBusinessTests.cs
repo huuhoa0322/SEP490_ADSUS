@@ -55,11 +55,11 @@ public class InvoicesControllerBusinessTests
             .Setup(s => s.GetInvoiceDetailAsync(nonExistentId))
             .ThrowsAsync(new BusinessException("Không tìm thấy hóa đơn."));
 
-        var response = await client.GetAsync($"/api/v1/invoices/{nonExistentId}");
+        var response = await client.GetAsync($"/api/v1/invoices/{nonExistentId}", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
 
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("Không tìm thấy hóa đơn", body);
     }
 
@@ -82,11 +82,11 @@ public class InvoicesControllerBusinessTests
             JsonSerializer.Serialize(new { paymentMethod = "CASH" }),
             Encoding.UTF8, "application/json");
 
-        var response = await client.PutAsync($"/api/v1/invoices/{nonExistentId}/pay", payload);
+        var response = await client.PutAsync($"/api/v1/invoices/{nonExistentId}/pay", payload, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
 
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("Không tìm thấy hóa đơn", body);
     }
 
@@ -105,11 +105,11 @@ public class InvoicesControllerBusinessTests
             JsonSerializer.Serialize(new { paymentMethod = "CASH" }),
             Encoding.UTF8, "application/json");
 
-        var response = await client.PutAsync($"/api/v1/invoices/{invoiceId}/pay", payload);
+        var response = await client.PutAsync($"/api/v1/invoices/{invoiceId}/pay", payload, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
 
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("đã được thanh toán", body);
     }
 
@@ -126,11 +126,11 @@ public class InvoicesControllerBusinessTests
             JsonSerializer.Serialize(new { paymentMethod = "BITCOIN" }), // không hợp lệ
             Encoding.UTF8, "application/json");
 
-        var response = await client.PutAsync($"/api/v1/invoices/{invoiceId}/pay", payload);
+        var response = await client.PutAsync($"/api/v1/invoices/{invoiceId}/pay", payload, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("Phương thức thanh toán không hợp lệ", body);
     }
 
@@ -149,11 +149,11 @@ public class InvoicesControllerBusinessTests
             .Setup(s => s.GenerateInvoiceForCaseAsync(caseId))
             .ThrowsAsync(new BusinessException("Không tìm thấy đơn thuốc hoặc đơn thuốc trống cho ca khám này."));
 
-        var response = await client.PostAsync($"/api/v1/invoices/generate/{caseId}", null);
+        var response = await client.PostAsync($"/api/v1/invoices/generate/{caseId}", null, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
 
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("Không tìm thấy đơn thuốc", body);
     }
 
@@ -171,7 +171,7 @@ public class InvoicesControllerBusinessTests
             JsonSerializer.Serialize(new { paymentMethod = "CASH" }),
             Encoding.UTF8, "application/json");
 
-        var response = await client.PutAsync($"/api/v1/invoices/{Guid.NewGuid()}/pay", payload);
+        var response = await client.PutAsync($"/api/v1/invoices/{Guid.NewGuid()}/pay", payload, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -186,7 +186,7 @@ public class InvoicesControllerBusinessTests
             JsonSerializer.Serialize(new { paymentMethod = "CASH" }),
             Encoding.UTF8, "application/json");
 
-        var response = await client.PutAsync($"/api/v1/invoices/{Guid.NewGuid()}/pay", payload);
+        var response = await client.PutAsync($"/api/v1/invoices/{Guid.NewGuid()}/pay", payload, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -197,7 +197,7 @@ public class InvoicesControllerBusinessTests
         using var app = CreateApp();
         var client = app.CreateClient();
 
-        var response = await client.PostAsync($"/api/v1/invoices/generate/{Guid.NewGuid()}", null);
+        var response = await client.PostAsync($"/api/v1/invoices/generate/{Guid.NewGuid()}", null, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -221,7 +221,7 @@ public class InvoicesControllerBusinessTests
             JsonSerializer.Serialize(new { reason = "Sai đơn thuốc" }),
             Encoding.UTF8, "application/json");
 
-        var response = await client.PutAsync($"/api/v1/invoices/{id}/cancel", payload);
+        var response = await client.PutAsync($"/api/v1/invoices/{id}/cancel", payload, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -237,7 +237,7 @@ public class InvoicesControllerBusinessTests
             JsonSerializer.Serialize(new {  }), // Thiếu field reason
             Encoding.UTF8, "application/json");
 
-        var response = await client.PutAsync($"/api/v1/invoices/{id}/cancel", payload);
+        var response = await client.PutAsync($"/api/v1/invoices/{id}/cancel", payload, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -257,7 +257,7 @@ public class InvoicesControllerBusinessTests
             JsonSerializer.Serialize(new { reason = "Test" }),
             Encoding.UTF8, "application/json");
 
-        var response = await client.PutAsync($"/api/v1/invoices/{id}/cancel", payload);
+        var response = await client.PutAsync($"/api/v1/invoices/{id}/cancel", payload, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
     }

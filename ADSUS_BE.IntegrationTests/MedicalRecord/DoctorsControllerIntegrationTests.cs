@@ -79,11 +79,11 @@ public class DoctorsControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctorCaller);
 
         // Act
-        var response = await client.GetAsync("/api/v1/doctors");
+        var response = await client.GetAsync("/api/v1/doctors", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<DoctorSummaryResponse>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<DoctorSummaryResponse>>>(TestContext.Current.CancellationToken);
         Assert.Equal(_doctorCaller.FullName, body!.Data!.Single().FullName);
     }
 
@@ -98,7 +98,7 @@ public class DoctorsControllerIntegrationTests
         var client = MakeClientWithToken(app, _nurseCaller);
 
         // Act
-        var response = await client.GetAsync("/api/v1/doctors");
+        var response = await client.GetAsync("/api/v1/doctors", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -112,7 +112,7 @@ public class DoctorsControllerIntegrationTests
         var client = MakeClientWithToken(app, _patientCaller);
 
         // Act
-        var response = await client.GetAsync("/api/v1/doctors");
+        var response = await client.GetAsync("/api/v1/doctors", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);

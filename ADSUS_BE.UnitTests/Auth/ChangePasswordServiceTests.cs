@@ -40,7 +40,7 @@ public class ChangePasswordServiceTests
         var user = BuildUser(UserStatus.Active);
         SetupUser(user);
 
-        var result = await _sut.ChangePasswordAsync(user.UserId, Request(CurrentPassword));
+        var result = await _sut.ChangePasswordAsync(user.UserId, Request(CurrentPassword), TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.Success, result);
     }
@@ -52,7 +52,7 @@ public class ChangePasswordServiceTests
         var originalHash = user.PasswordHash;
         SetupUser(user);
 
-        await _sut.ChangePasswordAsync(user.UserId, Request(CurrentPassword));
+        await _sut.ChangePasswordAsync(user.UserId, Request(CurrentPassword), TestContext.Current.CancellationToken);
 
         Assert.NotEqual(originalHash, user.PasswordHash);
         Assert.True(BCrypt.Net.BCrypt.Verify(NewPassword, user.PasswordHash));
@@ -67,7 +67,7 @@ public class ChangePasswordServiceTests
         user.MustChangePassword = true;
         SetupUser(user);
 
-        await _sut.ChangePasswordAsync(user.UserId, Request(CurrentPassword));
+        await _sut.ChangePasswordAsync(user.UserId, Request(CurrentPassword), TestContext.Current.CancellationToken);
 
         Assert.False(user.MustChangePassword);
     }
@@ -78,7 +78,7 @@ public class ChangePasswordServiceTests
         var user = BuildUser(UserStatus.Active);
         SetupUser(user);
 
-        var result = await _sut.ChangePasswordAsync(user.UserId, Request("WrongOne1"));
+        var result = await _sut.ChangePasswordAsync(user.UserId, Request("WrongOne1"), TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.CurrentPasswordIncorrect, result);
     }
@@ -90,7 +90,7 @@ public class ChangePasswordServiceTests
         var originalHash = user.PasswordHash;
         SetupUser(user);
 
-        await _sut.ChangePasswordAsync(user.UserId, Request("WrongOne1"));
+        await _sut.ChangePasswordAsync(user.UserId, Request("WrongOne1"), TestContext.Current.CancellationToken);
 
         Assert.Equal(originalHash, user.PasswordHash);
         _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -109,7 +109,7 @@ public class ChangePasswordServiceTests
         user.MustChangePassword = true;
         SetupUser(user);
 
-        var result = await _sut.ChangePasswordAsync(user.UserId, Request("DefinitelyWrong1"));
+        var result = await _sut.ChangePasswordAsync(user.UserId, Request("DefinitelyWrong1"), TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.Success, result);
     }
@@ -128,7 +128,7 @@ public class ChangePasswordServiceTests
             ConfirmNewPassword = NewPassword,
         };
 
-        var result = await _sut.ChangePasswordAsync(user.UserId, request);
+        var result = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.Success, result);
         Assert.True(BCrypt.Net.BCrypt.Verify(NewPassword, user.PasswordHash));
@@ -149,7 +149,7 @@ public class ChangePasswordServiceTests
             ConfirmNewPassword = NewPassword,
         };
 
-        var result = await _sut.ChangePasswordAsync(user.UserId, request);
+        var result = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.CurrentPasswordIncorrect, result);
     }
@@ -159,7 +159,7 @@ public class ChangePasswordServiceTests
     {
         SetupUser(null);
 
-        var result = await _sut.ChangePasswordAsync(Guid.NewGuid(), Request(CurrentPassword));
+        var result = await _sut.ChangePasswordAsync(Guid.NewGuid(), Request(CurrentPassword), TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.UserNotFound, result);
     }
@@ -172,7 +172,7 @@ public class ChangePasswordServiceTests
         var user = BuildUser(status);
         SetupUser(user);
 
-        var result = await _sut.ChangePasswordAsync(user.UserId, Request(CurrentPassword));
+        var result = await _sut.ChangePasswordAsync(user.UserId, Request(CurrentPassword), TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.AccountNotActive, result);
     }

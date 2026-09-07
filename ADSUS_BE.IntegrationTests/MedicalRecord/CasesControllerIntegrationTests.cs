@@ -75,11 +75,11 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}");
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
         Assert.NotNull(body.Data!.PatientProfile); // chỉ bản Staff mới có field này
     }
@@ -99,12 +99,12 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}");
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}", TestContext.Current.CancellationToken);
 
         // Assert — dùng JsonDocument thay vì ApiResponse<CaseResponse> vì shape thật trả về
         // là PatientCaseResponse (ít field hơn) khi caller là Patient.
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var json = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonDocument>();
+        var json = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonDocument>(TestContext.Current.CancellationToken);
         var data = json!.RootElement.GetProperty("data");
         Assert.False(data.TryGetProperty("clinicalInfo", out _));
         Assert.True(data.TryGetProperty("ultrasoundImages", out _));
@@ -124,7 +124,7 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(pendingCase);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases/{pendingCase.CaseId}");
+        var response = await client.GetAsync($"/api/v1/cases/{pendingCase.CaseId}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -146,7 +146,7 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(confirmedNotEndedCase);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases/{confirmedNotEndedCase.CaseId}");
+        var response = await client.GetAsync($"/api/v1/cases/{confirmedNotEndedCase.CaseId}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -166,7 +166,7 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(someoneElsesCase);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases/{someoneElsesCase.CaseId}");
+        var response = await client.GetAsync($"/api/v1/cases/{someoneElsesCase.CaseId}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -190,7 +190,7 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync((new List<Case>(), 0));
 
         // Act
-        var response = await client.GetAsync("/api/v1/cases/me");
+        var response = await client.GetAsync("/api/v1/cases/me", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -209,7 +209,7 @@ public class CasesControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctor);
 
         // Act
-        var response = await client.GetAsync("/api/v1/cases/me");
+        var response = await client.GetAsync("/api/v1/cases/me", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -225,7 +225,7 @@ public class CasesControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctor);
 
         // Act
-        var response = await client.GetAsync("/api/v1/cases");
+        var response = await client.GetAsync("/api/v1/cases", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -245,7 +245,7 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync((new List<Case>(), 0));
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases?patientProfileId={profile.PatientProfileId}");
+        var response = await client.GetAsync($"/api/v1/cases?patientProfileId={profile.PatientProfileId}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -267,11 +267,11 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync((new List<Case> { medicalCase }, 1));
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases?patientProfileId={profile.PatientProfileId}");
+        var response = await client.GetAsync($"/api/v1/cases?patientProfileId={profile.PatientProfileId}", TestContext.Current.CancellationToken);
 
         // Assert
         var body = await response.Content
-            .ReadFromJsonAsync<ApiResponse<PagedResult<StaffCaseSummaryResponse>>>();
+            .ReadFromJsonAsync<ApiResponse<PagedResult<StaffCaseSummaryResponse>>>(TestContext.Current.CancellationToken);
         Assert.Equal(medicalCase.CreatedAt, body!.Data!.Items.Single().CreatedAt);
     }
 
@@ -283,7 +283,7 @@ public class CasesControllerIntegrationTests
         var client = MakeClientWithToken(app, _patientUser);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases?patientProfileId={Guid.NewGuid()}");
+        var response = await client.GetAsync($"/api/v1/cases?patientProfileId={Guid.NewGuid()}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -312,12 +312,12 @@ public class CasesControllerIntegrationTests
                 .ReturnsAsync("https://signed-url.example/anh.png");
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}/ultrasound-images");
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}/ultrasound-images", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content
-            .ReadFromJsonAsync<ApiResponse<IReadOnlyList<UltrasoundImageResponse>>>();
+            .ReadFromJsonAsync<ApiResponse<IReadOnlyList<UltrasoundImageResponse>>>(TestContext.Current.CancellationToken);
         Assert.Single(body!.Data!);
     }
 
@@ -329,7 +329,7 @@ public class CasesControllerIntegrationTests
         var client = MakeClientWithToken(app, _patientUser);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases/{Guid.NewGuid()}/ultrasound-images");
+        var response = await client.GetAsync($"/api/v1/cases/{Guid.NewGuid()}/ultrasound-images", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -439,11 +439,11 @@ public class CasesControllerIntegrationTests
         using var form = MakeCreateCaseForm(profile.PatientProfileId, _doctor.UserId, "Đau vú trái", ValidPngBytes);
 
         // Act
-        var response = await client.PostAsync("/api/v1/cases", form);
+        var response = await client.PostAsync("/api/v1/cases", form, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal("CREATED", body!.Data!.Status);
     }
 
@@ -482,11 +482,11 @@ public class CasesControllerIntegrationTests
         using var form = MakeCreateCaseForm(profile.PatientProfileId, _doctor.UserId, null, imageBytes: null);
 
         // Act
-        var response = await client.PostAsync("/api/v1/cases", form);
+        var response = await client.PostAsync("/api/v1/cases", form, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
         Assert.Empty(body!.Data!.UltrasoundImages);
     }
 
@@ -516,7 +516,7 @@ public class CasesControllerIntegrationTests
         using var form = MakeCreateCaseForm(profile.PatientProfileId, nurse.UserId, null, ValidPngBytes);
 
         // Act
-        var response = await client.PostAsync("/api/v1/cases", form);
+        var response = await client.PostAsync("/api/v1/cases", form, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
@@ -531,7 +531,7 @@ public class CasesControllerIntegrationTests
         using var form = MakeCreateCaseForm(Guid.NewGuid(), Guid.NewGuid(), null, ValidPngBytes);
 
         // Act
-        var response = await client.PostAsync("/api/v1/cases", form);
+        var response = await client.PostAsync("/api/v1/cases", form, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -551,11 +551,11 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}/report");
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}/report", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
         Assert.Equal(422, body!.Code);
     }
 
@@ -571,12 +571,12 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}/report");
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}/report", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/pdf", response.Content.Headers.ContentType!.MediaType);
-        var bytes = await response.Content.ReadAsByteArrayAsync();
+        var bytes = await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
         Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
     }
 
@@ -592,11 +592,11 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(pendingCase);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases/{pendingCase.CaseId}/report");
+        var response = await client.GetAsync($"/api/v1/cases/{pendingCase.CaseId}/report", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
         Assert.Equal(422, body!.Code);
     }
 
@@ -609,7 +609,7 @@ public class CasesControllerIntegrationTests
         var client = MakeClientWithToken(app, _patientUser);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases/{Guid.NewGuid()}/report");
+        var response = await client.GetAsync($"/api/v1/cases/{Guid.NewGuid()}/report", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -625,11 +625,11 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync((Case?)null);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/cases/{Guid.NewGuid()}/report");
+        var response = await client.GetAsync($"/api/v1/cases/{Guid.NewGuid()}/report", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
         Assert.Equal(404, body!.Code);
     }
 
@@ -652,11 +652,11 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/confirm", ValidConfirmBody());
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/confirm", ValidConfirmBody(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal("CONFIRMED", body!.Data!.Status);
         Assert.Equal("Nhân xơ tử cung", body.Data.FinalDiagnosis);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -671,7 +671,7 @@ public class CasesControllerIntegrationTests
 
         // Act
         var response = await client.PutAsJsonAsync(
-            $"/api/v1/cases/{Guid.NewGuid()}/confirm", ValidConfirmBody());
+            $"/api/v1/cases/{Guid.NewGuid()}/confirm", ValidConfirmBody(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -696,7 +696,7 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/confirm", ValidConfirmBody());
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/confirm", ValidConfirmBody(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
@@ -714,7 +714,7 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/confirm", ValidConfirmBody());
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/confirm", ValidConfirmBody(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
@@ -729,7 +729,7 @@ public class CasesControllerIntegrationTests
         var body = new CaseConclusionRequest(FinalDiagnosis: "", DoctorConclusion: "");
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/confirm", body);
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/confirm", body, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -751,11 +751,11 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/conclusion", ValidConfirmBody());
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/conclusion", ValidConfirmBody(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal("END", body!.Data!.Status);
         Assert.Equal("Nhân xơ tử cung", body.Data.FinalDiagnosis);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -770,7 +770,7 @@ public class CasesControllerIntegrationTests
 
         // Act
         var response = await client.PutAsJsonAsync(
-            $"/api/v1/cases/{Guid.NewGuid()}/conclusion", ValidConfirmBody());
+            $"/api/v1/cases/{Guid.NewGuid()}/conclusion", ValidConfirmBody(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -789,7 +789,7 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/conclusion", ValidConfirmBody());
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/conclusion", ValidConfirmBody(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
@@ -804,7 +804,7 @@ public class CasesControllerIntegrationTests
         var body = new CaseConclusionRequest(FinalDiagnosis: "", DoctorConclusion: "");
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/conclusion", body);
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/conclusion", body, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -821,7 +821,7 @@ public class CasesControllerIntegrationTests
         var body = new CaseConclusionRequest(FinalDiagnosis: longText, DoctorConclusion: "OK");
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/conclusion", body);
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/conclusion", body, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -837,7 +837,7 @@ public class CasesControllerIntegrationTests
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "NoNameIdentifier");
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/conclusion", ValidConfirmBody());
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/conclusion", ValidConfirmBody(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(response.IsSuccessStatusCode);
@@ -865,11 +865,11 @@ public class CasesControllerIntegrationTests
                      .ReturnsAsync(new List<Appointment>());
 
         // Act
-        var response = await client.PutAsync($"/api/v1/cases/{medicalCase.CaseId}/end", null);
+        var response = await client.PutAsync($"/api/v1/cases/{medicalCase.CaseId}/end", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
         Assert.Equal("Case ended successfully without prescription", body.Message);
 
@@ -891,11 +891,11 @@ public class CasesControllerIntegrationTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await client.PutAsync($"/api/v1/cases/{medicalCase.CaseId}/end", null);
+        var response = await client.PutAsync($"/api/v1/cases/{medicalCase.CaseId}/end", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
         Assert.Equal("Only the responsible doctor can end this case.", body!.Message);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }

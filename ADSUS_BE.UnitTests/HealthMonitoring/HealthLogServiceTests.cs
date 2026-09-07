@@ -61,7 +61,7 @@ public class HealthLogServiceTests
         };
 
         // Act
-        var result = await sut.LogHealthDataAsync(request, patientId);
+        var result = await sut.LogHealthDataAsync(request, patientId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(capturedLog);
@@ -94,7 +94,7 @@ public class HealthLogServiceTests
         };
 
         // Act
-        await sut.LogHealthDataAsync(request, patientId);
+        await sut.LogHealthDataAsync(request, patientId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(capturedLog);
@@ -126,7 +126,7 @@ public class HealthLogServiceTests
         };
 
         // Act
-        await sut.LogHealthDataAsync(request, Guid.NewGuid());
+        await sut.LogHealthDataAsync(request, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(capturedLog);
@@ -154,7 +154,7 @@ public class HealthLogServiceTests
         };
 
         // Act
-        await sut.LogHealthDataAsync(request, Guid.NewGuid());
+        await sut.LogHealthDataAsync(request, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(capturedLog);
@@ -184,7 +184,7 @@ public class HealthLogServiceTests
         };
 
         // Act
-        var result = await sut.LogHealthDataAsync(request, patientId);
+        var result = await sut.LogHealthDataAsync(request, patientId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(patientId, result.PatientProfileId);
@@ -222,7 +222,7 @@ public class HealthLogServiceTests
         var criteria = new HealthLogSearchCriteria { Date = today };
 
         // Act
-        var result = await sut.GetHealthLogsAsync(patientId, criteria);
+        var result = await sut.GetHealthLogsAsync(patientId, criteria, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(3, result.Count);
@@ -252,7 +252,7 @@ public class HealthLogServiceTests
         var criteria = new HealthLogSearchCriteria { Date = specificDate };
 
         // Act
-        var result = await sut.GetHealthLogsAsync(patientId, criteria);
+        var result = await sut.GetHealthLogsAsync(patientId, criteria, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(result);
@@ -277,7 +277,7 @@ public class HealthLogServiceTests
         var criteria = new HealthLogSearchCriteria();
 
         // Act
-        var result = await sut.GetHealthLogsAsync(patientId, criteria);
+        var result = await sut.GetHealthLogsAsync(patientId, criteria, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(result);
@@ -300,7 +300,7 @@ public class HealthLogServiceTests
         var criteria = new HealthLogSearchCriteria { Date = null };
 
         // Act
-        await sut.GetHealthLogsAsync(patientId, criteria);
+        await sut.GetHealthLogsAsync(patientId, criteria, TestContext.Current.CancellationToken);
 
         // Assert
         repo.Verify(r => r.GetByPatientAndDateAsync(patientId, today, It.IsAny<CancellationToken>()), Times.Once);
@@ -332,8 +332,8 @@ public class HealthLogServiceTests
         var criteria = new HealthLogSearchCriteria { Date = today };
 
         // Act
-        var resultA = await sut.GetHealthLogsAsync(patientAId, criteria);
-        var resultB = await sut.GetHealthLogsAsync(patientBId, criteria);
+        var resultA = await sut.GetHealthLogsAsync(patientAId, criteria, TestContext.Current.CancellationToken);
+        var resultB = await sut.GetHealthLogsAsync(patientBId, criteria, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(resultA);

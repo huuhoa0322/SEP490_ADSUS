@@ -65,11 +65,11 @@ public class PatientProfilesControllerIntegrationTests
         var request = new CreatePatientProfileRequest(_patient.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request);
+        var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientProfileResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientProfileResponse>>(TestContext.Current.CancellationToken);
         // ApiResponse<T>.Ok(...) hard-codes Code = 200 bất kể IActionResult bọc ngoài trả HTTP
         // status gì — quy ước có sẵn của toàn repo (vd. FeedbacksController cũng vậy), không
         // phải lỗi riêng của Module 04. HTTP status thật (201) đã được assert ở dòng trên.
@@ -98,11 +98,11 @@ public class PatientProfilesControllerIntegrationTests
         var request = new CreatePatientProfileRequest(_patient.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request);
+        var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
         Assert.Equal(409, body!.Code);
     }
 
@@ -125,7 +125,7 @@ public class PatientProfilesControllerIntegrationTests
         var request = new CreatePatientProfileRequest(_doctor.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request);
+        var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
@@ -141,7 +141,7 @@ public class PatientProfilesControllerIntegrationTests
         var request = new CreatePatientProfileRequest(_patient.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request);
+        var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -157,7 +157,7 @@ public class PatientProfilesControllerIntegrationTests
         var request = new CreatePatientProfileRequest(_patient.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request);
+        var response = await client.PostAsJsonAsync("/api/v1/patient-profiles", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -173,11 +173,11 @@ public class PatientProfilesControllerIntegrationTests
                  .ReturnsAsync((PatientProfile?)null);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/patient-profiles/{Guid.NewGuid()}");
+        var response = await client.GetAsync($"/api/v1/patient-profiles/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
         Assert.Equal(404, body!.Code);
     }
 
@@ -196,11 +196,11 @@ public class PatientProfilesControllerIntegrationTests
                  .ReturnsAsync(profile);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/patient-profiles/{profile.PatientProfileId}");
+        var response = await client.GetAsync($"/api/v1/patient-profiles/{profile.PatientProfileId}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientProfileResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientProfileResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
         Assert.Equal(profile.PatientProfileId, body.Data!.PatientProfileId);
         Assert.Equal(_patient.UserId, body.Data.PatientUserId);
@@ -223,11 +223,11 @@ public class PatientProfilesControllerIntegrationTests
         var request = new UpdatePatientProfileRequest("MALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/patient-profiles/{profile.PatientProfileId}", request);
+        var response = await client.PutAsJsonAsync($"/api/v1/patient-profiles/{profile.PatientProfileId}", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientProfileResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PatientProfileResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal("MALE", body!.Data!.Gender);
     }
 

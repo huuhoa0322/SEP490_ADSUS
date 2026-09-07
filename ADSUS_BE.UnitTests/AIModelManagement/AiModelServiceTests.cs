@@ -68,7 +68,7 @@ public class AiModelServiceTests
             .ReturnsAsync((items, 1));
 
         // Act
-        var result = await _sut.SearchVersionsAsync("v1", 1, 20);
+        var result = await _sut.SearchVersionsAsync("v1", 1, 20, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(result.Items);
@@ -85,7 +85,7 @@ public class AiModelServiceTests
         _modelRepoMock.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AiModelVersion { ModelVersionId = id, VersionCode = "v2" });
 
-        var result = await _sut.GetVersionByIdAsync(id);
+        var result = await _sut.GetVersionByIdAsync(id, TestContext.Current.CancellationToken);
         Assert.Equal(id, result.ModelVersionId);
         Assert.Equal("v2", result.VersionCode);
     }
@@ -98,7 +98,7 @@ public class AiModelServiceTests
         _modelRepoMock.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((AiModelVersion?)null);
 
-        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.GetVersionByIdAsync(id));
+        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.GetVersionByIdAsync(id, TestContext.Current.CancellationToken));
     }
 
     // UT_Ai_04: RegisterVersionAsync -> Duplicate -> Throws BusinessException
@@ -109,7 +109,7 @@ public class AiModelServiceTests
         _modelRepoMock.Setup(r => r.VersionCodeExistsAsync("v1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        await Assert.ThrowsAsync<BusinessException>(() => _sut.RegisterVersionAsync(req, Guid.NewGuid()));
+        await Assert.ThrowsAsync<BusinessException>(() => _sut.RegisterVersionAsync(req, Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     // UT_Ai_05: RegisterVersionAsync -> Success -> Adds to Repo and AuditLog
@@ -120,7 +120,7 @@ public class AiModelServiceTests
         _modelRepoMock.Setup(r => r.VersionCodeExistsAsync("v1", It.IsAny<CancellationToken>())).ReturnsAsync(false);
         
         var adminId = Guid.NewGuid();
-        var result = await _sut.RegisterVersionAsync(req, adminId);
+        var result = await _sut.RegisterVersionAsync(req, adminId, TestContext.Current.CancellationToken);
 
         _modelRepoMock.Verify(r => r.AddAsync(It.Is<AiModelVersion>(v => v.VersionCode == "v1" && v.Status == ModelVersionStatus.Inactive), It.IsAny<CancellationToken>()), Times.Once);
         _auditMock.Verify(r => r.AddAsync(It.Is<AuditLog>(a => a.Action == "REGISTER_AI_MODEL"), It.IsAny<CancellationToken>()), Times.Once);
@@ -137,7 +137,7 @@ public class AiModelServiceTests
         _modelRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync((AiModelVersion?)null);
 
-        var result = await _sut.GetActiveVersionAsync();
+        var result = await _sut.GetActiveVersionAsync(TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -157,7 +157,7 @@ public class AiModelServiceTests
         _modelRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(v);
 
-        var result = await _sut.GetActiveVersionAsync();
+        var result = await _sut.GetActiveVersionAsync(TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal("v3", result!.VersionCode);
@@ -171,7 +171,7 @@ public class AiModelServiceTests
         _modelRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((AiModelVersion?)null);
 
-        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.UpdateVersionAsync(Guid.NewGuid(), new UpdateModelVersionRequest(), Guid.NewGuid()));
+        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.UpdateVersionAsync(Guid.NewGuid(), new UpdateModelVersionRequest(), Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     // UT_Ai_07: UpdateVersionAsync -> Active -> Throws BusinessException
@@ -182,7 +182,7 @@ public class AiModelServiceTests
         _modelRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(v);
 
-        await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdateVersionAsync(Guid.NewGuid(), new UpdateModelVersionRequest(), Guid.NewGuid()));
+        await Assert.ThrowsAsync<BusinessException>(() => _sut.UpdateVersionAsync(Guid.NewGuid(), new UpdateModelVersionRequest(), Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     // UT_Ai_08: UpdateVersionAsync -> Success
@@ -194,7 +194,7 @@ public class AiModelServiceTests
             .ReturnsAsync(v);
 
         var req = new UpdateModelVersionRequest { Description = "New Desc" };
-        await _sut.UpdateVersionAsync(Guid.NewGuid(), req, Guid.NewGuid());
+        await _sut.UpdateVersionAsync(Guid.NewGuid(), req, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Equal("New Desc", v.Description);
         _auditMock.Verify(r => r.AddAsync(It.Is<AuditLog>(a => a.Action == "UPDATE_AI_MODEL"), It.IsAny<CancellationToken>()), Times.Once);
@@ -208,7 +208,7 @@ public class AiModelServiceTests
         _modelRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((AiModelVersion?)null);
 
-        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid()));
+        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     // UT_Ai_10: ActivateVersionAsync -> Already Active -> Throws BusinessException
@@ -219,7 +219,7 @@ public class AiModelServiceTests
         _modelRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(v);
 
-        await Assert.ThrowsAsync<BusinessException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid()));
+        await Assert.ThrowsAsync<BusinessException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     // UT_Ai_11: ActivateVersionAsync -> Backend 404 -> Rollback and throw
@@ -231,7 +231,7 @@ public class AiModelServiceTests
         
         SetupHttpResponse(HttpStatusCode.NotFound, "Repository Not Found");
 
-        var ex = await Assert.ThrowsAsync<BusinessException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid()));
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken));
         Assert.Contains("Không tìm thấy mô hình", ex.Message);
         
         _modelRepoMock.Verify(r => r.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -246,7 +246,7 @@ public class AiModelServiceTests
         
         SetupHttpResponse(HttpStatusCode.Unauthorized, "Unauthorized access");
 
-        var ex = await Assert.ThrowsAsync<BusinessException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid()));
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken));
         Assert.Contains("Lỗi xác thực", ex.Message);
         
         _modelRepoMock.Verify(r => r.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -261,7 +261,7 @@ public class AiModelServiceTests
         
         SetupHttpResponse(HttpStatusCode.InternalServerError, "Something went wrong");
 
-        var ex = await Assert.ThrowsAsync<BusinessException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid()));
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken));
         Assert.Contains("Quá trình kích hoạt thất bại", ex.Message);
         
         _modelRepoMock.Verify(r => r.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -276,7 +276,7 @@ public class AiModelServiceTests
         
         SetupHttpResponse(HttpStatusCode.OK, "", new TaskCanceledException("Timeout"));
 
-        await Assert.ThrowsAsync<TaskCanceledException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid()));
+        await Assert.ThrowsAsync<TaskCanceledException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken));
         
         _modelRepoMock.Verify(r => r.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -292,7 +292,7 @@ public class AiModelServiceTests
         
         SetupHttpResponse(HttpStatusCode.OK, "Success");
 
-        await _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid());
+        await _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
         
         Assert.Equal(ModelVersionStatus.Inactive, currentActive.Status);
         Assert.Equal(ModelVersionStatus.Active, target.Status);
@@ -316,7 +316,7 @@ public class AiModelServiceTests
             
         SetupHttpResponse(HttpStatusCode.OK, "Success"); // Backend would succeed if it got here, but it throws on DB commit after
 
-        await Assert.ThrowsAsync<Microsoft.EntityFrameworkCore.DbUpdateException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid()));
+        await Assert.ThrowsAsync<Microsoft.EntityFrameworkCore.DbUpdateException>(() => _sut.ActivateVersionAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken));
         
         _modelRepoMock.Verify(r => r.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

@@ -42,7 +42,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             _dbContext.Medicines.Add(new Medicine { MedicineId = medicineId, Name = "Test Med", Status = MedicineStatus.Active, CreatedAt = DateTime.UtcNow });
             _dbContext.Suppliers.Add(new Supplier { SupplierId = supplierId, Name = "Test Sup", IsActive = true, PhoneNumber = "0123", Email = "a@a", Address = "b", TaxCode = "c" });
             _dbContext.MedicinePackagings.Add(new MedicinePackaging { Id = packagingId, MedicineId = medicineId, ConversionFactor = 10 });
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             var request = new ImportInventoryRequest
             {
@@ -59,12 +59,12 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             await _service.ImportMedicineAsync(request);
 
             // Assert
-            var batch = await _dbContext.MedicineBatches.FirstOrDefaultAsync(b => b.LotNumber == "LOT-123");
+            var batch = await _dbContext.MedicineBatches.FirstOrDefaultAsync(b => b.LotNumber == "LOT-123", TestContext.Current.CancellationToken);
             Assert.NotNull(batch);
             Assert.Equal(50, batch.QuantityBase); // 5 * 10
             Assert.Equal(10000, batch.BaseUnitAvgImportPrice); // 100000 / 10
 
-            var txn = await _dbContext.InventoryTransactions.FirstOrDefaultAsync(t => t.BatchId == batch.Id);
+            var txn = await _dbContext.InventoryTransactions.FirstOrDefaultAsync(t => t.BatchId == batch.Id, TestContext.Current.CancellationToken);
             Assert.NotNull(txn);
             Assert.Equal(InventoryTxnType.Import, txn.TxnType);
             Assert.Equal(5, txn.QuantityInUnit);
@@ -94,7 +94,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
                 QuantityBase = 10,
                 BaseUnitAvgImportPrice = 5000
             });
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             var request = new ImportInventoryRequest
             {
@@ -111,7 +111,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             await _service.ImportMedicineAsync(request);
 
             // Assert
-            var batch = await _dbContext.MedicineBatches.FirstOrDefaultAsync(b => b.LotNumber == "LOT-123");
+            var batch = await _dbContext.MedicineBatches.FirstOrDefaultAsync(b => b.LotNumber == "LOT-123", TestContext.Current.CancellationToken);
             Assert.NotNull(batch);
             Assert.Equal(50, batch.QuantityBase); // 10 + 40
             
@@ -141,7 +141,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
                 QuantityBase = 10,
                 BaseUnitAvgImportPrice = 5000
             });
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             var request = new ImportInventoryRequest
             {
@@ -176,7 +176,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             
             _dbContext.Medicines.Add(new Medicine { MedicineId = request.MedicineId, Name = "M", Status = MedicineStatus.Active, CreatedAt = DateTime.UtcNow });
             _dbContext.Suppliers.Add(new Supplier { SupplierId = request.SupplierId, Name = "S", IsActive = true, PhoneNumber = "", Email = "", Address = "", TaxCode = "" });
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             // Act & Assert
             var ex = await Assert.ThrowsAsync<BusinessException>(() => _service.ImportMedicineAsync(request));
@@ -203,7 +203,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
 
             _dbContext.InventoryTransactions.Add(new InventoryTransaction { Id = Guid.NewGuid(), BatchId = batch1.Id, MedicinePackagingId = pack.Id, QuantityInUnit = 10, QuantityBase = 100, TxnType = InventoryTxnType.Import, TxnDate = DateTime.UtcNow, SupplierId = supplier.SupplierId });
             _dbContext.InventoryTransactions.Add(new InventoryTransaction { Id = Guid.NewGuid(), BatchId = batch2.Id, MedicinePackagingId = pack.Id, QuantityInUnit = 5, QuantityBase = 50, TxnType = InventoryTxnType.Import, TxnDate = DateTime.UtcNow });
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             var filter = new InventoryHistoryFilter { Search = "Paracetamol" };
 
@@ -230,7 +230,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             _dbContext.Suppliers.Add(new Supplier { SupplierId = supplierId, Name = "Test Sup", IsActive = true, PhoneNumber = "1", Email = "a", Address = "a", TaxCode = "1" });
             _dbContext.MedicineUnits.Add(new MedicineUnit { MedicineUnitId = unitId, Name = "Unit" });
             _dbContext.MedicinePackagings.Add(new MedicinePackaging { Id = packagingId, MedicineId = medicineId, MedicineUnitId = unitId, ConversionFactor = 10 });
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             var requests = new System.Collections.Generic.List<ImportInventoryRequest>
             {
@@ -276,7 +276,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
                 ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
                 QuantityBase = 10
             });
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             var request = new ImportInventoryRequest
             {
@@ -319,7 +319,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
                 ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
                 QuantityBase = 10
             });
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             var request = new ImportInventoryRequest
             {
@@ -372,16 +372,16 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             _dbContext.MedicineBatches.Add(batch);
             _dbContext.Prescriptions.Add(prescription);
             _dbContext.PrescriptionItems.Add(pItem);
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             // Act
             await _service.DispenseAsync(caseId);
 
             // Assert
-            var updatedBatch = await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batch.Id);
+            var updatedBatch = await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batch.Id, TestContext.Current.CancellationToken);
             Assert.Equal(80, updatedBatch.QuantityBase); // 100 - 20 = 80
 
-            var txn = await _dbContext.InventoryTransactions.FirstAsync(t => t.BatchId == batch.Id);
+            var txn = await _dbContext.InventoryTransactions.FirstAsync(t => t.BatchId == batch.Id, TestContext.Current.CancellationToken);
             Assert.Equal(20, txn.QuantityBase);
             Assert.Equal(20, txn.QuantityInUnit);
             Assert.Equal(basePack.Id, txn.MedicinePackagingId);
@@ -433,19 +433,19 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             _dbContext.MedicineBatches.AddRange(batchNew, batchOld); // Insert không theo thứ tự
             _dbContext.Prescriptions.Add(prescription);
             _dbContext.PrescriptionItems.Add(pItem);
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             // Act
             await _service.DispenseAsync(caseId);
 
             // Assert
-            var oldBatchResult = await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batchOld.Id);
+            var oldBatchResult = await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batchOld.Id, TestContext.Current.CancellationToken);
             Assert.Equal(0, oldBatchResult.QuantityBase); // Hết sạch lô cũ
 
-            var newBatchResult = await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batchNew.Id);
+            var newBatchResult = await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batchNew.Id, TestContext.Current.CancellationToken);
             Assert.Equal(45, newBatchResult.QuantityBase); // Lô mới bị trừ 5
 
-            var txns = await _dbContext.InventoryTransactions.Where(t => t.PrescriptionItemId == pItem.PrescriptionItemId).ToListAsync();
+            var txns = await _dbContext.InventoryTransactions.Where(t => t.PrescriptionItemId == pItem.PrescriptionItemId).ToListAsync(TestContext.Current.CancellationToken);
             Assert.Equal(2, txns.Count); // Sinh 2 giao dịch
 
             var txnOld = txns.First(t => t.BatchId == batchOld.Id);
@@ -489,7 +489,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             _dbContext.MedicineBatches.Add(batch);
             _dbContext.Prescriptions.Add(prescription);
             _dbContext.PrescriptionItems.Add(pItem);
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             // Act & Assert
             var exception = await Assert.ThrowsAsync<BusinessException>(() => _service.DispenseAsync(caseId));
@@ -522,7 +522,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             _dbContext.Medicines.Add(medicine);
             _dbContext.MedicinePackagings.Add(basePack);
             _dbContext.MedicineBatches.Add(batch);
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             var request = new AdjustInventoryRequest
             {
@@ -540,10 +540,10 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             Assert.Equal(55, response.NewQuantity);
             Assert.Equal(5, response.Delta);
 
-            var updatedBatch = await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batchId);
+            var updatedBatch = await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batchId, TestContext.Current.CancellationToken);
             Assert.Equal(55, updatedBatch.QuantityBase);
 
-            var txn = await _dbContext.InventoryTransactions.FirstAsync(t => t.Id == response.TransactionId);
+            var txn = await _dbContext.InventoryTransactions.FirstAsync(t => t.Id == response.TransactionId, TestContext.Current.CancellationToken);
             Assert.Equal(InventoryTxnType.Adjustment, txn.TxnType);
             Assert.Equal(5, txn.QuantityBase); // Dương = tăng
             Assert.Equal(5, txn.QuantityInUnit);
@@ -578,7 +578,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             _dbContext.Medicines.Add(medicine);
             _dbContext.MedicinePackagings.Add(basePack);
             _dbContext.MedicineBatches.Add(batch);
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             var request = new AdjustInventoryRequest
             {
@@ -596,10 +596,10 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             Assert.Equal(45, response.NewQuantity);
             Assert.Equal(-5, response.Delta);
 
-            var updatedBatch = await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batchId);
+            var updatedBatch = await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batchId, TestContext.Current.CancellationToken);
             Assert.Equal(45, updatedBatch.QuantityBase);
 
-            var txn = await _dbContext.InventoryTransactions.FirstAsync(t => t.Id == response.TransactionId);
+            var txn = await _dbContext.InventoryTransactions.FirstAsync(t => t.Id == response.TransactionId, TestContext.Current.CancellationToken);
             Assert.Equal(InventoryTxnType.Adjustment, txn.TxnType);
             Assert.Equal(-5, txn.QuantityBase); // Âm = giảm
             Assert.Equal(5, txn.QuantityInUnit); // Math.Abs(delta)
@@ -650,7 +650,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             _dbContext.Medicines.Add(medicine);
             _dbContext.MedicinePackagings.Add(basePack);
             _dbContext.MedicineBatches.Add(batch);
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             var request = new AdjustInventoryRequest
             {
@@ -691,7 +691,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             _dbContext.Medicines.Add(medicine);
             _dbContext.MedicinePackagings.Add(basePack);
             _dbContext.MedicineBatches.Add(batch);
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             var request = new AdjustInventoryRequest
             {
@@ -744,7 +744,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             _dbContext.Medicines.AddRange(med1, med2);
             _dbContext.MedicinePackagings.AddRange(pack1, pack2);
             _dbContext.MedicineBatches.AddRange(batch1, batch2);
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             // Act
             var summary = await _service.GetAlertSummaryAsync();

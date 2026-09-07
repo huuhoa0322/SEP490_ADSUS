@@ -26,7 +26,7 @@ public class CreateOvertimeSlotsAsyncTests
         var request = new CreateOvertimeSlotsRequest { VisitDate = DateOnly.FromDateTime(DateTime.UtcNow) };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CreateOvertimeSlotsAsync(request, Guid.Empty));
+            () => _sut.CreateOvertimeSlotsAsync(request, Guid.Empty, TestContext.Current.CancellationToken));
         
         Assert.Equal("doctorId is required.", ex.Message);
     }
@@ -40,7 +40,7 @@ public class CreateOvertimeSlotsAsyncTests
         _userRepo.Setup(r => r.GetByIdAsync(doctorId, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CreateOvertimeSlotsAsync(request, doctorId));
+            () => _sut.CreateOvertimeSlotsAsync(request, doctorId, TestContext.Current.CancellationToken));
         
         Assert.Equal($"User '{doctorId}' is not a valid Doctor.", ex.Message);
     }
@@ -55,7 +55,7 @@ public class CreateOvertimeSlotsAsyncTests
         _userRepo.Setup(r => r.GetByIdAsync(doctorId, It.IsAny<CancellationToken>())).ReturnsAsync(patientUser);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CreateOvertimeSlotsAsync(request, doctorId));
+            () => _sut.CreateOvertimeSlotsAsync(request, doctorId, TestContext.Current.CancellationToken));
         
         Assert.Equal($"User '{doctorId}' is not a valid Doctor.", ex.Message);
     }
@@ -72,7 +72,7 @@ public class CreateOvertimeSlotsAsyncTests
         _repo.Setup(r => r.ListByRangeAsync(visitDate, visitDate, doctorId, null, It.IsAny<CancellationToken>()))
              .ReturnsAsync(new List<ScheduleSlot>()); // No existing slots
 
-        var (successCount, errorCount) = await _sut.CreateOvertimeSlotsAsync(request, doctorId);
+        var (successCount, errorCount) = await _sut.CreateOvertimeSlotsAsync(request, doctorId, TestContext.Current.CancellationToken);
 
         Assert.Equal(6, successCount);
         Assert.Equal(0, errorCount);
@@ -91,7 +91,7 @@ public class CreateOvertimeSlotsAsyncTests
         _repo.Setup(r => r.ListByRangeAsync(visitDate, visitDate, doctorId, null, It.IsAny<CancellationToken>()))
              .ReturnsAsync(new List<ScheduleSlot>());
 
-        var (successCount, errorCount) = await _sut.CreateOvertimeSlotsAsync(request, doctorId);
+        var (successCount, errorCount) = await _sut.CreateOvertimeSlotsAsync(request, doctorId, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, successCount);
         Assert.Equal(6, errorCount); // All 6 failed due to being in the past
@@ -119,7 +119,7 @@ public class CreateOvertimeSlotsAsyncTests
         _repo.Setup(r => r.ListByRangeAsync(visitDate, visitDate, doctorId, null, It.IsAny<CancellationToken>()))
              .ReturnsAsync(new List<ScheduleSlot> { existingSlot });
 
-        var (successCount, errorCount) = await _sut.CreateOvertimeSlotsAsync(request, doctorId);
+        var (successCount, errorCount) = await _sut.CreateOvertimeSlotsAsync(request, doctorId, TestContext.Current.CancellationToken);
 
         // First 2 slots should fail overlap test. Remaining 4 should succeed.
         Assert.Equal(4, successCount);

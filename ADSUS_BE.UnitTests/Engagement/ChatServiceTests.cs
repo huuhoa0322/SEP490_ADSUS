@@ -72,7 +72,7 @@ public class ChatServiceTests
         var userId = Guid.NewGuid();
 
         // Act
-        var result = await sut.SendMessageAsync(userId, new SendChatMessageRequest { Content = "Tôi bị đau đầu" });
+        var result = await sut.SendMessageAsync(userId, new SendChatMessageRequest { Content = "Tôi bị đau đầu" }, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(ChatRole.Assistant, result.Role);
@@ -113,7 +113,7 @@ public class ChatServiceTests
         var sut = NewSut(repo.Object, filter.Object, chat.Object);
 
         // Act
-        var result = await sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "Tôi bị trầm cảm" });
+        var result = await sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "Tôi bị trầm cảm" }, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.True(result.IsSafetyResponse);
@@ -135,7 +135,7 @@ public class ChatServiceTests
         var sut = NewSut();
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "" }));
+            sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "" }, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class ChatServiceTests
         var sut = NewSut();
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "   " }));
+            sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "   " }, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -154,7 +154,7 @@ public class ChatServiceTests
         var longContent = new string('x', 1001);
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = longContent }));
+            sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = longContent }, TestContext.Current.CancellationToken));
 
         Assert.Contains("1000", ex.Message);
     }
@@ -181,7 +181,7 @@ public class ChatServiceTests
         var sut = NewSut(repo.Object, filter.Object, chat.Object);
         var maxContent = new string('x', 1000); // exactly 1000
 
-        var result = await sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = maxContent });
+        var result = await sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = maxContent }, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(ChatRole.Assistant, result.Role);
@@ -206,7 +206,7 @@ public class ChatServiceTests
 
         var sut = NewSut(repo.Object);
 
-        var result = await sut.GetHistoryAsync(userId, now.AddDays(-1), now, 50);
+        var result = await sut.GetHistoryAsync(userId, now.AddDays(-1), now, 50, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Messages.Count);
     }
@@ -223,7 +223,7 @@ public class ChatServiceTests
 
         var sut = NewSut(repo.Object);
 
-        await sut.GetHistoryAsync(Guid.NewGuid(), DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, 9999);
+        await sut.GetHistoryAsync(Guid.NewGuid(), DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, 9999, TestContext.Current.CancellationToken);
 
         repo.Verify(r => r.ListByUserAsync(
             It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), 200, It.IsAny<CancellationToken>()), Times.Once);
@@ -250,7 +250,7 @@ public class ChatServiceTests
 
         var sut = NewSut(repo.Object);
 
-        var result = await sut.GetHistoryAsync(userId, now.AddDays(-1), now, 50);
+        var result = await sut.GetHistoryAsync(userId, now.AddDays(-1), now, 50, TestContext.Current.CancellationToken);
 
         Assert.Single(result.Messages);
         Assert.True(result.Messages[0].IsSafetyResponse);
@@ -306,7 +306,7 @@ public class ChatServiceTests
         var sut = NewSut(repo.Object, filter.Object, chat.Object, intentDetector.Object, aggregator.Object);
 
         // Act
-        await sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "Thuốc của tôi uống thế nào?" });
+        await sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "Thuốc của tôi uống thế nào?" }, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(capturedSystemPrompt);
@@ -353,7 +353,7 @@ public class ChatServiceTests
         var sut = NewSut(repo.Object, filter.Object, chat.Object, intentDetector.Object, aggregator.Object);
 
         // Act
-        await sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "Xin chào" });
+        await sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "Xin chào" }, TestContext.Current.CancellationToken);
 
         // Assert — default prompt used (no patient context)
         Assert.NotNull(capturedSystemPrompt);

@@ -49,7 +49,7 @@ public class BlogPostServiceTests
         var sut = CreateSut(repo);
 
         // Act
-        var result = await sut.ListPublishedAsync();
+        var result = await sut.ListPublishedAsync(ct: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Single(result.Items);
@@ -65,7 +65,7 @@ public class BlogPostServiceTests
 
         var sut = CreateSut(repo);
 
-        var result = await sut.ListPublishedAsync();
+        var result = await sut.ListPublishedAsync(ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Items);
         Assert.Equal(1, result.Page);
@@ -82,7 +82,7 @@ public class BlogPostServiceTests
 
         var sut = CreateSut(repo);
 
-        var result = await sut.GetByIdAsync(post.PostId);
+        var result = await sut.GetByIdAsync(post.PostId, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(post.PostId, result.Id);
@@ -100,7 +100,7 @@ public class BlogPostServiceTests
         var sut = CreateSut(repo);
 
         // Act — service lọc Draft, trả null cho bệnh nhân
-        var result = await sut.GetByIdAsync(draft.PostId);
+        var result = await sut.GetByIdAsync(draft.PostId, TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -114,7 +114,7 @@ public class BlogPostServiceTests
 
         var sut = CreateSut(repo);
 
-        var result = await sut.GetByIdAsync(Guid.NewGuid());
+        var result = await sut.GetByIdAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -135,7 +135,7 @@ public class BlogPostServiceTests
 
         var sut = CreateSut(repo);
 
-        var result = await sut.ListAllAsync();
+        var result = await sut.ListAllAsync(ct: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Items.Count);
     }
@@ -154,7 +154,7 @@ public class BlogPostServiceTests
 
         var sut = CreateSut(repo);
 
-        var result = await sut.ListAllAsync(statusFilter: BlogPostStatus.Draft);
+        var result = await sut.ListAllAsync(statusFilter: BlogPostStatus.Draft, ct: TestContext.Current.CancellationToken);
 
         Assert.Single(result.Items);
         Assert.Equal(BlogPostStatus.Draft, result.Items[0].Status);
@@ -170,7 +170,7 @@ public class BlogPostServiceTests
 
         var sut = CreateSut(repo);
 
-        var result = await sut.GetByIdForAdminAsync(draft.PostId);
+        var result = await sut.GetByIdForAdminAsync(draft.PostId, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(draft.PostId, result.Id);
@@ -188,7 +188,7 @@ public class BlogPostServiceTests
         var request = new CreateBlogPostRequest { Title = "New Post", Content = "Content" };
         var authorId = Guid.NewGuid();
 
-        var result = await sut.CreateAsync(request, authorId);
+        var result = await sut.CreateAsync(request, authorId, TestContext.Current.CancellationToken);
 
         Assert.Equal("New Post", result.Title);
         Assert.Equal(BlogPostStatus.Draft, result.Status);
@@ -206,7 +206,7 @@ public class BlogPostServiceTests
         var sut = CreateSut(repo);
         var request = new UpdateBlogPostRequest { Title = "Updated", Content = "Content" };
 
-        var result = await sut.UpdateAsync(published.PostId, request);
+        var result = await sut.UpdateAsync(published.PostId, request, TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -221,7 +221,7 @@ public class BlogPostServiceTests
 
         var sut = CreateSut(repo);
 
-        var result = await sut.PublishAsync(published.PostId);
+        var result = await sut.PublishAsync(published.PostId, TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -242,7 +242,7 @@ public class BlogPostServiceTests
 
         var sut = CreateSut(repo);
 
-        var result = await sut.PublishAsync(draft.PostId);
+        var result = await sut.PublishAsync(draft.PostId, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(BlogPostStatus.Published, result.Status);

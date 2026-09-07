@@ -76,16 +76,16 @@ public class ShiftRequestServiceTests
             Reason = "Test reason"
         };
 
-        _repoMock.Setup(r => r.HasActiveRequestAsync(_doctorId, dto.RequestDate, dto.ShiftType, dto.RequestType, default))
+        _repoMock.Setup(r => r.HasActiveRequestAsync(_doctorId, dto.RequestDate, dto.ShiftType, dto.RequestType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        var result = await _sut.CreateRequestAsync(_doctorId, dto);
+        var result = await _sut.CreateRequestAsync(_doctorId, dto, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(ShiftRequestStatus.Pending, result.Status);
-        _repoMock.Verify(r => r.AddAsync(It.IsAny<ShiftRequest>(), default), Times.Once);
+        _repoMock.Verify(r => r.AddAsync(It.IsAny<ShiftRequest>(), It.IsAny<CancellationToken>()), Times.Once);
         // Kiểm tra đã gửi notification cho Admin
-        _notificationMock.Verify(n => n.SendAsync(It.Is<SendNotificationRequest>(r => r.UserId == _adminId && r.Type == "shift_request_new"), default), Times.Once);
+        _notificationMock.Verify(n => n.SendAsync(It.Is<SendNotificationRequest>(r => r.UserId == _adminId && r.Type == "shift_request_new"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -98,10 +98,10 @@ public class ShiftRequestServiceTests
             RequestDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3))
         };
 
-        _repoMock.Setup(r => r.HasActiveRequestAsync(_doctorId, dto.RequestDate, dto.ShiftType, dto.RequestType, default))
+        _repoMock.Setup(r => r.HasActiveRequestAsync(_doctorId, dto.RequestDate, dto.ShiftType, dto.RequestType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true); // Trả về true (đã có request overlap)
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateRequestAsync(_doctorId, dto));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateRequestAsync(_doctorId, dto, TestContext.Current.CancellationToken));
         Assert.Contains("Bạn đã có yêu cầu cho Ca Sáng hoặc Ca Chiều", ex.Message);
     }
 
@@ -116,7 +116,7 @@ public class ShiftRequestServiceTests
             Reason = "Too soon"
         };
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateRequestAsync(_doctorId, dto));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateRequestAsync(_doctorId, dto, TestContext.Current.CancellationToken));
         Assert.Contains("trước ít nhất 2 ngày", ex.Message);
     }
 
@@ -137,7 +137,7 @@ public class ShiftRequestServiceTests
             User = new User { UserId = _doctorId, FullName = "Dr. Test" }
         };
 
-        _repoMock.Setup(r => r.GetByIdAsync(requestId, default))
+        _repoMock.Setup(r => r.GetByIdAsync(requestId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(request);
 
         // Add slots to DB
@@ -164,25 +164,25 @@ public class ShiftRequestServiceTests
             Status = AppointmentStatus.Booked
         };
         _db.Appointments.Add(appointment);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var dto = new ReviewShiftRequestDto { Decision = "APPROVED" };
 
-        var result = await _sut.ReviewRequestAsync(requestId, _adminId, dto);
+        var result = await _sut.ReviewRequestAsync(requestId, _adminId, dto, TestContext.Current.CancellationToken);
 
         Assert.Equal(ShiftRequestStatus.Approved, result.Status);
         
-        var updatedSlot = await _db.ScheduleSlots.FirstAsync(s => s.SlotId == slot.SlotId);
+        var updatedSlot = await _db.ScheduleSlots.FirstAsync(s => s.SlotId == slot.SlotId, TestContext.Current.CancellationToken);
         Assert.Equal(SlotStatus.Closed, updatedSlot.Status);
 
-        var updatedAppointment = await _db.Appointments.FirstAsync(a => a.AppointmentId == appointment.AppointmentId);
+        var updatedAppointment = await _db.Appointments.FirstAsync(a => a.AppointmentId == appointment.AppointmentId, TestContext.Current.CancellationToken);
         Assert.Equal(AppointmentStatus.Cancelled, updatedAppointment.Status);
 
         // Gửi noti cho bệnh nhân bị hủy
-        _notificationMock.Verify(n => n.SendAsync(It.Is<SendNotificationRequest>(r => r.UserId == patientUserId && r.Type == "appointment_cancellation"), default), Times.Once);
+        _notificationMock.Verify(n => n.SendAsync(It.Is<SendNotificationRequest>(r => r.UserId == patientUserId && r.Type == "appointment_cancellation"), It.IsAny<CancellationToken>()), Times.Once);
         
         // Gửi noti cho bác sĩ
-        _notificationMock.Verify(n => n.SendAsync(It.Is<SendNotificationRequest>(r => r.UserId == _doctorId && r.Type == "shift_request_reviewed"), default), Times.Once);
+        _notificationMock.Verify(n => n.SendAsync(It.Is<SendNotificationRequest>(r => r.UserId == _doctorId && r.Type == "shift_request_reviewed"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -190,11 +190,11 @@ public class ShiftRequestServiceTests
     {
         var requestId = Guid.NewGuid();
         var request = new ShiftRequest { RequestId = requestId, Status = ShiftRequestStatus.Pending };
-        _repoMock.Setup(r => r.GetByIdAsync(requestId, default)).ReturnsAsync(request);
+        _repoMock.Setup(r => r.GetByIdAsync(requestId, It.IsAny<CancellationToken>())).ReturnsAsync(request);
 
         var dto = new ReviewShiftRequestDto { Decision = "REJECTED", RejectReason = "" };
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.ReviewRequestAsync(requestId, _adminId, dto));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.ReviewRequestAsync(requestId, _adminId, dto, TestContext.Current.CancellationToken));
         Assert.Contains("lý do từ chối", ex.Message);
     }
 }

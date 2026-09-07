@@ -91,7 +91,7 @@ public class AiModelsControllerIntegrationTests
     {
         using var app = MakeApp();
         var client = app.CreateClient(); // No token
-        var response = await client.GetAsync("/api/v1/ai-model-versions");
+        var response = await client.GetAsync("/api/v1/ai-model-versions", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -105,7 +105,7 @@ public class AiModelsControllerIntegrationTests
         using var app = MakeApp();
         var user = role switch { "NURSE" => _nurse, "PATIENT" => _patient, _ => _doctor };
         var client = MakeClientWithToken(app, user);
-        var response = await client.GetAsync("/api/v1/ai-model-versions");
+        var response = await client.GetAsync("/api/v1/ai-model-versions", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
@@ -116,7 +116,7 @@ public class AiModelsControllerIntegrationTests
     {
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
-        var response = await client.GetAsync($"/api/v1/ai-model-versions/{Guid.NewGuid()}");
+        var response = await client.GetAsync($"/api/v1/ai-model-versions/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
@@ -129,7 +129,7 @@ public class AiModelsControllerIntegrationTests
         using var app = MakeApp();
         var user = role == "NURSE" ? _nurse : _patient;
         var client = MakeClientWithToken(app, user);
-        var response = await client.GetAsync("/api/v1/ai-model-versions/active");
+        var response = await client.GetAsync("/api/v1/ai-model-versions/active", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
@@ -143,10 +143,10 @@ public class AiModelsControllerIntegrationTests
         _aiModelService.Setup(s => s.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ActiveAiModelVersionDto { VersionCode = "v1.0.0", Status = "Active" });
 
-        var response = await client.GetAsync("/api/v1/ai-model-versions/active");
+        var response = await client.GetAsync("/api/v1/ai-model-versions/active", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ActiveAiModelVersionDto>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ActiveAiModelVersionDto>>(TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
         Assert.Equal("v1.0.0", body.Data!.VersionCode);
     }
@@ -161,10 +161,10 @@ public class AiModelsControllerIntegrationTests
         _aiModelService.Setup(s => s.SearchVersionsAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PagedResult<AiModelVersionDto>(new List<AiModelVersionDto>(), 1, 20, 0, 0));
 
-        var response = await client.GetAsync("/api/v1/ai-model-versions");
+        var response = await client.GetAsync("/api/v1/ai-model-versions", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<AiModelVersionDto>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<AiModelVersionDto>>>(TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
     }
 
@@ -179,7 +179,7 @@ public class AiModelsControllerIntegrationTests
         _aiModelService.Setup(s => s.SearchVersionsAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PagedResult<AiModelVersionDto>(new List<AiModelVersionDto>(), 1, 100, 0, 0));
 
-        var response = await client.GetAsync("/api/v1/ai-model-versions?pageSize=999999");
+        var response = await client.GetAsync("/api/v1/ai-model-versions?pageSize=999999", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         _aiModelService.Verify(s => s.SearchVersionsAsync(It.IsAny<string>(), 1, 100, It.IsAny<CancellationToken>()), Times.Once);
@@ -195,7 +195,7 @@ public class AiModelsControllerIntegrationTests
         _aiModelService.Setup(s => s.SearchVersionsAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PagedResult<AiModelVersionDto>(new List<AiModelVersionDto>(), 1, 20, 0, 0));
 
-        var response = await client.GetAsync("/api/v1/ai-model-versions?page=0&pageSize=-5");
+        var response = await client.GetAsync("/api/v1/ai-model-versions?page=0&pageSize=-5", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         _aiModelService.Verify(s => s.SearchVersionsAsync(It.IsAny<string>(), 1, 20, It.IsAny<CancellationToken>()), Times.Once);
@@ -212,7 +212,7 @@ public class AiModelsControllerIntegrationTests
         _aiModelService.Setup(s => s.GetVersionByIdAsync(id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AiModelVersionDto());
 
-        var response = await client.GetAsync($"/api/v1/ai-model-versions/{id}");
+        var response = await client.GetAsync($"/api/v1/ai-model-versions/{id}", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
@@ -225,7 +225,7 @@ public class AiModelsControllerIntegrationTests
         
         // Missing VersionCode, HfRepoId, HfFilename
         var req = new { Description = "Test" };
-        var response = await client.PostAsJsonAsync("/api/v1/ai-model-versions", req);
+        var response = await client.PostAsJsonAsync("/api/v1/ai-model-versions", req, TestContext.Current.CancellationToken);
         
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -243,7 +243,7 @@ public class AiModelsControllerIntegrationTests
         _aiModelService.Setup(s => s.RegisterVersionAsync(It.IsAny<RegisterModelVersionRequest>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AiModelVersionDto { ModelVersionId = id });
 
-        var response = await client.PostAsJsonAsync("/api/v1/ai-model-versions", req);
+        var response = await client.PostAsJsonAsync("/api/v1/ai-model-versions", req, TestContext.Current.CancellationToken);
         
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var location = response.Headers.Location;
@@ -264,7 +264,7 @@ public class AiModelsControllerIntegrationTests
         _aiModelService.Setup(s => s.UpdateVersionAsync(id, It.IsAny<UpdateModelVersionRequest>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var response = await client.PutAsJsonAsync($"/api/v1/ai-model-versions/{id}", req);
+        var response = await client.PutAsJsonAsync($"/api/v1/ai-model-versions/{id}", req, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
@@ -278,7 +278,7 @@ public class AiModelsControllerIntegrationTests
         var req = new ActivateVersionRequest { Status = "INACTIVE" }; // Not ACTIVE
         var id = Guid.NewGuid();
 
-        var response = await client.PatchAsJsonAsync($"/api/v1/ai-model-versions/{id}", req);
+        var response = await client.PatchAsJsonAsync($"/api/v1/ai-model-versions/{id}", req, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
     }
 
@@ -295,7 +295,7 @@ public class AiModelsControllerIntegrationTests
         _aiModelService.Setup(s => s.ActivateVersionAsync(id, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var response = await client.PatchAsJsonAsync($"/api/v1/ai-model-versions/{id}", req);
+        var response = await client.PatchAsJsonAsync($"/api/v1/ai-model-versions/{id}", req, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
@@ -312,7 +312,7 @@ public class AiModelsControllerIntegrationTests
         _aiModelService.Setup(s => s.ActivateVersionAsync(id, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new TaskCanceledException("Timeout from HttpClient"));
 
-        var response = await client.PatchAsJsonAsync($"/api/v1/ai-model-versions/{id}", req);
+        var response = await client.PatchAsJsonAsync($"/api/v1/ai-model-versions/{id}", req, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
     }
 
@@ -327,7 +327,7 @@ public class AiModelsControllerIntegrationTests
         _aiMetricsService.Setup(s => s.CalculateMap50Async(id, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var response = await client.PostAsync($"/api/v1/ai-model-versions/{id}/calculate-map50", null);
+        var response = await client.PostAsync($"/api/v1/ai-model-versions/{id}/calculate-map50", null, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }

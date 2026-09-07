@@ -42,11 +42,11 @@ public partial class MedicinesControllerIntegrationTests
             .ThrowsAsync(new BusinessException("Vui lòng nhập Đơn vị dùng (Usage Unit) khi đã nhập Hàm lượng."));
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/medicines", request);
+        var response = await client.PostAsJsonAsync("/api/v1/medicines", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("Vui lòng nhập Đơn vị dùng (Usage Unit)", content);
     }
 
@@ -70,11 +70,11 @@ public partial class MedicinesControllerIntegrationTests
             .ThrowsAsync(new BusinessException("Vui lòng nhập đúng Hàm lượng"));
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/medicines", request);
+        var response = await client.PostAsJsonAsync("/api/v1/medicines", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("Vui lòng nhập đúng Hàm lượng", content);
     }
 
@@ -96,7 +96,7 @@ public partial class MedicinesControllerIntegrationTests
             .ReturnsAsync(mockResponse);
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/medicines/{id}", request);
+        var response = await client.PutAsJsonAsync($"/api/v1/medicines/{id}", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -116,11 +116,11 @@ public partial class MedicinesControllerIntegrationTests
             .ThrowsAsync(new BusinessException("Vui lòng nhập đúng Hàm lượng"));
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/medicines/{id}", request);
+        var response = await client.PutAsJsonAsync($"/api/v1/medicines/{id}", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("Vui lòng nhập đúng Hàm lượng", content);
     }
 
@@ -138,11 +138,11 @@ public partial class MedicinesControllerIntegrationTests
             .ThrowsAsync(new BusinessException("Tên thuốc là Master Data gốc, tuyệt đối không được sửa sau khi tạo."));
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/medicines/{id}", request);
+        var response = await client.PutAsJsonAsync($"/api/v1/medicines/{id}", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("Tên thuốc là Master Data gốc, tuyệt đối không được sửa sau khi tạo.", content);
     }
 
@@ -160,7 +160,7 @@ public partial class MedicinesControllerIntegrationTests
             .ThrowsAsync(new ResourceNotFoundException("Không tìm thấy thuốc."));
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/medicines/{id}", request);
+        var response = await client.PutAsJsonAsync($"/api/v1/medicines/{id}", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);

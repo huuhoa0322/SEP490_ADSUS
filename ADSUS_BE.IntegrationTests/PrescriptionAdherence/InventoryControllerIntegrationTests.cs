@@ -58,7 +58,7 @@ public class InventoryControllerIntegrationTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/inventory/import/bulk", requests);
+        var response = await client.PostAsJsonAsync("/api/v1/inventory/import/bulk", requests, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -88,11 +88,11 @@ public class InventoryControllerIntegrationTests
             .ReturnsAsync(mockResponse);
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/inventory/validate-import", request);
+        var response = await client.PostAsJsonAsync("/api/v1/inventory/validate-import", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ImportValidationResponse>();
+        var body = await response.Content.ReadFromJsonAsync<ImportValidationResponse>(TestContext.Current.CancellationToken);
         Assert.NotNull(body);
         Assert.False(body.IsValid);
         Assert.Equal("Test Error", body.ErrorMessage);
@@ -106,7 +106,7 @@ public class InventoryControllerIntegrationTests
         var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Patient);
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/inventory/import/bulk", new List<ImportInventoryRequest>());
+        var response = await client.PostAsJsonAsync("/api/v1/inventory/import/bulk", new List<ImportInventoryRequest>(), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -138,11 +138,11 @@ public class InventoryControllerIntegrationTests
             .ReturnsAsync(mockResponse);
 
         // Act
-        var response = await client.PutAsJsonAsync("/api/v1/inventory/adjust", request);
+        var response = await client.PutAsJsonAsync("/api/v1/inventory/adjust", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<AdjustInventoryResponse>();
+        var body = await response.Content.ReadFromJsonAsync<AdjustInventoryResponse>(TestContext.Current.CancellationToken);
         Assert.NotNull(body);
         Assert.Equal(50, body.NewQuantity);
         _inventoryService.Verify(s => s.AdjustAsync(It.IsAny<AdjustInventoryRequest>()), Times.Once);
@@ -156,7 +156,7 @@ public class InventoryControllerIntegrationTests
         var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Patient);
 
         // Act
-        var response = await client.PutAsJsonAsync("/api/v1/inventory/adjust", new AdjustInventoryRequest { BatchId = Guid.NewGuid(), Reason = "A" });
+        var response = await client.PutAsJsonAsync("/api/v1/inventory/adjust", new AdjustInventoryRequest { BatchId = Guid.NewGuid(), Reason = "A" }, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -170,7 +170,7 @@ public class InventoryControllerIntegrationTests
         var client = app.CreateClient(); // Không có token
 
         // Act
-        var response = await client.PutAsJsonAsync("/api/v1/inventory/adjust", new AdjustInventoryRequest { BatchId = Guid.NewGuid(), Reason = "A" });
+        var response = await client.PutAsJsonAsync("/api/v1/inventory/adjust", new AdjustInventoryRequest { BatchId = Guid.NewGuid(), Reason = "A" }, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -191,7 +191,7 @@ public class InventoryControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PutAsJsonAsync("/api/v1/inventory/adjust", request);
+        var response = await client.PutAsJsonAsync("/api/v1/inventory/adjust", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -212,7 +212,7 @@ public class InventoryControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PutAsJsonAsync("/api/v1/inventory/adjust", request);
+        var response = await client.PutAsJsonAsync("/api/v1/inventory/adjust", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -240,11 +240,11 @@ public class InventoryControllerIntegrationTests
             .ReturnsAsync(mockSummary);
 
         // Act
-        var response = await client.GetAsync("/api/v1/inventory/alerts");
+        var response = await client.GetAsync("/api/v1/inventory/alerts", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<InventoryAlertSummary>();
+        var body = await response.Content.ReadFromJsonAsync<InventoryAlertSummary>(TestContext.Current.CancellationToken);
         Assert.NotNull(body);
         Assert.Equal(1, body.LowStockCount);
         _inventoryService.Verify(s => s.GetAlertSummaryAsync(), Times.Once);
@@ -258,7 +258,7 @@ public class InventoryControllerIntegrationTests
         var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Patient);
 
         // Act
-        var response = await client.GetAsync("/api/v1/inventory/alerts");
+        var response = await client.GetAsync("/api/v1/inventory/alerts", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);

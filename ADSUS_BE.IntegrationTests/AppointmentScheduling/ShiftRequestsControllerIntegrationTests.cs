@@ -47,10 +47,10 @@ public class ShiftRequestsControllerIntegrationTests
             Reason = "Integration test"
         };
 
-        var response = await client.PostAsJsonAsync("/api/v1/shift-requests", dto);
+        var response = await client.PostAsJsonAsync("/api/v1/shift-requests", dto, TestContext.Current.CancellationToken);
         
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<ApiResponse<ShiftRequestResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var result = await response.Content.ReadFromJsonAsync<ApiResponse<ShiftRequestResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.NotNull(result);
         Assert.Equal(201, result!.Code);
         Assert.NotNull(result.Data);
@@ -89,10 +89,10 @@ public class ShiftRequestsControllerIntegrationTests
             RejectReason = "Too many overtimes"
         };
 
-        var reviewResponse = await client.PutAsJsonAsync($"/api/v1/admin/shift-requests/{requestId}/review", reviewDto);
+        var reviewResponse = await client.PutAsJsonAsync($"/api/v1/admin/shift-requests/{requestId}/review", reviewDto, TestContext.Current.CancellationToken);
         
         Assert.Equal(HttpStatusCode.OK, reviewResponse.StatusCode);
-        var reviewResult = await reviewResponse.Content.ReadFromJsonAsync<ApiResponse<ShiftRequestResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var reviewResult = await reviewResponse.Content.ReadFromJsonAsync<ApiResponse<ShiftRequestResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Equal(ShiftRequestStatus.Rejected, reviewResult!.Data!.Status);
     }
 

@@ -78,7 +78,7 @@ public class PrescriptionServiceTests
             .ReturnsAsync((Medicine?)null);
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<BusinessException>(() => service.CreateAsync(doctorId, request));
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => service.CreateAsync(doctorId, request, TestContext.Current.CancellationToken));
         Assert.Contains("không tồn tại trong hệ thống hoặc đã bị ngừng sử dụng", ex.Message);
     }
 
@@ -125,7 +125,7 @@ public class PrescriptionServiceTests
             ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
             LotNumber = "LOT01"
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var request = new CreatePrescriptionRequest(
             CaseId: caseId,
@@ -144,7 +144,7 @@ public class PrescriptionServiceTests
         );
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<BusinessException>(() => service.CreateAsync(doctorId, request));
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => service.CreateAsync(doctorId, request, TestContext.Current.CancellationToken));
         Assert.Contains("không đủ số lượng trong kho", ex.Message);
         Assert.Contains("Yêu cầu: 15", ex.Message);
         Assert.Contains("Hiện còn: 10", ex.Message);
@@ -189,7 +189,7 @@ public class PrescriptionServiceTests
             ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
             LotNumber = "LOT01"
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var serviceWithDb = new PrescriptionService(
             db,
@@ -218,7 +218,7 @@ public class PrescriptionServiceTests
         );
 
         // Act
-        var result = await serviceWithDb.CreateAsync(doctorId, request);
+        var result = await serviceWithDb.CreateAsync(doctorId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -247,7 +247,7 @@ public class PrescriptionServiceTests
             GeneralNote: null);
 
         var ex = await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => service.CreateAsync(unknownDoctorId, request));
+            () => service.CreateAsync(unknownDoctorId, request, TestContext.Current.CancellationToken));
         Assert.Contains("bác sĩ", ex.Message);
     }
 
@@ -267,7 +267,7 @@ public class PrescriptionServiceTests
             GeneralNote: null);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => service.CreateAsync(nurseId, request));
+            () => service.CreateAsync(nurseId, request, TestContext.Current.CancellationToken));
         Assert.Contains("Chỉ bác sĩ mới được kê đơn", ex.Message);
     }
 
@@ -287,7 +287,7 @@ public class PrescriptionServiceTests
             GeneralNote: null);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => service.CreateAsync(doctorId, request));
+            () => service.CreateAsync(doctorId, request, TestContext.Current.CancellationToken));
         Assert.Contains("không hoạt động", ex.Message);
     }
 
@@ -312,7 +312,7 @@ public class PrescriptionServiceTests
             GeneralNote: null);
 
         var ex = await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => service.CreateAsync(doctorId, request));
+            () => service.CreateAsync(doctorId, request, TestContext.Current.CancellationToken));
         Assert.Contains(caseId.ToString(), ex.Message);
     }
 
@@ -337,7 +337,7 @@ public class PrescriptionServiceTests
             GeneralNote: null);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => service.CreateAsync(doctorId, request));
+            () => service.CreateAsync(doctorId, request, TestContext.Current.CancellationToken));
         Assert.Contains("Confirmed", ex.Message);
     }
 
@@ -363,7 +363,7 @@ public class PrescriptionServiceTests
             GeneralNote: null);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => service.CreateAsync(doctorId, request));
+            () => service.CreateAsync(doctorId, request, TestContext.Current.CancellationToken));
         Assert.Contains("quyền kê đơn", ex.Message);
     }
 
@@ -404,7 +404,7 @@ public class PrescriptionServiceTests
             GeneralNote: null);
 
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => service.CreateAsync(doctorId, request));
+            () => service.CreateAsync(doctorId, request, TestContext.Current.CancellationToken));
         Assert.Contains("không tồn tại trong hệ thống", ex.Message);
     }
 }

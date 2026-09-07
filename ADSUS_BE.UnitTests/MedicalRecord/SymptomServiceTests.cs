@@ -38,7 +38,7 @@ public class SymptomServiceTests
             .ReturnsAsync(new List<SymptomCategory> { category });
 
         // Act
-        var result = await _sut.GetCategoriesAsync();
+        var result = await _sut.GetCategoriesAsync(TestContext.Current.CancellationToken);
 
         // Assert
         var row = Assert.Single(result);
@@ -60,7 +60,7 @@ public class SymptomServiceTests
             .ReturnsAsync(new List<SymptomCategory>());
 
         // Act
-        var result = await _sut.GetCategoriesAsync();
+        var result = await _sut.GetCategoriesAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -82,7 +82,7 @@ public class SymptomServiceTests
             .ReturnsAsync(new List<SymptomCategory> { category });
 
         // Act
-        var result = await _sut.GetCategoriesAsync();
+        var result = await _sut.GetCategoriesAsync(TestContext.Current.CancellationToken);
 
         // Assert
         var row = Assert.Single(result);

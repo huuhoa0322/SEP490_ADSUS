@@ -40,7 +40,7 @@ public class PharmacistAuthorizationTests : IClassFixture<WebApplicationFactory<
         var client = TestAuthHelper.CreatePharmacistClient(_factory, _users);
 
         // Act
-        var response = await client.GetAsync(url);
+        var response = await client.GetAsync(url, TestContext.Current.CancellationToken);
 
         // Assert
         // Nên trả về 200 OK, nhưng nếu dữ liệu mock không đủ thì có thể trả 404/400.
@@ -61,7 +61,7 @@ public class PharmacistAuthorizationTests : IClassFixture<WebApplicationFactory<
         var client = TestAuthHelper.CreatePharmacistClient(_factory, _users);
 
         // Act
-        var response = await client.GetAsync(url);
+        var response = await client.GetAsync(url, TestContext.Current.CancellationToken);
 
         // Assert
         // Pharmacist không được cấp quyền cho các API không liên quan tới thuốc
@@ -81,13 +81,13 @@ public class PharmacistAuthorizationTests : IClassFixture<WebApplicationFactory<
         var patientClient = TestAuthHelper.CreatePatientClient(_factory, _users);
 
         // Act & Assert
-        var doctorResponse = await doctorClient.GetAsync(url);
+        var doctorResponse = await doctorClient.GetAsync(url, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, doctorResponse.StatusCode);
 
-        var nurseResponse = await nurseClient.GetAsync(url);
+        var nurseResponse = await nurseClient.GetAsync(url, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, nurseResponse.StatusCode);
 
-        var patientResponse = await patientClient.GetAsync(url);
+        var patientResponse = await patientClient.GetAsync(url, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, patientResponse.StatusCode);
     }
 }

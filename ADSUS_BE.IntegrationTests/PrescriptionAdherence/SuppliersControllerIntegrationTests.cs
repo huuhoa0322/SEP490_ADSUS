@@ -56,11 +56,11 @@ public class SuppliersControllerIntegrationTests
             .ReturnsAsync(pagedResult);
 
         // Act
-        var response = await client.GetAsync("/api/v1/suppliers?page=1&pageSize=10");
+        var response = await client.GetAsync("/api/v1/suppliers?page=1&pageSize=10", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<PagedResult<SupplierResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<PagedResult<SupplierResponse>>(TestContext.Current.CancellationToken);
         Assert.NotNull(body);
         Assert.Single(body.Items);
     }
@@ -73,7 +73,7 @@ public class SuppliersControllerIntegrationTests
         var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Doctor);
 
         // Act
-        var response = await client.GetAsync("/api/v1/suppliers");
+        var response = await client.GetAsync("/api/v1/suppliers", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -93,7 +93,7 @@ public class SuppliersControllerIntegrationTests
             .ReturnsAsync(mockResponse);
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/suppliers", request);
+        var response = await client.PostAsJsonAsync("/api/v1/suppliers", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -110,7 +110,7 @@ public class SuppliersControllerIntegrationTests
         var request = new CreateSupplierRequest("", "123", "a@a", "A", "1");
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/suppliers", request);
+        var response = await client.PostAsJsonAsync("/api/v1/suppliers", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -129,7 +129,7 @@ public class SuppliersControllerIntegrationTests
             .ThrowsAsync(new BusinessException("Tên nhà cung cấp đã tồn tại."));
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/suppliers", request);
+        var response = await client.PostAsJsonAsync("/api/v1/suppliers", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
@@ -150,7 +150,7 @@ public class SuppliersControllerIntegrationTests
             .ReturnsAsync(mockResponse);
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/suppliers/{id}", request);
+        var response = await client.PutAsJsonAsync($"/api/v1/suppliers/{id}", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -168,7 +168,7 @@ public class SuppliersControllerIntegrationTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var response = await client.PatchAsJsonAsync($"/api/v1/suppliers/{id}/status", new { isActive = false });
+        var response = await client.PatchAsJsonAsync($"/api/v1/suppliers/{id}/status", new { isActive = false }, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
@@ -186,7 +186,7 @@ public class SuppliersControllerIntegrationTests
             .ThrowsAsync(new ResourceNotFoundException("Not found"));
 
         // Act
-        var response = await client.PatchAsJsonAsync($"/api/v1/suppliers/{id}/status", new { isActive = false });
+        var response = await client.PatchAsJsonAsync($"/api/v1/suppliers/{id}/status", new { isActive = false }, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);

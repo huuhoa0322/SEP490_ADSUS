@@ -36,12 +36,12 @@ public partial class MedicinesControllerIntegrationTests
             .ReturnsAsync(mockResult);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/medicines?search={keyword}&limit=20");
+        var response = await client.GetAsync($"/api/v1/medicines?search={keyword}&limit=20", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         
-        var body = await response.Content.ReadFromJsonAsync<List<MedicineResponse>>();
+        var body = await response.Content.ReadFromJsonAsync<List<MedicineResponse>>(TestContext.Current.CancellationToken);
         Assert.NotNull(body);
         Assert.Single(body);
         Assert.Equal("Paracetamol 500mg", body[0].Name);
@@ -55,7 +55,7 @@ public partial class MedicinesControllerIntegrationTests
         var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Patient);
 
         // Act
-        var response = await client.GetAsync("/api/v1/medicines?search=test");
+        var response = await client.GetAsync("/api/v1/medicines?search=test", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -69,7 +69,7 @@ public partial class MedicinesControllerIntegrationTests
         var client = app.CreateClient(); // No token
 
         // Act
-        var response = await client.GetAsync("/api/v1/medicines?search=test");
+        var response = await client.GetAsync("/api/v1/medicines?search=test", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -101,7 +101,7 @@ public partial class MedicinesControllerIntegrationTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var response = await client.PatchAsync($"/api/v1/medicines/{id}/activate", null);
+        var response = await client.PatchAsync($"/api/v1/medicines/{id}/activate", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);

@@ -29,7 +29,7 @@ public class MedicineRepositoryTests
         db.Medicines.Add(new Medicine { MedicineId = Guid.NewGuid(), Name = "Zyrtec" });
         db.Medicines.Add(new Medicine { MedicineId = Guid.NewGuid(), Name = "Aspirin" });
         db.Medicines.Add(new Medicine { MedicineId = Guid.NewGuid(), Name = "Panadol" });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
         var result = await sut.SearchByNameAsync("", limit: 2, CancellationToken.None);
@@ -52,7 +52,7 @@ public class MedicineRepositoryTests
         db.Medicines.Add(new Medicine { MedicineId = Guid.NewGuid(), Name = "Aspirin 500mg" });
         db.Medicines.Add(new Medicine { MedicineId = Guid.NewGuid(), Name = "Paracetamol" });
         db.Medicines.Add(new Medicine { MedicineId = Guid.NewGuid(), Name = "Paralmax" });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
         // InMemory provider doesn't support EF.Functions.ILike natively out of the box exactly like Postgres,

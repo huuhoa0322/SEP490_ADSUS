@@ -72,7 +72,7 @@ public class PasswordResetServiceTests
         var hashCu = user.PasswordHash;
         SetupGetByPhone(user);
 
-        await _sut.RequestSelfServiceResetAsync(BuildRequest());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest(), TestContext.Current.CancellationToken);
 
         Assert.NotEqual(hashCu, user.PasswordHash);
         // BR-04 — cấp lại xong là phải đổi ở lần đăng nhập kế tiếp (UC-25).
@@ -88,7 +88,7 @@ public class PasswordResetServiceTests
         // AF-01 — không tìm thấy tài khoản thì im lặng, không ghi gì, không gửi gì.
         SetupGetByPhone(null);
 
-        await _sut.RequestSelfServiceResetAsync(BuildRequest());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest(), TestContext.Current.CancellationToken);
 
         VerifyNoSideEffects();
     }
@@ -104,7 +104,7 @@ public class PasswordResetServiceTests
         var request = BuildRequest();
         request.Email = "nguoikhac@example.com";
 
-        await _sut.RequestSelfServiceResetAsync(request);
+        await _sut.RequestSelfServiceResetAsync(request, TestContext.Current.CancellationToken);
 
         VerifyNoSideEffects();
     }
@@ -120,7 +120,7 @@ public class PasswordResetServiceTests
         var request = BuildRequest();
         request.Email = "A@ExAmPlE.CoM";
 
-        await _sut.RequestSelfServiceResetAsync(request);
+        await _sut.RequestSelfServiceResetAsync(request, TestContext.Current.CancellationToken);
 
         Assert.True(user.MustChangePassword);
     }
@@ -134,7 +134,7 @@ public class PasswordResetServiceTests
         user.Status = trangThai;
         SetupGetByPhone(user);
 
-        await _sut.RequestSelfServiceResetAsync(BuildRequest());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest(), TestContext.Current.CancellationToken);
 
         VerifyNoSideEffects();
     }
@@ -146,7 +146,7 @@ public class PasswordResetServiceTests
         user.Email = null;
         SetupGetByPhone(user);
 
-        await _sut.RequestSelfServiceResetAsync(BuildRequest());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest(), TestContext.Current.CancellationToken);
 
         VerifyNoSideEffects();
     }
@@ -166,7 +166,7 @@ public class PasswordResetServiceTests
         var hashCu = user.PasswordHash;
         SetupGetById(user);
 
-        var result = await _sut.AdminResetAsync(user.UserId, Guid.NewGuid());
+        var result = await _sut.AdminResetAsync(user.UserId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.Success, result.Result);
         Assert.NotNull(result.TemporaryPassword);
@@ -185,7 +185,7 @@ public class PasswordResetServiceTests
         user.Status = UserStatus.Deactivated;
         SetupGetById(user);
 
-        var result = await _sut.AdminResetAsync(user.UserId, Guid.NewGuid());
+        var result = await _sut.AdminResetAsync(user.UserId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.AccountIsDeactivated, result.Result);
     }
@@ -195,7 +195,7 @@ public class PasswordResetServiceTests
     {
         SetupGetById(null);
 
-        var result = await _sut.AdminResetAsync(Guid.NewGuid(), Guid.NewGuid());
+        var result = await _sut.AdminResetAsync(Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.NotFound, result.Result);
     }
@@ -206,7 +206,7 @@ public class PasswordResetServiceTests
         // Admin đổi mật khẩu của chính mình đã có UC-25, không cần đi vòng qua đây.
         var adminId = Guid.NewGuid();
 
-        var result = await _sut.AdminResetAsync(adminId, adminId);
+        var result = await _sut.AdminResetAsync(adminId, adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.CannotTargetSelf, result.Result);
     }
@@ -222,7 +222,7 @@ public class PasswordResetServiceTests
         SetupGetByPhone(user);
         SetupEmailSendFails();
 
-        await _sut.RequestSelfServiceResetAsync(BuildRequest());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest(), TestContext.Current.CancellationToken);
 
         Assert.Equal(hashCu, user.PasswordHash);
         _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
@@ -248,7 +248,7 @@ public class PasswordResetServiceTests
               .ThrowsAsync(new InvalidOperationException("Simulated DB failure"));
 
         var exception = await Record.ExceptionAsync(
-            () => _sut.RequestSelfServiceResetAsync(BuildRequest()));
+            () => _sut.RequestSelfServiceResetAsync(BuildRequest(), TestContext.Current.CancellationToken));
 
         Assert.Null(exception);
     }
@@ -262,7 +262,7 @@ public class PasswordResetServiceTests
         var adminId = Guid.NewGuid();
         SetupGetById(user);
 
-        await _sut.AdminResetAsync(user.UserId, adminId);
+        await _sut.AdminResetAsync(user.UserId, adminId, TestContext.Current.CancellationToken);
 
         var log = Assert.Single(_audited);
         Assert.Equal("ADMIN_RESET_PASSWORD", log.Action);
@@ -275,7 +275,7 @@ public class PasswordResetServiceTests
         var user = BuildUser();
         SetupGetByPhone(user);
 
-        await _sut.RequestSelfServiceResetAsync(BuildRequest());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest(), TestContext.Current.CancellationToken);
 
         var log = Assert.Single(_audited);
         Assert.Equal("SELF_RESET_PASSWORD", log.Action);
@@ -289,7 +289,7 @@ public class PasswordResetServiceTests
         // thành chỗ dò xem số điện thoại nào có tài khoản thật.
         SetupGetByPhone(null);
 
-        await _sut.RequestSelfServiceResetAsync(BuildRequest());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest(), TestContext.Current.CancellationToken);
 
         Assert.Empty(_audited);
     }
@@ -306,7 +306,7 @@ public class PasswordResetServiceTests
         SetupGetByPhone(user);
         SetupEmailSendFails();
 
-        await _sut.RequestSelfServiceResetAsync(BuildRequest());
+        await _sut.RequestSelfServiceResetAsync(BuildRequest(), TestContext.Current.CancellationToken);
 
         Assert.Empty(_audited);
     }

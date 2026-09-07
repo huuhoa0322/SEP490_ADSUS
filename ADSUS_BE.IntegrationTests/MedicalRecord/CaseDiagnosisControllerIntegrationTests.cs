@@ -116,7 +116,7 @@ public class CaseDiagnosisControllerIntegrationTests
     {
         using var app = MakeApp();
         var client = app.CreateClient(); // No token
-        var response = await client.PostAsync($"/api/v1/cases/{Guid.NewGuid()}/analyze", MakeAnalyzePayload(true));
+        var response = await client.PostAsync($"/api/v1/cases/{Guid.NewGuid()}/analyze", MakeAnalyzePayload(true), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -128,7 +128,7 @@ public class CaseDiagnosisControllerIntegrationTests
         using var app = MakeApp();
         var user = role == "NURSE" ? _nurse : _patient;
         var client = MakeClientWithToken(app, user);
-        var response = await client.PostAsync($"/api/v1/cases/{Guid.NewGuid()}/analyze", MakeAnalyzePayload(true));
+        var response = await client.PostAsync($"/api/v1/cases/{Guid.NewGuid()}/analyze", MakeAnalyzePayload(true), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
@@ -142,7 +142,7 @@ public class CaseDiagnosisControllerIntegrationTests
         // IT_Val_01
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
-        var response = await client.PostAsync($"/api/v1/cases/{Guid.NewGuid()}/analyze", MakeAnalyzePayload(false));
+        var response = await client.PostAsync($"/api/v1/cases/{Guid.NewGuid()}/analyze", MakeAnalyzePayload(false), TestContext.Current.CancellationToken);
         
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -156,7 +156,7 @@ public class CaseDiagnosisControllerIntegrationTests
         // IT_Val_02
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
-        var response = await client.PostAsync($"/api/v1/cases/{Guid.NewGuid()}/images/confirm", MakeConfirmPayload(missOrig, missBurnt));
+        var response = await client.PostAsync($"/api/v1/cases/{Guid.NewGuid()}/images/confirm", MakeConfirmPayload(missOrig, missBurnt), TestContext.Current.CancellationToken);
         
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -177,10 +177,10 @@ public class CaseDiagnosisControllerIntegrationTests
         _diagnosisService.Setup(s => s.AnalyzeImageAsync(caseId, It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockJson);
 
-        var response = await client.PostAsync($"/api/v1/cases/{caseId}/analyze", MakeAnalyzePayload(true));
+        var response = await client.PostAsync($"/api/v1/cases/{caseId}/analyze", MakeAnalyzePayload(true), TestContext.Current.CancellationToken);
         
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
         
         _diagnosisService.Verify(s => s.AnalyzeImageAsync(caseId, It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -197,10 +197,10 @@ public class CaseDiagnosisControllerIntegrationTests
         _diagnosisService.Setup(s => s.AnalyzeImageAsync(caseId, It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new TaskCanceledException("Timeout from HttpClient"));
 
-        var response = await client.PostAsync($"/api/v1/cases/{caseId}/analyze", MakeAnalyzePayload(true));
+        var response = await client.PostAsync($"/api/v1/cases/{caseId}/analyze", MakeAnalyzePayload(true), TestContext.Current.CancellationToken);
         
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
         Assert.Equal(500, body!.Code);
         Assert.Equal("An unexpected error occurred. Please try again later.", body.Message);
     }
@@ -216,10 +216,10 @@ public class CaseDiagnosisControllerIntegrationTests
         _diagnosisService.Setup(s => s.ConfirmAnalysisAsync(caseId, It.IsAny<ConfirmAnalysisRequest>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var response = await client.PostAsync($"/api/v1/cases/{caseId}/images/confirm", MakeConfirmPayload(false, false));
+        var response = await client.PostAsync($"/api/v1/cases/{caseId}/images/confirm", MakeConfirmPayload(false, false), TestContext.Current.CancellationToken);
         
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
         Assert.Equal("Image and annotations saved successfully", body.Message);
 

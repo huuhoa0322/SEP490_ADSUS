@@ -52,11 +52,11 @@ public class ScheduleSlotsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/schedule-slots", request);
+        var response = await client.PostAsJsonAsync("/api/v1/schedule-slots", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ScheduleSlotResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ScheduleSlotResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Equal(201, body!.Code);
         Assert.Equal(SlotStatus.Open, body.Data!.Status);
     }
@@ -77,7 +77,7 @@ public class ScheduleSlotsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/schedule-slots", request);
+        var response = await client.PostAsJsonAsync("/api/v1/schedule-slots", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -99,7 +99,7 @@ public class ScheduleSlotsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/schedule-slots", request);
+        var response = await client.PostAsJsonAsync("/api/v1/schedule-slots", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -127,11 +127,11 @@ public class ScheduleSlotsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/schedule-slots", request);
+        var response = await client.PostAsJsonAsync("/api/v1/schedule-slots", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Contains("overlap", body!.Message!, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -155,7 +155,7 @@ public class ScheduleSlotsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/schedule-slots", request);
+        var response = await client.PostAsJsonAsync("/api/v1/schedule-slots", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -177,7 +177,7 @@ public class ScheduleSlotsControllerIntegrationTests
         };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/v1/schedule-slots", request);
+        var response = await client.PostAsJsonAsync("/api/v1/schedule-slots", request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -191,7 +191,7 @@ public class ScheduleSlotsControllerIntegrationTests
         var client = app.CreateClient(); // No auth header
 
         // Act
-        var response = await client.GetAsync("/api/v1/schedule-slots");
+        var response = await client.GetAsync("/api/v1/schedule-slots", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -212,11 +212,11 @@ public class ScheduleSlotsControllerIntegrationTests
             .ReturnsAsync(new List<ScheduleSlot>());
 
         // Act
-        var response = await client.GetAsync("/api/v1/schedule-slots");
+        var response = await client.GetAsync("/api/v1/schedule-slots", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<ScheduleSlotResponse>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<ScheduleSlotResponse>>>(TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
     }
 
@@ -234,7 +234,7 @@ public class ScheduleSlotsControllerIntegrationTests
 
         // Act
         var response = await client.GetAsync(
-            $"/api/v1/schedule-slots?fromDate={fromDate:yyyy-MM-dd}&toDate={toDate:yyyy-MM-dd}");
+            $"/api/v1/schedule-slots?fromDate={fromDate:yyyy-MM-dd}&toDate={toDate:yyyy-MM-dd}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -251,7 +251,7 @@ public class ScheduleSlotsControllerIntegrationTests
             .ReturnsAsync(new List<ScheduleSlot>());
 
         // Act
-        var response = await client.GetAsync("/api/v1/schedule-slots?status=Open");
+        var response = await client.GetAsync("/api/v1/schedule-slots?status=Open", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -293,11 +293,11 @@ public class ScheduleSlotsControllerIntegrationTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/close", null);
+        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/close", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CloseSlotImpactResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CloseSlotImpactResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
         Assert.Equal(0, body.Data!.AffectedBookingsCount);
     }
@@ -337,11 +337,11 @@ public class ScheduleSlotsControllerIntegrationTests
             .ReturnsAsync(slot);
 
         // Act
-        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/close", null);
+        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/close", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CloseSlotImpactResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CloseSlotImpactResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Equal(409, body!.Code);
         Assert.Equal(1, body.Data!.AffectedBookingsCount);
     }
@@ -383,11 +383,11 @@ public class ScheduleSlotsControllerIntegrationTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/close?force=true", null);
+        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/close?force=true", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CloseSlotImpactResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CloseSlotImpactResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
         Assert.Equal(SlotStatus.Closed, slot.Status);
     }
@@ -417,7 +417,7 @@ public class ScheduleSlotsControllerIntegrationTests
             .ReturnsAsync(slot);
 
         // Act
-        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/close", null);
+        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/close", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -455,11 +455,11 @@ public class ScheduleSlotsControllerIntegrationTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/reopen", null);
+        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/reopen", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ScheduleSlotResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ScheduleSlotResponse>>(new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }, TestContext.Current.CancellationToken);
         Assert.Equal(200, body!.Code);
         Assert.Equal(SlotStatus.Open, body.Data!.Status);
     }
@@ -489,7 +489,7 @@ public class ScheduleSlotsControllerIntegrationTests
             .ReturnsAsync(slot);
 
         // Act
-        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/reopen", null);
+        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/reopen", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -518,7 +518,7 @@ public class ScheduleSlotsControllerIntegrationTests
             .ReturnsAsync(slot);
 
         // Act
-        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/reopen", null);
+        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/reopen", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -533,7 +533,7 @@ public class ScheduleSlotsControllerIntegrationTests
         var slotId = Guid.NewGuid();
 
         // Act
-        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/reopen", null);
+        var response = await client.PutAsync($"/api/v1/schedule-slots/{slotId}/reopen", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -562,7 +562,7 @@ public class ScheduleSlotsControllerIntegrationTests
 
         // Act
         var response = await client.PostAsync(
-            $"/api/v1/schedule-slots/ensure-default?weekStart={nextMonday:yyyy-MM-dd}", null);
+            $"/api/v1/schedule-slots/ensure-default?weekStart={nextMonday:yyyy-MM-dd}", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -580,7 +580,7 @@ public class ScheduleSlotsControllerIntegrationTests
 
         // Act
         var response = await client.PostAsync(
-            $"/api/v1/schedule-slots/ensure-default?weekStart={notMonday:yyyy-MM-dd}", null);
+            $"/api/v1/schedule-slots/ensure-default?weekStart={notMonday:yyyy-MM-dd}", null, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

@@ -40,7 +40,7 @@ public class FeedbackServiceTests
         var request = new SubmitFeedbackRequest { Rating = 5, Content = "Great service!" };
         var patientProfileId = Guid.NewGuid();
 
-        var result = await sut.SubmitAsync(request, patientProfileId);
+        var result = await sut.SubmitAsync(request, patientProfileId, TestContext.Current.CancellationToken);
 
         Assert.Equal(5, result.Rating);
         Assert.Equal("Great service!", result.Content);
@@ -76,7 +76,7 @@ public class FeedbackServiceTests
 
         var sut = new FeedbackService(repo.Object);
 
-        var result = await sut.GetAllAsync();
+        var result = await sut.GetAllAsync(TestContext.Current.CancellationToken);
 
         Assert.Single(result);
         Assert.Equal("Nguyen Van A", result[0].PatientName);
@@ -99,7 +99,7 @@ public class FeedbackServiceTests
         var sut = new FeedbackService(repo.Object);
         var request = new SubmitCaseFeedbackRequest { Rating = 5, Content = "Bác sĩ rất tận tâm" };
 
-        var result = await sut.SubmitCaseFeedbackAsync(request, patientProfileId, caseId);
+        var result = await sut.SubmitCaseFeedbackAsync(request, patientProfileId, caseId, TestContext.Current.CancellationToken);
 
         Assert.Equal(5, result.Rating);
         Assert.Equal("Bác sĩ rất tận tâm", result.Content);
@@ -121,7 +121,7 @@ public class FeedbackServiceTests
         var request = new SubmitCaseFeedbackRequest { Rating = 4, Content = "Second feedback" };
 
         var exception = await Assert.ThrowsAsync<ConflictException>(
-            () => sut.SubmitCaseFeedbackAsync(request, patientProfileId, caseId));
+            () => sut.SubmitCaseFeedbackAsync(request, patientProfileId, caseId, TestContext.Current.CancellationToken));
 
         Assert.Equal("Ca khám này đã có phản hồi.", exception.Message);
         repo.Verify(r => r.AddAsync(It.IsAny<ServiceFeedback>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -135,7 +135,7 @@ public class FeedbackServiceTests
         var request = new SubmitCaseFeedbackRequest { Rating = 0, Content = null };
 
         await Assert.ThrowsAsync<ArgumentException>(
-            () => sut.SubmitCaseFeedbackAsync(request, Guid.NewGuid(), Guid.NewGuid()));
+            () => sut.SubmitCaseFeedbackAsync(request, Guid.NewGuid(), Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -156,7 +156,7 @@ public class FeedbackServiceTests
 
         var sut = new FeedbackService(repo.Object);
 
-        var result = await sut.GetCaseFeedbackAsync(caseId, patientProfileId);
+        var result = await sut.GetCaseFeedbackAsync(caseId, patientProfileId, TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
         Assert.Equal(5, result.Rating);
@@ -176,7 +176,7 @@ public class FeedbackServiceTests
         // Note: Validation happens in controller, not service
         // Service just passes through
 
-        var result = await sut.SubmitAsync(request, Guid.NewGuid());
+        var result = await sut.SubmitAsync(request, Guid.NewGuid(), TestContext.Current.CancellationToken);
         Assert.Equal(0, result.Rating);
     }
 }

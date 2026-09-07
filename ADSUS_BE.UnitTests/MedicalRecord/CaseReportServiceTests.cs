@@ -46,7 +46,7 @@ public class CaseReportServiceTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId);
+        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEmpty(pdfBytes);
@@ -68,7 +68,7 @@ public class CaseReportServiceTests
                 .ReturnsAsync("http://dummy-url.com/image.jpg");
 
         // Act
-        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId);
+        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEmpty(pdfBytes);
@@ -92,7 +92,7 @@ public class CaseReportServiceTests
                 .ReturnsAsync((string?)null);
 
         // Act
-        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId);
+        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
 
         // Assert - Vẫn xuất được PDF bình thường
         Assert.NotEmpty(pdfBytes);
@@ -125,7 +125,7 @@ public class CaseReportServiceTests
         _httpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
         // Act
-        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId);
+        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
 
         // Assert - Vẫn xuất được PDF bình thường
         Assert.NotEmpty(pdfBytes);
@@ -143,7 +143,7 @@ public class CaseReportServiceTests
               .ReturnsAsync(pendingCase);
 
         // Act & Assert
-        await Assert.ThrowsAsync<BusinessException>(() => _sut.GenerateReportAsync(pendingCase.CaseId));
+        await Assert.ThrowsAsync<BusinessException>(() => _sut.GenerateReportAsync(pendingCase.CaseId, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -155,7 +155,7 @@ public class CaseReportServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ResourceNotFoundException>(
-            () => _sut.GenerateReportAsync(Guid.NewGuid()));
+            () => _sut.GenerateReportAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -167,7 +167,7 @@ public class CaseReportServiceTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId);
+        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEmpty(pdfBytes);
@@ -184,7 +184,7 @@ public class CaseReportServiceTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId);
+        var pdfBytes = await _sut.GenerateReportAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
 
         // Assert — tên font PostScript được PDF nhúng vào /BaseFont đọc được trực tiếp từ
         // byte thô (không cần thư viện parse PDF); Latin1 an toàn vì mọi ký tự trong PDF

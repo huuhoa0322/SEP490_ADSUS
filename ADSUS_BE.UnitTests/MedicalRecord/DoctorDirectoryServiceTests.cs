@@ -25,7 +25,7 @@ public class DoctorDirectoryServiceTests
               .ReturnsAsync(new List<User> { doctor });
 
         // Act
-        var result = await _sut.ListAsync();
+        var result = await _sut.ListAsync(TestContext.Current.CancellationToken);
 
         // Assert
         var row = Assert.Single(result);
@@ -48,7 +48,7 @@ public class DoctorDirectoryServiceTests
               .ReturnsAsync(new List<User>());
 
         // Act
-        var result = await _sut.ListAsync();
+        var result = await _sut.ListAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
