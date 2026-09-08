@@ -222,7 +222,7 @@ export function AiModelFormDialog({ id, open, onClose, onSuccess }: AiModelFormD
               {disabledForm && (
                 <div
                   role="alert"
-                  className="mb-6 flex items-start gap-2.5 rounded-2xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-600"
+                  className="mb-6 flex items-start gap-2.5 rounded-2xl border border-[var(--status-warning)]/25 bg-[var(--status-warning)]/5 px-4 py-3 text-sm text-[var(--status-warning)]"
                 >
                   <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
                   <span>

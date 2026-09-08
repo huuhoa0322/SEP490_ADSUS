@@ -60,7 +60,7 @@ export default function MedicineBatchesPage() {
   };
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
       {/* Header */}
       <div className="mb-6 flex items-center gap-4">
         <button
@@ -97,7 +97,7 @@ export default function MedicineBatchesPage() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+      <div className="overflow-hidden rounded-3xl border border-border bg-background shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-secondary/40">
             <tr className="border-b border-border">
@@ -156,10 +156,13 @@ export default function MedicineBatchesPage() {
                   const soonExpiry = !isExpired && expiry < thirtyDaysFromNow;
 
                 return (
-                  <tr key={batch.batchId} className="border-b border-border last:border-0 transition-colors hover:bg-secondary/20">
+                  <tr
+                    key={batch.batchId}
+                    className={`border-b border-border last:border-0 transition-colors hover:bg-secondary/20 ${isExpired ? 'border-l-2 border-l-destructive' : soonExpiry ? 'border-l-2 border-l-[var(--status-warning)]' : ''}`}
+                  >
                     <td className="px-5 py-4 font-semibold text-foreground">{batch.lotNumber}</td>
                     <td className="px-5 py-4">
-                      <span className={isExpired ? 'text-destructive font-semibold' : soonExpiry ? 'text-amber-600 font-medium' : 'text-foreground'}>
+                      <span className={isExpired ? 'font-semibold text-destructive' : soonExpiry ? 'font-medium text-[var(--status-warning)]' : 'text-foreground'}>
                         {format(new Date(batch.expiryDate), 'dd/MM/yyyy')}
                       </span>
                       {isExpired && (
@@ -168,14 +171,14 @@ export default function MedicineBatchesPage() {
                         </span>
                       )}
                       {soonExpiry && (
-                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">
-                          <AlertTriangle className="size-3" /> Sắp HSD
+                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[var(--status-warning)]/10 px-2 py-0.5 text-xs font-medium text-[var(--status-warning)]">
+                          <span className="size-1.5 animate-pulse rounded-full bg-[var(--status-warning)]" /> Sắp HSD
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-4 text-right font-semibold text-emerald-600">
+                    <td className="px-5 py-4 text-right font-mono font-semibold text-[var(--status-good)]">
                       {batch.quantityBase.toLocaleString()}
-                      <span className="ml-1 text-sm font-normal text-muted-foreground">{batch.usageUnit || 'đv'}</span>
+                      <span className="ml-1 font-sans text-sm font-normal text-muted-foreground">{batch.usageUnit || 'đv'}</span>
                     </td>
                     <td className="px-5 py-4 text-right text-muted-foreground">
                       {formatCurrency(batch.baseUnitAvgImportPrice)}
@@ -185,7 +188,7 @@ export default function MedicineBatchesPage() {
                       <button
                         onClick={() => router.push(`/medicines/${medicineId}/batches/${batch.batchId}`)}
                         title="Xem lịch sử giao dịch lô này"
-                        className="inline-flex size-8 items-center justify-center rounded-full text-blue-600 transition-colors hover:bg-blue-50"
+                        className="inline-flex size-8 items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/10"
                       >
                         <Clock className="size-4" />
                       </button>

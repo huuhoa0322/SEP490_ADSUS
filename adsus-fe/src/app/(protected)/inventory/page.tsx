@@ -6,8 +6,6 @@ import { useDebounce } from 'use-debounce';
 import { Search } from 'lucide-react';
 
 import { PaginationNumbered } from "@/components/ui/pagination-numbered";
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useInventoryHistory } from '@/features/medicines/api/inventory.api';
 
@@ -34,61 +32,56 @@ export default function InventoryHistoryPage() {
 
   const getTxnTypeLabel = (type: string) => {
     switch (type.toLowerCase()) {
-      case 'import': return <span className="px-2 py-1 bg-green-100 text-green-700 rounded-md text-xs font-medium">Nhập kho</span>;
-      case 'dispense': return <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium">Xuất kho</span>;
-      case 'adjustment': return <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-md text-xs font-medium">Điều chỉnh</span>;
-      default: return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs font-medium">{type}</span>;
+      case 'import': return <span className="rounded-full bg-[var(--status-good)]/12 px-2.5 py-1 text-xs font-600 text-[var(--status-good)]">Nhập kho</span>;
+      case 'dispense': return <span className="rounded-full bg-[var(--status-warning)]/12 px-2.5 py-1 text-xs font-600 text-[var(--status-warning)]">Xuất kho</span>;
+      case 'adjustment': return <span className="rounded-full bg-[var(--ring)]/12 px-2.5 py-1 text-xs font-600 text-[var(--ring)]">Điều chỉnh</span>;
+      default: return <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-600 text-muted-foreground">{type}</span>;
     }
   };
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Lịch sử Nhập / Xuất kho</h2>
+    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
+      <div>
+        <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">Lịch sử nhập / xuất kho</h1>
+        <p className="mt-1.5 text-[15px] text-muted-foreground">
+          Tra cứu biến động tồn kho: nhập kho, xuất bán và điều chỉnh kiểm kê.
+        </p>
       </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Tra cứu biến động tồn kho</CardTitle>
-          <CardDescription>
-            Xem lại lịch sử nhập kho, xuất bán và các giao dịch khác.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-center gap-3 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Tìm kiếm theo Tên thuốc, Số lô, Nhà cung cấp..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(1); // Reset page on search
-                }}
-              />
-            </div>
-            
-            <div className="flex gap-1.5 ml-0 md:ml-auto">
-              {(['', 'Import', 'Dispense', 'Adjustment'] as TxnTypeFilter[]).map(type => (
-                <button
-                  key={type}
-                  onClick={() => handleTypeChange(type)}
-                  className={`h-9 rounded-full px-4 text-sm font-medium transition-colors border ${
-                    txnType === type
-                      ? 'border-accent bg-accent text-white shadow-sm'
-                      : 'border-border hover:bg-secondary text-foreground'
-                  }`}
-                >
-                  {type === '' ? 'Tất cả' : type === 'Import' ? 'Nhập kho' : type === 'Dispense' ? 'Xuất kho' : 'Điều chỉnh'}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          <div className="rounded-md border">
+      <div className="mt-8 flex flex-wrap items-center gap-3">
+        <div className="relative min-w-64 flex-1">
+          <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            placeholder="Tìm kiếm theo Tên thuốc, Số lô, Nhà cung cấp..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(1); // Reset page on search
+            }}
+            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-accent"
+          />
+        </div>
+
+        <div className="ml-0 flex gap-1.5 md:ml-auto">
+          {(['', 'Import', 'Dispense', 'Adjustment'] as TxnTypeFilter[]).map(type => (
+            <button
+              key={type}
+              onClick={() => handleTypeChange(type)}
+              className={`h-9 rounded-full px-4 text-sm font-medium transition-colors border ${
+                txnType === type
+                  ? 'border-accent bg-accent text-accent-foreground shadow-sm'
+                  : 'border-border hover:bg-secondary text-foreground'
+              }`}
+            >
+              {type === '' ? 'Tất cả' : type === 'Import' ? 'Nhập kho' : type === 'Dispense' ? 'Xuất kho' : 'Điều chỉnh'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-6 overflow-hidden overflow-x-auto rounded-3xl border border-border bg-background">
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-secondary/40">
                 <TableRow>
                   <TableHead className="w-[180px] px-5 py-4">Thời gian</TableHead>
                   <TableHead className="px-5 py-4">Loại giao dịch</TableHead>
@@ -149,20 +142,20 @@ export default function InventoryHistoryPage() {
                       <TableCell className="text-right font-mono px-5 py-4">
                         {item.unitImportPrice ? item.unitImportPrice.toLocaleString() + ' đ' : '—'}
                       </TableCell>
-                      <TableCell className="text-right px-5 py-4">
-                        <span className={isPositive ? 'text-emerald-600 font-semibold' : 'text-orange-600 font-semibold'}>
+                      <TableCell className="text-right px-5 py-4 font-mono">
+                        <span className={isPositive ? 'text-[var(--status-good)] font-semibold' : 'text-[var(--status-warning)] font-semibold'}>
                           {isPositive ? '+' : '-'}{Math.abs(item.quantityBase).toLocaleString()}
                         </span>
                         {item.baseUnitName && (
-                          <span className="ml-1 text-xs text-muted-foreground">{item.baseUnitName}</span>
+                          <span className="ml-1 font-sans text-xs text-muted-foreground">{item.baseUnitName}</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right text-muted-foreground text-sm px-5 py-4">
-                        <span className={isPositive ? 'text-emerald-600 font-semibold' : 'text-orange-600 font-semibold'}>
+                      <TableCell className="text-right text-sm px-5 py-4 font-mono">
+                        <span className={isPositive ? 'text-[var(--status-good)] font-semibold' : 'text-[var(--status-warning)] font-semibold'}>
                           {isPositive ? '+' : '-'}{Math.abs(item.quantityInUnit).toLocaleString()}
                         </span>
                         {item.unitName && (
-                          <span className="ml-1 text-xs text-muted-foreground">{item.unitName}</span>
+                          <span className="ml-1 font-sans text-xs text-muted-foreground">{item.unitName}</span>
                         )}
                       </TableCell>
                     </TableRow>
@@ -171,22 +164,20 @@ export default function InventoryHistoryPage() {
                 )}
               </TableBody>
             </Table>
-          </div>
-          
-          {data && data.totalItems > pageSize && (
-            <div className="flex items-center justify-between py-4">
-              <div className="flex-1 text-sm text-muted-foreground">
-                Đang hiển thị {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, data.totalItems)} trên tổng số {data.totalItems} giao dịch.
-              </div>
-              <PaginationNumbered
-                currentPage={page}
-                totalPages={Math.ceil(data.totalItems / pageSize)}
-                setPage={setPage}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      </div>
+
+      {data && data.totalItems > pageSize && (
+        <div className="mt-5 flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            Đang hiển thị {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, data.totalItems)} trên tổng số {data.totalItems} giao dịch.
+          </span>
+          <PaginationNumbered
+            currentPage={page}
+            totalPages={Math.ceil(data.totalItems / pageSize)}
+            setPage={setPage}
+          />
+        </div>
+      )}
     </div>
   );
 }

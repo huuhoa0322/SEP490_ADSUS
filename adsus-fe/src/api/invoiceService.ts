@@ -62,4 +62,11 @@ export const invoiceService = {
   cancelInvoice: async (id: string, reason: string): Promise<void> => {
     await api.put<ApiResponse<void>>(`/api/v1/invoices/${id}/cancel`, { reason });
   },
+
+  getCaseInvoices: async (caseId: string): Promise<InvoiceResponse[]> => {
+    const response = await api.get<ApiResponse<InvoiceResponse[]>>(
+      `/api/v1/cases/${caseId}/invoices`,
+    );
+    return response.data.data ?? [];
+  },
 };

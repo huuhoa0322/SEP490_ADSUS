@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "adsus-fe-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "adsus-fe", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}

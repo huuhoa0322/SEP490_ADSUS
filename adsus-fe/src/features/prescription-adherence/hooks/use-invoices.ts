@@ -60,3 +60,13 @@ export function useCancelInvoice() {
 export function translateInvoiceError(error: unknown, fallback: string): string {
   return getApiErrorMessage(error, fallback);
 }
+
+/** GET /api/v1/cases/{caseId}/invoices — danh sách hóa đơn của 1 ca khám. */
+export function useCaseInvoices(caseId: string | undefined) {
+  return useQuery<InvoiceResponse[], Error>({
+    queryKey: ["invoices", "case", caseId ?? ""],
+    queryFn: () => invoiceService.getCaseInvoices(caseId!),
+    enabled: Boolean(caseId),
+    staleTime: 30 * 1000,
+  });
+}

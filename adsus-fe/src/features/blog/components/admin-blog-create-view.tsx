@@ -39,88 +39,78 @@ export function AdminBlogCreateView() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--muted)]">
-      {/* Header */}
-      <div className="bg-white border-b border-border">
-        <div className="mx-auto max-w-4xl px-6 py-4">
+    <div className="mx-auto w-full max-w-3xl px-6 py-8">
+      <Link
+        href="/admin/blog"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
+      >
+        <ArrowLeft className="size-4" />
+        Danh sách bài viết
+      </Link>
+
+      <h1 className="mt-5 font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">
+        Tạo bài viết mới
+      </h1>
+      <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+        Bài viết sẽ được tạo ở trạng thái bản nháp. Bạn có thể chỉnh sửa và xuất bản sau.
+      </p>
+
+      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        {/* Title */}
+        <label className="flex flex-col gap-2.5">
+          <span className="font-heading text-[13px] font-600 uppercase tracking-wider text-foreground">
+            Tiêu đề bài viết
+          </span>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+            className="h-14 w-full rounded-full border border-border bg-background px-5 text-[15px] outline-none transition-colors focus:border-accent"
+            placeholder="Nhập tiêu đề bài viết..."
+          />
+        </label>
+
+        {/* Content */}
+        <label className="flex flex-col gap-2.5">
+          <span className="font-heading text-[13px] font-600 uppercase tracking-wider text-foreground">
+            Nội dung bài viết
+          </span>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            required
+            rows={15}
+            className="w-full rounded-2xl border border-border bg-background px-5 py-4 font-mono text-sm outline-none transition-colors focus:border-accent"
+            placeholder="Nhập nội dung bài viết (Markdown)..."
+          />
+        </label>
+
+        {/* Error */}
+        {createMutation.isError && (
+          <div role="alert" className="flex items-start gap-2.5 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            {getApiErrorMessage(createMutation.error, "Không tạo được bài viết.")}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-3 pt-2">
           <Link
             href="/admin/blog"
-            className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)] transition-colors hover:text-[var(--primary)]"
+            className="rounded-full border border-border px-5 py-2.5 text-sm font-600 text-muted-foreground transition-colors hover:bg-secondary"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Quay lại danh sách
+            Hủy
           </Link>
+          <button
+            type="submit"
+            disabled={createMutation.isPending || !title.trim() || !content.trim()}
+            className="flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Send className="size-4" />
+            {createMutation.isPending ? "Đang tạo..." : "Tạo bài viết"}
+          </button>
         </div>
-      </div>
-
-      {/* Content */}
-      <div className="mx-auto max-w-4xl px-6 py-8">
-        <div className="mb-6">
-          <h1 className="font-heading text-2xl font-bold text-[var(--primary)]">
-            Tạo bài viết mới
-          </h1>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            Bài viết sẽ được tạo ở trạng thái bản nháp. Bạn có thể chỉnh sửa và xuất bản sau.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Title */}
-          <div className="rounded-xl border border-border bg-white p-6">
-            <label className="block">
-              <span className="text-sm font-medium text-[var(--primary)]">Tiêu đề bài viết</span>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                className="mt-1 block w-full rounded-lg border border-border px-4 py-2.5 focus:border-[var(--accent)] focus:outline-none"
-                placeholder="Nhập tiêu đề bài viết..."
-              />
-            </label>
-          </div>
-
-          {/* Content */}
-          <div className="rounded-xl border border-border bg-white p-6">
-            <label className="block">
-              <span className="text-sm font-medium text-[var(--primary)]">Nội dung bài viết</span>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                required
-                rows={15}
-                className="mt-1 block w-full rounded-lg border border-border px-4 py-3 font-mono text-sm focus:border-[var(--accent)] focus:outline-none"
-                placeholder="Nhập nội dung bài viết (Markdown)..."
-              />
-            </label>
-          </div>
-
-          {/* Error */}
-          {createMutation.isError && (
-            <div className="rounded-lg border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive">
-              {getApiErrorMessage(createMutation.error, "Không tạo được bài viết.")}
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3">
-            <Link
-              href="/admin/blog"
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary"
-            >
-              Hủy
-            </Link>
-            <button
-              type="submit"
-              disabled={createMutation.isPending || !title.trim() || !content.trim()}
-              className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent)]/90 disabled:opacity-50"
-            >
-              <Send className="h-4 w-4" />
-              {createMutation.isPending ? "Đang tạo..." : "Tạo bài viết"}
-            </button>
-          </div>
-        </form>
-      </div>
+      </form>
     </div>
   );
 }

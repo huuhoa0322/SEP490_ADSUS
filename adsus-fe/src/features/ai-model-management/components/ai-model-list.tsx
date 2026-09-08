@@ -66,7 +66,7 @@ export function AiModelList() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl">
+    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -169,7 +169,19 @@ export function AiModelList() {
                   {formatPercent(model.livePrecision)} / {formatPercent(model.liveRecall)}
                 </td>
                 <td className="px-5 py-4 text-muted-foreground">
-                  {formatPercent(model.liveMap50 != null ? model.liveMap50 / 100 : null)}
+                  {model.liveMap50 != null ? (
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-secondary">
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{ width: `${Math.min(100, Math.max(0, model.liveMap50))}%` }}
+                        />
+                      </div>
+                      <span className="font-mono text-foreground">{formatPercent(model.liveMap50 / 100)}</span>
+                    </div>
+                  ) : (
+                    formatPercent(null)
+                  )}
                   {model.lastEvaluatedAt && (
                     <div className="text-[10px] text-muted-foreground/60 mt-1">
                       (Cập nhật: {formatDateTime(model.lastEvaluatedAt)})
@@ -181,12 +193,15 @@ export function AiModelList() {
                 </td>
                 <td className="px-5 py-4">
                   <span
-                    className={`inline-flex rounded-full px-3 py-1 text-xs font-600 ${
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-600 ${
                       model.status === "Active"
-                        ? "bg-emerald-500/10 text-emerald-600"
+                        ? "bg-[var(--status-good)]/12 text-[var(--status-good)]"
                         : "bg-secondary text-muted-foreground"
                     }`}
                   >
+                    {model.status === "Active" && (
+                      <span className="size-1.5 animate-pulse rounded-full bg-[var(--status-good)]" />
+                    )}
                     {model.status === "Active" ? "Đang chạy" : "Inactive"}
                   </span>
                 </td>
@@ -196,7 +211,7 @@ export function AiModelList() {
                       onClick={() => handleCalculateMap50(model.modelVersionId)}
                       disabled={isCalculatingMap50}
                       title="Tính lại mAP50"
-                      className="flex size-9 items-center justify-center rounded-full text-indigo-500 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-50"
+                      className="flex size-9 items-center justify-center rounded-full text-primary hover:bg-primary/10 disabled:opacity-50"
                     >
                       {isCalculatingMap50 ? <Loader2 className="size-4 animate-spin" /> : <PlayCircle className="size-4" />}
                     </button>
@@ -222,7 +237,7 @@ export function AiModelList() {
                         <button
                           onClick={() => setModelToActivate(model)}
                           title="Kích hoạt mô hình này"
-                          className="flex size-9 items-center justify-center rounded-full text-emerald-600 hover:bg-emerald-500/10"
+                          className="flex size-9 items-center justify-center rounded-full text-[var(--status-good)] hover:bg-[var(--status-good)]/10"
                         >
                           <PlayCircle className="size-5" />
                         </button>

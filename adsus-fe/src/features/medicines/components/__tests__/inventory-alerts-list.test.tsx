@@ -96,20 +96,20 @@ describe('InventoryAlertsList', () => {
     render(<InventoryAlertsList />);
     
     // Check summary numbers in the cards
-    expect(screen.getAllByText('Đã hết hạn')[0].parentElement?.nextElementSibling?.textContent).toBe('1'); 
-    expect(screen.getAllByText('Sắp hết hạn')[0].parentElement?.nextElementSibling?.textContent).toBe('1'); 
-    expect(screen.getAllByText('Sắp hết hàng')[0].parentElement?.nextElementSibling?.textContent).toBe('1'); 
+    expect(screen.getAllByText('Đã hết hạn')[0].nextElementSibling?.textContent).toBe('1');
+    expect(screen.getAllByText('Sắp hết hạn')[0].nextElementSibling?.textContent).toBe('1');
+    expect(screen.getAllByText('Sắp hết hàng')[0].nextElementSibling?.textContent).toBe('1');
 
     // Check low stock alert table row
     expect(screen.getByText('Paracetamol')).toBeInTheDocument();
     expect(screen.getByText('10 Viên')).toBeInTheDocument();
-    expect(screen.getByText('Critical Low')).toBeInTheDocument();
+    expect(screen.getByText('Hết hàng nghiêm trọng')).toBeInTheDocument();
 
     // Check expiry alert table row
     expect(screen.getByText('Aspirin')).toBeInTheDocument();
     expect(screen.getByText('LOT-123')).toBeInTheDocument();
     expect(screen.getByText('50 Viên')).toBeInTheDocument();
-    expect(screen.getByText('Expired')).toBeInTheDocument();
+    expect(screen.getByText('Hết hạn')).toBeInTheDocument();
   });
   
   it('should render alerts and paginate correctly', async () => {

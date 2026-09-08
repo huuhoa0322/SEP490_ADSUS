@@ -102,7 +102,7 @@ export function SupplierFormModal({ isOpen, onClose, supplierToEdit }: SupplierF
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-destructive">Tên nhà cung cấp *</Label>
+            <Label htmlFor="name">Tên nhà cung cấp <span className="text-destructive">*</span></Label>
             <Input
               id="name"
               placeholder="VD: Dược Hậu Giang"
@@ -115,7 +115,7 @@ export function SupplierFormModal({ isOpen, onClose, supplierToEdit }: SupplierF
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="phoneNumber" className="text-destructive">Số điện thoại *</Label>
+              <Label htmlFor="phoneNumber">Số điện thoại <span className="text-destructive">*</span></Label>
               <Input
                 id="phoneNumber"
                 placeholder="VD: 0987654321"
@@ -126,7 +126,7 @@ export function SupplierFormModal({ isOpen, onClose, supplierToEdit }: SupplierF
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-destructive">Email *</Label>
+              <Label htmlFor="email">Email <span className="text-destructive">*</span></Label>
               <Input
                 id="email"
                 type="email"
@@ -140,7 +140,7 @@ export function SupplierFormModal({ isOpen, onClose, supplierToEdit }: SupplierF
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="taxCode" className="text-destructive">Mã số thuế *</Label>
+            <Label htmlFor="taxCode">Mã số thuế <span className="text-destructive">*</span></Label>
             <Input
               id="taxCode"
               placeholder="VD: 1800156801"
@@ -152,7 +152,7 @@ export function SupplierFormModal({ isOpen, onClose, supplierToEdit }: SupplierF
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="address" className="text-destructive">Địa chỉ *</Label>
+            <Label htmlFor="address">Địa chỉ <span className="text-destructive">*</span></Label>
             <Input
               id="address"
               placeholder="VD: 288 Bis Nguyễn Văn Cừ, P. An Hòa, Q. Ninh Kiều, Cần Thơ"
