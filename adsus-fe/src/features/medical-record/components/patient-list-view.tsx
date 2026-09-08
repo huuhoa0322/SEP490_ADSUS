@@ -2,10 +2,28 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import {
+  CalendarPlus,
+  Eye,
+  FileEdit,
+  FilePlus,
+  Filter,
+  MoreVertical,
+  Plus,
+  Search,
+  UserCheck,
+} from "lucide-react";
 
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 import { getApiErrorMessage } from "@/lib/api-client";
-import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 
 import { usePatientList } from "../hooks/use-patients";
@@ -14,35 +32,68 @@ import {
   formatIsoDate,
   visitStatusLabel,
 } from "../lib/medical-record-labels";
-import type { CaseStatus, VisitStatusFilter } from "../types/medical-record.types";
+import type { CaseStatus, PatientSummary, VisitStatusFilter } from "../types/medical-record.types";
 
 const VISIT_FILTERS: VisitStatusFilter[] = ["All", "Pending", "Confirmed"];
 
-/** Màu huy hiệu theo trạng thái lần khám gần nhất. */
-function statusBadgeClass(status: CaseStatus): string {
+/** Tạo initials từ họ tên bệnh nhân (ví dụ: Trần Thị Mai -> TM). */
+function getInitials(fullName: string): string {
+  if (!fullName) return "PT";
+  const words = fullName.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+
+/**
+ * Trả về subtext nếu bệnh nhân chưa lập hồ sơ nền.
+ * Không tự sinh tuổi hay giới tính giả khi API không cung cấp.
+ */
+function getPatientSubtext(patient: PatientSummary): string | null {
+  if (!patient.patientProfileId) return "Chưa lập hồ sơ nền";
+  return null;
+}
+
+/** Render soft badge trạng thái ca khám chuẩn màu Preclinic. */
+function renderStatusBadge(status: CaseStatus | null) {
+  if (!status) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
   switch (status) {
     case "CONFIRMED":
-      return "bg-violet-50 text-violet-700";
+      return (
+        <Badge variant="soft-success" className="font-medium text-xs px-2.5 py-0.5">
+          {caseStatusLabel(status)}
+        </Badge>
+      );
     case "END":
-      return "bg-emerald-50 text-emerald-700";
+      return (
+        <Badge variant="soft-teal" className="font-medium text-xs px-2.5 py-0.5">
+          {caseStatusLabel(status)}
+        </Badge>
+      );
     default:
-      return "bg-amber-50 text-amber-700";
+      return (
+        <Badge variant="soft-warning" className="font-medium text-xs px-2.5 py-0.5">
+          {caseStatusLabel(status)}
+        </Badge>
+      );
   }
 }
 
 /**
- * SCR-09 — danh sách TOÀN BỘ bệnh nhân trong hệ thống, sắp theo lần khám gần nhất (UC-09).
+ * SCR-09 — danh sách TOÀN BỘ bệnh nhân theo chuẩn thiết kế Preclinic Medical (patients.html).
  *
- * Không phải "hàng chờ khám hôm nay": mỗi dòng là một BỆNH NHÂN, không phải một ca khám.
- * Danh sách lần khám của từng người nằm ở SCR-12.
+ * Chuẩn y tế Preclinic:
+ * - Avatar tròn (avatar-md 40px) kèm initials và tên in đậm.
+ * - Soft status badges.
+ * - Nút thao tác nhanh và 3-dot dropdown menu.
  */
 export function PatientListView() {
   const [search, setSearch] = useState("");
   const [visitStatus, setVisitStatus] = useState<VisitStatusFilter>("All");
   const [page, setPage] = useState(1);
 
-  // UC-06 BR-03 — chỉ Điều dưỡng tạo được tài khoản bệnh nhân. Ẩn hẳn nút khỏi Bác sĩ thay
-  // vì để anh ấy bấm rồi nhận 403.
+  // UC-06 BR-03 — chỉ Điều dưỡng tạo được tài khoản bệnh nhân mới.
   const isNurse = useAuthStore((state) => state.user?.role) === "NURSE";
 
   const { data, isLoading, isError, error } = usePatientList({
@@ -53,56 +104,78 @@ export function PatientListView() {
   });
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-6 py-10">
-      <header className="mb-6">
-        <h1 className="font-heading text-[28px] font-bold tracking-[-0.02em] text-foreground">
-          Danh sách Bệnh nhân
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Toàn bộ bệnh nhân trong hệ thống, sắp theo lần khám gần nhất
-        </p>
-      </header>
-
-      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4">
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setPage(1);
-          }}
-          placeholder="Tìm theo họ tên hoặc số điện thoại..."
-          aria-label="Tìm bệnh nhân"
-          className="h-10 min-w-[280px] flex-1 rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-
-        <select
-          value={visitStatus}
-          onChange={(event) => {
-            setVisitStatus(event.target.value as VisitStatusFilter);
-            setPage(1);
-          }}
-          aria-label="Lọc theo trạng thái lần khám"
-          className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {VISIT_FILTERS.map((filter) => (
-            <option key={filter} value={filter}>
-              {visitStatusLabel(filter)}
-            </option>
-          ))}
-        </select>
+    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
+      {/* Preclinic Header */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-[#0A1B39]">
+              Danh sách Bệnh nhân
+            </h1>
+            {data ? (
+              <Badge variant="soft-primary" className="rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                Tổng: {data.totalItems} bệnh nhân
+              </Badge>
+            ) : null}
+          </div>
+          <p className="mt-1 text-sm text-[#6C7688]">
+            Toàn bộ bệnh nhân trong hệ thống, sắp theo lần khám gần nhất
+          </p>
+        </div>
 
         {isNurse ? (
           <Link
             href="/patients/new"
-            className="inline-flex h-10 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            className="inline-flex h-10 items-center gap-2 rounded-md bg-[#2E37A4] px-4 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-[#2E37A4]/90"
           >
+            <Plus className="size-4" />
             + Thêm bệnh nhân mới
           </Link>
         ) : null}
       </div>
 
-      {isLoading ? <p className="text-sm text-muted-foreground">Đang tải danh sách...</p> : null}
+      {/* Preclinic Filter Bar */}
+      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-[#E7E8EB] bg-white p-4 shadow-xs">
+        <div className="relative min-w-[280px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="Tìm theo họ tên hoặc số điện thoại..."
+            aria-label="Tìm bệnh nhân"
+            className="h-10 w-full rounded-md border border-[#E7E8EB] bg-background pl-9 pr-3 text-sm outline-none transition-colors focus:border-[#2E37A4] focus-visible:ring-2 focus-visible:ring-[#2E37A4]/20"
+          />
+        </div>
+
+        <div className="relative">
+          <Filter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <select
+            value={visitStatus}
+            onChange={(event) => {
+              setVisitStatus(event.target.value as VisitStatusFilter);
+              setPage(1);
+            }}
+            aria-label="Lọc theo trạng thái lần khám"
+            className="h-10 appearance-none rounded-md border border-[#E7E8EB] bg-background pl-9 pr-8 text-sm outline-none transition-colors focus:border-[#2E37A4] focus-visible:ring-2 focus-visible:ring-[#2E37A4]/20"
+          >
+            {VISIT_FILTERS.map((filter) => (
+              <option key={filter} value={filter}>
+                {visitStatusLabel(filter)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="rounded-lg border border-[#E7E8EB] bg-white p-10 text-center text-sm text-muted-foreground">
+          Đang tải danh sách...
+        </div>
+      ) : null}
 
       {isError ? (
         <p className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive" role="alert">
@@ -112,92 +185,180 @@ export function PatientListView() {
 
       {data && data.items.length === 0 ? (
         // UC-09 AF-01.
-        <div className="rounded-xl border border-dashed border-border p-12 text-center">
-          <p className="font-heading text-base font-semibold text-foreground">
+        <div className="rounded-lg border border-dashed border-[#E7E8EB] bg-white p-12 text-center">
+          <UserCheck className="mx-auto size-10 text-muted-foreground/50" />
+          <p className="mt-3 font-heading text-base font-semibold text-[#0A1B39]">
             Không tìm thấy bệnh nhân nào
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-[#6C7688]">
             Thử xoá bớt điều kiện lọc hoặc kiểm tra lại từ khoá tìm kiếm.
           </p>
         </div>
       ) : null}
 
       {data && data.items.length > 0 ? (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Họ và tên</th>
-                <th className="px-4 py-3 font-semibold">Số điện thoại</th>
-                <th className="px-4 py-3 font-semibold">Lần khám gần nhất</th>
-                <th className="px-4 py-3 text-right font-semibold">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.map((patient) => (
-                <tr key={patient.patientUserId} className="border-t border-border">
-                  <td className="px-4 py-3 font-medium text-foreground">{patient.fullName}</td>
-                  <td className="px-4 py-3 font-mono tabular-nums text-muted-foreground">
-                    {patient.phone}
-                  </td>
-                  <td className="px-4 py-3">
-                    {patient.latestVisitDate ? (
-                      <span className="flex flex-wrap items-center gap-2">
-                        {formatIsoDate(patient.latestVisitDate)}
-                        {patient.latestVisitStatus ? (
-                          <span
-                            className={cn(
-                              "rounded px-2 py-0.5 text-xs font-semibold",
-                              statusBadgeClass(patient.latestVisitStatus),
-                            )}
-                          >
-                            {caseStatusLabel(patient.latestVisitStatus)}
-                          </span>
-                        ) : null}
-                      </span>
-                    ) : (
-                      <span className="italic text-muted-foreground">Chưa có lần khám nào</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      {patient.patientProfileId ? (
-                        <>
-                          <Link
-                            href={`/patients/${patient.patientProfileId}`}
-                            className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
-                          >
-                            Xem hồ sơ bệnh án
-                          </Link>
-                          <Link
-                            href={`/patients/${patient.patientProfileId}/cases/new`}
-                            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-                          >
-                            Tạo ca khám
-                          </Link>
-                        </>
-                      ) : (
-                        // Chưa có hồ sơ nền: không xem được (chưa có gì để xem) và không tạo
-                        // được ca khám (UC-07 Depends On: UC-06).
-                        <Link
-                          href={`/patients/new?patientUserId=${patient.patientUserId}`}
-                          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-                        >
-                          Tạo hồ sơ nền
-                        </Link>
-                      )}
-                    </div>
-                  </td>
+        <div className="overflow-hidden rounded-lg border border-[#E7E8EB] bg-white shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] table-nowrap text-left text-sm align-middle">
+              <thead className="border-b border-[#E7E8EB] bg-[#F8F9FA] text-xs font-semibold uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3.5">Bệnh nhân</th>
+                  <th className="px-4 py-3.5">Số điện thoại</th>
+                  <th className="px-4 py-3.5">Lần khám gần nhất</th>
+                  <th className="px-4 py-3.5">Trạng thái</th>
+                  <th className="px-4 py-3.5 text-right">Thao tác</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-[#E7E8EB]">
+                {data.items.map((patient) => {
+                  const subtext = getPatientSubtext(patient);
+                  const initials = getInitials(patient.fullName);
+
+                  return (
+                    <tr key={patient.patientUserId} className="transition-colors hover:bg-[#F5F6F8]/60">
+                      {/* Cột Bệnh nhân với Avatar tròn Preclinic (avatar-md 40px) */}
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <Avatar size="md" className="size-10 rounded-full border border-[#E7E8EB]">
+                            <AvatarFallback className="bg-[#ECEDF7] text-xs font-semibold text-[#2E37A4]">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            {patient.patientProfileId ? (
+                              <Link
+                                href={`/patients/${patient.patientProfileId}`}
+                                className="font-semibold text-[#0A1B39] transition-colors hover:text-[#2E37A4]"
+                              >
+                                {patient.fullName}
+                              </Link>
+                            ) : (
+                              <span className="font-semibold text-[#0A1B39]">
+                                {patient.fullName}
+                              </span>
+                            )}
+                            {subtext ? (
+                              <span className="block text-xs text-[#6C7688]">{subtext}</span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Cột Số điện thoại */}
+                      <td className="px-4 py-3.5 font-mono text-xs tabular-nums text-[#6C7688]">
+                        {patient.phone}
+                      </td>
+
+                      {/* Cột Lần khám gần nhất */}
+                      <td className="px-4 py-3.5 text-xs text-[#0A1B39]">
+                        {patient.latestVisitDate ? (
+                          formatIsoDate(patient.latestVisitDate)
+                        ) : (
+                          <span className="italic text-muted-foreground">Chưa có lần khám nào</span>
+                        )}
+                      </td>
+
+                      {/* Cột Trạng thái với soft badge */}
+                      <td className="px-4 py-3.5">
+                        {renderStatusBadge(patient.latestVisitStatus)}
+                      </td>
+
+                      {/* Cột Thao tác */}
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {patient.patientProfileId ? (
+                            <>
+                              <Link
+                                href={`/patients/${patient.patientProfileId}`}
+                                className="inline-flex items-center gap-1 rounded border border-[#E7E8EB] bg-white px-2.5 py-1 text-xs font-medium text-[#0A1B39] shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-[#2E37A4]"
+                              >
+                                <Eye className="size-3.5" />
+                                Xem hồ sơ bệnh án
+                              </Link>
+                              <Link
+                                href={`/patients/${patient.patientProfileId}/cases/new`}
+                                className="inline-flex items-center gap-1 rounded bg-[#2E37A4] px-2.5 py-1 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-[#2E37A4]/90"
+                              >
+                                <CalendarPlus className="size-3.5" />
+                                Tạo ca khám
+                              </Link>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    aria-label="Tùy chọn thao tác"
+                                    className="inline-flex size-7 items-center justify-center rounded border border-[#E7E8EB] bg-white text-muted-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-[#0A1B39]"
+                                  >
+                                    <MoreVertical className="size-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`/patients/${patient.patientProfileId}`}>
+                                      <Eye className="size-4 text-muted-foreground" />
+                                      Xem hồ sơ bệnh án
+                                    </Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`/patients/${patient.patientProfileId}/cases/new`}>
+                                      <CalendarPlus className="size-4 text-muted-foreground" />
+                                      Tạo ca khám mới
+                                    </Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`/patients/${patient.patientProfileId}/profile`}>
+                                      <FileEdit className="size-4 text-muted-foreground" />
+                                      Chỉnh sửa thông tin
+                                    </Link>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </>
+                          ) : (
+                            <>
+                              <Link
+                                href={`/patients/new?patientUserId=${patient.patientUserId}`}
+                                className="inline-flex items-center gap-1 rounded bg-[#2E37A4] px-3 py-1 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-[#2E37A4]/90"
+                              >
+                                <FilePlus className="size-3.5" />
+                                Tạo hồ sơ nền
+                              </Link>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    aria-label="Tùy chọn thao tác"
+                                    className="inline-flex size-7 items-center justify-center rounded border border-[#E7E8EB] bg-white text-muted-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-[#0A1B39]"
+                                  >
+                                    <MoreVertical className="size-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`/patients/new?patientUserId=${patient.patientUserId}`}>
+                                      <FilePlus className="size-4 text-muted-foreground" />
+                                      Tạo hồ sơ nền
+                                    </Link>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
 
+      {/* Preclinic Pagination */}
       {data && data.totalPages > 1 ? (
         <div className="mt-4 flex items-center justify-between">
-          <p className="font-mono text-xs tabular-nums text-muted-foreground">
+          <p className="font-mono text-xs tabular-nums text-[#6C7688]">
             Trang {data.page} / {data.totalPages} · {data.totalItems} bệnh nhân
           </p>
           <PaginationNumbered

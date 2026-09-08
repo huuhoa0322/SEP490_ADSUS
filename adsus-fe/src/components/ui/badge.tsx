@@ -19,6 +19,26 @@ const badgeVariants = cva(
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
+        "soft-primary":
+          "bg-[#ECEDF7] text-[#2E37A4] border-[#2E37A4]/20 [a]:hover:bg-[#ECEDF7]/80",
+        "soft-success":
+          "bg-[#F4FBF7] text-[#27AE60] border-[#27AE60]/20 [a]:hover:bg-[#F4FBF7]/80",
+        "soft-warning":
+          "bg-[#FEFBF5] text-[#E2B93B] border-[#E2B93B]/20 [a]:hover:bg-[#FEFBF5]/80",
+        "soft-danger":
+          "bg-[#FEF4F4] text-[#EF1E1E] border-[#EF1E1E]/20 [a]:hover:bg-[#FEF4F4]/80",
+        "soft-teal":
+          "bg-[#E8FBFA] text-[#00D3C7] border-[#00D3C7]/20 [a]:hover:bg-[#E8FBFA]/80",
+        softPrimary:
+          "bg-[#ECEDF7] text-[#2E37A4] border-[#2E37A4]/20 [a]:hover:bg-[#ECEDF7]/80",
+        softSuccess:
+          "bg-[#F4FBF7] text-[#27AE60] border-[#27AE60]/20 [a]:hover:bg-[#F4FBF7]/80",
+        softWarning:
+          "bg-[#FEFBF5] text-[#E2B93B] border-[#E2B93B]/20 [a]:hover:bg-[#FEFBF5]/80",
+        softDanger:
+          "bg-[#FEF4F4] text-[#EF1E1E] border-[#EF1E1E]/20 [a]:hover:bg-[#FEF4F4]/80",
+        softTeal:
+          "bg-[#E8FBFA] text-[#00D3C7] border-[#00D3C7]/20 [a]:hover:bg-[#E8FBFA]/80",
       },
     },
     defaultVariants: {

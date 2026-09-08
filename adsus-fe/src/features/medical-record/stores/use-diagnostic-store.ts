@@ -44,6 +44,7 @@ interface DiagnosticStore {
   drafts: Record<number, DraftState>;
   
   setDiagnosticSession: (caseId: string, files: File[]) => void;
+  setCurrentIndex: (index: number) => void;
   nextImage: () => void;
   prevImage: () => void;
   goToImage: (index: number) => void;
@@ -63,8 +64,14 @@ export const useDiagnosticStore = create<DiagnosticStore>((set) => ({
   drafts: {},
   setDiagnosticSession: (caseId, files) =>
     set({ caseId, images: files, currentIndex: 0, aiResults: {}, isProcessing: {}, drafts: {} }),
+  setCurrentIndex: (index) =>
+    set((state) => ({
+      currentIndex: Math.max(0, Math.min(Math.max(0, state.images.length - 1), index)),
+    })),
   nextImage: () =>
-    set((state) => ({ currentIndex: state.currentIndex + 1 })),
+    set((state) => ({
+      currentIndex: Math.min(Math.max(0, state.images.length - 1), state.currentIndex + 1),
+    })),
   prevImage: () =>
     set((state) => ({ currentIndex: Math.max(0, state.currentIndex - 1) })),
   goToImage: (index) =>
