@@ -171,13 +171,13 @@ Use existing Badge variants where possible; add custom class only if needed.
 
 | Action | File | Notes | Status |
 |--------|------|-------|--------|
-| MODIFY | `src/api/invoiceService.ts` | Add `getCaseInvoices` | pending |
+| MODIFY | `src/api/invoiceService.ts` | Add `getCaseInvoices` | **DONE** |
 | CREATE | `src/features/prescription-adherence/hooks/use-invoices.ts` | New TanStack Query hooks | **DONE** |
 | MODIFY | `src/features/prescription-adherence/components/invoice-list-view.tsx` | Rewrite with hooks + filters + better empty state | **DONE** |
-| MODIFY | `src/features/prescription-adherence/components/invoice-detail-view.tsx` | Rewrite with hooks + fix error helper + case link | pending |
-| MODIFY | `src/features/medical-record/components/case-detail-view.tsx` | Add invoice summary card for Nurse | pending |
-| CREATE | `src/test/prescription-adherence/components/invoice-list-view.test.tsx` | New test (detail test already exists) | pending |
-| UPDATE | `src/test/prescription-adherence/components/invoice-detail-view.test.tsx` | Update mocks for `useInvoiceDetail` etc. | pending |
+| MODIFY | `src/features/prescription-adherence/components/invoice-detail-view.tsx` | Rewrite with hooks + fix error helper + case link | **DONE** |
+| MODIFY | `src/features/medical-record/components/case-detail-view.tsx` | Add invoice summary card for Nurse | **DONE** |
+| CREATE | `src/test/prescription-adherence/components/invoice-list-view.test.tsx` | New test (detail test already exists) | **DONE** |
+| UPDATE | `src/test/prescription-adherence/components/invoice-detail-view.test.tsx` | Update mocks for `useInvoiceDetail` etc. | **DONE** |
 
 ---
 
@@ -195,22 +195,22 @@ Use existing Badge variants where possible; add custom class only if needed.
 - [x] Responsive: less critical columns hidden on mobile.
 
 ### Module 9 — Invoice Detail
-- [ ] Detail uses TanStack Query (`useInvoiceDetail`) + mutation hooks.
-- [ ] Mutations trigger `refetch()` after success (no manual fetch call).
-- [ ] Errors use `getApiErrorMessage` helper.
-- [ ] Case ID link to `/cases/{caseId}` works for Nurse.
-- [ ] Cancel + Pay flows still work end-to-end (toast on success, error message on failure).
+- [x] Detail uses TanStack Query (`useInvoiceDetail`) + mutation hooks.
+- [x] Mutations trigger `refetch()` after success (no manual fetch call).
+- [x] Errors use `getApiErrorMessage` helper.
+- [x] Case ID link to `/cases/{caseId}` works for Nurse.
+- [x] Cancel + Pay flows still work end-to-end (toast on success, error message on failure).
 
 ### Module 7 + Module 9 Bridge
-- [ ] Nurse viewing case detail sees invoice summary card (if case has invoice).
-- [ ] Card shows invoice status + total + "Chi tiết hóa đơn" link.
-- [ ] Card hides when case has no invoice.
-- [ ] Doctor sees NO invoice section (only Nurse).
+- [x] Nurse viewing case detail sees invoice summary card (if case has invoice).
+- [x] Card shows invoice status + total + "Chi tiết hóa đơn" link.
+- [x] Card hides when case has no invoice.
+- [x] Doctor sees NO invoice section (only Nurse).
 
 ### Tests
-- [ ] `invoice-list-view.test.tsx` covers loading / empty / search / status filter / pagination.
-- [ ] `invoice-detail-view.test.tsx` still passes after refactor (mocks updated).
-- [ ] All tests pass: `npm run test` (or `vitest`).
+- [x] `invoice-list-view.test.tsx` covers loading / empty / search / status filter / pagination.
+- [x] `invoice-detail-view.test.tsx` still passes after refactor (mocks updated).
+- [x] All tests pass: `npm run test` (or `vitest`).
 
 ---
 

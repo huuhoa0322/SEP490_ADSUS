@@ -101,10 +101,10 @@ export function InvoiceListView() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center border-b pb-4">
+      <div className="flex justify-between items-center border-b-2 pb-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Quản lý hóa đơn</h1>
-          <p className="text-muted-foreground mt-1">Danh sách hóa đơn của các ca khám bệnh.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-primary">Quản lý hóa đơn</h1>
+          <p className="text-muted-foreground mt-1 font-medium">Danh sách hóa đơn của các ca khám bệnh.</p>
         </div>
       </div>
 
@@ -134,17 +134,17 @@ export function InvoiceListView() {
         <Button onClick={handleSearch}>Tìm kiếm</Button>
       </div>
 
-      <div className="border rounded-md">
+      <div className="border-2 rounded-md">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="hidden sm:table-cell">Mã Hóa Đơn</TableHead>
-              <TableHead>Bệnh Nhân</TableHead>
-              <TableHead className="hidden sm:table-cell">Ca Khám</TableHead>
-              <TableHead>Tổng Tiền</TableHead>
-              <TableHead>Trạng Thái</TableHead>
-              <TableHead className="hidden md:table-cell">Ngày Tạo</TableHead>
-              <TableHead className="text-right">Thao Tác</TableHead>
+              <TableHead className="hidden sm:table-cell font-bold">Mã Hóa Đơn</TableHead>
+              <TableHead className="font-bold">Bệnh Nhân</TableHead>
+              <TableHead className="hidden sm:table-cell font-bold">Ca Khám</TableHead>
+              <TableHead className="font-bold">Tổng Tiền</TableHead>
+              <TableHead className="font-bold">Trạng Thái</TableHead>
+              <TableHead className="hidden md:table-cell font-bold">Ngày Tạo</TableHead>
+              <TableHead className="text-right font-bold">Thao Tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -188,7 +188,7 @@ export function InvoiceListView() {
                   <TableCell className="hidden sm:table-cell">
                     <span className="font-mono text-xs text-muted-foreground">{invoice.caseId}</span>
                   </TableCell>
-                  <TableCell className="font-semibold">{formatCurrency(invoice.totalAmount)}</TableCell>
+                  <TableCell className="font-bold">{formatCurrency(invoice.totalAmount)}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap items-center gap-1">
                       <StatusBadge status={invoice.status} />
