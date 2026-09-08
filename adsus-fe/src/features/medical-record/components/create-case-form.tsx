@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import {
   Activity,
   AlertCircle,
@@ -47,29 +47,6 @@ function PreviousCaseSummary({
 }) {
   const { data: caseDetail, isLoading, isError } = useCaseDetail(caseId);
 
-  // Nhóm các triệu chứng theo danh mục (Hook đặt ở đầu component để tuân thủ Rules of Hooks)
-  const groupedSymptoms = useMemo(() => {
-    if (!caseDetail?.symptoms) return [];
-    const groups: { categoryId: string; categoryName: string; items: string[] }[] = [];
-    for (const sym of caseDetail.symptoms) {
-      const text = sym.symptomName || sym.otherNote;
-      if (!text) continue;
-      const fullText =
-        sym.symptomName && sym.otherNote ? `${sym.symptomName} (${sym.otherNote})` : text;
-      const existing = groups.find((g) => g.categoryId === sym.categoryId);
-      if (existing) {
-        existing.items.push(fullText);
-      } else {
-        groups.push({
-          categoryId: sym.categoryId,
-          categoryName: sym.categoryName,
-          items: [fullText],
-        });
-      }
-    }
-    return groups;
-  }, [caseDetail?.symptoms]);
-
   if (isLoading) {
     return (
       <div className="rounded-lg border border-black bg-white p-4 text-xs text-muted-foreground animate-pulse">
@@ -85,6 +62,27 @@ function PreviousCaseSummary({
     );
   }
   if (!caseDetail) return null;
+
+  // Nhóm các triệu chứng theo danh mục để các triệu chứng cùng nhóm luôn nằm liền nhau
+  const groupedSymptoms: { categoryId: string; categoryName: string; items: string[] }[] = [];
+  if (caseDetail.symptoms) {
+    for (const sym of caseDetail.symptoms) {
+      const text = sym.symptomName || sym.otherNote;
+      if (!text) continue;
+      const fullText =
+        sym.symptomName && sym.otherNote ? `${sym.symptomName} (${sym.otherNote})` : text;
+      const existing = groupedSymptoms.find((g) => g.categoryId === sym.categoryId);
+      if (existing) {
+        existing.items.push(fullText);
+      } else {
+        groupedSymptoms.push({
+          categoryId: sym.categoryId,
+          categoryName: sym.categoryName,
+          items: [fullText],
+        });
+      }
+    }
+  }
 
   const hasSymptoms = Boolean(caseDetail.symptoms && caseDetail.symptoms.length > 0);
 
