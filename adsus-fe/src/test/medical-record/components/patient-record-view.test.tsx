@@ -86,6 +86,15 @@ describe("PatientRecordView", () => {
     expect(screen.queryByText(/đơn thuốc/i)).not.toBeInTheDocument();
   });
 
+  it("không hiển thị các trường dữ liệu giả như nhóm máu, chiều cao, cân nặng", () => {
+    render(<PatientRecordView profileId="profile-1" />);
+
+    // Negative assertions: Xác nhận không hiển thị nhóm máu, chiều cao, cân nặng
+    expect(screen.queryByText(/nhóm máu/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/chiều cao/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/cân nặng/i)).not.toBeInTheDocument();
+  });
+
   it("hiện trạng thái rỗng khi bệnh nhân chưa có lần khám nào", () => {
     caseListMock.mockReturnValue({
       data: { items: [], page: 1, pageSize: 20, totalItems: 0, totalPages: 1 },

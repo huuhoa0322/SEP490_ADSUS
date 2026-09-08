@@ -8,6 +8,7 @@ import { CreateCaseForm } from "@/features/medical-record/components/create-case
 
 const {
   createMutate,
+  createCaseMock,
   doctorListMock,
   caseListMock,
   caseDetailMock,
@@ -16,6 +17,7 @@ const {
   routerBackMock,
 } = vi.hoisted(() => ({
   createMutate: vi.fn(),
+  createCaseMock: vi.fn(),
   doctorListMock: vi.fn(),
   caseListMock: vi.fn(),
   caseDetailMock: vi.fn(),
@@ -29,13 +31,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/features/medical-record/hooks/use-cases", () => ({
-  useCreateCase: () => ({
-    mutate: createMutate,
-    isPending: false,
-    isSuccess: false,
-    isError: false,
-    error: null,
-  }),
+  useCreateCase: () => createCaseMock(),
   useCaseList: () => caseListMock(),
   useCaseDetail: (id: string) => caseDetailMock(id),
 }));
@@ -68,12 +64,21 @@ function signInAs(role: "DOCTOR" | "NURSE", userId: string, fullName: string) {
 describe("CreateCaseForm", () => {
   beforeEach(() => {
     createMutate.mockReset();
+    createCaseMock.mockReset();
     doctorListMock.mockReset();
     caseListMock.mockReset();
     caseDetailMock.mockReset();
     patientProfileMock.mockReset();
     routerPushMock.mockReset();
     routerBackMock.mockReset();
+
+    createCaseMock.mockReturnValue({
+      mutate: createMutate,
+      isPending: false,
+      isSuccess: false,
+      isError: false,
+      error: null,
+    });
 
     doctorListMock.mockReturnValue({
       data: [
@@ -175,7 +180,7 @@ describe("CreateCaseForm", () => {
     );
   });
 
-  it("áp dụng layout 2 cột trải rộng max-w-screen-2xl và chia tỉ lệ 5/7", () => {
+  it("áp dụng layout rộng (max-w-screen-2xl) dạng hàng dọc", () => {
     signInAs("DOCTOR", "doctor-1", "BS. Nguyễn Văn An");
     const { container } = render(<CreateCaseForm patientProfileId="profile-1" />);
 
@@ -184,16 +189,9 @@ describe("CreateCaseForm", () => {
     expect(outerContainer).toBeInTheDocument();
     expect(outerContainer).toHaveClass("mx-auto", "w-full", "px-6", "py-8");
 
-    // Two-column grid
-    const grid = container.querySelector(".grid.grid-cols-1.lg\\:grid-cols-12");
+    // Stack
+    const grid = container.querySelector(".space-y-8");
     expect(grid).toBeInTheDocument();
-    expect(grid).toHaveClass("gap-6");
-
-    // Left column (5 cols) & Right column (7 cols)
-    const leftCol = container.querySelector(".lg\\:col-span-5");
-    const rightCol = container.querySelector(".lg\\:col-span-7");
-    expect(leftCol).toBeInTheDocument();
-    expect(rightCol).toBeInTheDocument();
   });
 
   it("hiển thị thông tin hồ sơ bệnh nhân ở cột trái với badge cảnh báo dị ứng & bệnh nền", () => {
@@ -255,5 +253,136 @@ describe("CreateCaseForm", () => {
 
     await user.click(screen.getByRole("button", { name: /huỷ bỏ/i }));
     expect(routerBackMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("an toàn không văng lỗi khi fullName chỉ có khoảng trắng và hiển thị initials mặc định PT", () => {
+    signInAs("DOCTOR", "doctor-1", "BS. Nguyễn Văn An");
+    patientProfileMock.mockReturnValue({
+      data: {
+        patientProfileId: "profile-1",
+        fullName: "   ",
+        dateOfBirth: "1990-01-01",
+        allergies: [],
+        diseases: [],
+      },
+      isLoading: false,
+    });
+
+    render(<CreateCaseForm patientProfileId="profile-1" />);
+
+    expect(screen.getByText("PT")).toBeInTheDocument();
+    expect(screen.getByText("Bệnh nhân: Chưa cập nhật")).toBeInTheDocument();
+  });
+
+  it("định dạng ngày sinh an toàn không bị lệch múi giờ (formatIsoDate)", () => {
+    signInAs("DOCTOR", "doctor-1", "BS. Nguyễn Văn An");
+    patientProfileMock.mockReturnValue({
+      data: {
+        patientProfileId: "profile-1",
+        fullName: "Nguyễn Thị Hoa",
+        dateOfBirth: "1995-12-31",
+        allergies: [],
+        diseases: [],
+      },
+      isLoading: false,
+    });
+
+    render(<CreateCaseForm patientProfileId="profile-1" />);
+
+    expect(screen.getByText("Ngày sinh: 31/12/1995")).toBeInTheDocument();
+  });
+
+  it("hiển thị cảnh báo khi không tải được hồ sơ bệnh nhân (isError)", () => {
+    signInAs("DOCTOR", "doctor-1", "BS. Nguyễn Văn An");
+    patientProfileMock.mockReturnValue({
+      data: null,
+      isLoading: false,
+      isError: true,
+    });
+
+    render(<CreateCaseForm patientProfileId="profile-1" />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Không tải được thông tin bệnh nhân");
+  });
+
+  it("hiển thị placeholder khi lần khám trước không có ghi chú lâm sàng", () => {
+    signInAs("DOCTOR", "doctor-1", "BS. Nguyễn Văn An");
+    caseListMock.mockReturnValue({
+      data: { items: [{ caseId: "case-prev-empty" }] },
+      isLoading: false,
+    });
+    caseDetailMock.mockReturnValue({
+      data: {
+        caseId: "case-prev-empty",
+        visitDate: "2026-08-01",
+        finalDiagnosis: null,
+        doctorConclusion: null,
+        symptoms: [],
+      },
+      isLoading: false,
+    });
+
+    render(<CreateCaseForm patientProfileId="profile-1" />);
+
+    expect(
+      screen.getByText("Không có ghi chú lâm sàng từ lần khám trước."),
+    ).toBeInTheDocument();
+  });
+
+  it("hiển thị lỗi từ mutation khi lưu ca khám thất bại", () => {
+    signInAs("DOCTOR", "doctor-1", "BS. Nguyễn Văn An");
+    createCaseMock.mockReturnValue({
+      mutate: createMutate,
+      isPending: false,
+      isSuccess: false,
+      isError: true,
+      error: new Error("Network error"),
+    });
+
+    render(<CreateCaseForm patientProfileId="profile-1" />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Tạo ca khám thất bại.");
+  });
+
+  it("badge dị ứng và tiền sử bệnh nền có class cho phép xuống dòng khi ghi chú dài", () => {
+    signInAs("DOCTOR", "doctor-1", "BS. Nguyễn Văn An");
+    patientProfileMock.mockReturnValue({
+      data: {
+        patientProfileId: "profile-1",
+        fullName: "Lê Văn C",
+        dateOfBirth: "1988-03-15",
+        allergies: [
+          {
+            allergyTypeId: "a-long",
+            allergyName: "Khác",
+            isOther: true,
+            note: "Dị ứng cực kỳ nghiêm trọng với kháng sinh nhóm cephalosporin thế hệ 3",
+          },
+        ],
+        diseases: [
+          {
+            diseaseId: "d-long",
+            diseaseName: "Cao huyết áp",
+            isOther: false,
+            note: "Điều trị thuốc kiểm soát huyết áp hàng ngày kèm chế độ ăn giảm muối",
+          },
+        ],
+      },
+      isLoading: false,
+    });
+
+    render(<CreateCaseForm patientProfileId="profile-1" />);
+
+    const allergyBadge = screen.getByText(
+      /Dị ứng cực kỳ nghiêm trọng với kháng sinh nhóm cephalosporin thế hệ 3/,
+    );
+    expect(allergyBadge).toBeInTheDocument();
+    expect(allergyBadge).toHaveClass("whitespace-normal", "break-words");
+
+    const diseaseBadge = screen.getByText(
+      /Cao huyết áp: Điều trị thuốc kiểm soát huyết áp hàng ngày kèm chế độ ăn giảm muối/,
+    );
+    expect(diseaseBadge).toBeInTheDocument();
+    expect(diseaseBadge).toHaveClass("whitespace-normal", "break-words");
   });
 });

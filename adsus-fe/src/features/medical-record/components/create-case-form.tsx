@@ -22,13 +22,15 @@ import { useCreateCase, useCaseList, useCaseDetail } from "../hooks/use-cases";
 import { useDoctorList } from "../hooks/use-doctors";
 import { usePatientProfile } from "../hooks/use-patient-profile";
 import { useSymptomCategories } from "../hooks/use-symptoms";
+import { formatIsoDate } from "../lib/medical-record-labels";
 import type { CreateCaseSymptomInput } from "../types/medical-record.types";
 import { SymptomSelector } from "./symptom-selector";
 
 /** Tạo initials từ họ tên bệnh nhân. */
-function getInitials(fullName: string): string {
+function getInitials(fullName: string | null | undefined): string {
   if (!fullName) return "PT";
   const words = fullName.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "PT";
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
@@ -36,7 +38,7 @@ function getInitials(fullName: string): string {
 
 /** Khối tóm tắt thông tin lần khám trước (Preclinic appointment history). */
 function PreviousCaseSummary({ caseId }: { caseId: string }) {
-  const { data: caseDetail, isLoading } = useCaseDetail(caseId);
+  const { data: caseDetail, isLoading, isError } = useCaseDetail(caseId);
 
   if (isLoading) {
     return (
@@ -45,14 +47,26 @@ function PreviousCaseSummary({ caseId }: { caseId: string }) {
       </div>
     );
   }
+  if (isError) {
+    return (
+      <div className="rounded-lg border border-[#E7E8EB] bg-white p-4 text-xs text-muted-foreground">
+        Không tải được thông tin lần khám trước.
+      </div>
+    );
+  }
   if (!caseDetail) return null;
+
+  const hasContent =
+    Boolean(caseDetail.finalDiagnosis) ||
+    Boolean(caseDetail.doctorConclusion) ||
+    Boolean(caseDetail.symptoms && caseDetail.symptoms.length > 0);
 
   return (
     <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 shadow-xs">
       <div className="mb-3 flex items-center gap-2 border-b border-[#E7E8EB] pb-2.5">
         <History className="size-4 text-[#2E37A4]" />
         <h3 className="font-heading text-sm font-bold text-[#0A1B39]">
-          Nội dung lần khám gần nhất ({new Date(caseDetail.visitDate).toLocaleDateString("vi-VN")})
+          Nội dung lần khám gần nhất ({formatIsoDate(caseDetail.visitDate)})
         </h3>
       </div>
 
@@ -81,10 +95,10 @@ function PreviousCaseSummary({ caseId }: { caseId: string }) {
               Triệu chứng chi tiết:
             </span>
             <ul className="ml-1 list-inside list-disc space-y-1 text-sm text-[#0A1B39]">
-              {caseDetail.symptoms.map((sym) => {
+              {caseDetail.symptoms.map((sym, idx) => {
                 const text = sym.symptomName || sym.otherNote;
                 return text ? (
-                  <li key={`${sym.categoryId}-${sym.symptomId ?? "other"}`} className="leading-snug">
+                  <li key={`${sym.categoryId}-${sym.symptomId ?? `other-${idx}`}`} className="leading-snug">
                     <span className="font-medium">{sym.categoryName}:</span> {text}{" "}
                     {sym.symptomName && sym.otherNote ? `(${sym.otherNote})` : ""}
                   </li>
@@ -93,6 +107,12 @@ function PreviousCaseSummary({ caseId }: { caseId: string }) {
             </ul>
           </div>
         )}
+
+        {!hasContent && (
+          <p className="text-xs italic text-muted-foreground">
+            Không có ghi chú lâm sàng từ lần khám trước.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -100,12 +120,25 @@ function PreviousCaseSummary({ caseId }: { caseId: string }) {
 
 /** Khối tóm tắt hồ sơ nền bệnh nhân chuẩn Preclinic. */
 function PatientProfileSummary({ profileId }: { profileId: string }) {
-  const { data: profile, isLoading } = usePatientProfile(profileId);
+  const { data: profile, isLoading, isError } = usePatientProfile(profileId);
 
   if (isLoading) {
     return (
       <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 text-sm text-muted-foreground animate-pulse">
         Đang tải thông tin bệnh nhân...
+      </div>
+    );
+  }
+  if (isError) {
+    return (
+      <div
+        className="rounded-lg border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive"
+        role="alert"
+      >
+        <div className="flex items-center gap-2 font-medium">
+          <AlertCircle className="size-4 shrink-0" />
+          <span>Không tải được thông tin bệnh nhân</span>
+        </div>
       </div>
     );
   }
@@ -125,12 +158,12 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-heading text-base font-bold text-[#0A1B39]">
-                Bệnh nhân: {profile.fullName}
+                Bệnh nhân: {profile.fullName?.trim() || "Chưa cập nhật"}
               </h3>
             </div>
             {profile.dateOfBirth && (
               <span className="text-xs text-[#6C7688]">
-                Ngày sinh: {new Date(profile.dateOfBirth).toLocaleDateString("vi-VN")}
+                Ngày sinh: {formatIsoDate(profile.dateOfBirth)}
               </span>
             )}
           </div>
@@ -148,14 +181,18 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
           <div className="text-sm font-semibold text-foreground">
             {profile.allergies && profile.allergies.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
-                {profile.allergies.map((a) => {
+                {profile.allergies.map((a, idx) => {
                   const text = a.isOther
                     ? (a.note || a.allergyName)
                     : a.note
                       ? `${a.allergyName}: ${a.note}`
                       : a.allergyName;
                   return (
-                    <Badge key={a.allergyTypeId} variant="soft-danger" className="text-xs px-2 py-0.5">
+                    <Badge
+                      key={`${a.allergyTypeId}-${idx}`}
+                      variant="soft-danger"
+                      className="h-auto max-w-full text-left text-xs px-2.5 py-1 leading-tight whitespace-normal break-words"
+                    >
                       {text}
                     </Badge>
                   );
@@ -177,14 +214,18 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
           <div className="text-sm font-semibold text-foreground">
             {profile.diseases && profile.diseases.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
-                {profile.diseases.map((d) => {
+                {profile.diseases.map((d, idx) => {
                   const text = d.isOther
                     ? (d.note || d.diseaseName)
                     : d.note
                       ? `${d.diseaseName}: ${d.note}`
                       : d.diseaseName;
                   return (
-                    <Badge key={d.diseaseId} variant="soft-warning" className="text-xs px-2 py-0.5">
+                    <Badge
+                      key={`${d.diseaseId}-${idx}`}
+                      variant="soft-warning"
+                      className="h-auto max-w-full text-left text-xs px-2.5 py-1 leading-tight whitespace-normal break-words"
+                    >
                       {text}
                     </Badge>
                   );
@@ -296,20 +337,24 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
-          {/* Cột trái (lg:col-span-5) — Thông tin tham khảo y tế */}
-          <div className="space-y-6 lg:col-span-5">
+        <div className="space-y-8">
+          {/* Thông tin tham khảo y tế */}
+          <div className="space-y-6">
             {/* Thông tin bệnh nhân */}
             <PatientProfileSummary profileId={patientProfileId} />
 
             {/* Lịch sử lần khám trước (nếu có) */}
-            {previousCaseId && (
+            {previousCasesQuery.isLoading ? (
+              <div className="rounded-lg border border-[#E7E8EB] bg-white p-4 text-xs text-muted-foreground animate-pulse">
+                Đang tải lịch sử khám...
+              </div>
+            ) : previousCaseId ? (
               <PreviousCaseSummary caseId={previousCaseId} />
-            )}
+            ) : null}
           </div>
 
-          {/* Cột phải (lg:col-span-7) — Tiếp nhận ca khám mới */}
-          <div className="space-y-6 lg:col-span-7">
+          {/* Tiếp nhận ca khám mới */}
+          <div className="space-y-6">
             {/* Header card: Tiêu đề "Tạo ca khám" + Chọn bác sĩ phụ trách */}
             <div className="rounded-lg border border-[#E7E8EB] bg-white p-6 shadow-xs">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -329,12 +374,8 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
 
                 {/* Doctor Selection / Static Display */}
                 <div className="w-full sm:w-[320px]">
-                  <label htmlFor="responsibleDoctorId" className="sr-only">
-                    Bác sĩ phụ trách
-                  </label>
                   {isDoctor ? (
                     <div
-                      id="responsibleDoctorId"
                       className="flex h-10 items-center justify-start sm:justify-end rounded-md bg-[#F8F9FA] px-3 text-sm font-medium text-[#6C7688]"
                     >
                       <User className="mr-1.5 size-4 text-[#2E37A4]" />
@@ -342,6 +383,9 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
                     </div>
                   ) : (
                     <div>
+                      <label htmlFor="responsibleDoctorId" className="sr-only">
+                        Bác sĩ phụ trách
+                      </label>
                       <select
                         id="responsibleDoctorId"
                         value={selectedDoctorId}
