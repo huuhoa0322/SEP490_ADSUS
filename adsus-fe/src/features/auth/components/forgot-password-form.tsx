@@ -54,7 +54,7 @@ export function ForgotPasswordForm() {
   // Gửi xong thì thay hẳn form bằng lời nhắn, để không ai bấm gửi liên tục.
   if (request.isSuccess) {
     return (
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
         <span className="flex size-12 items-center justify-center rounded-full bg-accent/12">
           <MailCheck className="size-6 text-accent" />
         </span>
@@ -62,6 +62,7 @@ export function ForgotPasswordForm() {
         <h1 className="mt-6 font-heading text-[32px] font-bold leading-[1.15] tracking-[-0.02em] text-foreground">
           Đã gửi yêu cầu
         </h1>
+        <span aria-hidden className="mt-3 block h-1 w-12 rounded-full bg-accent" />
 
         {/* Câu này cố tình mơ hồ — xem chú thích ở đầu tệp (AF-01). */}
         <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
@@ -90,7 +91,7 @@ export function ForgotPasswordForm() {
       : null);
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
       <Link
         href="/login"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-accent"
@@ -99,10 +100,15 @@ export function ForgotPasswordForm() {
         Quay lại đăng nhập
       </Link>
 
-      <h1 className="mt-6 font-heading text-[38px] font-bold leading-[1.15] tracking-[-0.02em] text-foreground">
+      <span className="mt-6 flex size-12 items-center justify-center rounded-full bg-accent/12">
+        <Mail className="size-5 text-accent" />
+      </span>
+
+      <h1 className="mt-4 font-heading text-[38px] font-bold leading-[1.15] tracking-[-0.02em] text-foreground">
         Quên mật khẩu
       </h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+      <span aria-hidden className="mt-3 block h-1 w-12 rounded-full bg-accent" />
+      <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
         Nhập số điện thoại và email đã đăng ký. Hệ thống sẽ gửi mật khẩu mới tới email đó.
       </p>
 

@@ -10,7 +10,7 @@ import { useDashboardStatistics } from "../hooks/use-dashboard";
 
 import { AuditLogPanel } from "./audit-log-panel";
 import { BarList, ChartCard, DonutChart, RateMeter, StatTile, StatusBreakdown } from "./chart-primitives";
-import { APPOINTMENT_SERIES, GroupedBarChart } from "./trend-chart";
+import { APPOINTMENT_SERIES, GroupedBarChart, TrendChart } from "./trend-chart";
 
 /** Các mốc thời gian bấm nhanh, tính lùi từ hôm nay. */
 const PRESETS = [
@@ -313,82 +313,15 @@ export function DashboardView() {
             </ChartCard>
           </div>
 
-          {/* ── Row 5: 3 trend mini-charts ─────────────────────────── */}
+          {/* ── Row 5: 3 trend mini-charts ─────────────────────────────
+              Reuses the existing TrendChart primitive (line + area + hover tooltip,
+              src/features/dashboard/components/trend-chart.tsx) instead of the plain
+              static bars this row used to hand-roll — same component already covered
+              by trend-chart.test.tsx, just not wired up here before. */}
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-[var(--border)] bg-background p-6">
-              <div className="mb-3 flex items-baseline justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Tài khoản mới
-                </span>
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {data.accounts.newInRange} / kỳ
-                </span>
-              </div>
-              <div className="flex items-end gap-1.5">
-                {data.trend.slice(-14).map((p, i) => {
-                  const maxVal = Math.max(...data.trend.map((pt) => pt.newAccounts), 1);
-                  const h = Math.max(4, (p.newAccounts / maxVal) * 48);
-                  return (
-                    <div
-                      key={i}
-                      className="flex-1 rounded-sm bg-[var(--cat-navy)] transition-all hover:opacity-80"
-                      style={{ height: `${h}px` }}
-                      title={`${p.date}: ${p.newAccounts}`}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[var(--border)] bg-background p-6">
-              <div className="mb-3 flex items-baseline justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Ca khám
-                </span>
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {data.clinical.caseCount} / kỳ
-                </span>
-              </div>
-              <div className="flex items-end gap-1.5">
-                {data.trend.slice(-14).map((p, i) => {
-                  const maxVal = Math.max(...data.trend.map((pt) => pt.cases), 1);
-                  const h = Math.max(4, (p.cases / maxVal) * 48);
-                  return (
-                    <div
-                      key={i}
-                      className="flex-1 rounded-sm bg-[var(--cat-teal)] transition-all hover:opacity-80"
-                      style={{ height: `${h}px` }}
-                      title={`${p.date}: ${p.cases}`}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[var(--border)] bg-background p-6">
-              <div className="mb-3 flex items-baseline justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Lượt hẹn
-                </span>
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {data.appointments.bookedCount} / kỳ
-                </span>
-              </div>
-              <div className="flex items-end gap-1.5">
-                {data.trend.slice(-14).map((p, i) => {
-                  const maxVal = Math.max(...data.trend.map((pt) => pt.appointments), 1);
-                  const h = Math.max(4, (p.appointments / maxVal) * 48);
-                  return (
-                    <div
-                      key={i}
-                      className="flex-1 rounded-sm bg-[var(--cat-magenta)] transition-all hover:opacity-80"
-                      style={{ height: `${h}px` }}
-                      title={`${p.date}: ${p.appointments}`}
-                    />
-                  );
-                })}
-              </div>
-            </div>
+            <TrendChart points={data.trend} measure="newAccounts" label="Tài khoản mới" />
+            <TrendChart points={data.trend} measure="cases" label="Ca khám" />
+            <TrendChart points={data.trend} measure="appointments" label="Lượt hẹn" />
           </div>
 
           {/* ── Audit Log Panel ─────────────────────────────────────── */}

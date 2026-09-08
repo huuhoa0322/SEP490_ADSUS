@@ -119,11 +119,14 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <div className="w-full max-w-lg">
+    <div className="w-full max-w-lg motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
       {/* Shown to users who arrived here because an admin issued them a temporary password */}
       {mustChangePassword && (
         <div className="mb-7 flex items-start gap-3 rounded-2xl border border-accent/30 bg-accent/8 px-5 py-4">
-          <AlertCircle aria-hidden className="mt-0.5 size-5 shrink-0 text-accent" />
+          <span aria-hidden className="relative mt-0.5 flex size-2 shrink-0">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-75" />
+            <span className="relative inline-flex size-2 rounded-full bg-accent" />
+          </span>
           <div className="text-sm leading-relaxed">
             <p className="font-heading font-600 text-foreground">
               Bạn cần đổi mật khẩu trước khi tiếp tục
@@ -136,10 +139,15 @@ export function ChangePasswordForm() {
         </div>
       )}
 
-      <h1 className="font-heading text-[32px] font-bold leading-tight tracking-[-0.02em] text-foreground">
+      <span className="flex size-12 items-center justify-center rounded-full bg-accent/12">
+        <Lock className="size-5 text-accent" />
+      </span>
+
+      <h1 className="mt-4 font-heading text-[32px] font-bold leading-tight tracking-[-0.02em] text-foreground">
         Đổi mật khẩu
       </h1>
-      <p className="mt-2 text-[15px] text-muted-foreground">
+      <span aria-hidden className="mt-3 block h-1 w-12 rounded-full bg-accent" />
+      <p className="mt-4 text-[15px] text-muted-foreground">
         {mustChangePassword
           ? "Nhập mật khẩu mới bạn muốn dùng."
           : "Nhập mật khẩu hiện tại và mật khẩu mới bạn muốn dùng."}

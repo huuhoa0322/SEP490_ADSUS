@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./preclinic-components.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -41,6 +42,10 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-role-admin: var(--role-admin);
+  --color-role-doctor: var(--role-doctor);
+  --color-role-nurse: var(--role-nurse);
+  --color-role-pharmacist: var(--role-pharmacist);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -61,26 +66,30 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  /* ADSUS palette, extracted from the team's Medizco template
-     (G4_ClinicManagement/frontend/css/style.css) so the React app matches the chosen identity.
-       #223a66  navy — primary, headings
-       #1cba9f  teal — accent, positive state
-       #558dca  blue — supporting
-       #f13a66  pink — destructive / error  */
-  --primary: #223a66;
+  /* ADSUS palette. Primary/accent switched 08/09/2026 from the team's original Medizco
+     navy+teal (#223a66 / #1cba9f) to the Preclinic template's Indigo Navy + Medical Teal
+     per the migration plan (migration_plan/master_plan.md §3.2) — every other page built
+     against the old pair (login's scan motif, the Phase 1 shell's role-accent colours,
+     the toast styles in layout.tsx) reads off these same vars, so it re-themes with them.
+       #2E37A4  indigo navy — primary, headings (== --cat-navy, already used by the
+                dashboard redesign — same colour now has two names in the codebase)
+       #00D3C7  medical teal — accent, positive state
+       #558dca  blue — supporting (unchanged)
+       #f13a66  pink — destructive / error (unchanged, not part of this palette)  */
+  --primary: #2E37A4;
   --primary-foreground: #ffffff;
   --secondary: #eef3f9;
-  --secondary-foreground: #223a66;
+  --secondary-foreground: #2E37A4;
   --muted: #f7f9fb;
   --muted-foreground: #5b6b85;
-  --accent: #1cba9f;
+  --accent: #00D3C7;
   --accent-foreground: #ffffff;
   --destructive: #f13a66;
   --border: #dde5ef;
   --input: #dde5ef;
   --ring: #558dca;
-  --chart-1: #223a66;
-  --chart-2: #1cba9f;
+  --chart-1: #2E37A4;
+  --chart-2: #00D3C7;
   --chart-3: #558dca;
   --chart-4: #f13a66;
   --chart-5: #4d94c4;
@@ -88,7 +97,7 @@
   /* Màu trạng thái cho biểu đồ (UC-05 / SCR-08).
      Ba màu này đã chạy qua trình kiểm tra bảng màu: đạt dải độ sáng, ngưỡng bão hoà, và
      tách biệt được với các dạng mù màu.
-     KHÔNG dùng --chart-1 (#223a66) cho biểu đồ: nó trượt cả hai kiểm tra đầu — quá tối và
+     KHÔNG dùng --chart-1 (#2E37A4) cho biểu đồ: nó trượt cả hai kiểm tra đầu — quá tối và
      bão hoà quá thấp nên hiển thị ra gần như màu xám.
      Màu trạng thái luôn đi kèm biểu tượng và nhãn chữ, không bao giờ dùng màu một mình. */
   --status-good: #1cba9f;
@@ -131,20 +140,20 @@
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
   /* Dark theme — same palette, lightened for contrast against a dark background */
-  --primary: #4f7cc0;
+  --primary: #7C86E8;
   --primary-foreground: #ffffff;
   --secondary: #1e2a3d;
   --secondary-foreground: #e8eef7;
   --muted: #1e2a3d;
   --muted-foreground: #9aabc4;
-  --accent: #1cba9f;
+  --accent: #2FD9CD;
   --accent-foreground: #06231e;
   --destructive: #fc7e8a;
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
   --ring: #558dca;
-  --chart-1: #558dca;
-  --chart-2: #1cba9f;
+  --chart-1: #7C86E8;
+  --chart-2: #2FD9CD;
   --chart-3: #4d94c4;
   --chart-4: #fc7e8a;
   --chart-5: #f06699;
@@ -200,6 +209,9 @@
 
 .login-scan-beam {
   background: linear-gradient(180deg, transparent, var(--accent) 50%, transparent);
+  /* Đèn glow khớp màu accent gốc của trang login (#1cba9f) — trang này ghi đè cục bộ
+     --accent về giá trị cũ (xem src/app/(auth)/login/page.tsx), rgba() ở đây không tự
+     theo var() được nên phải khớp tay. */
   box-shadow: 0 0 22px 3px rgba(28, 186, 159, 0.55);
   opacity: 0;
 }
