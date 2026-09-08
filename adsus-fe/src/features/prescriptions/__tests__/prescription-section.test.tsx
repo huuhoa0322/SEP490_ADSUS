@@ -69,7 +69,7 @@ describe("PrescriptionSection", () => {
     expect(loadingText).toHaveClass("font-bold", "text-foreground");
 
     const loadingCard = container.querySelector("div");
-    expect(loadingCard?.className).toMatch(/border-black/);
+    expect(loadingCard?.className).toMatch(/border-gray-300/);
   });
 
   it("trả về null khi không có đơn thuốc", () => {
@@ -103,11 +103,11 @@ describe("PrescriptionSection", () => {
     // 3. Section Bounding Box (border-black)
     const section = container.querySelector("section");
     expect(section).toBeInTheDocument();
-    expect(section?.className).toMatch(/border-black/);
+    expect(section?.className).toMatch(/border-gray-300/);
 
     // 4. Bảng và Table Header: font-bold text-foreground, viền border-black
     const tableWrapper = container.querySelector("div.overflow-hidden");
-    expect(tableWrapper?.className).toMatch(/border-black/);
+    expect(tableWrapper?.className).toMatch(/border-gray-300/);
 
     const headers = screen.getAllByRole("columnheader");
     expect(headers.length).toBe(6);
@@ -126,6 +126,6 @@ describe("PrescriptionSection", () => {
     expect(screen.getByText(/ghi chú:/i)).toHaveClass("font-bold", "text-foreground");
     expect(screen.getByText(/uống thuốc sau bữa ăn 30 phút/i)).toBeInTheDocument();
     const noteCard = screen.getByText(/ghi chú:/i).closest("div");
-    expect(noteCard?.className).toMatch(/border-black/);
+    expect(noteCard?.className).toMatch(/border-gray-300/);
   });
 });

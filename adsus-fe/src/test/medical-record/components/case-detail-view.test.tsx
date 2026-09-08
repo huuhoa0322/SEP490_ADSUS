@@ -454,12 +454,12 @@ describe("CaseDetailView", () => {
     const sections = container.querySelectorAll("section");
     expect(sections.length).toBeGreaterThanOrEqual(3);
     sections.forEach((section) => {
-      expect(section.className).toMatch(/border-black/);
+      expect(section.className).toMatch(/border-(gray-300|border)/);
     });
 
     const header = container.querySelector("header");
     expect(header).toBeInTheDocument();
-    expect(header?.className).toMatch(/border-black/);
+    expect(header?.className).toMatch(/border-gray-300/);
   });
 
   // ---------- Milestone 3: Interactive Actions, Prescription & Conclusion Enhancements ----------
@@ -510,7 +510,7 @@ describe("CaseDetailView", () => {
 
     // Dialog bounding box check
     const dialogContent = container.ownerDocument.querySelector("[data-slot='dialog-content']");
-    expect(dialogContent?.className).toMatch(/border-black/);
+    expect(dialogContent?.className).toMatch(/border-gray-300/);
 
     // Bấm nút Kết thúc trong dialog
     const confirmBtn = screen.getByRole("button", { name: /^kết thúc$/i });
@@ -565,25 +565,25 @@ describe("CaseDetailView", () => {
 
     // 2. Section Bounding Box
     const conclusionSection = conclusionHeading.closest("section");
-    expect(conclusionSection?.className).toMatch(/border-black/);
+    expect(conclusionSection?.className).toMatch(/border-gray-300/);
 
     // 3. Form labels và textareas bounding box
     const diagLabel = screen.getByText(/chẩn đoán cuối cùng \*/i);
     expect(diagLabel).toHaveClass("font-bold", "text-foreground");
 
     const diagInput = screen.getByLabelText(/chẩn đoán cuối cùng/i);
-    expect(diagInput.className).toMatch(/border-black/);
+    expect(diagInput.className).toMatch(/border-gray-300/);
 
     const concLabel = screen.getByText(/kết luận \/ hướng xử trí \*/i);
     expect(concLabel).toHaveClass("font-bold", "text-foreground");
 
     const concInput = screen.getByLabelText(/kết luận \/ hướng xử trí/i);
-    expect(concInput.className).toMatch(/border-black/);
+    expect(concInput.className).toMatch(/border-gray-300/);
 
     // 4. Action buttons: font-bold text-foreground / text-primary-foreground
     const saveBtn = screen.getByRole("button", { name: /^lưu kết luận$/i });
     expect(saveBtn).toHaveClass("font-bold", "text-foreground");
-    expect(saveBtn.className).toMatch(/border-black/);
+    expect(saveBtn.className).toMatch(/border-gray-300/);
 
     const confirmBtn = screen.getByRole("button", { name: /xác nhận kết luận/i });
     expect(confirmBtn).toHaveClass("font-bold", "text-primary-foreground");
@@ -599,7 +599,7 @@ describe("CaseDetailView", () => {
 
     const editBtn = screen.getByRole("button", { name: /^sửa$/i });
     expect(editBtn).toHaveClass("font-bold", "text-foreground");
-    expect(editBtn.className).toMatch(/border-black/);
+    expect(editBtn.className).toMatch(/border-gray-300/);
   });
 
   // ---------- Requirement R1: Bố cục 90% chiều rộng màn hình (Layout & Width) ----------
@@ -630,7 +630,7 @@ describe("CaseDetailView", () => {
 
     const loadingCard = container.querySelector("div.rounded-xl");
     expect(loadingCard).toBeInTheDocument();
-    expect(loadingCard?.className).toMatch(/border-black/);
+    expect(loadingCard?.className).toMatch(/border-gray-300/);
 
     const loadingText = screen.getByText(/đang tải ca khám\.\.\./i);
     expect(loadingText).toBeInTheDocument();
@@ -664,7 +664,7 @@ describe("CaseDetailView", () => {
 
     const workspaceGrid = container.querySelector("div.lg\\:grid-cols-\\[1\\.7fr_1fr\\]");
     expect(workspaceGrid).toBeInTheDocument();
-    expect(workspaceGrid).toHaveClass("grid", "grid-cols-1", "gap-6");
+    expect(workspaceGrid).toHaveClass("grid", "grid-cols-1", "gap-5");
   });
 
   // ---------- Requirement R2: Typography & Phân vùng (Bounding Boxes) ----------
@@ -745,7 +745,7 @@ describe("CaseDetailView", () => {
     expect(warningDesc).toHaveClass("font-bold", "text-foreground");
 
     const warningCard = warningHeading.closest("div");
-    expect(warningCard?.className).toMatch(/border-black/);
+    expect(warningCard?.className).toMatch(/border-border/);
   });
 
   // ---------- Acceptance Criteria: Interactive Actions & Edge Cases ----------
