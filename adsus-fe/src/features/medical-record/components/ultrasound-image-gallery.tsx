@@ -16,8 +16,8 @@ export function UltrasoundImageGallery({ images }: { images: UltrasoundImage[] }
 
   if (images.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="text-sm text-muted-foreground">Ca khám này chưa có ảnh siêu âm nào.</p>
+      <div className="rounded-lg border-2 border-dashed border-border bg-muted/10 p-8 text-center">
+        <p className="text-sm font-bold text-foreground">Ca khám này chưa có ảnh siêu âm nào.</p>
       </div>
     );
   }
@@ -26,7 +26,7 @@ export function UltrasoundImageGallery({ images }: { images: UltrasoundImage[] }
     <>
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {images.map((image) => (
-        <li key={image.imageId} className="overflow-hidden rounded-lg border border-border">
+        <li key={image.imageId} className="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700 bg-card shadow-sm">
           {image.imageUrl ? (
             <div
               role="button"
@@ -50,19 +50,19 @@ export function UltrasoundImageGallery({ images }: { images: UltrasoundImage[] }
             </div>
           ) : (
             <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-1 bg-destructive/10 p-4 text-center">
-              <p className="text-sm font-semibold text-destructive">Không tải được ảnh</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm font-bold text-destructive">Không tải được ảnh</p>
+              <p className="text-xs font-medium text-destructive/80">
                 Liên kết truy cập đã hết hạn, tải lại trang để thử lại.
               </p>
             </div>
           )}
 
           <div className="p-3">
-            <p className="font-mono text-xs text-muted-foreground">
+            <p className="font-mono text-xs font-bold text-foreground">
               {formatIsoDateTime(image.uploadedAt)}
             </p>
-            <p className="mt-1 text-sm">
-              {image.note ?? <span className="italic text-muted-foreground">Không có ghi chú</span>}
+            <p className="mt-1 text-sm font-medium text-foreground">
+              {image.note ?? <span className="font-normal italic text-foreground/70">Không có ghi chú</span>}
             </p>
           </div>
         </li>

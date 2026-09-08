@@ -3,14 +3,20 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAuthStore } from "@/store/auth-store";
+import { useDiagnosticStore } from "@/features/medical-record/stores/use-diagnostic-store";
 
 import { CaseDetailView } from "@/features/medical-record/components/case-detail-view";
 
-const { detailMock, saveMutate, confirmMutate } = vi.hoisted(() => ({
+const { detailMock, saveMutate, confirmMutate, endMutate, exportReportMock, pushMock } = vi.hoisted(() => ({
   detailMock: vi.fn(),
   saveMutate: vi.fn(),
   confirmMutate: vi.fn(),
+  endMutate: vi.fn(),
+  exportReportMock: vi.fn(),
+  pushMock: vi.fn(),
 }));
+
+let isSaveSuccess = false;
 
 vi.mock("@/features/medical-record/hooks/use-cases", () => ({
   useCaseDetail: () => detailMock(),
@@ -21,11 +27,14 @@ vi.mock("@/features/medical-record/hooks/use-cases", () => ({
       input: unknown,
       options?: { onSuccess?: () => void },
     ) => {
+      isSaveSuccess = true;
       saveMutate(input);
       options?.onSuccess?.();
     },
     isPending: false,
-    isSuccess: false,
+    get isSuccess() {
+      return isSaveSuccess;
+    },
     isError: false,
     error: null,
   }),
@@ -37,7 +46,13 @@ vi.mock("@/features/medical-record/hooks/use-cases", () => ({
     error: null,
   }),
   useEndCaseWithoutPrescription: () => ({
-    mutate: vi.fn(),
+    mutate: (
+      input: unknown,
+      options?: { onSuccess?: () => void },
+    ) => {
+      endMutate(input);
+      options?.onSuccess?.();
+    },
     isPending: false,
     isSuccess: false,
     isError: false,
@@ -45,12 +60,23 @@ vi.mock("@/features/medical-record/hooks/use-cases", () => ({
   }),
 }));
 
+let isReportPending = false;
+let reportErrorMock: unknown = null;
+
 vi.mock("@/features/medical-record/hooks/use-case-report", () => ({
-  useExportCaseReport: () => ({ exportReport: vi.fn(), isPending: false, error: null }),
+  useExportCaseReport: () => ({
+    exportReport: exportReportMock,
+    get isPending() {
+      return isReportPending;
+    },
+    get error() {
+      return reportErrorMock;
+    },
+  }),
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: pushMock }),
 }));
 
 vi.mock("@/features/prescriptions/components/prescription-section", () => ({
@@ -113,10 +139,18 @@ function signInAs(role: "DOCTOR" | "NURSE", userId: string) {
 
 describe("CaseDetailView", () => {
   beforeEach(() => {
+    isSaveSuccess = false;
+    isReportPending = false;
+    reportErrorMock = null;
+    URL.createObjectURL = vi.fn(() => "blob:fake");
     detailMock.mockReset();
     saveMutate.mockReset();
     confirmMutate.mockReset();
+    endMutate.mockReset();
+    exportReportMock.mockReset();
+    pushMock.mockReset();
     useAuthStore.getState().signOut();
+    useDiagnosticStore.getState().clearSession();
   });
 
   it("không hiển thị nút xuất PDF khi ca chưa kết thúc", () => {
@@ -354,5 +388,442 @@ describe("CaseDetailView", () => {
       finalDiagnosis: "Nhân xơ tử cung",
       doctorConclusion: "Theo dõi 6 tháng",
     });
+  });
+
+  // ---------- Requirement R2: Typography & Bounding Boxes (Milestone 2) ----------
+
+  it("áp dụng viền phân vùng (bounding boxes) rõ ràng và chữ đậm tối màu cho các khối thông tin", () => {
+    const caseWithProfile = {
+      ...makeCase("ANALYZED"),
+      data: {
+        ...makeCase("ANALYZED").data,
+        patientProfile: {
+          patientProfileId: "profile-1",
+          patientUserId: "user-1",
+          fullName: "Trần Thị Hoa",
+          phone: "0912345678",
+          dateOfBirth: "1990-05-15",
+          gender: "FEMALE" as const,
+          diseases: [{ diseaseId: "d1", diseaseName: "Viêm dạ dày", isOther: false, note: null }],
+          allergies: [{ allergyTypeId: "a1", allergyName: "Penicillin", isOther: false, note: null }],
+          createdBy: "user-admin",
+          createdAt: "2026-01-01T00:00:00Z",
+          updatedAt: "2026-01-01T00:00:00Z",
+        },
+        symptoms: [
+          {
+            categoryId: "c1",
+            categoryName: "Triệu chứng chung",
+            symptomId: "s1",
+            symptomName: "Đau bụng dưới",
+            otherNote: null,
+          },
+        ],
+      },
+    };
+    detailMock.mockReturnValue(caseWithProfile);
+
+    const { container } = render(<CaseDetailView caseId="case-1" />);
+
+    // 1. Kiểm tra tiêu đề chính và các heading có font-bold và text-foreground
+    const mainHeading = screen.getByRole("heading", { name: /lần khám ngày/i, level: 1 });
+    expect(mainHeading).toHaveClass("font-bold");
+    expect(mainHeading).toHaveClass("text-foreground");
+    expect(mainHeading).not.toHaveClass("text-muted-foreground");
+
+    const clinicalHeading = screen.getByRole("heading", { name: /thông tin lâm sàng/i, level: 2 });
+    expect(clinicalHeading).toHaveClass("font-bold");
+    expect(clinicalHeading).toHaveClass("text-foreground");
+    expect(clinicalHeading).not.toHaveClass("text-muted-foreground");
+
+    const ultrasoundHeading = screen.getByRole("heading", { name: /ảnh siêu âm/i, level: 2 });
+    expect(ultrasoundHeading).toHaveClass("font-bold");
+    expect(ultrasoundHeading).toHaveClass("text-foreground");
+    expect(ultrasoundHeading).not.toHaveClass("text-muted-foreground");
+
+    const patientHeading = screen.getByRole("heading", { name: /bệnh nhân:/i, level: 3 });
+    expect(patientHeading).toHaveClass("font-bold");
+    expect(patientHeading).toHaveClass("text-foreground");
+    expect(patientHeading).not.toHaveClass("text-muted-foreground");
+
+    // 2. Kiểm tra Bounding Boxes: Các section và header có viền rõ ràng (border-black)
+    const sections = container.querySelectorAll("section");
+    expect(sections.length).toBeGreaterThanOrEqual(3);
+    sections.forEach((section) => {
+      expect(section.className).toMatch(/border-black/);
+    });
+
+    const header = container.querySelector("header");
+    expect(header).toBeInTheDocument();
+    expect(header?.className).toMatch(/border-black/);
+  });
+
+  // ---------- Milestone 3: Interactive Actions, Prescription & Conclusion Enhancements ----------
+
+  it("khi bấm nút Xuất báo cáo PDF ở trạng thái END thì gọi hàm exportReport", async () => {
+    detailMock.mockReturnValue(makeCase("END"));
+    const user = userEvent.setup();
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    const exportButton = screen.getByRole("button", { name: /xuất báo cáo pdf/i });
+    expect(exportButton).toBeEnabled();
+    expect(exportButton).toHaveClass("font-bold", "text-primary-foreground");
+
+    await user.click(exportButton);
+    expect(exportReportMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("khi ca ở trạng thái END thì hiển thị PrescriptionSection", () => {
+    detailMock.mockReturnValue(makeCase("END"));
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    expect(screen.getByTestId("prescription-section")).toBeInTheDocument();
+  });
+
+  it("khi Bác sĩ bấm Kết thúc ca bệnh thì mở Dialog xác nhận và gọi endCaseWithoutPrescription khi xác nhận", async () => {
+    signInAs("DOCTOR", "doctor-1");
+    detailMock.mockReturnValue(makeCase("CONFIRMED"));
+    const user = userEvent.setup();
+
+    const { container } = render(<CaseDetailView caseId="case-1" />);
+
+    const endCaseBtn = screen.getByRole("button", { name: /kết thúc ca bệnh/i });
+    expect(endCaseBtn).toBeInTheDocument();
+    expect(endCaseBtn).toHaveClass("font-bold", "text-primary-foreground");
+
+    await user.click(endCaseBtn);
+
+    // Dialog mở ra
+    const dialogTitle = screen.getByRole("heading", { name: /xác nhận kết thúc ca bệnh/i });
+    expect(dialogTitle).toBeInTheDocument();
+    expect(dialogTitle).toHaveClass("font-bold", "text-foreground");
+
+    const dialogDescription = screen.getByText(/chắc chắn muốn kết thúc ca bệnh mà không có đơn thuốc/i);
+    expect(dialogDescription).toBeInTheDocument();
+    expect(dialogDescription).toHaveClass("font-bold", "text-foreground");
+
+    // Dialog bounding box check
+    const dialogContent = container.ownerDocument.querySelector("[data-slot='dialog-content']");
+    expect(dialogContent?.className).toMatch(/border-black/);
+
+    // Bấm nút Kết thúc trong dialog
+    const confirmBtn = screen.getByRole("button", { name: /^kết thúc$/i });
+    expect(confirmBtn).toHaveClass("font-bold", "text-primary-foreground");
+    await user.click(confirmBtn);
+
+    expect(endMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it("bác sĩ mở form Bổ sung ảnh siêu âm và gửi ảnh qua Xem kết quả AI sẽ lưu session vào Zustand store và chuyển trang /diagnostic", async () => {
+    signInAs("DOCTOR", "doctor-1");
+    detailMock.mockReturnValue(makeCase("CREATED"));
+    const user = userEvent.setup();
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    const addImageBtn = screen.getByRole("button", { name: /bổ sung ảnh siêu âm/i });
+    await user.click(addImageBtn);
+
+    // Form upload xuất hiện
+    expect(screen.getByLabelText(/ghi chú cho lô ảnh này/i)).toBeInTheDocument();
+    const submitBtn = screen.getByRole("button", { name: /xem kết quả ai/i });
+    expect(submitBtn).toBeDisabled();
+
+    // Giả lập chọn file ảnh
+    const file = new File(["fake-image"], "test-ultrasound.png", { type: "image/png" });
+    const fileInput = screen.getByLabelText(/chọn ảnh siêu âm/i);
+    await user.upload(fileInput, file);
+
+    expect(submitBtn).toBeEnabled();
+    expect(submitBtn).toHaveClass("font-bold");
+
+    await user.click(submitBtn);
+
+    expect(useDiagnosticStore.getState().caseId).toBe("case-1");
+    expect(useDiagnosticStore.getState().images.length).toBe(1);
+    expect(pushMock).toHaveBeenCalledWith("/cases/case-1/diagnostic");
+  });
+
+  it("áp dụng Bounding Box và chữ đậm tối màu cho phần Kết luận của bác sĩ (Milestone 3)", async () => {
+    signInAs("DOCTOR", "doctor-1");
+    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    const user = userEvent.setup();
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    // 1. Tiêu đề Kết luận của bác sĩ
+    const conclusionHeading = screen.getByRole("heading", { name: /kết luận của bác sĩ/i, level: 2 });
+    expect(conclusionHeading).toBeInTheDocument();
+    expect(conclusionHeading).toHaveClass("font-heading", "font-bold", "text-foreground");
+    expect(conclusionHeading).not.toHaveClass("text-muted-foreground");
+
+    // 2. Section Bounding Box
+    const conclusionSection = conclusionHeading.closest("section");
+    expect(conclusionSection?.className).toMatch(/border-black/);
+
+    // 3. Form labels và textareas bounding box
+    const diagLabel = screen.getByText(/chẩn đoán cuối cùng \*/i);
+    expect(diagLabel).toHaveClass("font-bold", "text-foreground");
+
+    const diagInput = screen.getByLabelText(/chẩn đoán cuối cùng/i);
+    expect(diagInput.className).toMatch(/border-black/);
+
+    const concLabel = screen.getByText(/kết luận \/ hướng xử trí \*/i);
+    expect(concLabel).toHaveClass("font-bold", "text-foreground");
+
+    const concInput = screen.getByLabelText(/kết luận \/ hướng xử trí/i);
+    expect(concInput.className).toMatch(/border-black/);
+
+    // 4. Action buttons: font-bold text-foreground / text-primary-foreground
+    const saveBtn = screen.getByRole("button", { name: /^lưu kết luận$/i });
+    expect(saveBtn).toHaveClass("font-bold", "text-foreground");
+    expect(saveBtn.className).toMatch(/border-black/);
+
+    const confirmBtn = screen.getByRole("button", { name: /xác nhận kết luận/i });
+    expect(confirmBtn).toHaveClass("font-bold", "text-primary-foreground");
+
+    // 5. Sau khi lưu thành công: trạng thái khoá và nút Sửa
+    await user.type(diagInput, "Nhân xơ tử cung");
+    await user.type(concInput, "Theo dõi 6 tháng");
+    await user.click(saveBtn);
+
+    const statusBanner = screen.getByRole("status");
+    expect(statusBanner).toBeInTheDocument();
+    expect(statusBanner).toHaveClass("font-bold");
+
+    const editBtn = screen.getByRole("button", { name: /^sửa$/i });
+    expect(editBtn).toHaveClass("font-bold", "text-foreground");
+    expect(editBtn.className).toMatch(/border-black/);
+  });
+
+  // ---------- Requirement R1: Bố cục 90% chiều rộng màn hình (Layout & Width) ----------
+
+  it("giao diện chính bao phủ 90% chiều rộng màn hình với max-w-[90%] và w-[90%] mx-auto", () => {
+    detailMock.mockReturnValue(makeCase("ANALYZED"));
+
+    const { container } = render(<CaseDetailView caseId="case-1" />);
+
+    const rootWrapper = container.firstElementChild;
+    expect(rootWrapper).toBeInTheDocument();
+    expect(rootWrapper).toHaveClass("mx-auto", "w-[90%]", "max-w-[90%]");
+  });
+
+  it("trạng thái đang tải (isLoading) giữ nguyên bố cục w-[90%] max-w-[90%] mx-auto và có bounding box border-black", () => {
+    detailMock.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      error: null,
+    });
+
+    const { container } = render(<CaseDetailView caseId="case-1" />);
+
+    const rootWrapper = container.firstElementChild;
+    expect(rootWrapper).toBeInTheDocument();
+    expect(rootWrapper).toHaveClass("mx-auto", "w-[90%]", "max-w-[90%]");
+
+    const loadingCard = container.querySelector("div.rounded-xl");
+    expect(loadingCard).toBeInTheDocument();
+    expect(loadingCard?.className).toMatch(/border-black/);
+
+    const loadingText = screen.getByText(/đang tải ca khám\.\.\./i);
+    expect(loadingText).toBeInTheDocument();
+    expect(loadingText).toHaveClass("font-bold", "text-foreground");
+    expect(loadingText).not.toHaveClass("text-muted-foreground");
+  });
+
+  it("trạng thái lỗi (isError) giữ nguyên bố cục w-[90%] max-w-[90%] mx-auto", () => {
+    detailMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error("Lỗi kết nối máy chủ"),
+    });
+
+    const { container } = render(<CaseDetailView caseId="case-1" />);
+
+    const rootWrapper = container.firstElementChild;
+    expect(rootWrapper).toBeInTheDocument();
+    expect(rootWrapper).toHaveClass("mx-auto", "w-[90%]", "max-w-[90%]");
+
+    const errorAlert = screen.getByRole("alert");
+    expect(errorAlert).toBeInTheDocument();
+    expect(errorAlert).toHaveClass("font-bold", "text-destructive");
+  });
+
+  it("lưới làm việc chính chia 2 cột responsive (grid lg:grid-cols-[1.7fr_1fr]) theo Phase 4", () => {
+    detailMock.mockReturnValue(makeCase("ANALYZED"));
+
+    const { container } = render(<CaseDetailView caseId="case-1" />);
+
+    const workspaceGrid = container.querySelector("div.lg\\:grid-cols-\\[1\\.7fr_1fr\\]");
+    expect(workspaceGrid).toBeInTheDocument();
+    expect(workspaceGrid).toHaveClass("grid", "grid-cols-1", "gap-6");
+  });
+
+  // ---------- Requirement R2: Typography & Phân vùng (Bounding Boxes) ----------
+
+  it("tất cả tiêu đề (h1-h4, dt, label) tuyệt đối không chứa class text-muted-foreground", () => {
+    const caseWithDetails = {
+      ...makeCase("ANALYZED"),
+      data: {
+        ...makeCase("ANALYZED").data,
+        patientProfile: {
+          patientProfileId: "profile-1",
+          patientUserId: "user-1",
+          fullName: "Nguyễn Thị Mai",
+          phone: "0901234567",
+          dateOfBirth: "1988-10-20",
+          gender: "FEMALE" as const,
+          diseases: [{ diseaseId: "d1", diseaseName: "Tiểu đường", isOther: false, note: null }],
+          allergies: [{ allergyTypeId: "a1", allergyName: "Aspirin", isOther: false, note: null }],
+          createdBy: "user-admin",
+          createdAt: "2026-01-01T00:00:00Z",
+          updatedAt: "2026-01-01T00:00:00Z",
+        },
+        symptoms: [
+          {
+            categoryId: "c1",
+            categoryName: "Triệu chứng phụ khoa",
+            symptomId: "s1",
+            symptomName: "Đau hạ vị",
+            otherNote: null,
+          },
+        ],
+      },
+    };
+    detailMock.mockReturnValue(caseWithDetails);
+    signInAs("DOCTOR", "doctor-1");
+
+    const { container } = render(<CaseDetailView caseId="case-1" />);
+
+    // Kiểm tra toàn bộ các thẻ tiêu đề và nhãn form
+    const headingAndLabels = container.querySelectorAll("h1, h2, h3, h4, dt, label");
+    expect(headingAndLabels.length).toBeGreaterThanOrEqual(8);
+
+    headingAndLabels.forEach((el) => {
+      expect(el).not.toHaveClass("text-muted-foreground");
+    });
+  });
+
+  it("link điều hướng danh sách ca khám và subtitle bác sĩ dùng font đậm text-foreground", () => {
+    detailMock.mockReturnValue(makeCase("ANALYZED"));
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    const navLink = screen.getByRole("link", { name: /danh sách ca khám/i });
+    expect(navLink).toBeInTheDocument();
+    expect(navLink).toHaveClass("font-bold", "text-foreground");
+    expect(navLink).not.toHaveClass("text-muted-foreground");
+
+    const doctorSubtitle = screen.getByText(/bác sĩ phụ trách:/i);
+    expect(doctorSubtitle).toHaveClass("font-semibold", "text-foreground");
+    expect(doctorSubtitle).not.toHaveClass("text-muted-foreground");
+
+    const doctorName = screen.getByText("BS. Nguyễn Văn An");
+    expect(doctorName).toHaveClass("font-bold", "text-foreground");
+  });
+
+  it("hộp cảnh báo dành cho bác sĩ không phụ trách ca có viền đứt nét border-black/40 và chữ đậm text-foreground", () => {
+    signInAs("DOCTOR", "doctor-different");
+    detailMock.mockReturnValue(makeCase("ANALYZED"));
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    const warningHeading = screen.getByText("Ca khám chưa được kết luận");
+    expect(warningHeading).toBeInTheDocument();
+    expect(warningHeading).toHaveClass("font-bold", "text-foreground");
+
+    const warningDesc = screen.getByText(/chỉ bác sĩ phụ trách ca này mới chốt được kết luận/i);
+    expect(warningDesc).toBeInTheDocument();
+    expect(warningDesc).toHaveClass("font-bold", "text-foreground");
+
+    const warningCard = warningHeading.closest("div");
+    expect(warningCard?.className).toMatch(/border-black/);
+  });
+
+  // ---------- Acceptance Criteria: Interactive Actions & Edge Cases ----------
+
+  it("bác sĩ bấm Hủy trong Dialog kết thúc ca bệnh thì đóng dialog và không gọi endCaseWithoutPrescription", async () => {
+    signInAs("DOCTOR", "doctor-1");
+    detailMock.mockReturnValue(makeCase("CONFIRMED"));
+    const user = userEvent.setup();
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    const endCaseBtn = screen.getByRole("button", { name: /kết thúc ca bệnh/i });
+    await user.click(endCaseBtn);
+
+    // Dialog mở ra
+    expect(screen.getByRole("heading", { name: /xác nhận kết thúc ca bệnh/i })).toBeInTheDocument();
+
+    // Bấm Hủy
+    const cancelBtn = screen.getByRole("button", { name: /^hủy$/i });
+    expect(cancelBtn).toHaveClass("font-bold", "text-foreground");
+    await user.click(cancelBtn);
+
+    // Dialog đóng lại và mutation không được gọi
+    expect(endMutate).not.toHaveBeenCalled();
+  });
+
+  it("ca ở trạng thái CONFIRMED không hiển thị nút Kê đơn thuốc và Kết thúc ca bệnh cho Bác sĩ khác hoặc Điều dưỡng", () => {
+    detailMock.mockReturnValue(makeCase("CONFIRMED"));
+
+    // Case 1: Điều dưỡng
+    signInAs("NURSE", "nurse-1");
+    const { unmount } = render(<CaseDetailView caseId="case-1" />);
+
+    expect(screen.queryByRole("link", { name: /kê đơn thuốc/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /kết thúc ca bệnh/i })).not.toBeInTheDocument();
+    unmount();
+
+    // Case 2: Bác sĩ khác (không phải người phụ trách doctor-1)
+    signInAs("DOCTOR", "doctor-2");
+    render(<CaseDetailView caseId="case-1" />);
+
+    expect(screen.queryByRole("link", { name: /kê đơn thuốc/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /kết thúc ca bệnh/i })).not.toBeInTheDocument();
+  });
+
+  it("nút Xuất báo cáo PDF bị disabled và hiện 'Đang tạo file...' khi report.isPending là true", () => {
+    detailMock.mockReturnValue(makeCase("END"));
+    isReportPending = true;
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    const exportBtn = screen.getByRole("button", { name: /đang tạo file\.\.\./i });
+    expect(exportBtn).toBeInTheDocument();
+    expect(exportBtn).toBeDisabled();
+    expect(exportBtn).toHaveClass("font-bold");
+  });
+
+  it("hiển thị thông báo lỗi role='alert' khi exportReport phát sinh lỗi", () => {
+    detailMock.mockReturnValue(makeCase("END"));
+    reportErrorMock = new Error("Không thể kết nối dịch vụ xuất PDF");
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    const errorBanner = screen.getByRole("alert");
+    expect(errorBanner).toBeInTheDocument();
+    expect(errorBanner).toHaveClass("font-bold", "text-destructive");
+    expect(errorBanner.className).toMatch(/border-destructive/);
+  });
+
+  it("bác sĩ nhập ghi chú khi bổ sung ảnh siêu âm thì ghi chú được cập nhật trong form", async () => {
+    signInAs("DOCTOR", "doctor-1");
+    detailMock.mockReturnValue(makeCase("CREATED"));
+    const user = userEvent.setup();
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    const addImageBtn = screen.getByRole("button", { name: /bổ sung ảnh siêu âm/i });
+    await user.click(addImageBtn);
+
+    const noteInput = screen.getByLabelText(/ghi chú cho lô ảnh này/i);
+    expect(noteInput).toBeInTheDocument();
+    await user.type(noteInput, "Chụp góc nghiêng bên trái");
+    expect(noteInput).toHaveValue("Chụp góc nghiêng bên trái");
   });
 });

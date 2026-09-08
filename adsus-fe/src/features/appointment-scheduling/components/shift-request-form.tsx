@@ -38,7 +38,7 @@ const shiftRequestSchema = z
     requestDate: z.date({
       required_error: 'Vui lòng chọn ngày',
     }),
-    shiftType: z.enum(['MORNING', 'AFTERNOON', 'EVENING', 'FULL_DAY']),
+    shiftType: z.enum(['MORNING', 'AFTERNOON', 'EVENING', 'FullDay']),
     reason: z
       .string()
       .min(5, 'Lý do quá ngắn')
@@ -70,7 +70,7 @@ const shiftRequestSchema = z
   )
   .refine(
     (data) => {
-      if (data.requestType === 'OVERTIME' && data.shiftType === 'FULL_DAY') {
+      if (data.requestType === 'OVERTIME' && data.shiftType === 'FullDay') {
         return false;
       }
       return true;
@@ -242,7 +242,7 @@ export function ShiftRequestForm({
                       <>
                         <SelectItem value="MORNING">Ca Sáng (08:00 - 12:00)</SelectItem>
                         <SelectItem value="AFTERNOON">Ca Chiều (13:00 - 17:00)</SelectItem>
-                        <SelectItem value="FULL_DAY">Cả ngày (08:00 - 17:00)</SelectItem>
+                        <SelectItem value="FullDay">Cả ngày (08:00 - 17:00)</SelectItem>
                       </>
                     )}
                     {requestType === 'OVERTIME' && (

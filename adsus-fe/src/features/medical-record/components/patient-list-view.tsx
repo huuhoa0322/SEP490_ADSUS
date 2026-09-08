@@ -104,7 +104,7 @@ export function PatientListView() {
   });
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
+    <div className="mx-auto w-[90%] max-w-[90%] py-8">
       {/* Preclinic Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

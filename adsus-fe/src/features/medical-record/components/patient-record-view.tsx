@@ -91,7 +91,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
 
   if (profileQuery.isLoading) {
     return (
-      <div className="mx-auto w-full max-w-screen-xl px-6 py-10">
+      <div className="mx-auto w-[90%] max-w-[90%] py-10">
         <div className="rounded-lg border border-[#E7E8EB] bg-white p-12 text-center text-sm text-muted-foreground">
           Đang tải hồ sơ bệnh nhân...
         </div>
@@ -101,7 +101,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
 
   if (profileQuery.isError || !profileQuery.data) {
     return (
-      <div className="mx-auto w-full max-w-screen-xl px-6 py-10">
+      <div className="mx-auto w-[90%] max-w-[90%] py-10">
         <p className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive" role="alert">
           {getApiErrorMessage(profileQuery.error, "Không tải được hồ sơ bệnh nhân.")}
         </p>
@@ -115,7 +115,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
   const ageStr = calculateAge(profile.dateOfBirth);
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-6 py-8">
+    <div className="mx-auto w-[90%] max-w-[90%] py-8">
       {/* Breadcrumb quay lại danh sách bệnh nhân */}
       <div className="mb-4">
         <Link

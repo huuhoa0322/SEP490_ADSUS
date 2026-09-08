@@ -2,7 +2,7 @@
 
 export type ShiftRequestType = 'LEAVE' | 'OVERTIME';
 export type ShiftRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-export type ShiftType = 'MORNING' | 'AFTERNOON' | 'EVENING' | 'FULL_DAY';
+export type ShiftType = 'MORNING' | 'AFTERNOON' | 'EVENING' | 'FullDay';
 
 export interface CreateShiftRequestDto {
   requestType: ShiftRequestType;
