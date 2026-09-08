@@ -150,7 +150,7 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Tên thuốc <span className="text-red-500">*</span></Label>
+              <Label>Tên thuốc <span className="text-destructive">*</span></Label>
               <Input 
                 value={name} 
                 onChange={e => setName(e.target.value)} 
@@ -165,20 +165,20 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
               <Input 
                 type="number"
                 min="0"
-                value={lowStockThreshold} 
-                onChange={e => setLowStockThreshold(e.target.value)} 
+                value={lowStockThreshold}
+                onChange={e => setLowStockThreshold(e.target.value)}
                 placeholder="Nhập 0 để bỏ qua theo dõi"
-                className="bg-orange-50/50 border-orange-200"
+                className="bg-[var(--status-warning)]/5 border-[var(--status-warning)]/30"
               />
             </div>
           </div>
 
           {!medicineToEdit && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-md border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-secondary/40 p-4 rounded-md border border-border">
               <div className="space-y-2">
-                <Label>Đơn vị cơ sở (Tồn kho) <span className="text-red-500">*</span></Label>
+                <Label>Đơn vị cơ sở (Tồn kho) <span className="text-destructive">*</span></Label>
                 <Select value={medicineUnitId} onValueChange={setMedicineUnitId}>
-                  <SelectTrigger className="bg-white">
+                  <SelectTrigger className="bg-background">
                     <SelectValue placeholder="Chọn đơn vị vật lý" />
                   </SelectTrigger>
                   <SelectContent>
@@ -191,12 +191,12 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
 
               <div className="space-y-2">
                 <Label>Giá bán mặc định (VNĐ)</Label>
-                <Input 
+                <Input
                   type="number"
                   min="0"
                   value={salePrice}
                   onChange={e => setSalePrice(e.target.value)}
-                  className="bg-white font-mono text-green-700 font-medium"
+                  className="bg-background font-mono text-[var(--status-good)] font-medium"
                 />
               </div>
             </div>
@@ -238,7 +238,7 @@ export function MedicineFormModal({ isOpen, onClose, medicineToEdit, onSuccessCr
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-500 pl-8">
+              <p className="text-sm text-muted-foreground pl-8">
                 Mặc định: Hệ thống tự hiểu 1 Đơn vị cơ sở = 1 Đơn vị dùng (Ví dụ 1 Viên = 1 Viên).
               </p>
             )}

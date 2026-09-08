@@ -75,7 +75,7 @@ export default function BatchHistoryPage() {
   };
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
       {/* Header */}
       <div className="mb-6 flex items-center gap-4">
         <button
@@ -98,7 +98,7 @@ export default function BatchHistoryPage() {
           {currentBatch && (
             <button
               onClick={() => setIsAdjustOpen(true)}
-              className="flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600"
+              className="flex items-center gap-2 rounded-full bg-[var(--status-warning)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:opacity-90"
             >
               <Edit className="size-4" />
               Kiểm kê / Điều chỉnh
@@ -146,7 +146,7 @@ export default function BatchHistoryPage() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+      <div className="overflow-hidden rounded-3xl border border-border bg-background shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-secondary/40">
             <tr className="border-b border-border">
@@ -203,10 +203,10 @@ export default function BatchHistoryPage() {
                     <td className="px-5 py-4">
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
                         isImport
-                          ? 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-[var(--status-good)]/12 text-[var(--status-good)]'
                           : isDispense
-                          ? 'bg-orange-100 text-orange-800'
-                          : 'bg-blue-100 text-blue-800'
+                          ? 'bg-[var(--status-warning)]/12 text-[var(--status-warning)]'
+                          : 'bg-[var(--ring)]/12 text-[var(--ring)]'
                       }`}>
                         {isImport
                           ? <><ArrowDownToLine className="size-3" /> Nhập kho</>
@@ -215,10 +215,10 @@ export default function BatchHistoryPage() {
                           : <><Edit className="size-3" /> Điều chỉnh</>}
                       </span>
                     </td>
-                    <td className={`px-5 py-4 text-right font-semibold ${isImport || (isAdjustment && isIncrease) ? 'text-emerald-600' : 'text-orange-600'}`}>
+                    <td className={`px-5 py-4 text-right font-mono font-semibold ${isImport || (isAdjustment && isIncrease) ? 'text-[var(--status-good)]' : 'text-[var(--status-warning)]'}`}>
                       {isImport || (isAdjustment && isIncrease) ? '+' : '-'}{Math.abs(txn.quantityBase).toLocaleString()}
                       {txn.baseUnitName && (
-                        <span className="ml-1 text-xs font-normal text-muted-foreground">{txn.baseUnitName}</span>
+                        <span className="ml-1 font-sans text-xs font-normal text-muted-foreground">{txn.baseUnitName}</span>
                       )}
                     </td>
                     <td className="px-5 py-4 text-right text-muted-foreground">

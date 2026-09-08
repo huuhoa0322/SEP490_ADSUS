@@ -221,8 +221,8 @@ export function ExcelImportModal({ isOpen, onClose, onConfirm, isPending }: Exce
             <div className="space-y-4">
               <div className="p-4 bg-muted rounded-md text-sm">
                 <p><strong>Tổng số dòng:</strong> {parsedData.length}</p>
-                <p><strong>Hợp lệ:</strong> <span className="text-green-600 font-bold">{mappedRequests.length}</span></p>
-                <p><strong>Lỗi:</strong> <span className="text-red-600 font-bold">{parsedData.length - mappedRequests.length}</span></p>
+                <p><strong>Hợp lệ:</strong> <span className="text-[var(--status-good)] font-bold">{mappedRequests.length}</span></p>
+                <p><strong>Lỗi:</strong> <span className="text-destructive font-bold">{parsedData.length - mappedRequests.length}</span></p>
               </div>
               
               {importErrors.length > 0 && (
