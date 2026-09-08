@@ -92,11 +92,15 @@ export function SignInForm() {
 
   return (
     <div className="w-full max-w-md">
-      <div className="mb-9">
-        <span className="font-heading text-sm font-600 uppercase tracking-[0.2em] text-accent">
+      <div className="mb-9 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
+        <span className="inline-flex items-center gap-2 text-sm font-700 uppercase tracking-[0.2em] text-accent">
+          <span aria-hidden className="relative flex size-1.5">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-75" />
+            <span className="relative inline-flex size-1.5 rounded-full bg-accent" />
+          </span>
           Chào mừng trở lại
         </span>
-        <h1 className="mt-3 font-heading text-[42px] font-bold leading-[1.15] tracking-[-0.02em] text-foreground">
+        <h1 className="mt-3 text-[42px] font-bold leading-[1.15] tracking-[-0.02em] text-foreground">
           Đăng nhập
         </h1>
         <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
@@ -118,7 +122,7 @@ export function SignInForm() {
         <div className="flex flex-col gap-2.5">
           <Label
             htmlFor="phoneNumber"
-            className="font-heading text-[13px] font-600 uppercase tracking-wider text-foreground"
+            className="text-[13px] font-700 uppercase tracking-wider text-foreground"
           >
             Số điện thoại
           </Label>
@@ -147,7 +151,7 @@ export function SignInForm() {
         <div className="flex flex-col gap-2.5">
           <Label
             htmlFor="password"
-            className="font-heading text-[13px] font-600 uppercase tracking-wider text-foreground"
+            className="text-[13px] font-700 uppercase tracking-wider text-foreground"
           >
             Mật khẩu
           </Label>
@@ -200,7 +204,7 @@ export function SignInForm() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="mt-1 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90 hover:shadow-accent/35 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-1 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-sm font-700 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90 hover:shadow-accent/35 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? (
             <>
