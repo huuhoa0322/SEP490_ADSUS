@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, PlusCircle, Pencil, PlayCircle, Ban, Search, Package, AlertTriangle, Pill, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, PlusCircle, Pencil, PlayCircle, Ban, Search, Package, AlertTriangle, Pill, PackageCheck, PackageX } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -14,12 +14,10 @@ import { useInventoryAlerts } from "@/features/medicines/api/inventory.api";
 import { formatDateTime } from "@/features/user-role-management/lib/user-labels";
 import type { MedicineResponse } from "../api/medicines-api";
 import { getApiErrorMessage } from "@/lib/api-client";
-import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/features/user-role-management/components/confirm-dialog";
 import { MedicineFormModal } from "./medicine-form-modal";
 import { MedicineDetailModal } from "./medicine-detail-modal";
 import { PaginationNumbered } from "@/components/ui/pagination-numbered";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 
 export function MedicineList() {
@@ -76,20 +74,25 @@ export function MedicineList() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">Quản lý danh mục thuốc</h1>
+    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">Danh mục thuốc</h1>
+          <p className="mt-1.5 text-[15px] text-muted-foreground">
+            Quản lý biệt dược, quy cách đóng gói và ngưỡng cảnh báo tồn kho.
+          </p>
+        </div>
         <div className="flex gap-3">
           <button
             onClick={() => router.push('/medicines/inventory-alerts')}
-            className="flex h-12 items-center justify-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-6 font-heading text-sm font-semibold tracking-wider text-orange-700 transition-colors hover:bg-orange-100 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-400 dark:hover:bg-orange-900/40"
+            className="flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--status-warning)]/30 bg-[var(--status-warning)]/10 px-6 font-heading text-sm font-600 tracking-wider text-[var(--status-warning)] transition-colors hover:bg-[var(--status-warning)]/15"
           >
             <AlertTriangle className="size-4" />
             Cảnh báo kho
           </button>
           <button
             onClick={handleOpenCreate}
-            className="flex h-12 items-center justify-center gap-2 rounded-full bg-accent px-6 font-heading text-sm font-semibold tracking-wider text-white transition-colors hover:bg-accent/90"
+            className="flex h-12 items-center gap-2 rounded-full bg-accent px-6 font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90"
           >
             <PlusCircle className="size-4" />
             Thêm thuốc mới
@@ -97,147 +100,147 @@ export function MedicineList() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
-        <Card className="border-indigo-100 bg-indigo-50/50 shadow-sm border-none">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-indigo-800">Tổng thuốc</CardTitle>
-            <div className="rounded-full bg-indigo-100 p-2">
-              <Pill className="h-4 w-4 text-indigo-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-indigo-600">{alertSummary?.totalMedicinesCount ?? 0}</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-green-100 bg-green-50/50 shadow-sm border-none">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-green-800">Còn hàng</CardTitle>
-            <div className="rounded-full bg-green-100 p-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{alertSummary?.inStockCount ?? 0}</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-orange-100 bg-orange-50/50 shadow-sm border-none">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-orange-800">Sắp hết</CardTitle>
-            <div className="rounded-full bg-orange-100 p-2">
-              <AlertTriangle className="h-4 w-4 text-orange-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{alertSummary?.lowStockCount ?? 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-red-100 bg-red-50/50 shadow-sm border-none">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-red-800">Hết hàng</CardTitle>
-            <div className="rounded-full bg-red-100 p-2">
-              <XCircle className="h-4 w-4 text-red-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{alertSummary?.outOfStockCount ?? 0}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mb-6 rounded-2xl bg-white p-4 shadow-[0px_0px_35px_0px_rgba(104,134,177,0.15)] border border-[#E7E8EB]">
-        <div className="flex gap-4 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo tên thuốc..."
-              value={searchInput}
-              onChange={(e) => {
-                setSearchInput(e.target.value);
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="w-full h-12 rounded-full border border-border bg-background py-2 pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-accent"
-            />
-          </div>
-          <div className="w-[180px]">
-            <select
-              value={inStockFilter}
-              onChange={(e) => {
-                setInStockFilter(e.target.value as "all" | "in_stock" | "out_of_stock");
-                setPage(1);
-              }}
-              className="w-full h-12 rounded-full border border-border bg-background px-4 text-[15px] outline-none transition-colors focus:border-accent cursor-pointer"
-            >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="in_stock">Còn hàng</option>
-              <option value="out_of_stock">Hết hàng</option>
-            </select>
+      {/* Tổng quan tồn kho — 4 số thật lấy từ InventoryAlertSummary, không suy diễn thêm. */}
+      <div className="mt-8 grid gap-4 md:grid-cols-4">
+        <div className="preclinic-card flex items-center gap-3.5 p-4">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Pill className="size-5" />
+          </span>
+          <div>
+            <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Tổng thuốc</p>
+            <p className="font-heading text-2xl font-bold text-foreground">{alertSummary?.totalMedicinesCount ?? 0}</p>
           </div>
         </div>
 
-        <table className="w-full text-sm">
+        <div className="preclinic-card flex items-center gap-3.5 p-4">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--status-good)]/12 text-[var(--status-good)]">
+            <PackageCheck className="size-5" />
+          </span>
+          <div>
+            <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Còn hàng</p>
+            <p className="font-heading text-2xl font-bold text-[var(--status-good)]">{alertSummary?.inStockCount ?? 0}</p>
+          </div>
+        </div>
+
+        <div className="preclinic-card flex items-center gap-3.5 p-4">
+          <span className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--status-warning)]/12 text-[var(--status-warning)]">
+            {(alertSummary?.lowStockCount ?? 0) > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex size-2.5 animate-pulse rounded-full bg-[var(--status-warning)]" />
+            )}
+            <AlertTriangle className="size-5" />
+          </span>
+          <div>
+            <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Sắp hết</p>
+            <p className="font-heading text-2xl font-bold text-[var(--status-warning)]">{alertSummary?.lowStockCount ?? 0}</p>
+          </div>
+        </div>
+
+        <div className="preclinic-card flex items-center gap-3.5 p-4">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/12 text-destructive">
+            <PackageX className="size-5" />
+          </span>
+          <div>
+            <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Hết hàng</p>
+            <p className="font-heading text-2xl font-bold text-destructive">{alertSummary?.outOfStockCount ?? 0}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-3">
+        <div className="relative min-w-64 flex-1">
+          <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Tìm kiếm theo tên thuốc..."
+            value={searchInput}
+            onChange={(e) => {
+              setSearchInput(e.target.value);
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-accent"
+          />
+        </div>
+        <select
+          value={inStockFilter}
+          onChange={(e) => {
+            setInStockFilter(e.target.value as "all" | "in_stock" | "out_of_stock");
+            setPage(1);
+          }}
+          className="h-12 rounded-full border border-border bg-background px-5 text-[15px] outline-none focus:border-accent"
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="in_stock">Còn hàng</option>
+          <option value="out_of_stock">Hết hàng</option>
+        </select>
+      </div>
+
+      <div className="mt-6 overflow-x-auto rounded-3xl border border-border bg-background">
+        <table className="w-full min-w-3xl text-left text-sm">
           <thead>
-            <tr className="border-b border-border">
-              <th className="px-5 py-4 text-left font-semibold text-muted-foreground">Tên thuốc</th>
-              <th className="px-5 py-4 text-left font-semibold text-muted-foreground">Tồn kho</th>
-              <th className="px-5 py-4 text-left font-semibold text-muted-foreground">Trạng thái</th>
-              <th className="px-5 py-4 text-left font-semibold text-muted-foreground">Ngày tạo</th>
-              <th className="px-5 py-4 text-right font-semibold text-muted-foreground">Hành động</th>
+            <tr className="border-b border-border bg-secondary/40">
+              <th className="px-5 py-3.5 font-semibold text-muted-foreground">Tên thuốc</th>
+              <th className="px-5 py-3.5 font-semibold text-muted-foreground">Tồn kho</th>
+              <th className="px-5 py-3.5 font-semibold text-muted-foreground">Trạng thái</th>
+              <th className="px-5 py-3.5 font-semibold text-muted-foreground">Ngày tạo</th>
+              <th className="px-5 py-3.5 text-right font-semibold text-muted-foreground">Hành động</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={4} className="px-5 py-14 text-center text-muted-foreground">
+                <td colSpan={5} className="px-5 py-14 text-center text-muted-foreground">
                   <Loader2 className="mx-auto size-5 animate-spin" />
                 </td>
               </tr>
             ) : data?.items.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-5 py-14 text-center text-muted-foreground">
+                <td colSpan={5} className="px-5 py-14 text-center text-muted-foreground">
                   Không tìm thấy loại thuốc nào.
                 </td>
               </tr>
             ) : (
-              data?.items.map((medicine) => (
+              data?.items.map((medicine) => {
+                // Mức độ tồn kho suy ra thuần từ 2 trường DTO thật: totalInventoryBase &
+                // lowStockThreshold. threshold=0 nghĩa là bỏ theo dõi (đúng ý nghĩa API).
+                const isOut = medicine.totalInventoryBase <= 0;
+                const isLow = !isOut && medicine.lowStockThreshold > 0 && medicine.totalInventoryBase <= medicine.lowStockThreshold;
+                return (
                 <tr key={medicine.medicineId} className="border-b border-border last:border-0 hover:bg-secondary/20">
                   <td className="px-5 py-4 font-semibold text-foreground">
                     {medicine.name}
                   </td>
                   <td className="px-5 py-4">
-                    {medicine.totalInventoryBase > 0 ? (
-                      <span className="font-semibold text-emerald-600">
-                        {medicine.totalInventoryBase.toLocaleString()} {medicine.baseUnitName || '?'}
-                      </span>
-                    ) : (
+                    {isOut ? (
                       <span className="text-muted-foreground italic">Hết hàng</span>
+                    ) : (
+                      <span className={`font-mono font-semibold ${isLow ? "text-[var(--status-warning)]" : "text-[var(--status-good)]"}`}>
+                        {medicine.totalInventoryBase.toLocaleString()} {medicine.baseUnitName || '?'}
+                        {isLow && <span className="ml-1.5 text-xs font-sans font-500">(dưới ngưỡng {medicine.lowStockThreshold})</span>}
+                      </span>
                     )}
                   </td>
                   <td className="px-5 py-4">
-                    <Badge variant={medicine.status === "ACTIVE" ? "default" : "secondary"}>
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-600 ${medicine.status === "ACTIVE" ? "bg-accent/12 text-accent" : "bg-destructive/12 text-destructive"}`}>
                       {medicine.status === "ACTIVE" ? "Đang sử dụng" : "Ngừng sử dụng"}
-                    </Badge>
+                    </span>
                   </td>
                   <td className="px-5 py-4 text-muted-foreground">
                     {formatDateTime(medicine.createdAt)}
                   </td>
                   <td className="px-5 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => router.push(`/medicines/${medicine.medicineId}/batches`)}
                         title="Xem lô tồn kho"
-                        className="flex size-9 items-center justify-center rounded-full text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                        className="flex size-9 items-center justify-center rounded-full text-primary hover:bg-primary/10"
                       >
                         <Package className="size-4" />
                       </button>
                       <button
                         onClick={() => setDetailMedicine(medicine)}
                         title="Chi tiết / Quản lý"
-                        className="flex size-9 items-center justify-center rounded-full text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                        className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
                       >
                         <Pencil className="size-4" />
                       </button>
@@ -253,7 +256,7 @@ export function MedicineList() {
                         <button
                           onClick={() => setPendingActivateId(medicine.medicineId)}
                           title="Kích hoạt lại"
-                          className="flex size-9 items-center justify-center rounded-full text-emerald-600 hover:bg-emerald-500/10"
+                          className="flex size-9 items-center justify-center rounded-full text-[var(--status-good)] hover:bg-[var(--status-good)]/10"
                         >
                           <PlayCircle className="size-4" />
                         </button>
@@ -261,7 +264,7 @@ export function MedicineList() {
                     </div>
                   </td>
                 </tr>
-              ))
+              );})
             )}
           </tbody>
         </table>

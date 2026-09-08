@@ -170,22 +170,25 @@ export const InventoryImportForm = () => {
   return (
     <>
       <div className="w-full space-y-6">
-        
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-3xl font-bold tracking-tight">Nhập kho thuốc</h2>
-          <Button 
-            type="button" 
+
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">Nhập kho thuốc</h1>
+            <p className="mt-1.5 text-[15px] text-muted-foreground">Ghi nhận lô thuốc mới, từng lô một hoặc hàng loạt từ Excel.</p>
+          </div>
+          <button
+            type="button"
             onClick={() => setIsExcelModalOpen(true)}
-            className="bg-[#FFFFFF] text-[#0A1B39] border border-[#E7E8EB] hover:bg-[#F5F6F8] shadow-sm flex h-11 items-center justify-center gap-2 rounded-full px-6 font-heading text-sm font-semibold tracking-wider transition-colors"
+            className="flex h-12 items-center gap-2 rounded-full border border-border bg-background px-6 font-heading text-sm font-600 tracking-wider text-foreground shadow-sm transition-colors hover:bg-secondary"
           >
-            <UploadCloud className="size-4 text-[#2E37A4]" />
+            <UploadCloud className="size-4 text-primary" />
             Nhập từ file Excel
-          </Button>
+          </button>
         </div>
 
-        <div className="rounded-[5px] border border-[#E7E8EB] bg-[#FFFFFF] shadow-[0px_0px_35px_0px_rgba(104,134,177,0.15)]">
-          <div className="p-6 pt-6">
-            <h2 className="text-xl font-bold text-[#0A1B39] mb-6 pb-4 border-b border-[#E7E8EB]">Nhập lô thuốc mới</h2>
+        <div className="preclinic-card">
+          <div className="preclinic-card-body">
+            <h2 className="mb-6 border-b border-border pb-4 text-xl font-bold text-foreground">Nhập lô thuốc mới</h2>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Chọn Thuốc */}
@@ -194,7 +197,7 @@ export const InventoryImportForm = () => {
                     name="medicineId"
                     render={({ field, fieldState }) => (
                       <div className="space-y-2 md:col-span-2">
-                        <label htmlFor="medicineId" className="text-sm font-semibold text-[#0A1B39]">Thuốc</label>
+                        <label htmlFor="medicineId" className="text-sm font-semibold text-foreground">Thuốc</label>
                         <SearchableSelect
                           id="medicineId"
                           disabled={isLoadingMedicines}
@@ -217,7 +220,7 @@ export const InventoryImportForm = () => {
                   name="medicinePackagingId"
                   render={({ field, fieldState }) => (
                     <div className="space-y-2">
-                      <label htmlFor="medicinePackagingId" className="text-sm font-semibold text-[#0A1B39]">Đơn vị nhập</label>
+                      <label htmlFor="medicinePackagingId" className="text-sm font-semibold text-foreground">Đơn vị nhập</label>
                       <SearchableSelect
                         id="medicinePackagingId"
                         disabled={!watchMedicineId || packagings.length === 0}
@@ -237,7 +240,7 @@ export const InventoryImportForm = () => {
                   name="supplierId"
                   render={({ field, fieldState }) => (
                     <div className="space-y-2 md:col-span-2">
-                      <label htmlFor="supplierId" className="text-sm font-semibold text-[#0A1B39]">Nhà cung cấp</label>
+                      <label htmlFor="supplierId" className="text-sm font-semibold text-foreground">Nhà cung cấp</label>
                       <SearchableSelect
                         id="supplierId"
                         disabled={isLoadingSuppliers}
@@ -257,8 +260,8 @@ export const InventoryImportForm = () => {
                   name="lotNumber"
                   render={({ field, fieldState }) => (
                     <div className="space-y-2">
-                      <label htmlFor="lotNumber" className="text-sm font-semibold text-[#0A1B39]">Số Lô</label>
-                      <Input id="lotNumber" placeholder="VD: LOT-123" className="border-[#E7E8EB] focus-visible:ring-[#2E37A4] rounded-[5px] h-11" {...field} />
+                      <label htmlFor="lotNumber" className="text-sm font-semibold text-foreground">Số Lô</label>
+                      <Input id="lotNumber" placeholder="VD: LOT-123" className="h-11" {...field} />
                       {fieldState.error && <p className="text-sm font-medium text-destructive">{fieldState.error.message}</p>}
                     </div>
                   )}
@@ -270,7 +273,7 @@ export const InventoryImportForm = () => {
                   name="expiryDate"
                   render={({ field, fieldState }) => (
                     <div className="space-y-2">
-                      <label htmlFor="expiryDate" className="text-sm font-semibold text-[#0A1B39]">Hạn sử dụng</label>
+                      <label htmlFor="expiryDate" className="text-sm font-semibold text-foreground">Hạn sử dụng</label>
                       <DatePicker
                         id="expiryDate"
                         value={field.value}
@@ -287,11 +290,11 @@ export const InventoryImportForm = () => {
                   name="quantity"
                   render={({ field, fieldState }) => (
                     <div className="space-y-2">
-                      <label htmlFor="quantity" className="text-sm font-semibold text-[#0A1B39]">Số lượng nhập</label>
+                      <label htmlFor="quantity" className="text-sm font-semibold text-foreground">Số lượng nhập</label>
                       <Input
                         id="quantity"
                         type="number"
-                        className="border-[#E7E8EB] focus-visible:ring-[#2E37A4] rounded-[5px] h-11"
+                        className="h-11"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
@@ -306,11 +309,11 @@ export const InventoryImportForm = () => {
                   name="importPricePerUnit"
                   render={({ field, fieldState }) => (
                     <div className="space-y-2">
-                      <label htmlFor="importPricePerUnit" className="text-sm font-semibold text-[#0A1B39]">Giá nhập trên 1 đơn vị (VND)</label>
+                      <label htmlFor="importPricePerUnit" className="text-sm font-semibold text-foreground">Giá nhập trên 1 đơn vị (VND)</label>
                       <Input
                         id="importPricePerUnit"
                         type="number"
-                        className="border-[#E7E8EB] focus-visible:ring-[#2E37A4] rounded-[5px] h-11"
+                        className="h-11"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
@@ -320,13 +323,13 @@ export const InventoryImportForm = () => {
                 />
 
               </div>
-              
-              <div className="flex justify-end items-center w-full mt-8 pt-6 border-t border-[#E7E8EB]">
+
+              <div className="flex justify-end items-center w-full mt-8 pt-6 border-t border-border">
                 <div className="flex space-x-3">
-                  <Button type="button" variant="outline" onClick={() => form.reset()} className="rounded-full px-6 h-12 text-[#6C7688] hover:text-[#0A1B39]">
+                  <Button type="button" variant="outline" onClick={() => form.reset()} className="rounded-full px-6 h-12">
                     Hủy bỏ
                   </Button>
-                  <Button type="submit" disabled={isBulkPending || isValidatePending} className="bg-[#2E37A4] hover:bg-[#2E37A4]/90 rounded-full px-6 h-12 font-semibold text-white">
+                  <Button type="submit" disabled={isBulkPending || isValidatePending} className="rounded-full px-6 h-12 font-semibold">
                     <Plus className="mr-2 h-4 w-4" />
                     {isValidatePending ? 'Đang kiểm tra...' : 'Thêm vào bảng chờ'}
                   </Button>
@@ -337,13 +340,13 @@ export const InventoryImportForm = () => {
         </div>
 
         {bulkData.length > 0 && (
-          <div className="rounded-[5px] border border-[#E7E8EB] bg-[#FFFFFF] shadow-[0px_0px_35px_0px_rgba(104,134,177,0.15)] mt-8 overflow-hidden">
-            <div className="p-6 bg-[#F5F6F8] border-b border-[#E7E8EB]">
-              <h3 className="text-xl font-bold text-[#0A1B39]">Danh sách chờ nhập kho ({bulkData.length} lô)</h3>
+          <div className="preclinic-card overflow-hidden">
+            <div className="preclinic-card-header">
+              <h3 className="text-base font-bold text-foreground">Danh sách chờ nhập kho ({bulkData.length} lô)</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="bg-[#F5F6F8] text-[#0A1B39] border-b border-[#E7E8EB]">
+                <thead className="bg-secondary/40 text-foreground border-b border-border">
                   <tr>
                     <th className="px-5 py-4 font-semibold">#</th>
                     <th className="px-5 py-4 font-semibold">Tên Thuốc</th>
@@ -356,21 +359,21 @@ export const InventoryImportForm = () => {
                     <th className="px-5 py-4 text-center font-semibold">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E7E8EB]">
+                <tbody className="divide-y divide-border">
                   {bulkData.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-[#F5F6F8]/50 transition-colors">
-                      <td className="px-5 py-4 text-[#6C7688]">{idx + 1}</td>
-                      <td className="px-5 py-4 font-medium text-[#0A1B39]">{row._medicineName || 'N/A'}</td>
-                      <td className="px-5 py-4 text-[#6C7688]">{row._supplierName || 'N/A'}</td>
-                      <td className="px-5 py-4 text-[#0A1B39]">{row.lotNumber}</td>
-                      <td className="px-5 py-4 text-[#0A1B39]">{row.expiryDate ? format(new Date(row.expiryDate), 'dd/MM/yyyy') : 'N/A'}</td>
-                      <td className="px-5 py-4 text-[#6C7688]">{row._unitName || 'N/A'}</td>
-                      <td className="px-5 py-4 text-right text-[#0A1B39] font-medium">{row.importPricePerUnit?.toLocaleString() || '0'} đ</td>
-                      <td className="px-5 py-4 text-right font-bold text-[#27AE60]">{row.quantity}</td>
+                    <tr key={idx} className="hover:bg-secondary/20 transition-colors">
+                      <td className="px-5 py-4 text-muted-foreground">{idx + 1}</td>
+                      <td className="px-5 py-4 font-medium text-foreground">{row._medicineName || 'N/A'}</td>
+                      <td className="px-5 py-4 text-muted-foreground">{row._supplierName || 'N/A'}</td>
+                      <td className="px-5 py-4 text-foreground">{row.lotNumber}</td>
+                      <td className="px-5 py-4 text-foreground">{row.expiryDate ? format(new Date(row.expiryDate), 'dd/MM/yyyy') : 'N/A'}</td>
+                      <td className="px-5 py-4 text-muted-foreground">{row._unitName || 'N/A'}</td>
+                      <td className="px-5 py-4 text-right text-foreground font-mono font-medium">{row.importPricePerUnit?.toLocaleString() || '0'} đ</td>
+                      <td className="px-5 py-4 text-right font-mono font-bold text-[var(--status-good)]">{row.quantity}</td>
                       <td className="px-5 py-4 text-center">
-                        <button 
+                        <button
                           onClick={() => setBulkData(prev => prev.filter((_, i) => i !== idx))}
-                          className="p-2 text-[#EF1E1E] hover:bg-[#EF1E1E]/10 rounded-full transition-colors"
+                          className="p-2 text-destructive hover:bg-destructive/10 rounded-full transition-colors"
                           title="Xóa"
                         >
                           <X className="w-4 h-4" />
@@ -381,19 +384,19 @@ export const InventoryImportForm = () => {
                 </tbody>
               </table>
             </div>
-            
-            <div className="flex justify-between items-center w-full p-6 border-t border-[#E7E8EB] bg-[#F5F6F8]/50">
-              <Button type="button" variant="outline" onClick={() => setBulkData([])} className="text-[#EF1E1E] border-[#EF1E1E] hover:bg-[#EF1E1E]/10 rounded-full px-6 bg-white">
+
+            <div className="flex justify-between items-center w-full p-6 border-t border-border bg-secondary/20">
+              <Button type="button" variant="outline" onClick={() => setBulkData([])} className="text-destructive border-destructive/40 hover:bg-destructive/10 rounded-full px-6">
                 Xóa toàn bộ
               </Button>
-              <Button type="button" onClick={submitBulkData} disabled={isBulkPending} className="bg-[#27AE60] hover:bg-[#27AE60]/90 rounded-full px-8 h-12 font-semibold text-[15px] text-white">
+              <Button type="button" onClick={submitBulkData} disabled={isBulkPending} className="bg-[var(--status-good)] hover:opacity-90 rounded-full px-8 h-12 font-semibold text-[15px] text-white">
                 {isBulkPending ? "Đang xử lý..." : "Lưu tất cả vào kho"}
               </Button>
             </div>
           </div>
         )}
       </div>
-      
+
       <ExcelImportModal
         isOpen={isExcelModalOpen}
         onClose={() => setIsExcelModalOpen(false)}

@@ -2,14 +2,10 @@
 
 import { useState, useMemo } from 'react';
 import { useInventoryAlerts } from '@/features/medicines/api/inventory.api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { AlertCircle, AlertTriangle, PackageX, Target, Calendar, Info } from 'lucide-react';
+import { PackageX, Target, Calendar, Info, Search } from 'lucide-react';
 import Link from 'next/link';
 import { PaginationNumbered } from '@/components/ui/pagination-numbered';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export function InventoryAlertsList() {
   const { data: summary, isLoading, isError } = useInventoryAlerts();
@@ -90,8 +86,11 @@ export function InventoryAlertsList() {
 
   if (totalAlerts === 0) {
     return (
-      <div className="p-8 text-center bg-muted/30 rounded-xl border border-dashed">
-        <h3 className="text-lg font-medium text-foreground">Kho hoạt động ổn định</h3>
+      <div className="preclinic-card p-8 text-center">
+        <span className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-[var(--status-good)]/12 text-[var(--status-good)]">
+          <Target className="size-6" />
+        </span>
+        <h3 className="font-heading text-lg font-bold text-foreground">Kho hoạt động ổn định</h3>
         <p className="text-muted-foreground">Không có cảnh báo nào về số lượng hay hạn sử dụng.</p>
       </div>
     );
@@ -99,153 +98,146 @@ export function InventoryAlertsList() {
 
   return (
     <div className="space-y-6">
-      {/* 4 Summary Cards */}
+      {/* 4 Summary Cards — số thật từ InventoryAlertSummary */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border-red-200 bg-red-50/30 dark:bg-red-950/20 dark:border-red-900/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-red-800 dark:text-red-300">Đã hết hạn</CardTitle>
-            <div className="rounded-full bg-red-100 p-2 dark:bg-red-900/50">
-              <Target className="h-4 w-4 text-red-600 dark:text-red-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{summary.expiredCount}</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-orange-200 bg-orange-50/30 dark:bg-orange-950/20 dark:border-orange-900/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-orange-800 dark:text-orange-300">Sắp hết hạn</CardTitle>
-            <div className="rounded-full bg-orange-100 p-2 dark:bg-orange-900/50">
-              <Calendar className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{summary.expiringSoonCount}</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-amber-200 bg-amber-50/30 dark:bg-amber-950/20 dark:border-amber-900/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-amber-800 dark:text-amber-300">Sắp hết hàng</CardTitle>
-            <div className="rounded-full bg-amber-100 p-2 dark:bg-amber-900/50">
-              <PackageX className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{summary.lowStockCount}</div>
-          </CardContent>
-        </Card>
+        <div className="preclinic-card flex items-center gap-3.5 p-4">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/12 text-destructive">
+            <Target className="size-5" />
+          </span>
+          <div>
+            <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Đã hết hạn</p>
+            <p className="font-heading text-2xl font-bold text-destructive">{summary.expiredCount}</p>
+          </div>
+        </div>
 
-        <Card className="border-blue-200 bg-blue-50/30 dark:bg-blue-950/20 dark:border-blue-900/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">Tổng cảnh báo</CardTitle>
-            <div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900/50">
-              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalAlerts}</div>
-          </CardContent>
-        </Card>
+        <div className="preclinic-card flex items-center gap-3.5 p-4">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--status-warning)]/12 text-[var(--status-warning)]">
+            <Calendar className="size-5" />
+          </span>
+          <div>
+            <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Sắp hết hạn</p>
+            <p className="font-heading text-2xl font-bold text-[var(--status-warning)]">{summary.expiringSoonCount}</p>
+          </div>
+        </div>
+
+        <div className="preclinic-card flex items-center gap-3.5 p-4">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--status-warning)]/12 text-[var(--status-warning)]">
+            <PackageX className="size-5" />
+          </span>
+          <div>
+            <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Sắp hết hàng</p>
+            <p className="font-heading text-2xl font-bold text-[var(--status-warning)]">{summary.lowStockCount}</p>
+          </div>
+        </div>
+
+        <div className="preclinic-card flex items-center gap-3.5 p-4">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Info className="size-5" />
+          </span>
+          <div>
+            <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Tổng cảnh báo</p>
+            <p className="font-heading text-2xl font-bold text-primary">{totalAlerts}</p>
+          </div>
+        </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row justify-between gap-4">
-        <div className="flex flex-1 items-center space-x-2">
-          <Input
+      <div className="flex flex-wrap gap-3">
+        <div className="relative min-w-64 flex-1">
+          <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
             placeholder="Tìm theo tên thuốc, số lô..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
               setPage(1);
             }}
-            className="max-w-sm border-[#E7E8EB]"
+            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-accent"
           />
-          <Select 
-            value={alertTypeFilter} 
-            onValueChange={(val) => {
-              setAlertTypeFilter(val);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="w-[180px] border-[#E7E8EB]">
-              <SelectValue placeholder="Loại cảnh báo" />
-            </SelectTrigger>
-            <SelectContent position="popper" sideOffset={4}>
-              <SelectItem value="ALL">Tất cả cảnh báo</SelectItem>
-              <SelectItem value="EXPIRED">Đã hết hạn</SelectItem>
-              <SelectItem value="EXPIRING_SOON">Sắp hết hạn</SelectItem>
-              <SelectItem value="LOW_STOCK">Sắp hết hàng</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
+        <Select
+          value={alertTypeFilter}
+          onValueChange={(val) => {
+            setAlertTypeFilter(val);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="h-12 w-[190px] rounded-full border-border bg-background px-5">
+            <SelectValue placeholder="Loại cảnh báo" />
+          </SelectTrigger>
+          <SelectContent position="popper" sideOffset={4}>
+            <SelectItem value="ALL">Tất cả cảnh báo</SelectItem>
+            <SelectItem value="EXPIRED">Đã hết hạn</SelectItem>
+            <SelectItem value="EXPIRING_SOON">Sắp hết hạn</SelectItem>
+            <SelectItem value="LOW_STOCK">Sắp hết hàng</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <Card className="border border-[#E7E8EB] shadow-[0px_0px_35px_0px_rgba(104,134,177,0.15)] rounded-[5px] overflow-hidden bg-[#FFFFFF]">
-        <Table>
-          <TableHeader className="bg-[#F5F6F8]">
-            <TableRow>
-              <TableHead className="px-5 py-4 font-semibold text-[#0A1B39]">Tên thuốc</TableHead>
-              <TableHead className="px-5 py-4 font-semibold text-[#0A1B39]">Số lô</TableHead>
-              <TableHead className="px-5 py-4 font-semibold text-[#0A1B39]">Số lượng</TableHead>
-              <TableHead className="px-5 py-4 font-semibold text-[#0A1B39]">Ngày hết hạn</TableHead>
-              <TableHead className="px-5 py-4 font-semibold text-[#0A1B39]">Loại cảnh báo</TableHead>
-              <TableHead className="px-5 py-4 font-semibold text-[#0A1B39]">Trạng thái</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className="overflow-hidden overflow-x-auto rounded-3xl border border-border bg-background">
+        <table className="w-full min-w-3xl text-left text-sm">
+          <thead>
+            <tr className="border-b border-border bg-secondary/40">
+              <th className="px-5 py-3.5 font-semibold text-muted-foreground">Tên thuốc</th>
+              <th className="px-5 py-3.5 font-semibold text-muted-foreground">Số lô</th>
+              <th className="px-5 py-3.5 font-semibold text-muted-foreground">Số lượng</th>
+              <th className="px-5 py-3.5 font-semibold text-muted-foreground">Ngày hết hạn</th>
+              <th className="px-5 py-3.5 font-semibold text-muted-foreground">Mức độ</th>
+            </tr>
+          </thead>
+          <tbody>
             {paginatedAlerts.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-[#6C7688]">
+              <tr>
+                <td colSpan={5} className="px-5 py-14 text-center text-muted-foreground">
                   Không tìm thấy cảnh báo nào.
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : (
-              paginatedAlerts.map((alert) => (
-                <TableRow key={alert.id} className="hover:bg-accent/50 border-b-[#E7E8EB]">
-                  <TableCell className="px-5 py-4">
-                    <Link href={`/medicines/${alert.medicineId}/batches`} className="font-medium hover:underline text-[#0A1B39]">
+              paginatedAlerts.map((alert) => {
+                const isCritical = alert.alertType === 'EXPIRED' || alert.severity === 'CRITICAL';
+                return (
+                <tr
+                  key={alert.id}
+                  className={`border-b border-border last:border-0 transition-colors hover:bg-secondary/20 ${isCritical ? 'border-l-2 border-l-destructive' : 'border-l-2 border-l-[var(--status-warning)]'}`}
+                >
+                  <td className="px-5 py-4">
+                    <Link href={`/medicines/${alert.medicineId}/batches`} className="font-semibold text-foreground hover:text-primary hover:underline">
                       {alert.medicineName}
                     </Link>
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-[#6C7688]">{alert.lotNumber}</TableCell>
-                  <TableCell className="px-5 py-4">
-                    <span className={alert.alertType === 'LOW_STOCK' ? 'text-[#E04F16] font-medium' : 'text-[#0A1B39]'}>
+                  </td>
+                  <td className="px-5 py-4 text-muted-foreground">{alert.lotNumber}</td>
+                  <td className="px-5 py-4 font-mono">
+                    <span className={alert.alertType === 'LOW_STOCK' ? 'font-semibold text-[var(--status-warning)]' : 'text-foreground'}>
                       {alert.quantityBase} {alert.baseUnitName}
                     </span>
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-[#0A1B39]">
-                    {alert.expiryDate ? new Date(alert.expiryDate).toLocaleDateString('vi-VN') : '-'}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-[#6C7688]">
-                    {alert.alertType === 'EXPIRED' && 'Đã hết hạn'}
-                    {alert.alertType === 'EXPIRING_SOON' && 'Sắp hết hạn'}
-                    {alert.alertType === 'LOW_STOCK' && 'Sắp hết hàng'}
-                  </TableCell>
-                  <TableCell className="px-5 py-4">
+                  </td>
+                  <td className="px-5 py-4 text-foreground">
+                    {alert.expiryDate ? new Date(alert.expiryDate).toLocaleDateString('vi-VN') : '—'}
+                  </td>
+                  <td className="px-5 py-4">
                     {alert.alertType === 'EXPIRED' && (
-                      <Badge className="bg-[#EF1E1E]/10 text-[#EF1E1E] hover:bg-[#EF1E1E]/20 border-none rounded-full px-3 font-medium">
-                        Expired
-                      </Badge>
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/12 px-3 py-1 text-xs font-600 text-destructive">
+                        Hết hạn
+                      </span>
                     )}
                     {alert.alertType === 'EXPIRING_SOON' && (
-                      <Badge className="bg-[#E04F16]/10 text-[#E04F16] hover:bg-[#E04F16]/20 border-none rounded-full px-3 font-medium">
-                        {`Expiring in ${alert.daysUntilExpiry} days`}
-                      </Badge>
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--status-warning)]/12 px-3 py-1 text-xs font-600 text-[var(--status-warning)]">
+                        <span className="size-1.5 animate-pulse rounded-full bg-[var(--status-warning)]" />
+                        Còn {alert.daysUntilExpiry} ngày
+                      </span>
                     )}
                     {alert.alertType === 'LOW_STOCK' && (
-                      <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-none rounded-full px-3 font-medium">
-                        {alert.severity === 'CRITICAL' ? 'Critical Low' : 'Low Stock'}
-                      </Badge>
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-600 ${isCritical ? 'bg-destructive/12 text-destructive' : 'bg-[var(--status-warning)]/12 text-[var(--status-warning)]'}`}>
+                        {isCritical ? 'Hết hàng nghiêm trọng' : 'Sắp hết hàng'}
+                      </span>
                     )}
-                  </TableCell>
-                </TableRow>
-              ))
+                  </td>
+                </tr>
+              );})
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
         {totalPages > 1 && (
-          <div className="p-4 border-t border-[#E7E8EB] flex justify-end">
+          <div className="flex justify-end border-t border-border p-4">
             <PaginationNumbered
               currentPage={page}
               totalPages={totalPages}
@@ -253,7 +245,7 @@ export function InventoryAlertsList() {
             />
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 }

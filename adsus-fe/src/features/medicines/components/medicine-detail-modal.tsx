@@ -14,7 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
@@ -197,49 +196,49 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
           {/* SECTION 1: General Info */}
           <section>
             <div className="flex items-center gap-2 mb-4">
-              <Info className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-lg text-slate-800">Thông tin cơ bản</h3>
+              <Info className="w-5 h-5 text-primary" />
+              <h3 className="font-semibold text-lg text-foreground">Thông tin cơ bản</h3>
             </div>
             
-            <div className="bg-slate-50 p-5 rounded-lg border">
+            <div className="bg-secondary/40 p-5 rounded-lg border">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="space-y-2">
                   <Label>Tên thuốc (Master Data)</Label>
-                  <Input 
-                    value={medicine.name} 
-                    disabled 
-                    className="bg-gray-100 text-gray-500 font-medium" 
+                  <Input
+                    value={medicine.name}
+                    disabled
+                    className="bg-muted text-muted-foreground font-medium"
                     title="Tên thuốc không được phép chỉnh sửa sau khi tạo."
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Đơn vị dùng (Usage Unit)</Label>
-                  <Input 
-                    placeholder="VD: ml, viên..." 
-                    value={usageUnit} 
-                    onChange={e => setUsageUnit(e.target.value)} 
-                    className="bg-white"
+                  <Input
+                    placeholder="VD: ml, viên..."
+                    value={usageUnit}
+                    onChange={e => setUsageUnit(e.target.value)}
+                    className="bg-background"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Hàm lượng / Base Unit</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="VD: 5" 
-                    value={volume} 
-                    onChange={e => setVolume(e.target.value)} 
-                    className="bg-white font-mono"
+                  <Input
+                    type="number"
+                    placeholder="VD: 5"
+                    value={volume}
+                    onChange={e => setVolume(e.target.value)}
+                    className="bg-background font-mono"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Ngưỡng cảnh báo hết hàng</Label>
-                  <Input 
+                  <Input
                     type="number"
                     min="0"
-                    placeholder="Nhập 0 để bỏ qua" 
-                    value={lowStockThreshold} 
-                    onChange={e => setLowStockThreshold(e.target.value)} 
-                    className="bg-orange-50/50 border-orange-200 font-mono"
+                    placeholder="Nhập 0 để bỏ qua"
+                    value={lowStockThreshold}
+                    onChange={e => setLowStockThreshold(e.target.value)}
+                    className="bg-[var(--status-warning)]/5 border-[var(--status-warning)]/30 font-mono"
                   />
                 </div>
               </div>
@@ -259,13 +258,13 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
             </div>
           </section>
 
-          <hr className="my-6 border-slate-200" />
+          <hr className="my-6 border-border" />
 
           {/* SECTION 2: Packagings */}
           <section>
             <div className="flex items-center gap-2 mb-4">
-              <Package className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-lg text-slate-800">Quy cách đóng gói</h3>
+              <Package className="w-5 h-5 text-primary" />
+              <h3 className="font-semibold text-lg text-foreground">Quy cách đóng gói</h3>
             </div>
 
             {/* Table of existing packagings */}
@@ -298,25 +297,29 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
                       <tr key={p.id} className="border-t">
                         <td className="p-3 font-medium">
                           {p.unitName}
-                          {p.isBaseUnit && <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-800 border-blue-200"><CheckCircle2 className="w-3 h-3 mr-1" /> Cơ sở</Badge>}
+                          {p.isBaseUnit && (
+                            <span className="ml-2 inline-flex items-center rounded-full bg-primary/12 px-2 py-0.5 text-xs font-600 text-primary">
+                              <CheckCircle2 className="mr-1 size-3" /> Cơ sở
+                            </span>
+                          )}
                         </td>
                         <td className="p-3 text-right font-mono">{p.conversionFactor}</td>
-                        <td className="p-3 text-right text-green-600 font-medium">
+                        <td className="p-3 text-right font-mono font-medium text-[var(--status-good)]">
                           {p.salePrice.toLocaleString('vi-VN')} đ
                         </td>
                         <td className="p-3 text-center">
                           {p.isSellable ? (
-                            <Badge variant="outline" className="text-green-600 border-green-200">Được bán</Badge>
+                            <span className="inline-flex items-center rounded-full bg-[var(--status-good)]/12 px-2 py-0.5 text-xs font-600 text-[var(--status-good)]">Được bán</span>
                           ) : (
-                            <Badge variant="outline" className="text-gray-400">Không bán</Badge>
+                            <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-600 text-muted-foreground">Không bán</span>
                           )}
                         </td>
                         <td className="p-3 text-right">
                           <Button variant="ghost" size="icon" onClick={() => handleEditPackaging(p)}>
-                            <Edit2 className="w-4 h-4 text-blue-600" />
+                            <Edit2 className="size-4 text-primary" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleDeletePackaging(p.id)} disabled={p.isBaseUnit} title={p.isBaseUnit ? "Không thể xóa đơn vị cơ sở" : ""}>
-                            <Trash2 className="w-4 h-4 text-red-600" />
+                            <Trash2 className="size-4 text-destructive" />
                           </Button>
                         </td>
                       </tr>
@@ -327,18 +330,18 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
             </div>
 
             {/* Form for Packagings */}
-            <div className="bg-slate-50 p-5 rounded-lg border">
-              <h4 className="font-medium flex items-center gap-2 mb-4 text-slate-700">
-                <Plus className="w-4 h-4" /> 
+            <div className="bg-secondary/40 p-5 rounded-lg border">
+              <h4 className="font-medium flex items-center gap-2 mb-4 text-foreground">
+                <Plus className="w-4 h-4" />
                 {editingId ? "Cập nhật Quy cách" : "Thêm Quy cách Mới"}
               </h4>
-              
+
               <form onSubmit={handleSubmitPackaging} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                   <div className="space-y-2">
-                    <Label>Đơn vị tính <span className="text-red-500">*</span></Label>
+                    <Label>Đơn vị tính <span className="text-destructive">*</span></Label>
                     <Select value={unitId} onValueChange={setUnitId} disabled={editingOriginalIsBase}>
-                      <SelectTrigger className="bg-white disabled:opacity-50">
+                      <SelectTrigger className="bg-background disabled:opacity-50">
                         <SelectValue placeholder="Chọn đơn vị" />
                       </SelectTrigger>
                       <SelectContent>
@@ -351,29 +354,29 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
 
                   <div className="space-y-2">
                     <Label>Hệ số quy đổi (sang Base)</Label>
-                    <Input 
-                      type="number" 
-                      min="1" 
-                      value={conversion} 
-                      onChange={e => setConversion(e.target.value)} 
+                    <Input
+                      type="number"
+                      min="1"
+                      value={conversion}
+                      onChange={e => setConversion(e.target.value)}
                       disabled={isBase}
-                      className="font-mono bg-white"
+                      className="font-mono bg-background"
                     />
                   </div>
 
                   <div className="space-y-2">
                     <Label>Giá bán (VNĐ)</Label>
-                    <Input 
-                      type="number" 
-                      min="0" 
-                      value={price} 
-                      onChange={e => setPrice(e.target.value)} 
-                      className="font-mono text-green-700 bg-white font-semibold"
+                    <Input
+                      type="number"
+                      min="0"
+                      value={price}
+                      onChange={e => setPrice(e.target.value)}
+                      className="font-mono text-[var(--status-good)] bg-background font-semibold"
                     />
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-6 p-4 rounded-md border bg-white shadow-sm mt-2">
+                <div className="flex flex-col sm:flex-row gap-6 p-4 rounded-md border bg-background shadow-sm mt-2">
                   <div className="flex items-center space-x-3">
                     <Checkbox 
                       id="isBase" 

@@ -104,7 +104,7 @@ export function AdjustInventoryModal({
           <div className="rounded-lg bg-secondary/50 p-3 text-sm">
             <p><span className="font-medium text-muted-foreground">Thuốc:</span> <span className="font-semibold text-foreground">{medicineName}</span></p>
             <p><span className="font-medium text-muted-foreground">Số lô:</span> <span className="font-semibold text-foreground">{lotNumber}</span></p>
-            <p><span className="font-medium text-muted-foreground">Tồn kho HT:</span> <span className="font-semibold text-blue-600">{currentQuantity} {baseUnitName}</span></p>
+            <p><span className="font-medium text-muted-foreground">Tồn kho HT:</span> <span className="font-mono font-semibold text-primary">{currentQuantity} {baseUnitName}</span></p>
           </div>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
