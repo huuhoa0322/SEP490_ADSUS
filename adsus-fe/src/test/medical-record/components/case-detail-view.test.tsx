@@ -57,6 +57,10 @@ vi.mock("@/features/prescriptions/components/prescription-section", () => ({
   PrescriptionSection: () => <div data-testid="prescription-section" />,
 }));
 
+vi.mock("@/features/prescription-adherence/hooks/use-invoices", () => ({
+  useCaseInvoices: () => ({ data: [], isLoading: false }),
+}));
+
 function makeCase(
   status: "CREATED" | "ANALYZED" | "CONFIRMED" | "END",
   draft?: { finalDiagnosis: string; doctorConclusion: string },

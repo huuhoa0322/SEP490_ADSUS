@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { invoiceService, InvoiceDetailResponse } from "@/api/invoiceService";
+import { useAuthStore } from "@/store/auth-store";
+import { getApiErrorMessage } from "@/lib/api-client";
+import {
+  useInvoiceDetail,
+  usePayInvoice,
+  useCancelInvoice,
+} from "../hooks/use-invoices";
 import {
   Table,
   TableBody,
@@ -29,62 +36,47 @@ import toast from "react-hot-toast";
 
 export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
   const router = useRouter();
-  // useToast removed
-  const [data, setData] = useState<InvoiceDetailResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [paying, setPaying] = useState(false);
+  const isNurse = useAuthStore((s) => s.user?.role === "NURSE");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
-  const [canceling, setCanceling] = useState(false);
 
-  const fetchDetail = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await invoiceService.getInvoiceDetail(invoiceId);
-      setData(res);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  }, [invoiceId]);
+  const { data, isLoading } = useInvoiceDetail(invoiceId);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchDetail();
-  }, [fetchDetail]);
+  const payInvoice = usePayInvoice();
+  const cancelInvoice = useCancelInvoice();
 
-  const handlePay = async (method: string) => {
-    try {
-      setPaying(true);
-      await invoiceService.payAndDispense(invoiceId, method);
-      toast.success("Hóa đơn đã được thanh toán và cập nhật tồn kho (FEFO).");
-      fetchDetail(); // reload to get new status
-    } catch (error: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      toast.error((error as any).response?.data?.message || "Có lỗi xảy ra khi thanh toán.");
-    } finally {
-      setPaying(false);
-    }
+  const handlePay = (method: string) => {
+    payInvoice.mutate(
+      { id: invoiceId, paymentMethod: method },
+      {
+        onSuccess: () => {
+          toast.success("Hóa đơn đã được thanh toán và cập nhật tồn kho (FEFO).");
+        },
+        onError: (error) => {
+          toast.error(getApiErrorMessage(error, "Có lỗi xảy ra khi thanh toán."));
+        },
+      },
+    );
   };
 
-  const handleCancel = async () => {
+  const handleCancel = () => {
     if (!cancelReason.trim()) {
       toast.error("Vui lòng nhập lý do hủy hóa đơn.");
       return;
     }
-    try {
-      setCanceling(true);
-      await invoiceService.cancelInvoice(invoiceId, cancelReason);
-      toast.success("Hủy hóa đơn thành công.");
-      setCancelOpen(false);
-      fetchDetail(); // reload to get new status
-    } catch (error: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      toast.error((error as any).response?.data?.message || "Có lỗi xảy ra khi hủy.");
-    } finally {
-      setCanceling(false);
-    }
+    cancelInvoice.mutate(
+      { id: invoiceId, reason: cancelReason },
+      {
+        onSuccess: () => {
+          toast.success("Hủy hóa đơn thành công.");
+          setCancelOpen(false);
+          setCancelReason("");
+        },
+        onError: (error) => {
+          toast.error(getApiErrorMessage(error, "Có lỗi xảy ra khi hủy."));
+        },
+      },
+    );
   };
 
   const formatCurrency = (amount: number) => {
@@ -94,12 +86,11 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
     }).format(amount);
   };
 
-  if (loading || !data) {
+  if (isLoading || !data) {
     return <div className="p-6">Đang tải dữ liệu hóa đơn...</div>;
   }
 
   const isPending = data.status === "PENDING";
-  // Mock vietqr link with the total amount
   const qrUrl = `https://api.vietqr.io/image/970436-123456789-9z73xT0.jpg?amount=${data.totalAmount}&addInfo=TT%20HOA%20DON%20${data.id.substring(0,8)}&accountName=PHONG%20KHAM%20ADSUS`;
 
   return (
@@ -110,8 +101,19 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
 
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-primary">Chi tiết Hóa Đơn</h1>
+          <h1 className="text-3xl font-extrabold text-primary">Chi tiết Hóa Đơn</h1>
           <p className="text-sm text-muted-foreground mt-1">ID: {data.id}</p>
+          {isNurse && data.caseId && (
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Ca khám:{" "}
+              <Link
+                href={`/cases/${data.caseId}`}
+                className="font-mono text-xs text-teal-600 hover:underline"
+              >
+                {data.caseId}
+              </Link>
+            </p>
+          )}
         </div>
         <div>
           {data.status === "PENDING" ? (
@@ -134,68 +136,68 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
-          <Card>
+          <Card className="border-2">
             <CardHeader>
-              <CardTitle>Thông tin bệnh nhân</CardTitle>
+              <CardTitle className="font-bold">Thông tin bệnh nhân</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Tên bệnh nhân:</span>
-                  <p className="font-medium text-base">{data.caseName}</p>
+                  <span className="text-muted-foreground font-bold">Tên bệnh nhân:</span>
+                  <p className="font-bold text-base">{data.caseName}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Ngày tạo:</span>
-                  <p className="font-medium">{new Date(data.createdAt).toLocaleString("vi-VN")}</p>
+                  <span className="text-muted-foreground font-bold">Ngày tạo:</span>
+                  <p className="font-bold">{new Date(data.createdAt).toLocaleString("vi-VN")}</p>
                 </div>
                 {data.paidAt && (
                   <div>
-                    <span className="text-muted-foreground">Ngày thanh toán:</span>
-                    <p className="font-medium text-green-700">{new Date(data.paidAt).toLocaleString("vi-VN")}</p>
+                    <span className="text-muted-foreground font-bold">Ngày thanh toán:</span>
+                    <p className="font-bold text-green-700">{new Date(data.paidAt).toLocaleString("vi-VN")}</p>
                   </div>
                 )}
                 {data.paymentMethod && (
                   <div>
-                    <span className="text-muted-foreground">Phương thức:</span>
-                    <p className="font-medium">{data.paymentMethod}</p>
+                    <span className="text-muted-foreground font-bold">Phương thức:</span>
+                    <p className="font-bold">{data.paymentMethod}</p>
                   </div>
                 )}
                 {data.cancelledReason && (
                   <div className="col-span-2">
-                    <span className="text-muted-foreground">Lý do hủy:</span>
-                    <p className="font-medium text-destructive">{data.cancelledReason}</p>
+                    <span className="text-muted-foreground font-bold">Lý do hủy:</span>
+                    <p className="font-bold text-destructive">{data.cancelledReason}</p>
                   </div>
                 )}
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-2">
             <CardHeader>
-              <CardTitle>Chi tiết bóc tách thuốc</CardTitle>
+              <CardTitle className="font-bold">Chi tiết bóc tách thuốc</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Tên thuốc & Quy cách</TableHead>
-                    <TableHead className="text-right">Số lượng</TableHead>
-                    <TableHead className="text-right">Đơn giá</TableHead>
-                    <TableHead className="text-right">Thành tiền</TableHead>
+                    <TableHead className="font-bold">Tên thuốc & Quy cách</TableHead>
+                    <TableHead className="text-right font-bold">Số lượng</TableHead>
+                    <TableHead className="text-right font-bold">Đơn giá</TableHead>
+                    <TableHead className="text-right font-bold">Thành tiền</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {data.items.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.description}</TableCell>
+                      <TableCell className="font-bold">{item.description}</TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                      <TableCell className="text-right font-semibold">{formatCurrency(item.totalPrice)}</TableCell>
+                      <TableCell className="text-right font-bold">{formatCurrency(item.totalPrice)}</TableCell>
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell colSpan={3} className="text-right font-bold text-lg">Tổng cộng:</TableCell>
-                    <TableCell className="text-right font-bold text-lg text-primary">{formatCurrency(data.totalAmount)}</TableCell>
+                    <TableCell colSpan={3} className="text-right font-extrabold text-lg">Tổng cộng:</TableCell>
+                    <TableCell className="text-right font-extrabold text-lg text-primary">{formatCurrency(data.totalAmount)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -205,9 +207,9 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
 
         <div>
           {isPending && (
-            <Card className="border-primary bg-primary/5">
+            <Card className="border-2 border-primary bg-primary/5">
               <CardHeader className="text-center pb-2">
-                <CardTitle>Thanh Toán QR Code</CardTitle>
+                <CardTitle className="font-bold">Thanh Toán QR Code</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center space-y-4">
                 <div className="bg-white p-2 rounded-xl shadow-sm">
@@ -220,18 +222,18 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
                 
                 <div className="w-full pt-4 space-y-2 border-t border-primary/20">
                   <p className="text-sm font-medium text-center">Xác nhận thanh toán thủ công:</p>
-                  <Button 
-                    className="w-full bg-blue-600 hover:bg-blue-700" 
+                  <Button
+                    className="w-full bg-blue-600 hover:bg-blue-700"
                     onClick={() => handlePay("BANK_TRANSFER")}
-                    disabled={paying}
+                    disabled={payInvoice.isPending}
                   >
                     Đã chuyển khoản (Bank)
                   </Button>
-                  <Button 
-                    className="w-full" 
+                  <Button
+                    className="w-full"
                     variant="outline"
                     onClick={() => handlePay("CASH")}
-                    disabled={paying}
+                    disabled={payInvoice.isPending}
                   >
                     Đã thu tiền mặt
                   </Button>
@@ -241,7 +243,7 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
           )}
 
           {!isPending && data.status === "PAID" && (
-            <Card className="bg-green-50 border-green-200">
+            <Card className="bg-green-50 border-2 border-green-200">
               <CardContent className="flex flex-col items-center justify-center p-8 space-y-4 text-green-700">
                 <CheckCircle2 className="w-16 h-16" />
                 <h3 className="text-xl font-bold">Thanh Toán Hoàn Tất</h3>
@@ -251,7 +253,7 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
           )}
 
           {data.status === "CANCELLED" && (
-            <Card className="bg-red-50 border-red-200">
+            <Card className="bg-red-50 border-2 border-red-200">
               <CardContent className="flex flex-col items-center justify-center p-8 space-y-4 text-red-700">
                 <Ban className="w-16 h-16" />
                 <h3 className="text-xl font-bold">Hóa Đơn Đã Hủy</h3>
@@ -284,9 +286,9 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelOpen(false)} disabled={canceling}>Đóng</Button>
-            <Button variant="destructive" onClick={handleCancel} disabled={canceling}>
-              {canceling ? "Đang xử lý..." : "Xác nhận Hủy"}
+            <Button variant="outline" onClick={() => setCancelOpen(false)} disabled={cancelInvoice.isPending}>Đóng</Button>
+            <Button variant="destructive" onClick={handleCancel} disabled={cancelInvoice.isPending}>
+              {cancelInvoice.isPending ? "Đang xử lý..." : "Xác nhận Hủy"}
             </Button>
           </DialogFooter>
         </DialogContent>
