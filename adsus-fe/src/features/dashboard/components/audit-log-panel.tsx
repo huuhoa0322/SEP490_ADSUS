@@ -27,34 +27,36 @@ const ACTIONS: Record<string, { label: string; icon: ReactNode; tone: string }> 
   CREATE_ACCOUNT: {
     label: "Tạo tài khoản",
     icon: <UserPlus className="size-4" />,
-    tone: "text-[var(--status-good)]",
+    tone: "var(--status-good)",
   },
   UPDATE_ACCOUNT: {
     label: "Sửa tài khoản",
     icon: <PencilLine className="size-4" />,
-    tone: "text-muted-foreground",
+    tone: "var(--muted-foreground)",
   },
   DEACTIVATE_ACCOUNT: {
     label: "Vô hiệu hoá tài khoản",
     icon: <UserMinus className="size-4" />,
-    tone: "text-[var(--status-critical)]",
+    tone: "var(--status-critical)",
   },
   REACTIVATE_ACCOUNT: {
     label: "Khôi phục tài khoản",
     icon: <RefreshCcw className="size-4" />,
-    tone: "text-[var(--status-good)]",
+    tone: "var(--status-good)",
   },
   ADMIN_RESET_PASSWORD: {
     label: "Cấp lại mật khẩu",
     icon: <KeyRound className="size-4" />,
-    tone: "text-[var(--status-warning)]",
+    tone: "var(--status-warning)",
   },
   SELF_RESET_PASSWORD: {
     label: "Người dùng tự cấp lại mật khẩu",
     icon: <KeyRound className="size-4" />,
-    tone: "text-muted-foreground",
+    tone: "var(--muted-foreground)",
   },
 };
+
+const DEFAULT_TONE = "var(--muted-foreground)";
 
 /**
  * Mười thao tác quản trị gần nhất (UC-04).
@@ -108,10 +110,14 @@ export function AuditLogPanel() {
 
 function AuditRow({ entry }: { entry: AuditLogEntry }) {
   const action = ACTIONS[entry.action];
+  const tone = action?.tone ?? DEFAULT_TONE;
 
   return (
     <li className="flex items-start gap-3 border-b border-border py-3 last:border-0 last:pb-0">
-      <span className={`mt-0.5 shrink-0 ${action?.tone ?? "text-muted-foreground"}`}>
+      <span
+        className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full"
+        style={{ backgroundColor: `color-mix(in srgb, ${tone} 14%, transparent)`, color: tone }}
+      >
         {action?.icon ?? <PencilLine className="size-4" />}
       </span>
 

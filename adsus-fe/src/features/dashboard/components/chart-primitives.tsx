@@ -73,9 +73,13 @@ export function StatTile({
       </div>
       {trend && (
         <div className="mt-3 flex items-center gap-1 pl-2">
+          {/* Tinted pill: `bgVar + "22"` (hex-alpha suffix) doesn't work once bgVar is a
+              var() call — string concatenation on a function token is invalid CSS, so the
+              background silently dropped. color-mix() is the correct way to tint a
+              CSS-variable color. */}
           <span
-            className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-white"
-            style={{ backgroundColor: bgVar + "22", color: bgVar }}
+            className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+            style={{ backgroundColor: `color-mix(in srgb, ${bgVar} 15%, transparent)`, color: bgVar }}
           >
             {trend}
           </span>

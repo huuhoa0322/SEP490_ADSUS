@@ -77,7 +77,13 @@ export function DatePicker({ id, value, onChange, placeholder = "dd/mm/yyyy", di
   };
 
   return (
-    <div className={cn("relative", className)}>
+    // `className` styles the visible input surface, not this positioning wrapper — a
+    // caller passing border/rounded/padding here (e.g. to make a pill-shaped date field)
+    // used to land on the wrapper AND stack on top of Input's own border+radius+padding,
+    // rendering as a smaller boxed input nested inside a taller pill (see dashboard's
+    // date-range filter). Forwarding it to Input instead means there's exactly one
+    // visible box, matching every other input in the app.
+    <div className="relative">
       <Input
         id={id}
         type="text"
@@ -85,7 +91,9 @@ export function DatePicker({ id, value, onChange, placeholder = "dd/mm/yyyy", di
         value={inputValue}
         onChange={handleInputChange}
         disabled={disabled}
-        className="pr-10"
+        // pr-10 last so it always wins the right-padding slot the calendar button sits
+        // in, even if a caller's className sets px-* (which would otherwise clobber it).
+        className={cn(className, "pr-10")}
       />
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
