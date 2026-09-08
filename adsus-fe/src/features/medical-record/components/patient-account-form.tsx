@@ -117,16 +117,16 @@ export function PatientAccountForm() {
             <CheckCircle2 className="size-6" />
           </div>
           <div>
-            <h2 className="font-heading text-lg font-bold text-[#0A1B39]">
+            <h2 className="font-heading text-lg font-bold text-foreground">
               Đã tạo tài khoản cho {createdAccount.fullName}
             </h2>
-            <p className="text-xs text-[#6C7688]">
+            <p className="text-xs font-medium text-foreground">
               Tài khoản bệnh nhân đã sẵn sàng để truy cập hệ thống
             </p>
           </div>
         </div>
 
-        <p className="mt-4 text-sm text-[#6C7688]">
+        <p className="mt-4 text-sm font-medium text-foreground">
           Đọc mật khẩu tạm dưới đây cho bệnh nhân nghe hoặc ghi lại — mật khẩu chỉ hiện được
           đúng một lần ở đây, sẽ không hiện lại được nữa. Bệnh nhân bắt buộc đổi mật khẩu ngay
           khi đăng nhập lần đầu.
@@ -134,20 +134,20 @@ export function PatientAccountForm() {
 
         {/* Credentials Box */}
         <div className="mt-5 rounded-lg border-2 border-dashed border-[#2E37A4]/30 bg-[#ECEDF7]/50 p-5 text-center">
-          <div className="flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
+          <div className="flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-foreground">
             <KeyRound className="size-4 text-[#2E37A4]" />
             Mật khẩu tạm
           </div>
           <div className="mt-2 select-all break-all font-mono text-2xl font-bold tracking-widest text-[#2E37A4]">
             {createdAccount.temporaryPassword}
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs font-medium text-foreground/80">
             (Nhấp đúp chuột để bôi đen toàn bộ mật khẩu)
           </p>
         </div>
 
         {profileMutation.isPending ? (
-          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-[#6C7688]">
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm font-semibold text-foreground">
             <span className="size-2 animate-ping rounded-full bg-[#2E37A4]" />
             Đang tạo hồ sơ nền...
           </div>
@@ -189,7 +189,7 @@ export function PatientAccountForm() {
       <div className="mb-4">
         <Link
           href="/patients"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6C7688] transition-colors hover:text-[#2E37A4]"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-foreground transition-colors hover:text-[#2E37A4]"
         >
           <ArrowLeft className="size-3.5" />
           Quay lại danh sách bệnh nhân
@@ -207,10 +207,10 @@ export function PatientAccountForm() {
               <UserPlus className="size-5" />
             </div>
             <div>
-              <h2 className="font-heading text-xl font-bold text-[#0A1B39]">
+              <h2 className="font-heading text-xl font-bold text-foreground">
                 Tạo tài khoản bệnh nhân mới
               </h2>
-              <p className="mt-0.5 text-xs text-[#6C7688]">
+              <p className="mt-0.5 text-xs font-medium text-foreground">
                 Hệ thống sinh mật khẩu tạm và hiện ngay sau khi tạo để đọc cho bệnh nhân; bệnh nhân
                 buộc đổi ở lần đăng nhập đầu.
               </p>
@@ -223,14 +223,14 @@ export function PatientAccountForm() {
           <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 shadow-2xs">
             <div className="mb-4 flex items-center gap-2 border-b border-[#E7E8EB] pb-3">
               <User className="size-4 text-[#2E37A4]" />
-              <h3 className="font-heading text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
+              <h3 className="font-heading text-sm font-bold uppercase tracking-wider text-foreground">
                 Thông tin cá nhân & Liên hệ
               </h3>
             </div>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
-                <label htmlFor="fullName" className="mb-1.5 block text-xs font-semibold text-[#0A1B39]">
+                <label htmlFor="fullName" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground">
                   Họ và tên <span className="text-destructive">*</span>
                 </label>
                 <input
@@ -243,7 +243,7 @@ export function PatientAccountForm() {
               </div>
 
               <div>
-                <label htmlFor="phoneNumber" className="mb-1.5 block text-xs font-semibold text-[#0A1B39]">
+                <label htmlFor="phoneNumber" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground">
                   Số điện thoại <span className="text-destructive">*</span>
                 </label>
                 <input
@@ -256,7 +256,7 @@ export function PatientAccountForm() {
               </div>
 
               <div>
-                <label htmlFor="dateOfBirth" className="mb-1.5 block text-xs font-semibold text-[#0A1B39]">
+                <label htmlFor="dateOfBirth" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground">
                   Ngày sinh
                 </label>
                 <DatePicker
@@ -267,7 +267,7 @@ export function PatientAccountForm() {
               </div>
 
               <div>
-                <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-[#0A1B39]">
+                <label htmlFor="email" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground">
                   Email
                 </label>
                 <input
@@ -286,21 +286,21 @@ export function PatientAccountForm() {
           <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 shadow-2xs">
             <div className="mb-4 flex items-center gap-2 border-b border-[#E7E8EB] pb-3">
               <FileText className="size-4 text-[#2E37A4]" />
-              <h3 className="font-heading text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
+              <h3 className="font-heading text-sm font-bold uppercase tracking-wider text-foreground">
                 Hồ sơ y tế nền tảng
               </h3>
             </div>
 
             <div className="space-y-5">
               <fieldset className="m-0 border-0 p-0">
-                <legend className="mb-2 block text-xs font-semibold text-[#0A1B39]">
+                <legend className="mb-2 block text-xs font-bold uppercase tracking-wider text-foreground">
                   Tiền sử bệnh
                 </legend>
                 <MedicalHistorySelector value={diseases} onChange={setDiseases} />
               </fieldset>
 
               <fieldset className="m-0 border-0 p-0">
-                <legend className="mb-2 block text-xs font-semibold text-[#0A1B39]">
+                <legend className="mb-2 block text-xs font-bold uppercase tracking-wider text-foreground">
                   Dị ứng đã biết
                 </legend>
                 <AllergySelector value={allergies} onChange={setAllergies} />
@@ -326,7 +326,7 @@ export function PatientAccountForm() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="rounded-md border border-[#E7E8EB] bg-white px-4 py-2 text-sm font-medium text-[#0A1B39] shadow-2xs transition-colors hover:bg-muted"
+            className="rounded-md border border-[#E7E8EB] bg-white px-4 py-2 text-sm font-semibold text-foreground shadow-2xs transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             Huỷ bỏ
           </button>

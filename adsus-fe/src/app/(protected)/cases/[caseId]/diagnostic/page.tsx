@@ -35,13 +35,13 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex h-screen w-screen flex-col bg-white text-[#0A1B39] select-none">
+    <div className="fixed inset-0 z-[100] flex h-screen w-screen flex-col bg-background text-foreground select-none">
       {/* 1. Header Studio (Chuẩn Preclinic Light Mode 55px) */}
-      <header className="flex h-[55px] shrink-0 items-center justify-between border-b border-[#E7E8EB] bg-[#FFFFFF] px-4">
+      <header className="flex h-[55px] shrink-0 items-center justify-between border-b border-border bg-background px-4">
         <div className="flex items-center gap-3">
           <Link
             href={`/cases/${caseId}`}
-            className="flex h-8 items-center gap-1.5 rounded-[5px] border border-[#E7E8EB] px-2.5 text-xs text-[#6C7688] hover:bg-[#F5F6F8] hover:text-[#0A1B39] transition-colors"
+            className="flex h-8 items-center gap-1.5 rounded-[5px] border border-[#E7E8EB] px-2.5 text-xs text-foreground font-semibold hover:text-primary hover:bg-[#F5F6F8] transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Quay lại ca khám</span>
@@ -59,7 +59,7 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
             onClick={prevImage}
             disabled={currentIndex === 0}
             aria-label="Ảnh trước"
-            className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-[#E7E8EB] text-[#6C7688] hover:bg-[#F5F6F8] hover:text-[#0A1B39] disabled:opacity-30 transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-[#E7E8EB] text-foreground font-semibold disabled:opacity-40 hover:text-primary hover:bg-[#F5F6F8] transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -71,7 +71,7 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
             onClick={nextImage}
             disabled={currentIndex === images.length - 1}
             aria-label="Ảnh kế tiếp"
-            className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-[#E7E8EB] text-[#6C7688] hover:bg-[#F5F6F8] hover:text-[#0A1B39] disabled:opacity-30 transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-[5px] border border-[#E7E8EB] text-foreground font-semibold disabled:opacity-40 hover:text-primary hover:bg-[#F5F6F8] transition-colors"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

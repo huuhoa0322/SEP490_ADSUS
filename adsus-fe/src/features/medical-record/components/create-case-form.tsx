@@ -49,14 +49,14 @@ function PreviousCaseSummary({
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-4 text-xs text-muted-foreground animate-pulse">
+      <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-4 text-xs font-semibold text-foreground animate-pulse">
         Đang tải thông tin lần khám trước...
       </div>
     );
   }
   if (isError) {
     return (
-      <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-4 text-xs text-muted-foreground">
+      <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-4 text-xs font-semibold text-foreground">
         Không tải được thông tin lần khám trước.
       </div>
     );
@@ -97,7 +97,7 @@ function PreviousCaseSummary({
       <div className="mb-3.5 flex items-center justify-between border-b border-gray-200 pb-3">
         <div className="flex items-center gap-2">
           <History className="size-5 text-[#2E37A4]" />
-          <h3 className="font-heading text-base font-bold text-[#0A1B39]">
+          <h3 className="font-heading text-base font-bold text-foreground">
             Nội dung lần khám gần nhất ({formatIsoDate(caseDetail.visitDate)})
           </h3>
         </div>
@@ -116,34 +116,34 @@ function PreviousCaseSummary({
       <div className="space-y-3.5">
         {caseDetail.clinicalInfo && (
           <div>
-            <span className="mb-1 block text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
+            <span className="mb-1 block text-sm font-bold uppercase tracking-wider text-foreground">
               Lý do khám / Lâm sàng trước:
             </span>
-            <p className="text-sm font-medium text-[#0A1B39]">{caseDetail.clinicalInfo}</p>
+            <p className="text-sm font-medium text-foreground">{caseDetail.clinicalInfo}</p>
           </div>
         )}
 
         {caseDetail.finalDiagnosis && (
           <div>
-            <span className="mb-1 block text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
+            <span className="mb-1 block text-sm font-bold uppercase tracking-wider text-foreground">
               Chẩn đoán:
             </span>
-            <p className="text-base font-medium text-[#0A1B39]">{caseDetail.finalDiagnosis}</p>
+            <p className="text-base font-medium text-foreground">{caseDetail.finalDiagnosis}</p>
           </div>
         )}
 
         {caseDetail.doctorConclusion && (
           <div>
-            <span className="mb-1 block text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
+            <span className="mb-1 block text-sm font-bold uppercase tracking-wider text-foreground">
               Kết luận:
             </span>
-            <p className="text-base text-[#0A1B39]">{caseDetail.doctorConclusion}</p>
+            <p className="text-base text-foreground">{caseDetail.doctorConclusion}</p>
           </div>
         )}
 
         {groupedSymptoms.length > 0 && (
           <div>
-            <span className="mb-2 block text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
+            <span className="mb-2 block text-sm font-bold uppercase tracking-wider text-foreground">
               Triệu chứng lần khám trước:
             </span>
             <div className="space-y-2">
@@ -162,7 +162,7 @@ function PreviousCaseSummary({
                     {group.items.map((item, idx) => (
                       <span
                         key={idx}
-                        className="inline-flex items-center rounded border border-gray-300 bg-white px-2.5 py-1 text-sm font-medium text-[#0A1B39]"
+                        className="inline-flex items-center rounded border border-gray-300 bg-white px-2.5 py-1 text-sm font-medium text-foreground"
                       >
                         {item}
                       </span>
@@ -175,7 +175,7 @@ function PreviousCaseSummary({
         )}
 
         {!hasContent && (
-          <p className="text-sm italic text-muted-foreground">
+          <p className="text-sm font-medium italic text-foreground/80">
             Không có ghi chú lâm sàng từ lần khám trước.
           </p>
         )}
@@ -190,7 +190,7 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 text-sm text-muted-foreground animate-pulse">
+      <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 text-sm font-semibold text-foreground animate-pulse">
         Đang tải thông tin bệnh nhân...
       </div>
     );
@@ -223,12 +223,12 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
           </Avatar>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-heading text-lg font-bold text-[#0A1B39]">
+              <h3 className="font-heading text-lg font-bold text-foreground">
                 Bệnh nhân: {profile.fullName?.trim() || "Chưa cập nhật"}
               </h3>
             </div>
             {profile.dateOfBirth && (
-              <span className="text-sm font-semibold text-[#0A1B39]">
+              <span className="text-sm font-semibold text-foreground">
                 Ngày sinh: {formatIsoDate(profile.dateOfBirth)}
               </span>
             )}
@@ -240,7 +240,7 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
         <div>
           <div className="mb-2 flex items-center gap-1.5">
             <ShieldAlert className="size-4 text-rose-600" />
-            <span className="text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
+            <span className="text-sm font-bold uppercase tracking-wider text-foreground">
               Dị ứng:
             </span>
           </div>
@@ -265,7 +265,7 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
                 })}
               </div>
             ) : (
-              <span className="text-sm font-normal italic text-muted-foreground">Không có</span>
+              <span className="text-sm font-semibold italic text-foreground/90">Không có</span>
             )}
           </div>
         </div>
@@ -273,7 +273,7 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
         <div>
           <div className="mb-2 flex items-center gap-1.5">
             <Activity className="size-4 text-amber-600" />
-            <span className="text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
+            <span className="text-sm font-bold uppercase tracking-wider text-foreground">
               Tiền sử bệnh:
             </span>
           </div>
@@ -298,7 +298,7 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
                 })}
               </div>
             ) : (
-              <span className="text-sm font-normal italic text-muted-foreground">Không có</span>
+              <span className="text-sm font-semibold italic text-foreground/90">Không có</span>
             )}
           </div>
         </div>
@@ -392,7 +392,7 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
         <button
           type="button"
           onClick={() => router.back()}
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-[#0A1B39] transition-colors hover:text-[#2E37A4]"
+          className="inline-flex items-center gap-1.5 text-sm font-bold text-foreground transition-colors hover:text-[#2E37A4]"
         >
           <ArrowLeft className="size-4" />
           Quay lại
@@ -408,10 +408,10 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
                 <CalendarPlus className="size-5" />
               </div>
               <div>
-                <h1 className="font-heading text-xl font-bold text-[#0A1B39]">
+                <h1 className="font-heading text-xl font-bold text-foreground">
                   Tạo ca khám
                 </h1>
-                <p className="mt-0.5 text-sm font-medium text-gray-700">
+                <p className="mt-0.5 text-sm font-medium text-foreground">
                   Tiếp nhận ca khám mới, chỉ định bác sĩ và ghi nhận triệu chứng ban đầu
                 </p>
               </div>
@@ -421,10 +421,10 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
             <div className="w-full sm:w-[320px]">
               {isDoctor ? (
                 <div
-                  className="flex h-10 items-center justify-start sm:justify-end rounded-md bg-[#F8F9FA] px-3 text-sm font-medium text-[#6C7688]"
+                  className="flex h-10 items-center justify-start sm:justify-end rounded-md bg-[#F8F9FA] px-3 text-sm font-semibold text-foreground"
                 >
                   <User className="mr-1.5 size-4 text-[#2E37A4]" />
-                  Bác sĩ: <strong className="ml-1 text-[#0A1B39]">{currentUser?.fullName}</strong>
+                  Bác sĩ: <strong className="ml-1 text-foreground">{currentUser?.fullName}</strong>
                 </div>
               ) : (
                 <div>
@@ -465,7 +465,7 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
 
             {/* Lịch sử lần khám trước (nếu có) */}
             {previousCasesQuery.isLoading ? (
-              <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-4 text-xs text-muted-foreground animate-pulse">
+              <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-4 text-xs font-semibold text-foreground animate-pulse">
                 Đang tải lịch sử khám...
               </div>
             ) : previousCaseId ? (
@@ -507,11 +507,11 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
               <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-5 shadow-xs">
                 <div className="mb-2 flex items-center gap-2 border-b border-gray-200 pb-2.5">
                   <History className="size-4 text-[#2E37A4]" />
-                  <h3 className="font-heading text-sm font-bold text-[#0A1B39]">
+                  <h3 className="font-heading text-sm font-bold text-foreground">
                     Lần khám gần nhất
                   </h3>
                 </div>
-                <p className="text-xs italic text-muted-foreground">
+                <p className="text-xs font-medium italic text-foreground/80">
                   Bệnh nhân chưa có lịch sử khám trước đây.
                 </p>
               </div>
@@ -524,14 +524,14 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
               <div className="p-6">
                 <div className="mb-4 flex items-center gap-2 border-b border-gray-200 pb-3">
                   <Stethoscope className="size-4 text-[#2E37A4]" />
-                  <h2 className="font-heading text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
+                  <h2 className="font-heading text-sm font-bold uppercase tracking-wider text-foreground">
                     Thông tin lâm sàng ban đầu
                   </h2>
                 </div>
 
                 <div className="space-y-4">
                   <fieldset className="m-0 border-0 p-0">
-                    <legend className="mb-2 block text-sm font-bold text-[#0A1B39]">
+                    <legend className="mb-2 block text-sm font-bold text-foreground">
                       Triệu chứng chi tiết
                     </legend>
                     <SymptomSelector value={symptoms} onChange={setSymptoms} />
@@ -556,7 +556,7 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
                 <button
                   type="button"
                   onClick={() => router.back()}
-                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-[#0A1B39] shadow-2xs transition-colors hover:bg-muted"
+                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-foreground shadow-2xs transition-colors hover:bg-accent hover:text-accent-foreground"
                 >
                   Huỷ bỏ
                 </button>

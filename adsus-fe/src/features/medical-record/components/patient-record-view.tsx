@@ -92,7 +92,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
   if (profileQuery.isLoading) {
     return (
       <div className="mx-auto w-[90%] max-w-[90%] py-10">
-        <div className="rounded-lg border border-[#E7E8EB] bg-white p-12 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-[#E7E8EB] bg-white p-12 text-center text-sm font-semibold text-foreground">
           Đang tải hồ sơ bệnh nhân...
         </div>
       </div>
@@ -120,7 +120,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
       <div className="mb-4">
         <Link
           href="/patients"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6C7688] transition-colors hover:text-[#2E37A4]"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-foreground transition-colors hover:text-[#2E37A4]"
         >
           <ArrowLeft className="size-3.5" />
           Quay lại danh sách bệnh nhân
@@ -140,23 +140,23 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
 
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="font-heading text-2xl font-bold tracking-tight text-[#0A1B39]">
+                <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
                   {profile.fullName}
                 </h1>
               </div>
 
               {/* Thông tin nhanh nhân khẩu học */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#6C7688]">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-semibold text-foreground">
                 <span className="flex items-center gap-1">
-                  <User className="size-3.5 text-muted-foreground" />
+                  <User className="size-3.5 text-foreground/70" />
                   {genderLabel(profile.gender)} {ageStr !== EMPTY_VALUE ? `· ${ageStr}` : ""}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Calendar className="size-3.5 text-muted-foreground" />
+                  <Calendar className="size-3.5 text-foreground/70" />
                   {formatIsoDate(profile.dateOfBirth)}
                 </span>
                 <span className="flex items-center gap-1 font-mono">
-                  <Phone className="size-3.5 text-muted-foreground" />
+                  <Phone className="size-3.5 text-foreground/70" />
                   {profile.phone || EMPTY_VALUE}
                 </span>
               </div>
@@ -174,7 +174,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
             </Link>
             <Link
               href={`/patients/${profileId}/profile`}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[#E7E8EB] bg-white px-3.5 py-2 text-sm font-medium text-[#0A1B39] shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-[#2E37A4]"
+              className="inline-flex items-center gap-1.5 rounded-md border border-[#E7E8EB] bg-white px-3.5 py-2 text-sm font-semibold text-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-[#2E37A4]"
             >
               <Edit className="size-4" />
               Sửa hồ sơ nền
@@ -189,7 +189,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
           <TabsList className="mb-6 flex w-full justify-start border-b border-[#E7E8EB] bg-transparent p-0">
             <TabsTrigger
               value="cases"
-              className="relative flex items-center gap-2 rounded-none border-b-2 border-transparent px-5 py-3 text-sm font-semibold text-[#6C7688] transition-all hover:text-[#0A1B39] data-[state=active]:border-[#2E37A4] data-[state=active]:bg-transparent data-[state=active]:text-[#2E37A4] data-[state=active]:shadow-none"
+              className="relative flex items-center gap-2 rounded-none border-b-2 border-transparent px-5 py-3 text-sm font-bold text-foreground/70 transition-all hover:text-foreground data-[state=active]:border-[#2E37A4] data-[state=active]:bg-transparent data-[state=active]:text-[#2E37A4] data-[state=active]:shadow-none"
             >
               <Calendar className="size-4" />
               Lịch sử Ca khám
@@ -201,7 +201,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
             </TabsTrigger>
             <TabsTrigger
               value="history"
-              className="relative flex items-center gap-2 rounded-none border-b-2 border-transparent px-5 py-3 text-sm font-semibold text-[#6C7688] transition-all hover:text-[#0A1B39] data-[state=active]:border-[#2E37A4] data-[state=active]:bg-transparent data-[state=active]:text-[#2E37A4] data-[state=active]:shadow-none"
+              className="relative flex items-center gap-2 rounded-none border-b-2 border-transparent px-5 py-3 text-sm font-bold text-foreground/70 transition-all hover:text-foreground data-[state=active]:border-[#2E37A4] data-[state=active]:bg-transparent data-[state=active]:text-[#2E37A4] data-[state=active]:shadow-none"
             >
               <FileText className="size-4" />
               Hồ sơ Tiền sử & Lâm sàng
@@ -211,7 +211,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
           {/* TAB 1: Lịch sử Ca khám */}
           <TabsContent value="cases" className="space-y-4 outline-none">
             {caseListQuery.isLoading ? (
-              <div className="rounded-lg border border-[#E7E8EB] bg-white p-8 text-center text-sm text-muted-foreground">
+              <div className="rounded-lg border border-[#E7E8EB] bg-white p-8 text-center text-sm font-semibold text-foreground">
                 Đang tải danh sách lần khám...
               </div>
             ) : null}
@@ -224,9 +224,9 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
 
             {cases && cases.items.length === 0 ? (
               <div className="rounded-lg border border-dashed border-[#E7E8EB] bg-white p-12 text-center">
-                <Calendar className="mx-auto size-10 text-muted-foreground/40" />
-                <p className="mt-3 font-semibold text-[#0A1B39]">Chưa có lần khám nào</p>
-                <p className="mt-1 text-sm text-[#6C7688]">
+                <Calendar className="mx-auto size-10 text-foreground/30" />
+                <p className="mt-3 font-semibold text-foreground">Chưa có lần khám nào</p>
+                <p className="mt-1 text-sm font-medium text-foreground">
                   Bấm &ldquo;Tạo ca khám mới&rdquo; để bắt đầu lần khám đầu tiên.
                 </p>
                 <div className="mt-4">
@@ -245,7 +245,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
               <div className="overflow-hidden rounded-lg border border-[#E7E8EB] bg-white shadow-xs">
                 <div className="overflow-x-auto">
                   <table className="w-full table-nowrap text-left text-sm align-middle">
-                    <thead className="border-b border-[#E7E8EB] bg-[#F8F9FA] text-xs font-semibold uppercase text-muted-foreground">
+                    <thead className="border-b border-[#E7E8EB] bg-[#F8F9FA] text-xs font-bold uppercase tracking-wider text-foreground">
                       <tr>
                         <th className="px-5 py-3.5">Lần khám</th>
                         <th className="px-5 py-3.5">Thời điểm tạo</th>
@@ -257,13 +257,13 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
                       {cases.items.map((visit) => (
                         <tr key={visit.caseId} className="transition-colors hover:bg-[#F5F6F8]/60">
                           <td className="px-5 py-4">
-                            <span className="font-semibold text-[#0A1B39]">
+                            <span className="font-semibold text-foreground">
                               Lần khám ngày {formatIsoDate(visit.visitDate)}
                             </span>
                           </td>
-                          <td className="px-5 py-4 text-xs text-[#6C7688]">
+                          <td className="px-5 py-4 text-xs font-medium text-foreground">
                             <span className="inline-flex items-center gap-1.5">
-                              <Clock className="size-3.5 text-muted-foreground" />
+                              <Clock className="size-3.5 text-foreground/70" />
                               Tạo lúc {formatIsoDateTime(visit.createdAt)}
                             </span>
                           </td>
@@ -273,7 +273,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
                           <td className="px-5 py-4 text-right">
                             <Link
                               href={`/cases/${visit.caseId}`}
-                              className="inline-flex items-center gap-1 rounded border border-[#E7E8EB] bg-white px-3 py-1.5 text-xs font-medium text-[#0A1B39] shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-[#2E37A4]"
+                              className="inline-flex items-center gap-1 rounded border border-[#E7E8EB] bg-white px-3 py-1.5 text-xs font-semibold text-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-primary"
                             >
                               <Eye className="size-3.5" />
                               Xem chi tiết ca
@@ -287,7 +287,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
 
                 {cases.totalPages > 1 ? (
                   <div className="flex items-center justify-between border-t border-[#E7E8EB] px-5 py-3.5">
-                    <p className="font-mono text-xs tabular-nums text-[#6C7688]">
+                    <p className="font-mono text-xs font-semibold tabular-nums text-foreground">
                       Trang {cases.page} / {cases.totalPages} · {cases.totalItems} lần khám
                     </p>
                     <PaginationNumbered
@@ -308,7 +308,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
               <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 shadow-xs">
                 <div className="mb-4 flex items-center gap-2 border-b border-[#E7E8EB] pb-3">
                   <ShieldAlert className="size-4 text-rose-500" />
-                  <h3 className="font-heading text-base font-semibold text-[#0A1B39]">
+                  <h3 className="font-heading text-base font-bold text-foreground">
                     Dị ứng
                   </h3>
                 </div>
@@ -332,7 +332,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
                     })}
                   </div>
                 ) : (
-                  <p className="text-sm italic text-muted-foreground">Không có</p>
+                  <p className="text-sm font-semibold italic text-foreground/90">Không có</p>
                 )}
               </div>
 
@@ -340,7 +340,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
               <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 shadow-xs">
                 <div className="mb-4 flex items-center gap-2 border-b border-[#E7E8EB] pb-3">
                   <Activity className="size-4 text-amber-500" />
-                  <h3 className="font-heading text-base font-semibold text-[#0A1B39]">
+                  <h3 className="font-heading text-base font-bold text-foreground">
                     Tiền sử bệnh
                   </h3>
                 </div>
@@ -364,13 +364,13 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
                     })}
                   </div>
                 ) : (
-                  <p className="text-sm italic text-muted-foreground">Không có</p>
+                  <p className="text-sm font-semibold italic text-foreground/90">Không có</p>
                 )}
               </div>
             </div>
 
             {/* Metadata dòng thời gian thực từ API */}
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#6C7688] pt-1 px-1">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-foreground pt-1 px-1">
               <span>
                 Hồ sơ được lập lúc: {formatIsoDateTime(profile.createdAt)} · Cập nhật lần cuối: {formatIsoDateTime(profile.updatedAt)}
               </span>

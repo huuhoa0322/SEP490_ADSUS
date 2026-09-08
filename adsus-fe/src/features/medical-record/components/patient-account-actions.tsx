@@ -105,7 +105,7 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
   return (
     <section className="mt-6 rounded-xl border border-dashed border-primary/50 p-5">
       <div className="mb-3 flex items-center gap-2">
-        <h2 className="text-sm font-semibold text-foreground">Thông tin tài khoản</h2>
+        <h2 className="text-sm font-bold text-foreground">Thông tin tài khoản</h2>
         <span className="rounded bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground">
           Chỉ Điều dưỡng
         </span>
@@ -119,14 +119,14 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
             // Chờ email thật nạp xong mới cho sửa — mở sớm hơn là có khả năng (dù nhỏ) bấm Lưu
             // trước khi formEmail kịp đồng bộ, xoá mất email đang có.
             disabled={accountQuery.isLoading}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-50"
           >
             Sửa thông tin tài khoản
           </button>
           <button
             type="button"
             onClick={() => setConfirmingReset(true)}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent"
           >
             Cấp lại mật khẩu
           </button>
@@ -150,13 +150,13 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
 
           {revealedPassword ? (
             <div className="mt-3 rounded-lg border border-dashed border-primary bg-primary/5 p-3">
-              <div className="text-xs font-semibold uppercase text-muted-foreground">
+              <div className="text-xs font-bold uppercase tracking-wider text-foreground">
                 Mật khẩu tạm
               </div>
               <div className="mt-1 select-all break-all font-mono text-lg font-bold tracking-wider text-foreground">
                 {revealedPassword}
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs font-medium text-foreground">
                 Đọc mật khẩu trên cho bệnh nhân nghe hoặc ghi lại — sẽ không hiện lại được nữa.
               </p>
             </div>
@@ -166,7 +166,7 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
             <button
               type="button"
               onClick={() => setConfirmingReset(false)}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent"
             >
               Đóng
             </button>
@@ -188,7 +188,7 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
         // tự log lỗi hydration nếu làm vậy. Lưu bằng onClick trên nút, không onSubmit.
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="acc-fullName" className="mb-1.5 block text-sm font-medium">
+            <label htmlFor="acc-fullName" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground">
               Họ và tên *
             </label>
             <input
@@ -200,7 +200,7 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
           </div>
 
           <div>
-            <label htmlFor="acc-phone" className="mb-1.5 block text-sm font-medium">
+            <label htmlFor="acc-phone" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground">
               Số điện thoại *
             </label>
             <input
@@ -212,7 +212,7 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
           </div>
 
           <div>
-            <label htmlFor="acc-dob" className="mb-1.5 block text-sm font-medium">
+            <label htmlFor="acc-dob" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground">
               Ngày sinh
             </label>
             <DatePicker
@@ -223,7 +223,7 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
           </div>
 
           <div>
-            <label htmlFor="acc-email" className="mb-1.5 block text-sm font-medium">
+            <label htmlFor="acc-email" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-foreground">
               Email
             </label>
             <input
@@ -251,7 +251,7 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
                 setEditing(false);
                 setClientError(null);
               }}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent"
             >
               Huỷ
             </button>

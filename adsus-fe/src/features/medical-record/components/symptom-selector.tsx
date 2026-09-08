@@ -75,7 +75,7 @@ export function SymptomSelector({ value, onChange }: SymptomSelectorProps) {
   }
 
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Đang tải danh mục triệu chứng...</div>;
+    return <div className="text-sm font-semibold text-foreground">Đang tải danh mục triệu chứng...</div>;
   }
 
   // Gộp các value item theo categoryId để render thành các block
@@ -208,7 +208,7 @@ export function SymptomSelector({ value, onChange }: SymptomSelectorProps) {
                               }
                               className="mt-1 shrink-0 rounded border-primary text-primary focus:ring-primary"
                             />
-                            <span className="leading-snug">{sym.name}</span>
+                            <span className="leading-snug font-medium text-foreground">{sym.name}</span>
                           </label>
                         ))}
                         
@@ -246,7 +246,7 @@ export function SymptomSelector({ value, onChange }: SymptomSelectorProps) {
                               }}
                               className="mt-1 shrink-0 rounded border-primary text-primary focus:ring-primary"
                             />
-                            <span className="leading-snug italic">Khác...</span>
+                            <span className="leading-snug font-semibold italic text-foreground">Khác...</span>
                           </label>
                         )}
                       </div>
@@ -286,7 +286,7 @@ export function SymptomSelector({ value, onChange }: SymptomSelectorProps) {
       <button
         type="button"
         onClick={handleAddCategoryBlock}
-        className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+        className="flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
       >
         <PlusIcon className="h-4 w-4" />
         Thêm nhóm triệu chứng

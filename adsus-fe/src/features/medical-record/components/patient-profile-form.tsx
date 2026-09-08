@@ -122,7 +122,7 @@ export function PatientProfileForm(props: Props) {
   }
 
   if (props.mode === "edit" && profileQuery.isLoading) {
-    return <p className="p-10 text-sm text-muted-foreground">Đang tải hồ sơ nền...</p>;
+    return <p className="p-10 text-sm font-semibold text-foreground">Đang tải hồ sơ nền...</p>;
   }
 
   if (props.mode === "edit" && profileQuery.isError) {
@@ -138,13 +138,13 @@ export function PatientProfileForm(props: Props) {
       <h1 className="font-heading text-[28px] font-bold tracking-[-0.02em] text-foreground">
         {props.mode === "edit" ? "Hồ sơ Bệnh nhân Nền tảng" : "Tạo hồ sơ nền"}
       </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
+      <p className="mt-1 text-sm font-medium text-foreground">
         Thông tin lâm sàng nền tảng, dùng làm dữ liệu đầu vào phụ trợ cho phân tích AI (UC-06).
       </p>
 
       {identity ? (
         <section className="mt-6 rounded-xl border border-border bg-muted/40 p-5">
-          <h2 className="mb-3 text-xs font-semibold uppercase text-muted-foreground">
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">
             Thông tin định danh
           </h2>
           {/* Ba trường này lấy từ bảng users và chỉ đọc ở màn này (UC-06 bước 2); #18 cũng
@@ -152,17 +152,17 @@ export function PatientProfileForm(props: Props) {
               Điều dưỡng mới có khối đó. */}
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <dt className="text-xs text-muted-foreground">Họ và tên</dt>
+              <dt className="text-xs font-bold uppercase tracking-wider text-foreground">Họ và tên</dt>
               <dd className="mt-0.5 font-semibold text-foreground">{identity.fullName}</dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Ngày sinh</dt>
+              <dt className="text-xs font-bold uppercase tracking-wider text-foreground">Ngày sinh</dt>
               <dd className="mt-0.5 font-semibold text-foreground">
                 {formatIsoDate(identity.dateOfBirth)}
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Số điện thoại</dt>
+              <dt className="text-xs font-bold uppercase tracking-wider text-foreground">Số điện thoại</dt>
               <dd className="mt-0.5 font-mono font-semibold tabular-nums text-foreground">
                 {identity.phone || EMPTY_VALUE}
               </dd>
@@ -185,14 +185,14 @@ export function PatientProfileForm(props: Props) {
 
       <section className="mt-6 space-y-5 rounded-xl border border-border p-5">
         <fieldset className="m-0 border-0 p-0">
-          <legend className="mb-1.5 block text-sm font-medium">
+          <legend className="mb-1.5 block text-sm font-bold text-foreground">
             Tiền sử bệnh
           </legend>
           <MedicalHistorySelector value={diseases} onChange={setDiseases} />
         </fieldset>
 
         <fieldset className="m-0 border-0 p-0">
-          <legend className="mb-1.5 block text-sm font-medium">
+          <legend className="mb-1.5 block text-sm font-bold text-foreground">
             Dị ứng đã biết
           </legend>
           <AllergySelector value={allergies} onChange={setAllergies} />
@@ -209,7 +209,7 @@ export function PatientProfileForm(props: Props) {
         <button
           type="button"
           onClick={() => router.back()}
-          className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+          className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent"
         >
           Huỷ bỏ
         </button>

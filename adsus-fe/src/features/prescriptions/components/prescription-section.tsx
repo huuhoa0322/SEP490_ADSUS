@@ -79,12 +79,12 @@ function PrescriptionTable({
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-teal/5 dark:bg-teal/10">
             <tr>
-              <th className="px-3 py-2 text-left font-bold text-foreground">Tên thuốc</th>
-              <th className="px-3 py-2 text-left font-bold text-foreground">Liều dùng</th>
-              <th className="px-3 py-2 text-left font-bold text-foreground">Khung giờ</th>
-              <th className="px-3 py-2 text-left font-bold text-foreground">Thời gian</th>
-              <th className="px-3 py-2 text-left font-bold text-foreground">Cách dùng</th>
-              <th className="px-3 py-2 text-left font-bold text-foreground">Tuân thủ</th>
+              <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-foreground">Tên thuốc</th>
+              <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-foreground">Liều dùng</th>
+              <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-foreground">Khung giờ</th>
+              <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-foreground">Thời gian</th>
+              <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-foreground">Cách dùng</th>
+              <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-foreground">Tuân thủ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-black/20 dark:divide-white/20">

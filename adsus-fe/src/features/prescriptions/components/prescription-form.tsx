@@ -114,7 +114,7 @@ export function PrescriptionForm({
       <form onSubmit={handleSubmit(onValid)} noValidate>
         {/* ── Bệnh nhân ─────────────────────────────────────────── */}
         <section className="mb-6">
-          <label htmlFor="caseId" className="mb-1.5 block text-sm font-semibold text-primary">
+          <label htmlFor="caseId" className="mb-1.5 block text-[13px] font-bold uppercase tracking-wider text-foreground">
             Bệnh nhân / Ca khám <span className="text-red-500">*</span>
           </label>
           {prefilledPatient ? (
@@ -123,7 +123,7 @@ export function PrescriptionForm({
                 {prefilledPatient.patientName}
               </span>
               {prefilledPatient.patientCode ? (
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm font-semibold text-foreground">
                   ({prefilledPatient.patientCode})
                 </span>
               ) : null}
@@ -147,7 +147,7 @@ export function PrescriptionForm({
         {/* ── Bảng thuốc ─────────────────────────────────────────── */}
         <section className="mb-6">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-heading text-base font-semibold text-primary">
+            <h3 className="font-heading text-base font-bold text-foreground">
               Bảng Kê Đơn thuốc Điều trị Nội khoa
             </h3>
             <button
@@ -171,7 +171,7 @@ export function PrescriptionForm({
           </div>
 
           {/* Header */}
-          <div className="mb-1 grid grid-cols-12 gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="mb-1 grid grid-cols-12 gap-2 px-1 text-xs font-bold uppercase tracking-wider text-foreground">
             <div className="col-span-4">Tên thuốc</div>
             <div className="col-span-2">Liều dùng</div>
             <div className="col-span-3">Khung giờ</div>
@@ -328,7 +328,7 @@ function MedicineCombobox({
           <button
             type="button"
             onClick={handleClear}
-            className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-red-50 hover:text-red-400"
+            className="shrink-0 rounded-full p-1 text-foreground hover:bg-red-50 hover:text-red-500"
           >
             <X className="size-3" />
           </button>
@@ -336,7 +336,7 @@ function MedicineCombobox({
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="shrink-0 rounded-full border border-border p-1.5 text-muted-foreground hover:bg-gray-50"
+          className="shrink-0 rounded-full border border-border p-1.5 text-foreground hover:bg-gray-50"
         >
           <ChevronDown className="size-3" />
         </button>
@@ -345,9 +345,9 @@ function MedicineCombobox({
       {open && (
         <ul className="absolute left-0 top-full z-50 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-border bg-white shadow-lg">
           {isLoading ? (
-            <li className="px-3 py-2 text-xs text-muted-foreground text-center">Đang tìm...</li>
+            <li className="px-3 py-2 text-xs font-semibold text-foreground text-center">Đang tìm...</li>
           ) : filtered.length === 0 ? (
-            <li className="px-3 py-2 text-xs text-muted-foreground">
+            <li className="px-3 py-2 text-xs font-medium text-foreground">
               Không tìm thấy thuốc trong danh mục
             </li>
           ) : (
@@ -428,7 +428,7 @@ function MedicationRow({
             min={1}
             className="w-full bg-transparent text-xs outline-none"
           />
-          <span className="shrink-0 text-xs text-muted-foreground whitespace-nowrap border-l border-border pl-1.5">
+          <span className="shrink-0 text-xs font-bold text-foreground whitespace-nowrap border-l border-border pl-1.5">
             {watchedUsageUnit}
           </span>
         </div>
@@ -453,7 +453,7 @@ function MedicationRow({
                     className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition cursor-pointer ${
                       checked
                         ? "border-teal bg-teal/10 text-teal"
-                        : "border-border text-muted-foreground"
+                        : "border-border text-foreground font-semibold"
                     }`}
                   >
                     <input
@@ -520,7 +520,7 @@ function MedicationRow({
           <button
             type="button"
             onClick={onRemove}
-            className="flex items-center gap-1 rounded-full px-3 py-1 text-xs text-muted-foreground transition hover:bg-red-50 hover:text-red-400"
+            className="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold text-foreground transition hover:bg-red-50 hover:text-red-500"
           >
             <Trash2 className="size-3.5" />
             Xóa

@@ -172,9 +172,9 @@ public class NoShowServiceTests : IDisposable
         var profile = CreatePatientProfile(patient);
 
         // Use a future appointment - this definitely won't trigger no-show processing
-        // slotDate = tomorrow, startTime = 08:00 AM Vietnam = 01:00 UTC next day
-        var slotDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
-        var startTime = new TimeOnly(1, 0, 0); // 01:00 UTC
+        // slotDate = 2 days from now
+        var slotDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2));
+        var startTime = new TimeOnly(8, 0, 0); // 08:00 local time
 
         var slot = CreateSlot(doctor, slotDate, startTime);
         var appointment = CreateAppointment(slot, profile, AppointmentStatus.Booked);

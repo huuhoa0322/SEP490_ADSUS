@@ -27,7 +27,7 @@ export function MedicalHistorySelector({ value, onChange }: MedicalHistorySelect
   }, [diseases]);
 
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Đang tải danh mục tiền sử bệnh...</div>;
+    return <div className="text-sm font-semibold text-foreground">Đang tải danh mục tiền sử bệnh...</div>;
   }
 
   function handleToggleDisease(diseaseId: string, isChecked: boolean, requiresNote: boolean) {
@@ -65,7 +65,7 @@ export function MedicalHistorySelector({ value, onChange }: MedicalHistorySelect
                   }
                   className="mt-1 shrink-0 rounded border-primary text-primary focus:ring-primary"
                 />
-                <span className="leading-snug">{disease.name}</span>
+                <span className="leading-snug font-medium text-foreground">{disease.name}</span>
               </label>
 
               {disease.requiresNote && isSelected && (

@@ -48,14 +48,14 @@ export function MobileNavDrawer() {
     <Dialog open={isOpen} onOpenChange={setOpen}>
       <DialogContent
         style={accentStyle}
-        className="fixed inset-y-0 left-0 top-0 h-full w-[280px] max-w-[85vw] translate-x-0 translate-y-0 flex-col gap-0 rounded-none rounded-r-xl border-r border-border bg-background p-0 duration-200 data-closed:slide-out-to-left-full data-open:slide-in-from-left-full"
+        className="fixed inset-y-0 left-0 top-0 h-full w-[280px] max-w-[85vw] translate-x-0 translate-y-0 flex-col gap-0 rounded-none rounded-r-xl border-r border-slate-200 bg-slate-50/95 p-0 shadow-lg backdrop-blur duration-200 data-closed:slide-out-to-left-full data-open:slide-in-from-left-full dark:border-slate-800 dark:bg-slate-900/95"
         showCloseButton
       >
         <DialogTitle className="sr-only">Menu điều hướng</DialogTitle>
 
         <Link
           href={user ? getHomePathForRole(user.role) : "/login"}
-          className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border px-4"
+          className="flex h-16 shrink-0 items-center gap-2.5 border-b border-slate-200 px-4 dark:border-slate-800"
         >
           <span className="flex size-9 items-center justify-center rounded-full bg-primary">
             <ScanLine className="size-4.5 text-primary-foreground" />
@@ -67,7 +67,7 @@ export function MobileNavDrawer() {
           {groups.map((group) => (
             <div key={group.label} className="space-y-1">
               {groups.length > 1 && (
-                <p className="px-2.5 pb-1 text-[11px] font-700 uppercase tracking-wider text-muted-foreground/70">
+                <p className="px-2.5 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                   {group.label}
                 </p>
               )}
@@ -78,15 +78,15 @@ export function MobileNavDrawer() {
           ))}
         </nav>
 
-        <div className="shrink-0 space-y-1 border-t border-border p-3">
+        <div className="shrink-0 space-y-1 border-t border-slate-200 p-3 dark:border-slate-800">
           <div className="px-2.5 pb-1">
-            <RoleBadge role={user.role} />
+            <RoleBadge role={user.role} className="font-semibold text-slate-700 dark:text-slate-300" />
           </div>
           <NavItem item={ACCOUNT_ITEM} expanded active={pathname.startsWith(ACCOUNT_ITEM.href)} />
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-destructive/10 hover:text-destructive dark:text-slate-300"
           >
             <LogOut className="size-5 shrink-0" />
             <span>Đăng xuất</span>

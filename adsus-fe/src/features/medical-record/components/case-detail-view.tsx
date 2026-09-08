@@ -325,7 +325,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                     ))}
                   </div>
                 ) : (
-                  <span className="font-normal italic text-foreground/70">Không có</span>
+                  <span className="font-semibold italic text-foreground/90">Không có</span>
                 )}
               </div>
             </div>
@@ -343,7 +343,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                     ))}
                   </div>
                 ) : (
-                  <span className="font-normal italic text-foreground/70">Không có</span>
+                  <span className="font-semibold italic text-foreground/90">Không có</span>
                 )}
               </div>
             </div>
@@ -364,7 +364,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h3 className="text-base font-bold text-foreground">Hóa đơn</h3>
-              <p className="mt-0.5 text-sm font-bold text-muted-foreground">
+              <p className="mt-0.5 text-sm font-bold text-foreground">
                 {caseInvoices.length === 1 ? "1 hóa đơn" : `${caseInvoices.length} hóa đơn`}
               </p>
             </div>
@@ -420,11 +420,11 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                     Bổ sung ảnh siêu âm
                   </button>
                   {isConfirmedOrEnd ? (
-                    <span className="text-xs font-semibold italic text-foreground/80">
+                    <span className="text-xs font-bold italic text-foreground">
                       Ca đã kết luận nên không nhận thêm ảnh
                     </span>
                   ) : isLocked ? (
-                    <span className="text-xs font-semibold italic text-foreground/80">
+                    <span className="text-xs font-bold italic text-foreground">
                       Bấm &ldquo;Sửa&rdquo; ở mục kết luận để mở lại
                     </span>
                   ) : null}
@@ -626,7 +626,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
       </div>
 
       <footer className="pt-2">
-        <p className="font-mono text-xs font-semibold text-foreground/80">
+        <p className="font-mono text-xs font-bold text-foreground">
           Tạo lúc {formatIsoDateTime(medicalCase.createdAt)} · Cập nhật lần cuối{" "}
           {formatIsoDateTime(medicalCase.updatedAt)}
         </p>
