@@ -180,7 +180,7 @@ describe("CreateCaseForm", () => {
     );
   });
 
-  it("áp dụng layout rộng (max-w-screen-2xl) dạng hàng dọc", () => {
+  it("áp dụng layout chia đôi 2 cột với header ở trên và các hộp viền đen", () => {
     signInAs("DOCTOR", "doctor-1", "BS. Nguyễn Văn An");
     const { container } = render(<CreateCaseForm patientProfileId="profile-1" />);
 
@@ -189,9 +189,13 @@ describe("CreateCaseForm", () => {
     expect(outerContainer).toBeInTheDocument();
     expect(outerContainer).toHaveClass("mx-auto", "w-full", "px-6", "py-8");
 
-    // Stack
-    const grid = container.querySelector(".space-y-8");
+    // Grid chia đôi 2 cột
+    const grid = container.querySelector(".grid.grid-cols-1.lg\\:grid-cols-2");
     expect(grid).toBeInTheDocument();
+
+    // Các hộp có viền đen
+    const blackBorderBoxes = container.querySelectorAll(".border-black");
+    expect(blackBorderBoxes.length).toBeGreaterThanOrEqual(2);
   });
 
   it("hiển thị thông tin hồ sơ bệnh nhân ở cột trái với badge cảnh báo dị ứng & bệnh nền", () => {

@@ -62,8 +62,8 @@ function PreviousCaseSummary({ caseId }: { caseId: string }) {
     Boolean(caseDetail.symptoms && caseDetail.symptoms.length > 0);
 
   return (
-    <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 shadow-xs">
-      <div className="mb-3 flex items-center gap-2 border-b border-[#E7E8EB] pb-2.5">
+    <div className="rounded-lg border border-black bg-white p-5 shadow-xs">
+      <div className="mb-3 flex items-center gap-2 border-b border-gray-200 pb-2.5">
         <History className="size-4 text-[#2E37A4]" />
         <h3 className="font-heading text-sm font-bold text-[#0A1B39]">
           Nội dung lần khám gần nhất ({formatIsoDate(caseDetail.visitDate)})
@@ -147,8 +147,8 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
   const initials = getInitials(profile.fullName);
 
   return (
-    <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 shadow-xs">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[#E7E8EB] pb-4">
+    <div className="rounded-lg border border-black bg-white p-5 shadow-xs">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-4">
         <div className="flex items-center gap-3">
           <Avatar size="md" className="size-11 rounded-full border border-[#E7E8EB]">
             <AvatarFallback className="bg-[#ECEDF7] font-semibold text-[#2E37A4]">
@@ -336,16 +336,73 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
         </button>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="space-y-8">
-          {/* Thông tin tham khảo y tế */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Header card: Nằm ở phía TRÊN của CẢ 2 PHẦN (Full-width) */}
+        <div className="rounded-lg border border-black bg-white p-6 shadow-xs">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-full bg-[#ECEDF7] text-[#2E37A4]">
+                <CalendarPlus className="size-5" />
+              </div>
+              <div>
+                <h1 className="font-heading text-xl font-bold text-[#0A1B39]">
+                  Tạo ca khám
+                </h1>
+                <p className="mt-0.5 text-xs text-[#6C7688]">
+                  Tiếp nhận ca khám mới, chỉ định bác sĩ và ghi nhận triệu chứng ban đầu
+                </p>
+              </div>
+            </div>
+
+            {/* Doctor Selection / Static Display */}
+            <div className="w-full sm:w-[320px]">
+              {isDoctor ? (
+                <div
+                  className="flex h-10 items-center justify-start sm:justify-end rounded-md bg-[#F8F9FA] px-3 text-sm font-medium text-[#6C7688]"
+                >
+                  <User className="mr-1.5 size-4 text-[#2E37A4]" />
+                  Bác sĩ: <strong className="ml-1 text-[#0A1B39]">{currentUser?.fullName}</strong>
+                </div>
+              ) : (
+                <div>
+                  <label htmlFor="responsibleDoctorId" className="sr-only">
+                    Bác sĩ phụ trách
+                  </label>
+                  <select
+                    id="responsibleDoctorId"
+                    value={selectedDoctorId}
+                    onChange={(event) => setSelectedDoctorId(event.target.value)}
+                    disabled={doctorsQuery.isLoading}
+                    className="h-10 w-full rounded-md border border-[#E7E8EB] bg-background px-3 text-sm outline-none transition-colors focus:border-[#2E37A4] focus-visible:ring-2 focus-visible:ring-[#2E37A4]/20 disabled:opacity-50"
+                  >
+                    <option value="">-- Chọn bác sĩ phụ trách --</option>
+                    {doctorsQuery.data?.map((doctor) => (
+                      <option key={doctor.userId} value={doctor.userId}>
+                        {doctor.fullName}
+                      </option>
+                    ))}
+                  </select>
+                  {doctorsQuery.isError && (
+                    <p className="mt-1 text-right text-xs text-destructive" role="alert">
+                      Không tải được danh sách bác sĩ
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 2 BÊN CHIA ĐÔI VỚI HỘP VIỀN ĐEN RÕ RÀNG */}
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+          {/* CỘT TRÁI: THÔNG TIN THAM KHẢO Y TẾ (BỆNH NHÂN & LẦN KHÁM TRƯỚC) */}
           <div className="space-y-6">
             {/* Thông tin bệnh nhân */}
             <PatientProfileSummary profileId={patientProfileId} />
 
             {/* Lịch sử lần khám trước (nếu có) */}
             {previousCasesQuery.isLoading ? (
-              <div className="rounded-lg border border-[#E7E8EB] bg-white p-4 text-xs text-muted-foreground animate-pulse">
+              <div className="rounded-lg border border-black bg-white p-4 text-xs text-muted-foreground animate-pulse">
                 Đang tải lịch sử khám...
               </div>
             ) : previousCaseId ? (
@@ -353,68 +410,11 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
             ) : null}
           </div>
 
-          {/* Tiếp nhận ca khám mới */}
+          {/* CỘT PHẢI: TIẾP NHẬN CA KHÁM MỚI (LÂM SÀNG & NÚT HÀNH ĐỘNG) */}
           <div className="space-y-6">
-            {/* Header card: Tiêu đề "Tạo ca khám" + Chọn bác sĩ phụ trách */}
-            <div className="rounded-lg border border-[#E7E8EB] bg-white p-6 shadow-xs">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-full bg-[#ECEDF7] text-[#2E37A4]">
-                    <CalendarPlus className="size-5" />
-                  </div>
-                  <div>
-                    <h1 className="font-heading text-xl font-bold text-[#0A1B39]">
-                      Tạo ca khám
-                    </h1>
-                    <p className="mt-0.5 text-xs text-[#6C7688]">
-                      Tiếp nhận ca khám mới, chỉ định bác sĩ và ghi nhận triệu chứng ban đầu
-                    </p>
-                  </div>
-                </div>
-
-                {/* Doctor Selection / Static Display */}
-                <div className="w-full sm:w-[320px]">
-                  {isDoctor ? (
-                    <div
-                      className="flex h-10 items-center justify-start sm:justify-end rounded-md bg-[#F8F9FA] px-3 text-sm font-medium text-[#6C7688]"
-                    >
-                      <User className="mr-1.5 size-4 text-[#2E37A4]" />
-                      Bác sĩ: <strong className="ml-1 text-[#0A1B39]">{currentUser?.fullName}</strong>
-                    </div>
-                  ) : (
-                    <div>
-                      <label htmlFor="responsibleDoctorId" className="sr-only">
-                        Bác sĩ phụ trách
-                      </label>
-                      <select
-                        id="responsibleDoctorId"
-                        value={selectedDoctorId}
-                        onChange={(event) => setSelectedDoctorId(event.target.value)}
-                        disabled={doctorsQuery.isLoading}
-                        className="h-10 w-full rounded-md border border-[#E7E8EB] bg-background px-3 text-sm outline-none transition-colors focus:border-[#2E37A4] focus-visible:ring-2 focus-visible:ring-[#2E37A4]/20 disabled:opacity-50"
-                      >
-                        <option value="">-- Chọn bác sĩ phụ trách --</option>
-                        {doctorsQuery.data?.map((doctor) => (
-                          <option key={doctor.userId} value={doctor.userId}>
-                            {doctor.fullName}
-                          </option>
-                        ))}
-                      </select>
-                      {doctorsQuery.isError && (
-                        <p className="mt-1 text-right text-xs text-destructive" role="alert">
-                          Không tải được danh sách bác sĩ
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Khối Thông tin lâm sàng ban đầu & Khối nút hành động */}
-            <div className="overflow-hidden rounded-lg border border-[#E7E8EB] bg-white shadow-xs">
+            <div className="overflow-hidden rounded-lg border border-black bg-white shadow-xs">
               <div className="p-6">
-                <div className="mb-4 flex items-center gap-2 border-b border-[#E7E8EB] pb-3">
+                <div className="mb-4 flex items-center gap-2 border-b border-gray-200 pb-3">
                   <Stethoscope className="size-4 text-[#2E37A4]" />
                   <h2 className="font-heading text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
                     Thông tin lâm sàng ban đầu
@@ -457,11 +457,11 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
               ) : null}
 
               {/* Khối nút hành động */}
-              <div className="flex items-center justify-end gap-3 border-t border-[#E7E8EB] bg-[#F8F9FA] px-6 py-4">
+              <div className="flex items-center justify-end gap-3 border-t border-gray-200 bg-[#F8F9FA] px-6 py-4">
                 <button
                   type="button"
                   onClick={() => router.back()}
-                  className="rounded-md border border-[#E7E8EB] bg-white px-4 py-2 text-sm font-medium text-[#0A1B39] shadow-2xs transition-colors hover:bg-muted"
+                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-[#0A1B39] shadow-2xs transition-colors hover:bg-muted"
                 >
                   Huỷ bỏ
                 </button>
