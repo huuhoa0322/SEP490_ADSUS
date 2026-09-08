@@ -36,15 +36,15 @@ export function NurseCheckinView() {
     <div className="mx-auto w-full max-w-screen-2xl px-6 py-10">
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Nurse Check-In</h1>
-          <p className="text-muted-foreground">
+          <h1 className="font-heading text-2xl font-bold text-foreground">Nurse Check-In</h1>
+          <p className="text-muted-foreground capitalize">
             {format(new Date(), "EEEE, dd/MM/yyyy", { locale: vi })}
           </p>
         </div>
         <button
           onClick={() => refetch()}
           disabled={isRefetching}
-          className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+          className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           <RefreshCw className={`h-4 w-4 ${isRefetching ? "animate-spin" : ""}`} />
           Làm mới
@@ -65,24 +65,24 @@ export function NurseCheckinView() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats — cùng ngôn ngữ icon-badge tròn + số liệu đậm đã dùng ở dashboard (Phase 3) */}
       <div className="mb-6 flex gap-4">
-        <div className="flex items-center gap-3 rounded-lg bg-green-50 p-4 text-green-700">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+        <div className="flex items-center gap-3 rounded-lg border border-accent/20 bg-accent/8 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
             <Check className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-medium">Đã check-in</p>
-            <p className="text-2xl font-bold">{checkedIn.length}</p>
+            <p className="text-sm font-medium text-accent">Đã check-in</p>
+            <p className="text-2xl font-bold text-accent tabular-nums">{checkedIn.length}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-lg bg-yellow-50 p-4 text-yellow-700">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
+        <div className="flex items-center gap-3 rounded-lg border border-[var(--status-warning)]/20 bg-[var(--status-warning)]/8 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--status-warning)]/15 text-[var(--status-warning)]">
             <Clock className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-medium">Đang chờ</p>
-            <p className="text-2xl font-bold">{pending.length}</p>
+            <p className="text-sm font-medium text-[var(--status-warning)]">Đang chờ</p>
+            <p className="text-2xl font-bold text-[var(--status-warning)] tabular-nums">{pending.length}</p>
           </div>
         </div>
       </div>
@@ -92,13 +92,13 @@ export function NurseCheckinView() {
         <div className="mb-6">
           <div className="mb-1 flex items-center justify-between text-sm text-muted-foreground">
             <span>Tiến độ check-in</span>
-            <span>
+            <span className="tabular-nums">
               {checkedIn.length} / {queue.length} bệnh nhân
             </span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-green-500 transition-all duration-300"
+              className="h-full rounded-full bg-accent transition-all duration-300"
               style={{ width: `${(checkedIn.length / queue.length) * 100}%` }}
             />
           </div>

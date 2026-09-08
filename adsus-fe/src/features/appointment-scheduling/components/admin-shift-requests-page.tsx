@@ -75,24 +75,24 @@ export function AdminShiftRequestsPage() {
   const getStatusBadge = (status: ShiftRequestStatus) => {
     switch (status?.toUpperCase()) {
       case "PENDING":
-        return <Badge variant="outline" className="text-amber-600 bg-amber-50">Chờ duyệt</Badge>;
+        return <Badge variant="outline" className="text-[var(--status-warning)] bg-[var(--status-warning)]/10 border-[var(--status-warning)]/25">Chờ duyệt</Badge>;
       case "APPROVED":
-        return <Badge variant="outline" className="text-emerald-600 bg-emerald-50">Đã duyệt</Badge>;
+        return <Badge variant="outline" className="text-accent bg-accent/10 border-accent/25">Đã duyệt</Badge>;
       case "REJECTED":
-        return <Badge variant="outline" className="text-red-600 bg-red-50">Từ chối</Badge>;
+        return <Badge variant="outline" className="text-destructive bg-destructive/10 border-destructive/25">Từ chối</Badge>;
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-screen-2xl space-y-6 px-6 py-8">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold">Duyệt nghỉ / Tăng ca</h1>
-          <p className="text-sm text-slate-500">Quản lý các yêu cầu thay đổi lịch làm việc của bác sĩ.</p>
+          <h1 className="font-heading text-2xl font-semibold text-foreground">Duyệt nghỉ / Tăng ca</h1>
+          <p className="text-sm text-muted-foreground">Quản lý các yêu cầu thay đổi lịch làm việc của bác sĩ.</p>
         </div>
       </header>
 
-      <div className="flex items-center gap-4 bg-white p-4 rounded-lg border shadow-sm">
+      <div className="flex items-center gap-4 bg-background p-4 rounded-lg border border-border shadow-sm">
         <select
           className="flex h-10 w-[200px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           value={statusFilter}
@@ -108,7 +108,7 @@ export function AdminShiftRequestsPage() {
         </select>
       </div>
 
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-background rounded-lg border border-border shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -125,12 +125,12 @@ export function AdminShiftRequestsPage() {
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-slate-400" />
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : data?.items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-slate-500">
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   Không có dữ liệu
                 </TableCell>
               </TableRow>
@@ -141,15 +141,15 @@ export function AdminShiftRequestsPage() {
                   <TableCell className="font-medium">{req.doctorName}</TableCell>
                   <TableCell>
                     {req.requestType?.toUpperCase() === 'LEAVE' ? (
-                      <span className="text-rose-600 font-medium">Xin nghỉ</span>
+                      <span className="text-destructive font-medium">Xin nghỉ</span>
                     ) : (
-                      <span className="text-emerald-600 font-medium">Tăng ca</span>
+                      <span className="text-accent font-medium">Tăng ca</span>
                     )}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
                       <span>{format(new Date(req.requestDate), 'dd/MM/yyyy')}</span>
-                      <span className="text-xs text-slate-500">{req.shiftLabel}</span>
+                      <span className="text-xs text-muted-foreground">{req.shiftLabel}</span>
                     </div>
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate" title={req.reason}>
@@ -162,7 +162,7 @@ export function AdminShiftRequestsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                          className="text-accent border-accent/30 hover:bg-accent/10"
                           onClick={() => { setSelectedRequest(req); setAction("APPROVE"); }}
                           disabled={isReviewing}
                         >
@@ -171,7 +171,7 @@ export function AdminShiftRequestsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          className="text-destructive border-destructive/30 hover:bg-destructive/10"
                           onClick={() => { setSelectedRequest(req); setAction("REJECT"); }}
                           disabled={isReviewing}
                         >
@@ -180,7 +180,7 @@ export function AdminShiftRequestsPage() {
                       </div>
                     )}
                     {req.status?.toUpperCase() === 'REJECTED' && req.rejectReason && (
-                      <span className="text-xs text-slate-500" title={req.rejectReason}>
+                      <span className="text-xs text-muted-foreground" title={req.rejectReason}>
                         Lý do: {req.rejectReason.substring(0, 20)}...
                       </span>
                     )}
@@ -217,7 +217,7 @@ export function AdminShiftRequestsPage() {
                 Hủy
               </Button>
               {action === "APPROVE" ? (
-                <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={confirmApprove} disabled={isReviewing}>
+                <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={confirmApprove} disabled={isReviewing}>
                   {isReviewing ? "Đang xử lý..." : "Xác nhận duyệt"}
                 </Button>
               ) : (

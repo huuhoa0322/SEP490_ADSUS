@@ -23,41 +23,50 @@ const ShiftDetailBlock = ({ info, title }: { info?: ShiftInfo; title: string }) 
 
   const getStatusBadge = (status: ShiftInfo['status']) => {
     switch (status) {
-      case 'WORKING': return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-none">Đang làm việc</Badge>;
-      case 'OFF': return <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100 border-none">Nghỉ</Badge>;
-      case 'HAS_BOOKINGS': return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-none">Có lịch hẹn</Badge>;
-      case 'PAST': return <Badge className="bg-gray-100 text-gray-500 hover:bg-gray-100 border-none">Đã qua</Badge>;
+      case 'WORKING': return <Badge className="bg-accent/12 text-accent hover:bg-accent/12 border-none">Đang làm việc</Badge>;
+      case 'OFF': return <Badge className="bg-muted text-muted-foreground hover:bg-muted border-none">Nghỉ</Badge>;
+      case 'HAS_BOOKINGS': return <Badge className="bg-[var(--chart-3)]/12 text-[var(--chart-3)] hover:bg-[var(--chart-3)]/12 border-none">Có lịch hẹn</Badge>;
+      case 'PAST': return <Badge className="bg-muted text-muted-foreground/70 hover:bg-muted border-none">Đã qua</Badge>;
     }
   };
 
   return (
-    <div className="bg-slate-50 rounded-lg p-4 border space-y-3">
+    <div className="bg-muted/50 rounded-lg p-4 border border-border space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="font-semibold text-slate-700">{title}</h4>
+        <h4 className="font-heading font-600 text-foreground">{title}</h4>
         {getStatusBadge(info.status)}
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mt-2 text-sm text-slate-600">
-        <div className="flex flex-col items-center p-2 bg-white rounded border">
-          <Clock className="h-4 w-4 text-slate-400 mb-1" />
-          <span className="font-medium text-slate-700">{info.totalSlots}</span>
-          <span className="text-xs">Tổng slot</span>
+      <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
+        <div className="flex flex-col items-center gap-1 p-2 bg-background rounded border border-border">
+          <span className="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Clock className="h-3.5 w-3.5" />
+          </span>
+          <span className="font-semibold text-foreground tabular-nums">{info.totalSlots}</span>
+          <span className="text-xs text-muted-foreground">Tổng slot</span>
         </div>
-        <div className="flex flex-col items-center p-2 bg-white rounded border border-blue-100">
-          <Users className="h-4 w-4 text-blue-400 mb-1" />
-          <span className="font-medium text-blue-700">{info.bookedSlots}</span>
-          <span className="text-xs">Đã đặt</span>
+        <div className="flex flex-col items-center gap-1 p-2 bg-background rounded border border-[var(--chart-3)]/20">
+          <span className="flex size-7 items-center justify-center rounded-full bg-[var(--chart-3)]/12 text-[var(--chart-3)]">
+            <Users className="h-3.5 w-3.5" />
+          </span>
+          <span className="font-semibold text-[var(--chart-3)] tabular-nums">{info.bookedSlots}</span>
+          <span className="text-xs text-muted-foreground">Đã đặt</span>
         </div>
-        <div className="flex flex-col items-center p-2 bg-white rounded border border-slate-200">
-          <Ban className="h-4 w-4 text-slate-400 mb-1" />
-          <span className="font-medium text-slate-700">{info.closedSlots}</span>
-          <span className="text-xs">Đã đóng</span>
+        <div className="flex flex-col items-center gap-1 p-2 bg-background rounded border border-border">
+          <span className="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Ban className="h-3.5 w-3.5" />
+          </span>
+          <span className="font-semibold text-foreground tabular-nums">{info.closedSlots}</span>
+          <span className="text-xs text-muted-foreground">Đã đóng</span>
         </div>
       </div>
 
       {info.pendingRequestType && (
-        <div className="text-xs font-medium text-amber-600 bg-amber-50 px-3 py-2 rounded border border-amber-100 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+        <div className="flex items-center gap-2 rounded border border-[var(--status-warning)]/25 bg-[var(--status-warning)]/8 px-3 py-2 text-xs font-medium text-[var(--status-warning)]">
+          <span className="relative flex size-1.5 shrink-0">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--status-warning)] opacity-75" />
+            <span className="relative inline-flex size-1.5 rounded-full bg-[var(--status-warning)]" />
+          </span>
           Đang chờ duyệt yêu cầu {info.pendingRequestType?.toUpperCase() === 'LEAVE' ? 'Xin nghỉ' : 'Tăng ca'}
         </div>
       )}
@@ -87,7 +96,7 @@ export function DayShiftDetail({ open, onOpenChange, date, summary, onRequestCli
         
         <div className="space-y-4 pt-4">
           {!summary ? (
-            <div className="text-center py-8 text-slate-500">
+            <div className="text-center py-8 text-muted-foreground">
               Không có dữ liệu ca làm việc cho ngày này
             </div>
           ) : (
