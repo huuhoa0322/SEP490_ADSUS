@@ -1,6 +1,6 @@
 import { Activity, ScanLine, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { Suspense, type CSSProperties } from "react";
 
 import { ServerStatusBadge } from "@/features/auth/components/server-status-badge";
 import { SignInForm } from "@/features/auth/components/sign-in-form";
@@ -30,9 +30,21 @@ const highlights = [
 
 // SCR-01 — web sign-in screen, used by Admin and Doctor.
 // Patients sign in through the mobile app (SCR-02) and never see this page.
+// Trang login giữ lại bảng màu navy/teal gốc (#223a66 / #1cba9f) của bản trước, không
+// theo bảng Indigo/Teal Preclinic (#2E37A4 / #00D3C7) áp cho phần còn lại của app —
+// ghi đè cục bộ 2 biến CSS ngay tại gốc cây DOM này, mọi utility bg-primary/text-accent...
+// bên trong (kể cả SignInForm, ServerStatusBadge) tự động đọc theo giá trị ghi đè.
+const LOGIN_PALETTE_OVERRIDE = {
+  "--primary": "#223a66",
+  "--accent": "#1cba9f",
+} as CSSProperties;
+
 export default function LoginPage() {
   return (
-    <main className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
+    <main
+      style={LOGIN_PALETTE_OVERRIDE}
+      className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]"
+    >
       {/* Ping /api/health nền để đánh thức Backend Render sớm, và báo trạng thái ở góc
           phải màn hình — tránh lần đăng nhập đầu chậm bất thường không rõ lý do. */}
       <ServerStatusBadge />
