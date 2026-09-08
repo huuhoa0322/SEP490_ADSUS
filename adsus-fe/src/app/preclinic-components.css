@@ -1,0 +1,97 @@
+/* Preclinic-standard component classes (migration_plan/master_plan.md §3.2 #2).
+   Opt-in utility classes, not a replacement for the shadcn primitives already in
+   src/components/ui/* — reach for these specifically where the Preclinic spec calls for
+   its own look (5px card radius, soft status badges, the AI-feature gradient button)
+   rather than the app's general --radius scale.
+
+   Adapted from the plan's literal snippet to reference THIS app's actual design tokens
+   (--primary, --accent, --border, --card, --destructive, --status-*) instead of the
+   plan's own hypothetical token names (--white, --border-color, --*-transparent...),
+   which don't exist in globals.css — copying them verbatim would have produced CSS that
+   silently fell back to unset values. */
+
+@layer components {
+  /* Card: border-radius 5px per spec (not the app's --radius-* scale), header padding
+     15px 20px, body 20px. */
+  .preclinic-card {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    color: inherit;
+    transition: box-shadow 0.2s ease;
+  }
+
+  .preclinic-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .preclinic-card-body {
+    padding: 20px;
+  }
+
+  /* AI-feature gradient button — indigo to teal, the one place in the app allowed to
+     mix both brand colours in a single fill. Reserve it for AI/assistant entry points
+     (e.g. a link into the diagnostic Studio), not general primary actions. */
+  .btn-liner-gradient {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: none;
+    border-radius: 5px;
+    background: linear-gradient(90deg, #2e37a4 0%, #0e9384 100%);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+  .btn-liner-gradient:hover {
+    background: linear-gradient(-90deg, #2e37a4 0%, #0e9384 100%);
+    box-shadow: 0 4px 12px rgb(46 55 164 / 0.25);
+  }
+
+  /* Soft status badges: 1px border in the status colour, tinted background, 4px radius. */
+  .badge-soft-primary,
+  .badge-soft-success,
+  .badge-soft-danger,
+  .badge-soft-warning,
+  .badge-soft-info {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .badge-soft-primary {
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+  .badge-soft-success {
+    color: var(--status-good);
+    border: 1px solid var(--status-good);
+    background-color: color-mix(in srgb, var(--status-good) 10%, transparent);
+  }
+  .badge-soft-danger {
+    color: var(--destructive);
+    border: 1px solid var(--destructive);
+    background-color: color-mix(in srgb, var(--destructive) 10%, transparent);
+  }
+  .badge-soft-warning {
+    color: var(--status-warning);
+    border: 1px solid var(--status-warning);
+    background-color: color-mix(in srgb, var(--status-warning) 10%, transparent);
+  }
+  .badge-soft-info {
+    /* No dedicated "info" token exists yet — --ring is this app's informational blue. */
+    color: var(--ring);
+    border: 1px solid var(--ring);
+    background-color: color-mix(in srgb, var(--ring) 10%, transparent);
+  }
+}
