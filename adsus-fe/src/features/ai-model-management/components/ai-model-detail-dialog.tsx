@@ -61,7 +61,7 @@ export function AiModelDetailDialog({ open, model, onClose }: AiModelDetailDialo
               <span
                 className={`inline-flex rounded-full px-3 py-1 text-xs font-600 ${
                   model.status === "Active"
-                    ? "bg-emerald-500/10 text-emerald-600"
+                    ? "bg-[var(--status-good)]/12 text-[var(--status-good)]"
                     : "bg-secondary text-muted-foreground"
                 }`}
               >

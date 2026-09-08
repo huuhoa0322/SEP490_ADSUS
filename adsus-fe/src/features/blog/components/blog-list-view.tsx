@@ -21,25 +21,30 @@ export function BlogListView() {
   const { data, isLoading, isError, error } = usePublicBlogPosts({ page, pageSize });
 
   return (
-    <div className="min-h-screen bg-[var(--muted)]">
+    <div className="min-h-screen bg-muted">
       {/* Hero Header */}
-      <div className="bg-white border-b border-border">
-        <div className="mx-auto max-w-4xl px-6 py-12">
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-[var(--primary)]">
+      <div className="relative overflow-hidden border-b border-border bg-background">
+        <div className="absolute inset-x-0 bottom-0 h-[3px] bg-gradient-to-r from-primary to-accent" />
+        <div className="mx-auto max-w-4xl px-6 py-14">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-700 uppercase tracking-wider text-accent">
+            <span className="size-1.5 rounded-full bg-accent" />
+            Kiến thức y khoa
+          </span>
+          <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight text-foreground">
             Blog Sức khỏe
           </h1>
-          <p className="mt-2 text-[var(--muted-foreground)]">
+          <p className="mt-2.5 text-[15px] text-muted-foreground">
             Bài viết y tế được kiểm duyệt bởi bác sĩ chuyên khoa
           </p>
         </div>
       </div>
 
       {/* Content */}
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="mx-auto max-w-4xl px-6 py-10">
         {isError && (
           <div
             role="alert"
-            className="mb-6 flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+            className="mb-6 flex items-start gap-2.5 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"
           >
             {getApiErrorMessage(error, "Không tải được danh sách bài viết.")}
           </div>
@@ -67,9 +72,9 @@ export function BlogListView() {
 
             {/* Empty state */}
             {data.items.length === 0 && (
-              <div className="rounded-xl border-2 border-dashed border-border bg-white py-16 text-center">
-                <FileText className="mx-auto mb-3 h-12 w-12 text-[var(--muted-foreground)]" />
-                <p className="text-[var(--muted-foreground)]">
+              <div className="rounded-2xl border-2 border-dashed border-border bg-background py-16 text-center">
+                <FileText className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
+                <p className="text-muted-foreground">
                   Chưa có bài viết nào được xuất bản.
                 </p>
               </div>
@@ -98,21 +103,21 @@ function HeroPost({ post }: { post: BlogPostListItemResponse }) {
   return (
     <Link
       href={`/blog/${post.id}`}
-      className="group block rounded-xl border border-border bg-white p-6 transition-all hover:border-[var(--accent)] hover:shadow-md"
+      className="group block rounded-2xl border border-border bg-background p-6 transition-all hover:border-accent hover:shadow-md"
     >
       <div className="mb-3">
-        <span className="inline-block rounded-full bg-[var(--accent)]/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[var(--accent)]">
+        <span className="inline-block rounded-full bg-accent/10 px-3 py-1 text-xs font-700 uppercase tracking-wider text-accent">
           Bài viết nổi bật
         </span>
       </div>
-      <h2 className="font-heading text-2xl font-bold leading-snug text-[var(--primary)] group-hover:text-[var(--accent)]">
+      <h2 className="font-heading text-2xl font-bold leading-snug text-foreground group-hover:text-accent">
         {post.title}
       </h2>
-      <p className="mt-2 line-clamp-2 text-[var(--muted-foreground)]">
+      <p className="mt-2 line-clamp-2 text-muted-foreground">
         {post.content}
       </p>
-      <div className="mt-4 flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
-        <span className="font-medium text-[var(--primary)]">{post.authorName}</span>
+      <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">{post.authorName}</span>
         <span>·</span>
         <span className="font-mono text-xs">
           {post.publishedAt
@@ -131,24 +136,24 @@ function ArticleCard({ post }: { post: BlogPostListItemResponse }) {
   return (
     <Link
       href={`/blog/${post.id}`}
-      className="group flex gap-4 rounded-xl border border-border bg-white p-4 transition-all hover:border-[var(--accent)] hover:shadow-sm"
+      className="group flex gap-4 rounded-2xl border border-border bg-background p-4 transition-all hover:border-accent hover:shadow-sm"
     >
       {/* Thumbnail placeholder */}
-      <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--accent)]/10 to-[var(--accent)]/5 text-3xl text-[var(--accent)]">
+      <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent/10 to-accent/5 text-3xl text-accent">
         📖
       </div>
 
       <div className="flex flex-1 flex-col justify-between">
         <div>
-          <h3 className="font-heading text-base font-semibold leading-snug text-[var(--primary)] group-hover:text-[var(--accent)]">
+          <h3 className="font-heading text-base font-semibold leading-snug text-foreground group-hover:text-accent">
             {post.title}
           </h3>
-          <p className="mt-1 line-clamp-2 text-sm text-[var(--muted-foreground)]">
+          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
             {post.content}
           </p>
         </div>
-        <div className="mt-2 flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-          <span className="font-medium">{post.authorName}</span>
+        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{post.authorName}</span>
           <span className="font-mono">
             {post.publishedAt
               ? new Date(post.publishedAt).toLocaleDateString("vi-VN")
