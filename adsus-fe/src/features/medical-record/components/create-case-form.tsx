@@ -474,13 +474,35 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
               <PreviousCaseSummary
                 caseId={previousCaseId}
                 onApplySymptoms={(prevSymptoms) => {
-                  setSymptoms(
-                    prevSymptoms.map((s) => ({
-                      categoryId: s.categoryId,
-                      symptomId: s.symptomId,
-                      otherNote: s.otherNote,
-                    }))
-                  );
+                  // Gom tất cả các triệu chứng có cùng categoryId lại liền kề nhau để SymptomSelector chỉ hiển thị đúng 1 block cho mỗi category
+                  const categoryOrder: string[] = [];
+                  const groupedMap = new Map<string, CreateCaseSymptomInput[]>();
+
+                  for (const s of prevSymptoms) {
+                    if (!s.categoryId) continue;
+                    if (!groupedMap.has(s.categoryId)) {
+                      categoryOrder.push(s.categoryId);
+                      groupedMap.set(s.categoryId, []);
+                    }
+                    const list = groupedMap.get(s.categoryId)!;
+                    const isDuplicate = list.some(
+                      (item) => item.symptomId === s.symptomId && item.otherNote === s.otherNote,
+                    );
+                    if (!isDuplicate) {
+                      list.push({
+                        categoryId: s.categoryId,
+                        symptomId: s.symptomId,
+                        otherNote: s.otherNote,
+                      });
+                    }
+                  }
+
+                  const consolidated: CreateCaseSymptomInput[] = [];
+                  for (const catId of categoryOrder) {
+                    consolidated.push(...groupedMap.get(catId)!);
+                  }
+
+                  setSymptoms(consolidated);
                 }}
               />
             ) : (

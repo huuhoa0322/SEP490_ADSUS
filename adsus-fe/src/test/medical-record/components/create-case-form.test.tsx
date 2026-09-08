@@ -389,4 +389,47 @@ describe("CreateCaseForm", () => {
     expect(diseaseBadge).toBeInTheDocument();
     expect(diseaseBadge).toHaveClass("whitespace-normal", "break-words");
   });
+
+  it("nút dùng lại triệu chứng gom các triệu chứng cùng categoryId lại liền kề nhau", async () => {
+    signInAs("DOCTOR", "doctor-1", "BS. Nguyễn Văn An");
+    caseListMock.mockReturnValue({
+      data: { items: [{ caseId: "case-prev-dup" }] },
+      isLoading: false,
+    });
+    caseDetailMock.mockReturnValue({
+      data: {
+        caseId: "case-prev-dup",
+        visitDate: "2026-08-01",
+        finalDiagnosis: "Viêm",
+        doctorConclusion: "Thuốc",
+        symptoms: [
+          { categoryId: "c1", categoryName: "Khí hư", symptomId: "s1", symptomName: "Ra nhiều", otherNote: null },
+          { categoryId: "c2", categoryName: "Xuất huyết", symptomId: "s2", symptomName: "Rong kinh", otherNote: null },
+          { categoryId: "c1", categoryName: "Khí hư", symptomId: "s3", symptomName: "Màu xanh", otherNote: null },
+        ],
+      },
+      isLoading: false,
+    });
+
+    const user = userEvent.setup();
+    render(<CreateCaseForm patientProfileId="profile-1" />);
+
+    const applyBtn = screen.getByRole("button", { name: /\+ dùng lại triệu chứng này/i });
+    expect(applyBtn).toBeInTheDocument();
+    await user.click(applyBtn);
+
+    // Bấm lưu ca khám để kiểm tra payload gửi lên mutation
+    await user.click(screen.getByRole("button", { name: /lưu ca khám/i }));
+
+    expect(createMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        symptoms: [
+          expect.objectContaining({ categoryId: "c1", symptomId: "s1" }),
+          expect.objectContaining({ categoryId: "c1", symptomId: "s3" }),
+          expect.objectContaining({ categoryId: "c2", symptomId: "s2" }),
+        ],
+      }),
+      expect.anything(),
+    );
+  });
 });
