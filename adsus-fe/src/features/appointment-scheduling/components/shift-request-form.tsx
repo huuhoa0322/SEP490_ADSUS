@@ -177,7 +177,7 @@ export function ShiftRequestForm({
               )}
             />
             {errors.requestType && (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-destructive">
                 {errors.requestType.message}
               </p>
             )}
@@ -218,7 +218,7 @@ export function ShiftRequestForm({
               )}
             />
             {errors.requestDate && (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-destructive">
                 {errors.requestDate.message}
               </p>
             )}
@@ -253,7 +253,7 @@ export function ShiftRequestForm({
               )}
             />
             {errors.shiftType && (
-              <p className="text-sm text-red-500">{errors.shiftType.message}</p>
+              <p className="text-sm text-destructive">{errors.shiftType.message}</p>
             )}
           </div>
 
@@ -271,7 +271,7 @@ export function ShiftRequestForm({
               )}
             />
             {errors.reason && (
-              <p className="text-sm text-red-500">{errors.reason.message}</p>
+              <p className="text-sm text-destructive">{errors.reason.message}</p>
             )}
           </div>
 

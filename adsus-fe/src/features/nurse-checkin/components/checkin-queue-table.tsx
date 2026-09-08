@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { Check, Loader2 } from "lucide-react";
 import type { CheckinQueueItem } from "../types/checkin.types";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface CheckinQueueTableProps {
   queue: CheckinQueueItem[];
@@ -35,44 +36,57 @@ export function CheckinQueueTable({
   }
 
   return (
-    <div className="rounded-lg border">
+    <div className="rounded-lg border border-border overflow-hidden">
       <table className="w-full">
         <thead className="bg-muted/50">
           <tr>
-            <th className="px-4 py-3 text-left text-sm font-medium">Giờ</th>
-            <th className="px-4 py-3 text-left text-sm font-medium">Bệnh nhân</th>
-            <th className="px-4 py-3 text-left text-sm font-medium">Bác sĩ</th>
-            <th className="px-4 py-3 text-left text-sm font-medium">Lý do khám</th>
-            <th className="px-4 py-3 text-right text-sm font-medium">Thao tác</th>
+            {/* Số thứ tự = vị trí trong hàng đợi (đã sắp theo giờ hẹn), giống số phiếu lấy
+                số ở quầy tiếp đón — không phải trường dữ liệu mới, chỉ là số thứ tự hiển thị. */}
+            <th className="w-14 px-4 py-3 text-left text-sm font-medium text-muted-foreground">STT</th>
+            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Giờ</th>
+            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Bệnh nhân</th>
+            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Bác sĩ</th>
+            <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Lý do khám</th>
+            <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Thao tác</th>
           </tr>
         </thead>
-        <tbody className="divide-y">
-          {queue.map((item) => {
+        <tbody className="divide-y divide-border">
+          {queue.map((item, index) => {
             const isCheckedIn = item.status === "Approved";
             const slotTime = new Date(item.slotTime);
 
             return (
               <tr key={item.appointmentId} className="hover:bg-muted/30">
                 <td className="px-4 py-3">
-                  <span className="font-mono text-sm font-medium">
+                  <span
+                    className={cn(
+                      "flex size-7 items-center justify-center rounded-full text-xs font-700 tabular-nums",
+                      isCheckedIn ? "bg-accent/12 text-accent" : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {index + 1}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="font-mono text-sm font-medium text-foreground">
                     {format(slotTime, "HH:mm")}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="font-medium">{item.patientFullName}</div>
+                  <div className="font-medium text-foreground">{item.patientFullName}</div>
                   {item.patientPhone && (
                     <div className="text-sm text-muted-foreground">
                       {item.patientPhone}
                     </div>
                   )}
                 </td>
-                <td className="px-4 py-3 text-sm">{item.doctorName}</td>
+                <td className="px-4 py-3 text-sm text-foreground">{item.doctorName}</td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
                   {item.reason || "—"}
                 </td>
                 <td className="px-4 py-3 text-right">
                   {isCheckedIn ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-accent/12 px-3 py-1 text-sm font-medium text-accent">
                       <Check className="h-4 w-4" />
                       Đã check-in
                     </span>

@@ -28,17 +28,17 @@ export function DoctorShiftRequestsList() {
   const getStatusBadge = (status: ShiftRequestStatus) => {
     switch (status?.toUpperCase()) {
       case "PENDING":
-        return <Badge variant="outline" className="text-amber-600 bg-amber-50">Chờ duyệt</Badge>;
+        return <Badge variant="outline" className="text-[var(--status-warning)] bg-[var(--status-warning)]/10 border-[var(--status-warning)]/25">Chờ duyệt</Badge>;
       case "APPROVED":
-        return <Badge variant="outline" className="text-emerald-600 bg-emerald-50">Đã duyệt</Badge>;
+        return <Badge variant="outline" className="text-accent bg-accent/10 border-accent/25">Đã duyệt</Badge>;
       case "REJECTED":
-        return <Badge variant="outline" className="text-red-600 bg-red-50">Từ chối</Badge>;
+        return <Badge variant="outline" className="text-destructive bg-destructive/10 border-destructive/25">Từ chối</Badge>;
     }
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4 bg-white p-4 rounded-lg border shadow-sm">
+      <div className="flex items-center gap-4 bg-background p-4 rounded-lg border border-border shadow-sm">
         <select
           className="flex h-10 w-[200px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           value={statusFilter}
@@ -54,7 +54,7 @@ export function DoctorShiftRequestsList() {
         </select>
       </div>
 
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+      <div className="bg-background rounded-lg border border-border shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -69,12 +69,12 @@ export function DoctorShiftRequestsList() {
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-slate-400" />
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : data?.items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-slate-500">
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                   Chưa có yêu cầu nào.
                 </TableCell>
               </TableRow>
@@ -84,15 +84,15 @@ export function DoctorShiftRequestsList() {
                   <TableCell>{format(new Date(req.createdAt), 'dd/MM/yyyy HH:mm')}</TableCell>
                   <TableCell>
                     {req.requestType?.toUpperCase() === 'LEAVE' ? (
-                      <span className="text-rose-600 font-medium">Xin nghỉ</span>
+                      <span className="text-destructive font-medium">Xin nghỉ</span>
                     ) : (
-                      <span className="text-emerald-600 font-medium">Tăng ca</span>
+                      <span className="text-accent font-medium">Tăng ca</span>
                     )}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
                       <span>{format(new Date(req.requestDate), 'dd/MM/yyyy')}</span>
-                      <span className="text-xs text-slate-500">{req.shiftLabel}</span>
+                      <span className="text-xs text-muted-foreground">{req.shiftLabel}</span>
                     </div>
                   </TableCell>
                   <TableCell className="max-w-[300px] truncate" title={req.reason}>
@@ -102,7 +102,7 @@ export function DoctorShiftRequestsList() {
                     <div className="flex flex-col items-start gap-1">
                       {getStatusBadge(req.status)}
                       {req.status === 'REJECTED' && req.rejectReason && (
-                        <span className="text-xs text-red-500" title={req.rejectReason}>
+                        <span className="text-xs text-destructive" title={req.rejectReason}>
                           Lý do: {req.rejectReason.substring(0, 30)}...
                         </span>
                       )}
