@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Exo, Roboto } from "next/font/google";
+import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import "react-hot-toast";
 
@@ -9,19 +9,27 @@ import { Toaster } from "react-hot-toast";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
-// Same fonts as the team's Medizco template:
-//   Exo    for headings (style.css line 100)
-//   Roboto for body    (style.css line 78)
-const exo = Exo({
-  variable: "--font-exo",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+// One UI typeface for the whole app — headings and body alike (replaces the earlier
+// Google Sans Flex pass: unlike that font, Inter has metrics data already baked into
+// Next.js, so it gets a proper size-matched fallback with no build warning). Variable
+// font (wght 100-900) covers every font-weight utility already used across the
+// codebase (font-500, font-600, font-700...) natively. --font-heading and --font-sans
+// both point at this one family below (see globals.css) so no component needs to
+// change which class it uses.
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin", "vietnamese"],
+  weight: "variable",
 });
 
-const roboto = Roboto({
-  variable: "--font-roboto",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
+// Monospace companion — patient IDs, batch numbers, and other fixed-width data
+// (see font-mono usages across features/*). Same reasoning as Inter: a real
+// variable font with Next.js metrics support, instead of the generic system
+// monospace stack.
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin", "vietnamese"],
+  weight: "variable",
 });
 
 export const metadata: Metadata = {
@@ -35,7 +43,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const htmlClassName = [exo.variable, roboto.variable, "h-full", "antialiased"]
+  const htmlClassName = [inter.variable, geistMono.variable, "h-full", "antialiased"]
     .filter(Boolean)
     .join(" ");
 
@@ -56,7 +64,7 @@ export default function RootLayout({
               color: "#ffffff",
               borderRadius: "999px",
               padding: "12px 20px",
-              fontFamily: "var(--font-roboto)",
+              fontFamily: "var(--font-inter)",
               fontSize: "14px",
             },
             success: {

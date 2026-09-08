@@ -38,29 +38,37 @@ export default function LoginPage() {
       <ServerStatusBadge />
 
       {/* Marketing column — hidden below 1024px so the form gets the full width */}
-      <section className="relative hidden overflow-hidden bg-primary px-14 py-16 text-primary-foreground lg:flex lg:flex-col lg:justify-center">
+      <section className="relative hidden overflow-hidden bg-gradient-to-br from-primary via-primary to-[#152744] px-14 py-16 text-primary-foreground lg:flex lg:flex-col lg:justify-center">
+        {/* Faint oscilloscope-style grid, echoing a monitor readout */}
+        <div aria-hidden className="login-scan-grid pointer-events-none absolute inset-0" />
+
         {/* Blurred blobs in the two accent colours, for depth */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -left-32 -top-32 size-[28rem] rounded-full bg-accent/20 blur-3xl"
+          className="pointer-events-none absolute -left-32 -top-32 size-[28rem] rounded-full bg-accent/15 blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-40 -right-24 size-[26rem] rounded-full bg-chart-3/25 blur-3xl"
+          className="pointer-events-none absolute -bottom-40 -right-24 size-[26rem] rounded-full bg-chart-3/20 blur-3xl"
         />
 
-        <div className="relative max-w-lg">
+        {/* Signature motif: a probe "scan" beam sweeping down the panel on a loop */}
+        <div aria-hidden className="login-scan-beam pointer-events-none absolute inset-x-0 h-28" />
+
+        <div className="relative max-w-2xl motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-left-4 motion-safe:duration-700">
           <div className="flex items-center gap-3.5">
             <span className="flex size-12 items-center justify-center rounded-full bg-accent">
               <ScanLine className="size-6 text-accent-foreground" />
             </span>
-            <span className="font-heading text-2xl font-bold tracking-[-0.02em]">
+            <span className="text-2xl font-bold tracking-[-0.02em]">
               ADSUS
             </span>
           </div>
 
-          <h2 className="mt-14 font-heading text-[40px] font-bold leading-[1.15] tracking-[-0.02em]">
-            Hỗ trợ chẩn đoán bất thường trên ảnh siêu âm
+          <h2 className="mt-14 text-[40px] font-bold leading-[1.15] tracking-[-0.02em]">
+            Hỗ trợ chẩn đoán bất thường
+            <br />
+            trên ảnh siêu âm
           </h2>
 
           {/* Short accent rule under the heading — a recurring motif in the template */}
@@ -70,8 +78,9 @@ export default function LoginPage() {
           />
 
           <p className="mt-6 text-[15px] leading-relaxed text-primary-foreground/65">
-            Kết hợp trí tuệ nhân tạo với thông tin lâm sàng để rút ngắn thời gian
-            đọc ảnh cho bác sĩ.
+            Kết hợp trí tuệ nhân tạo với thông tin lâm sàng để rút ngắn thời gian đọc ảnh
+            <br />
+            cho bác sĩ.
           </p>
 
           <ul className="mt-14 flex flex-col gap-7">
@@ -81,7 +90,7 @@ export default function LoginPage() {
                   <Icon className="size-5" />
                 </span>
                 <div>
-                  <p className="font-heading text-[15px] font-600">{title}</p>
+                  <p className="text-[15px] font-700">{title}</p>
                   <p className="mt-1 text-sm leading-relaxed text-primary-foreground/55">
                     {description}
                   </p>
@@ -100,7 +109,7 @@ export default function LoginPage() {
             <span className="flex size-11 items-center justify-center rounded-full bg-primary">
               <ScanLine className="size-5 text-primary-foreground" />
             </span>
-            <span className="font-heading text-xl font-bold tracking-[-0.02em] text-primary">
+            <span className="text-xl font-bold tracking-[-0.02em] text-primary">
               ADSUS
             </span>
           </div>
