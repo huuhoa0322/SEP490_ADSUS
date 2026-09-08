@@ -49,14 +49,14 @@ function PreviousCaseSummary({
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border border-black bg-white p-4 text-xs text-muted-foreground animate-pulse">
+      <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-4 text-xs text-muted-foreground animate-pulse">
         Đang tải thông tin lần khám trước...
       </div>
     );
   }
   if (isError) {
     return (
-      <div className="rounded-lg border border-black bg-white p-4 text-xs text-muted-foreground">
+      <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-4 text-xs text-muted-foreground">
         Không tải được thông tin lần khám trước.
       </div>
     );
@@ -93,7 +93,7 @@ function PreviousCaseSummary({
     hasSymptoms;
 
   return (
-    <div className="rounded-lg border border-black bg-white p-5 shadow-xs">
+    <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-5 shadow-xs">
       <div className="mb-3.5 flex items-center justify-between border-b border-gray-200 pb-3">
         <div className="flex items-center gap-2">
           <History className="size-5 text-[#2E37A4]" />
@@ -213,7 +213,7 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
   const initials = getInitials(profile.fullName);
 
   return (
-    <div className="rounded-lg border border-black bg-white p-5 shadow-xs">
+    <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-5 shadow-xs">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-4">
         <div className="flex items-center gap-3">
           <Avatar size="md" className="size-11 rounded-full border border-[#E7E8EB]">
@@ -386,7 +386,7 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
+    <div className="mx-auto w-[90%] max-w-[90%] py-8">
       {/* Breadcrumb quay lại */}
       <div className="mb-4">
         <button
@@ -401,7 +401,7 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header card: Nằm ở phía TRÊN của CẢ 2 PHẦN (Full-width) */}
-        <div className="rounded-lg border border-black bg-white p-6 shadow-xs">
+        <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-6 shadow-xs">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-full bg-[#ECEDF7] text-[#2E37A4]">
@@ -465,7 +465,7 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
 
             {/* Lịch sử lần khám trước (nếu có) */}
             {previousCasesQuery.isLoading ? (
-              <div className="rounded-lg border border-black bg-white p-4 text-xs text-muted-foreground animate-pulse">
+              <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-4 text-xs text-muted-foreground animate-pulse">
                 Đang tải lịch sử khám...
               </div>
             ) : previousCaseId ? (
@@ -504,7 +504,7 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
                 }}
               />
             ) : (
-              <div className="rounded-lg border border-black bg-white p-5 shadow-xs">
+              <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-5 shadow-xs">
                 <div className="mb-2 flex items-center gap-2 border-b border-gray-200 pb-2.5">
                   <History className="size-4 text-[#2E37A4]" />
                   <h3 className="font-heading text-sm font-bold text-[#0A1B39]">
@@ -520,7 +520,7 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
 
           {/* CỘT PHẢI: TIẾP NHẬN CA KHÁM MỚI (LÂM SÀNG & NÚT HÀNH ĐỘNG) */}
           <div className="space-y-6">
-            <div className="overflow-hidden rounded-lg border border-black bg-white shadow-xs">
+            <div className="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700 bg-white shadow-xs">
               <div className="p-6">
                 <div className="mb-4 flex items-center gap-2 border-b border-gray-200 pb-3">
                   <Stethoscope className="size-4 text-[#2E37A4]" />

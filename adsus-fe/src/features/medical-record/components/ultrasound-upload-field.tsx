@@ -51,7 +51,7 @@ export function UltrasoundUploadField({ files, onChange, disabled }: Props) {
 
   return (
     <div>
-      <label htmlFor={inputId} className="mb-1.5 block text-sm font-medium">
+      <label htmlFor={inputId} className="mb-1.5 block text-sm font-bold text-foreground">
         Chọn ảnh siêu âm *
       </label>
       <input
@@ -65,16 +65,16 @@ export function UltrasoundUploadField({ files, onChange, disabled }: Props) {
           // Xoá giá trị để chọn lại đúng file vừa bỏ ra vẫn kích hoạt onChange.
           event.target.value = "";
         }}
-        className="block w-full rounded-lg border border-dashed border-border bg-background p-4 text-sm outline-none file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        className="block w-full rounded-lg border-2 border-dashed border-border bg-background p-4 text-sm font-medium text-foreground outline-none file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-sm file:font-bold focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
       />
-      <p className="mt-1.5 text-xs text-muted-foreground">
+      <p className="mt-1.5 text-xs font-semibold text-foreground/80">
         JPEG hoặc PNG, tối đa 20MB mỗi ảnh. Chọn được nhiều ảnh cùng lúc.
       </p>
 
       {rejected.length > 0 ? (
         <ul className="mt-2 space-y-1" role="alert">
           {rejected.map((message) => (
-            <li key={message} className="text-xs text-destructive">
+            <li key={message} className="text-xs font-bold text-destructive">
               {message}
             </li>
           ))}
@@ -86,7 +86,7 @@ export function UltrasoundUploadField({ files, onChange, disabled }: Props) {
           {files.map((file, index) => (
             <li
               key={`${file.name}-${file.lastModified}-${file.size}`}
-              className="overflow-hidden rounded-lg border border-border"
+              className="overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700 bg-card shadow-sm"
             >
               {/* URL.createObjectURL đủ dùng cho ô xem trước: ảnh chỉ sống trong lúc form mở,
                   và trình duyệt tự thu hồi khi trang đóng. */}
@@ -97,7 +97,7 @@ export function UltrasoundUploadField({ files, onChange, disabled }: Props) {
                 className="aspect-[4/3] w-full bg-black object-contain"
               />
               <div className="flex items-center justify-between gap-2 p-2">
-                <span className="truncate text-xs text-muted-foreground" title={file.name}>
+                <span className="truncate text-xs font-bold text-foreground" title={file.name}>
                   {file.name}
                 </span>
                 <button
@@ -105,7 +105,7 @@ export function UltrasoundUploadField({ files, onChange, disabled }: Props) {
                   onClick={() => removeAt(index)}
                   disabled={disabled}
                   aria-label={`Bỏ ảnh ${file.name}`}
-                  className="shrink-0 rounded px-1.5 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                  className="shrink-0 rounded px-1.5 text-sm font-bold text-destructive hover:bg-destructive/10 disabled:opacity-50"
                 >
                   ✕
                 </button>

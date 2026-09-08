@@ -185,16 +185,16 @@ describe("CreateCaseForm", () => {
     const { container } = render(<CreateCaseForm patientProfileId="profile-1" />);
 
     // Outer container
-    const outerContainer = container.querySelector(".max-w-screen-2xl");
+    const outerContainer = container.querySelector(".max-w-\\[90\\%\\]");
     expect(outerContainer).toBeInTheDocument();
-    expect(outerContainer).toHaveClass("mx-auto", "w-full", "px-6", "py-8");
+    expect(outerContainer).toHaveClass("mx-auto", "w-[90%]", "max-w-[90%]", "py-8");
 
     // Grid chia đôi 2 cột
     const grid = container.querySelector(".grid.grid-cols-1.lg\\:grid-cols-2");
     expect(grid).toBeInTheDocument();
 
     // Các hộp có viền đen
-    const blackBorderBoxes = container.querySelectorAll(".border-black");
+    const blackBorderBoxes = container.querySelectorAll(".border-gray-300, .border-border");
     expect(blackBorderBoxes.length).toBeGreaterThanOrEqual(2);
   });
 
