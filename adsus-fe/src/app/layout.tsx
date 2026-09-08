@@ -60,7 +60,7 @@ export default function RootLayout({
           toastOptions={{
             duration: 4000,
             style: {
-              background: "#223A66",
+              background: "#2E37A4",
               color: "#ffffff",
               borderRadius: "999px",
               padding: "12px 20px",
@@ -68,7 +68,7 @@ export default function RootLayout({
               fontSize: "14px",
             },
             success: {
-              iconTheme: { primary: "#1CBA9F", secondary: "#fff" },
+              iconTheme: { primary: "#00D3C7", secondary: "#fff" },
             },
             error: {
               iconTheme: { primary: "#F13A66", secondary: "#fff" },
