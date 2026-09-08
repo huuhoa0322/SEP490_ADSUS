@@ -251,7 +251,6 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
   const isDoctor = currentUser?.role === "DOCTOR";
 
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
-  const [clinicalInfo, setClinicalInfo] = useState("");
   const [symptoms, setSymptoms] = useState<CreateCaseSymptomInput[]>([]);
   const [clientError, setClientError] = useState<string | null>(null);
 
@@ -305,10 +304,8 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
         return true;
       });
 
-    let finalClinicalInfo = clinicalInfo.trim() || null;
-    if (filteredSymptoms.length === 0 && !finalClinicalInfo) {
-      finalClinicalInfo = "Khám định kì";
-    }
+    // Nếu không có triệu chứng nào được chọn thì mặc định là "Khám định kì"
+    const finalClinicalInfo = filteredSymptoms.length === 0 ? "Khám định kì" : null;
 
     mutation.mutate(
       {
@@ -422,19 +419,6 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
                 </div>
 
                 <div className="space-y-4">
-                  <div>
-                    <label htmlFor="clinicalInfo" className="mb-1.5 block text-xs font-semibold text-[#0A1B39]">
-                      Lý do khám / Ghi chú ban đầu
-                    </label>
-                    <input
-                      id="clinicalInfo"
-                      value={clinicalInfo}
-                      onChange={(e) => setClinicalInfo(e.target.value)}
-                      placeholder="Ví dụ: Đau tức hạ vị âm ỉ 3 ngày nay, trễ kinh..."
-                      className="h-10 w-full rounded-md border border-[#E7E8EB] bg-background px-3 text-sm outline-none transition-colors focus:border-[#2E37A4] focus-visible:ring-2 focus-visible:ring-[#2E37A4]/20"
-                    />
-                  </div>
-
                   <fieldset className="m-0 border-0 p-0">
                     <legend className="mb-2 block text-xs font-semibold text-[#0A1B39]">
                       Triệu chứng chi tiết
