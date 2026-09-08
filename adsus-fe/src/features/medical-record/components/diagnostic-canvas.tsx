@@ -748,7 +748,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         {/* Footer (Confirm area) */}
         <div className="flex shrink-0 items-center gap-3 border-t border-border bg-card p-3">
           {sessionId && (
-            <span className="font-mono text-[12px] font-semibold text-[#00ff00]">
+            <span className="font-mono text-[12px] font-semibold text-emerald-600">
               Sẵn sàng lưu ({lesions.filter(l => !l.rejected).length} vùng)
             </span>
           )}
@@ -764,9 +764,9 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
           <button
             onClick={handleConfirm}
             disabled={isConfirming}
-            className="flex items-center gap-2 rounded-md bg-[#00ff00] px-4 py-2 text-[13px] font-bold text-black hover:opacity-80 disabled:opacity-35"
+            className="flex items-center gap-2 rounded-md bg-[#00C16A] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#00a85c] disabled:opacity-35 transition-colors shadow-sm"
           >
-            {isConfirming ? <Loader2 className="h-4 w-4 animate-spin text-black" /> : null}
+            {isConfirming ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : null}
             Lưu xác nhận
           </button>
         </div>

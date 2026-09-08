@@ -108,4 +108,35 @@ describe("PatientListView", () => {
 
     expect(screen.getByText(/không tìm thấy bệnh nhân nào/i)).toBeInTheDocument();
   });
+
+  it("không hiển thị mã bệnh nhân giả (#PT-), cột Mã BN, hay tuổi/giới tính tự sinh", () => {
+    signInAs("DOCTOR");
+    mockList([withProfile, withoutProfile]);
+
+    render(<PatientListView />);
+
+    // Negative assertions: Không render cột Mã BN hay mã giả #PT-
+    expect(screen.queryByRole("columnheader", { name: /mã bn/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/#PT-/i)).not.toBeInTheDocument();
+
+    // Negative assertions: Không render tuổi và giới tính tự sinh từ hash
+    expect(screen.queryByText(/tuổi/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/,\s*nữ/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/nữ/i)).not.toBeInTheDocument();
+
+    // Đảm bảo đúng 5 cột Preclinic
+    const headers = screen.getAllByRole("columnheader");
+    expect(headers).toHaveLength(5);
+    expect(screen.getByRole("columnheader", { name: /^bệnh nhân$/i })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /^số điện thoại$/i })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /^lần khám gần nhất$/i })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /^trạng thái$/i })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /^thao tác$/i })).toBeInTheDocument();
+
+    // Bệnh nhân chưa có hồ sơ nền hiển thị đúng chỉ báo
+    expect(screen.getByText("Chưa lập hồ sơ nền")).toBeInTheDocument();
+
+    // Bệnh nhân đã có hồ sơ hiển thị tên sạch sẽ
+    expect(screen.getByRole("link", { name: "Trần Thị Mai" })).toBeInTheDocument();
+  });
 });
