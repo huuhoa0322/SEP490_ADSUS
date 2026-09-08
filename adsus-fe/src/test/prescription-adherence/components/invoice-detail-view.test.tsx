@@ -1,6 +1,8 @@
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { InvoiceDetailView } from "@/features/prescription-adherence/components/invoice-detail-view";
+import type { InvoiceDetailResponse } from "@/api/invoiceService";
 import toast from "react-hot-toast";
 
 const mockInvoice = {
@@ -59,7 +61,9 @@ describe("InvoiceDetailView", () => {
     const mod = await vi.mocked(
       import("@/features/prescription-adherence/hooks/use-invoices"),
     );
-    useInvoiceDetail = mod.useInvoiceDetail;
+    useInvoiceDetail = mod.useInvoiceDetail as unknown as Mock<
+      (id: string | null) => UseQueryResult<InvoiceDetailResponse, Error>
+    >;
   });
 
   it("renders invoice details", async () => {

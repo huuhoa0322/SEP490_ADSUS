@@ -48,7 +48,7 @@ const mockInvoices: InvoiceResponse[] = [
 
 const pageResult: PagedResult<InvoiceResponse> = {
   items: mockInvoices,
-  totalCount: 3,
+  totalItems: 3,
   page: 1,
   pageSize: 10,
   totalPages: 1,
@@ -97,7 +97,7 @@ describe("InvoiceListView", () => {
 
   it("shows empty state when zero results", async () => {
     mockUseInvoicesList.mockReturnValue({
-      data: { ...pageResult, items: [], totalCount: 0 },
+      data: { ...pageResult, items: [], totalItems: 0 },
       isLoading: false,
       isError: false,
       error: null,
@@ -160,7 +160,7 @@ describe("InvoiceListView", () => {
 
   it("status filter changes the query", async () => {
     mockUseInvoicesList.mockReturnValue({
-      data: { ...pageResult, items: [mockInvoices[1]], totalCount: 1 },
+      data: { ...pageResult, items: [mockInvoices[1]], totalItems: 1 },
       isLoading: false,
       isError: false,
       error: null,
