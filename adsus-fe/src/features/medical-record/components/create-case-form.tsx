@@ -2,127 +2,196 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import {
+  Activity,
+  AlertCircle,
+  ArrowLeft,
+  CalendarPlus,
+  History,
+  ShieldAlert,
+  Stethoscope,
+  User,
+} from "lucide-react";
 
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { getApiErrorMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
 
 import { useCreateCase, useCaseList, useCaseDetail } from "../hooks/use-cases";
-import { usePatientProfile } from "../hooks/use-patient-profile";
 import { useDoctorList } from "../hooks/use-doctors";
+import { usePatientProfile } from "../hooks/use-patient-profile";
 import { useSymptomCategories } from "../hooks/use-symptoms";
-import { SymptomSelector } from "./symptom-selector";
 import type { CreateCaseSymptomInput } from "../types/medical-record.types";
+import { SymptomSelector } from "./symptom-selector";
 
-/**
- * SCR-11 — tạo lần khám mới (UC-07).
- *
- * Sửa 07/08/2026 — ảnh siêu âm KHÔNG còn ở màn này nữa (quyết định ghi đè): không phải lần
- * khám nào cũng chụp siêu âm ngay lúc tiếp nhận. Muốn bổ sung ảnh thì làm sau qua màn chi tiết
- * ca (`#21`, dùng lại `UltrasoundUploadField`).
- *
- * Bác sĩ phụ trách: nếu người tạo chính là Bác sĩ thì ca khám LUÔN gắn với chính họ, không có
- * lựa chọn khác — khớp sát với UCS UC-07 bước 5 ("... or defaults to the signed-in Doctor")
- * hơn bản trước đó (dropdown tự do đổi). Điều dưỡng vẫn phải chọn đúng Bác sĩ chịu trách nhiệm
- * (GB-04) vì Điều dưỡng không thể là người chịu trách nhiệm chẩn đoán.
- */
+/** Tạo initials từ họ tên bệnh nhân. */
+function getInitials(fullName: string): string {
+  if (!fullName) return "PT";
+  const words = fullName.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
 
+
+/** Khối tóm tắt thông tin lần khám trước (Preclinic appointment history). */
 function PreviousCaseSummary({ caseId }: { caseId: string }) {
   const { data: caseDetail, isLoading } = useCaseDetail(caseId);
 
-  if (isLoading) return <div className="text-sm text-muted-foreground animate-pulse">Đang tải thông tin lần khám trước...</div>;
+  if (isLoading) {
+    return (
+      <div className="rounded-lg border border-[#E7E8EB] bg-white p-4 text-xs text-muted-foreground animate-pulse">
+        Đang tải thông tin lần khám trước...
+      </div>
+    );
+  }
   if (!caseDetail) return null;
 
   return (
-    <div className="rounded-xl border border-border bg-accent/30 p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-foreground">
-          Nội dung lần khám gần nhất ({new Date(caseDetail.visitDate).toLocaleDateString('vi-VN')})
+    <div className="rounded-lg border border-[#E7E8EB] bg-[#F8F9FA] p-5 shadow-2xs">
+      <div className="mb-3 flex items-center gap-2 border-b border-[#E7E8EB] pb-2.5">
+        <History className="size-4 text-[#2E37A4]" />
+        <h3 className="font-heading text-sm font-bold text-[#0A1B39]">
+          Nội dung lần khám gần nhất ({new Date(caseDetail.visitDate).toLocaleDateString("vi-VN")})
         </h3>
       </div>
 
-      {caseDetail.finalDiagnosis && (
-        <div>
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Chẩn đoán: </span>
-          <span className="text-sm text-foreground">{caseDetail.finalDiagnosis}</span>
-        </div>
-      )}
+      <div className="space-y-3">
+        {caseDetail.finalDiagnosis && (
+          <div>
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
+              Chẩn đoán:{" "}
+            </span>
+            <span className="text-sm font-medium text-[#0A1B39]">{caseDetail.finalDiagnosis}</span>
+          </div>
+        )}
 
-      {caseDetail.doctorConclusion && (
-        <div>
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Kết luận: </span>
-          <span className="text-sm text-foreground">{caseDetail.doctorConclusion}</span>
-        </div>
-      )}
+        {caseDetail.doctorConclusion && (
+          <div>
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
+              Kết luận:{" "}
+            </span>
+            <span className="text-sm text-[#0A1B39]">{caseDetail.doctorConclusion}</span>
+          </div>
+        )}
 
-      {caseDetail.symptoms && caseDetail.symptoms.length > 0 && (
-        <div>
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Triệu chứng chi tiết:</span>
-          <ul className="list-disc list-inside text-sm text-foreground space-y-1.5 ml-1">
-            {caseDetail.symptoms.map((sym) => {
-              const text = sym.symptomName || sym.otherNote;
-              return text ? (
-                <li key={`${sym.categoryId}-${sym.symptomId ?? "other"}`} className="leading-snug">
-                  <span className="font-medium">{sym.categoryName}:</span> {text} {sym.symptomName && sym.otherNote ? `(${sym.otherNote})` : ''}
-                </li>
-              ) : null;
-            })}
-          </ul>
-        </div>
-      )}
+        {caseDetail.symptoms && caseDetail.symptoms.length > 0 && (
+          <div>
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
+              Triệu chứng chi tiết:
+            </span>
+            <ul className="ml-1 list-inside list-disc space-y-1 text-sm text-[#0A1B39]">
+              {caseDetail.symptoms.map((sym) => {
+                const text = sym.symptomName || sym.otherNote;
+                return text ? (
+                  <li key={`${sym.categoryId}-${sym.symptomId ?? "other"}`} className="leading-snug">
+                    <span className="font-medium">{sym.categoryName}:</span> {text}{" "}
+                    {sym.symptomName && sym.otherNote ? `(${sym.otherNote})` : ""}
+                  </li>
+                ) : null;
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
+/** Khối tóm tắt hồ sơ nền bệnh nhân chuẩn Preclinic. */
 function PatientProfileSummary({ profileId }: { profileId: string }) {
   const { data: profile, isLoading } = usePatientProfile(profileId);
 
-  if (isLoading) return <div className="text-sm text-muted-foreground animate-pulse">Đang tải thông tin bệnh nhân...</div>;
+  if (isLoading) {
+    return (
+      <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 text-sm text-muted-foreground animate-pulse">
+        Đang tải thông tin bệnh nhân...
+      </div>
+    );
+  }
   if (!profile) return null;
 
+  const initials = getInitials(profile.fullName);
+
   return (
-    <div className="rounded-xl border border-border bg-accent/20 p-5 space-y-4">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-base font-bold text-foreground">
-          Bệnh nhân: {profile.fullName}
-        </h3>
-        {profile.dateOfBirth && (
-          <span className="text-sm text-muted-foreground">
-            Ngày sinh: {new Date(profile.dateOfBirth).toLocaleDateString('vi-VN')}
-          </span>
-        )}
+    <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 shadow-2xs">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[#E7E8EB] pb-4">
+        <div className="flex items-center gap-3">
+          <Avatar size="md" className="size-11 rounded-full border border-[#E7E8EB]">
+            <AvatarFallback className="bg-[#ECEDF7] font-semibold text-[#2E37A4]">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-heading text-base font-bold text-[#0A1B39]">
+                Bệnh nhân: {profile.fullName}
+              </h3>
+            </div>
+            {profile.dateOfBirth && (
+              <span className="text-xs text-[#6C7688]">
+                Ngày sinh: {new Date(profile.dateOfBirth).toLocaleDateString("vi-VN")}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Dị ứng: </span>
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <ShieldAlert className="size-3.5 text-rose-500" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
+              Dị ứng:
+            </span>
+          </div>
           <div className="text-sm font-semibold text-foreground">
             {profile.allergies && profile.allergies.length > 0 ? (
-              <div className="flex flex-col gap-1">
-                {profile.allergies.map(a => (
-                  <div key={a.allergyTypeId}>
-                    {a.isOther ? (a.note || a.allergyName) : a.note ? `${a.allergyName}: ${a.note}` : a.allergyName}
-                  </div>
-                ))}
+              <div className="flex flex-wrap gap-1.5">
+                {profile.allergies.map((a) => {
+                  const text = a.isOther
+                    ? (a.note || a.allergyName)
+                    : a.note
+                      ? `${a.allergyName}: ${a.note}`
+                      : a.allergyName;
+                  return (
+                    <Badge key={a.allergyTypeId} variant="soft-danger" className="text-xs px-2 py-0.5">
+                      {text}
+                    </Badge>
+                  );
+                })}
               </div>
             ) : (
-              <span className="text-muted-foreground italic font-normal">Không có</span>
+              <span className="text-sm font-normal italic text-muted-foreground">Không có</span>
             )}
           </div>
         </div>
 
         <div>
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Tiền sử bệnh: </span>
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <Activity className="size-3.5 text-amber-500" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
+              Tiền sử bệnh:
+            </span>
+          </div>
           <div className="text-sm font-semibold text-foreground">
             {profile.diseases && profile.diseases.length > 0 ? (
-              <div className="flex flex-col gap-1">
-                {profile.diseases.map(d => (
-                  <div key={d.diseaseId}>
-                    {d.isOther ? (d.note || d.diseaseName) : d.note ? `${d.diseaseName}: ${d.note}` : d.diseaseName}
-                  </div>
-                ))}
+              <div className="flex flex-wrap gap-1.5">
+                {profile.diseases.map((d) => {
+                  const text = d.isOther
+                    ? (d.note || d.diseaseName)
+                    : d.note
+                      ? `${d.diseaseName}: ${d.note}`
+                      : d.diseaseName;
+                  return (
+                    <Badge key={d.diseaseId} variant="soft-warning" className="text-xs px-2 py-0.5">
+                      {text}
+                    </Badge>
+                  );
+                })}
               </div>
             ) : (
-              <span className="text-muted-foreground italic font-normal">Không có</span>
+              <span className="text-sm font-normal italic text-muted-foreground">Không có</span>
             )}
           </div>
         </div>
@@ -131,7 +200,9 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
   );
 }
 
-
+/**
+ * SCR-11 — Tạo lần khám mới theo chuẩn Preclinic (new-appointment.html card structure).
+ */
 export function CreateCaseForm({ patientProfileId }: { patientProfileId: string }) {
   const router = useRouter();
 
@@ -148,7 +219,7 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
   const categoriesQuery = useSymptomCategories();
   const mutation = useCreateCase();
 
-  // Fetch the most recent case for this patient
+  // Lấy ca khám gần nhất của bệnh nhân
   const previousCasesQuery = useCaseList({
     patientProfileId,
     sortOrder: "desc",
@@ -173,22 +244,20 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
     }
 
     const filteredSymptoms = symptoms
-      .filter(s => s.categoryId !== "")
-      .map(s => ({
+      .filter((s) => s.categoryId !== "")
+      .map((s) => ({
         ...s,
-        otherNote: s.otherNote?.trim() || null
+        otherNote: s.otherNote?.trim() || null,
       }))
-      .filter(s => {
-        // 1. Lọc bỏ fallback "Khác" hoặc Category "Other" rỗng
+      .filter((s) => {
         if (s.symptomId === null && s.otherNote === null) return false;
 
-        // 2. Lọc bỏ DB "Khác" nếu người dùng tick nhưng không gõ chữ gì
         if (s.symptomId !== null && s.otherNote === null && categoriesQuery.data) {
-          const category = categoriesQuery.data.find(c => c.categoryId === s.categoryId);
+          const category = categoriesQuery.data.find((c) => c.categoryId === s.categoryId);
           if (category) {
-            const sym = category.symptoms.find(x => x.symptomId === s.symptomId);
-            if (sym && (sym.isOther || sym.name.toLowerCase().includes('khác'))) {
-              return false; // Xóa luôn không lưu vào DB
+            const sym = category.symptoms.find((x) => x.symptomId === s.symptomId);
+            if (sym && (sym.isOther || sym.name.toLowerCase().includes("khác"))) {
+              return false;
             }
           }
         }
@@ -213,92 +282,153 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="w-full px-6 py-10">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="font-heading text-[28px] font-bold tracking-[-0.02em] text-foreground">
-          Tạo ca khám
-        </h1>
-        
-        <div className="w-full sm:w-[300px]">
-          <label htmlFor="responsibleDoctorId" className="sr-only">
-            Bác sĩ phụ trách
-          </label>
-          {isDoctor ? (
-            <p
-              id="responsibleDoctorId"
-              className="flex h-10 items-center justify-end text-sm font-medium text-muted-foreground"
-            >
-              Bác sĩ: <strong className="ml-1 text-foreground">{currentUser?.fullName}</strong>
-            </p>
-          ) : (
-            <div>
-              <select
-                id="responsibleDoctorId"
-                value={selectedDoctorId}
-                onChange={(event) => setSelectedDoctorId(event.target.value)}
-                disabled={doctorsQuery.isLoading}
-                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-              >
-                <option value="">-- Chọn bác sĩ phụ trách --</option>
-                {doctorsQuery.data?.map((doctor) => (
-                  <option key={doctor.userId} value={doctor.userId}>
-                    {doctor.fullName}
-                  </option>
-                ))}
-              </select>
-              {doctorsQuery.isError && (
-                <p className="mt-1 text-xs text-destructive text-right" role="alert">
-                  Không tải được danh sách bác sĩ
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Thông tin hồ sơ nền */}
-      <div className="mt-6">
-        <PatientProfileSummary profileId={patientProfileId} />
-      </div>
-
-      {/* Thông tin lần khám trước (nếu có) */}
-      {previousCaseId && (
-        <div className="mt-4">
-          <PreviousCaseSummary caseId={previousCaseId} />
-        </div>
-      )}
-
-      <section className="mt-6 space-y-5 rounded-xl border border-border p-5">
-        <fieldset className="m-0 border-0 p-0">
-          <legend className="mb-1.5 block text-sm font-medium">
-            Triệu chứng chi tiết
-          </legend>
-          <SymptomSelector value={symptoms} onChange={setSymptoms} />
-        </fieldset>
-      </section>
-
-      {errorMessage ? (
-        <p className="mt-5 rounded-lg bg-destructive/10 p-3 text-sm text-destructive" role="alert">
-          {errorMessage}
-        </p>
-      ) : null}
-
-      <div className="mt-6 flex justify-end gap-3">
+    <div className="mx-auto w-full max-w-4xl px-6 py-8">
+      {/* Breadcrumb quay lại */}
+      <div className="mb-4">
         <button
           type="button"
           onClick={() => router.back()}
-          className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6C7688] transition-colors hover:text-[#2E37A4]"
         >
-          Huỷ bỏ
-        </button>
-        <button
-          type="submit"
-          disabled={mutation.isPending || mutation.isSuccess}
-          className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-        >
-          {mutation.isPending ? "Đang lưu..." : "Lưu ca khám"}
+          <ArrowLeft className="size-3.5" />
+          Quay lại
         </button>
       </div>
-    </form>
+
+      <form onSubmit={handleSubmit} className="overflow-hidden rounded-lg border border-[#E7E8EB] bg-white shadow-xs">
+        {/* Preclinic Card Header with Doctor Selection */}
+        <div className="border-b border-[#E7E8EB] bg-white p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-full bg-[#ECEDF7] text-[#2E37A4]">
+                <CalendarPlus className="size-5" />
+              </div>
+              <div>
+                <h1 className="font-heading text-xl font-bold text-[#0A1B39]">
+                  Tạo ca khám
+                </h1>
+                <p className="mt-0.5 text-xs text-[#6C7688]">
+                  Tiếp nhận ca khám mới, chỉ định bác sĩ và ghi nhận triệu chứng ban đầu
+                </p>
+              </div>
+            </div>
+
+            {/* Doctor Selection / Static Display */}
+            <div className="w-full sm:w-[320px]">
+              <label htmlFor="responsibleDoctorId" className="sr-only">
+                Bác sĩ phụ trách
+              </label>
+              {isDoctor ? (
+                <div
+                  id="responsibleDoctorId"
+                  className="flex h-10 items-center justify-end rounded-md bg-[#F8F9FA] px-3 text-sm font-medium text-[#6C7688]"
+                >
+                  <User className="mr-1.5 size-4 text-[#2E37A4]" />
+                  Bác sĩ: <strong className="ml-1 text-[#0A1B39]">{currentUser?.fullName}</strong>
+                </div>
+              ) : (
+                <div>
+                  <select
+                    id="responsibleDoctorId"
+                    value={selectedDoctorId}
+                    onChange={(event) => setSelectedDoctorId(event.target.value)}
+                    disabled={doctorsQuery.isLoading}
+                    className="h-10 w-full rounded-md border border-[#E7E8EB] bg-background px-3 text-sm outline-none transition-colors focus:border-[#2E37A4] focus-visible:ring-2 focus-visible:ring-[#2E37A4]/20 disabled:opacity-50"
+                  >
+                    <option value="">-- Chọn bác sĩ phụ trách --</option>
+                    {doctorsQuery.data?.map((doctor) => (
+                      <option key={doctor.userId} value={doctor.userId}>
+                        {doctor.fullName}
+                      </option>
+                    ))}
+                  </select>
+                  {doctorsQuery.isError && (
+                    <p className="mt-1 text-right text-xs text-destructive" role="alert">
+                      Không tải được danh sách bác sĩ
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6 p-6">
+          {/* Thông tin hồ sơ nền bệnh nhân */}
+          <div>
+            <PatientProfileSummary profileId={patientProfileId} />
+          </div>
+
+          {/* Thông tin lần khám trước (nếu có) */}
+          {previousCaseId && (
+            <div>
+              <PreviousCaseSummary caseId={previousCaseId} />
+            </div>
+          )}
+
+          {/* Lý do khám & Thông tin lâm sàng */}
+          <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 shadow-2xs">
+            <div className="mb-4 flex items-center gap-2 border-b border-[#E7E8EB] pb-3">
+              <Stethoscope className="size-4 text-[#2E37A4]" />
+              <h3 className="font-heading text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
+                Thông tin lâm sàng ban đầu
+              </h3>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="clinicalInfo" className="mb-1.5 block text-xs font-semibold text-[#0A1B39]">
+                  Lý do khám / Ghi chú ban đầu
+                </label>
+                <input
+                  id="clinicalInfo"
+                  value={clinicalInfo}
+                  onChange={(e) => setClinicalInfo(e.target.value)}
+                  placeholder="Ví dụ: Đau tức hạ vị âm ỉ 3 ngày nay, trễ kinh..."
+                  className="h-10 w-full rounded-md border border-[#E7E8EB] bg-background px-3 text-sm outline-none transition-colors focus:border-[#2E37A4] focus-visible:ring-2 focus-visible:ring-[#2E37A4]/20"
+                />
+              </div>
+
+              <fieldset className="m-0 border-0 p-0">
+                <legend className="mb-2 block text-xs font-semibold text-[#0A1B39]">
+                  Triệu chứng chi tiết
+                </legend>
+                <SymptomSelector value={symptoms} onChange={setSymptoms} />
+              </fieldset>
+            </div>
+          </div>
+        </div>
+
+        {errorMessage ? (
+          <div className="px-6 pb-2">
+            <div
+              className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+              role="alert"
+            >
+              <AlertCircle className="size-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Card Footer */}
+        <div className="flex items-center justify-end gap-3 border-t border-[#E7E8EB] bg-[#F8F9FA] px-6 py-4">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="rounded-md border border-[#E7E8EB] bg-white px-4 py-2 text-sm font-medium text-[#0A1B39] shadow-2xs transition-colors hover:bg-muted"
+          >
+            Huỷ bỏ
+          </button>
+          <button
+            type="submit"
+            disabled={mutation.isPending || mutation.isSuccess}
+            className="rounded-md bg-[#2E37A4] px-5 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-[#2E37A4]/90 disabled:opacity-50"
+          >
+            {mutation.isPending ? "Đang lưu..." : "Lưu ca khám"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
