@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import {
   Activity,
   AlertCircle,
@@ -64,6 +64,29 @@ function PreviousCaseSummary({
   if (!caseDetail) return null;
 
   const hasSymptoms = Boolean(caseDetail.symptoms && caseDetail.symptoms.length > 0);
+
+  // Nhóm các triệu chứng theo danh mục để các triệu chứng cùng nhóm luôn nằm liền nhau
+  const groupedSymptoms = useMemo(() => {
+    if (!caseDetail?.symptoms) return [];
+    const groups: { categoryId: string; categoryName: string; items: string[] }[] = [];
+    for (const sym of caseDetail.symptoms) {
+      const text = sym.symptomName || sym.otherNote;
+      if (!text) continue;
+      const fullText = sym.symptomName && sym.otherNote ? `${sym.symptomName} (${sym.otherNote})` : text;
+      const existing = groups.find((g) => g.categoryId === sym.categoryId);
+      if (existing) {
+        existing.items.push(fullText);
+      } else {
+        groups.push({
+          categoryId: sym.categoryId,
+          categoryName: sym.categoryName,
+          items: [fullText],
+        });
+      }
+    }
+    return groups;
+  }, [caseDetail?.symptoms]);
+
   const hasContent =
     Boolean(caseDetail.clinicalInfo) ||
     Boolean(caseDetail.finalDiagnosis) ||
@@ -72,10 +95,10 @@ function PreviousCaseSummary({
 
   return (
     <div className="rounded-lg border border-black bg-white p-5 shadow-xs">
-      <div className="mb-3 flex items-center justify-between border-b border-gray-200 pb-2.5">
+      <div className="mb-3.5 flex items-center justify-between border-b border-gray-200 pb-3">
         <div className="flex items-center gap-2">
-          <History className="size-4 text-[#2E37A4]" />
-          <h3 className="font-heading text-sm font-bold text-[#0A1B39]">
+          <History className="size-5 text-[#2E37A4]" />
+          <h3 className="font-heading text-base font-bold text-[#0A1B39]">
             Nội dung lần khám gần nhất ({formatIsoDate(caseDetail.visitDate)})
           </h3>
         </div>
@@ -83,7 +106,7 @@ function PreviousCaseSummary({
           <button
             type="button"
             onClick={() => onApplySymptoms(caseDetail.symptoms)}
-            className="rounded border border-[#2E37A4]/30 bg-[#ECEDF7] px-2 py-0.5 text-xs font-semibold text-[#2E37A4] transition-colors hover:bg-[#2E37A4] hover:text-white"
+            className="rounded border border-[#2E37A4]/40 bg-[#ECEDF7] px-2.5 py-1 text-xs font-semibold text-[#2E37A4] transition-colors hover:bg-[#2E37A4] hover:text-white"
             title="Sao chép triệu chứng lần trước sang ca khám này"
           >
             + Dùng lại triệu chứng này
@@ -91,60 +114,69 @@ function PreviousCaseSummary({
         )}
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {caseDetail.clinicalInfo && (
           <div>
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
-              Lý do khám / Lâm sàng trước:{" "}
+            <span className="mb-1 block text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
+              Lý do khám / Lâm sàng trước:
             </span>
-            <span className="text-sm font-medium text-[#0A1B39]">{caseDetail.clinicalInfo}</span>
+            <p className="text-sm font-medium text-[#0A1B39]">{caseDetail.clinicalInfo}</p>
           </div>
         )}
 
         {caseDetail.finalDiagnosis && (
           <div>
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
-              Chẩn đoán:{" "}
+            <span className="mb-1 block text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
+              Chẩn đoán:
             </span>
-            <span className="text-sm font-medium text-[#0A1B39]">{caseDetail.finalDiagnosis}</span>
+            <p className="text-base font-medium text-[#0A1B39]">{caseDetail.finalDiagnosis}</p>
           </div>
         )}
 
         {caseDetail.doctorConclusion && (
           <div>
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
-              Kết luận:{" "}
+            <span className="mb-1 block text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
+              Kết luận:
             </span>
-            <span className="text-sm text-[#0A1B39]">{caseDetail.doctorConclusion}</span>
+            <p className="text-base text-[#0A1B39]">{caseDetail.doctorConclusion}</p>
           </div>
         )}
 
-        {hasSymptoms && (
+        {groupedSymptoms.length > 0 && (
           <div>
-            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
+            <span className="mb-2 block text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
               Triệu chứng lần khám trước:
             </span>
-            <div className="flex flex-wrap gap-1.5">
-              {caseDetail.symptoms.map((sym, idx) => {
-                const text = sym.symptomName || sym.otherNote;
-                return text ? (
-                  <Badge
-                    key={`${sym.categoryId}-${sym.symptomId ?? `other-${idx}`}`}
-                    variant="outline"
-                    className="border-[#E7E8EB] bg-[#F8F9FA] px-2.5 py-1 text-xs text-[#0A1B39]"
-                  >
-                    <span className="font-semibold text-[#2E37A4] mr-1">{sym.categoryName}:</span>
-                    {text}
-                    {sym.symptomName && sym.otherNote ? ` (${sym.otherNote})` : ""}
-                  </Badge>
-                ) : null;
-              })}
+            <div className="space-y-2">
+              {groupedSymptoms.map((group) => (
+                <div
+                  key={group.categoryId}
+                  className="rounded-md border border-gray-300 bg-[#F8F9FA] p-2.5 shadow-2xs"
+                >
+                  <div className="mb-1.5 flex items-center gap-1.5">
+                    <span className="size-2 rounded-full bg-[#2E37A4]" />
+                    <span className="text-sm font-bold text-[#2E37A4]">
+                      {group.categoryName}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {group.items.map((item, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center rounded border border-gray-300 bg-white px-2.5 py-1 text-sm font-medium text-[#0A1B39]"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
         {!hasContent && (
-          <p className="text-xs italic text-muted-foreground">
+          <p className="text-sm italic text-muted-foreground">
             Không có ghi chú lâm sàng từ lần khám trước.
           </p>
         )}
@@ -192,12 +224,12 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
           </Avatar>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-heading text-base font-bold text-[#0A1B39]">
+              <h3 className="font-heading text-lg font-bold text-[#0A1B39]">
                 Bệnh nhân: {profile.fullName?.trim() || "Chưa cập nhật"}
               </h3>
             </div>
             {profile.dateOfBirth && (
-              <span className="text-xs text-[#6C7688]">
+              <span className="text-sm font-semibold text-[#0A1B39]">
                 Ngày sinh: {formatIsoDate(profile.dateOfBirth)}
               </span>
             )}
@@ -207,15 +239,15 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <div className="mb-1.5 flex items-center gap-1.5">
-            <ShieldAlert className="size-3.5 text-rose-500" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
+          <div className="mb-2 flex items-center gap-1.5">
+            <ShieldAlert className="size-4 text-rose-600" />
+            <span className="text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
               Dị ứng:
             </span>
           </div>
           <div className="text-sm font-semibold text-foreground">
             {profile.allergies && profile.allergies.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {profile.allergies.map((a, idx) => {
                   const text = a.isOther
                     ? (a.note || a.allergyName)
@@ -226,7 +258,7 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
                     <Badge
                       key={`${a.allergyTypeId}-${idx}`}
                       variant="soft-danger"
-                      className="h-auto max-w-full text-left text-xs px-2.5 py-1 leading-tight whitespace-normal break-words"
+                      className="h-auto max-w-full text-left text-sm px-3 py-1 font-medium leading-normal whitespace-normal break-words"
                     >
                       {text}
                     </Badge>
@@ -240,15 +272,15 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
         </div>
 
         <div>
-          <div className="mb-1.5 flex items-center gap-1.5">
-            <Activity className="size-3.5 text-amber-500" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
+          <div className="mb-2 flex items-center gap-1.5">
+            <Activity className="size-4 text-amber-600" />
+            <span className="text-sm font-bold uppercase tracking-wider text-[#0A1B39]">
               Tiền sử bệnh:
             </span>
           </div>
           <div className="text-sm font-semibold text-foreground">
             {profile.diseases && profile.diseases.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {profile.diseases.map((d, idx) => {
                   const text = d.isOther
                     ? (d.note || d.diseaseName)
@@ -259,7 +291,7 @@ function PatientProfileSummary({ profileId }: { profileId: string }) {
                     <Badge
                       key={`${d.diseaseId}-${idx}`}
                       variant="soft-warning"
-                      className="h-auto max-w-full text-left text-xs px-2.5 py-1 leading-tight whitespace-normal break-words"
+                      className="h-auto max-w-full text-left text-sm px-3 py-1 font-medium leading-normal whitespace-normal break-words"
                     >
                       {text}
                     </Badge>
@@ -361,9 +393,9 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
         <button
           type="button"
           onClick={() => router.back()}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6C7688] transition-colors hover:text-[#2E37A4]"
+          className="inline-flex items-center gap-1.5 text-sm font-bold text-[#0A1B39] transition-colors hover:text-[#2E37A4]"
         >
-          <ArrowLeft className="size-3.5" />
+          <ArrowLeft className="size-4" />
           Quay lại
         </button>
       </div>
@@ -380,7 +412,7 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
                 <h1 className="font-heading text-xl font-bold text-[#0A1B39]">
                   Tạo ca khám
                 </h1>
-                <p className="mt-0.5 text-xs text-[#6C7688]">
+                <p className="mt-0.5 text-sm font-medium text-gray-700">
                   Tiếp nhận ca khám mới, chỉ định bác sĩ và ghi nhận triệu chứng ban đầu
                 </p>
               </div>
@@ -478,7 +510,7 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
 
                 <div className="space-y-4">
                   <fieldset className="m-0 border-0 p-0">
-                    <legend className="mb-2 block text-xs font-semibold text-[#0A1B39]">
+                    <legend className="mb-2 block text-sm font-bold text-[#0A1B39]">
                       Triệu chứng chi tiết
                     </legend>
                     <SymptomSelector value={symptoms} onChange={setSymptoms} />
