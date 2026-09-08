@@ -22,10 +22,10 @@ export function AllergySelector({ value, onChange }: AllergySelectorProps) {
   }, [allergies]);
 
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Đang tải danh mục dị ứng...</div>;
+    return <div className="text-sm font-semibold text-foreground">Đang tải danh mục dị ứng...</div>;
   }
 
-  function handleToggleAllergy(allergyTypeId: string, isChecked: boolean, isOther: boolean) {
+  function handleToggleAllergy(allergyTypeId: string, isChecked: boolean, _isOther?: boolean) {
     if (isChecked) {
       // Vấn đề 4: TẤT CẢ các dị ứng đều có ô nhập liệu (khởi tạo chuỗi rỗng)
       onChange([...value, { allergyTypeId, note: "" }]);
@@ -58,7 +58,7 @@ export function AllergySelector({ value, onChange }: AllergySelectorProps) {
                   }
                   className="mt-1 shrink-0 rounded border-primary text-primary focus:ring-primary"
                 />
-                <span className="leading-snug">{allergy.name}</span>
+                <span className="leading-snug font-medium text-foreground">{allergy.name}</span>
               </label>
 
               {isSelected && (

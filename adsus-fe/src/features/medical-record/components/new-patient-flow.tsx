@@ -33,7 +33,7 @@ export function NewPatientFlow({ patientUserId }: Props) {
   // Luồng A — tài khoản đã có sẵn, chỉ còn thiếu hồ sơ nền.
   if (patientUserId) {
     if (accountsQuery.isLoading) {
-      return <p className="p-10 text-sm text-muted-foreground">Đang tải thông tin tài khoản...</p>;
+      return <p className="p-10 text-sm font-semibold text-foreground">Đang tải thông tin tài khoản...</p>;
     }
 
     if (accountsQuery.isError) {
@@ -51,13 +51,13 @@ export function NewPatientFlow({ patientUserId }: Props) {
       return (
         <div className="m-10 rounded-xl border border-dashed border-border p-8 text-center">
           <p className="font-semibold text-foreground">Tài khoản này đã có hồ sơ nền</p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm font-medium text-foreground">
             Có thể ai đó vừa lập hồ sơ. Quay lại danh sách để mở hồ sơ hiện có.
           </p>
           <button
             type="button"
             onClick={() => router.push("/patients")}
-            className="mt-4 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent"
+            className="mt-4 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent"
           >
             Về danh sách bệnh nhân
           </button>
@@ -79,7 +79,7 @@ export function NewPatientFlow({ patientUserId }: Props) {
     return (
       <div className="m-10 rounded-xl border border-dashed border-border p-8 text-center">
         <p className="font-semibold text-foreground">Chỉ Điều dưỡng tạo được tài khoản bệnh nhân</p>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm font-medium text-foreground">
           Bệnh nhân chưa có tài khoản thì đề nghị Quản trị viên tạo trước (UC-04), hoặc nhờ
           Điều dưỡng thực hiện.
         </p>

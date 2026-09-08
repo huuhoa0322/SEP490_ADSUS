@@ -56,7 +56,7 @@ function getPatientSubtext(patient: PatientSummary): string | null {
 /** Render soft badge trạng thái ca khám chuẩn màu Preclinic. */
 function renderStatusBadge(status: CaseStatus | null) {
   if (!status) {
-    return <span className="text-xs text-muted-foreground">—</span>;
+    return <span className="text-xs font-semibold text-foreground/80">—</span>;
   }
   switch (status) {
     case "CONFIRMED":
@@ -109,7 +109,7 @@ export function PatientListView() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-[#0A1B39]">
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
               Danh sách Bệnh nhân
             </h1>
             {data ? (
@@ -118,7 +118,7 @@ export function PatientListView() {
               </Badge>
             ) : null}
           </div>
-          <p className="mt-1 text-sm text-[#6C7688]">
+          <p className="mt-1 text-sm font-medium text-foreground">
             Toàn bộ bệnh nhân trong hệ thống, sắp theo lần khám gần nhất
           </p>
         </div>
@@ -137,7 +137,7 @@ export function PatientListView() {
       {/* Preclinic Filter Bar */}
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-[#E7E8EB] bg-white p-4 shadow-xs">
         <div className="relative min-w-[280px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground/70" />
           <input
             type="search"
             value={search}
@@ -152,7 +152,7 @@ export function PatientListView() {
         </div>
 
         <div className="relative">
-          <Filter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Filter className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground/70" />
           <select
             value={visitStatus}
             onChange={(event) => {
@@ -172,7 +172,7 @@ export function PatientListView() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-lg border border-[#E7E8EB] bg-white p-10 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-[#E7E8EB] bg-white p-10 text-center text-sm font-semibold text-foreground">
           Đang tải danh sách...
         </div>
       ) : null}
@@ -186,11 +186,11 @@ export function PatientListView() {
       {data && data.items.length === 0 ? (
         // UC-09 AF-01.
         <div className="rounded-lg border border-dashed border-[#E7E8EB] bg-white p-12 text-center">
-          <UserCheck className="mx-auto size-10 text-muted-foreground/50" />
-          <p className="mt-3 font-heading text-base font-semibold text-[#0A1B39]">
+          <UserCheck className="mx-auto size-10 text-foreground/40" />
+          <p className="mt-3 font-heading text-base font-bold text-foreground">
             Không tìm thấy bệnh nhân nào
           </p>
-          <p className="mt-1 text-sm text-[#6C7688]">
+          <p className="mt-1 text-sm font-medium text-foreground">
             Thử xoá bớt điều kiện lọc hoặc kiểm tra lại từ khoá tìm kiếm.
           </p>
         </div>
@@ -200,7 +200,7 @@ export function PatientListView() {
         <div className="overflow-hidden rounded-lg border border-[#E7E8EB] bg-white shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] table-nowrap text-left text-sm align-middle">
-              <thead className="border-b border-[#E7E8EB] bg-[#F8F9FA] text-xs font-semibold uppercase text-muted-foreground">
+              <thead className="border-b border-[#E7E8EB] bg-[#F8F9FA] text-xs font-bold uppercase tracking-wider text-foreground">
                 <tr>
                   <th className="px-4 py-3.5">Bệnh nhân</th>
                   <th className="px-4 py-3.5">Số điện thoại</th>
@@ -228,33 +228,33 @@ export function PatientListView() {
                             {patient.patientProfileId ? (
                               <Link
                                 href={`/patients/${patient.patientProfileId}`}
-                                className="font-semibold text-[#0A1B39] transition-colors hover:text-[#2E37A4]"
+                                className="font-semibold text-foreground transition-colors hover:text-primary"
                               >
                                 {patient.fullName}
                               </Link>
                             ) : (
-                              <span className="font-semibold text-[#0A1B39]">
+                              <span className="font-semibold text-foreground">
                                 {patient.fullName}
                               </span>
                             )}
                             {subtext ? (
-                              <span className="block text-xs text-[#6C7688]">{subtext}</span>
+                              <span className="block text-xs font-semibold text-amber-700">{subtext}</span>
                             ) : null}
                           </div>
                         </div>
                       </td>
 
                       {/* Cột Số điện thoại */}
-                      <td className="px-4 py-3.5 font-mono text-xs tabular-nums text-[#6C7688]">
+                      <td className="px-4 py-3.5 font-mono text-xs font-semibold tabular-nums text-foreground">
                         {patient.phone}
                       </td>
 
                       {/* Cột Lần khám gần nhất */}
-                      <td className="px-4 py-3.5 text-xs text-[#0A1B39]">
+                      <td className="px-4 py-3.5 text-xs font-medium text-foreground">
                         {patient.latestVisitDate ? (
                           formatIsoDate(patient.latestVisitDate)
                         ) : (
-                          <span className="italic text-muted-foreground">Chưa có lần khám nào</span>
+                          <span className="italic text-xs font-medium text-foreground/80">Chưa có lần khám nào</span>
                         )}
                       </td>
 
@@ -270,7 +270,7 @@ export function PatientListView() {
                             <>
                               <Link
                                 href={`/patients/${patient.patientProfileId}`}
-                                className="inline-flex items-center gap-1 rounded border border-[#E7E8EB] bg-white px-2.5 py-1 text-xs font-medium text-[#0A1B39] shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-[#2E37A4]"
+                                className="inline-flex items-center gap-1 rounded border border-[#E7E8EB] bg-white px-2.5 py-1 text-xs font-semibold text-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-primary"
                               >
                                 <Eye className="size-3.5" />
                                 Xem hồ sơ bệnh án
@@ -287,7 +287,7 @@ export function PatientListView() {
                                   <button
                                     type="button"
                                     aria-label="Tùy chọn thao tác"
-                                    className="inline-flex size-7 items-center justify-center rounded border border-[#E7E8EB] bg-white text-muted-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-[#0A1B39]"
+                                    className="inline-flex size-7 items-center justify-center rounded border border-[#E7E8EB] bg-white text-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-primary"
                                   >
                                     <MoreVertical className="size-4" />
                                   </button>
@@ -295,19 +295,19 @@ export function PatientListView() {
                                 <DropdownMenuContent align="end" className="w-48">
                                   <DropdownMenuItem asChild>
                                     <Link href={`/patients/${patient.patientProfileId}`}>
-                                      <Eye className="size-4 text-muted-foreground" />
+                                      <Eye className="size-4 text-foreground" />
                                       Xem hồ sơ bệnh án
                                     </Link>
                                   </DropdownMenuItem>
                                   <DropdownMenuItem asChild>
                                     <Link href={`/patients/${patient.patientProfileId}/cases/new`}>
-                                      <CalendarPlus className="size-4 text-muted-foreground" />
+                                      <CalendarPlus className="size-4 text-foreground" />
                                       Tạo ca khám mới
                                     </Link>
                                   </DropdownMenuItem>
                                   <DropdownMenuItem asChild>
                                     <Link href={`/patients/${patient.patientProfileId}/profile`}>
-                                      <FileEdit className="size-4 text-muted-foreground" />
+                                      <FileEdit className="size-4 text-foreground" />
                                       Chỉnh sửa thông tin
                                     </Link>
                                   </DropdownMenuItem>
@@ -328,7 +328,7 @@ export function PatientListView() {
                                   <button
                                     type="button"
                                     aria-label="Tùy chọn thao tác"
-                                    className="inline-flex size-7 items-center justify-center rounded border border-[#E7E8EB] bg-white text-muted-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-[#0A1B39]"
+                                    className="inline-flex size-7 items-center justify-center rounded border border-[#E7E8EB] bg-white text-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-primary"
                                   >
                                     <MoreVertical className="size-4" />
                                   </button>
@@ -336,7 +336,7 @@ export function PatientListView() {
                                 <DropdownMenuContent align="end" className="w-48">
                                   <DropdownMenuItem asChild>
                                     <Link href={`/patients/new?patientUserId=${patient.patientUserId}`}>
-                                      <FilePlus className="size-4 text-muted-foreground" />
+                                      <FilePlus className="size-4 text-foreground" />
                                       Tạo hồ sơ nền
                                     </Link>
                                   </DropdownMenuItem>
@@ -358,7 +358,7 @@ export function PatientListView() {
       {/* Preclinic Pagination */}
       {data && data.totalPages > 1 ? (
         <div className="mt-4 flex items-center justify-between">
-          <p className="font-mono text-xs tabular-nums text-[#6C7688]">
+          <p className="font-mono text-xs font-semibold tabular-nums text-foreground">
             Trang {data.page} / {data.totalPages} · {data.totalItems} bệnh nhân
           </p>
           <PaginationNumbered

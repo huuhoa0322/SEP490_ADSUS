@@ -35,7 +35,7 @@ export function AppSidebar() {
     <aside
       style={accentStyle}
       className={cn(
-        "sticky top-16 z-30 flex h-[calc(100vh-4rem)] flex-col border-r border-border bg-background/95 backdrop-blur max-md:hidden transition-all duration-300 ease-in-out",
+        "sticky top-16 z-30 flex h-[calc(100vh-4rem)] flex-col border-r border-slate-200 bg-slate-50/80 shadow-sm backdrop-blur transition-all duration-300 ease-in-out dark:border-slate-800 dark:bg-slate-900/90 max-md:hidden",
         expanded ? "w-64" : "w-[68px]",
       )}
     >
@@ -48,7 +48,7 @@ export function AppSidebar() {
         {groups.map((group) => (
           <div key={group.label} className={expanded ? "space-y-1" : "space-y-1 w-full flex flex-col items-center"}>
             {expanded && groups.length > 1 && (
-              <p className="px-2.5 pb-1 text-[11px] font-700 uppercase tracking-wider text-muted-foreground/70">
+              <p className="px-2.5 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                 {group.label}
               </p>
             )}
@@ -61,7 +61,10 @@ export function AppSidebar() {
 
       <div
         style={accentStyle}
-        className={cn("border-t border-border", expanded ? "p-3 space-y-1" : "p-3 space-y-2 flex flex-col items-center")}
+        className={cn(
+          "border-t border-slate-200 dark:border-slate-800",
+          expanded ? "p-3 space-y-1" : "p-3 space-y-2 flex flex-col items-center"
+        )}
       >
         <NavItem
           item={ACCOUNT_ITEM}
@@ -73,7 +76,7 @@ export function AppSidebar() {
           onClick={handleSignOut}
           title="Đăng xuất"
           className={cn(
-            "flex items-center rounded-lg font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive",
+            "flex items-center rounded-lg font-semibold text-slate-700 transition-colors hover:bg-destructive/10 hover:text-destructive dark:text-slate-300",
             expanded ? "w-full gap-3 px-3 py-2 text-sm" : "justify-center p-2.5",
           )}
         >
@@ -101,16 +104,16 @@ export function NavItem({
       title={!expanded ? item.title : undefined}
       className={cn(
         "relative flex items-center transition-colors",
-        expanded ? "w-full gap-3 rounded-lg py-2 pl-3.5 pr-3 text-sm font-medium" : "justify-center rounded-lg p-2.5",
+        expanded ? "w-full gap-3 rounded-lg py-2 pl-3.5 pr-3 text-sm" : "justify-center rounded-lg p-2.5",
         active
-          ? "bg-[var(--role-accent)]/10 font-600 text-[var(--role-accent)]"
-          : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+          ? "bg-[var(--role-accent)]/15 font-bold text-foreground"
+          : "font-medium text-slate-700 hover:bg-slate-100 hover:text-foreground dark:text-slate-300 dark:hover:bg-slate-800",
       )}
     >
       {active && (
         <span
           aria-hidden
-          className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-[var(--role-accent)]"
+          className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-[var(--role-accent)]"
         />
       )}
       <Icon className="size-5 shrink-0" />

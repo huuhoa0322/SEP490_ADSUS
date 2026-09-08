@@ -13,7 +13,7 @@ import { AuthGuard } from "@/features/auth/components/auth-guard";
 export default function ProtectedLayout({ children }: { children: ReactNode }) {
   return (
     <AuthGuard>
-      <div className="flex min-h-screen flex-col bg-muted/30">
+      <div className="flex min-h-screen flex-col bg-slate-50/50 dark:bg-background">
         <AppHeader />
         <MobileNavDrawer />
         <div className="flex flex-1">

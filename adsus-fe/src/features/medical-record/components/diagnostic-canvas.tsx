@@ -685,7 +685,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
           
           <div className="ml-auto flex items-center gap-1">
             <button className="flex h-6 w-6 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => aiPzRef.current?.zoomOut()}>−</button>
-            <span className="min-w-[38px] text-center font-mono text-[11px] text-muted-foreground">{aiZoom}</span>
+            <span className="min-w-[38px] text-center font-mono text-[11px] font-bold text-foreground">{aiZoom}</span>
             <button className="flex h-6 w-6 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => aiPzRef.current?.zoomIn()}>+</button>
             <button className="px-2 h-6 text-[11px] rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => aiPzRef.current?.reset()}>↺ Fit</button>
           </div>
@@ -693,7 +693,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
         
         <div className="relative flex-1 overflow-hidden bg-muted/20 select-none cursor-grab" ref={aiWrapRef}>
           {!imgDims.w && (
-            <div className="absolute inset-0 flex items-center justify-center text-[13px] text-muted-foreground">
+            <div className="absolute inset-0 flex items-center justify-center text-[13px] font-semibold text-foreground">
               Đang tải ảnh...
             </div>
           )}
@@ -716,13 +716,13 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
           >
             + Thêm caliper
           </button>
-          <span className="font-mono text-[11px] text-muted-foreground">
+          <span className="font-mono text-[11px] font-bold text-foreground">
             {addingMode ? `Click 4 điểm: ${addingClicks.length}/4` : ''}
           </span>
 
           <div className="ml-auto flex items-center gap-1">
             <button className="flex h-6 w-6 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => editPzRef.current?.zoomOut()}>−</button>
-            <span className="min-w-[38px] text-center font-mono text-[11px] text-muted-foreground">{editZoom}</span>
+            <span className="min-w-[38px] text-center font-mono text-[11px] font-bold text-foreground">{editZoom}</span>
             <button className="flex h-6 w-6 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => editPzRef.current?.zoomIn()}>+</button>
             <button className="px-2 h-6 text-[11px] rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => editPzRef.current?.reset()}>↺ Fit</button>
           </div>
@@ -739,7 +739,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
           onClick={handleEditWrapClick}
         >
           {!imgDims.w && (
-            <div className="absolute inset-0 flex items-center justify-center text-[13px] text-muted-foreground">
+            <div className="absolute inset-0 flex items-center justify-center text-[13px] font-semibold text-foreground">
               Đang tải ảnh...
             </div>
           )}
@@ -758,7 +758,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
             placeholder="Ghi chú cho ảnh này (tuỳ chọn)..."
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="ml-auto h-9 w-64 md:w-80 rounded-md border border-input bg-background px-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="ml-auto h-9 w-64 md:w-80 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground shadow-sm transition-colors placeholder:text-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
 
           <button
@@ -796,13 +796,13 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
                   )}>
                     {toastMessage.type === 'error' ? 'Lưu ý' : 'Thành công'}
                   </h3>
-                  <p className="mt-1 text-sm font-medium text-slate-600">
+                  <p className="mt-1 text-sm font-medium text-foreground">
                     {toastMessage.text}
                   </p>
                 </div>
                 <button 
                   onClick={() => setToastMessage(null)} 
-                  className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                  className="rounded-md p-1 text-foreground/70 hover:bg-slate-100 hover:text-foreground transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
