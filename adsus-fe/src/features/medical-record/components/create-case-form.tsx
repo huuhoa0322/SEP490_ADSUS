@@ -23,7 +23,7 @@ import { useDoctorList } from "../hooks/use-doctors";
 import { usePatientProfile } from "../hooks/use-patient-profile";
 import { useSymptomCategories } from "../hooks/use-symptoms";
 import { formatIsoDate } from "../lib/medical-record-labels";
-import type { CreateCaseSymptomInput } from "../types/medical-record.types";
+import type { CaseSymptomDetail, CreateCaseSymptomInput } from "../types/medical-record.types";
 import { SymptomSelector } from "./symptom-selector";
 
 /** Tạo initials từ họ tên bệnh nhân. */
@@ -37,40 +37,70 @@ function getInitials(fullName: string | null | undefined): string {
 
 
 /** Khối tóm tắt thông tin lần khám trước (Preclinic appointment history). */
-function PreviousCaseSummary({ caseId }: { caseId: string }) {
+/** Khối tóm tắt thông tin lần khám trước (Preclinic appointment history). */
+function PreviousCaseSummary({
+  caseId,
+  onApplySymptoms,
+}: {
+  caseId: string;
+  onApplySymptoms?: (symptoms: CaseSymptomDetail[]) => void;
+}) {
   const { data: caseDetail, isLoading, isError } = useCaseDetail(caseId);
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border border-[#E7E8EB] bg-white p-4 text-xs text-muted-foreground animate-pulse">
+      <div className="rounded-lg border border-black bg-white p-4 text-xs text-muted-foreground animate-pulse">
         Đang tải thông tin lần khám trước...
       </div>
     );
   }
   if (isError) {
     return (
-      <div className="rounded-lg border border-[#E7E8EB] bg-white p-4 text-xs text-muted-foreground">
+      <div className="rounded-lg border border-black bg-white p-4 text-xs text-muted-foreground">
         Không tải được thông tin lần khám trước.
       </div>
     );
   }
   if (!caseDetail) return null;
 
+  const hasSymptoms = Boolean(caseDetail.symptoms && caseDetail.symptoms.length > 0);
   const hasContent =
+    Boolean(caseDetail.clinicalInfo) ||
     Boolean(caseDetail.finalDiagnosis) ||
     Boolean(caseDetail.doctorConclusion) ||
-    Boolean(caseDetail.symptoms && caseDetail.symptoms.length > 0);
+    hasSymptoms;
 
   return (
     <div className="rounded-lg border border-black bg-white p-5 shadow-xs">
-      <div className="mb-3 flex items-center gap-2 border-b border-gray-200 pb-2.5">
-        <History className="size-4 text-[#2E37A4]" />
-        <h3 className="font-heading text-sm font-bold text-[#0A1B39]">
-          Nội dung lần khám gần nhất ({formatIsoDate(caseDetail.visitDate)})
-        </h3>
+      <div className="mb-3 flex items-center justify-between border-b border-gray-200 pb-2.5">
+        <div className="flex items-center gap-2">
+          <History className="size-4 text-[#2E37A4]" />
+          <h3 className="font-heading text-sm font-bold text-[#0A1B39]">
+            Nội dung lần khám gần nhất ({formatIsoDate(caseDetail.visitDate)})
+          </h3>
+        </div>
+        {hasSymptoms && onApplySymptoms && (
+          <button
+            type="button"
+            onClick={() => onApplySymptoms(caseDetail.symptoms)}
+            className="rounded border border-[#2E37A4]/30 bg-[#ECEDF7] px-2 py-0.5 text-xs font-semibold text-[#2E37A4] transition-colors hover:bg-[#2E37A4] hover:text-white"
+            title="Sao chép triệu chứng lần trước sang ca khám này"
+          >
+            + Dùng lại triệu chứng này
+          </button>
+        )}
       </div>
 
       <div className="space-y-3">
+        {caseDetail.clinicalInfo && (
+          <div>
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
+              Lý do khám / Lâm sàng trước:{" "}
+            </span>
+            <span className="text-sm font-medium text-[#0A1B39]">{caseDetail.clinicalInfo}</span>
+          </div>
+        )}
+
         {caseDetail.finalDiagnosis && (
           <div>
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
@@ -89,22 +119,27 @@ function PreviousCaseSummary({ caseId }: { caseId: string }) {
           </div>
         )}
 
-        {caseDetail.symptoms && caseDetail.symptoms.length > 0 && (
+        {hasSymptoms && (
           <div>
             <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#6C7688]">
-              Triệu chứng chi tiết:
+              Triệu chứng lần khám trước:
             </span>
-            <ul className="ml-1 list-inside list-disc space-y-1 text-sm text-[#0A1B39]">
+            <div className="flex flex-wrap gap-1.5">
               {caseDetail.symptoms.map((sym, idx) => {
                 const text = sym.symptomName || sym.otherNote;
                 return text ? (
-                  <li key={`${sym.categoryId}-${sym.symptomId ?? `other-${idx}`}`} className="leading-snug">
-                    <span className="font-medium">{sym.categoryName}:</span> {text}{" "}
-                    {sym.symptomName && sym.otherNote ? `(${sym.otherNote})` : ""}
-                  </li>
+                  <Badge
+                    key={`${sym.categoryId}-${sym.symptomId ?? `other-${idx}`}`}
+                    variant="outline"
+                    className="border-[#E7E8EB] bg-[#F8F9FA] px-2.5 py-1 text-xs text-[#0A1B39]"
+                  >
+                    <span className="font-semibold text-[#2E37A4] mr-1">{sym.categoryName}:</span>
+                    {text}
+                    {sym.symptomName && sym.otherNote ? ` (${sym.otherNote})` : ""}
+                  </Badge>
                 ) : null;
               })}
-            </ul>
+            </div>
           </div>
         )}
 
@@ -403,8 +438,31 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
                 Đang tải lịch sử khám...
               </div>
             ) : previousCaseId ? (
-              <PreviousCaseSummary caseId={previousCaseId} />
-            ) : null}
+              <PreviousCaseSummary
+                caseId={previousCaseId}
+                onApplySymptoms={(prevSymptoms) => {
+                  setSymptoms(
+                    prevSymptoms.map((s) => ({
+                      categoryId: s.categoryId,
+                      symptomId: s.symptomId,
+                      otherNote: s.otherNote,
+                    }))
+                  );
+                }}
+              />
+            ) : (
+              <div className="rounded-lg border border-black bg-white p-5 shadow-xs">
+                <div className="mb-2 flex items-center gap-2 border-b border-gray-200 pb-2.5">
+                  <History className="size-4 text-[#2E37A4]" />
+                  <h3 className="font-heading text-sm font-bold text-[#0A1B39]">
+                    Lần khám gần nhất
+                  </h3>
+                </div>
+                <p className="text-xs italic text-muted-foreground">
+                  Bệnh nhân chưa có lịch sử khám trước đây.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* CỘT PHẢI: TIẾP NHẬN CA KHÁM MỚI (LÂM SÀNG & NÚT HÀNH ĐỘNG) */}
