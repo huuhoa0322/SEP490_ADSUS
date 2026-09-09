@@ -716,21 +716,15 @@ class _InputBar extends StatelessWidget {
             child: TextField(
               controller: controller,
               enabled: enabled,
-              // Tắt mọi OS-level text transformation để bộ gõ tiếng Việt
-              // (Telex/VNI) không bị strip khi gõ "ê" → "ee", "ô" → "oo", "â" → "aa".
+              // KHÔNG tắt autocorrect/enableSuggestions/spellCheckConfiguration ở đây.
               //
-              // Cần 3 thuộc tính cùng lúc:
-              //   1. autocorrect=false  — tắt word-level autocorrect
-              //   2. enableSuggestions=false — tắt suggestion bar
-              //   3. spellCheckConfiguration=SpellCheckConfiguration.disabled()
-              //      — TẮT OS spell-checker (Android). ĐÂY LÀ FIX CHÍNH.
-              //        Trên Android, dù autocorrect=false nhưng OS spell-checker
-              //        vẫn chạy và strip intermediate keystrokes (vd "ee") trước
-              //        khi Flutter nhận được. spellCheckConfiguration disabled
-              //        giải quyết triệt để vấn đề này mà không cần visiblePassword.
-              autocorrect: false,
-              enableSuggestions: false,
-              spellCheckConfiguration: SpellCheckConfiguration.disabled(),
+              // Từng bị tắt cả 3 với suy đoán rằng OS spell-checker "strip" phím gõ dở
+              // (vd "ee" trước khi ghép thành "ê") của bộ gõ Telex — sai. Bộ gõ Telex tiếng
+              // Việt (Gboard...) DÙNG CHÍNH cơ chế suggestion/composing của Android để ghép
+              // dấu; enableSuggestions=false gửi cờ TYPE_TEXT_FLAG_NO_SUGGESTIONS cho IME và
+              // phá luôn khả năng ghép, không phải bảo vệ nó. Đây là màn hình DUY NHẤT trong
+              // app từng set 3 thuộc tính này — mọi TextField khác dùng mặc định và gõ tiếng
+              // Việt bình thường, xác nhận đúng đây là nguyên nhân.
               keyboardType: TextInputType.text,
               decoration: InputDecoration(
                 hintText: 'Nhập câu hỏi…',
