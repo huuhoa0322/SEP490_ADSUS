@@ -352,8 +352,8 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
         caughtError = err;
       }
 
-      expect(caughtError).toBeInstanceOf(TypeError);
-      expect((caughtError as TypeError).message).toMatch(/cannot read properties of undefined/i);
+      expect(caughtError).toBeNull();
+      expect(screen.getByText("PT")).toBeInTheDocument();
     });
 
     it("A10. Adversarial Bug Discovery: malformed data payload where items is undefined causes TypeError", () => {
@@ -705,8 +705,8 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
         caughtError = err;
       }
 
-      expect(caughtError).toBeInstanceOf(TypeError);
-      expect((caughtError as TypeError).message).toMatch(/cannot read properties of undefined/i);
+      expect(caughtError).toBeNull();
+      expect(screen.getByText("PT")).toBeInTheDocument();
     });
 
     it("B11. Adversarial Bug Discovery: cases payload where items is undefined causes TypeError", () => {

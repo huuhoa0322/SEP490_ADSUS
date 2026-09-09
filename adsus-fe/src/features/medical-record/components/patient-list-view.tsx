@@ -40,6 +40,7 @@ const VISIT_FILTERS: VisitStatusFilter[] = ["All", "Pending", "Confirmed"];
 function getInitials(fullName: string): string {
   if (!fullName) return "PT";
   const words = fullName.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "PT";
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
@@ -229,6 +230,11 @@ export function PatientListView() {
                       {/* Cột Bệnh nhân */}
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
+                          <Avatar className="size-8 shrink-0 rounded-lg">
+                            <AvatarFallback className="rounded-lg bg-primary/10 text-xs font-bold text-primary">
+                              {getInitials(patient.fullName)}
+                            </AvatarFallback>
+                          </Avatar>
                           <div>
                             {patient.patientProfileId ? (
                               <Link

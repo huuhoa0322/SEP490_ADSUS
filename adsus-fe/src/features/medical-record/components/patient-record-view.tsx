@@ -37,6 +37,7 @@ import type { CaseStatus } from "../types/medical-record.types";
 function getInitials(fullName: string): string {
   if (!fullName) return "PT";
   const words = fullName.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "PT";
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
@@ -142,7 +143,12 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
       <div className="overflow-hidden rounded-lg border border-[#E7E8EB] bg-white p-6 shadow-xs">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            {/* Thôn tin bệnh nhân */}
+            {/* Avatar và Thông tin bệnh nhân */}
+            <Avatar className="size-20 shrink-0 rounded-xl">
+              <AvatarFallback className="rounded-xl bg-primary/10 text-2xl font-bold text-primary">
+                {getInitials(profile.fullName)}
+              </AvatarFallback>
+            </Avatar>
 
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2.5">
