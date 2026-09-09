@@ -353,6 +353,19 @@ public sealed class AppointmentService : IAppointmentService
         appointment.CancelledReason = request.CancellationReason;
         appointment.UpdatedAt = DateTime.UtcNow;
 
+        // Cập nhật Case status nếu có liên kết
+        if (appointment.CaseId.HasValue)
+        {
+            var medicalCase = await _db.Cases
+                .FirstOrDefaultAsync(c => c.CaseId == appointment.CaseId, ct);
+
+            if (medicalCase != null)
+            {
+                medicalCase.Status = CaseStatus.Cancelled;
+                medicalCase.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
         // Update slot status về OPEN
         var slot = appointment.Slot;
         slot.Status = SlotStatus.Open;
@@ -530,6 +543,19 @@ public sealed class AppointmentService : IAppointmentService
         // Chuyển sang Approved
         appointment.Status = AppointmentStatus.Approved;
         appointment.UpdatedAt = DateTime.UtcNow;
+
+        // Cập nhật Case status nếu có liên kết
+        if (appointment.CaseId.HasValue)
+        {
+            var medicalCase = await _db.Cases
+                .FirstOrDefaultAsync(c => c.CaseId == appointment.CaseId, ct);
+
+            if (medicalCase != null && medicalCase.Status == CaseStatus.Booked)
+            {
+                medicalCase.Status = CaseStatus.InProgress;
+                medicalCase.UpdatedAt = DateTime.UtcNow;
+            }
+        }
 
         await _db.SaveChangesAsync(ct);
 

@@ -67,7 +67,7 @@ public partial class AppDbContext
         {
             entity.Property(e => e.Status)
                 .HasColumnName("status")
-                .HasDefaultValue(CaseStatus.Created);
+                .HasDefaultValue(CaseStatus.InProgress);
         });
 
         // Cột của Module 7 nhưng phải map ở đây: CaseResponse nhúng trạng thái đơn thuốc (#23).
