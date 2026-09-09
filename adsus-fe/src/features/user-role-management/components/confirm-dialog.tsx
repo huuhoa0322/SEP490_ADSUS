@@ -49,7 +49,7 @@ export function ConfirmDialog({
         <div className="flex items-start gap-3.5">
           <span
             className={`flex size-10 shrink-0 items-center justify-center rounded-full ${
-              destructive ? "bg-destructive/12 text-destructive" : "bg-accent/12 text-accent"
+              destructive ? "bg-destructive/12 text-destructive" : "bg-[var(--success)]/12 text-[var(--success)]"
             }`}
           >
             <AlertTriangle className="size-5" />
@@ -88,7 +88,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             disabled={isPending}
             className={`flex items-center gap-2 rounded-full px-5 py-2.5 font-heading text-sm font-600 uppercase tracking-wider text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-              destructive ? "bg-destructive hover:bg-destructive/90" : "bg-accent hover:bg-accent/90"
+              destructive ? "bg-destructive hover:bg-destructive/90" : "bg-[var(--success)] hover:bg-[var(--success)]/90"
             }`}
           >
             {isPending && <Loader2 className="size-4 animate-spin" />}

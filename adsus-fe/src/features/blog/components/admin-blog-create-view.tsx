@@ -66,7 +66,7 @@ export function AdminBlogCreateView() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
-            className="h-14 w-full rounded-full border border-border bg-background px-5 text-[15px] outline-none transition-colors focus:border-accent"
+            className="h-14 w-full rounded-full border border-border bg-background px-5 text-[15px] outline-none transition-colors focus:border-[var(--success)]"
             placeholder="Nhập tiêu đề bài viết..."
           />
         </label>
@@ -81,7 +81,7 @@ export function AdminBlogCreateView() {
             onChange={(e) => setContent(e.target.value)}
             required
             rows={15}
-            className="w-full rounded-2xl border border-border bg-background px-5 py-4 font-mono text-sm outline-none transition-colors focus:border-accent"
+            className="w-full rounded-2xl border border-border bg-background px-5 py-4 font-mono text-sm outline-none transition-colors focus:border-[var(--success)]"
             placeholder="Nhập nội dung bài viết (Markdown)..."
           />
         </label>
@@ -104,7 +104,7 @@ export function AdminBlogCreateView() {
           <button
             type="submit"
             disabled={createMutation.isPending || !title.trim() || !content.trim()}
-            className="flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex items-center gap-2 rounded-full bg-[var(--success)] px-6 py-2.5 font-heading text-sm font-600 uppercase tracking-wider text-text-white shadow-lg shadow-[var(--success)]/25 transition-all hover:bg-[var(--success)]/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Send className="size-4" />
             {createMutation.isPending ? "Đang tạo..." : "Tạo bài viết"}

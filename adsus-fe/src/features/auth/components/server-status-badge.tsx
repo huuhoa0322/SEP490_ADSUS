@@ -56,12 +56,12 @@ export function ServerStatusBadge() {
         </>
       ) : showSuccess ? (
         <>
-          <CheckCircle2 aria-hidden className="size-3.5 text-accent" />
+          <CheckCircle2 aria-hidden className="size-3.5 text-[var(--success)]" />
           <span>Đã kết nối đến máy chủ</span>
         </>
       ) : isSlow ? (
         <>
-          <Loader2 aria-hidden className="size-3.5 animate-spin text-accent" />
+          <Loader2 aria-hidden className="size-3.5 animate-spin text-[var(--success)]" />
           <span>Đang kết nối đến máy chủ, vui lòng đợi trong giây lát...</span>
         </>
       ) : (

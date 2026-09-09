@@ -169,7 +169,7 @@ export const InventoryImportForm = () => {
 
   return (
     <>
-      <div className="w-full space-y-6">
+      <div className="w-full space-y-4 max-w-4xl mx-auto">
 
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>

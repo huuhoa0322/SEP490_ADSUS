@@ -24,10 +24,10 @@ export function BlogListView() {
     <div className="min-h-screen bg-muted">
       {/* Hero Header */}
       <div className="relative overflow-hidden border-b border-border bg-background">
-        <div className="absolute inset-x-0 bottom-0 h-[3px] bg-gradient-to-r from-primary to-accent" />
+        <div className="absolute inset-x-0 bottom-0 h-[3px] bg-gradient-to-r from-primary to-[var(--success)]" />
         <div className="mx-auto max-w-4xl px-6 py-14">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-700 uppercase tracking-wider text-accent">
-            <span className="size-1.5 rounded-full bg-accent" />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--success)]/10 px-3 py-1 text-xs font-700 uppercase tracking-wider text-[var(--success)]">
+            <span className="size-1.5 rounded-full bg-[var(--success)]" />
             Kiến thức y khoa
           </span>
           <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight text-foreground">
@@ -103,14 +103,14 @@ function HeroPost({ post }: { post: BlogPostListItemResponse }) {
   return (
     <Link
       href={`/blog/${post.id}`}
-      className="group block rounded-2xl border border-border bg-background p-6 transition-all hover:border-accent hover:shadow-md"
+      className="group block rounded-2xl border border-border bg-background p-6 transition-all hover:border-[var(--success)] hover:shadow-md"
     >
       <div className="mb-3">
-        <span className="inline-block rounded-full bg-accent/10 px-3 py-1 text-xs font-700 uppercase tracking-wider text-accent">
+        <span className="inline-block rounded-full bg-[var(--success)]/10 px-3 py-1 text-xs font-700 uppercase tracking-wider text-[var(--success)]">
           Bài viết nổi bật
         </span>
       </div>
-      <h2 className="font-heading text-2xl font-bold leading-snug text-foreground group-hover:text-accent">
+      <h2 className="font-heading text-2xl font-bold leading-snug text-foreground group-hover:text-[var(--success)]">
         {post.title}
       </h2>
       <p className="mt-2 line-clamp-2 text-muted-foreground">
@@ -136,16 +136,16 @@ function ArticleCard({ post }: { post: BlogPostListItemResponse }) {
   return (
     <Link
       href={`/blog/${post.id}`}
-      className="group flex gap-4 rounded-2xl border border-border bg-background p-4 transition-all hover:border-accent hover:shadow-sm"
+      className="group flex gap-4 rounded-2xl border border-border bg-background p-4 transition-all hover:border-[var(--success)] hover:shadow-sm"
     >
       {/* Thumbnail placeholder */}
-      <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent/10 to-accent/5 text-3xl text-accent">
+      <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--success)]/10 to-[var(--success)]/5 text-3xl text-[var(--success)]">
         📖
       </div>
 
       <div className="flex flex-1 flex-col justify-between">
         <div>
-          <h3 className="font-heading text-base font-semibold leading-snug text-foreground group-hover:text-accent">
+          <h3 className="font-heading text-base font-semibold leading-snug text-foreground group-hover:text-[var(--success)]">
             {post.title}
           </h3>
           <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">

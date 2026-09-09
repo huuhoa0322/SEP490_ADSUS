@@ -26,7 +26,7 @@ const ShiftDetailBlock = ({ info, title }: { info?: ShiftInfo; title: string }) 
 
   const getStatusBadge = (status: ShiftInfo['status']) => {
     switch (status) {
-      case 'WORKING': return <Badge className="bg-accent/12 text-accent hover:bg-accent/12 border-none">Đang làm việc</Badge>;
+      case 'WORKING': return <Badge className="bg-[var(--success)]/12 text-[var(--success)] hover:bg-[var(--success)]/12 border-none">Đang làm việc</Badge>;
       case 'OFF': return <Badge className="bg-muted text-muted-foreground hover:bg-muted border-none">Nghỉ</Badge>;
       case 'HAS_BOOKINGS': return <Badge className="bg-[var(--chart-3)]/12 text-[var(--chart-3)] hover:bg-[var(--chart-3)]/12 border-none">Có lịch hẹn</Badge>;
       case 'PAST': return <Badge className="bg-muted text-muted-foreground/70 hover:bg-muted border-none">Đã qua</Badge>;

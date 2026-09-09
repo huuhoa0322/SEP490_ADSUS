@@ -98,7 +98,7 @@ export function MedicineList() {
           {!isDoctor && (
             <button
               onClick={handleOpenCreate}
-              className="flex h-12 items-center gap-2 rounded-full bg-accent px-6 font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90"
+              className="flex h-12 items-center gap-2 rounded-full bg-[var(--success)] px-6 font-heading text-sm font-600 uppercase tracking-wider text-white shadow-lg shadow-[var(--success)]/25 transition-all hover:bg-[var(--success)]/90"
             >
               <PlusCircle className="size-4" />
               Thêm thuốc mới
@@ -167,7 +167,7 @@ export function MedicineList() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-accent"
+            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-[var(--success)]"
           />
         </div>
         <select
@@ -176,7 +176,7 @@ export function MedicineList() {
             setInStockFilter(e.target.value as "all" | "in_stock" | "out_of_stock");
             setPage(1);
           }}
-          className="h-12 rounded-full border border-border bg-background px-5 text-[15px] outline-none focus:border-accent"
+          className="h-12 rounded-full border border-border bg-background px-5 text-[15px] outline-none focus:border-[var(--success)]"
         >
           <option value="all">Tất cả trạng thái</option>
           <option value="in_stock">Còn hàng</option>
@@ -230,7 +230,7 @@ export function MedicineList() {
                     )}
                   </td>
                   <td className="px-5 py-4">
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-600 ${medicine.status === "ACTIVE" ? "bg-accent/12 text-accent" : "bg-destructive/12 text-destructive"}`}>
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-600 ${medicine.status === "ACTIVE" ? "bg-[var(--success)]/12 text-[var(--success)]" : "bg-destructive/12 text-destructive"}`}>
                       {medicine.status === "ACTIVE" ? "Đang sử dụng" : "Ngừng sử dụng"}
                     </span>
                   </td>

@@ -77,7 +77,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
             {post && !isEditing && post.status === "DRAFT" && (
               <button
                 onClick={() => setIsEditing(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/10"
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--success)] px-4 py-2 text-sm font-medium text-[var(--success)] transition-colors hover:bg-[var(--success)]/10"
               >
                 Chỉnh sửa
               </button>
@@ -115,7 +115,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
                         type="text"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="w-full rounded-lg border border-border px-4 py-2 text-2xl font-bold focus:border-[var(--accent)] focus:outline-none"
+                        className="w-full rounded-lg border border-border px-4 py-2 text-2xl font-bold focus:border-[var(--success)] focus:outline-none"
                         placeholder="Tiêu đề bài viết"
                       />
                     ) : (
@@ -139,7 +139,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
                   <button
                     onClick={handlePublish}
                     disabled={publishMutation.isPending}
-                    className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent)]/90 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-lg bg-[var(--success)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--success)]/90 disabled:opacity-50"
                   >
                     <CheckCircle className="h-4 w-4" />
                     {publishMutation.isPending ? "Đang xuất bản..." : "Xuất bản"}
@@ -158,7 +158,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   rows={12}
-                  className="w-full rounded-lg border border-border px-4 py-3 font-mono text-sm focus:border-[var(--accent)] focus:outline-none"
+                  className="w-full rounded-lg border border-border px-4 py-3 font-mono text-sm focus:border-[var(--success)] focus:outline-none"
                   placeholder="Nội dung bài viết (Markdown)"
                 />
               ) : (
@@ -184,7 +184,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
                 <button
                   onClick={handleSave}
                   disabled={updateMutation.isPending}
-                  className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent)]/90 disabled:opacity-50"
+                  className="rounded-lg bg-[var(--success)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--success)]/90 disabled:opacity-50"
                 >
                   {updateMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"}
                 </button>
@@ -205,13 +205,13 @@ export function AdminBlogDetailView({ id }: { id: string }) {
             )}
 
             {updateMutation.isSuccess && (
-              <div className="rounded-lg border border-[var(--accent)]/25 bg-[var(--accent)]/5 p-4 text-sm text-[var(--accent)]">
+              <div className="rounded-lg border border-[var(--success)]/25 bg-[var(--success)]/5 p-4 text-sm text-[var(--success)]">
                 Bài viết đã được lưu thành công.
               </div>
             )}
 
             {publishMutation.isSuccess && (
-              <div className="rounded-lg border border-[var(--accent)]/25 bg-[var(--accent)]/5 p-4 text-sm text-[var(--accent)]">
+              <div className="rounded-lg border border-[var(--success)]/25 bg-[var(--success)]/5 p-4 text-sm text-[var(--success)]">
                 Bài viết đã được xuất bản thành công.
               </div>
             )}

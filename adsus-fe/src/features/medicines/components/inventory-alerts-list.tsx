@@ -1,38 +1,19 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useInventoryAlerts, useTriggerInventoryAlerts } from '@/features/medicines/api/inventory.api';
-import { PackageX, Target, Calendar, Info, Search, Send } from 'lucide-react';
+import { useInventoryAlerts } from '@/features/medicines/api/inventory.api';
+import { PackageX, Target, Calendar, Info, Search } from 'lucide-react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import toast from 'react-hot-toast';
 import { PaginationNumbered } from '@/components/ui/pagination-numbered';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAuthStore } from '@/store/auth-store';
 
 export function InventoryAlertsList() {
-  const user = useAuthStore((s) => s.user);
-  const isDoctor = user?.role === "DOCTOR";
   const { data: summary, isLoading, isError } = useInventoryAlerts();
-  const { mutate: triggerAlerts, isPending: isTriggering } = useTriggerInventoryAlerts();
-  
+
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [searchTerm, setSearchTerm] = useState('');
   const [alertTypeFilter, setAlertTypeFilter] = useState('ALL');
-
-  const handleTrigger = () => {
-    triggerAlerts(undefined, {
-      onSuccess: (data) => {
-        toast.success(data.message || "Thành công");
-      },
-      onError: (error: unknown) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const err = error as any;
-        toast.error(err?.response?.data?.message || "Đã có lỗi xảy ra");
-      }
-    });
-  };
 
   const combinedAlerts = useMemo(() => {
     if (!summary) return [];
@@ -161,7 +142,7 @@ export function InventoryAlertsList() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <div className="relative min-w-64 flex-1">
+        <div className="relative min-w-72 flex-1">
           <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             placeholder="Tìm theo tên thuốc, số lô..."
@@ -170,7 +151,7 @@ export function InventoryAlertsList() {
               setSearchTerm(e.target.value);
               setPage(1);
             }}
-            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-accent"
+            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-[var(--success)]"
           />
         </div>
         <Select
@@ -190,18 +171,6 @@ export function InventoryAlertsList() {
             <SelectItem value="LOW_STOCK">Sắp hết hàng</SelectItem>
           </SelectContent>
         </Select>
-
-        {!isDoctor && (
-          <Button 
-            onClick={handleTrigger} 
-            disabled={isTriggering}
-            className="h-12 rounded-full px-6 gap-2"
-            variant="outline"
-          >
-            <Send className="size-4" />
-            {isTriggering ? 'Đang gửi...' : 'Test Gửi Thông Báo'}
-          </Button>
-        )}
       </div>
 
       <div className="overflow-hidden overflow-x-auto rounded-3xl border border-border bg-background">

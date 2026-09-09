@@ -37,6 +37,7 @@ const highlights = [
 const LOGIN_PALETTE_OVERRIDE = {
   "--primary": "#223a66",
   "--accent": "#1cba9f",
+  "--success": "#1cba9f",
 } as CSSProperties;
 
 export default function LoginPage() {
@@ -57,7 +58,7 @@ export default function LoginPage() {
         {/* Blurred blobs in the two accent colours, for depth */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -left-32 -top-32 size-[28rem] rounded-full bg-accent/15 blur-3xl"
+          className="pointer-events-none absolute -left-32 -top-32 size-[28rem] rounded-full bg-[var(--success)]/15 blur-3xl"
         />
         <div
           aria-hidden
@@ -69,8 +70,8 @@ export default function LoginPage() {
 
         <div className="relative max-w-2xl motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-left-4 motion-safe:duration-700">
           <div className="flex items-center gap-3.5">
-            <span className="flex size-12 items-center justify-center rounded-full bg-accent">
-              <ScanLine className="size-6 text-accent-foreground" />
+            <span className="flex size-12 items-center justify-center rounded-full bg-[var(--success)]">
+              <ScanLine className="size-6 text-white" />
             </span>
             <span className="text-2xl font-bold tracking-[-0.02em]">
               ADSUS
@@ -86,7 +87,7 @@ export default function LoginPage() {
           {/* Short accent rule under the heading — a recurring motif in the template */}
           <span
             aria-hidden
-            className="mt-6 block h-1 w-16 rounded-full bg-accent"
+            className="mt-6 block h-1 w-16 rounded-full bg-[var(--success)]"
           />
 
           <p className="mt-6 text-[15px] leading-relaxed text-primary-foreground/65">
