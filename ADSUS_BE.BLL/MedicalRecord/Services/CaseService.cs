@@ -188,7 +188,7 @@ public sealed class CaseService : ICaseService
             DoctorId = doctor.UserId,
             VisitDate = ClinicClock.Today(),
             ClinicalInfo = request.ClinicalInfo,
-            Status = CaseStatus.Created,
+            Status = CaseStatus.InProgress,
             CreatedAt = now,
             UpdatedAt = now,
             CaseSymptoms = request.Symptoms?.Select(s => new CaseSymptom

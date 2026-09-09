@@ -28,6 +28,7 @@ export function AiModelDetailDialog({ open, model, onClose }: AiModelDetailDialo
           <button
             type="button"
             onClick={onClose}
+            aria-label="Đóng"
             className="rounded-full p-2 text-muted-foreground hover:bg-secondary transition-colors"
           >
             <X className="size-5" />

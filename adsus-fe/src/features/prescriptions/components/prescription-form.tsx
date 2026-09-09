@@ -372,6 +372,7 @@ function MedicineCombobox({
           <button
             type="button"
             onClick={handleClear}
+            aria-label="Xoá tên thuốc đã nhập"
             className="shrink-0 rounded-full p-1 text-foreground hover:bg-red-50 hover:text-red-500"
           >
             <X className="size-3" />

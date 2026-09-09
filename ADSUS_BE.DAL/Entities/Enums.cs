@@ -57,17 +57,20 @@ public enum AppointmentStatus
 
 /// <summary>
 /// Trạng thái ca khám — enum <c>case_status</c> trong DB (Module 4, lõi đề tài).
-/// Vòng đời một chiều:
-///   Created → Confirmed (bác sĩ kết luận, chưa kê đơn) → END (bác sĩ đã kê đơn thuốc).
+/// Vòng đời:
+///   BOOKED (từ mobile) → IN_PROGRESS (checkin) → CONFIRMED → END (có đơn thuốc)
+///   BOOKED → CANCELLED (no-show hoặc hủy lịch)
 /// END là trạng thái cuối — không có đường lùi (GB-01).
-/// BOOKED được tạo tự động khi bệnh nhân đặt lịch khám (kèm triệu chứng).
+/// CREATED giữ lại để tương thích với DB cũ.
 /// </summary>
 public enum CaseStatus
 {
-    [PgName("CREATED")] Created,
-    [PgName("CONFIRMED")] Confirmed,
-    [PgName("END")] End,
-    [PgName("BOOKED")] Booked,
+    [PgName("BOOKED")] Booked,            // Từ mobile booking (chưa checkin)
+    [PgName("IN_PROGRESS")] InProgress,   // Checkin thành công, đang khám
+    [PgName("CONFIRMED")] Confirmed,      // Bác sĩ kết luận
+    [PgName("END")] End,                  // Hoàn thành (có đơn thuốc)
+    [PgName("CANCELLED")] Cancelled,       // NoShow hoặc bệnh nhân hủy
+    [PgName("CREATED")] Created,          // Tương thích DB cũ
 }
 
 /// <summary>
