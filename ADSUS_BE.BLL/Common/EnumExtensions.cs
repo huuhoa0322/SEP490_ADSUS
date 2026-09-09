@@ -21,10 +21,12 @@ public static class EnumExtensions
     /// </summary>
     public static string ToApiString(this CaseStatus status) => status switch
     {
-        CaseStatus.Created => "CREATED",
-        CaseStatus.End => "END",
-        CaseStatus.Confirmed => "CONFIRMED",
         CaseStatus.Booked => "BOOKED",
+        CaseStatus.InProgress => "IN_PROGRESS",
+        CaseStatus.Confirmed => "CONFIRMED",
+        CaseStatus.End => "END",
+        CaseStatus.Cancelled => "CANCELLED",
+        CaseStatus.Created => "CREATED",
         _ => throw new ArgumentOutOfRangeException(nameof(status)),
     };
 

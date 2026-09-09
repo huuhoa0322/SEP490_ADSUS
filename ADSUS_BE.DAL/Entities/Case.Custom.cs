@@ -12,5 +12,5 @@ namespace ADSUS_BE.DAL.Entities;
 public partial class Case
 {
     [Column("status")]
-    public CaseStatus Status { get; set; } = CaseStatus.Created;
+    public CaseStatus Status { get; set; } = CaseStatus.InProgress;
 }
