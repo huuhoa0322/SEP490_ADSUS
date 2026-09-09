@@ -44,11 +44,10 @@ class AdherencePillBadge extends StatelessWidget {
         children: [
           Text(
             displayText,
-            style: TextStyle(
+            style: AppFonts.mono(
               color: textColor,
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              fontFamily: 'JetBrains Mono',
             ),
           ),
           if (label != null) ...[

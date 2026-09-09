@@ -424,11 +424,10 @@ class _DayAxisCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     _formatTime(now),
-                    style: const TextStyle(
+                    style: AppFonts.mono(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
                       color: AppColors.navy,
-                      fontFamily: 'monospace',
                     ),
                   ),
                 ],
@@ -514,11 +513,10 @@ class _DayAxisCard extends StatelessWidget {
                           alignment: Alignment.center,
                           child: Text(
                             m.label,
-                            style: const TextStyle(
+                            style: AppFonts.mono(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
-                              fontFamily: 'monospace',
                             ),
                           ),
                         ),
@@ -532,12 +530,12 @@ class _DayAxisCard extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text('00', style: TextStyle(fontSize: 10, fontFamily: 'monospace', color: AppColors.muted)),
-              Text('06', style: TextStyle(fontSize: 10, fontFamily: 'monospace', color: AppColors.muted)),
-              Text('12', style: TextStyle(fontSize: 10, fontFamily: 'monospace', color: AppColors.muted)),
-              Text('18', style: TextStyle(fontSize: 10, fontFamily: 'monospace', color: AppColors.muted)),
-              Text('24', style: TextStyle(fontSize: 10, fontFamily: 'monospace', color: AppColors.muted)),
+            children: [
+              Text('00', style: AppFonts.mono(fontSize: 10, color: AppColors.muted)),
+              Text('06', style: AppFonts.mono(fontSize: 10, color: AppColors.muted)),
+              Text('12', style: AppFonts.mono(fontSize: 10, color: AppColors.muted)),
+              Text('18', style: AppFonts.mono(fontSize: 10, color: AppColors.muted)),
+              Text('24', style: AppFonts.mono(fontSize: 10, color: AppColors.muted)),
             ],
           ),
           const SizedBox(height: 8),
@@ -700,11 +698,10 @@ class _IntakePendingCard extends ConsumerWidget {
                   ),
                   child: Text(
                     _slotTimeLabel(localTime),
-                    style: const TextStyle(
+                    style: AppFonts.mono(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: AppColors.teal,
-                      fontFamily: 'monospace',
                     ),
                   ),
                 ),
@@ -844,11 +841,10 @@ class _IntakeOvertimeCard extends ConsumerWidget {
                   ),
                   child: Text(
                     _slotTimeLabel(localTime),
-                    style: const TextStyle(
+                    style: AppFonts.mono(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: AppColors.danger,
-                      fontFamily: 'monospace',
                     ),
                   ),
                 ),
@@ -991,11 +987,10 @@ class _IntakeTakenCard extends StatelessWidget {
               ),
               child: Text(
                 _slotTimeLabel(log.scheduledTimeUtc.toLocal()),
-                style: const TextStyle(
+                style: AppFonts.mono(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: AppColors.success,
-                  fontFamily: 'monospace',
                 ),
               ),
             ),
@@ -1029,11 +1024,10 @@ class _IntakeTakenCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         'Đã xác nhận lúc ${_formatTime(localTime)}',
-                        style: const TextStyle(
+                        style: AppFonts.mono(
                           fontSize: 12,
                           color: AppColors.success,
                           fontWeight: FontWeight.w500,
-                          fontFamily: 'monospace',
                         ),
                       ),
                     ],
@@ -1174,11 +1168,10 @@ class _TimeSlotRow extends StatelessWidget {
               ),
               child: Text(
                 _formatTimeOfDay(time),
-                style: const TextStyle(
+                style: AppFonts.mono(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.navy,
-                  fontFamily: 'monospace',
                 ),
               ),
             ),

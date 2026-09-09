@@ -64,7 +64,6 @@ class _CancelReasonSheetState extends State<CancelReasonSheet> {
             const Text(
               'Hủy lịch khám',
               style: TextStyle(
-                fontFamily: 'serif',
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppColors.navy,
