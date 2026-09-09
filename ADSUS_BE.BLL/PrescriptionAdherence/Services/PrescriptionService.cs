@@ -7,6 +7,7 @@ using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.PrescriptionAdherence;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 
 namespace ADSUS_BE.BLL.PrescriptionAdherence.Services;
 
@@ -25,6 +26,7 @@ public sealed class PrescriptionService : IPrescriptionService
     private readonly ICaseRepository _caseRepo;
     private readonly IUserRepository _userRepo;
     private readonly IMedicineRepository _medicineRepo;
+    private readonly IAppointmentService _appointmentService;
 
     public PrescriptionService(
         AppDbContext db,
@@ -33,7 +35,8 @@ public sealed class PrescriptionService : IPrescriptionService
         IMedicationIntakeLogRepository intakeLogRepo,
         ICaseRepository caseRepo,
         IUserRepository userRepo,
-        IMedicineRepository medicineRepo)
+        IMedicineRepository medicineRepo,
+        IAppointmentService appointmentService)
     {
         _db = db;
         _prescriptionRepo = prescriptionRepo;
@@ -42,6 +45,7 @@ public sealed class PrescriptionService : IPrescriptionService
         _caseRepo = caseRepo;
         _userRepo = userRepo;
         _medicineRepo = medicineRepo;
+        _appointmentService = appointmentService;
     }
 
     public async Task<PrescriptionResponse> CreateAsync(
@@ -60,100 +64,125 @@ public sealed class PrescriptionService : IPrescriptionService
         if (doctor.Status != UserStatus.Active)
             throw new BusinessException("Tài khoản bác sĩ đang không hoạt động.");
 
-        // UC-18 BR-01: Validate case is Confirmed
-        var caseEntity = await _caseRepo.GetByIdAsync(request.CaseId, ct);
-        if (caseEntity is null)
-            throw new ResourceNotFoundException($"Ca khám '{request.CaseId}' không tồn tại.");
-
-        if (caseEntity.Status != CaseStatus.Confirmed)
-            throw new BusinessException("Chỉ ca đã được duyệt (Confirmed) mới được kê đơn thuốc.");
-
-        // Validate case belongs to this doctor
-        if (caseEntity.DoctorId != actorId)
-            throw new BusinessException("Bác sĩ không có quyền kê đơn cho ca khám này.");
-
-        // Option A: lookup by name (case-insensitive).
-        // Handles doctor picks from catalog.
-        var medicineCache = new Dictionary<string, (Guid Id, string? Unit, decimal VolumePerBaseUnit)>(StringComparer.OrdinalIgnoreCase);
-
-        var now = DateTime.UtcNow;
-
-        // Create prescription
-        var prescription = new Prescription
+        var isRelational = _db.Database.IsRelational();
+        var transaction = isRelational ? await _db.Database.BeginTransactionAsync(ct) : null;
+        try
         {
-            PrescriptionId = Guid.NewGuid(),
-            CaseId = request.CaseId,
-            DoctorId = actorId,
-            PrescribedDate = DateOnly.FromDateTime(now),
-            GeneralNote = request.GeneralNote,
-            CreatedAt = now,
-            UpdatedAt = now,
-            Status = PrescriptionStatus.Active,
-        };
+            // UC-18 BR-01: Validate case is Confirmed
+            var caseEntity = await _caseRepo.GetByIdAsync(request.CaseId, ct);
+            if (caseEntity is null)
+                throw new ResourceNotFoundException($"Ca khám '{request.CaseId}' không tồn tại.");
 
-        await _prescriptionRepo.AddAsync(prescription, ct);
+            if (caseEntity.Status != CaseStatus.Confirmed)
+                throw new BusinessException("Chỉ ca đã được duyệt (Confirmed) mới được kê đơn thuốc.");
 
-        foreach (var itemDto in request.Items)
-        {
-            var itemId = Guid.NewGuid();
+            // Validate case belongs to this doctor
+            if (caseEntity.DoctorId != actorId)
+                throw new BusinessException("Bác sĩ không có quyền kê đơn cho ca khám này.");
 
-            // Lookup medicine by name
-            if (!medicineCache.TryGetValue(itemDto.MedicineName, out var medicineInfo))
+            // Option A: lookup by name (case-insensitive).
+            // Handles doctor picks from catalog.
+            var medicineCache = new Dictionary<string, (Guid Id, string? Unit, decimal VolumePerBaseUnit)>(StringComparer.OrdinalIgnoreCase);
+
+            var now = DateTime.UtcNow;
+
+            // Create prescription
+            var prescription = new Prescription
             {
-                var existing = await _medicineRepo.FindByNameAsync(itemDto.MedicineName, ct);
-                if (existing is null || existing.Status == MedicineStatus.Inactive)
-                {
-                    throw new BusinessException($"Thuốc '{itemDto.MedicineName}' không tồn tại trong hệ thống hoặc đã bị ngừng sử dụng. Vui lòng chọn thuốc từ danh sách.");
-                }
-                
-                medicineInfo = (existing.MedicineId, existing.UsageUnit, existing.VolumePerBaseUnit ?? 1m);
-                medicineCache[itemDto.MedicineName] = medicineInfo;
-            }
-
-            var quantityUSNeeded = itemDto.QuantityPerDose * itemDto.ScheduleSlots.Count * itemDto.DurationDays;
-            decimal volumePerBaseUnit = medicineInfo.VolumePerBaseUnit;
-            
-            var totalAvailableBS = await _db.MedicineBatches
-                .Where(b => b.MedicineId == medicineInfo.Id && b.QuantityBase > 0 && b.ExpiryDate >= DateOnly.FromDateTime(now))
-                .SumAsync(b => b.QuantityBase, ct);
-            var totalAvailableUS = (int)(totalAvailableBS * volumePerBaseUnit);
-
-            if (quantityUSNeeded > totalAvailableUS)
-            {
-                throw new BusinessException($"Thuốc '{itemDto.MedicineName}' không đủ số lượng trong kho. Yêu cầu: {quantityUSNeeded} {medicineInfo.Unit ?? "đơn vị"}, Hiện còn: {totalAvailableUS} {medicineInfo.Unit ?? "đơn vị"}.");
-            }
-
-            var prescriptionItem = new PrescriptionItem
-            {
-                PrescriptionItemId = itemId,
-                PrescriptionId = prescription.PrescriptionId,
-                MedicineId = medicineInfo.Id,
-                Dosage = $"{itemDto.QuantityPerDose} {medicineInfo.Unit ?? "đơn vị"}",
-                DurationDays = itemDto.DurationDays,
-                StartDate = itemDto.StartDate,
-                Instructions = itemDto.Instructions,
-                QuantityBase = quantityUSNeeded,
-                ScheduleSlots = itemDto.ScheduleSlots
-                    .Select(s => (ReminderSlot)(int)s)
-                    .ToArray(),
+                PrescriptionId = Guid.NewGuid(),
+                CaseId = request.CaseId,
+                DoctorId = actorId,
+                PrescribedDate = DateOnly.FromDateTime(now),
+                GeneralNote = request.GeneralNote,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Status = PrescriptionStatus.Active,
             };
-            await _itemRepo.AddAsync(prescriptionItem, ct);
+
+            await _prescriptionRepo.AddAsync(prescription, ct);
+
+            foreach (var itemDto in request.Items)
+            {
+                var itemId = Guid.NewGuid();
+
+                // Lookup medicine by name
+                if (!medicineCache.TryGetValue(itemDto.MedicineName, out var medicineInfo))
+                {
+                    var existing = await _medicineRepo.FindByNameAsync(itemDto.MedicineName, ct);
+                    if (existing is null || existing.Status == MedicineStatus.Inactive)
+                    {
+                        throw new BusinessException($"Thuốc '{itemDto.MedicineName}' không tồn tại trong hệ thống hoặc đã bị ngừng sử dụng. Vui lòng chọn thuốc từ danh sách.");
+                    }
+                    
+                    medicineInfo = (existing.MedicineId, existing.UsageUnit, existing.VolumePerBaseUnit ?? 1m);
+                    medicineCache[itemDto.MedicineName] = medicineInfo;
+                }
+
+                var quantityUSNeeded = itemDto.QuantityPerDose * itemDto.ScheduleSlots.Count * itemDto.DurationDays;
+                decimal volumePerBaseUnit = medicineInfo.VolumePerBaseUnit;
+                
+                var totalAvailableBS = await _db.MedicineBatches
+                    .Where(b => b.MedicineId == medicineInfo.Id && b.QuantityBase > 0 && b.ExpiryDate >= DateOnly.FromDateTime(now))
+                    .SumAsync(b => b.QuantityBase, ct);
+                var totalAvailableUS = (int)(totalAvailableBS * volumePerBaseUnit);
+
+                if (quantityUSNeeded > totalAvailableUS)
+                {
+                    throw new BusinessException($"Thuốc '{itemDto.MedicineName}' không đủ số lượng trong kho. Yêu cầu: {quantityUSNeeded} {medicineInfo.Unit ?? "đơn vị"}, Hiện còn: {totalAvailableUS} {medicineInfo.Unit ?? "đơn vị"}.");
+                }
+
+                var prescriptionItem = new PrescriptionItem
+                {
+                    PrescriptionItemId = itemId,
+                    PrescriptionId = prescription.PrescriptionId,
+                    MedicineId = medicineInfo.Id,
+                    Dosage = $"{itemDto.QuantityPerDose} {medicineInfo.Unit ?? "đơn vị"}",
+                    DurationDays = itemDto.DurationDays,
+                    StartDate = itemDto.StartDate,
+                    Instructions = itemDto.Instructions,
+                    QuantityBase = quantityUSNeeded,
+                    ScheduleSlots = itemDto.ScheduleSlots
+                        .Select(s => (ReminderSlot)(int)s)
+                        .ToArray(),
+                };
+                await _itemRepo.AddAsync(prescriptionItem, ct);
+            }
+
+            // Tạo lịch hẹn tái khám (nếu có)
+            if (request.FollowUp != null)
+            {
+                await _appointmentService.CreateFollowUpAppointmentAsync(actorId, request.FollowUp, ct);
+            }
+
+            // Sau khi tạo đơn thuốc → tự động chuyển ca sang END (trạng thái cuối).
+            // Dùng GetForUpdateAsync để lấy entity có theo dõi thay đổi.
+            var trackedCase = await _caseRepo.GetForUpdateAsync(request.CaseId, ct)
+                ?? throw new ResourceNotFoundException($"Ca '{request.CaseId}' not found.");
+            trackedCase.Status = CaseStatus.End;
+            trackedCase.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync(ct);
+            
+            if (transaction != null)
+                await transaction.CommitAsync(ct);
+
+            // Reload with navigation for response
+            var response = await _prescriptionRepo.GetByIdAsync(prescription.PrescriptionId, ct)
+                ?? throw new InvalidOperationException("Prescription not found after save.");
+
+            return PrescriptionResponseMapper.FromEntity(response);
         }
-
-        // Sau khi tạo đơn thuốc → tự động chuyển ca sang END (trạng thái cuối).
-        // Dùng GetForUpdateAsync để lấy entity có theo dõi thay đổi.
-        var trackedCase = await _caseRepo.GetForUpdateAsync(request.CaseId, ct)
-            ?? throw new ResourceNotFoundException($"Ca '{request.CaseId}' not found.");
-        trackedCase.Status = CaseStatus.End;
-        trackedCase.UpdatedAt = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync(ct);
-
-        // Reload with navigation for response
-        var response = await _prescriptionRepo.GetByIdAsync(prescription.PrescriptionId, ct)
-            ?? throw new InvalidOperationException("Prescription not found after save.");
-
-        return PrescriptionResponseMapper.FromEntity(response);
+        catch
+        {
+            if (transaction != null)
+                await transaction.RollbackAsync(ct);
+            throw;
+        }
+        finally
+        {
+            if (transaction != null)
+                await transaction.DisposeAsync();
+        }
     }
 
     public async Task<PrescriptionResponse?> GetByCaseIdAsync(Guid caseId, CancellationToken ct = default)

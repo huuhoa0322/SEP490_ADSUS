@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { format } from "date-fns";
+import { Calendar, Clock, FileText } from "lucide-react";
 import { useScheduleSlots } from "../hooks/use-schedule-slot";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -56,15 +57,17 @@ export function FollowUpSection({
           checked={isFollowUp} 
           onCheckedChange={(checked) => setIsFollowUp(checked === true)} 
         />
-        <Label htmlFor="is-follow-up" className="text-base font-bold text-primary cursor-pointer">
-          🔄 Hẹn tái khám
+        <Label htmlFor="is-follow-up" className="flex items-center text-base font-bold text-primary cursor-pointer">
+          Hẹn tái khám
         </Label>
       </div>
 
       {isFollowUp && (
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="follow-up-date">📅 Ngày tái khám <span className="text-red-500">*</span></Label>
+            <Label htmlFor="follow-up-date" className="flex items-center">
+              <Calendar className="mr-2 size-4" /> Ngày tái khám <span className="ml-1 text-red-500">*</span>
+            </Label>
             <DatePicker
               id="follow-up-date"
               value={followUpDate}
@@ -78,7 +81,9 @@ export function FollowUpSection({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="follow-up-slot">🕐 Ca khám <span className="text-red-500">*</span></Label>
+            <Label htmlFor="follow-up-slot" className="flex items-center">
+              <Clock className="mr-2 size-4" /> Ca khám <span className="ml-1 text-red-500">*</span>
+            </Label>
             <Select 
               value={followUpSlotId} 
               onValueChange={setFollowUpSlotId}
@@ -103,7 +108,9 @@ export function FollowUpSection({
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="follow-up-reason">📝 Lý do tái khám</Label>
+            <Label htmlFor="follow-up-reason" className="flex items-center">
+              <FileText className="mr-2 size-4" /> Lý do tái khám
+            </Label>
             <Input 
               id="follow-up-reason"
               placeholder="VD: Tái khám sau 2 tuần, kiểm tra lại siêu âm..." 

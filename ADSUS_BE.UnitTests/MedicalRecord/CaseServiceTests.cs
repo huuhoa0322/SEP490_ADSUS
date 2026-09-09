@@ -429,7 +429,7 @@ public class CaseServiceTests
         var response = await _sut.CreateAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal("CREATED", response.Status);
+        Assert.Equal("IN_PROGRESS", response.Status);
         Assert.Equal(doctor.UserId, response.DoctorId);
         Assert.Single(response.UltrasoundImages);
         _storage.Verify(s => s.UploadAsync(
@@ -470,7 +470,7 @@ public class CaseServiceTests
         var response = await _sut.CreateAsync(request, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal("CREATED", response.Status);
+        Assert.Equal("IN_PROGRESS", response.Status);
         Assert.Empty(response.UltrasoundImages);
         _storage.Verify(s => s.UploadAsync(
             It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);

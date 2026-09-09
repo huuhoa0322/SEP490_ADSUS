@@ -93,7 +93,8 @@ public class PrescriptionServiceComplianceTests
             intakeRepo,
             Mock.Of<ICaseRepository>(),
             Mock.Of<IUserRepository>(),
-            Mock.Of<IMedicineRepository>());
+            Mock.Of<IMedicineRepository>(),
+            Mock.Of<ADSUS_BE.BLL.AppointmentScheduling.Interfaces.IAppointmentService>());
     }
 
     [Fact]

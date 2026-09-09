@@ -24,13 +24,18 @@ public class PrescriptionServiceTests
     private readonly Mock<IUserRepository> _userRepoMock = new();
     private readonly Mock<IMedicineRepository> _medicineRepoMock = new();
     private readonly Mock<IMedicationIntakeScheduleGenerator> _scheduleGeneratorMock = new();
+    private readonly Mock<ADSUS_BE.BLL.AppointmentScheduling.Interfaces.IAppointmentService> _appointmentServiceMock = new();
 
-    private PrescriptionService CreateService()
+    private PrescriptionService CreateService(AppDbContext dbContext = null)
     {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        var db = new AppDbContext(options);
+        var db = dbContext;
+        if (db == null)
+        {
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            db = new AppDbContext(options);
+        }
 
         return new PrescriptionService(
             db,
@@ -39,7 +44,8 @@ public class PrescriptionServiceTests
             _intakeLogRepoMock.Object,
             _caseRepoMock.Object,
             _userRepoMock.Object,
-            _medicineRepoMock.Object
+            _medicineRepoMock.Object,
+            _appointmentServiceMock.Object
         );
     }
 
@@ -91,7 +97,6 @@ public class PrescriptionServiceTests
             .UseInMemoryDatabase(dbName)
             .Options;
         var db = new AppDbContext(options);
-
         var service = new PrescriptionService(
             db,
             _prescriptionRepoMock.Object,
@@ -99,7 +104,8 @@ public class PrescriptionServiceTests
             _intakeLogRepoMock.Object,
             _caseRepoMock.Object,
             _userRepoMock.Object,
-            _medicineRepoMock.Object
+            _medicineRepoMock.Object,
+            _appointmentServiceMock.Object
         );
 
         var doctorId = Guid.NewGuid();
@@ -198,7 +204,8 @@ public class PrescriptionServiceTests
             _intakeLogRepoMock.Object,
             _caseRepoMock.Object,
             _userRepoMock.Object,
-            _medicineRepoMock.Object
+            _medicineRepoMock.Object,
+            _appointmentServiceMock.Object
         );
 
         var request = new CreatePrescriptionRequest(
@@ -406,5 +413,89 @@ public class PrescriptionServiceTests
         var ex = await Assert.ThrowsAsync<BusinessException>(
             () => service.CreateAsync(doctorId, request, TestContext.Current.CancellationToken));
         Assert.Contains("không tồn tại trong hệ thống", ex.Message);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithFollowUp_UsesTransactionAndCallsAppointmentService()
+    {
+        // Arrange
+        var service = CreateService();
+        var doctorId = Guid.NewGuid();
+        var caseId   = Guid.NewGuid();
+
+        _userRepoMock
+            .Setup(r => r.GetByIdAsync(doctorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { UserId = doctorId, Role = UserRole.Doctor, Status = UserStatus.Active });
+
+        _caseRepoMock
+            .Setup(r => r.GetByIdAsync(caseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Case { CaseId = caseId, DoctorId = doctorId, Status = CaseStatus.Confirmed });
+            
+        var medicineId = Guid.NewGuid();
+        _medicineRepoMock
+            .Setup(r => r.FindByNameAsync("ValidMedicine", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Medicine { MedicineId = medicineId, Name = "ValidMedicine", Status = MedicineStatus.Active, VolumePerBaseUnit = 1 });
+            
+        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        db.MedicineBatches.Add(new MedicineBatch
+        {
+            Id = Guid.NewGuid(),
+            MedicineId = medicineId,
+            QuantityBase = 100,
+            ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
+            LotNumber = "LOT01"
+        });
+        await db.SaveChangesAsync();
+
+        service = new PrescriptionService(
+            db,
+            _prescriptionRepoMock.Object,
+            _itemRepoMock.Object,
+            _intakeLogRepoMock.Object,
+            _caseRepoMock.Object,
+            _userRepoMock.Object,
+            _medicineRepoMock.Object,
+            _appointmentServiceMock.Object
+        );
+
+        var request = new CreatePrescriptionRequest(
+            CaseId: caseId,
+            Items: new[]
+            {
+                new CreatePrescriptionItemDto(
+                    MedicineName: "ValidMedicine",
+                    QuantityPerDose: 1,
+                    DurationDays: 1,
+                    StartDate: DateOnly.FromDateTime(DateTime.UtcNow),
+                    Instructions: null,
+                    ScheduleSlots: new[] { ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot.Morning }
+                )
+            },
+            GeneralNote: null,
+            FollowUp: new ADSUS_BE.BLL.AppointmentScheduling.DTOs.FollowUpAppointmentRequest
+            {
+                PatientProfileId = Guid.NewGuid(),
+                ScheduleSlotId = Guid.NewGuid(),
+                Reason = "Tái khám"
+            });
+
+        _caseRepoMock
+            .Setup(r => r.GetForUpdateAsync(caseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Case { CaseId = caseId, DoctorId = doctorId, Status = CaseStatus.Confirmed });
+
+        _prescriptionRepoMock
+            .Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Prescription { PrescriptionId = Guid.NewGuid(), CaseId = caseId, DoctorId = doctorId, PrescriptionItems = new List<PrescriptionItem>() });
+
+        // The mock db does not support transaction in InMemory, but our logic bypasses transaction
+        // if db is not relational. Thus it will successfully complete and call AppointmentService.
+        var result = await service.CreateAsync(doctorId, request, TestContext.Current.CancellationToken);
+            
+        // Assert
+        Assert.NotNull(result);
+        _appointmentServiceMock.Verify(s => s.CreateFollowUpAppointmentAsync(
+            doctorId,
+            It.IsAny<ADSUS_BE.BLL.AppointmentScheduling.DTOs.FollowUpAppointmentRequest>(),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronDown, Plus, Trash2, X } from "lucide-react";
+import { ChevronDown, Plus, Trash2, X, AlertTriangle, Check, Loader2 } from "lucide-react";
 import {
   Controller,
   FormProvider,
@@ -16,7 +16,6 @@ import { useQuery } from "@tanstack/react-query";
 import { searchMedicines } from "@/features/prescriptions/api/prescriptions.api";
 import { getApiErrorMessage } from "@/lib/api-client";
 import { FollowUpSection } from "@/features/appointment-scheduling/components/follow-up-section";
-import { useCreateFollowUpAppointment } from "@/features/appointment-scheduling/hooks/use-doctor-appointments";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -60,7 +59,11 @@ interface PrescriptionFormProps {
   prefilledPatient?: PrefilledPatient;
   cases?: Array<{ caseId: string; patientName: string; patientCode: string }>;
   /** Gọi khi submit hợp lệ. Trả về prescriptionId để form tự điều hướng. */
-  onSubmit: (data: PrescriptionFormData) => Promise<void>;
+  onSubmit: (data: PrescriptionFormData, followUp?: {
+    patientProfileId: string;
+    scheduleSlotId: string;
+    reason: string;
+  }) => Promise<void>;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -74,8 +77,6 @@ export function PrescriptionForm({
   const [followUpDate, setFollowUpDate] = useState("");
   const [followUpSlotId, setFollowUpSlotId] = useState("");
   const [followUpReason, setFollowUpReason] = useState("");
-
-  const createFollowUpMutation = useCreateFollowUpAppointment();
 
   const methods = useForm<PrescriptionFormData>({
     resolver: zodResolver(PrescriptionFormSchema),
@@ -123,16 +124,13 @@ export function PrescriptionForm({
     }
 
     try {
-      // Gọi cả 2 tuần tự. Follow up trước vì nếu lỗi thì chưa kết thúc ca.
-      if (isFollowUp) {
-        await createFollowUpMutation.mutateAsync({
-          patientProfileId: prefilledPatient!.patientProfileId!,
-          scheduleSlotId: followUpSlotId,
-          reason: followUpReason,
-        });
-      }
+      const followUp = isFollowUp ? {
+        patientProfileId: prefilledPatient!.patientProfileId!,
+        scheduleSlotId: followUpSlotId,
+        reason: followUpReason,
+      } : undefined;
 
-      await onSubmit(data);
+      await onSubmit(data, followUp);
       toast.success("Kê đơn thuốc và kết thúc ca khám thành công");
     } catch (e) {
       toast.error(getApiErrorMessage(e, "Không thể lưu đơn thuốc hoặc lịch hẹn. Vui lòng thử lại."));
@@ -266,20 +264,26 @@ export function PrescriptionForm({
 
         {/* ── Submit ─────────────────────────────────────────────── */}
         <div className="flex flex-col gap-2">
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
-            ⚠ Đơn thuốc chỉ được tạo <strong>một lần duy nhất</strong>. Vui lòng kiểm tra kỹ trước khi bấm xác nhận.
+          <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+            <AlertTriangle className="size-4 shrink-0 text-amber-500" />
+            <span>
+              Đơn thuốc chỉ được tạo <strong>một lần duy nhất</strong>. Vui lòng kiểm tra kỹ trước khi bấm xác nhận.
+            </span>
           </div>
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={isSubmitting || createFollowUpMutation.isPending}
+              disabled={isSubmitting}
               className="flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-base font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-60"
             >
-              {isSubmitting || createFollowUpMutation.isPending ? (
-                <span>Đang xử lý…</span>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Đang xử lý...</span>
+                </>
               ) : (
                 <>
-                  <span>✓</span>
+                  <Check className="size-5" />
                   <span>Kê đơn thuốc và kết thúc ca khám</span>
                 </>
               )}

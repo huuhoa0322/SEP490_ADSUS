@@ -26,7 +26,11 @@ export default function NewPrescriptionPage() {
     };
   }, [medicalCase]);
 
-  async function handleSubmit(data: PrescriptionFormData) {
+  async function handleSubmit(data: PrescriptionFormData, followUp?: {
+    patientProfileId: string;
+    scheduleSlotId: string;
+    reason: string;
+  }) {
     const targetCaseId = caseId ?? data.caseId;
     if (!targetCaseId) {
       throw new Error("Không xác định được ca khám");
@@ -43,6 +47,7 @@ export default function NewPrescriptionPage() {
         instructions: item.instructions ?? "",
       })),
       generalNote: data.generalNote ?? "",
+      followUp: followUp,
     };
 
     await createMutation.mutateAsync(request);

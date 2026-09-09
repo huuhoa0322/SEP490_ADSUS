@@ -71,6 +71,18 @@ function renderStatusBadge(status: CaseStatus | null) {
           {caseStatusLabel(status)}
         </Badge>
       );
+    case "IN_PROGRESS":
+      return (
+        <Badge variant="soft-primary" className="font-medium text-xs px-2.5 py-0.5">
+          {caseStatusLabel(status)}
+        </Badge>
+      );
+    case "CANCELLED":
+      return (
+        <Badge variant="soft-danger" className="font-medium text-xs px-2.5 py-0.5">
+          {caseStatusLabel(status)}
+        </Badge>
+      );
     default:
       return (
         <Badge variant="soft-warning" className="font-medium text-xs px-2.5 py-0.5">
@@ -212,18 +224,11 @@ export function PatientListView() {
               <tbody className="divide-y divide-[#E7E8EB]">
                 {data.items.map((patient) => {
                   const subtext = getPatientSubtext(patient);
-                  const initials = getInitials(patient.fullName);
-
                   return (
                     <tr key={patient.patientUserId} className="transition-colors hover:bg-[#F5F6F8]/60 [&>th:first-child]:pl-6 [&>td:first-child]:pl-6">
-                      {/* Cột Bệnh nhân với Avatar tròn Preclinic (avatar-md 40px) */}
+                      {/* Cột Bệnh nhân */}
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          <Avatar size="md" className="size-10 rounded-full border border-[#E7E8EB]">
-                            <AvatarFallback className="bg-[#ECEDF7] text-xs font-semibold text-[#2E37A4]">
-                              {initials}
-                            </AvatarFallback>
-                          </Avatar>
                           <div>
                             {patient.patientProfileId ? (
                               <Link
