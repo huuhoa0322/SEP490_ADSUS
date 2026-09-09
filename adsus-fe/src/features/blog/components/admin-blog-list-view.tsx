@@ -248,7 +248,7 @@ function BlogPostModal({ postId, initialMode, onClose }: { postId: string; initi
               </span>
             )}
           </div>
-          <button onClick={onClose} className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary">
+          <button onClick={onClose} aria-label="Đóng" className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary">
             <X className="h-5 w-5" />
           </button>
         </div>
