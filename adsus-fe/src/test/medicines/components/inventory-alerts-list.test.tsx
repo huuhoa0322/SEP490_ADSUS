@@ -56,8 +56,8 @@ describe('InventoryAlertsList', () => {
       isError: false,
     } as unknown as ReturnType<typeof useInventoryAlerts>);
 
-    // Mock as ADMIN for this test to show the button
-    vi.mocked(useAuthStore).mockImplementation((selector: (state: unknown) => unknown) => selector({ user: { role: 'ADMIN' } }) as unknown);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ user: { role: 'ADMIN' } }));
 
     render(<InventoryAlertsList />);
     
@@ -82,8 +82,8 @@ describe('InventoryAlertsList', () => {
       isError: false,
     } as unknown as ReturnType<typeof useInventoryAlerts>);
 
-    // Mock as DOCTOR
-    vi.mocked(useAuthStore).mockImplementation((selector: (state: unknown) => unknown) => selector({ user: { role: 'DOCTOR' } }) as unknown);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ user: { role: 'DOCTOR' } }));
 
     render(<InventoryAlertsList />);
     

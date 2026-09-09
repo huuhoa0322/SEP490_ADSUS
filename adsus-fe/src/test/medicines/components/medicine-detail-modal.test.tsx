@@ -46,8 +46,8 @@ describe('MedicineDetailModal', () => {
   });
 
   it('disables inputs and hides Save button for DOCTOR role', () => {
-    // Mock as DOCTOR
-    vi.mocked(useAuthStore).mockImplementation((selector: (state: unknown) => unknown) => selector({ user: { role: 'DOCTOR' } }) as unknown);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ user: { role: 'DOCTOR' } }));
 
     render(<MedicineDetailModal medicine={mockMedicine} isOpen={true} onClose={() => {}} />);
 
@@ -74,8 +74,8 @@ describe('MedicineDetailModal', () => {
   });
 
   it('enables inputs and shows Save button for ADMIN role', () => {
-    // Mock as ADMIN
-    vi.mocked(useAuthStore).mockImplementation((selector: (state: unknown) => unknown) => selector({ user: { role: 'ADMIN' } }) as unknown);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ user: { role: 'ADMIN' } }));
 
     render(<MedicineDetailModal medicine={mockMedicine} isOpen={true} onClose={() => {}} />);
 

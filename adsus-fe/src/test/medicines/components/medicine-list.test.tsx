@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { MedicineList } from '@/features/medicines/components/medicine-list';
-import { useMedicines, useDeleteMedicine, useActivateMedicine } from '@/features/medicines/hooks/use-medicines';
+import { useMedicines } from '@/features/medicines/hooks/use-medicines';
 import { useInventoryAlerts } from '@/features/medicines/api/inventory.api';
 import { useAuthStore } from '@/store/auth-store';
 import { describe, it, expect, vi } from 'vitest';
@@ -57,15 +57,17 @@ describe('MedicineList', () => {
     vi.mocked(useMedicines).mockReturnValue({
       data: mockMedicines,
       isLoading: false,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     vi.mocked(useInventoryAlerts).mockReturnValue({
       data: { totalMedicinesCount: 2, inStockCount: 2, lowStockCount: 0, outOfStockCount: 0 },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     // Mock as DOCTOR
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(useAuthStore).mockImplementation((selector: (state: unknown) => unknown) => selector({ user: { role: 'DOCTOR' } }) as unknown);
+    vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ user: { role: 'DOCTOR' } }));
 
     render(<MedicineList />);
 
@@ -84,14 +86,16 @@ describe('MedicineList', () => {
     vi.mocked(useMedicines).mockReturnValue({
       data: mockMedicines,
       isLoading: false,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     vi.mocked(useInventoryAlerts).mockReturnValue({
       data: { totalMedicinesCount: 2, inStockCount: 2, lowStockCount: 0, outOfStockCount: 0 },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
-    // Mock as ADMIN
-    vi.mocked(useAuthStore).mockImplementation((selector: (state: unknown) => unknown) => selector({ user: { role: 'ADMIN' } }) as unknown);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ user: { role: 'ADMIN' } }));
 
     render(<MedicineList />);
 
