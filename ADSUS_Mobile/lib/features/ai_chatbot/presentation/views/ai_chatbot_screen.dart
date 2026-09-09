@@ -716,19 +716,22 @@ class _InputBar extends StatelessWidget {
             child: TextField(
               controller: controller,
               enabled: enabled,
-              // Tắt autocorrect/suggestions để bộ gõ tiếng Việt (Telex/VNI)
-              // không bị strip khi gõ các chuỗi như "ee", "aa", "oo".
+              // Tắt mọi OS-level text transformation để bộ gõ tiếng Việt
+              // (Telex/VNI) không bị strip khi gõ "ê" → "ee", "ô" → "oo", "â" → "aa".
               //
-              // Quan trọng: PHẢI dùng `TextInputType.visiblePassword` thay vì `text`.
-              // Trên Android (Google Keyboard, Samsung Keyboard), ngay cả khi set
-              // autocorrect=false, nếu keyboardType=text thì IME vẫn bật autocorrect
-              // provider của hệ thống và "ee" / "aa" / "oo" sẽ bị strip trước khi
-              // tới Flutter. visiblePassword ép IME vào mode password (không autocorrect)
-              // mà vẫn hiển thị ký tự bình thường — đây là pattern chuẩn cho input
-              // tiếng Việt trên mobile.
+              // Cần 3 thuộc tính cùng lúc:
+              //   1. autocorrect=false  — tắt word-level autocorrect
+              //   2. enableSuggestions=false — tắt suggestion bar
+              //   3. spellCheckConfiguration=SpellCheckConfiguration.disabled()
+              //      — TẮT OS spell-checker (Android). ĐÂY LÀ FIX CHÍNH.
+              //        Trên Android, dù autocorrect=false nhưng OS spell-checker
+              //        vẫn chạy và strip intermediate keystrokes (vd "ee") trước
+              //        khi Flutter nhận được. spellCheckConfiguration disabled
+              //        giải quyết triệt để vấn đề này mà không cần visiblePassword.
               autocorrect: false,
               enableSuggestions: false,
-              keyboardType: TextInputType.visiblePassword,
+              spellCheckConfiguration: SpellCheckConfiguration.disabled(),
+              keyboardType: TextInputType.text,
               decoration: InputDecoration(
                 hintText: 'Nhập câu hỏi…',
                 hintStyle: const TextStyle(color: AppColors.muted, fontSize: 14),

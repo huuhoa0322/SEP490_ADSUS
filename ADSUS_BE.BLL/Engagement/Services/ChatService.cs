@@ -151,15 +151,57 @@ public sealed class ChatService : IChatService
         }
 
         // 4. Save ASSISTANT message
-        var assistantMsg = new AiChatMessage
+        // Guard: if ct was cancelled (e.g. LLM timeout triggered client abort),
+        // do NOT attempt DB write — letting TaskCanceledException bubble up would
+        // crash the HTTP response with 500. The user message saved in step 2 remains
+        // orphan in this rare case, which is acceptable vs. a crash.
+        if (ct.IsCancellationRequested)
         {
-            MessageId = Guid.NewGuid(),
-            UserId = userId,
-            Content = assistantContent,
-            Role = ChatRole.Assistant,
-            CreatedAt = DateTime.UtcNow,
-        };
-        await _repo.AddAsync(assistantMsg, ct);
+            _logger.LogWarning(
+                "Cancellation already requested for user {UserId} — skipping assistant message save.",
+                userId);
+            return new ChatMessageResponse
+            {
+                MessageId = Guid.NewGuid(),
+                Role = ChatRole.Assistant,
+                Content = assistantContent,
+                CreatedAt = DateTime.UtcNow,
+                IsSafetyResponse = isSafety,
+                DetectedIntent = isSafety ? null : intent?.Intent,
+                IsRateLimitExceeded = isRateLimitExceeded,
+            };
+        }
+
+        AiChatMessage assistantMsg;
+        try
+        {
+            assistantMsg = new AiChatMessage
+            {
+                MessageId = Guid.NewGuid(),
+                UserId = userId,
+                Content = assistantContent,
+                Role = ChatRole.Assistant,
+                CreatedAt = DateTime.UtcNow,
+            };
+            await _repo.AddAsync(assistantMsg, ct);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // External timeout (LLM), not client abort — same graceful fallback.
+            _logger.LogWarning(
+                "DB save cancelled for user {UserId} (external timeout).",
+                userId);
+            return new ChatMessageResponse
+            {
+                MessageId = Guid.NewGuid(),
+                Role = ChatRole.Assistant,
+                Content = assistantContent,
+                CreatedAt = DateTime.UtcNow,
+                IsSafetyResponse = isSafety,
+                DetectedIntent = isSafety ? null : intent?.Intent,
+                IsRateLimitExceeded = isRateLimitExceeded,
+            };
+        }
 
         return new ChatMessageResponse
         {
