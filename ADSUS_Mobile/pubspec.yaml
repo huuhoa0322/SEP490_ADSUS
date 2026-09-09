@@ -65,6 +65,7 @@ dependencies:
   home_widget: ^0.7.0
   # workmanager: background periodic sync mỗi 15 phút (Android O+ battery-compliant).
   workmanager: ^0.10.9
+  google_fonts: ^8.2.1
 
   # Lưu cờ "đã sync vào lịch" cho mỗi appointment — xem CalendarSyncServiceImpl.
   # Không dùng secure storage vì đây là UI bookkeeping, không phải thông tin nhạy cảm.
