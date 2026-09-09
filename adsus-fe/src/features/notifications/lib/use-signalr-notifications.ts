@@ -113,9 +113,17 @@ export function useSignalRNotifications() {
       // Không log error nếu là transport errors - đây là bình thường
       if (err?.message && !err.message.includes("WebSocket") && !err.message.includes("ServerSentEvents")) {
         console.error("SignalR: Failed to initialize:", err.message);
+        // Nếu lỗi 401, thử refresh token ngay lập tức
+        if (err.message.includes("401")) {
+          refreshAccessToken().then((success) => {
+            if (success && connectionRef.current) {
+               connectionRef.current.start().catch(e => console.error("SignalR: Retry failed", e));
+            }
+          });
+        }
       }
     }
-  }, [user, queryClient]);
+  }, [user, accessToken, queryClient, refreshAccessToken]);
 
   const stopConnection = useCallback(async () => {
     if (connectionRef.current) {
@@ -169,7 +177,7 @@ export function useSignalRNotifications() {
       mounted = false;
       stopConnection();
     };
-  }, [user, accessToken]);
+  }, [user, accessToken, startConnection, stopConnection]);
 
   // Listen for token refresh via localStorage change
   useEffect(() => {
