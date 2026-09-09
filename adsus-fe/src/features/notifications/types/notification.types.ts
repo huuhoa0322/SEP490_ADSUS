@@ -7,7 +7,8 @@ export type NotificationType =
   | "appointment_cancelled"
   | "case_update"
   | "prescription_created"
-  | "system_alert";
+  | "system_alert"
+  | "inventory_alert";
 
 export interface NotificationLog {
   logId: string;

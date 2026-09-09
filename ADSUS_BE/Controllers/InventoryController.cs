@@ -66,5 +66,13 @@ namespace ADSUS_BE.Controllers
             var result = await _inventoryService.GetAlertSummaryAsync();
             return Ok(result);
         }
+
+        [HttpPost("alerts/trigger")]
+        public async Task<IActionResult> TriggerAlerts([FromServices] System.IServiceProvider serviceProvider, [FromServices] Microsoft.Extensions.Logging.ILogger<ADSUS_BE.Jobs.InventoryAlertJob> logger)
+        {
+            var job = new ADSUS_BE.Jobs.InventoryAlertJob(serviceProvider, logger);
+            await job.ProcessInventoryAlertsAsync(System.Threading.CancellationToken.None);
+            return Ok(new { message = "Đã chạy thử job gửi thông báo kho thành công." });
+        }
     }
 }

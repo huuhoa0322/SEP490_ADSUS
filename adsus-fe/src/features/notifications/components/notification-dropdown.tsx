@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Bell, CheckCheck } from "lucide-react";
-import { useNotifications, useMarkAllAsRead } from "../hooks/use-notifications";
+import { useInfiniteNotifications, useMarkAllAsRead } from "../hooks/use-notifications";
 import { NotificationItem } from "./notification-item";
 import { NotificationEmpty } from "./notification-empty";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function NotificationDropdown({
   children,
@@ -19,13 +18,31 @@ export function NotificationDropdown({
   children: React.ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const { data: notifications, isLoading } = useNotifications(1, 20);
+  
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useInfiniteNotifications(10);
+  
   const markAllAsRead = useMarkAllAsRead();
 
-  const hasUnread = notifications?.notifications.some((n) => !n.isRead) ?? false;
+  const allNotifications = data?.pages.flatMap((p) => p.notifications) ?? [];
+  const hasUnread = allNotifications.some((n) => !n.isRead);
 
   const handleMarkAllRead = () => {
     markAllAsRead.mutate();
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop <= clientHeight + 50) {
+      if (hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    }
   };
 
   return (
@@ -53,34 +70,29 @@ export function NotificationDropdown({
         </div>
 
         {/* Notification List */}
-        <ScrollArea className="max-h-[400px]">
+        <div className="max-h-[400px] overflow-y-auto overscroll-contain" onScroll={handleScroll}>
           {isLoading ? (
             <div className="flex h-32 items-center justify-center">
               <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
             </div>
-          ) : notifications?.notifications.length === 0 ? (
+          ) : allNotifications.length === 0 ? (
             <NotificationEmpty />
           ) : (
             <div className="divide-y divide-border">
-              {notifications?.notifications.map((notification) => (
+              {allNotifications.map((notification) => (
                 <NotificationItem
                   key={notification.logId}
                   notification={notification}
                 />
               ))}
+              {isFetchingNextPage && (
+                <div className="flex items-center justify-center py-4">
+                  <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary" />
+                </div>
+              )}
             </div>
           )}
-        </ScrollArea>
-
-        {/* Footer */}
-        {notifications &&
-          notifications.notifications.length >= 20 && (
-            <div className="border-t p-2 text-center">
-              <Button variant="ghost" size="sm" className="w-full text-xs">
-                Xem tất cả thông báo
-              </Button>
-            </div>
-          )}
+        </div>
       </PopoverContent>
     </Popover>
   );

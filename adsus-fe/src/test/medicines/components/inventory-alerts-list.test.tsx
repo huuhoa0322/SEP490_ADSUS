@@ -1,4 +1,4 @@
-﻿import { render, screen, act } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { InventoryAlertsList } from '@/features/medicines/components/inventory-alerts-list';
 import { useInventoryAlerts } from '@/features/medicines/api/inventory.api';
@@ -6,6 +6,7 @@ import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@/features/medicines/api/inventory.api', () => ({
   useInventoryAlerts: vi.fn(),
+  useTriggerInventoryAlerts: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }));
 
 vi.mock('next/link', () => {

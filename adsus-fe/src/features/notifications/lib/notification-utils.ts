@@ -10,6 +10,7 @@ export const NOTIFICATION_ICONS: Record<NotificationType, string> = {
   case_update: "📋",
   prescription_created: "💉",
   system_alert: "⚠️",
+  inventory_alert: "📦",
 };
 
 export const NOTIFICATION_COLORS: Record<
@@ -25,6 +26,7 @@ export const NOTIFICATION_COLORS: Record<
   case_update: { bg: "bg-cyan-100", text: "text-cyan-600" },
   prescription_created: { bg: "bg-indigo-100", text: "text-indigo-600" },
   system_alert: { bg: "bg-yellow-100", text: "text-yellow-600" },
+  inventory_alert: { bg: "bg-amber-100", text: "text-amber-600" },
 };
 
 export function formatRelativeTime(dateString: string): string {

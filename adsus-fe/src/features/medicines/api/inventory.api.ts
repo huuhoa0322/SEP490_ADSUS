@@ -187,3 +187,12 @@ export const useInventoryAlerts = () => {
     },
   });
 };
+
+export const useTriggerInventoryAlerts = () => {
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post<{ message: string }>('/api/v1/inventory/alerts/trigger');
+      return response.data;
+    },
+  });
+};

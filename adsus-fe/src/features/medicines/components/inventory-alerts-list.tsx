@@ -1,19 +1,35 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useInventoryAlerts } from '@/features/medicines/api/inventory.api';
-import { PackageX, Target, Calendar, Info, Search } from 'lucide-react';
+import { useInventoryAlerts, useTriggerInventoryAlerts } from '@/features/medicines/api/inventory.api';
+import { PackageX, Target, Calendar, Info, Search, Send } from 'lucide-react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import toast from 'react-hot-toast';
 import { PaginationNumbered } from '@/components/ui/pagination-numbered';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export function InventoryAlertsList() {
   const { data: summary, isLoading, isError } = useInventoryAlerts();
+  const { mutate: triggerAlerts, isPending: isTriggering } = useTriggerInventoryAlerts();
   
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [searchTerm, setSearchTerm] = useState('');
   const [alertTypeFilter, setAlertTypeFilter] = useState('ALL');
+
+  const handleTrigger = () => {
+    triggerAlerts(undefined, {
+      onSuccess: (data) => {
+        toast.success(data.message || "Thành công");
+      },
+      onError: (error: unknown) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const err = error as any;
+        toast.error(err?.response?.data?.message || "Đã có lỗi xảy ra");
+      }
+    });
+  };
 
   const combinedAlerts = useMemo(() => {
     if (!summary) return [];
@@ -171,6 +187,16 @@ export function InventoryAlertsList() {
             <SelectItem value="LOW_STOCK">Sắp hết hàng</SelectItem>
           </SelectContent>
         </Select>
+
+        <Button 
+          onClick={handleTrigger} 
+          disabled={isTriggering}
+          className="h-12 rounded-full px-6 gap-2"
+          variant="outline"
+        >
+          <Send className="size-4" />
+          {isTriggering ? 'Đang gửi...' : 'Test Gửi Thông Báo'}
+        </Button>
       </div>
 
       <div className="overflow-hidden overflow-x-auto rounded-3xl border border-border bg-background">
