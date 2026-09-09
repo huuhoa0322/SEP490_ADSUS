@@ -46,6 +46,14 @@ public interface IAppointmentService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Bác sĩ hẹn tái khám cho bệnh nhân (UC-15 mở rộng).
+    /// </summary>
+    Task<AppointmentResponse> CreateFollowUpAppointmentAsync(
+        Guid doctorId,
+        FollowUpAppointmentRequest request,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Hủy lịch hẹn (UC-14).
     /// BR-01: Chỉ patient sở hữu mới được hủy.
     /// BR-02: Lý do hủy bắt buộc.

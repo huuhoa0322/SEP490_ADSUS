@@ -122,6 +122,36 @@ public sealed class AppointmentsController : ControllerBase
     }
 
     /// <summary>
+    /// POST /api/v1/appointments/follow-up — Bác sĩ đặt lịch tái khám (UC-15 mở rộng).
+    /// </summary>
+    [HttpPost("follow-up")]
+    [Authorize(Roles = "DOCTOR")]
+    [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CreateFollowUpAppointment(
+        [FromBody] FollowUpAppointmentRequest request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var doctorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new InvalidOperationException("Missing NameIdentifier claim."));
+
+            var appointment = await _appointmentService.CreateFollowUpAppointmentAsync(doctorId, request, ct);
+            return StatusCode(StatusCodes.Status201Created, ApiResponse<AppointmentResponse>.Ok(appointment, code: 201));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(404, ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
+    }
+
+    /// <summary>
     /// POST /api/v1/appointments/{id}/cancel — Hủy lịch hẹn (UC-14).
     /// BR-01: Chỉ patient sở hữu mới được hủy.
     /// BR-02: Lý do hủy bắt buộc.

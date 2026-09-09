@@ -78,7 +78,7 @@ function PrescriptionTable({
       <div className="mb-4 overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-teal/5 dark:bg-teal/10">
-            <tr>
+            <tr className="[&>th:first-child]:pl-6 [&>td:first-child]:pl-6">
               <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-foreground">Tên thuốc</th>
               <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-foreground">Liều dùng</th>
               <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-foreground">Khung giờ</th>
@@ -89,7 +89,7 @@ function PrescriptionTable({
           </thead>
           <tbody className="divide-y divide-black/20 dark:divide-white/20">
             {prescription.items.map((item) => (
-              <tr key={item.prescriptionItemId}>
+              <tr key={item.prescriptionItemId} className="[&>th:first-child]:pl-6 [&>td:first-child]:pl-6">
                 <td className="px-3 py-2 font-medium text-foreground">{item.medicineName}</td>
                 <td className="px-3 py-2 text-foreground">{item.dosage}</td>
                 <td className="px-3 py-2 text-foreground">

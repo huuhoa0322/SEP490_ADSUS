@@ -246,7 +246,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
                 <div className="overflow-x-auto">
                   <table className="w-full table-nowrap text-left text-sm align-middle">
                     <thead className="border-b border-[#E7E8EB] bg-[#F8F9FA] text-xs font-bold uppercase tracking-wider text-foreground">
-                      <tr>
+                      <tr className="[&>th:first-child]:pl-6 [&>td:first-child]:pl-6">
                         <th className="px-5 py-3.5">Lần khám</th>
                         <th className="px-5 py-3.5">Thời điểm tạo</th>
                         <th className="px-5 py-3.5">Trạng thái</th>
@@ -255,7 +255,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
                     </thead>
                     <tbody className="divide-y divide-[#E7E8EB]">
                       {cases.items.map((visit) => (
-                        <tr key={visit.caseId} className="transition-colors hover:bg-[#F5F6F8]/60">
+                        <tr key={visit.caseId} className="transition-colors hover:bg-[#F5F6F8]/60 [&>th:first-child]:pl-6 [&>td:first-child]:pl-6">
                           <td className="px-5 py-4">
                             <span className="font-semibold text-foreground">
                               Lần khám ngày {formatIsoDate(visit.visitDate)}

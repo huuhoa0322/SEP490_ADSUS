@@ -55,16 +55,15 @@ namespace ADSUS_BE.Jobs
                 return;
             }
             
-            // Lấy tất cả user ADMIN + NURSE
-            var adminNurseIds = await dbContext.Users
-                .Where(u => (u.Role == UserRole.Admin || u.Role == UserRole.Nurse) 
-                            && u.Status == UserStatus.Active)
+            // Lấy tất cả user PHARMACIST
+            var recipientIds = await dbContext.Users
+                .Where(u => u.Role == UserRole.Pharmacist && u.Status == UserStatus.Active)
                 .Select(u => u.UserId)
                 .ToListAsync(stoppingToken);
             
-            if (adminNurseIds.Count == 0)
+            if (recipientIds.Count == 0)
             {
-                _logger.LogWarning("[InventoryAlertJob] No active admin/nurse found to send alerts to.");
+                _logger.LogWarning("[InventoryAlertJob] No active pharmacist found to send alerts to.");
                 return;
             }
 
@@ -73,11 +72,11 @@ namespace ADSUS_BE.Jobs
             
             var sendRequest = new SendNotificationRequest
             {
-                UserId = adminNurseIds.First(), // placeholder, SendBulkAsync sẽ đổi
+                UserId = recipientIds.First(), // placeholder, SendBulkAsync sẽ đổi
                 Type = "inventory_alert",
                 Title = "⚠️ Cảnh báo kho thuốc",
                 Body = body,
-                DeepLink = "/admin/medicines/inventory-alerts",
+                DeepLink = "/medicines/inventory-alerts",
                 Metadata = new Dictionary<string, object>
                 {
                     ["lowStockCount"] = summary.LowStockCount,
@@ -85,8 +84,8 @@ namespace ADSUS_BE.Jobs
                 }
             };
 
-            await notificationService.SendBulkAsync(adminNurseIds, sendRequest, stoppingToken);
-            _logger.LogInformation("[InventoryAlertJob] Successfully sent alerts to {Count} staff members.", adminNurseIds.Count);
+            await notificationService.SendBulkAsync(recipientIds, sendRequest, stoppingToken);
+            _logger.LogInformation("[InventoryAlertJob] Successfully sent alerts to {Count} staff members.", recipientIds.Count);
         }
         
         private static string BuildAlertBody(InventoryAlertSummary summary)

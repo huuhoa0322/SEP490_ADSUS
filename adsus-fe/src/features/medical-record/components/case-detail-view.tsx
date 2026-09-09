@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import toast from "react-hot-toast";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,8 @@ import {
   useEndCaseWithoutPrescription,
   useSaveCaseConclusion,
 } from "../hooks/use-cases";
+import { FollowUpSection } from "@/features/appointment-scheduling/components/follow-up-section";
+import { useCreateFollowUpAppointment } from "@/features/appointment-scheduling/hooks/use-doctor-appointments";
 import { useExportCaseReport } from "../hooks/use-case-report";
 import { useCaseInvoices } from "@/features/prescription-adherence/hooks/use-invoices";
 import {
@@ -99,6 +102,47 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const { data: caseInvoices } = useCaseInvoices(isNurse ? caseId : undefined);
 
   const [isEndCaseModalOpen, setIsEndCaseModalOpen] = useState(false);
+
+  const createFollowUpMutation = useCreateFollowUpAppointment();
+  const [isFollowUp, setIsFollowUp] = useState(false);
+  const [followUpDate, setFollowUpDate] = useState("");
+  const [followUpSlotId, setFollowUpSlotId] = useState("");
+  const [followUpReason, setFollowUpReason] = useState("");
+
+  const handleEndCase = async () => {
+    if (isFollowUp) {
+      if (!followUpDate || !followUpSlotId) {
+        toast.error("Vui lòng chọn đầy đủ ngày và ca tái khám.");
+        return;
+      }
+      if (!medicalCase?.patientProfileId) {
+        toast.error("Không tìm thấy hồ sơ bệnh nhân.");
+        return;
+      }
+
+      try {
+        await createFollowUpMutation.mutateAsync({
+          patientProfileId: medicalCase.patientProfileId,
+          scheduleSlotId: followUpSlotId,
+          reason: followUpReason,
+        });
+      } catch (e) {
+        toast.error(getApiErrorMessage(e, "Không thể tạo lịch tái khám."));
+        return; // Dừng lại, không kết thúc ca nếu lỗi
+      }
+    }
+
+    endCaseMutation.mutate(undefined, {
+      onSuccess: () => {
+        setIsEndCaseModalOpen(false);
+        if (isFollowUp) {
+          toast.success("Kết thúc ca bệnh và tạo lịch tái khám thành công.");
+        } else {
+          toast.success("Kết thúc ca bệnh thành công.");
+        }
+      },
+    });
+  };
 
   if (isLoading) {
     return (
@@ -254,6 +298,20 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                       Chắc chắn muốn kết thúc ca bệnh mà không có đơn thuốc?
                     </DialogDescription>
                   </DialogHeader>
+
+                  <div className="my-4">
+                    <FollowUpSection
+                      isFollowUp={isFollowUp}
+                      setIsFollowUp={setIsFollowUp}
+                      followUpDate={followUpDate}
+                      setFollowUpDate={setFollowUpDate}
+                      followUpSlotId={followUpSlotId}
+                      setFollowUpSlotId={setFollowUpSlotId}
+                      followUpReason={followUpReason}
+                      setFollowUpReason={setFollowUpReason}
+                    />
+                  </div>
+
                   <DialogFooter className="mt-4">
                     <button
                       type="button"
@@ -264,15 +322,11 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        endCaseMutation.mutate(undefined, {
-                          onSuccess: () => setIsEndCaseModalOpen(false),
-                        });
-                      }}
-                      disabled={endCaseMutation.isPending}
+                      onClick={handleEndCase}
+                      disabled={endCaseMutation.isPending || createFollowUpMutation.isPending}
                       className="rounded-lg bg-primary px-6 py-2 text-base font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                     >
-                      {endCaseMutation.isPending ? "Đang xử lý..." : "Kết thúc"}
+                      {endCaseMutation.isPending || createFollowUpMutation.isPending ? "Đang xử lý..." : "Kết thúc"}
                     </button>
                   </DialogFooter>
                 </DialogContent>

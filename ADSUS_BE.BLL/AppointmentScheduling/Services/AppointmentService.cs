@@ -302,7 +302,7 @@ public sealed class AppointmentService : IAppointmentService
                 Type = "new_appointment_booking",
                 Title = "Có lịch hẹn mới",
                 Body = $"Bệnh nhân đã đặt lịch khám ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
-                DeepLink = $"/appointments",
+                DeepLink = "/schedule/patients",
                 Metadata = new Dictionary<string, object>
                 {
                     ["appointmentId"] = appointment.AppointmentId.ToString()
@@ -314,6 +314,115 @@ public sealed class AppointmentService : IAppointmentService
             _logger.LogWarning(ex, "[NOTIF-ERROR] Failed to send booking notification to doctor for appointment {AppointmentId}", appointment.AppointmentId);
         }
 
+        return ToAppointmentResponse(appointment);
+    }
+
+    public async Task<AppointmentResponse> CreateFollowUpAppointmentAsync(
+        Guid doctorId,
+        FollowUpAppointmentRequest request,
+        CancellationToken ct = default)
+    {
+        // 1. Kiểm tra slot tồn tại và lấy thông tin slot
+        var slot = await _db.ScheduleSlots
+            .Include(s => s.Doctor)
+            .FirstOrDefaultAsync(s => s.SlotId == request.ScheduleSlotId, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy khung giờ này.");
+
+        // 2. Phải là slot của chính bác sĩ đang hẹn
+        if (slot.DoctorId != doctorId)
+        {
+            throw new InvalidOperationException("Chỉ được chọn khung giờ của chính bạn.");
+        }
+
+        // 3. Slot phải đang OPEN
+        if (slot.Status != SlotStatus.Open)
+        {
+            throw new InvalidOperationException("Khung giờ này đã được đặt hoặc đã đóng.");
+        }
+
+        // 4. Bệnh nhân không được hẹn trùng giờ
+        var hasConflict = await _db.Appointments.AnyAsync(a =>
+            a.PatientProfileId == request.PatientProfileId &&
+            a.SlotId == request.ScheduleSlotId &&
+            a.Status != AppointmentStatus.Cancelled &&
+            a.Status != AppointmentStatus.NoShow, ct);
+
+        if (hasConflict)
+        {
+            throw new InvalidOperationException("Bệnh nhân đã có lịch hẹn trong khung giờ này.");
+        }
+
+        // 5. Patient Profile phải tồn tại
+        var profileExists = await _db.PatientProfiles.AnyAsync(p => p.PatientProfileId == request.PatientProfileId, ct);
+        if (!profileExists)
+        {
+            throw new KeyNotFoundException("Không tìm thấy hồ sơ bệnh nhân.");
+        }
+
+        var appointment = new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = request.ScheduleSlotId,
+            PatientProfileId = request.PatientProfileId,
+            Reason = request.Reason,
+            Status = AppointmentStatus.Booked,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+
+        slot.Status = SlotStatus.Booked;
+        slot.UpdatedAt = DateTime.UtcNow;
+
+        await _appointmentRepo.CreateAsync(appointment, ct);
+        await _slotRepo.UpdateAsync(slot, ct);
+        
+        // Notify patient
+        try
+        {
+            var patientProfile = await _db.PatientProfiles.FirstOrDefaultAsync(p => p.PatientProfileId == request.PatientProfileId, ct);
+            if (patientProfile != null)
+            {
+                await _notificationService.SendAsync(new SendNotificationRequest
+                {
+                    UserId = patientProfile.UserId,
+                    Type = "appointment_booking",
+                    Title = "Lịch hẹn tái khám",
+                    Body = $"Bác sĩ {slot.Doctor.FullName} đã hẹn tái khám cho bạn vào ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
+                    Metadata = new Dictionary<string, object>
+                    {
+                        ["appointmentId"] = appointment.AppointmentId.ToString()
+                    }
+                }, ct);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[NOTIF-ERROR] Failed to send follow-up notification to patient");
+        }
+
+        // Notify doctor
+        try
+        {
+            await _notificationService.SendAsync(new SendNotificationRequest
+            {
+                UserId = slot.DoctorId,
+                Type = "appointment_booking",
+                Title = "Tạo lịch tái khám thành công",
+                Body = $"Bạn đã tạo lịch hẹn tái khám thành công cho bệnh nhân vào ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
+                DeepLink = "/schedule/patients",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["appointmentId"] = appointment.AppointmentId.ToString()
+                }
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[NOTIF-ERROR] Failed to send follow-up notification to doctor");
+        }
+
+        // Provide necessary nav props for response
+        appointment.Slot = slot;
         return ToAppointmentResponse(appointment);
     }
 
@@ -406,7 +515,7 @@ public sealed class AppointmentService : IAppointmentService
                 Type = "appointment_cancelled_by_patient",
                 Title = "Bệnh nhân hủy lịch khám",
                 Body = $"Bệnh nhân đã hủy lịch khám ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
-                DeepLink = $"/appointments",
+                DeepLink = "/schedule/patients",
                 Metadata = new Dictionary<string, object>
                 {
                     ["appointmentId"] = appointment.AppointmentId.ToString()

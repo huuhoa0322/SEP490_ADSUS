@@ -66,7 +66,13 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Dược & kho vận",
     items: [
-      { title: "Danh mục thuốc", href: "/medicines", icon: Pill, roles: ["ADMIN", "PHARMACIST"] },
+      { 
+        title: "Danh mục thuốc", 
+        href: "/medicines", 
+        icon: Pill, 
+        roles: ["ADMIN", "PHARMACIST", "DOCTOR"],
+        isActive: (p) => p.startsWith("/medicines") && !p.startsWith("/medicines/inventory-alerts"),
+      },
       { title: "Nhà cung cấp", href: "/suppliers", icon: Truck, roles: ["ADMIN", "PHARMACIST"] },
       { title: "Nhập kho", href: "/inventory/import", icon: PackagePlus, roles: ["ADMIN", "PHARMACIST"] },
       {

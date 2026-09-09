@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 
@@ -18,13 +17,12 @@ export default function NewPrescriptionPage() {
 
   const { data: medicalCase, isLoading: isLoadingCase } = useCaseDetail(caseId);
 
-
-
   const prefilledPatient = useMemo(() => {
     if (!medicalCase?.patientProfile) return undefined;
     return {
       caseId: medicalCase.caseId,
       patientName: medicalCase.patientProfile.fullName,
+      patientProfileId: medicalCase.patientProfileId,
     };
   }, [medicalCase]);
 
