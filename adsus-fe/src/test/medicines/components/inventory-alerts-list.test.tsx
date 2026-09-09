@@ -57,7 +57,7 @@ describe('InventoryAlertsList', () => {
     } as unknown as ReturnType<typeof useInventoryAlerts>);
 
     // Mock as ADMIN for this test to show the button
-    vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ user: { role: 'ADMIN' } }));
+    vi.mocked(useAuthStore).mockImplementation((selector: (state: unknown) => unknown) => selector({ user: { role: 'ADMIN' } }) as unknown);
 
     render(<InventoryAlertsList />);
     
@@ -83,7 +83,7 @@ describe('InventoryAlertsList', () => {
     } as unknown as ReturnType<typeof useInventoryAlerts>);
 
     // Mock as DOCTOR
-    vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ user: { role: 'DOCTOR' } }));
+    vi.mocked(useAuthStore).mockImplementation((selector: (state: unknown) => unknown) => selector({ user: { role: 'DOCTOR' } }) as unknown);
 
     render(<InventoryAlertsList />);
     

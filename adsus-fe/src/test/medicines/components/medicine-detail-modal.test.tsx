@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MedicineDetailModal } from '@/features/medicines/components/medicine-detail-modal';
 import { useMedicineUnits, useMedicinePackagings, useUpdateMedicine, useAddPackaging, useUpdatePackaging, useDeletePackaging } from '@/features/medicines/hooks/use-medicines';
 import { useAuthStore } from '@/store/auth-store';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/features/medicines/hooks/use-medicines', () => ({
   useMedicineUnits: vi.fn(),
@@ -35,16 +35,19 @@ describe('MedicineDetailModal', () => {
     status: 'ACTIVE',
     createdAt: '2023-01-01T00:00:00Z',
     totalInventoryBase: 100,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 
   beforeEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(useMedicineUnits).mockReturnValue({ data: [] } as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(useMedicinePackagings).mockReturnValue({ data: [], isLoading: false } as any);
   });
 
   it('disables inputs and hides Save button for DOCTOR role', () => {
     // Mock as DOCTOR
-    vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ user: { role: 'DOCTOR' } }));
+    vi.mocked(useAuthStore).mockImplementation((selector: (state: unknown) => unknown) => selector({ user: { role: 'DOCTOR' } }) as unknown);
 
     render(<MedicineDetailModal medicine={mockMedicine} isOpen={true} onClose={() => {}} />);
 
@@ -72,7 +75,7 @@ describe('MedicineDetailModal', () => {
 
   it('enables inputs and shows Save button for ADMIN role', () => {
     // Mock as ADMIN
-    vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ user: { role: 'ADMIN' } }));
+    vi.mocked(useAuthStore).mockImplementation((selector: (state: unknown) => unknown) => selector({ user: { role: 'ADMIN' } }) as unknown);
 
     render(<MedicineDetailModal medicine={mockMedicine} isOpen={true} onClose={() => {}} />);
 

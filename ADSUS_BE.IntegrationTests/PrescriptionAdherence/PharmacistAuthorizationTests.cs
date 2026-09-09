@@ -89,8 +89,6 @@ public class PharmacistAuthorizationTests : IClassFixture<WebApplicationFactory<
 
     [Theory]
     [InlineData("/api/v1/medicines/admin")]
-    [InlineData("/api/v1/inventory/history")]
-    [InlineData("/api/v1/inventory/alerts")]
     public async Task Doctor_CanAccess_MedicineAdminEndpoints(string url)
     {
         // Arrange
@@ -104,11 +102,19 @@ public class PharmacistAuthorizationTests : IClassFixture<WebApplicationFactory<
         Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    [Fact]
-    public async Task Doctor_CannotAccess_Suppliers()
+    [Theory]
+    [InlineData("/api/v1/inventory/history")]
+    [InlineData("/api/v1/inventory/alerts")]
+    [InlineData("/api/v1/suppliers")]
+    public async Task Doctor_CannotAccess_InventoryAndSuppliers(string url)
     {
+        // Arrange
         var doctorClient = TestAuthHelper.CreateDoctorClient(_factory, _users);
-        var response = await doctorClient.GetAsync("/api/v1/suppliers", TestContext.Current.CancellationToken);
+
+        // Act
+        var response = await doctorClient.GetAsync(url, TestContext.Current.CancellationToken);
+
+        // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 }

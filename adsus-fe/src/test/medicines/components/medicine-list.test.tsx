@@ -65,7 +65,7 @@ describe('MedicineList', () => {
 
     // Mock as DOCTOR
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ user: { role: 'DOCTOR' } }));
+    vi.mocked(useAuthStore).mockImplementation((selector: (state: unknown) => unknown) => selector({ user: { role: 'DOCTOR' } }) as unknown);
 
     render(<MedicineList />);
 
@@ -91,7 +91,7 @@ describe('MedicineList', () => {
     } as any);
 
     // Mock as ADMIN
-    vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ user: { role: 'ADMIN' } }));
+    vi.mocked(useAuthStore).mockImplementation((selector: (state: unknown) => unknown) => selector({ user: { role: 'ADMIN' } }) as unknown);
 
     render(<MedicineList />);
 
