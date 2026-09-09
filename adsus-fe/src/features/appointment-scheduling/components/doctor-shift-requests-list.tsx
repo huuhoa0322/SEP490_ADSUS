@@ -102,9 +102,9 @@ export function DoctorShiftRequestsList() {
                     <div className="flex flex-col items-start gap-1">
                       {getStatusBadge(req.status)}
                       {req.status === 'REJECTED' && req.rejectReason && (
-                        <span className="text-xs text-destructive" title={req.rejectReason}>
-                          Lý do: {req.rejectReason.substring(0, 30)}...
-                        </span>
+                        <div className="text-sm text-destructive text-left mt-1" title={req.rejectReason}>
+                          {req.rejectReason}
+                        </div>
                       )}
                     </div>
                   </TableCell>

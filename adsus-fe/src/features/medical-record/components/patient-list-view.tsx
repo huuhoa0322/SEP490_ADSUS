@@ -201,7 +201,7 @@ export function PatientListView() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] table-nowrap text-left text-sm align-middle">
               <thead className="border-b border-[#E7E8EB] bg-[#F8F9FA] text-xs font-bold uppercase tracking-wider text-foreground">
-                <tr>
+                <tr className="[&>th:first-child]:pl-6 [&>td:first-child]:pl-6">
                   <th className="px-4 py-3.5">Bệnh nhân</th>
                   <th className="px-4 py-3.5">Số điện thoại</th>
                   <th className="px-4 py-3.5">Lần khám gần nhất</th>
@@ -215,7 +215,7 @@ export function PatientListView() {
                   const initials = getInitials(patient.fullName);
 
                   return (
-                    <tr key={patient.patientUserId} className="transition-colors hover:bg-[#F5F6F8]/60">
+                    <tr key={patient.patientUserId} className="transition-colors hover:bg-[#F5F6F8]/60 [&>th:first-child]:pl-6 [&>td:first-child]:pl-6">
                       {/* Cột Bệnh nhân với Avatar tròn Preclinic (avatar-md 40px) */}
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
