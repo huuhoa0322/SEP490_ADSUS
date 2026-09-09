@@ -104,7 +104,7 @@ describe("AppSidebar", () => {
       expect(screen.queryByText("Tiếp đón / Check-in")).not.toBeInTheDocument();
       expect(screen.queryByText("Quản lý hóa đơn")).not.toBeInTheDocument();
       expect(screen.queryByText("Tài khoản nhân sự")).not.toBeInTheDocument();
-      expect(screen.queryByText("Danh mục thuốc")).not.toBeInTheDocument();
+      expect(screen.getByText("Danh mục thuốc")).toBeInTheDocument();
     });
 
     it("renders correct navigation items for NURSE", () => {

@@ -177,14 +177,14 @@ export function UserList() {
       <div className="mt-6 overflow-x-auto rounded-3xl border border-border bg-background">
         <table className="w-full min-w-4xl border-collapse text-left text-sm">
           <thead>
-            <tr className="border-b border-border bg-secondary/40">
+            <tr className="border-b border-border bg-secondary/40 [&>th:first-child]:pl-6 [&>td:first-child]:pl-6">
               <Th>Họ và tên</Th>
               <Th>Số điện thoại</Th>
               <Th>Email</Th>
               <Th>Vai trò</Th>
               <Th>Trạng thái</Th>
               <Th>Ngày tạo</Th>
-              <Th className="text-right">Thao tác</Th>
+              <Th>Thao tác</Th>
             </tr>
           </thead>
           <tbody>
@@ -205,7 +205,7 @@ export function UserList() {
             )}
 
             {data?.items.map((user) => (
-              <tr key={user.userId} className="border-b border-border last:border-0">
+              <tr key={user.userId} className="border-b border-border last:border-0 [&>th:first-child]:pl-6 [&>td:first-child]:pl-6">
                 <td className="px-5 py-4 font-600 text-foreground">
                   {user.fullName}
                   {user.isCurrentUser && (

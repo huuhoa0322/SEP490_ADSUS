@@ -4,6 +4,7 @@ const CASE_STATUS_LABELS: Record<CaseStatus, string> = {
   CREATED: "Mới tạo",
   END: "Đã kết thúc ca",
   CONFIRMED: "Đã kết luận",
+  BOOKED: "Đã đặt lịch",
 };
 
 const GENDER_LABELS: Record<Gender, string> = {

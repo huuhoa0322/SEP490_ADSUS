@@ -73,21 +73,48 @@ public class PharmacistAuthorizationTests : IClassFixture<WebApplicationFactory<
     [InlineData("/api/v1/inventory/history")]
     [InlineData("/api/v1/inventory/alerts")]
     [InlineData("/api/v1/suppliers")]
-    public async Task DoctorNursePatient_CannotAccess_MedicineAdminEndpoints(string url)
+    public async Task NursePatient_CannotAccess_MedicineAdminEndpoints(string url)
     {
         // Arrange
-        var doctorClient = TestAuthHelper.CreateDoctorClient(_factory, _users);
         var nurseClient = TestAuthHelper.CreateNurseClient(_factory, _users);
         var patientClient = TestAuthHelper.CreatePatientClient(_factory, _users);
 
         // Act & Assert
-        var doctorResponse = await doctorClient.GetAsync(url, TestContext.Current.CancellationToken);
-        Assert.Equal(HttpStatusCode.Forbidden, doctorResponse.StatusCode);
-
         var nurseResponse = await nurseClient.GetAsync(url, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, nurseResponse.StatusCode);
 
         var patientResponse = await patientClient.GetAsync(url, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, patientResponse.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/api/v1/medicines/admin")]
+    public async Task Doctor_CanAccess_MedicineAdminEndpoints(string url)
+    {
+        // Arrange
+        var doctorClient = TestAuthHelper.CreateDoctorClient(_factory, _users);
+
+        // Act
+        var response = await doctorClient.GetAsync(url, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/api/v1/inventory/history")]
+    [InlineData("/api/v1/inventory/alerts")]
+    [InlineData("/api/v1/suppliers")]
+    public async Task Doctor_CannotAccess_InventoryAndSuppliers(string url)
+    {
+        // Arrange
+        var doctorClient = TestAuthHelper.CreateDoctorClient(_factory, _users);
+
+        // Act
+        var response = await doctorClient.GetAsync(url, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 }

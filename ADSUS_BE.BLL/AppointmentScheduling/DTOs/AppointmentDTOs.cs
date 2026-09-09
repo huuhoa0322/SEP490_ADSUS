@@ -42,6 +42,17 @@ public sealed class CancelAppointmentRequest
     public string CancellationReason { get; init; } = string.Empty;
 }
 
+/// <summary>
+/// Request tạo lịch hẹn tái khám bởi Bác sĩ (UC-15 mở rộng).
+/// Bác sĩ tự chọn slot OPEN của chính mình để hẹn lại bệnh nhân.
+/// </summary>
+public sealed class FollowUpAppointmentRequest
+{
+    public Guid PatientProfileId { get; init; }
+    public Guid ScheduleSlotId { get; init; }
+    public string Reason { get; init; } = string.Empty;
+}
+
 // ─── Responses ─────────────────────────────────────────────────────────────────
 
 /// <summary>

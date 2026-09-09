@@ -112,13 +112,13 @@ export function AdminShiftRequestsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Ngày gửi</TableHead>
+              <TableHead className="pl-6">Ngày gửi</TableHead>
               <TableHead>Bác sĩ</TableHead>
               <TableHead>Loại</TableHead>
               <TableHead>Ca áp dụng</TableHead>
               <TableHead>Lý do</TableHead>
               <TableHead>Trạng thái</TableHead>
-              <TableHead className="text-right">Thao tác</TableHead>
+              <TableHead>Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -137,7 +137,7 @@ export function AdminShiftRequestsPage() {
             ) : (
               data?.items.map((req) => (
                 <TableRow key={req.requestId}>
-                  <TableCell>{format(new Date(req.createdAt), 'dd/MM/yyyy HH:mm')}</TableCell>
+                  <TableCell className="pl-6">{format(new Date(req.createdAt), 'dd/MM/yyyy HH:mm')}</TableCell>
                   <TableCell className="font-medium">{req.doctorName}</TableCell>
                   <TableCell>
                     {req.requestType?.toUpperCase() === 'LEAVE' ? (
@@ -156,9 +156,9 @@ export function AdminShiftRequestsPage() {
                     {req.reason}
                   </TableCell>
                   <TableCell>{getStatusBadge(req.status)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-left min-w-[200px]">
                     {req.status?.toUpperCase() === 'PENDING' && (
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-start gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -180,9 +180,9 @@ export function AdminShiftRequestsPage() {
                       </div>
                     )}
                     {req.status?.toUpperCase() === 'REJECTED' && req.rejectReason && (
-                      <span className="text-xs text-muted-foreground" title={req.rejectReason}>
-                        Lý do: {req.rejectReason.substring(0, 20)}...
-                      </span>
+                      <div className="text-sm text-foreground text-left" title={req.rejectReason}>
+                        {req.rejectReason}
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>

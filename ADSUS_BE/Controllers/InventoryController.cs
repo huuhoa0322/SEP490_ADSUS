@@ -8,7 +8,7 @@ namespace ADSUS_BE.Controllers
 {
     [ApiController]
     [Route("api/v1/inventory")]
-    [Authorize(Roles = "ADMIN,PHARMACIST")] // Temporary admin permission as requested
+    [Authorize(Roles = "ADMIN,PHARMACIST")]
     public class InventoryController : ControllerBase
     {
         private readonly IInventoryService _inventoryService;
@@ -19,6 +19,7 @@ namespace ADSUS_BE.Controllers
         }
 
         [HttpPost("import")]
+        [Authorize(Roles = "ADMIN,PHARMACIST")]
         public async Task<IActionResult> ImportMedicine([FromBody] ImportInventoryRequest request)
         {
             await _inventoryService.ImportMedicineAsync(request);
@@ -26,6 +27,7 @@ namespace ADSUS_BE.Controllers
         }
 
         [HttpPost("validate-import")]
+        [Authorize(Roles = "ADMIN,PHARMACIST")]
         public async Task<IActionResult> ValidateImport([FromBody] ImportInventoryRequest request)
         {
             var result = await _inventoryService.ValidateImportAsync(request);
@@ -33,6 +35,7 @@ namespace ADSUS_BE.Controllers
         }
 
         [HttpPost("import/bulk")]
+        [Authorize(Roles = "ADMIN,PHARMACIST")]
         public async Task<IActionResult> ImportMedicineBulk([FromBody] System.Collections.Generic.List<ImportInventoryRequest> requests)
         {
             await _inventoryService.ImportMedicineBulkAsync(requests);
@@ -54,6 +57,7 @@ namespace ADSUS_BE.Controllers
         }
 
         [HttpPut("adjust")]
+        [Authorize(Roles = "ADMIN,PHARMACIST")]
         public async Task<IActionResult> AdjustInventory([FromBody] AdjustInventoryRequest request)
         {
             var result = await _inventoryService.AdjustAsync(request);
@@ -65,6 +69,15 @@ namespace ADSUS_BE.Controllers
         {
             var result = await _inventoryService.GetAlertSummaryAsync();
             return Ok(result);
+        }
+
+        [HttpPost("alerts/trigger")]
+        [Authorize(Roles = "ADMIN,PHARMACIST")]
+        public async Task<IActionResult> TriggerAlerts([FromServices] System.IServiceProvider serviceProvider, [FromServices] Microsoft.Extensions.Logging.ILogger<ADSUS_BE.Jobs.InventoryAlertJob> logger)
+        {
+            var job = new ADSUS_BE.Jobs.InventoryAlertJob(serviceProvider, logger);
+            await job.ProcessInventoryAlertsAsync(System.Threading.CancellationToken.None);
+            return Ok(new { message = "Đã chạy thử job gửi thông báo kho thành công." });
         }
     }
 }

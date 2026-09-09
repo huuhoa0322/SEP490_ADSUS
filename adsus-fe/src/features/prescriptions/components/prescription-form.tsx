@@ -15,6 +15,8 @@ import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { searchMedicines } from "@/features/prescriptions/api/prescriptions.api";
 import { getApiErrorMessage } from "@/lib/api-client";
+import { FollowUpSection } from "@/features/appointment-scheduling/components/follow-up-section";
+import { useCreateFollowUpAppointment } from "@/features/appointment-scheduling/hooks/use-doctor-appointments";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -51,13 +53,14 @@ interface PrefilledPatient {
   caseId: string;
   patientName: string;
   patientCode?: string;
+  patientProfileId?: string; // Bổ sung để tái khám
 }
 
 interface PrescriptionFormProps {
   prefilledPatient?: PrefilledPatient;
   cases?: Array<{ caseId: string; patientName: string; patientCode: string }>;
   /** Gọi khi submit hợp lệ. Trả về prescriptionId để form tự điều hướng. */
-  onSubmit: (data: PrescriptionFormData) => Promise<{ prescriptionId: string } | void>;
+  onSubmit: (data: PrescriptionFormData) => Promise<void>;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -67,16 +70,23 @@ export function PrescriptionForm({
   cases,
   onSubmit,
 }: PrescriptionFormProps) {
+  const [isFollowUp, setIsFollowUp] = useState(false);
+  const [followUpDate, setFollowUpDate] = useState("");
+  const [followUpSlotId, setFollowUpSlotId] = useState("");
+  const [followUpReason, setFollowUpReason] = useState("");
+
+  const createFollowUpMutation = useCreateFollowUpAppointment();
+
   const methods = useForm<PrescriptionFormData>({
     resolver: zodResolver(PrescriptionFormSchema),
     defaultValues: {
-      caseId: "",
+      caseId: prefilledPatient?.caseId || "",
       items: [
         {
           medicineName: "",
-          usageUnit: "đơn vị",
+          usageUnit: "Viên",
           quantityPerDose: 1,
-          scheduleSlots: [] as ScheduleSlot[],
+          scheduleSlots: ["Morning", "Evening"],
           durationDays: 30,
           startDate: new Date().toISOString().split("T")[0],
           instructions: "",
@@ -101,11 +111,31 @@ export function PrescriptionForm({
   const allSlots: ScheduleSlot[] = ["Morning", "Noon", "Evening"];
 
   async function onValid(data: PrescriptionFormData) {
+    if (isFollowUp) {
+      if (!followUpDate || !followUpSlotId) {
+        toast.error("Vui lòng chọn đầy đủ ngày và ca tái khám.");
+        return;
+      }
+      if (!prefilledPatient?.patientProfileId) {
+        toast.error("Không tìm thấy hồ sơ bệnh nhân để hẹn tái khám.");
+        return;
+      }
+    }
+
     try {
+      // Gọi cả 2 tuần tự. Follow up trước vì nếu lỗi thì chưa kết thúc ca.
+      if (isFollowUp) {
+        await createFollowUpMutation.mutateAsync({
+          patientProfileId: prefilledPatient!.patientProfileId!,
+          scheduleSlotId: followUpSlotId,
+          reason: followUpReason,
+        });
+      }
+
       await onSubmit(data);
       toast.success("Kê đơn thuốc và kết thúc ca khám thành công");
     } catch (e) {
-      toast.error(getApiErrorMessage(e, "Không thể lưu đơn thuốc. Vui lòng thử lại."));
+      toast.error(getApiErrorMessage(e, "Không thể lưu đơn thuốc hoặc lịch hẹn. Vui lòng thử lại."));
     }
   }
 
@@ -220,6 +250,20 @@ export function PrescriptionForm({
           )}
         </section>
 
+        {/* ── Hẹn tái khám ─────────────────────────────────────────── */}
+        <section className="mb-6">
+          <FollowUpSection
+            isFollowUp={isFollowUp}
+            setIsFollowUp={setIsFollowUp}
+            followUpDate={followUpDate}
+            setFollowUpDate={setFollowUpDate}
+            followUpSlotId={followUpSlotId}
+            setFollowUpSlotId={setFollowUpSlotId}
+            followUpReason={followUpReason}
+            setFollowUpReason={setFollowUpReason}
+          />
+        </section>
+
         {/* ── Submit ─────────────────────────────────────────────── */}
         <div className="flex flex-col gap-2">
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
@@ -228,11 +272,11 @@ export function PrescriptionForm({
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || createFollowUpMutation.isPending}
               className="flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-base font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-60"
             >
-              {isSubmitting ? (
-                <span>Đang gửi…</span>
+              {isSubmitting || createFollowUpMutation.isPending ? (
+                <span>Đang xử lý…</span>
               ) : (
                 <>
                   <span>✓</span>

@@ -5,6 +5,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/auth-store";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,8 @@ interface Props {
 
 export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
   // === Data hooks ===
+  const user = useAuthStore((s) => s.user);
+  const isDoctor = user?.role === "DOCTOR";
   const { data: units = [] } = useMedicineUnits();
   const { data: packagings = [], isLoading } = useMedicinePackagings(medicine.medicineId);
   const updateMedicineMutation = useUpdateMedicine();
@@ -217,6 +220,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
                     placeholder="VD: ml, viên..."
                     value={usageUnit}
                     onChange={e => setUsageUnit(e.target.value)}
+                    disabled={isDoctor}
                     className="bg-background"
                   />
                 </div>
@@ -227,6 +231,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
                     placeholder="VD: 5"
                     value={volume}
                     onChange={e => setVolume(e.target.value)}
+                    disabled={isDoctor}
                     className="bg-background font-mono"
                   />
                 </div>
@@ -238,23 +243,26 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
                     placeholder="Nhập 0 để bỏ qua"
                     value={lowStockThreshold}
                     onChange={e => setLowStockThreshold(e.target.value)}
+                    disabled={isDoctor}
                     className="bg-[var(--status-warning)]/5 border-[var(--status-warning)]/30 font-mono"
                   />
                 </div>
               </div>
-              <div className="mt-4 flex justify-end">
-                <Button 
-                  onClick={handleUpdateGeneralInfo} 
-                  disabled={updateMedicineMutation.isPending}
-                >
-                  {updateMedicineMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-2" />
-                  )}
-                  Lưu thông tin cơ bản
-                </Button>
-              </div>
+              {!isDoctor && (
+                <div className="mt-4 flex justify-end">
+                  <Button 
+                    onClick={handleUpdateGeneralInfo} 
+                    disabled={updateMedicineMutation.isPending}
+                  >
+                    {updateMedicineMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
+                    Lưu thông tin cơ bản
+                  </Button>
+                </div>
+              )}
             </div>
           </section>
 
@@ -276,7 +284,7 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
                     <th className="p-3 text-right font-medium">Hệ số</th>
                     <th className="p-3 text-right font-medium">Giá bán</th>
                     <th className="p-3 text-center font-medium">Trạng thái</th>
-                    <th className="p-3 text-right font-medium">Thao tác</th>
+                    {!isDoctor && <th className="p-3 text-right font-medium">Thao tác</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -314,14 +322,16 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
                             <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-600 text-muted-foreground">Không bán</span>
                           )}
                         </td>
-                        <td className="p-3 text-right">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditPackaging(p)}>
-                            <Edit2 className="size-4 text-primary" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeletePackaging(p.id)} disabled={p.isBaseUnit} title={p.isBaseUnit ? "Không thể xóa đơn vị cơ sở" : ""}>
-                            <Trash2 className="size-4 text-destructive" />
-                          </Button>
-                        </td>
+                        {!isDoctor && (
+                          <td className="p-3 text-right">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditPackaging(p)}>
+                              <Edit2 className="size-4 text-primary" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeletePackaging(p.id)} disabled={p.isBaseUnit} title={p.isBaseUnit ? "Không thể xóa đơn vị cơ sở" : ""}>
+                              <Trash2 className="size-4 text-destructive" />
+                            </Button>
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
@@ -330,93 +340,95 @@ export function MedicineDetailModal({ medicine, isOpen, onClose }: Props) {
             </div>
 
             {/* Form for Packagings */}
-            <div className="bg-secondary/40 p-5 rounded-lg border">
-              <h4 className="font-medium flex items-center gap-2 mb-4 text-foreground">
-                <Plus className="w-4 h-4" />
-                {editingId ? "Cập nhật Quy cách" : "Thêm Quy cách Mới"}
-              </h4>
+            {!isDoctor && (
+              <div className="bg-secondary/40 p-5 rounded-lg border">
+                <h4 className="font-medium flex items-center gap-2 mb-4 text-foreground">
+                  <Plus className="w-4 h-4" />
+                  {editingId ? "Cập nhật Quy cách" : "Thêm Quy cách Mới"}
+                </h4>
 
-              <form onSubmit={handleSubmitPackaging} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                  <div className="space-y-2">
-                    <Label>Đơn vị tính <span className="text-destructive">*</span></Label>
-                    <Select value={unitId} onValueChange={setUnitId} disabled={editingOriginalIsBase}>
-                      <SelectTrigger className="bg-background disabled:opacity-50">
-                        <SelectValue placeholder="Chọn đơn vị" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {units.map((u: { medicineUnitId: string; name: string }) => (
-                          <SelectItem key={u.medicineUnitId} value={u.medicineUnitId}>{u.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <form onSubmit={handleSubmitPackaging} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                    <div className="space-y-2">
+                      <Label>Đơn vị tính <span className="text-destructive">*</span></Label>
+                      <Select value={unitId} onValueChange={setUnitId} disabled={editingOriginalIsBase}>
+                        <SelectTrigger className="bg-background disabled:opacity-50">
+                          <SelectValue placeholder="Chọn đơn vị" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {units.map((u: { medicineUnitId: string; name: string }) => (
+                            <SelectItem key={u.medicineUnitId} value={u.medicineUnitId}>{u.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Hệ số quy đổi (sang Base)</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={conversion}
+                        onChange={e => setConversion(e.target.value)}
+                        disabled={isBase}
+                        className="font-mono bg-background"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Giá bán (VNĐ)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={price}
+                        onChange={e => setPrice(e.target.value)}
+                        className="font-mono text-[var(--status-good)] bg-background font-semibold"
+                      />
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Hệ số quy đổi (sang Base)</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={conversion}
-                      onChange={e => setConversion(e.target.value)}
-                      disabled={isBase}
-                      className="font-mono bg-background"
-                    />
+                  <div className="flex flex-col sm:flex-row gap-6 p-4 rounded-md border bg-background shadow-sm mt-2">
+                    <div className="flex items-center space-x-3">
+                      <Checkbox 
+                        id="isBase" 
+                        checked={isBase} 
+                        onCheckedChange={(c) => {
+                          // isBase is now locked and cannot be changed by the user
+                        }} 
+                        disabled={true}
+                        className="h-5 w-5"
+                      />
+                      <Label htmlFor="isBase" className="font-medium text-base cursor-not-allowed opacity-50" title="Trạng thái đơn vị cơ sở không thể thay đổi">
+                        Là đơn vị cơ sở
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Checkbox 
+                        id="isSellable" 
+                        checked={isSellable} 
+                        onCheckedChange={(c) => setIsSellable(!!c)} 
+                        className="h-5 w-5"
+                      />
+                      <Label htmlFor="isSellable" className="font-medium cursor-pointer text-base">
+                        Cho phép bán lẻ
+                      </Label>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Giá bán (VNĐ)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={price}
-                      onChange={e => setPrice(e.target.value)}
-                      className="font-mono text-[var(--status-good)] bg-background font-semibold"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-6 p-4 rounded-md border bg-background shadow-sm mt-2">
-                  <div className="flex items-center space-x-3">
-                    <Checkbox 
-                      id="isBase" 
-                      checked={isBase} 
-                      onCheckedChange={(c) => {
-                        // isBase is now locked and cannot be changed by the user
-                      }} 
-                      disabled={true}
-                      className="h-5 w-5"
-                    />
-                    <Label htmlFor="isBase" className="font-medium text-base cursor-not-allowed opacity-50" title="Trạng thái đơn vị cơ sở không thể thay đổi">
-                      Là đơn vị cơ sở
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Checkbox 
-                      id="isSellable" 
-                      checked={isSellable} 
-                      onCheckedChange={(c) => setIsSellable(!!c)} 
-                      className="h-5 w-5"
-                    />
-                    <Label htmlFor="isSellable" className="font-medium cursor-pointer text-base">
-                      Cho phép bán lẻ
-                    </Label>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t mt-4">
-                  {editingId && (
-                    <Button type="button" variant="outline" onClick={resetPackagingForm}>
-                      Hủy sửa
+                  <div className="flex justify-end gap-3 pt-4 border-t mt-4">
+                    {editingId && (
+                      <Button type="button" variant="outline" onClick={resetPackagingForm}>
+                        Hủy sửa
+                      </Button>
+                    )}
+                    <Button type="submit" disabled={addMutation.isPending || updateMutation.isPending}>
+                      {(addMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      {editingId ? "Cập nhật quy cách" : "Thêm mới quy cách"}
                     </Button>
-                  )}
-                  <Button type="submit" disabled={addMutation.isPending || updateMutation.isPending}>
-                    {(addMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    {editingId ? "Cập nhật quy cách" : "Thêm mới quy cách"}
-                  </Button>
-                </div>
-              </form>
-            </div>
+                  </div>
+                </form>
+              </div>
+            )}
           </section>
 
         </div>
