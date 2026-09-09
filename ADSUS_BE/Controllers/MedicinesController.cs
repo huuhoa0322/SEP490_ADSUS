@@ -39,7 +39,7 @@ public class MedicinesController : ControllerBase
     /// L?y danh s�ch thu?c ph�n trang (Admin).
     /// </summary>
     [HttpGet("admin")]
-    [Authorize(Roles = "ADMIN,PHARMACIST")]
+    [Authorize(Roles = "ADMIN,PHARMACIST,DOCTOR")]
     [ProducesResponseType(typeof(PagedResult<MedicineResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPagedMedicines([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool? inStock = null, CancellationToken ct = default)
     {
@@ -51,7 +51,7 @@ public class MedicinesController : ControllerBase
     /// Lấy chi tiết 1 thuốc theo ID (Admin).
     /// </summary>
     [HttpGet("{id}")]
-    [Authorize(Roles = "ADMIN,PHARMACIST")]
+    [Authorize(Roles = "ADMIN,PHARMACIST,DOCTOR")]
     [ProducesResponseType(typeof(MedicineResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetMedicineById(Guid id, CancellationToken ct = default)

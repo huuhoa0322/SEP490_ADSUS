@@ -16,6 +16,8 @@ import { BatchHistoryModal } from "./batch-history-modal";
 import { AdjustInventoryModal } from "./adjust-inventory-modal";
 import { Edit } from "lucide-react";
 
+import { useAuthStore } from "@/store/auth-store";
+
 interface MedicineBatchesModalProps {
   medicine: MedicineResponse | null;
   isOpen: boolean;
@@ -27,6 +29,8 @@ export function MedicineBatchesModal({
   isOpen,
   onClose,
 }: MedicineBatchesModalProps) {
+  const user = useAuthStore((s) => s.user);
+  const isDoctor = user?.role === "DOCTOR";
   const [selectedHistoryBatchId, setSelectedHistoryBatchId] = useState<string | null>(null);
   const [adjustBatch, setAdjustBatch] = useState<{ id: string; lotNumber: string; quantity: number } | null>(null);
   
@@ -98,13 +102,15 @@ export function MedicineBatchesModal({
                               >
                                 <Clock className="size-4" />
                               </button>
-                              <button
-                                onClick={() => setAdjustBatch({ id: batch.batchId, lotNumber: batch.lotNumber, quantity: batch.quantityBase })}
-                                title="Kiểm kê / Điều chỉnh"
-                                className="inline-flex size-8 items-center justify-center rounded-full text-amber-600 transition-colors hover:bg-amber-50"
-                              >
-                                <Edit className="size-4" />
-                              </button>
+                              {!isDoctor && (
+                                <button
+                                  onClick={() => setAdjustBatch({ id: batch.batchId, lotNumber: batch.lotNumber, quantity: batch.quantityBase })}
+                                  title="Kiểm kê / Điều chỉnh"
+                                  className="inline-flex size-8 items-center justify-center rounded-full text-amber-600 transition-colors hover:bg-amber-50"
+                                >
+                                  <Edit className="size-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

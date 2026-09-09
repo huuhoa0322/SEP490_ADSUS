@@ -14,6 +14,7 @@ import { useMedicineById } from '@/features/medicines/hooks/use-medicines';
 import { formatCurrency } from '@/lib/utils';
 import { AdjustInventoryModal } from '@/features/medicines/components/adjust-inventory-modal';
 import { Edit } from 'lucide-react';
+import { useAuthStore } from '@/store/auth-store';
 
 type SortKey = 'txnDate' | 'quantityBase';
 type TxnTypeFilter = '' | 'Import' | 'Dispense' | 'Adjustment';
@@ -29,6 +30,8 @@ function SortIcon({ field, current, dir }: { field: SortKey; current: SortKey; d
 export default function BatchHistoryPage() {
   const { id: medicineId, batchId } = useParams<{ id: string; batchId: string }>();
   const router = useRouter();
+  const user = useAuthStore(s => s.user);
+  const isDoctor = user?.role === 'DOCTOR';
 
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch] = useDebounce(searchInput, 400);
@@ -95,7 +98,7 @@ export default function BatchHistoryPage() {
               Lịch sử giao dịch — Lô #{currentBatch?.lotNumber || batchId.split('-')[0].toUpperCase()}
             </h1>
           </div>
-          {currentBatch && (
+          {currentBatch && !isDoctor && (
             <button
               onClick={() => setIsAdjustOpen(true)}
               className="flex items-center gap-2 rounded-full bg-[var(--status-warning)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:opacity-90"

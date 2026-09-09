@@ -359,6 +359,218 @@ public class AppointmentServiceTests : IDisposable
 
     #endregion
 
+    #region CreateFollowUpAppointmentAsync Tests
+
+    [Fact]
+    public async Task CreateFollowUpAppointmentAsync_Success_CreatesFollowUp()
+    {
+        // Arrange
+        var doctor = CreateDoctor();
+        var slot = CreateScheduleSlot(SlotStatus.Open, doctor);
+        slot.SlotId = _slotId;
+
+        var patientProfile = new PatientProfile
+        {
+            PatientProfileId = _patientId,
+            UserId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        _db.ScheduleSlots.Add(slot);
+        _db.PatientProfiles.Add(patientProfile);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        _appointmentRepo.Setup(r => r.CreateAsync(It.IsAny<Appointment>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Appointment a, CancellationToken _) => a);
+        _slotRepo.Setup(r => r.UpdateAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var request = new FollowUpAppointmentRequest
+        {
+            ScheduleSlotId = _slotId,
+            PatientProfileId = _patientId,
+            Reason = "Tái khám"
+        };
+
+        // Act
+        var result = await _sut.CreateFollowUpAppointmentAsync(doctor.UserId, request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(AppointmentStatus.Booked, result.Status);
+        Assert.Equal(SlotStatus.Booked, slot.Status);
+        Assert.Equal("Tái khám", result.Reason);
+
+        // Verify notification sent to both patient and doctor
+        _notificationService.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r => r.UserId == patientProfile.UserId && r.Type == "appointment_booking" && r.Title == "Lịch hẹn tái khám"),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        _notificationService.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r => r.UserId == doctor.UserId && r.Type == "appointment_booking" && r.Title == "Tạo lịch tái khám thành công"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateFollowUpAppointmentAsync_NotificationThrows_DoesNotFailAppointment()
+    {
+        // Arrange
+        var doctor = CreateDoctor();
+        var slot = CreateScheduleSlot(SlotStatus.Open, doctor);
+        slot.SlotId = Guid.NewGuid();
+
+        var patientProfile = new PatientProfile
+        {
+            PatientProfileId = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        _db.ScheduleSlots.Add(slot);
+        _db.PatientProfiles.Add(patientProfile);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        _appointmentRepo.Setup(r => r.CreateAsync(It.IsAny<Appointment>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Appointment a, CancellationToken _) => a);
+        _slotRepo.Setup(r => r.UpdateAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Make notification service throw an exception to verify best-effort resilience
+        _notificationService.Setup(n => n.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Notification gateway network error"));
+
+        var request = new FollowUpAppointmentRequest
+        {
+            ScheduleSlotId = slot.SlotId,
+            PatientProfileId = patientProfile.PatientProfileId,
+            Reason = "Tái khám sau phẫu thuật"
+        };
+
+        // Act
+        var result = await _sut.CreateFollowUpAppointmentAsync(doctor.UserId, request, TestContext.Current.CancellationToken);
+
+        // Assert: Appointment is still successfully booked despite notification failure
+        Assert.NotNull(result);
+        Assert.Equal(AppointmentStatus.Booked, result.Status);
+        Assert.Equal(SlotStatus.Booked, slot.Status);
+        Assert.Equal("Tái khám sau phẫu thuật", result.Reason);
+    }
+
+    [Fact]
+    public async Task CreateFollowUpAppointmentAsync_SlotNotFound_ThrowsException()
+    {
+        // Arrange
+        var doctorId = Guid.NewGuid();
+        var request = new FollowUpAppointmentRequest { ScheduleSlotId = Guid.NewGuid() };
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => _sut.CreateFollowUpAppointmentAsync(doctorId, request, TestContext.Current.CancellationToken));
+        
+        Assert.Contains("Không tìm thấy khung giờ này", ex.Message);
+    }
+
+    [Fact]
+    public async Task CreateFollowUpAppointmentAsync_SlotNotBelongingToDoctor_ThrowsException()
+    {
+        // Arrange
+        var doctor = CreateDoctor();
+        var otherDoctor = CreateDoctor("Other Doctor", Guid.NewGuid());
+        var slot = CreateScheduleSlot(SlotStatus.Open, doctor);
+        slot.SlotId = _slotId;
+
+        _db.ScheduleSlots.Add(slot);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var request = new FollowUpAppointmentRequest { ScheduleSlotId = _slotId };
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.CreateFollowUpAppointmentAsync(otherDoctor.UserId, request, TestContext.Current.CancellationToken));
+        
+        Assert.Contains("Chỉ được chọn khung giờ của chính bạn", ex.Message);
+    }
+
+    [Fact]
+    public async Task CreateFollowUpAppointmentAsync_SlotNotOpen_ThrowsException()
+    {
+        // Arrange
+        var doctor = CreateDoctor();
+        var slot = CreateScheduleSlot(SlotStatus.Booked, doctor);
+        slot.SlotId = _slotId;
+
+        _db.ScheduleSlots.Add(slot);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var request = new FollowUpAppointmentRequest { ScheduleSlotId = _slotId };
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.CreateFollowUpAppointmentAsync(doctor.UserId, request, TestContext.Current.CancellationToken));
+        
+        Assert.Contains("đã được đặt hoặc đã đóng", ex.Message);
+    }
+
+    [Fact]
+    public async Task CreateFollowUpAppointmentAsync_PatientHasConflict_ThrowsException()
+    {
+        // Arrange
+        var doctor = CreateDoctor();
+        var slot = CreateScheduleSlot(SlotStatus.Open, doctor);
+        slot.SlotId = _slotId;
+
+        var existingAppointment = new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = _slotId,
+            PatientProfileId = _patientId,
+            Status = AppointmentStatus.Booked,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        _db.ScheduleSlots.Add(slot);
+        _db.Appointments.Add(existingAppointment);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var request = new FollowUpAppointmentRequest
+        {
+            ScheduleSlotId = _slotId,
+            PatientProfileId = _patientId
+        };
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.CreateFollowUpAppointmentAsync(doctor.UserId, request, TestContext.Current.CancellationToken));
+        
+        Assert.Contains("Bệnh nhân đã có lịch hẹn trong khung giờ này", ex.Message);
+    }
+
+    [Fact]
+    public async Task CreateFollowUpAppointmentAsync_PatientProfileNotFound_ThrowsException()
+    {
+        // Arrange
+        var doctor = CreateDoctor();
+        var slot = CreateScheduleSlot(SlotStatus.Open, doctor);
+        slot.SlotId = _slotId;
+
+        _db.ScheduleSlots.Add(slot);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var request = new FollowUpAppointmentRequest
+        {
+            ScheduleSlotId = _slotId,
+            PatientProfileId = _patientId
+        };
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => _sut.CreateFollowUpAppointmentAsync(doctor.UserId, request, TestContext.Current.CancellationToken));
+        
+        Assert.Contains("Không tìm thấy hồ sơ bệnh nhân", ex.Message);
+    }
+
+    #endregion
+
     #region CancelAppointmentAsync Tests
 
     [Fact]

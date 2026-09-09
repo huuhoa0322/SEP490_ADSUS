@@ -67,3 +67,35 @@ describe("useDoctorAppointments", () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
+
+describe("useCreateFollowUpAppointment", () => {
+  it("gọi mutation tạo lịch tái khám thành công", async () => {
+    let called = false;
+    server.use(
+      http.post(`${API_BASE_URL}/api/v1/appointments/follow-up`, () => {
+        called = true;
+        return HttpResponse.json(
+          { code: 201, message: "OK", data: { appointmentId: "appt-1" } },
+          { status: 201 },
+        );
+      }),
+    );
+
+    const { useCreateFollowUpAppointment } = await import(
+      "@/features/appointment-scheduling/hooks/use-doctor-appointments"
+    );
+
+    const { result } = renderHook(() => useCreateFollowUpAppointment(), {
+      wrapper: createWrapper(),
+    });
+
+    await result.current.mutateAsync({
+      patientProfileId: "p-1",
+      scheduleSlotId: "s-1",
+      reason: "Tái khám",
+    });
+
+    expect(called).toBe(true);
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  });
+});

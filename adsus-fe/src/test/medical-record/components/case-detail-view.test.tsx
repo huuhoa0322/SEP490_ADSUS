@@ -7,13 +7,26 @@ import { useDiagnosticStore } from "@/features/medical-record/stores/use-diagnos
 
 import { CaseDetailView } from "@/features/medical-record/components/case-detail-view";
 
-const { detailMock, saveMutate, confirmMutate, endMutate, exportReportMock, pushMock } = vi.hoisted(() => ({
+const { detailMock, saveMutate, confirmMutate, endMutate, exportReportMock, pushMock, createFollowUpMutate, useScheduleSlotsMock } = vi.hoisted(() => ({
   detailMock: vi.fn(),
   saveMutate: vi.fn(),
   confirmMutate: vi.fn(),
   endMutate: vi.fn(),
   exportReportMock: vi.fn(),
   pushMock: vi.fn(),
+  createFollowUpMutate: vi.fn(),
+  useScheduleSlotsMock: vi.fn(),
+}));
+
+vi.mock("@/features/appointment-scheduling/hooks/use-doctor-appointments", () => ({
+  useCreateFollowUpAppointment: () => ({
+    mutateAsync: createFollowUpMutate,
+    isPending: false,
+  })
+}));
+
+vi.mock("@/features/appointment-scheduling/hooks/use-schedule-slot", () => ({
+  useScheduleSlots: useScheduleSlotsMock,
 }));
 
 let isSaveSuccess = false;
@@ -153,6 +166,9 @@ describe("CaseDetailView", () => {
     endMutate.mockReset();
     exportReportMock.mockReset();
     pushMock.mockReset();
+    createFollowUpMutate.mockReset();
+    useScheduleSlotsMock.mockReset();
+    useScheduleSlotsMock.mockReturnValue({ data: undefined, isLoading: false });
     useAuthStore.getState().signOut();
     useDiagnosticStore.getState().clearSession();
   });

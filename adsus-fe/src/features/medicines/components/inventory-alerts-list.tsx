@@ -8,8 +8,11 @@ import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 import { PaginationNumbered } from '@/components/ui/pagination-numbered';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuthStore } from '@/store/auth-store';
 
 export function InventoryAlertsList() {
+  const user = useAuthStore((s) => s.user);
+  const isDoctor = user?.role === "DOCTOR";
   const { data: summary, isLoading, isError } = useInventoryAlerts();
   const { mutate: triggerAlerts, isPending: isTriggering } = useTriggerInventoryAlerts();
   
@@ -188,15 +191,17 @@ export function InventoryAlertsList() {
           </SelectContent>
         </Select>
 
-        <Button 
-          onClick={handleTrigger} 
-          disabled={isTriggering}
-          className="h-12 rounded-full px-6 gap-2"
-          variant="outline"
-        >
-          <Send className="size-4" />
-          {isTriggering ? 'Đang gửi...' : 'Test Gửi Thông Báo'}
-        </Button>
+        {!isDoctor && (
+          <Button 
+            onClick={handleTrigger} 
+            disabled={isTriggering}
+            className="h-12 rounded-full px-6 gap-2"
+            variant="outline"
+          >
+            <Send className="size-4" />
+            {isTriggering ? 'Đang gửi...' : 'Test Gửi Thông Báo'}
+          </Button>
+        )}
       </div>
 
       <div className="overflow-hidden overflow-x-auto rounded-3xl border border-border bg-background">

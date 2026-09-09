@@ -70,7 +70,7 @@ export const NAV_GROUPS: NavGroup[] = [
         title: "Danh mục thuốc", 
         href: "/medicines", 
         icon: Pill, 
-        roles: ["ADMIN", "PHARMACIST"],
+        roles: ["ADMIN", "PHARMACIST", "DOCTOR"],
         isActive: (p) => p.startsWith("/medicines") && !p.startsWith("/medicines/inventory-alerts"),
       },
       { title: "Nhà cung cấp", href: "/suppliers", icon: Truck, roles: ["ADMIN", "PHARMACIST"] },

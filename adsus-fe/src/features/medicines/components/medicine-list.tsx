@@ -12,6 +12,7 @@ import {
 } from "../hooks/use-medicines";
 import { useInventoryAlerts } from "@/features/medicines/api/inventory.api";
 import { formatDateTime } from "@/features/user-role-management/lib/user-labels";
+import { useAuthStore } from "@/store/auth-store";
 import type { MedicineResponse } from "../api/medicines-api";
 import { getApiErrorMessage } from "@/lib/api-client";
 import { ConfirmDialog } from "@/features/user-role-management/components/confirm-dialog";
@@ -21,6 +22,8 @@ import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 
 
 export function MedicineList() {
+  const user = useAuthStore((s) => s.user);
+  const isDoctor = user?.role === "DOCTOR";
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [search, setSearch] = useState("");
@@ -83,68 +86,74 @@ export function MedicineList() {
           </p>
         </div>
         <div className="flex gap-3">
-          <button
-            onClick={() => router.push('/medicines/inventory-alerts')}
-            className="flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--status-warning)]/30 bg-[var(--status-warning)]/10 px-6 font-heading text-sm font-600 tracking-wider text-[var(--status-warning)] transition-colors hover:bg-[var(--status-warning)]/15"
-          >
-            <AlertTriangle className="size-4" />
-            Cảnh báo kho
-          </button>
-          <button
-            onClick={handleOpenCreate}
-            className="flex h-12 items-center gap-2 rounded-full bg-accent px-6 font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90"
-          >
-            <PlusCircle className="size-4" />
-            Thêm thuốc mới
-          </button>
+          {!isDoctor && (
+            <button
+              onClick={() => router.push('/medicines/inventory-alerts')}
+              className="flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--status-warning)]/30 bg-[var(--status-warning)]/10 px-6 font-heading text-sm font-600 tracking-wider text-[var(--status-warning)] transition-colors hover:bg-[var(--status-warning)]/15"
+            >
+              <AlertTriangle className="size-4" />
+              Cảnh báo kho
+            </button>
+          )}
+          {!isDoctor && (
+            <button
+              onClick={handleOpenCreate}
+              className="flex h-12 items-center gap-2 rounded-full bg-accent px-6 font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90"
+            >
+              <PlusCircle className="size-4" />
+              Thêm thuốc mới
+            </button>
+          )}
         </div>
       </div>
 
       {/* Tổng quan tồn kho — 4 số thật lấy từ InventoryAlertSummary, không suy diễn thêm. */}
-      <div className="mt-8 grid gap-4 md:grid-cols-4">
-        <div className="preclinic-card flex items-center gap-3.5 p-4">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Pill className="size-5" />
-          </span>
-          <div>
-            <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Tổng thuốc</p>
-            <p className="font-heading text-2xl font-bold text-foreground">{alertSummary?.totalMedicinesCount ?? 0}</p>
+      {!isDoctor && (
+        <div className="mt-8 grid gap-4 md:grid-cols-4">
+          <div className="preclinic-card flex items-center gap-3.5 p-4">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Pill className="size-5" />
+            </span>
+            <div>
+              <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Tổng thuốc</p>
+              <p className="font-heading text-2xl font-bold text-foreground">{alertSummary?.totalMedicinesCount ?? 0}</p>
+            </div>
           </div>
-        </div>
 
-        <div className="preclinic-card flex items-center gap-3.5 p-4">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--status-good)]/12 text-[var(--status-good)]">
-            <PackageCheck className="size-5" />
-          </span>
-          <div>
-            <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Còn hàng</p>
-            <p className="font-heading text-2xl font-bold text-[var(--status-good)]">{alertSummary?.inStockCount ?? 0}</p>
+          <div className="preclinic-card flex items-center gap-3.5 p-4">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--status-good)]/12 text-[var(--status-good)]">
+              <PackageCheck className="size-5" />
+            </span>
+            <div>
+              <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Còn hàng</p>
+              <p className="font-heading text-2xl font-bold text-[var(--status-good)]">{alertSummary?.inStockCount ?? 0}</p>
+            </div>
           </div>
-        </div>
 
-        <div className="preclinic-card flex items-center gap-3.5 p-4">
-          <span className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--status-warning)]/12 text-[var(--status-warning)]">
-            {(alertSummary?.lowStockCount ?? 0) > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex size-2.5 animate-pulse rounded-full bg-[var(--status-warning)]" />
-            )}
-            <AlertTriangle className="size-5" />
-          </span>
-          <div>
-            <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Sắp hết</p>
-            <p className="font-heading text-2xl font-bold text-[var(--status-warning)]">{alertSummary?.lowStockCount ?? 0}</p>
+          <div className="preclinic-card flex items-center gap-3.5 p-4">
+            <span className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--status-warning)]/12 text-[var(--status-warning)]">
+              {(alertSummary?.lowStockCount ?? 0) > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex size-2.5 animate-pulse rounded-full bg-[var(--status-warning)]" />
+              )}
+              <AlertTriangle className="size-5" />
+            </span>
+            <div>
+              <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Sắp hết</p>
+              <p className="font-heading text-2xl font-bold text-[var(--status-warning)]">{alertSummary?.lowStockCount ?? 0}</p>
+            </div>
           </div>
-        </div>
 
-        <div className="preclinic-card flex items-center gap-3.5 p-4">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/12 text-destructive">
-            <PackageX className="size-5" />
-          </span>
-          <div>
-            <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Hết hàng</p>
-            <p className="font-heading text-2xl font-bold text-destructive">{alertSummary?.outOfStockCount ?? 0}</p>
+          <div className="preclinic-card flex items-center gap-3.5 p-4">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/12 text-destructive">
+              <PackageX className="size-5" />
+            </span>
+            <div>
+              <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Hết hàng</p>
+              <p className="font-heading text-2xl font-bold text-destructive">{alertSummary?.outOfStockCount ?? 0}</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="mt-6 flex flex-wrap gap-3">
         <div className="relative min-w-64 flex-1">
@@ -230,36 +239,40 @@ export function MedicineList() {
                   </td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => router.push(`/medicines/${medicine.medicineId}/batches`)}
-                        title="Xem lô tồn kho"
-                        className="flex size-9 items-center justify-center rounded-full text-primary hover:bg-primary/10"
-                      >
-                        <Package className="size-4" />
-                      </button>
+                      {!isDoctor && (
+                        <button
+                          onClick={() => router.push(`/medicines/${medicine.medicineId}/batches`)}
+                          title="Xem lô tồn kho"
+                          className="flex size-9 items-center justify-center rounded-full text-primary hover:bg-primary/10"
+                        >
+                          <Package className="size-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => setDetailMedicine(medicine)}
-                        title="Chi tiết / Quản lý"
+                        title={isDoctor ? "Xem chi tiết" : "Chi tiết / Quản lý"}
                         className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
                       >
                         <Pencil className="size-4" />
                       </button>
-                      {medicine.status === "ACTIVE" ? (
-                        <button
-                          onClick={() => setPendingDeleteId(medicine.medicineId)}
-                          title="Ngừng sử dụng"
-                          className="flex size-9 items-center justify-center rounded-full text-destructive hover:bg-destructive/10"
-                        >
-                          <Ban className="size-4" />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setPendingActivateId(medicine.medicineId)}
-                          title="Kích hoạt lại"
-                          className="flex size-9 items-center justify-center rounded-full text-[var(--status-good)] hover:bg-[var(--status-good)]/10"
-                        >
-                          <PlayCircle className="size-4" />
-                        </button>
+                      {!isDoctor && (
+                        medicine.status === "ACTIVE" ? (
+                          <button
+                            onClick={() => setPendingDeleteId(medicine.medicineId)}
+                            title="Ngừng sử dụng"
+                            className="flex size-9 items-center justify-center rounded-full text-destructive hover:bg-destructive/10"
+                          >
+                            <Ban className="size-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setPendingActivateId(medicine.medicineId)}
+                            title="Kích hoạt lại"
+                            className="flex size-9 items-center justify-center rounded-full text-[var(--status-good)] hover:bg-[var(--status-good)]/10"
+                          >
+                            <PlayCircle className="size-4" />
+                          </button>
+                        )
                       )}
                     </div>
                   </td>

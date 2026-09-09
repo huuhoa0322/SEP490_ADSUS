@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Trash2 } from "lucide-react";
 import type { NotificationLog } from "../types/notification.types";
 import { useMarkAsRead, useDeleteNotification } from "../hooks/use-notifications";
+import { useAuthStore } from "@/store/auth-store";
 import {
   NOTIFICATION_ICONS,
   NOTIFICATION_COLORS,
@@ -17,6 +18,7 @@ interface NotificationItemProps {
 
 export function NotificationItem({ notification }: NotificationItemProps) {
   const router = useRouter();
+  const currentUser = useAuthStore((s) => s.user);
   const [isHovered, setIsHovered] = useState(false);
   const markAsRead = useMarkAsRead();
   const deleteNotification = useDeleteNotification();
@@ -33,7 +35,12 @@ export function NotificationItem({ notification }: NotificationItemProps) {
       markAsRead.mutate(notification.logId);
     }
     if (notification.deepLink) {
-      router.push(notification.deepLink);
+      let targetLink = notification.deepLink;
+      // Nếu là Bác sĩ và link trỏ vào /appointments (không tồn tại cho Bác sĩ) thì chuyển sang /schedule/patients
+      if (currentUser?.role === "DOCTOR" && (targetLink === "/appointments" || targetLink.startsWith("/appointments/"))) {
+        targetLink = "/schedule/patients";
+      }
+      router.push(targetLink);
     }
   };
 
