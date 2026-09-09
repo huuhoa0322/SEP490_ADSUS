@@ -71,6 +71,19 @@ public sealed class NoShowService
         appointment.UpdatedAt = now;
         appointment.CancelledReason = $"Tự động hủy do không check-in trong {_settings.GraceTimeMinutes} phút kể từ lịch hẹn";
 
+        // Cập nhật Case status nếu có liên kết
+        if (appointment.CaseId.HasValue)
+        {
+            var medicalCase = await _db.Cases
+                .FirstOrDefaultAsync(c => c.CaseId == appointment.CaseId, ct);
+
+            if (medicalCase != null)
+            {
+                medicalCase.Status = CaseStatus.Cancelled;
+                medicalCase.UpdatedAt = now;
+            }
+        }
+
         await _db.SaveChangesAsync(ct);
 
         // Gửi notification cho patient khi bị No-Show

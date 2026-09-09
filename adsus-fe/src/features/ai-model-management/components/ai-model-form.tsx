@@ -193,6 +193,7 @@ export function AiModelFormDialog({ id, open, onClose, onSuccess }: AiModelFormD
             <button
               type="button"
               onClick={onClose}
+              aria-label="Đóng"
               className="rounded-full p-2 text-muted-foreground hover:bg-secondary transition-colors"
             >
               <X className="size-5" />

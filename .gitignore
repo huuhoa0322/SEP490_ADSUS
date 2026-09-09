@@ -404,3 +404,6 @@ coveragereport-unit/
 
 # sonarqube
 .sonarqube/
+
+#claude
+.claude/
