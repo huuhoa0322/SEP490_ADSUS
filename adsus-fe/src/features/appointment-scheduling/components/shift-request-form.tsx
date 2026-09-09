@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format, addDays, startOfDay } from 'date-fns';
@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -30,7 +29,6 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useCreateShiftRequest } from '../hooks/use-shift-request';
-import { ShiftRequestType, ShiftType } from '../types/shift-request.types';
 
 const shiftRequestSchema = z
   .object({
@@ -104,7 +102,6 @@ export function ShiftRequestForm({
   const {
     control,
     handleSubmit,
-    watch,
     reset,
     formState: { errors },
   } = useForm<ShiftRequestFormValues>({
@@ -128,7 +125,7 @@ export function ShiftRequestForm({
     }
   }, [open, defaultDate, defaultRequestType, minDate, reset]);
 
-  const requestType = watch('requestType');
+  const requestType = useWatch({ control, name: 'requestType' });
 
   const onSubmit = async (data: ShiftRequestFormValues) => {
     try {
@@ -140,7 +137,7 @@ export function ShiftRequestForm({
       });
       reset();
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       // Error is handled by hook
     }
   };

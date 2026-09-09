@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Coffee } from "lucide-react";
-import { format, addMonths } from "date-fns";
+import { addMonths } from "date-fns";
 import { Button } from "@/components/ui/button";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,7 +27,7 @@ export function ScheduleSlotManagementView() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1; // 1-12
 
-  const { data: summaries, isLoading, isError, error } = useMonthSummary(year, month);
+  const { data: summaries, isLoading } = useMonthSummary(year, month);
 
   const handlePrevMonth = () => setCurrentDate(addMonths(currentDate, -1));
   const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));

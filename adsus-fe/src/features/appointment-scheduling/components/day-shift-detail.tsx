@@ -8,7 +8,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { DayShiftSummary, ShiftInfo } from '../types/shift-request.types';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Users, Ban } from 'lucide-react';
+import { Clock, Users, Ban, Loader2, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { useDoctorAppointments } from '../hooks/use-doctor-appointments';
+import { toIsoDate } from '../lib/group-appointments-by-week';
 
 interface DayShiftDetailProps {
   open: boolean;
@@ -74,6 +77,73 @@ const ShiftDetailBlock = ({ info, title }: { info?: ShiftInfo; title: string }) 
   );
 };
 
+const DayPatientList = ({ date }: { date: Date }) => {
+  const dateStr = toIsoDate(date);
+  const { data, isLoading, isError } = useDoctorAppointments({ fromDate: dateStr, toDate: dateStr });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-32 items-center justify-center rounded-md border border-border bg-muted/20 text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tải...
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex items-start gap-2 rounded-md border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">
+        <AlertCircle className="mt-0.5 size-4 shrink-0" />
+        Lỗi tải danh sách bệnh nhân.
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex h-32 items-center justify-center rounded-md border border-border bg-muted/20 text-sm text-muted-foreground">
+        Không có bệnh nhân đặt lịch
+      </div>
+    );
+  }
+
+  const byTime = new Map<string, typeof data>();
+  for (const a of data) {
+    const key = `${a.startTime}|${a.endTime}`;
+    if (!byTime.has(key)) byTime.set(key, []);
+    byTime.get(key)!.push(a);
+  }
+  
+  const groups = Array.from(byTime.values())
+    .sort((a, b) => a[0].startTime.localeCompare(b[0].startTime));
+
+  return (
+    <div className="space-y-3 overflow-y-auto max-h-[500px] pr-2">
+      {groups.map((groupAppointments) => {
+        const startTime = groupAppointments[0].startTime;
+        const endTime = groupAppointments[0].endTime;
+        return (
+          <div key={`${startTime}-${endTime}`} className="rounded-md border border-border bg-background p-3">
+            <div className="mb-2 font-mono text-sm font-medium text-[var(--chart-3)]">
+              {startTime.slice(0, 5)} - {endTime.slice(0, 5)}
+            </div>
+            <div className="space-y-2">
+              {groupAppointments.map((a) => (
+                <Link
+                  key={a.appointmentId}
+                  href={`/patients/${a.patientProfileId}`}
+                  className="block rounded bg-muted/40 p-2 text-sm transition-colors hover:bg-muted"
+                >
+                  <div className="font-medium text-foreground">{a.patientFullName}</div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 export function DayShiftDetail({ open, onOpenChange, date, summary, onRequestClick }: DayShiftDetailProps) {
   if (!date) return null;
 
@@ -87,39 +157,47 @@ export function DayShiftDetail({ open, onOpenChange, date, summary, onRequestCli
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px]">
+      <DialogContent className="sm:max-w-[850px] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-xl">
             Chi tiết ngày {format(date, 'dd/MM/yyyy')}
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4 pt-4">
-          {!summary ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Không có dữ liệu ca làm việc cho ngày này
-            </div>
-          ) : (
-            <>
-              <ShiftDetailBlock info={summary.morning} title="Ca Sáng (08:00 - 12:00)" />
-              <ShiftDetailBlock info={summary.afternoon} title="Ca Chiều (13:00 - 17:00)" />
-              {summary.evening && (
-                <ShiftDetailBlock info={summary.evening} title="Ca Tối (17:00 - 20:00)" />
-              )}
-            </>
-          )}
-        </div>
-        
-        {date >= minDate && onRequestClick && (
-          <div className="flex gap-3 justify-end mt-4 pt-4 border-t">
-            <Button variant="outline" onClick={() => handleRequestClick('LEAVE')}>
-              Xin nghỉ phép
-            </Button>
-            <Button onClick={() => handleRequestClick('OVERTIME')}>
-              Đăng ký tăng ca
-            </Button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+          <div className="space-y-4">
+            <h3 className="font-semibold text-muted-foreground uppercase text-xs tracking-wider">Thông tin ca làm việc</h3>
+            {!summary ? (
+              <div className="text-center py-8 text-muted-foreground border rounded-lg bg-muted/20">
+                Không có dữ liệu ca làm việc
+              </div>
+            ) : (
+              <div className="space-y-3 overflow-y-auto max-h-[500px] pr-1">
+                <ShiftDetailBlock info={summary.morning} title="Ca Sáng (08:00 - 12:00)" />
+                <ShiftDetailBlock info={summary.afternoon} title="Ca Chiều (13:00 - 17:00)" />
+                {summary.evening && (
+                  <ShiftDetailBlock info={summary.evening} title="Ca Tối (17:00 - 20:00)" />
+                )}
+              </div>
+            )}
+            
+            {date >= minDate && onRequestClick && (
+              <div className="flex gap-3 justify-start mt-4 pt-4 border-t">
+                <Button variant="outline" onClick={() => handleRequestClick('LEAVE')}>
+                  Xin nghỉ phép
+                </Button>
+                <Button onClick={() => handleRequestClick('OVERTIME')}>
+                  Đăng ký tăng ca
+                </Button>
+              </div>
+            )}
           </div>
-        )}
+          
+          <div className="space-y-4 border-l pl-6">
+             <h3 className="font-semibold text-muted-foreground uppercase text-xs tracking-wider">Danh sách bệnh nhân đặt lịch</h3>
+             <DayPatientList date={date} />
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

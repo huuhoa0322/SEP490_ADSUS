@@ -247,14 +247,14 @@ public sealed class AppointmentService : IAppointmentService
 
         await _appointmentRepo.CreateAsync(appointment, ct);
         await _slotRepo.UpdateAsync(slot, ct);
-
         // Load navigation properties for response
         appointment.Slot = slot;
+
+        var patientProfile = await _profileRepo.GetByIdAsync(patientProfileId, ct);
 
         // Send notification to patient (best effort - don't fail the booking if notification fails)
         try
         {
-            var patientProfile = await _profileRepo.GetByIdAsync(patientProfileId, ct);
             if (patientProfile != null)
             {
                 _logger.LogInformation(
@@ -296,13 +296,16 @@ public sealed class AppointmentService : IAppointmentService
         // Gửi notification cho doctor phụ trách
         try
         {
+            var userId = patientProfile?.UserId ?? Guid.Empty;
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId, ct);
+            var patientName = user?.FullName ?? "Bệnh nhân";
             await _notificationService.SendAsync(new SendNotificationRequest
             {
                 UserId = slot.DoctorId,
                 Type = "new_appointment_booking",
                 Title = "Có lịch hẹn mới",
-                Body = $"Bệnh nhân đã đặt lịch khám ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
-                DeepLink = "/schedule/patients",
+                Body = $"Bệnh nhân {patientName} đã đặt lịch khám ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
+                DeepLink = $"/patients/{appointment.PatientProfileId}",
                 Metadata = new Dictionary<string, object>
                 {
                     ["appointmentId"] = appointment.AppointmentId.ToString()

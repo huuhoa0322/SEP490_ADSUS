@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs.Invoice;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 
 namespace ADSUS_BE.BLL.PrescriptionAdherence.Services;
@@ -19,17 +20,20 @@ public class InvoiceService : IInvoiceService
     private readonly IInventoryService _inventoryService;
     private readonly IMedicationIntakeLogRepository _intakeLogRepo;
     private readonly IMedicationIntakeScheduleGenerator _scheduleGenerator;
+    private readonly INotificationService _notificationService;
 
     public InvoiceService(
         AppDbContext context,
         IInventoryService inventoryService,
         IMedicationIntakeLogRepository intakeLogRepo,
-        IMedicationIntakeScheduleGenerator scheduleGenerator)
+        IMedicationIntakeScheduleGenerator scheduleGenerator,
+        INotificationService notificationService)
     {
         _context = context;
         _inventoryService = inventoryService;
         _intakeLogRepo = intakeLogRepo;
         _scheduleGenerator = scheduleGenerator;
+        _notificationService = notificationService;
     }
 
     public async Task<Guid> GenerateInvoiceForCaseAsync(Guid caseId)
@@ -138,6 +142,36 @@ public class InvoiceService : IInvoiceService
         invoice.TotalAmount = grandTotal;
         
         await _context.SaveChangesAsync();
+
+        // Send notification to all nurses
+        var nurseIds = await _context.Users
+            .Where(u => u.Role == UserRole.Nurse)
+            .Select(u => u.UserId)
+            .ToListAsync();
+
+        if (nurseIds.Count > 0)
+        {
+            var caseEntity = await _context.Cases
+                .Include(c => c.PatientProfile)
+                    .ThenInclude(p => p.User)
+                .FirstOrDefaultAsync(c => c.CaseId == caseId);
+                
+            var patientName = caseEntity?.PatientProfile?.User?.FullName ?? "bệnh nhân";
+
+            await _notificationService.SendBulkAsync(nurseIds, new SendNotificationRequest
+            {
+                UserId = Guid.Empty, // Bỏ qua vì SendBulkAsync sẽ ghi đè
+                Type = "new_invoice_created",
+                Title = "Có hóa đơn mới",
+                Body = $"Có hóa đơn mới của {patientName}. Vui lòng kiểm tra và thanh toán.",
+                DeepLink = $"/invoices/{invoice.Id}",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["invoiceId"] = invoice.Id.ToString()
+                }
+            });
+        }
+
         return invoice.Id;
     }
 
