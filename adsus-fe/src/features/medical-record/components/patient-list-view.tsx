@@ -40,6 +40,7 @@ const VISIT_FILTERS: VisitStatusFilter[] = ["All", "Pending", "Confirmed"];
 function getInitials(fullName: string): string {
   if (!fullName) return "PT";
   const words = fullName.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "PT";
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
@@ -68,6 +69,18 @@ function renderStatusBadge(status: CaseStatus | null) {
     case "END":
       return (
         <Badge variant="soft-teal" className="font-medium text-xs px-2.5 py-0.5">
+          {caseStatusLabel(status)}
+        </Badge>
+      );
+    case "IN_PROGRESS":
+      return (
+        <Badge variant="soft-primary" className="font-medium text-xs px-2.5 py-0.5">
+          {caseStatusLabel(status)}
+        </Badge>
+      );
+    case "CANCELLED":
+      return (
+        <Badge variant="soft-danger" className="font-medium text-xs px-2.5 py-0.5">
           {caseStatusLabel(status)}
         </Badge>
       );
@@ -212,16 +225,14 @@ export function PatientListView() {
               <tbody className="divide-y divide-[#E7E8EB]">
                 {data.items.map((patient) => {
                   const subtext = getPatientSubtext(patient);
-                  const initials = getInitials(patient.fullName);
-
                   return (
                     <tr key={patient.patientUserId} className="transition-colors hover:bg-[#F5F6F8]/60 [&>th:first-child]:pl-6 [&>td:first-child]:pl-6">
-                      {/* Cột Bệnh nhân với Avatar tròn Preclinic (avatar-md 40px) */}
+                      {/* Cột Bệnh nhân */}
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          <Avatar size="md" className="size-10 rounded-full border border-[#E7E8EB]">
-                            <AvatarFallback className="bg-[#ECEDF7] text-xs font-semibold text-[#2E37A4]">
-                              {initials}
+                          <Avatar className="size-8 shrink-0 rounded-lg">
+                            <AvatarFallback className="rounded-lg bg-primary/10 text-xs font-bold text-primary">
+                              {getInitials(patient.fullName)}
                             </AvatarFallback>
                           </Avatar>
                           <div>

@@ -8,6 +8,7 @@ using ADSUS_BE.BLL.PrescriptionAdherence.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
+using ADSUS_BE.BLL.Common.Interfaces;
 using Moq;
 using Xunit;
 
@@ -28,7 +29,7 @@ public class InvoiceServiceTests
         // Arrange
         var options = GetInMemoryOptions("Invoice_Test_Exact");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -72,7 +73,7 @@ public class InvoiceServiceTests
         // Arrange
         var options = GetInMemoryOptions("Invoice_Test_UsageUnit");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -115,7 +116,7 @@ public class InvoiceServiceTests
         // Arrange
         var options = GetInMemoryOptions("Invoice_Test_RoundUp");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -167,7 +168,7 @@ public class InvoiceServiceTests
         // Remainder 4 < 50 → round up → merge into Gói row: total 2 Gói (not 1 Gói + "(Làm tròn lên)" Gói)
         var options = GetInMemoryOptions("Invoice_Test_RemainderMerge");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -208,7 +209,7 @@ public class InvoiceServiceTests
         //         Remainder 4 > 0 → merge 1 into Gói row → 4 Gói total, single row
         var options = GetInMemoryOptions("Invoice_Test_MultiLevelMerge");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -250,7 +251,7 @@ public class InvoiceServiceTests
         // Arrange
         var options = GetInMemoryOptions("Invoice_Test_Exception");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -286,7 +287,7 @@ public class InvoiceServiceTests
         // Arrange — CaseId không có Prescription nào
         var options = GetInMemoryOptions("Invoice_Test_NoPrescription");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
 
@@ -302,7 +303,7 @@ public class InvoiceServiceTests
         // Arrange — Case đã có Invoice PENDING → idempotent, trả lại ID cũ
         var options = GetInMemoryOptions("Invoice_Test_Idempotent");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var existingInvoiceId = Guid.NewGuid();
@@ -331,7 +332,7 @@ public class InvoiceServiceTests
         // Arrange — Case đã có Invoice PAID → idempotent
         var options = GetInMemoryOptions("Invoice_Test_IdempotentPaid");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var existingInvoiceId = Guid.NewGuid();
@@ -364,7 +365,7 @@ public class InvoiceServiceTests
     {
         var options = GetInMemoryOptions("Invoice_Test_GetDetail_NotFound");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var nonExistentId = Guid.NewGuid();
 
@@ -384,7 +385,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Pay_NotFound");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object, null!, null!);
+        var service = new InvoiceService(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
 
         var nonExistentId = Guid.NewGuid();
 
@@ -400,7 +401,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Pay_AlreadyPaid");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object, null!, null!);
+        var service = new InvoiceService(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
 
         var invoiceId = Guid.NewGuid();
         var caseId   = Guid.NewGuid();
@@ -433,7 +434,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Cancel_Pending");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object, null!, null!);
+        var service = new InvoiceService(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
 
         var invoiceId = Guid.NewGuid();
         context.Invoices.Add(new Invoice
@@ -458,7 +459,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Cancel_Paid");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object, null!, null!);
+        var service = new InvoiceService(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();
@@ -530,7 +531,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Cancel_NotFound");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object, null!, null!);
+        var service = new InvoiceService(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
 
         var request = new CancelInvoiceRequest { Reason = "Lý do" };
         var ex = await Assert.ThrowsAsync<BusinessException>(
@@ -544,7 +545,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Cancel_Already");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object, null!, null!);
+        var service = new InvoiceService(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
 
         var invoiceId = Guid.NewGuid();
         context.Invoices.Add(new Invoice
@@ -567,7 +568,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object);
+        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();
@@ -608,7 +609,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object);
+        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();
@@ -642,7 +643,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object);
+        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();
@@ -675,7 +676,7 @@ public class InvoiceServiceTests
     {
         var options = GetInMemoryOptions("Invoice_Test_Cancel_DeletesPending");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();
@@ -705,7 +706,7 @@ public class InvoiceServiceTests
     {
         var options = GetInMemoryOptions("Invoice_Test_Cancel_KeepsTaken");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();
@@ -732,7 +733,7 @@ public class InvoiceServiceTests
     {
         var options = GetInMemoryOptions("Invoice_Test_Cancel_PartialRefund");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();
@@ -768,7 +769,7 @@ public class InvoiceServiceTests
     {
         var options = GetInMemoryOptions("Invoice_Test_Cancel_AllTaken");
         using var context = new AppDbContext(options);
-        var service = new InvoiceService(context, null!, null!, null!);
+        var service = new InvoiceService(context, null!, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();

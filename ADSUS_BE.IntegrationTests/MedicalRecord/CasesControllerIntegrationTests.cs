@@ -444,7 +444,7 @@ public class CasesControllerIntegrationTests
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
-        Assert.Equal("CREATED", body!.Data!.Status);
+        Assert.Equal("IN_PROGRESS", body!.Data!.Status);
     }
 
     [Fact]

@@ -37,6 +37,7 @@ import type { CaseStatus } from "../types/medical-record.types";
 function getInitials(fullName: string): string {
   if (!fullName) return "PT";
   const words = fullName.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "PT";
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
@@ -62,6 +63,18 @@ function renderStatusBadge(status: CaseStatus) {
     case "END":
       return (
         <Badge variant="soft-teal" className="font-medium text-xs px-2.5 py-0.5">
+          {caseStatusLabel(status)}
+        </Badge>
+      );
+    case "IN_PROGRESS":
+      return (
+        <Badge variant="soft-primary" className="font-medium text-xs px-2.5 py-0.5">
+          {caseStatusLabel(status)}
+        </Badge>
+      );
+    case "CANCELLED":
+      return (
+        <Badge variant="soft-danger" className="font-medium text-xs px-2.5 py-0.5">
           {caseStatusLabel(status)}
         </Badge>
       );
@@ -111,7 +124,6 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
 
   const profile = profileQuery.data;
   const cases = caseListQuery.data;
-  const initials = getInitials(profile.fullName);
   const ageStr = calculateAge(profile.dateOfBirth);
 
   return (
@@ -131,10 +143,10 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
       <div className="overflow-hidden rounded-lg border border-[#E7E8EB] bg-white p-6 shadow-xs">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            {/* Avatar cỡ lớn (avatar-xxxl 96px) */}
-            <Avatar size="xxxl" className="size-24 rounded-full border-2 border-[#E7E8EB] shadow-xs">
-              <AvatarFallback className="bg-[#ECEDF7] text-2xl font-bold text-[#2E37A4]">
-                {initials}
+            {/* Avatar và Thông tin bệnh nhân */}
+            <Avatar className="size-20 shrink-0 rounded-xl">
+              <AvatarFallback className="rounded-xl bg-primary/10 text-2xl font-bold text-primary">
+                {getInitials(profile.fullName)}
               </AvatarFallback>
             </Avatar>
 
@@ -321,13 +333,12 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
                           ? `${a.allergyName}: ${a.note}`
                           : a.allergyName;
                       return (
-                        <Badge
+                        <span
                           key={a.allergyTypeId}
-                          variant="soft-danger"
-                          className="px-2.5 py-1 text-xs font-medium"
+                          className="inline-flex items-center rounded-md bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-800 border border-rose-200"
                         >
                           {text}
-                        </Badge>
+                        </span>
                       );
                     })}
                   </div>
@@ -353,13 +364,12 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
                           ? `${d.diseaseName}: ${d.note}`
                           : d.diseaseName;
                       return (
-                        <Badge
+                        <span
                           key={d.diseaseId}
-                          variant="soft-warning"
-                          className="px-2.5 py-1 text-xs font-medium"
+                          className="inline-flex items-center rounded-md bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 border border-amber-200"
                         >
                           {text}
-                        </Badge>
+                        </span>
                       );
                     })}
                   </div>

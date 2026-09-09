@@ -362,13 +362,17 @@ public sealed class CaseService : ICaseService
         // Gửi notification cho doctor về case mới được tạo từ booking
         try
         {
+            var patientProfile = await _profiles.GetByIdAsync(patientProfileId, ct);
+            var user = patientProfile != null ? await _users.GetByIdAsync(patientProfile.UserId, ct) : null;
+            var patientName = user?.FullName ?? "Bệnh nhân";
+
             await _notificationService.SendAsync(new SendNotificationRequest
             {
                 UserId = doctorId,
                 Type = "new_case_created",
                 Title = "Có ca khám mới",
-                Body = $"Bệnh nhân đã đặt lịch khám với triệu chứng. Ca khám đã được tạo tự động.",
-                DeepLink = $"/medical-records/cases/{caseId}",
+                Body = $"Bệnh nhân {patientName} đã đặt lịch khám với triệu chứng. Ca khám đã được tạo tự động.",
+                DeepLink = $"/cases/{caseId}",
                 Metadata = new Dictionary<string, object>
                 {
                     ["caseId"] = caseId.ToString()

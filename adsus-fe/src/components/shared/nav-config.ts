@@ -13,6 +13,7 @@ import {
   Users,
   type LucideIcon,
   PackagePlus,
+  Activity,
 } from "lucide-react";
 
 import type { Role } from "@/types/api.types";
@@ -56,10 +57,8 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/schedule",
         icon: CalendarClock,
         roles: ["DOCTOR"],
-        isActive: (p) => p.startsWith("/schedule") && !p.startsWith("/schedule/patients"),
       },
-      { title: "Lịch bệnh nhân", href: "/schedule/patients", icon: Users, roles: ["DOCTOR"] },
-      { title: "Theo dõi & nhắc uống thuốc", href: "/medication-tracking", icon: Pill, roles: ["DOCTOR"] },
+      { title: "Theo dõi & nhắc uống thuốc", href: "/medication-tracking", icon: Activity, roles: ["DOCTOR"] },
       { title: "Duyệt nghỉ phép bác sĩ", href: "/admin/shift-requests", icon: CalendarClock, roles: ["ADMIN"] },
     ],
   },

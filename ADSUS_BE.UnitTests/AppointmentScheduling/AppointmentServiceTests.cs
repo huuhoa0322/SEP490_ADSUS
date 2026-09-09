@@ -384,6 +384,8 @@ public class AppointmentServiceTests : IDisposable
             .ReturnsAsync((Appointment a, CancellationToken _) => a);
         _slotRepo.Setup(r => r.UpdateAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        _profileRepo.Setup(r => r.GetByIdAsync(patientProfile.PatientProfileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(patientProfile);
 
         var request = new FollowUpAppointmentRequest
         {
@@ -434,6 +436,8 @@ public class AppointmentServiceTests : IDisposable
             .ReturnsAsync((Appointment a, CancellationToken _) => a);
         _slotRepo.Setup(r => r.UpdateAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        _profileRepo.Setup(r => r.GetByIdAsync(patientProfile.PatientProfileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(patientProfile);
 
         // Make notification service throw an exception to verify best-effort resilience
         _notificationService.Setup(n => n.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()))

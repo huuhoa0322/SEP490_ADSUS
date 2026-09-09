@@ -247,14 +247,14 @@ public sealed class AppointmentService : IAppointmentService
 
         await _appointmentRepo.CreateAsync(appointment, ct);
         await _slotRepo.UpdateAsync(slot, ct);
-
         // Load navigation properties for response
         appointment.Slot = slot;
+
+        var patientProfile = await _profileRepo.GetByIdAsync(patientProfileId, ct);
 
         // Send notification to patient (best effort - don't fail the booking if notification fails)
         try
         {
-            var patientProfile = await _profileRepo.GetByIdAsync(patientProfileId, ct);
             if (patientProfile != null)
             {
                 _logger.LogInformation(
@@ -296,13 +296,16 @@ public sealed class AppointmentService : IAppointmentService
         // Gửi notification cho doctor phụ trách
         try
         {
+            var userId = patientProfile?.UserId ?? Guid.Empty;
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId, ct);
+            var patientName = user?.FullName ?? "Bệnh nhân";
             await _notificationService.SendAsync(new SendNotificationRequest
             {
                 UserId = slot.DoctorId,
                 Type = "new_appointment_booking",
                 Title = "Có lịch hẹn mới",
-                Body = $"Bệnh nhân đã đặt lịch khám ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
-                DeepLink = "/schedule/patients",
+                Body = $"Bệnh nhân {patientName} đã đặt lịch khám ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
+                DeepLink = $"/patients/{appointment.PatientProfileId}",
                 Metadata = new Dictionary<string, object>
                 {
                     ["appointmentId"] = appointment.AppointmentId.ToString()
@@ -353,8 +356,8 @@ public sealed class AppointmentService : IAppointmentService
         }
 
         // 5. Patient Profile phải tồn tại
-        var profileExists = await _db.PatientProfiles.AnyAsync(p => p.PatientProfileId == request.PatientProfileId, ct);
-        if (!profileExists)
+        var patientProfile = await _profileRepo.GetByIdAsync(request.PatientProfileId, ct);
+        if (patientProfile == null)
         {
             throw new KeyNotFoundException("Không tìm thấy hồ sơ bệnh nhân.");
         }
@@ -379,21 +382,17 @@ public sealed class AppointmentService : IAppointmentService
         // Notify patient
         try
         {
-            var patientProfile = await _db.PatientProfiles.FirstOrDefaultAsync(p => p.PatientProfileId == request.PatientProfileId, ct);
-            if (patientProfile != null)
+            await _notificationService.SendAsync(new SendNotificationRequest
             {
-                await _notificationService.SendAsync(new SendNotificationRequest
+                UserId = patientProfile.UserId,
+                Type = "appointment_booking",
+                Title = "Lịch hẹn tái khám",
+                Body = $"Bác sĩ {slot.Doctor.FullName} đã hẹn tái khám cho bạn vào ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
+                Metadata = new Dictionary<string, object>
                 {
-                    UserId = patientProfile.UserId,
-                    Type = "appointment_booking",
-                    Title = "Lịch hẹn tái khám",
-                    Body = $"Bác sĩ {slot.Doctor.FullName} đã hẹn tái khám cho bạn vào ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
-                    Metadata = new Dictionary<string, object>
-                    {
-                        ["appointmentId"] = appointment.AppointmentId.ToString()
-                    }
-                }, ct);
-            }
+                    ["appointmentId"] = appointment.AppointmentId.ToString()
+                }
+            }, ct);
         }
         catch (Exception ex)
         {
@@ -403,13 +402,14 @@ public sealed class AppointmentService : IAppointmentService
         // Notify doctor
         try
         {
+            var patientName = patientProfile.User?.FullName ?? "bệnh nhân";
             await _notificationService.SendAsync(new SendNotificationRequest
             {
                 UserId = slot.DoctorId,
                 Type = "appointment_booking",
                 Title = "Tạo lịch tái khám thành công",
-                Body = $"Bạn đã tạo lịch hẹn tái khám thành công cho bệnh nhân vào ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
-                DeepLink = "/schedule/patients",
+                Body = $"Bạn đã tạo lịch hẹn tái khám thành công cho bệnh nhân {patientName} vào ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
+                DeepLink = $"/patients/{appointment.PatientProfileId}",
                 Metadata = new Dictionary<string, object>
                 {
                     ["appointmentId"] = appointment.AppointmentId.ToString()
@@ -509,13 +509,16 @@ public sealed class AppointmentService : IAppointmentService
         // Gửi notification cho doctor khi bệnh nhân hủy lịch
         try
         {
+            var patientProfile = await _profileRepo.GetByIdAsync(appointment.PatientProfileId, ct);
+            var patientName = patientProfile?.User?.FullName ?? "bệnh nhân";
+            
             await _notificationService.SendAsync(new SendNotificationRequest
             {
                 UserId = slot.DoctorId,
                 Type = "appointment_cancelled_by_patient",
                 Title = "Bệnh nhân hủy lịch khám",
-                Body = $"Bệnh nhân đã hủy lịch khám ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
-                DeepLink = "/schedule/patients",
+                Body = $"Bệnh nhân {patientName} đã hủy lịch khám ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
+                DeepLink = $"/patients/{appointment.PatientProfileId}",
                 Metadata = new Dictionary<string, object>
                 {
                     ["appointmentId"] = appointment.AppointmentId.ToString()

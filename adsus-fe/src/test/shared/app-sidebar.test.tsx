@@ -92,7 +92,6 @@ describe("AppSidebar", () => {
       // Doctor items
       expect(screen.getByText("Danh sách bệnh nhân")).toBeInTheDocument();
       expect(screen.getByText("Quản lý lịch")).toBeInTheDocument();
-      expect(screen.getByText("Lịch bệnh nhân")).toBeInTheDocument();
       expect(screen.getByText("Theo dõi & nhắc uống thuốc")).toBeInTheDocument();
 
       // Bottom items
@@ -124,7 +123,6 @@ describe("AppSidebar", () => {
       // Items Nurse should not see
       expect(screen.queryByText("Bảng điều khiển")).not.toBeInTheDocument();
       expect(screen.queryByText("Quản lý lịch")).not.toBeInTheDocument();
-      expect(screen.queryByText("Lịch bệnh nhân")).not.toBeInTheDocument();
       expect(screen.queryByText("Duyệt nghỉ phép bác sĩ")).not.toBeInTheDocument();
       expect(screen.queryByText("Mô hình AI")).not.toBeInTheDocument();
     });
@@ -213,33 +211,6 @@ describe("AppSidebar", () => {
       expect(indicator).toHaveClass("absolute", "left-0", "w-1", "bg-[var(--role-accent)]");
     });
 
-    it("correctly distinguishes between prefix route pairs (e.g. /schedule vs /schedule/patients)", () => {
-      useAuthStore.setState({ user: mockUser("DOCTOR") });
-
-      // When at /schedule/patients:
-      pathnameMock.mockReturnValue("/schedule/patients");
-      const { unmount } = render(<AppSidebar />);
-
-      const schedulePatientsLink = screen.getByText("Lịch bệnh nhân").closest("a");
-      const scheduleManagementLink = screen.getByText("Quản lý lịch").closest("a");
-
-      expect(schedulePatientsLink).toHaveClass("font-bold", "text-foreground");
-      expect(scheduleManagementLink).not.toHaveClass("font-bold");
-      expect(scheduleManagementLink).toHaveClass("font-medium", "text-slate-700");
-
-      unmount();
-
-      // When at /schedule:
-      pathnameMock.mockReturnValue("/schedule");
-      render(<AppSidebar />);
-
-      const scheduleManagementLink2 = screen.getByText("Quản lý lịch").closest("a");
-      const schedulePatientsLink2 = screen.getByText("Lịch bệnh nhân").closest("a");
-
-      expect(scheduleManagementLink2).toHaveClass("font-bold", "text-foreground");
-      expect(schedulePatientsLink2).not.toHaveClass("font-bold");
-      expect(schedulePatientsLink2).toHaveClass("font-medium", "text-slate-700");
-    });
 
     it("correctly distinguishes between /inventory and /inventory/import", () => {
       useAuthStore.setState({ user: mockUser("PHARMACIST") });

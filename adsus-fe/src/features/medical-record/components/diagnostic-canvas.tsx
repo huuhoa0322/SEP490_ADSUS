@@ -653,22 +653,22 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
 
       {/* AI Panel (50%) */}
       <section className="flex flex-col border-r-2 border-border/80 shadow-[2px_0_15px_-3px_rgba(0,0,0,0.1)] z-10 bg-slate-50/30" style={{ flex: '5 5 50%', maxWidth: '50%' }}>
-        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-foreground shadow-sm">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-4 h-[44px] text-sm font-semibold uppercase tracking-widest text-foreground shadow-sm font-sans">
           <span className="h-2 w-2 shrink-0 rounded-full bg-[#e8934a] shadow-[0_0_8px_#e8934a]"></span>
           Kết quả AI phân tích
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 h-[52px] overflow-hidden">
           
           <button
             onClick={handleRunAi}
             disabled={isAnalyzing}
-            className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1"
+            className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold font-sans text-white hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1 shrink-0"
           >
-            {isAnalyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+            {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Chạy AI
           </button>
                     <span 
-              className={`text-[13px] font-bold uppercase tracking-wide ${
+              className={`text-sm font-bold uppercase tracking-wide font-sans truncate ${
                 sessionId === 'failed'
                   ? 'text-red-500'
                   : sessionId 
@@ -683,48 +683,51 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
                   : (isAnalyzing ? 'Đang phân tích...' : 'Chưa phân tích')}
             </span>
           
-          <div className="ml-auto flex items-center gap-1">
-            <button className="flex h-6 w-6 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => aiPzRef.current?.zoomOut()}>−</button>
-            <span className="min-w-[38px] text-center font-mono text-[11px] font-bold text-foreground">{aiZoom}</span>
-            <button className="flex h-6 w-6 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => aiPzRef.current?.zoomIn()}>+</button>
-            <button className="px-2 h-6 text-[11px] rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => aiPzRef.current?.reset()}>↺ Fit</button>
+          <div className="ml-auto flex items-center gap-1 shrink-0">
+            <button className="flex h-7 w-7 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => aiPzRef.current?.zoomOut()}>−</button>
+            <span className="min-w-[42px] text-center font-mono text-sm font-bold text-foreground">{aiZoom}</span>
+            <button className="flex h-7 w-7 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => aiPzRef.current?.zoomIn()}>+</button>
+            <button className="px-2 h-7 text-xs font-sans rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => aiPzRef.current?.reset()}>↺ Fit</button>
           </div>
         </div>
         
         <div className="relative flex-1 overflow-hidden bg-muted/20 select-none cursor-grab" ref={aiWrapRef}>
           {!imgDims.w && (
-            <div className="absolute inset-0 flex items-center justify-center text-[13px] font-semibold text-foreground">
+            <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold font-sans text-foreground">
               Đang tải ảnh...
             </div>
           )}
         </div>
+        
+        {/* Spacer to align left image with right image (matching Edit Panel's footer) */}
+        <div className="flex shrink-0 items-center gap-3 border-t border-transparent px-3 h-[61px]" aria-hidden="true" />
       </section>
 
       {/* Edit Panel (50%) */}
       <section className="flex flex-col bg-background" style={{ flex: '5 5 50%', maxWidth: '50%' }}>
-        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-foreground shadow-sm">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-muted/50 px-4 h-[44px] text-sm font-semibold uppercase tracking-widest text-foreground shadow-sm font-sans">
           <span className="h-2 w-2 shrink-0 rounded-full bg-[#00ff00] shadow-[0_0_8px_#00ff00]"></span>
           Vùng xác nhận của bác sĩ
         </div>
         
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 h-[52px] overflow-hidden">
           <button 
             onClick={toggleAdding}
-            className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`rounded-md border px-3 py-1.5 text-sm font-semibold font-sans transition-colors shrink-0 ${
               addingMode ? 'bg-[#00ff00] text-black border-[#00ff00]' : 'border-border text-foreground hover:bg-accent'
             }`}
           >
             + Thêm caliper
           </button>
-          <span className="font-mono text-[11px] font-bold text-foreground">
+          <span className="font-mono text-sm font-bold text-foreground truncate">
             {addingMode ? `Click 4 điểm: ${addingClicks.length}/4` : ''}
           </span>
 
-          <div className="ml-auto flex items-center gap-1">
-            <button className="flex h-6 w-6 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => editPzRef.current?.zoomOut()}>−</button>
-            <span className="min-w-[38px] text-center font-mono text-[11px] font-bold text-foreground">{editZoom}</span>
-            <button className="flex h-6 w-6 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => editPzRef.current?.zoomIn()}>+</button>
-            <button className="px-2 h-6 text-[11px] rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => editPzRef.current?.reset()}>↺ Fit</button>
+          <div className="ml-auto flex items-center gap-1 shrink-0">
+            <button className="flex h-7 w-7 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => editPzRef.current?.zoomOut()}>−</button>
+            <span className="min-w-[42px] text-center font-mono text-sm font-bold text-foreground">{editZoom}</span>
+            <button className="flex h-7 w-7 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => editPzRef.current?.zoomIn()}>+</button>
+            <button className="px-2 h-7 text-xs font-sans rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => editPzRef.current?.reset()}>↺ Fit</button>
           </div>
         </div>
 
@@ -739,16 +742,16 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
           onClick={handleEditWrapClick}
         >
           {!imgDims.w && (
-            <div className="absolute inset-0 flex items-center justify-center text-[13px] font-semibold text-foreground">
+            <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold font-sans text-foreground">
               Đang tải ảnh...
             </div>
           )}
         </div>
 
         {/* Footer (Confirm area) */}
-        <div className="flex shrink-0 items-center gap-3 border-t border-border bg-card p-3">
+        <div className="flex shrink-0 items-center gap-3 border-t border-border bg-card px-3 h-[61px]">
           {sessionId && (
-            <span className="font-mono text-[12px] font-semibold text-emerald-600">
+            <span className="font-mono text-[13px] font-semibold text-emerald-600">
               Sẵn sàng lưu ({lesions.filter(l => !l.rejected).length} vùng)
             </span>
           )}
@@ -758,13 +761,13 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
             placeholder="Ghi chú cho ảnh này (tuỳ chọn)..."
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="ml-auto h-9 w-64 md:w-80 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground shadow-sm transition-colors placeholder:text-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="ml-auto h-9 w-64 md:w-80 rounded-md border border-input bg-background px-3 text-sm font-medium font-sans text-foreground shadow-sm transition-colors placeholder:text-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
 
           <button
             onClick={handleConfirm}
             disabled={isConfirming}
-            className="flex items-center gap-2 rounded-md bg-[#00C16A] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#00a85c] disabled:opacity-35 transition-colors shadow-sm"
+            className="flex items-center gap-2 rounded-md bg-[#00C16A] px-4 py-2 text-sm font-medium font-sans text-white hover:bg-[#00a85c] disabled:opacity-35 transition-colors shadow-sm"
           >
             {isConfirming ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : null}
             Lưu xác nhận

@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { CheckCircle, XCircle, Search, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 
 import { useAdminShiftRequests, useReviewShiftRequest } from "../hooks/use-shift-request";
 import { ShiftRequestResponse, ShiftRequestStatus } from "../types/shift-request.types";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -47,7 +46,7 @@ export function AdminShiftRequestsPage() {
       await reviewRequest({ requestId: selectedRequest.requestId, data: { decision: "APPROVED" } });
       setSelectedRequest(null);
       setAction(null);
-    } catch (e) {
+    } catch {
       // Handled by hook
     }
   };
@@ -67,7 +66,7 @@ export function AdminShiftRequestsPage() {
       setSelectedRequest(null);
       setAction(null);
       setRejectReason("");
-    } catch (e) {
+    } catch {
       // Handled by hook
     }
   };

@@ -65,7 +65,7 @@ const ShiftBlock = ({ info, type }: { info?: ShiftInfo; type: 'MORNING' | 'AFTER
     >
       <span className="font-semibold">{getShiftLabel(type)}</span>
       <span className="flex gap-0.5 items-center">
-        {info.status === 'HAS_BOOKINGS' && <span className="w-1.5 h-1.5 rounded-full bg-[var(--chart-3)]" />}
+        {info.status === 'HAS_BOOKINGS' && <span className="font-medium">{info.bookedSlots}/{info.totalSlots}</span>}
         {info.status === 'OFF' && '✖'}
         {info.status === 'WORKING' && '■'}
         {isPending && <span className="ml-1 opacity-70">(...)</span>}
@@ -121,7 +121,7 @@ export function MonthCalendar({
       </div>
 
       <div className="grid grid-cols-7 grid-rows-5 lg:grid-rows-6">
-        {days.map((day, idx) => {
+        {days.map((day) => {
           const dateStr = format(day, 'yyyy-MM-dd');
           const summary = summaries.find((s) => { if (!s || !s.date) return false; const sDate = typeof s.date === 'string' ? s.date.split('T')[0] : s.date; return sDate === dateStr; });
           const isCurrentMonth = isSameMonth(day, monthStart);

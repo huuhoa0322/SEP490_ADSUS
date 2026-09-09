@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 
 namespace ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 
@@ -12,7 +13,8 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 public sealed record CreatePrescriptionRequest(
     [Required] Guid CaseId,
     [MaxLength(1000)] string? GeneralNote,
-    [Required][MinLength(1)] IReadOnlyList<CreatePrescriptionItemDto> Items);
+    [Required][MinLength(1)] IReadOnlyList<CreatePrescriptionItemDto> Items,
+    FollowUpAppointmentRequest? FollowUp = null);
 
 /// <summary>
 /// 1 dòng thuốc trong đơn kê.

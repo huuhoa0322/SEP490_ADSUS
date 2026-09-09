@@ -195,9 +195,8 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
                 LatestVisitDate: x.LatestCase?.VisitDate,
                 // Không gọi CaseStatus.ToApiString() (ADSUS_BE.BLL.Common): DAL không — và không
                 // nên — tham chiếu BLL (chiều phụ thuộc đúng là BLL -> DAL). Ba nhãn case_status
-                // đều một từ nên .ToString().ToUpperInvariant() cho kết quả giống hệt
                 // ToApiString(CaseStatus) hiện tại (xem chú thích tại EnumExtensions.cs).
-                LatestVisitStatus: x.LatestCase?.Status.ToString().ToUpperInvariant()))
+                LatestVisitStatus: x.LatestCase == null ? null : (x.LatestCase.Status == CaseStatus.InProgress ? "IN_PROGRESS" : x.LatestCase.Status.ToString().ToUpperInvariant())))
             .ToList();
 
         return (rows, total);

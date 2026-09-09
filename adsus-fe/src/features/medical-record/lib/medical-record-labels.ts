@@ -5,6 +5,8 @@ const CASE_STATUS_LABELS: Record<CaseStatus, string> = {
   END: "Đã kết thúc ca",
   CONFIRMED: "Đã kết luận",
   BOOKED: "Đã đặt lịch",
+  IN_PROGRESS: "Đang Khám",
+  CANCELLED: "Đã hủy",
 };
 
 const GENDER_LABELS: Record<Gender, string> = {

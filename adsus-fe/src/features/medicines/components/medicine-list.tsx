@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, PlusCircle, Pencil, PlayCircle, Ban, Search, Package, AlertTriangle, Pill, PackageCheck, PackageX } from "lucide-react";
+import { Loader2, PlusCircle, Pencil, PlayCircle, Ban, Search, Package, AlertTriangle, Pill, PackageCheck, PackageX, Eye } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -253,7 +253,7 @@ export function MedicineList() {
                         title={isDoctor ? "Xem chi tiết" : "Chi tiết / Quản lý"}
                         className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
                       >
-                        <Pencil className="size-4" />
+                        {isDoctor ? <Eye className="size-4" /> : <Pencil className="size-4" />}
                       </button>
                       {!isDoctor && (
                         medicine.status === "ACTIVE" ? (
