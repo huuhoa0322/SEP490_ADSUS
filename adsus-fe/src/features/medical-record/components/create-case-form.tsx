@@ -556,7 +556,7 @@ export function CreateCaseForm({ patientProfileId }: { patientProfileId: string 
                 <button
                   type="button"
                   onClick={() => router.back()}
-                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-foreground shadow-2xs transition-colors hover:bg-accent hover:text-accent-foreground"
+                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-foreground shadow-2xs transition-colors hover:bg-[var(--success)] hover:text-white"
                 >
                   Huỷ bỏ
                 </button>

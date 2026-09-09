@@ -209,7 +209,7 @@ export function PatientProfileForm(props: Props) {
         <button
           type="button"
           onClick={() => router.back()}
-          className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent"
+          className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-[var(--success)]"
         >
           Huỷ bỏ
         </button>

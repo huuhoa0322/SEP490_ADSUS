@@ -106,7 +106,7 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
     <section className="mt-6 rounded-xl border border-dashed border-primary/50 p-5">
       <div className="mb-3 flex items-center gap-2">
         <h2 className="text-sm font-bold text-foreground">Thông tin tài khoản</h2>
-        <span className="rounded bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground">
+        <span className="rounded bg-[var(--success)] px-2 py-0.5 text-xs font-semibold text-[var(--success)]-foreground">
           Chỉ Điều dưỡng
         </span>
       </div>
@@ -119,14 +119,14 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
             // Chờ email thật nạp xong mới cho sửa — mở sớm hơn là có khả năng (dù nhỏ) bấm Lưu
             // trước khi formEmail kịp đồng bộ, xoá mất email đang có.
             disabled={accountQuery.isLoading}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-50"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-[var(--success)] disabled:opacity-50"
           >
             Sửa thông tin tài khoản
           </button>
           <button
             type="button"
             onClick={() => setConfirmingReset(true)}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-[var(--success)]"
           >
             Cấp lại mật khẩu
           </button>
@@ -166,7 +166,7 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
             <button
               type="button"
               onClick={() => setConfirmingReset(false)}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent"
+              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-[var(--success)]"
             >
               Đóng
             </button>
@@ -251,7 +251,7 @@ export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: 
                 setEditing(false);
                 setClientError(null);
               }}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent"
+              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-[var(--success)]"
             >
               Huỷ
             </button>

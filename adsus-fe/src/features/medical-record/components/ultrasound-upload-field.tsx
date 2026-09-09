@@ -65,7 +65,7 @@ export function UltrasoundUploadField({ files, onChange, disabled }: Props) {
           // Xoá giá trị để chọn lại đúng file vừa bỏ ra vẫn kích hoạt onChange.
           event.target.value = "";
         }}
-        className="block w-full rounded-lg border-2 border-dashed border-border bg-background p-4 text-sm font-medium text-foreground outline-none file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-sm file:font-bold focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        className="block w-full rounded-lg border-2 border-dashed border-border bg-background p-4 text-sm font-medium text-foreground outline-none file:mr-3 file:rounded-md file:border-0 file:bg-[var(--success)] file:px-3 file:py-1.5 file:text-sm file:font-bold focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
       />
       <p className="mt-1.5 text-xs font-semibold text-foreground/80">
         JPEG hoặc PNG, tối đa 20MB mỗi ảnh. Chọn được nhiều ảnh cùng lúc.

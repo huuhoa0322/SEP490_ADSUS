@@ -369,7 +369,7 @@ export function AiModelFormDialog({ id, open, onClose, onSuccess }: AiModelFormD
           <button
             type="submit"
             disabled={isPending || disabledForm}
-            className="flex h-11 items-center gap-2 rounded-full bg-accent px-8 font-heading text-sm font-600 tracking-wider text-white transition-colors hover:bg-accent/90 disabled:opacity-60"
+            className="flex h-11 items-center gap-2 rounded-full bg-[var(--success)] px-8 font-heading text-sm font-600 tracking-wider text-white transition-colors hover:bg-[var(--success)]/90 disabled:opacity-60"
           >
             {isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             {isEditing ? "Lưu thay đổi" : "Đăng ký mô hình"}

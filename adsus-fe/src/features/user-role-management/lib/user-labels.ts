@@ -24,7 +24,7 @@ export const STATUS_LABEL: Record<AccountStatus, string> = {
 
 /** Màu hiển thị theo trạng thái — dùng token màu của nhóm trong globals.css. */
 export const STATUS_CLASS: Record<AccountStatus, string> = {
-  ACTIVE: "bg-accent/12 text-accent",
+  ACTIVE: "bg-[var(--success)]/12 text-[var(--success)]",
   // Vô hiệu hoá là một chiều nên dùng màu cảnh báo mạnh nhất của bộ nhận diện.
   DEACTIVATED: "bg-destructive/12 text-destructive",
 };

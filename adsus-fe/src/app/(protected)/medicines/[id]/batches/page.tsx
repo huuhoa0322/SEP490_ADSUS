@@ -18,8 +18,8 @@ type SortKey = 'expiryDate' | 'quantityBase' | 'avgPrice';
 function SortIcon({ field, current, dir }: { field: SortKey; current: SortKey; dir: 'asc' | 'desc' }) {
   if (field !== current) return <ChevronsUpDown className="ml-1 inline size-3.5 text-muted-foreground/40" />;
   return dir === 'asc'
-    ? <ChevronUp className="ml-1 inline size-3.5 text-accent" />
-    : <ChevronDown className="ml-1 inline size-3.5 text-accent" />;
+    ? <ChevronUp className="ml-1 inline size-3.5 text-[var(--success)]" />
+    : <ChevronDown className="ml-1 inline size-3.5 text-[var(--success)]" />;
 }
 
 export default function MedicineBatchesPage() {
@@ -86,7 +86,7 @@ export default function MedicineBatchesPage() {
             placeholder="Tìm theo mã lô..."
             value={searchInput}
             onChange={e => handleSearch(e.target.value)}
-            className="w-full h-10 rounded-full border border-border bg-background py-2 pl-10 pr-4 text-sm outline-none transition-colors focus:border-accent"
+            className="w-full h-10 rounded-full border border-border bg-background py-2 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[var(--success)]"
           />
         </div>
         {data && (
@@ -127,7 +127,7 @@ export default function MedicineBatchesPage() {
             {isLoading ? (
               <tr>
                 <td colSpan={5} className="px-5 py-14 text-center text-muted-foreground">
-                  <div className="mx-auto size-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+                  <div className="mx-auto size-5 animate-spin rounded-full border-2 border-[var(--success)] border-t-transparent" />
                 </td>
               </tr>
             ) : isError ? (

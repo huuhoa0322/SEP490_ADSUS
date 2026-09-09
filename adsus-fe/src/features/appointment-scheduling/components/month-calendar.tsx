@@ -29,7 +29,7 @@ const getShiftColor = (info?: ShiftInfo) => {
   if (!info) return '';
   switch (info.status) {
     case 'WORKING':
-      return 'bg-accent/12 text-accent border-accent/25';
+      return 'bg-[var(--success)]/12 text-[var(--success)] border-[var(--success)]/25';
     case 'OFF':
     case 'PAST':
       return 'bg-muted text-muted-foreground border-border';
@@ -141,7 +141,7 @@ export function MonthCalendar({
               className={cn(
                 'min-h-[100px] border-r border-b border-border p-2 transition-colors cursor-pointer hover:bg-muted/60',
                 !isCurrentMonth && 'bg-muted/40 opacity-50',
-                isToday(day) && 'bg-accent/8'
+                isToday(day) && 'bg-[var(--success)]/8'
               )}
             >
               <div className="flex justify-between items-center mb-1">

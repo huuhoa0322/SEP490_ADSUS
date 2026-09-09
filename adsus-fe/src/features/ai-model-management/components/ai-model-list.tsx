@@ -71,7 +71,7 @@ export function AiModelList() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="flex items-center gap-2 font-heading text-3xl font-bold tracking-tight text-foreground">
-            <BrainCircuit className="size-8 text-accent" />
+            <BrainCircuit className="size-8 text-[var(--success)]" />
             Phiên bản AI Model
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -83,7 +83,7 @@ export function AiModelList() {
             setEditingModelId(undefined);
             setIsFormOpen(true);
           }}
-          className="flex h-12 items-center justify-center gap-2 rounded-full bg-accent px-6 font-heading text-sm font-600 tracking-wider text-white transition-colors hover:bg-accent/90"
+          className="flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--success)] px-6 font-heading text-sm font-600 tracking-wider text-white transition-colors hover:bg-[var(--success)]/90"
         >
           <Plus className="size-5" />
           Đăng ký Model
@@ -105,7 +105,7 @@ export function AiModelList() {
             }}
             placeholder="Tìm theo Version Code hoặc HuggingFace File"
             aria-label="Tìm kiếm model"
-            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-accent"
+            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-[var(--success)]"
           />
         </div>
       </div>
