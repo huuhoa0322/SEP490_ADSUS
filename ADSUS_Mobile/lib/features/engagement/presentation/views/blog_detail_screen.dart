@@ -172,11 +172,10 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
             a: const TextStyle(
                 color: AppColors.teal,
                 decoration: TextDecoration.underline),
-            code: const TextStyle(
-                fontFamily: 'monospace',
+            code: AppFonts.mono(
                 fontSize: 14,
                 color: AppColors.navy,
-                backgroundColor: Color(0xFFF1EDFC)),
+              ).copyWith(backgroundColor: const Color(0xFFF1EDFC)),
             blockquoteDecoration: BoxDecoration(
               border: Border(
                 left: BorderSide(color: AppColors.aiViolet, width: 4),

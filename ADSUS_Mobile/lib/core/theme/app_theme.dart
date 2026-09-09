@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Bộ nhận diện ADSUS.
 ///
@@ -66,6 +67,25 @@ class AppColors {
   static const Color unreadBg = Color(0xFFE3F2FD);
 }
 
+/// Phông chữ ADSUS — khớp với bản web (Inter + Geist Mono, xem
+/// D:/.../CRdata/font_report.json). Web dùng font-mono cho mã bệnh nhân/số lô/giờ; ở đây
+/// dùng cùng lý do cho liều thuốc, khung giờ, mã lô... để hai nền tảng đọc số liệu giống hệt
+/// nhau.
+class AppFonts {
+  const AppFonts._();
+
+  static TextStyle mono({
+    double? fontSize,
+    FontWeight? fontWeight,
+    Color? color,
+  }) =>
+      GoogleFonts.geistMono(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color,
+      );
+}
+
 class AppTheme {
   const AppTheme._();
 
@@ -81,10 +101,21 @@ class AppTheme {
       onSurface: Color(0xFF222222),
     );
 
+    // Inter cho toàn app — áp một lần ở gốc theme thay vì set fontFamily rải rác từng màn,
+    // để mọi Text/TextField kế thừa đúng 1 phông (đồng nhất với cách web dùng next/font/google
+    // ở layout.tsx). textTheme làm nền cho toàn bộ style Material mặc định (title/body/label...),
+    // các TextStyle tự viết trong app vẫn giữ nguyên size/weight, chỉ đổi phông qua fontFamily
+    // kế thừa từ đây.
+    final baseTextTheme = ThemeData.light().textTheme;
+    final interTextTheme = GoogleFonts.interTextTheme(baseTextTheme);
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: AppColors.background,
+      fontFamily: GoogleFonts.inter().fontFamily,
+      textTheme: interTextTheme,
+      primaryTextTheme: interTextTheme,
 
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
@@ -127,7 +158,8 @@ class AppTheme {
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(56),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          textStyle: const TextStyle(
+          textStyle: TextStyle(
+            fontFamily: GoogleFonts.inter().fontFamily,
             fontSize: 15,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.8,
