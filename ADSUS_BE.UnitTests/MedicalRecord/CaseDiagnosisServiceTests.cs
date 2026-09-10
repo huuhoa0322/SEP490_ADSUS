@@ -37,6 +37,23 @@ public class CaseDiagnosisServiceTests : IDisposable
             .Options;
         _db = new AppDbContext(options);
 
+        // Yêu cầu 10/09/2026 — CaseDiagnosisService giờ kiểm tra ca đã check-in (Status !=
+        // Booked) trước khi cho phân tích/xác nhận ảnh. Seed sẵn một Case InProgress khớp
+        // _caseId để MỌI test có sẵn trong file này (vốn không quan tâm tới Case entity) tiếp
+        // tục chạy đúng luồng AI như cũ mà không cần sửa từng test. Các test kiểm riêng luật
+        // check-in tự tạo Case khác với trạng thái Booked (xem cuối file).
+        _db.Cases.Add(new Case
+        {
+            CaseId = _caseId,
+            PatientProfileId = Guid.NewGuid(),
+            DoctorId = Guid.NewGuid(),
+            VisitDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            Status = CaseStatus.InProgress,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        });
+        _db.SaveChanges();
+
         // Mock Configuration
         var configMock = new Mock<IConfiguration>();
         configMock.SetupGet(c => c["AiBackend:WebhookUrl"]).Returns("http://localhost:8000");
@@ -53,6 +70,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         // _db InMemory để giữ nguyên các assertion cũ (_db.UltrasoundImages, _db.AiPredictions,
         // _db.DoctorAnnotations). IAiModelVersionRepository vẫn giữ Mock thuần (không backed by
         // _db) vì một số test cần kiểm soát trực tiếp việc SaveChangesAsync thành công/thất bại.
+        // ICaseRepository cũng là repo thật cùng lý do (thêm 10/09/2026, cho luật check-in).
         _sut = new CaseDiagnosisService(
             _db,
             _storageMock.Object,
@@ -61,6 +79,7 @@ public class CaseDiagnosisServiceTests : IDisposable
             new UltrasoundImageRepository(_db),
             new AiPredictionRepository(_db),
             new DoctorAnnotationRepository(_db),
+            new CaseRepository(_db),
             configMock.Object,
             _loggerMock.Object
         );
@@ -399,5 +418,77 @@ public class CaseDiagnosisServiceTests : IDisposable
         Assert.Equal(0, activeModel.LiveTp);
         Assert.Equal(0, activeModel.LiveFp);
         Assert.Equal(1, activeModel.LiveFn); // Fn should be 1
+    }
+
+    // =========================================================================
+    // Check-in gate (yêu cầu 10/09/2026)
+    // =========================================================================
+
+    [Fact]
+    public async Task AnalyzeImageAsync_CaseNotFound_ThrowsResourceNotFoundException()
+    {
+        // Arrange — caseId không tồn tại trong DB (khác _caseId, vốn đã được seed sẵn trong constructor).
+        var missingCaseId = Guid.NewGuid();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ResourceNotFoundException>(
+            () => _sut.AnalyzeImageAsync(missingCaseId, MakeFakeImageStream(), "test.png", "image/png", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task AnalyzeImageAsync_CaseNotCheckedIn_ThrowsBusinessException()
+    {
+        // Arrange
+        var bookedCase = new Case
+        {
+            CaseId = Guid.NewGuid(),
+            PatientProfileId = Guid.NewGuid(),
+            DoctorId = Guid.NewGuid(),
+            VisitDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            Status = CaseStatus.Booked,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        _db.Cases.Add(bookedCase);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.AnalyzeImageAsync(bookedCase.CaseId, MakeFakeImageStream(), "test.png", "image/png", TestContext.Current.CancellationToken));
+        Assert.Equal("This case has not been checked in yet. Please wait for the nurse to check in the patient first.", ex.Message);
+    }
+
+    [Fact]
+    public async Task ConfirmAnalysisAsync_CaseNotFound_ThrowsResourceNotFoundException()
+    {
+        // Arrange
+        var missingCaseId = Guid.NewGuid();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ResourceNotFoundException>(
+            () => _sut.ConfirmAnalysisAsync(missingCaseId, MakeValidConfirmRequest(), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task ConfirmAnalysisAsync_CaseNotCheckedIn_ThrowsBusinessException()
+    {
+        // Arrange
+        var bookedCase = new Case
+        {
+            CaseId = Guid.NewGuid(),
+            PatientProfileId = Guid.NewGuid(),
+            DoctorId = Guid.NewGuid(),
+            VisitDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            Status = CaseStatus.Booked,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        _db.Cases.Add(bookedCase);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.ConfirmAnalysisAsync(bookedCase.CaseId, MakeValidConfirmRequest(), TestContext.Current.CancellationToken));
+        Assert.Equal("This case has not been checked in yet. Please wait for the nurse to check in the patient first.", ex.Message);
     }
 }

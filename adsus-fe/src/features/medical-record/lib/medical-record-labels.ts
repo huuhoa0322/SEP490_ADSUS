@@ -1,7 +1,6 @@
 import type { CaseStatus, Gender, VisitStatusFilter, PatientDiseaseResponse, PatientAllergyResponse } from "../types/medical-record.types";
 
 const CASE_STATUS_LABELS: Record<CaseStatus, string> = {
-  CREATED: "Mới tạo",
   END: "Đã kết thúc ca",
   CONFIRMED: "Đã kết luận",
   BOOKED: "Đã đặt lịch",

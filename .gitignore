@@ -407,3 +407,12 @@ coveragereport-unit/
 
 #claude
 .claude/
+
+#mcp
+.mcp.json
+
+#superpowers sdd scratch workspace
+.superpowers/
+
+#docs
+docs/superpowers/

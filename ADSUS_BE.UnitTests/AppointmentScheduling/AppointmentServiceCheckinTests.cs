@@ -14,7 +14,7 @@ namespace ADSUS_BE.UnitTests.AppointmentScheduling;
 
 /// <summary>
 /// Unit tests for AppointmentService.CheckinAppointmentAsync (Module 8 - Nurse Checkin).
-/// Flow: Booked (patient đặt lịch) → Approved (nurse checkin khi bệnh nhân đến)
+/// Flow: Booked (patient đặt lịch) → Completed (nurse checkin khi bệnh nhân đến)
 /// </summary>
 public class AppointmentServiceCheckinTests : IDisposable
 {
@@ -150,10 +150,10 @@ public class AppointmentServiceCheckinTests : IDisposable
 
     /// <summary>
     /// TC-UNIT-AppointmentServiceCheckin-001
-    /// Happy path: Appointment đang Booked → Checkin → Status chuyển thành Approved
+    /// Happy path: Appointment đang Booked → Checkin → Status chuyển thành Completed
     /// </summary>
     [Fact]
-    public async Task CheckinAppointmentAsync_ValidBookedAppointment_StatusChangesToApproved()
+    public async Task CheckinAppointmentAsync_ValidBookedAppointment_StatusChangesToCompleted()
     {
         // Arrange
         var doctor = CreateDoctor();
@@ -235,7 +235,7 @@ public class AppointmentServiceCheckinTests : IDisposable
 
     /// <summary>
     /// TC-UNIT-AppointmentServiceCheckin-004
-    /// Edge case: Appointment đã Completed (bác sĩ đã kết thúc ca) → Checkin → Throw InvalidOperationException
+    /// Edge case: Appointment đã Completed (đã check-in trước đó) → Checkin → Throw InvalidOperationException
     /// </summary>
     [Fact]
     public async Task CheckinAppointmentAsync_CompletedAppointment_ThrowsInvalidOperationException()

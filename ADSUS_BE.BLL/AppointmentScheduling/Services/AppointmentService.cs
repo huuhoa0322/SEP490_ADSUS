@@ -206,7 +206,7 @@ public sealed class AppointmentService : IAppointmentService
             .AnyAsync(a =>
                 a.PatientProfileId == patientProfileId
                 && a.Slot.SlotDate == slot.SlotDate
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Completed),
+                && a.Status == AppointmentStatus.Booked,
                 ct);
         if (hasSameDayAppointment)
         {
@@ -215,12 +215,40 @@ public sealed class AppointmentService : IAppointmentService
                 .FirstOrDefaultAsync(a =>
                     a.PatientProfileId == patientProfileId
                     && a.Slot.SlotDate == slot.SlotDate
-                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Completed),
+                    && a.Status == AppointmentStatus.Booked,
                     ct);
             var doctorName = existingAppointment?.Slot?.Doctor?.FullName ?? "bác sĩ";
             throw new InvalidOperationException(
                 $"Bạn đã có lịch khám với {doctorName} vào ngày {slot.SlotDate:dd/MM/yyyy}. " +
                 "Mỗi ngày chỉ được đặt tối đa 1 lịch. Vui lòng hủy lịch cũ trước khi đặt lịch mới.");
+        }
+
+        // Rule 2: Giới hạn đặt trong phạm vi 3 ngày
+        var next3Days = DateOnly.FromDateTime(now.AddDays(3));
+        var hasAppointmentWithin3Days = await _db.Appointments
+            .Include(a => a.Slot)
+            .AnyAsync(a =>
+                a.PatientProfileId == patientProfileId
+                && a.Slot.SlotDate > slot.SlotDate
+                && a.Slot.SlotDate <= next3Days
+                && a.Status == AppointmentStatus.Booked,
+                ct);
+        if (hasAppointmentWithin3Days)
+        {
+            throw new InvalidOperationException(
+                "Bạn đã có lịch hẹn trong vòng 3 ngày tới. Vui lòng đặt lịch sau khi đã hoàn thành lịch hiện tại.");
+        }
+
+        // Rule 5: Max 2 appointments/day cho cùng ngày (bao gồm slot đang đặt)
+        var todayAppointments = await _db.Appointments
+            .Where(a => a.PatientProfileId == patientProfileId
+                && a.Slot.SlotDate == slot.SlotDate
+                && a.Status == AppointmentStatus.Booked)
+            .CountAsync(ct);
+        if (todayAppointments >= 2)
+        {
+            throw new InvalidOperationException(
+                $"Ngày {slot.SlotDate:dd/MM/yyyy} đã có 2 lịch hẹn. Vui lòng chọn ngày khác.");
         }
 
         // =====================================================
@@ -706,7 +734,7 @@ public sealed class AppointmentService : IAppointmentService
                 .FirstOrDefaultAsync(a => a.CaseId == caseId, ct)
                 ?? throw new InvalidOperationException($"Không tìm thấy lịch hẹn cho case '{caseId}'.");
 
-            if (existingAppt.Status == AppointmentStatus.Approved || existingAppt.Status == AppointmentStatus.Completed)
+            if (existingAppt.Status == AppointmentStatus.Completed)
             {
                 throw new InvalidOperationException("Bệnh nhân đã được check-in trước đó.");
             }
@@ -807,9 +835,12 @@ public sealed class AppointmentService : IAppointmentService
     {
         var appointments = await _appointmentRepo.ListByDoctorAsync(doctorId, fromDate, toDate, ct);
 
-        // Hiện cả BOOKED và APPROVED — Cancelled và Completed ẩn hẳn.
+        // Chỉ hiện BOOKED — Cancelled, Completed và mọi trạng thái khác đều ẩn.
+        // Lý do: màn "Lịch bệnh nhân" của bác sĩ chỉ quan tâm lịch hẹn còn hiệu lực chưa diễn ra;
+        // trạng thái "đã đến/đang khám" được theo dõi qua Case.Status (InProgress), không qua
+        // Appointment.Status — hai khái niệm tách biệt theo quyết định của user (2026-09-10).
         return appointments
-            .Where(a => a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved)
+            .Where(a => a.Status == AppointmentStatus.Booked)
             .Select(a => new DoctorPatientAppointmentResponse
             {
                 AppointmentId = a.AppointmentId,
@@ -888,8 +919,7 @@ public sealed class AppointmentService : IAppointmentService
             {
                 query = query.Where(a => a.Status == AppointmentStatus.Cancelled || a.Status == AppointmentStatus.NoShow);
             }
-            else if (Enum.TryParse<AppointmentStatus>(normalized, true, out var parsedStatus)
-                     && parsedStatus != AppointmentStatus.Approved)
+            else if (Enum.TryParse<AppointmentStatus>(normalized, true, out var parsedStatus))
             {
                 query = query.Where(a => a.Status == parsedStatus);
             }
@@ -966,7 +996,7 @@ public sealed class AppointmentService : IAppointmentService
 
         // Validate appointment status and determine scenario
         bool isScenario1 = oldAppointment.Status == AppointmentStatus.Booked;
-        bool isScenario2 = oldAppointment.Status == AppointmentStatus.Completed || oldAppointment.Status == AppointmentStatus.Approved;
+        bool isScenario2 = oldAppointment.Status == AppointmentStatus.Completed;
         bool isScenario3 = oldAppointment.Status == AppointmentStatus.Cancelled || oldAppointment.Status == AppointmentStatus.NoShow;
 
         if (!isScenario1 && !isScenario2 && !isScenario3)

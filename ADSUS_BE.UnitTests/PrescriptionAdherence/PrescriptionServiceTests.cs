@@ -336,7 +336,7 @@ public class PrescriptionServiceTests
 
         _caseRepoMock
             .Setup(r => r.GetByIdAsync(caseId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Case { CaseId = caseId, DoctorId = doctorId, Status = CaseStatus.Created }); // Không phải Confirmed
+            .ReturnsAsync(new Case { CaseId = caseId, DoctorId = doctorId, Status = CaseStatus.InProgress }); // Không phải Confirmed
 
         var request = new CreatePrescriptionRequest(
             CaseId: caseId,

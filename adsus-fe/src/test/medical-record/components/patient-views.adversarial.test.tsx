@@ -155,12 +155,12 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
           latestVisitStatus: "END",
         },
         {
-          patientUserId: "usr-created-status",
+          patientUserId: "usr-booked-status",
           patientProfileId: "prof-2",
           fullName: "Nguyễn Thị Hoa",
           phone: "0900000002",
           latestVisitDate: "2026-08-20",
-          latestVisitStatus: "CREATED",
+          latestVisitStatus: "BOOKED",
         },
         {
           patientUserId: "usr-unknown-status",
@@ -203,7 +203,7 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
 
       // Status badges
       expect(screen.getByText("Đã kết thúc ca")).toBeInTheDocument();
-      expect(screen.getByText("Mới tạo")).toBeInTheDocument();
+      expect(screen.getByText("Đã đặt lịch")).toBeInTheDocument();
     });
 
     it("A6. Initials generator variations: single-name, initials fallback on empty name", () => {
@@ -635,7 +635,7 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
         {
           caseId: "case-103",
           visitDate: "2026-07-10",
-          status: "CREATED",
+          status: "BOOKED",
           doctorId: "doc-3",
           createdAt: "2026-07-10T16:00:00Z",
         },
@@ -665,7 +665,7 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
       // Badges
       expect(screen.getByText("Đã kết luận")).toBeInTheDocument();
       expect(screen.getByText("Đã kết thúc ca")).toBeInTheDocument();
-      expect(screen.getByText("Mới tạo")).toBeInTheDocument();
+      expect(screen.getByText("Đã đặt lịch")).toBeInTheDocument();
 
       // Links to case detail (3 cases -> 3 links)
       const detailLinks = screen.getAllByRole("link", { name: /xem chi tiết ca/i });

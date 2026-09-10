@@ -89,6 +89,46 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
+    public async Task GetCaseById_CalledByDoctorOnBookedCase_Returns422UnprocessableEntity()
+    {
+        // Arrange — yêu cầu 10/09/2026: bác sĩ không mở được case detail khi ca còn BOOKED.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Booked);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}", TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
+        Assert.Equal("This case has not been checked in yet. Please wait for the nurse to check in the patient first.", body!.Message);
+    }
+
+    [Fact]
+    public async Task GetCaseById_CalledByNurseOnBookedCase_Returns200WithFullStaffShape()
+    {
+        // Arrange — Điều dưỡng không bị chặn bởi luật này.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _nurse);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Booked);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}", TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
+        Assert.Equal(200, body!.Code);
+    }
+
+    [Fact]
     public async Task GetCaseById_CalledByOwningPatientOnEndedCase_Returns200WithPatientShape()
     {
         // Arrange — Quyết định 14/08/2026 (sau khi trao đổi lại): Patient chỉ xem được ca đã
@@ -121,7 +161,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _patientUser);
         var profile = MakePatientProfile();
-        var pendingCase = MakeCase(profile, CaseStatus.Created);
+        var pendingCase = MakeCase(profile, CaseStatus.InProgress);
         _profiles.Setup(r => r.GetByUserIdAsync(_patientUser.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
         _cases.Setup(r => r.GetDetailAsync(pendingCase.CaseId, It.IsAny<CancellationToken>()))
@@ -263,7 +303,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
-        var medicalCase = MakeCase(profile, CaseStatus.Created);
+        var medicalCase = MakeCase(profile, CaseStatus.InProgress);
         _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
         _cases.Setup(r => r.SearchByPatientAsync(
@@ -302,7 +342,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
-        var medicalCase = MakeCase(profile, CaseStatus.Created);
+        var medicalCase = MakeCase(profile, CaseStatus.InProgress);
         var image = new UltrasoundImage
         {
             ImageId = Guid.NewGuid(), CaseId = medicalCase.CaseId,
@@ -591,7 +631,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
-        var pendingCase = MakeCase(profile, CaseStatus.Created);
+        var pendingCase = MakeCase(profile, CaseStatus.InProgress);
         _cases.Setup(r => r.GetDetailAsync(pendingCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(pendingCase);
 
@@ -725,6 +765,27 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
+    public async Task PutConfirm_CaseNotCheckedIn_Returns422UnprocessableEntity()
+    {
+        // Arrange — ca còn BOOKED (chưa check-in).
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Booked);
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/confirm", ValidConfirmBody(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
+        Assert.Equal("This case has not been checked in yet. Please wait for the nurse to check in the patient first.", body!.Message);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task PutConfirm_EmptyConclusion_Returns400BadRequest()
     {
         // Arrange — validator chặn trước khi chạm tới service.
@@ -797,6 +858,27 @@ public class CasesControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PutConclusion_CaseNotCheckedIn_Returns422UnprocessableEntity()
+    {
+        // Arrange — cùng luật với /confirm.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Booked);
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/conclusion", ValidConfirmBody(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
+        Assert.Equal("This case has not been checked in yet. Please wait for the nurse to check in the patient first.", body!.Message);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

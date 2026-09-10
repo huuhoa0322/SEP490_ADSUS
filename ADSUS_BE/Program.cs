@@ -23,12 +23,10 @@ using ADSUS_BE.Jobs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
-using ADSUS_BE.BLL.MedicalRecord.Events;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Services;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.AppointmentScheduling.Services;
-using ADSUS_BE.BLL.AppointmentScheduling.Handlers;
 using ADSUS_BE.BLL.HealthMonitoring.Interfaces;
 using ADSUS_BE.BLL.HealthMonitoring.Services;
 using ADSUS_BE.BLL.MedicalRecord.Validators;
@@ -444,8 +442,6 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
             // No-Show Service
             builder.Services.AddScoped<NoShowService>();
-            // Domain Event handler — listens to CaseEndEvent and completes related appointments
-            builder.Services.AddScoped<IEventHandler<CaseEndEvent>, AppointmentStatusHandler>();
             builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 
             // BLL — Module 9: Health Monitoring (UC-21)

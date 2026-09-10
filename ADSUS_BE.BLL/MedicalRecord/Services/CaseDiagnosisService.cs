@@ -39,6 +39,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
     private readonly IUltrasoundImageRepository _images;
     private readonly IAiPredictionRepository _predictions;
     private readonly IDoctorAnnotationRepository _annotations;
+    private readonly ICaseRepository _cases;
     private readonly ILogger<CaseDiagnosisService> _logger;
     private readonly string _aiBackendUrl;
     private readonly string? _aiBackendToken;
@@ -51,6 +52,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         IUltrasoundImageRepository images,
         IAiPredictionRepository predictions,
         IDoctorAnnotationRepository annotations,
+        ICaseRepository cases,
         IConfiguration configuration,
         ILogger<CaseDiagnosisService> logger)
     {
@@ -61,6 +63,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         _images = images;
         _predictions = predictions;
         _annotations = annotations;
+        _cases = cases;
         _logger = logger;
 
         var configuredUrl = configuration["AiBackend:WebhookUrl"];
@@ -78,8 +81,29 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         _aiBackendToken = configuration["AiBackend:Token"];
     }
 
+    /// <summary>
+    /// Bác sĩ chỉ thao tác được với ca sau khi Điều dưỡng check-in (Booked → InProgress) —
+    /// cùng luật với CaseService.GetForStaffAsync/LoadForConclusionUpdateAsync (yêu cầu
+    /// 10/09/2026). Trước đây service này không load Case entity ở đâu cả (chỉ ghi
+    /// UltrasoundImage/AiPrediction/DoctorAnnotation qua caseId thô), nên đây cũng là lần đầu
+    /// tiên có một bước kiểm tra tồn tại + trạng thái của ca trước khi xử lý ảnh AI.
+    /// </summary>
+    private async Task EnsureCaseCheckedInAsync(Guid caseId, CancellationToken ct)
+    {
+        var medicalCase = await _cases.GetByIdAsync(caseId, ct)
+            ?? throw new ResourceNotFoundException("Case not found.");
+
+        if (medicalCase.Status == CaseStatus.Booked)
+        {
+            throw new BusinessException(
+                "This case has not been checked in yet. Please wait for the nurse to check in the patient first.");
+        }
+    }
+
     public async Task<JsonElement> AnalyzeImageAsync(Guid caseId, Stream imageStream, string fileName, string contentType, CancellationToken ct = default)
     {
+        await EnsureCaseCheckedInAsync(caseId, ct);
+
         // Ignore the modelVersionId passed from frontend and fetch the true ACTIVE model
         var activeModel = await _aiModelVersionRepo.GetActiveVersionReadOnlyAsync(ct);
         if (activeModel == null) throw new BusinessException("Hệ thống chưa có phiên bản AI nào được kích hoạt. Vui lòng liên hệ Admin.");
@@ -126,6 +150,8 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
 
     public async Task ConfirmAnalysisAsync(Guid caseId, ConfirmAnalysisRequest request, CancellationToken ct = default)
     {
+        await EnsureCaseCheckedInAsync(caseId, ct);
+
         // 1. Create ImageId
         var imageId = Guid.NewGuid();
         var baseName = $"case_{caseId}_img_{imageId}";

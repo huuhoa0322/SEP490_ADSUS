@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using ADSUS_BE.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +7,7 @@ namespace ADSUS_BE.DAL.Data;
 
 public partial class AppDbContext : DbContext
 {
+
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
     {
@@ -358,7 +359,7 @@ public partial class AppDbContext : DbContext
         {
             entity.HasKey(e => e.CaseId).HasName("pk_cases");
 
-            entity.ToTable("cases", tb => tb.HasComment("Một lượt khám của một bệnh nhân — mốc neo cho ảnh siêu âm, kết quả AI, đơn thuốc. Theo dõi tiến triển (FT-22) = so sánh dữ liệu qua nhiều cases theo visit_date. Vòng đời CREATED → ANALYZED → CONFIRMED một chiều (GBR) — enforce ở tầng ứng dụng."));
+            entity.ToTable("cases", tb => tb.HasComment("Một lượt khám của một bệnh nhân — mốc neo cho ảnh siêu âm, kết quả AI, đơn thuốc. Theo dõi tiến triển (FT-22) = so sánh dữ liệu qua nhiều cases theo visit_date. Vòng đời một chiều: Booked → InProgress → Confirmed → End (GBR) — enforce ở tầng ứng dụng. Booked → Cancelled cũng có thể xảy ra."));
 
             entity.HasIndex(e => new { e.DoctorId, e.VisitDate }, "idx_cases_doctor_worklist").IsDescending(false, true);
 
