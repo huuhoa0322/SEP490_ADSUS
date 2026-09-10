@@ -791,50 +791,6 @@ public class AppointmentServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task ListForDoctorAsync_ApprovedAppointment_IsIncluded()
-    {
-        // Arrange — patient has checked in (status = APPROVED) and should still show up in
-        // doctor's "who is coming to see me" list. This tests the fix for the bug where
-        // Approved was incorrectly filtered out.
-        var fromDate = new DateOnly(2026, 7, 10);
-        var toDate = new DateOnly(2026, 7, 16);
-
-        var patientUser = new User { UserId = Guid.NewGuid(), FullName = "Lê Thị Mai" };
-        var patientProfile = new PatientProfile { PatientProfileId = Guid.NewGuid(), User = patientUser };
-        var slot = new ScheduleSlot
-        {
-            SlotId = Guid.NewGuid(),
-            DoctorId = _doctorId,
-            SlotDate = new DateOnly(2026, 7, 12),
-            StartTime = new TimeOnly(14, 0),
-            EndTime = new TimeOnly(14, 30),
-        };
-
-        var approvedAppointment = new Appointment
-        {
-            AppointmentId = Guid.NewGuid(),
-            SlotId = slot.SlotId,
-            Slot = slot,
-            PatientProfileId = patientProfile.PatientProfileId,
-            PatientProfile = patientProfile,
-            Status = AppointmentStatus.Approved,  // Nurse checked in
-            Reason = "Khám theo dõi",
-        };
-
-        _appointmentRepo
-            .Setup(r => r.ListByDoctorAsync(_doctorId, fromDate, toDate, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { approvedAppointment });
-
-        // Act
-        var result = await _sut.ListForDoctorAsync(_doctorId, fromDate, toDate, TestContext.Current.CancellationToken);
-
-        // Assert — Approved appointment should be included
-        var item = Assert.Single(result);
-        Assert.Equal(approvedAppointment.AppointmentId, item.AppointmentId);
-        Assert.Equal("Lê Thị Mai", item.PatientFullName);
-    }
-
-    [Fact]
     public async Task ListForDoctorAsync_CompletedAppointment_IsExcluded()
     {
         // Arrange — appointment is already completed (doctor ended the case) and should NOT

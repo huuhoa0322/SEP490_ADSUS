@@ -727,11 +727,12 @@ public sealed class AppointmentService : IAppointmentService
     {
         var appointments = await _appointmentRepo.ListByDoctorAsync(doctorId, fromDate, toDate, ct);
 
-        // Hiện cả BOOKED và APPROVED — Cancelled và Completed ẩn hẳn.
-        // Lý do: Approved = bệnh nhân đã đến (nurse checkin) — vẫn cần hiện trên màn "Lịch bệnh nhân"
-        // để bác sĩ biết ai đã đến, không bị mất khỏi danh sách khám ngay từ khi được checkin.
+        // Chỉ hiện BOOKED — Cancelled, Completed và mọi trạng thái khác đều ẩn.
+        // Lý do: màn "Lịch bệnh nhân" của bác sĩ chỉ quan tâm lịch hẹn còn hiệu lực chưa diễn ra;
+        // trạng thái "đã đến/đang khám" được theo dõi qua Case.Status (InProgress), không qua
+        // Appointment.Status — hai khái niệm tách biệt theo quyết định của user (2026-09-10).
         return appointments
-            .Where(a => a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved)
+            .Where(a => a.Status == AppointmentStatus.Booked)
             .Select(a => new DoctorPatientAppointmentResponse
             {
                 AppointmentId = a.AppointmentId,
@@ -750,14 +751,15 @@ public sealed class AppointmentService : IAppointmentService
         string? search = null,
         CancellationToken ct = default)
     {
-        // Lấy tất cả appointments trong ngày đang ở Booked hoặc Approved
+        // Lấy tất cả appointments trong ngày đang ở Booked hoặc Completed (đã check-in) — hàng đợi
+        // tiếp đón của y tá cần thấy cả hai để tính tiến độ check-in trong ngày.
         var appointments = await _db.Appointments
             .Include(a => a.Slot)
                 .ThenInclude(s => s.Doctor)
             .Include(a => a.PatientProfile)
                 .ThenInclude(p => p.User)
             .Where(a => a.Slot.SlotDate == date)
-            .Where(a => a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved)
+            .Where(a => a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Completed)
             .Where(a => a.Slot.Status != SlotStatus.Closed)
             .OrderBy(a => a.Slot.StartTime)
             .ToListAsync(ct);

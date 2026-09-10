@@ -52,7 +52,7 @@ export function CheckinQueueTable({
         </thead>
         <tbody className="divide-y divide-border">
           {queue.map((item, index) => {
-            const isCheckedIn = item.status === "Approved";
+            const isCheckedIn = item.status === "Completed";
             const slotTime = new Date(item.slotTime);
 
             return (
