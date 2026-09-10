@@ -74,6 +74,7 @@ public sealed class AppointmentService : IAppointmentService
             DoctorId = s.DoctorId,
             DoctorName = s.Doctor.FullName,
             DoctorStatus = s.Doctor.Status,
+            DoctorGender = s.Doctor.Gender, // 2026-01: thêm gender của bác sĩ
             SlotDate = s.SlotDate,
             StartTime = s.StartTime,
             EndTime = s.EndTime,
@@ -565,8 +566,8 @@ public sealed class AppointmentService : IAppointmentService
                 $"Lịch hẹn đã tự động hủy do không check-in trong 15 phút kể từ lịch hẹn.");
         }
 
-        // Cập nhật Appointment: Booked → Approved
-        appointment.Status = AppointmentStatus.Approved;
+        // Cập nhật Appointment: Booked → Completed (patient check-in thành công)
+        appointment.Status = AppointmentStatus.Completed;
         appointment.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
@@ -635,17 +636,13 @@ public sealed class AppointmentService : IAppointmentService
             .FirstOrDefaultAsync(a => a.CaseId == caseId, ct)
             ?? throw new InvalidOperationException($"Không tìm thấy lịch hẹn cho case '{caseId}'.");
 
-        // Kiểm tra status hợp lệ
-        if (appointment.Status == AppointmentStatus.Approved)
+        // Kiểm tra status hợp lệ - đã check-in (bao gồm dữ liệu cũ: Approved và mới: Completed)
+        if (appointment.Status == AppointmentStatus.Approved || appointment.Status == AppointmentStatus.Completed)
         {
             throw new InvalidOperationException("Bệnh nhân đã được check-in trước đó.");
         }
 
-        if (appointment.Status == AppointmentStatus.Completed)
-        {
-            throw new InvalidOperationException("Lịch hẹn đã hoàn thành, không thể check-in.");
-        }
-
+        // Không thể check-in nếu đã cancelled hoặc no-show
         if (appointment.Status == AppointmentStatus.Cancelled || appointment.Status == AppointmentStatus.NoShow)
         {
             throw new InvalidOperationException($"Lịch hẹn đã bị hủy (status: {appointment.Status}), không thể check-in.");
@@ -659,8 +656,8 @@ public sealed class AppointmentService : IAppointmentService
                 $"Lịch hẹn đã tự động hủy do không check-in trong 15 phút kể từ lịch hẹn.");
         }
 
-        // Chuyển sang Approved
-        appointment.Status = AppointmentStatus.Approved;
+        // Chuyển sang Completed (patient check-in thành công)
+        appointment.Status = AppointmentStatus.Completed;
         appointment.UpdatedAt = DateTime.UtcNow;
 
         // Cập nhật Case status nếu có liên kết
