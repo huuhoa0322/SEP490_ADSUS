@@ -136,7 +136,7 @@ describe("checkin.api", () => {
         },
       });
 
-      const res = await checkinAppointment("app-123", "case-456");
+      const res = await checkinAppointment("", "case-456");
       expect(apiClient.post).toHaveBeenCalledWith(
         "/api/v1/cases/case-456/appointment/checkin"
       );

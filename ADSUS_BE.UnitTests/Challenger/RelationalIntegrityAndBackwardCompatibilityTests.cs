@@ -307,8 +307,7 @@ public class RelationalIntegrityAndBackwardCompatibilityTests
         using (var verifyDb = CreateDbContext())
         {
             var finalAppt = await verifyDb.Appointments.FindAsync(new object[] { apptId }, TestContext.Current.CancellationToken);
-            Assert.NotNull(finalAppt);
-            Assert.True(finalAppt.Status == AppointmentStatus.Completed || finalAppt.Status == AppointmentStatus.Approved);
+            Assert.Equal(AppointmentStatus.Completed, finalAppt.Status);
         }
     }
 

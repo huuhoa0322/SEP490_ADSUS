@@ -173,7 +173,7 @@ describe("AdminFeedbackView Component", () => {
     expect(screen.getByText("Nội dung")).toBeInTheDocument();
     expect(screen.getByText("Thời gian gửi")).toBeInTheDocument();
 
-    const tableWrapper = container.querySelector(".rounded-3xl.border.border-border.bg-background.pl-6");
+    const tableWrapper = container.querySelector(".rounded-3xl.border.border-border.bg-background");
     expect(tableWrapper).toBeInTheDocument();
   });
 

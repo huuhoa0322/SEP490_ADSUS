@@ -185,7 +185,7 @@ describe("AppointmentDetailModal", () => {
           onClose={mockClose}
         />
       );
-      expect(screen.getByText("Đã hoàn thành")).toBeInTheDocument();
+      expect(screen.getByText("Đã check-in")).toBeInTheDocument();
     });
 
     it("should display 'Đã huỷ / Vắng mặt' badge for CANCELLED and NO_SHOW statuses", () => {

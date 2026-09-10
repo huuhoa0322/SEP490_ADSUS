@@ -200,6 +200,9 @@ describe("NurseCheckinView", () => {
         page: 1,
         pageSize: 15,
         totalPages: 0,
+        bookedCount: 0,
+        checkedInCount: 0,
+        cancelledCount: 0,
       },
       isLoading: false,
       refetch: mockRefetch,
@@ -210,7 +213,7 @@ describe("NurseCheckinView", () => {
 
     // Checked in count = 0, Pending count = 0
     expect(screen.getAllByText("Đã check-in").length).toBeGreaterThan(0);
-    expect(screen.getByText("Đang chờ")).toBeInTheDocument();
+    expect(screen.getAllByText("Đang chờ check-in").length).toBeGreaterThan(0);
 
     // Progress bar must show 0 / 0 (0%) without NaN
     expect(screen.getByText(/0 \/ 0 bệnh nhân \(0%\)/)).toBeInTheDocument();
@@ -249,6 +252,9 @@ describe("NurseCheckinView", () => {
         page: 1,
         pageSize: 15,
         totalPages: 1,
+        bookedCount: 1,
+        checkedInCount: 1,
+        cancelledCount: 0,
       },
       isLoading: false,
       refetch: mockRefetch,

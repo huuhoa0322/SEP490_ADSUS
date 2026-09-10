@@ -295,7 +295,7 @@ public class AppointmentServiceRescheduleAdversarialTests : IDisposable
         var oldSlot = CreateSlot(doctor, oldDate, new TimeOnly(8, 0), new TimeOnly(9, 0), SlotStatus.Booked);
         var newSlot = CreateSlot(doctor, newDate, new TimeOnly(14, 0), new TimeOnly(15, 0), SlotStatus.Open);
         var medicalCase = CreateCase(profile, doctor, oldDate, CaseStatus.InProgress);
-        var oldAppt = CreateAppointment(oldSlot, profile, AppointmentStatus.Approved, medicalCase);
+        var oldAppt = CreateAppointment(oldSlot, profile, AppointmentStatus.Completed, medicalCase);
 
         _db.Users.AddRange(doctor, patient);
         _db.PatientProfiles.Add(profile);
@@ -307,7 +307,7 @@ public class AppointmentServiceRescheduleAdversarialTests : IDisposable
         var request = new RescheduleAppointmentRequest
         {
             NewScheduleSlotId = newSlot.SlotId,
-            RescheduleReason = "Bệnh nhân cần khám lại ở ca APPROVED",
+            RescheduleReason = "Bệnh nhân cần khám lại ở ca COMPLETED",
             AutoCheckin = false
         };
 
@@ -318,9 +318,9 @@ public class AppointmentServiceRescheduleAdversarialTests : IDisposable
         Assert.NotNull(result);
         Assert.Equal(AppointmentStatus.Booked, result.Status);
 
-        // Old appointment remains APPROVED
+        // Old appointment remains COMPLETED
         var dbOldAppt = await _db.Appointments.FindAsync(new object[] { oldAppt.AppointmentId }, TestContext.Current.CancellationToken);
-        Assert.Equal(AppointmentStatus.Approved, dbOldAppt!.Status);
+        Assert.Equal(AppointmentStatus.Completed, dbOldAppt!.Status);
 
         // Case remains InProgress
         var dbCase = await _db.Cases.FindAsync(new object[] { medicalCase.CaseId }, TestContext.Current.CancellationToken);

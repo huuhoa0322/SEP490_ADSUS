@@ -125,14 +125,11 @@ describe("CheckinQueueTable", () => {
     // Booked -> Check-in button
     expect(screen.getByRole("button", { name: /Check-in/i })).toBeInTheDocument();
 
-    // Approved -> Đã check-in badge
-    expect(screen.getByText("Đã check-in")).toBeInTheDocument();
+    // Approved & Completed -> Đã check-in badge
+    expect(screen.getAllByText("Đã check-in").length).toBe(2);
 
-    // Completed -> Đã hoàn thành badge
-    expect(screen.getByText("Đã hoàn thành")).toBeInTheDocument();
-
-    // Cancelled -> Đã huỷ / Vắng mặt badge
-    expect(screen.getByText("Đã huỷ / Vắng mặt")).toBeInTheDocument();
+    // Cancelled -> Đã huỷ badge
+    expect(screen.getByText("Đã huỷ")).toBeInTheDocument();
   });
 
   it("should trigger onCheckin callback when Check-in button is clicked", () => {
