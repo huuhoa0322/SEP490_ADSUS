@@ -44,14 +44,16 @@ public enum BlogPostStatus
 
 /// <summary>
 /// Trạng thái lịch hẹn — enum <c>appointment_status</c> trong DB (Module 8).
-/// Flow: Booked → Approved (nurse checkin) → Completed (doctor end case)
+/// Flow: Booked → Completed (patient checks in) | Booked → NoShow (grace time expires) |
+/// Booked → Cancelled (patient cancels). No separate "checked in but not seen yet" state —
+/// checkin marks the Appointment's own obligation fulfilled; whether the clinical visit itself
+/// is still ongoing is tracked separately on Case.Status (see CaseStatus.InProgress).
 /// </summary>
 public enum AppointmentStatus
 {
     [PgName("BOOKED")] Booked,
-    [PgName("APPROVED")] Approved,     // Nurse checkin khi bệnh nhân đến
     [PgName("CANCELLED")] Cancelled,
-    [PgName("COMPLETED")] Completed,    // Doctor end case
+    [PgName("COMPLETED")] Completed,   // Patient checked in (nurse checkin)
     [PgName("NO_SHOW")] NoShow,        // Tự động hủy khi không check-in trong grace time
 }
 
@@ -61,7 +63,6 @@ public enum AppointmentStatus
 ///   BOOKED (từ mobile) → IN_PROGRESS (checkin) → CONFIRMED → END (có đơn thuốc)
 ///   BOOKED → CANCELLED (no-show hoặc hủy lịch)
 /// END là trạng thái cuối — không có đường lùi (GB-01).
-/// CREATED giữ lại để tương thích với DB cũ.
 /// </summary>
 public enum CaseStatus
 {
@@ -70,7 +71,6 @@ public enum CaseStatus
     [PgName("CONFIRMED")] Confirmed,      // Bác sĩ kết luận
     [PgName("END")] End,                  // Hoàn thành (có đơn thuốc)
     [PgName("CANCELLED")] Cancelled,       // NoShow hoặc bệnh nhân hủy
-    [PgName("CREATED")] Created,          // Tương thích DB cũ
 }
 
 /// <summary>

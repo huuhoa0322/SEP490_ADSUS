@@ -9,7 +9,7 @@ public partial class AppDbContext : DbContext
 {
     // Static readonly fields for enum arrays (performance optimization)
     private static readonly string[] AiResultStatusValues = { "PENDING_REVIEW", "CONFIRMED", "REJECTED" };
-    private static readonly string[] AppointmentStatusValues = { "BOOKED", "CANCELLED", "COMPLETED", "APPROVED", "NO_SHOW" };
+    private static readonly string[] AppointmentStatusValues = { "BOOKED", "CANCELLED", "COMPLETED", "NO_SHOW" };
     private static readonly string[] AuthAalLevelValues = { "aal1", "aal2", "aal3" };
     private static readonly string[] AuthCodeChallengeMethodValues = { "s256", "plain" };
     private static readonly string[] AuthFactorStatusValues = { "unverified", "verified" };
@@ -20,7 +20,7 @@ public partial class AppDbContext : DbContext
     private static readonly string[] AuthOauthResponseTypeValues = { "code" };
     private static readonly string[] AuthOneTimeTokenTypeValues = { "confirmation_token", "reauthentication_token", "recovery_token", "email_change_token_new", "email_change_token_current", "phone_change_token" };
     private static readonly string[] BlogStatusValues = { "DRAFT", "PUBLISHED" };
-    private static readonly string[] CaseStatusValues = { "CREATED", "END", "CONFIRMED", "BOOKED" };
+    private static readonly string[] CaseStatusValues = { "END", "CONFIRMED", "BOOKED", "IN_PROGRESS", "CANCELLED" };
     private static readonly string[] ChatRoleValues = { "USER", "ASSISTANT" };
     private static readonly string[] GenderTypeValues = { "FEMALE", "MALE", "OTHER" };
     private static readonly string[] HealthLogTypeValues = { "EXERCISE", "DIET" };

@@ -189,7 +189,7 @@ public class CaseServiceTests
         // trả 403 (403 sẽ gián tiếp xác nhận "có tồn tại một ca như vậy").
         var patientUser = MedicalRecordTestData.MakePatientUser();
         var profile = MedicalRecordTestData.MakePatientProfile(patientUser);
-        var pendingCase = MedicalRecordTestData.MakeCase(profile, status: CaseStatus.Created);
+        var pendingCase = MedicalRecordTestData.MakeCase(profile, status: CaseStatus.InProgress);
 
         _profiles.Setup(r => r.GetByUserIdAsync(patientUser.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
@@ -705,7 +705,7 @@ public class CaseServiceTests
         // Arrange — GB-04, cùng luật với ConfirmAsync.
         var responsibleDoctor = MedicalRecordTestData.MakeDoctor("BS. Lê Minh Hoàng");
         var otherDoctor = MedicalRecordTestData.MakeDoctor("BS. Nguyễn Văn An");
-        var medicalCase = MedicalRecordTestData.MakeCase(doctor: responsibleDoctor, status: CaseStatus.Created);
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: responsibleDoctor, status: CaseStatus.InProgress);
 
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
@@ -775,7 +775,7 @@ public class CaseServiceTests
     {
         // Arrange
         var doctor = MedicalRecordTestData.MakeDoctor();
-        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.Created);
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.InProgress);
 
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);

@@ -64,7 +64,7 @@ internal static class MedicalRecordTestData
     public static Case MakeCase(
         PatientProfile? profile = null,
         User? doctor = null,
-        CaseStatus status = CaseStatus.Created)
+        CaseStatus status = CaseStatus.InProgress)
     {
         var patientProfile = profile ?? MakePatientProfile();
         var responsibleDoctor = doctor ?? MakeDoctor();
