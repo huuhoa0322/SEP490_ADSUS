@@ -75,12 +75,12 @@ public sealed class AppointmentRepository : IAppointmentRepository
     public async Task CancelByCaseAsync(Guid caseId, CancellationToken ct = default)
     {
         var appointments = await _db.Appointments
-            .Where(a => a.CaseId == caseId && a.Status == AppointmentStatus.Approved)
+            .Where(a => a.CaseId == caseId && a.Status == AppointmentStatus.Booked)
             .ToListAsync(ct);
 
         foreach (var appointment in appointments)
         {
-            appointment.Status = AppointmentStatus.Completed;
+            appointment.Status = AppointmentStatus.Cancelled;
         }
 
         if (appointments.Count > 0)

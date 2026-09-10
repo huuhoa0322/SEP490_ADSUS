@@ -16,7 +16,7 @@ export function NurseCheckinView() {
   const { mutate: checkin, isPending: isCheckingIn } = useCheckin();
 
   const queue = data?.items ?? [];
-  const checkedIn = queue.filter((item) => item.status === "Approved");
+  const checkedIn = queue.filter((item) => item.status === "Completed");
   const pending = queue.filter((item) => item.status === "Booked");
 
   // Filter by search (client-side for instant feedback)

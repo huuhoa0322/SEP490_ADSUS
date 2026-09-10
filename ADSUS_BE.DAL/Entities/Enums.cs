@@ -49,10 +49,9 @@ public enum BlogPostStatus
 public enum AppointmentStatus
 {
     [PgName("BOOKED")] Booked,
-    [PgName("APPROVED")] Approved,     // Nurse checkin khi bệnh nhân đến
     [PgName("CANCELLED")] Cancelled,
-    [PgName("COMPLETED")] Completed,    // Doctor end case
-    [PgName("NO_SHOW")] NoShow,        // Tự động hủy khi không check-in trong grace time
+    [PgName("COMPLETED")] Completed,   // Nurse check-in thì appointment chuyển sang COMPLETED
+    [PgName("NO_SHOW")] NoShow,        // Tự động hủy khi bệnh nhân không check-in trong grace time
 }
 
 /// <summary>

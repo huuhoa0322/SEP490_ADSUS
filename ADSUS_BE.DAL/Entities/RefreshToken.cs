@@ -1,25 +1,47 @@
+﻿using System;
+using System.Collections.Generic;
+
 namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
-/// Lưu refresh token cho JWT token renewal.
-/// Hỗ trợ SignalR duy trì kết nối mà không cần user đăng nhập lại.
+/// Stores refresh tokens for JWT token renewal (SignalR support)
 /// </summary>
-public class RefreshToken
+public partial class RefreshToken
 {
+    /// <summary>
+    /// Primary key
+    /// </summary>
     public Guid Id { get; set; }
-    public Guid UserId { get; set; }
-    public string TokenHash { get; set; } = null!;
-    public DateTime ExpiresAt { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? RevokedAt { get; set; }
-    public string? DeviceInfo { get; set; }
 
     /// <summary>
-    /// Trạng thái token — computed từ RevokedAt để thống nhất style với các entity khác.
+    /// FK to users table
     /// </summary>
-    public RefreshTokenStatus Status =>
-        RevokedAt.HasValue ? RefreshTokenStatus.Revoked : RefreshTokenStatus.Active;
+    public Guid UserId { get; set; }
 
-    // Navigation
-    public User User { get; set; } = null!;
+    /// <summary>
+    /// SHA256 hash of the refresh token (never store plain text)
+    /// </summary>
+    public string TokenHash { get; set; } = null!;
+
+    /// <summary>
+    /// When this refresh token expires (typically 7 days)
+    /// </summary>
+    public DateTime ExpiresAt { get; set; }
+
+    /// <summary>
+    /// When this refresh token was created
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// When this token was revoked (NULL if still active)
+    /// </summary>
+    public DateTime? RevokedAt { get; set; }
+
+    /// <summary>
+    /// Optional: browser/device info for audit
+    /// </summary>
+    public string? DeviceInfo { get; set; }
+
+    public virtual User User { get; set; } = null!;
 }

@@ -90,7 +90,7 @@ public partial class AppDbContext : DbContext
     {
         modelBuilder
             .HasPostgresEnum("ai_result_status", new[] { "PENDING_REVIEW", "CONFIRMED", "REJECTED" })
-            .HasPostgresEnum("appointment_status", new[] { "BOOKED", "CANCELLED", "COMPLETED", "APPROVED", "NO_SHOW" })
+            .HasPostgresEnum("appointment_status", new[] { "BOOKED", "CANCELLED", "COMPLETED", "NO_SHOW" })
             .HasPostgresEnum("auth", "aal_level", new[] { "aal1", "aal2", "aal3" })
             .HasPostgresEnum("auth", "code_challenge_method", new[] { "s256", "plain" })
             .HasPostgresEnum("auth", "factor_status", new[] { "unverified", "verified" })
