@@ -383,7 +383,7 @@ public sealed class CaseService : ICaseService
     }
 
     /// <summary>
-    /// Tải ca (có theo dõi) và kiểm hai điều kiện dùng chung cho cả SaveConclusionAsync lẫn
+    /// Tải ca (có theo dõi) và kiểm ba điều kiện dùng chung cho cả SaveConclusionAsync lẫn
     /// ConfirmAsync — tách ra một chỗ để hai hành động không bao giờ lệch luật với nhau.
     /// </summary>
     private async Task<Case> LoadForConclusionUpdateAsync(
