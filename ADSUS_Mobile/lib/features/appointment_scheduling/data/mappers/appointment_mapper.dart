@@ -72,6 +72,22 @@ class AppointmentMapper {
     }
   }
 
+  /// Parse doctor gender: "MALE", "FEMALE", "OTHER" → DoctorGender enum (2026-01)
+  static DoctorGender? parseDoctorGender(dynamic raw) {
+    final str = raw?.toString()?.toUpperCase();
+    switch (str) {
+      case 'MALE':
+        return DoctorGender.male;
+      case 'FEMALE':
+        return DoctorGender.female;
+      case 'OTHER':
+        return DoctorGender.other;
+      default:
+        // Null = chưa khai báo hoặc giá trị không hợp lệ
+        return null;
+    }
+  }
+
   static AppointmentStatus parseAppointmentStatus(dynamic raw) {
     // Backend trả enum dưới dạng string (JsonStringEnumConverter): "Booked" / "Cancelled" (camelCase)
     // Hoặc int cũ (0=BOOKED, 1=CANCELLED) cho backward compatibility.
@@ -120,6 +136,7 @@ class AppointmentMapper {
         endTime: parseHm(dto.endTime) ?? '',
         status: parseSlotStatus(dto.status),
         doctorStatus: parseDoctorStatus(dto.doctorStatus),
+        doctorGender: parseDoctorGender(dto.doctorGender), // 2026-01
       );
 
   static Appointment appointmentFromDto(AppointmentDto dto) => Appointment(

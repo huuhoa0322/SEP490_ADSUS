@@ -17,7 +17,7 @@ public static class PatientProfileMapper
         FullName: profile.User?.FullName ?? string.Empty,
         Phone: profile.User?.Phone ?? string.Empty,
         DateOfBirth: profile.User?.DateOfBirth,
-        Gender: profile.Gender.ToApiString(),
+        Gender: profile.User?.Gender?.ToApiString(), // Lấy từ User (2026-01)
         Diseases: profile.PatientDiseases?.Select(d => new PatientDiseaseResponse(
             DiseaseId: d.DiseaseId,
             DiseaseName: d.Disease?.Name ?? string.Empty,

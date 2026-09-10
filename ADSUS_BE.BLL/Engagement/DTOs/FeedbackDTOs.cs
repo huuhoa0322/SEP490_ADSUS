@@ -12,15 +12,20 @@ public sealed class SubmitFeedbackRequest
 }
 
 /// <summary>
-/// Response cho feedback list (Admin).
+/// Response cho feedback list (Admin) bao gồm thông tin liên kết ca khám, bác sĩ, bệnh nhân.
 /// </summary>
 public sealed class FeedbackResponse
 {
     public Guid Id { get; init; }
+    public Guid CaseId { get; init; }
+    public Guid PatientProfileId { get; init; }
+    public string PatientName { get; init; } = string.Empty;
+    public string? PatientPhone { get; init; }
+    public Guid DoctorId { get; init; }
+    public string DoctorName { get; init; } = string.Empty;
     public short Rating { get; init; }
     public string? Content { get; init; }
     public DateTime SubmittedAt { get; init; }
-    public string PatientName { get; init; } = string.Empty;
 }
 
 /// <summary>

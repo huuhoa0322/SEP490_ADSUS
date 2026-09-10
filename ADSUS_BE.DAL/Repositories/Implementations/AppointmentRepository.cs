@@ -71,4 +71,5 @@ public sealed class AppointmentRepository : IAppointmentRepository
         _db.Appointments.Update(appointment);
         await _db.SaveChangesAsync(ct);
     }
+
 }

@@ -1,3 +1,4 @@
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 
 namespace ADSUS_BE.BLL.UserRoleManagement.Interfaces;
@@ -17,4 +18,18 @@ public interface IAuditLogService
     Task<IReadOnlyList<AuditLogResponse>> GetRecentAsync(
         int limit,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tìm kiếm và phân trang nhật ký thao tác theo từ khóa, hành động, vai trò và khoảng thời gian.
+    /// </summary>
+    Task<ADSUS_BE.BLL.Common.PagedResult<AuditLogResponse>> GetPagedAsync(
+        string? keyword,
+        string? action,
+        string? actorRole,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int page = 1,
+        int pageSize = 15,
+        CancellationToken cancellationToken = default);
 }
+

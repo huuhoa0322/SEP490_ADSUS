@@ -71,10 +71,13 @@ public sealed class NoShowCancellationJob : IJob
         {
             if (appointment.Slot == null) continue;
 
-            var slotDateTime = appointment.Slot.SlotDate.ToDateTime(appointment.Slot.StartTime);
+            // SlotDate và StartTime là giờ địa phương phòng khám (UTC+7, theo ClinicClock).
+            // Cần quy đổi sang UTC trước khi so sánh với thresholdTime (UTC).
+            var slotDateTimeUtc = ClinicClock.StartOfDayUtc(appointment.Slot.SlotDate)
+                .Add(appointment.Slot.StartTime.ToTimeSpan());
 
             // Kiểm tra nếu đã quá ngưỡng thời gian
-            if (slotDateTime < thresholdTime)
+            if (slotDateTimeUtc < thresholdTime)
             {
                 try
                 {
@@ -86,11 +89,23 @@ public sealed class NoShowCancellationJob : IJob
                     // Giải phóng slot (chuyển về OPEN)
                     appointment.Slot.Status = SlotStatus.Open;
 
+                    // Đồng bộ trạng thái Case liên kết sang Cancelled
+                    if (appointment.CaseId.HasValue)
+                    {
+                        var medicalCase = await db.Cases
+                            .FirstOrDefaultAsync(c => c.CaseId == appointment.CaseId.Value, context.CancellationToken);
+
+                        if (medicalCase != null && medicalCase.Status == CaseStatus.Booked)
+                        {
+                            medicalCase.Status = CaseStatus.Cancelled;
+                            medicalCase.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
+
                     // Gửi notification cho bệnh nhân
                     var doctorName = appointment.Slot?.Doctor?.FullName ?? "bác sĩ";
-                    var slotTimeLocal = TimeZoneInfo.ConvertTimeFromUtc(
-                        slotDateTime,
-                        TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"));
+                    var slotTimeStr = appointment.Slot!.StartTime.ToString("HH:mm");
+                    var slotDateStr = appointment.Slot.SlotDate.ToString("dd/MM/yyyy");
 
                     try
                     {
@@ -102,12 +117,12 @@ public sealed class NoShowCancellationJob : IJob
                                 UserId = patientUserId.Value,
                                 Type = "no_show_cancelled",
                                 Title = "Lịch hẹn bị hủy",
-                                Body = $"Lịch khám với {doctorName} lúc {slotTimeLocal:HH:mm} ngày {slotTimeLocal:dd/MM/yyyy} đã bị hủy do bạn không đến checkin trong vòng {graceTimeMinutes} phút. Vui lòng đặt lịch khám mới.",
+                                Body = $"Lịch khám với {doctorName} lúc {slotTimeStr} ngày {slotDateStr} đã bị hủy do bạn không đến checkin trong vòng {graceTimeMinutes} phút. Vui lòng đặt lịch khám mới.",
                                 Metadata = new Dictionary<string, object>
                                 {
                                     ["appointmentId"] = appointment.AppointmentId.ToString(),
                                     ["doctorName"] = doctorName,
-                                    ["slotTime"] = slotTimeLocal.ToString("O"),
+                                    ["slotTime"] = $"{slotDateStr} {slotTimeStr}",
                                     ["reason"] = "no_show"
                                 }
                             }, context.CancellationToken);

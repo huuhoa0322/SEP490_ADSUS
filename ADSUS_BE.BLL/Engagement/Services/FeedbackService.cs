@@ -1,3 +1,4 @@
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.Engagement.DTOs;
 using ADSUS_BE.BLL.Engagement.Interfaces;
@@ -24,6 +25,7 @@ public sealed class FeedbackService : IFeedbackService
         {
             FeedbackId = Guid.NewGuid(),
             PatientProfileId = patientProfileId,
+            CaseId = null,
             Rating = request.Rating,
             Content = request.Content,
             SubmittedAt = DateTime.UtcNow,
@@ -34,10 +36,15 @@ public sealed class FeedbackService : IFeedbackService
         return new FeedbackResponse
         {
             Id = feedback.FeedbackId,
+            CaseId = Guid.Empty,
+            PatientProfileId = patientProfileId,
             Rating = feedback.Rating,
             Content = feedback.Content,
             SubmittedAt = feedback.SubmittedAt,
             PatientName = string.Empty,
+            PatientPhone = string.Empty,
+            DoctorId = Guid.Empty,
+            DoctorName = "Không xác định",
         };
     }
 
@@ -46,15 +53,43 @@ public sealed class FeedbackService : IFeedbackService
         var feedbacks = await _repo.GetAllAsync(ct);
 
         return feedbacks
-            .Select(f => new FeedbackResponse
-            {
-                Id = f.FeedbackId,
-                Rating = f.Rating,
-                Content = f.Content,
-                SubmittedAt = f.SubmittedAt,
-                PatientName = f.PatientProfile?.User?.FullName ?? string.Empty,
-            })
+            .Select(MapToFeedbackResponse)
             .ToList();
+    }
+
+    public async Task<PagedResult<FeedbackResponse>> GetPagedAsync(
+        string? keyword,
+        short? rating,
+        int page = 1,
+        int pageSize = 15,
+        CancellationToken ct = default)
+    {
+        var effectivePage = page < 1 ? 1 : page;
+        var effectivePageSize = pageSize is < 1 or > 100 ? 15 : pageSize;
+
+        var (items, totalCount) = await _repo.GetPagedAsync(keyword, rating, effectivePage, effectivePageSize, ct);
+
+        var dtos = items.Select(MapToFeedbackResponse).ToList();
+        var totalPages = effectivePageSize > 0 ? (int)Math.Ceiling((double)totalCount / effectivePageSize) : 0;
+
+        return new PagedResult<FeedbackResponse>(dtos, effectivePage, effectivePageSize, totalCount, totalPages);
+    }
+
+    private static FeedbackResponse MapToFeedbackResponse(ServiceFeedback f)
+    {
+        return new FeedbackResponse
+        {
+            Id = f.FeedbackId,
+            CaseId = f.CaseId ?? Guid.Empty,
+            PatientProfileId = f.PatientProfileId,
+            PatientName = f.PatientProfile?.User?.FullName ?? string.Empty,
+            PatientPhone = f.PatientProfile?.User?.Phone ?? string.Empty,
+            DoctorId = f.Case?.DoctorId ?? (f.Case?.Doctor?.UserId ?? Guid.Empty),
+            DoctorName = !string.IsNullOrWhiteSpace(f.Case?.Doctor?.FullName) ? f.Case.Doctor.FullName : "Không xác định",
+            Rating = f.Rating,
+            Content = f.Content,
+            SubmittedAt = f.SubmittedAt,
+        };
     }
 
     public async Task<CaseFeedbackResponse> SubmitCaseFeedbackAsync(

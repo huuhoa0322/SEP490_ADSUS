@@ -91,7 +91,7 @@ public class NoShowCancellationJobTests : IDisposable
             PatientProfileId = Guid.NewGuid(),
             UserId = user.UserId,
             User = user,
-            Gender = GenderType.Female,
+            // Gender đã chuyển sang User (2026-01)
             CreatedBy = Guid.NewGuid(),
         };
     }
@@ -174,10 +174,10 @@ public class NoShowCancellationJobTests : IDisposable
         var patient = CreatePatient();
         var profile = CreatePatientProfile(patient);
 
-        // Slot bắt đầu 10 phút trước (vẫn trong grace time 15 phút)
-        var now = DateTime.UtcNow;
-        var slotDate = DateOnly.FromDateTime(now.AddMinutes(-10));
-        var startTime = TimeOnly.FromDateTime(now.AddMinutes(-10));
+        // Slot bắt đầu 10 phút trước theo giờ phòng khám (vẫn trong grace time 15 phút)
+        var clinicNow = DateTime.UtcNow.Add(ClinicClock.Offset);
+        var slotDate = DateOnly.FromDateTime(clinicNow.AddMinutes(-10));
+        var startTime = TimeOnly.FromDateTime(clinicNow.AddMinutes(-10));
 
         var slot = CreateSlot(doctor, slotDate, startTime);
         slot.Status = SlotStatus.Booked;
@@ -319,23 +319,23 @@ public class NoShowCancellationJobTests : IDisposable
         var patient = CreatePatient();
         var profile = CreatePatientProfile(patient);
 
-        var now = DateTime.UtcNow;
+        var clinicNow = DateTime.UtcNow.Add(ClinicClock.Offset);
 
         // Appointment 1: Quá ngưỡng, đang Booked → Sẽ bị cancel
-        var slot1Date = DateOnly.FromDateTime(now.AddHours(-2));
-        var slot1Time = TimeOnly.FromDateTime(now.AddHours(-2));
+        var slot1Date = DateOnly.FromDateTime(clinicNow.AddHours(-2));
+        var slot1Time = TimeOnly.FromDateTime(clinicNow.AddHours(-2));
         var slot1 = CreateSlot(doctor, slot1Date, slot1Time);
         var appointment1 = CreateAppointment(slot1, profile, AppointmentStatus.Booked);
 
         // Appointment 2: Trong ngưỡng, đang Booked → Không cancel
-        var slot2Date = DateOnly.FromDateTime(now.AddMinutes(-10));
-        var slot2Time = TimeOnly.FromDateTime(now.AddMinutes(-10));
+        var slot2Date = DateOnly.FromDateTime(clinicNow.AddMinutes(-10));
+        var slot2Time = TimeOnly.FromDateTime(clinicNow.AddMinutes(-10));
         var slot2 = CreateSlot(doctor, slot2Date, slot2Time);
         var appointment2 = CreateAppointment(slot2, profile, AppointmentStatus.Booked);
 
         // Appointment 3: Quá ngưỡng, đã Completed → Không cancel
-        var slot3Date = DateOnly.FromDateTime(now.AddHours(-2));
-        var slot3Time = TimeOnly.FromDateTime(now.AddHours(-2));
+        var slot3Date = DateOnly.FromDateTime(clinicNow.AddHours(-2));
+        var slot3Time = TimeOnly.FromDateTime(clinicNow.AddHours(-2));
         var slot3 = CreateSlot(doctor, slot3Date, slot3Time);
         var appointment3 = CreateAppointment(slot3, profile, AppointmentStatus.Completed);
 

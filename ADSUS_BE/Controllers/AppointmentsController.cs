@@ -204,19 +204,76 @@ public sealed class AppointmentsController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/v1/appointments/checkin-queue — Danh sách lịch hẹn chờ check-in cho Nurse.
-    /// Trả về appointments trong ngày hôm nay đang ở trạng thái Booked hoặc Approved.
+    /// GET /api/v1/appointments/checkin-queue — Danh sách lịch hẹn chờ check-in cho Nurse / Lễ tân / Admin.
+    /// Hỗ trợ lọc theo khoảng thời gian (fromDate, toDate), trạng thái (status), tìm kiếm (search) và phân trang (page, pageSize).
+    /// Duy trì tương thích ngược khi chỉ truyền date.
     /// </summary>
     [HttpGet("checkin-queue")]
-    [Authorize(Roles = "NURSE")]
+    [Authorize(Roles = "NURSE,ADMIN,RECEPTIONIST")]
     [ProducesResponseType(typeof(ApiResponse<CheckinQueueResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCheckinQueue(
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
         [FromQuery] DateOnly? date = null,
         [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 15,
         CancellationToken ct = default)
     {
-        var targetDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        var result = await _appointmentService.GetCheckinQueueAsync(targetDate, search, ct);
+        var effectiveFrom = fromDate ?? date ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveTo = toDate ?? date ?? effectiveFrom;
+
+        var result = await _appointmentService.GetCheckinQueueAsync(
+            effectiveFrom, effectiveTo, search, status, page, pageSize, ct);
         return Ok(ApiResponse<CheckinQueueResponse>.Ok(result));
+    }
+
+    /// <summary>
+    /// POST /api/v1/appointments/{id}/reschedule — Đổi lịch hoặc tái đặt lịch hẹn cho Nurse / Lễ tân / Admin (Milestone 1).
+    /// </summary>
+    [HttpPost("{id:guid}/reschedule")]
+    [Authorize(Roles = "NURSE,ADMIN,RECEPTIONIST")]
+    [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RescheduleAppointment(
+        Guid id,
+        [FromBody] RescheduleAppointmentRequest request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var appointment = await _appointmentService.RescheduleAppointmentAsync(id, request, ct);
+            return StatusCode(StatusCodes.Status201Created, ApiResponse<AppointmentResponse>.Ok(appointment, code: 201));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(404, ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// GET /api/v1/appointments/available-slots — Lấy danh sách slot còn trống cho Nurse / Lễ tân / Admin đổi lịch (Milestone 1).
+    /// </summary>
+    [HttpGet("available-slots")]
+    [Authorize(Roles = "NURSE,ADMIN,RECEPTIONIST")]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<OpenSlotResponse>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListAvailableSlots(
+        [FromQuery] string? doctorId = null,
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
+        CancellationToken ct = default)
+    {
+        var slots = await _appointmentService.ListOpenSlotsAsync(doctorId, fromDate, toDate, ct);
+        return Ok(ApiResponse<IReadOnlyList<OpenSlotResponse>>.Ok(slots));
     }
 }

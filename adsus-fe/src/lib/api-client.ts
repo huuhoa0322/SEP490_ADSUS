@@ -70,22 +70,105 @@ const AUTH_STORE_KEY = "adsus.auth";
  * Dùng window.location thay vì router của Next.js: đây là tệp thường, không phải component,
  * và tải lại cả trang là cách chắc chắn nhất để mọi state trong bộ nhớ bị dọn sạch.
  */
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (error: unknown) => void }> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else if (token) {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: unknown) => {
-    const isUnauthorized =
-      error instanceof AxiosError && error.response?.status === 401;
-    const hadToken = Boolean(
-      error instanceof AxiosError && error.config?.headers?.Authorization,
-    );
+  async (error: unknown) => {
+    const originalRequest = (error as AxiosError).config;
+    const isUnauthorized = error instanceof AxiosError && error.response?.status === 401;
+    const hadToken = Boolean(error instanceof AxiosError && originalRequest?.headers?.Authorization);
 
-    if (isUnauthorized && hadToken && typeof window !== "undefined" && window.localStorage) {
-      window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-      window.localStorage.removeItem(AUTH_STORE_KEY);
+    if (isUnauthorized && hadToken && typeof window !== "undefined" && window.localStorage && originalRequest) {
+      // Bỏ qua nếu chính request /refresh bị 401
+      if (originalRequest.url?.includes("/auth/refresh")) {
+        window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+        window.localStorage.removeItem(AUTH_STORE_KEY);
+        if (!window.location.pathname.startsWith("/login")) {
+          window.location.href = "/login?expired=1";
+        }
+        return Promise.reject(error);
+      }
 
-      // Đang ở trang đăng nhập rồi thì thôi, tránh tải lại vòng quanh.
-      if (!window.location.pathname.startsWith("/login")) {
-        window.location.href = "/login?expired=1";
+      if (isRefreshing) {
+        return new Promise(function (resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return apiClient(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      isRefreshing = true;
+      const refreshToken = window.localStorage.getItem("adsus.refreshToken");
+
+      if (!refreshToken) {
+        isRefreshing = false;
+        window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+        window.localStorage.removeItem(AUTH_STORE_KEY);
+        if (!window.location.pathname.startsWith("/login")) {
+          window.location.href = "/login?expired=1";
+        }
+        return Promise.reject(error);
+      }
+
+      try {
+        const refreshResponse = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+        });
+
+        if (refreshResponse.ok) {
+          const result = await refreshResponse.json();
+          const newAccessToken = result.data.accessToken;
+          const newRefreshToken = result.data.refreshToken;
+          
+          window.localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
+          window.localStorage.setItem("adsus.refreshToken", newRefreshToken);
+          
+          // Cập nhật lại zustand store thông qua event hoặc trực tiếp, 
+          // nhưng tạm thời localStorage là đủ để apiClient và authStore đồng bộ.
+          const authDataStr = window.localStorage.getItem(AUTH_STORE_KEY);
+          if (authDataStr) {
+            try {
+              const authData = JSON.parse(authDataStr);
+              authData.state.accessToken = newAccessToken;
+              authData.state.refreshToken = newRefreshToken;
+              window.localStorage.setItem(AUTH_STORE_KEY, JSON.stringify(authData));
+            } catch (e) {}
+          }
+
+          processQueue(null, newAccessToken);
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          return apiClient(originalRequest);
+        } else {
+          throw new Error("Refresh failed");
+        }
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+        window.localStorage.removeItem(AUTH_STORE_KEY);
+        if (!window.location.pathname.startsWith("/login")) {
+          window.location.href = "/login?expired=1";
+        }
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 

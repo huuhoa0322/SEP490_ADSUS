@@ -1,3 +1,4 @@
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Engagement.DTOs;
 
 namespace ADSUS_BE.BLL.Engagement.Interfaces;
@@ -12,6 +13,14 @@ public interface IFeedbackService
 
     /// <summary>Admin xem tất cả feedback.</summary>
     Task<IReadOnlyList<FeedbackResponse>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>Admin xem danh sách feedback phân trang và tìm kiếm.</summary>
+    Task<PagedResult<FeedbackResponse>> GetPagedAsync(
+        string? keyword,
+        short? rating,
+        int page = 1,
+        int pageSize = 15,
+        CancellationToken ct = default);
 
     /// <summary>Patient gửi feedback cho ca khám (FT-37).</summary>
     Task<CaseFeedbackResponse> SubmitCaseFeedbackAsync(

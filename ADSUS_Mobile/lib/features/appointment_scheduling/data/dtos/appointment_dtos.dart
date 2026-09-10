@@ -19,6 +19,9 @@ class ScheduleSlotDto {
   /// Trạng thái tài khoản bác sĩ: "ACTIVE", "INACTIVE", hoặc int (0/1).
   final String? doctorStatus;
 
+  /// Giới tính bác sĩ: "MALE", "FEMALE", "OTHER" (2026-01).
+  final String? doctorGender;
+
   final String? createdAt;
   final String? updatedAt;
 
@@ -31,6 +34,7 @@ class ScheduleSlotDto {
     this.endTime,
     this.status,
     this.doctorStatus,
+    this.doctorGender,
     this.createdAt,
     this.updatedAt,
   });
@@ -46,6 +50,8 @@ class ScheduleSlotDto {
         status: json['status']?.toString(),
         // Backend trả doctorStatus: "ACTIVE"/"INACTIVE" hoặc int (0/1).
         doctorStatus: json['doctorStatus']?.toString(),
+        // Backend trả doctorGender: "MALE", "FEMALE", "OTHER" (2026-01).
+        doctorGender: json['doctorGender']?.toString(),
         createdAt: json['createdAt'] as String?,
         updatedAt: json['updatedAt'] as String?,
       );

@@ -597,10 +597,17 @@ namespace ADSUS_BE
             builder.Services.AddQuartzHostedService(q => q
                 .WaitForJobsToComplete = true);
 
+            // Múi giờ chuẩn của phòng khám tại Việt Nam (UTC+7 cố định, không phụ thuộc OS server)
+            var vnTimeZone = TimeZoneInfo.CreateCustomTimeZone(
+                "Vietnam_Clinic_Time",
+                ClinicClock.Offset,
+                "Vietnam Clinic Time (UTC+7)",
+                "Vietnam Clinic Time (UTC+7)");
+
             // ---------- Quartz JOB-02: Slot Generator ----------
             builder.Services.AddQuartz(q =>
             {
-                // Chạy lúc 00:05 sáng mỗi ngày
+                // Chạy lúc 00:05 sáng mỗi ngày theo giờ Việt Nam
                 // "0 5 0 * * ?" = "At 00:05:00 every day"
                 var cronExpression = "0 5 0 * * ?";
 
@@ -613,7 +620,7 @@ namespace ADSUS_BE
                 q.AddTrigger(opts => opts
                     .ForJob(jobKey)
                     .WithIdentity("SlotGeneratorTrigger", "schedule")
-                    .WithCronSchedule(cronExpression));
+                    .WithCronSchedule(cronExpression, x => x.InTimeZone(vnTimeZone)));
             });
 
             // ---------- Quartz JOB-03: Appointment Reminder ----------
@@ -637,7 +644,7 @@ namespace ADSUS_BE
             // ---------- Quartz JOB-04: Health Log Reminder ----------
             builder.Services.AddQuartz(q =>
             {
-                // Chạy 2 lần/ngày: 8h và 20h
+                // Chạy 2 lần/ngày: 8h và 20h theo giờ Việt Nam
                 var cronExpression = "0 0 8,20 * * ?"; // At 08:00 and 20:00 every day
 
                 var jobKey = new Quartz.JobKey("HealthLogReminderJob", "healthlog");
@@ -649,13 +656,13 @@ namespace ADSUS_BE
                 q.AddTrigger(opts => opts
                     .ForJob(jobKey)
                     .WithIdentity("HealthLogReminderTrigger", "healthlog")
-                    .WithCronSchedule(cronExpression));
+                    .WithCronSchedule(cronExpression, x => x.InTimeZone(vnTimeZone)));
             });
 
             // ---------- Quartz JOB-05: Weekly Health Report ----------
             builder.Services.AddQuartz(q =>
             {
-                // Chạy 9h sáng thứ 6 hàng tuần
+                // Chạy 9h sáng thứ 6 hàng tuần theo giờ Việt Nam
                 var cronExpression = "0 0 9 ? * FRI"; // At 09:00:00 on Friday
 
                 var jobKey = new Quartz.JobKey("WeeklyHealthReportJob", "healthlog");
@@ -667,13 +674,13 @@ namespace ADSUS_BE
                 q.AddTrigger(opts => opts
                     .ForJob(jobKey)
                     .WithIdentity("WeeklyHealthReportTrigger", "healthlog")
-                    .WithCronSchedule(cronExpression));
+                    .WithCronSchedule(cronExpression, x => x.InTimeZone(vnTimeZone)));
             });
 
             // ---------- Quartz JOB-06: Adherence Summary ----------
             builder.Services.AddQuartz(q =>
             {
-                // Chạy 23h mỗi ngày
+                // Chạy 23h mỗi ngày theo giờ Việt Nam
                 var cronExpression = "0 0 23 * * ?"; // At 23:00 every day
 
                 var jobKey = new Quartz.JobKey("AdherenceSummaryJob", "medication");
@@ -685,14 +692,14 @@ namespace ADSUS_BE
                 q.AddTrigger(opts => opts
                     .ForJob(jobKey)
                     .WithIdentity("AdherenceSummaryTrigger", "medication")
-                    .WithCronSchedule(cronExpression));
+                    .WithCronSchedule(cronExpression, x => x.InTimeZone(vnTimeZone)));
             });
 
             // ---------- Quartz JOB-07: Inventory Alert ----------
             builder.Services.AddQuartz(q =>
             {
-                // Chạy 7h sáng mỗi ngày
-                var cronExpression = "0 0 7 * * ?"; // At 07:00 every day
+                // Chạy đúng 7h sáng mỗi ngày theo giờ Việt Nam (UTC+7)
+                var cronExpression = "0 0 7 * * ?"; // At 07:00:00 every day
 
                 var jobKey = new Quartz.JobKey("InventoryAlertJob", "inventory");
 
@@ -703,7 +710,7 @@ namespace ADSUS_BE
                 q.AddTrigger(opts => opts
                     .ForJob(jobKey)
                     .WithIdentity("InventoryAlertTrigger", "inventory")
-                    .WithCronSchedule(cronExpression));
+                    .WithCronSchedule(cronExpression, x => x.InTimeZone(vnTimeZone)));
 
                 // JOB-08: No-Show Auto-Cancel — chạy mỗi phút
                 {

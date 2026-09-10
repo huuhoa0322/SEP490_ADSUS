@@ -45,11 +45,15 @@ public class CasesControllerIntegrationTests
         CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
     };
 
-    private PatientProfile MakePatientProfile() => new()
+    private PatientProfile MakePatientProfile()
     {
-        PatientProfileId = Guid.NewGuid(), UserId = _patientUser.UserId, User = _patientUser,
-        Gender = GenderType.Female, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
-    };
+        _patientUser.Gender = GenderType.Female;
+        return new()
+        {
+            PatientProfileId = Guid.NewGuid(), UserId = _patientUser.UserId, User = _patientUser,
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        };
+    }
 
     private Case MakeCase(PatientProfile profile, CaseStatus status) => new()
     {

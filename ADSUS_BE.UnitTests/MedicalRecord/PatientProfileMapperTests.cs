@@ -27,7 +27,8 @@ public class PatientProfileMapperTests
     {
         // Arrange
         var profile = MedicalRecordTestData.MakePatientProfile();
-        profile.Gender = ADSUS_BE.DAL.Entities.GenderType.Other;
+        // Gender đã chuyển sang User (2026-01)
+        profile.User.Gender = ADSUS_BE.DAL.Entities.GenderType.Other;
 
         // Act
         var response = PatientProfileMapper.ToResponse(profile);

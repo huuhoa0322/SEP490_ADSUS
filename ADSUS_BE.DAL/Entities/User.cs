@@ -61,6 +61,8 @@ public partial class User
 
     public virtual ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
 
+    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
     public virtual ICollection<ScheduleSlot> ScheduleSlots { get; set; } = new List<ScheduleSlot>();
 
     public virtual ICollection<ShiftRequest> ShiftRequestReviewedByNavigations { get; set; } = new List<ShiftRequest>();
