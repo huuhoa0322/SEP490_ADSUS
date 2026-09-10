@@ -8,10 +8,16 @@ import {
   type AppointmentStatus,
 } from "./contracts";
 
+let mockSequence = 1000;
+
+function nextMockId(): number {
+  return ++mockSequence;
+}
+
 export function generateCheckinItem(
   overrides: Partial<CheckinQueueItemResponse> = {}
 ): CheckinQueueItemResponse {
-  const id = Math.floor(1000 + Math.random() * 9000);
+  const id = nextMockId();
   return {
     appointmentId: `app-${id}-uuid`,
     slotTime: "2026-09-10T08:30:00Z",
@@ -73,7 +79,7 @@ export const AUDIT_ACTIONS = {
 export function generateAuditLog(
   overrides: Partial<AuditLogResponse> = {}
 ): AuditLogResponse {
-  const id = Math.floor(1000 + Math.random() * 9000);
+  const id = nextMockId();
   return {
     logId: `log-${id}-uuid`,
     actorId: `user-${id}-actor`,
@@ -103,7 +109,7 @@ export function generateAuditLogList(count: number): AuditLogResponse[] {
 export function generateFeedbackItem(
   overrides: Partial<AdminFeedbackItemResponse> = {}
 ): AdminFeedbackItemResponse {
-  const id = Math.floor(1000 + Math.random() * 9000);
+  const id = nextMockId();
   return {
     id: `fb-${id}-uuid`,
     rating: (id % 5) + 1,
