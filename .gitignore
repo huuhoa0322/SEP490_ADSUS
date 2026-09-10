@@ -413,3 +413,6 @@ coveragereport-unit/
 
 #superpowers sdd scratch workspace
 .superpowers/
+
+#docs
+docs/
