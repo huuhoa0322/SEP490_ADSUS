@@ -1090,6 +1090,7 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.Case).WithOne(p => p.ServiceFeedback)
                 .HasForeignKey<ServiceFeedback>(d => d.CaseId)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_service_feedbacks_case");
 

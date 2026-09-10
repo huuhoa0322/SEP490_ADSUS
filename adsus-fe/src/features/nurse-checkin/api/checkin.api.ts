@@ -1,19 +1,41 @@
 import { apiClient } from "@/lib/api-client";
 import type { ApiResponse } from "@/types/api.types";
-import type { CheckinQueueResponse } from "../types/checkin.types";
+import type {
+  CheckinQueueParams,
+  CheckinQueueResponse,
+  RescheduleRequest,
+  AvailableSlot,
+  DoctorSummary,
+} from "../types/checkin.types";
 
 const BASE = "/api/v1/appointments";
 
 // Empty GUID constant
 const EMPTY_GUID = "00000000-0000-0000-0000-000000000000";
 
-export async function getCheckinQueue(date?: string): Promise<CheckinQueueResponse> {
+export async function getCheckinQueue(
+  params?: string | CheckinQueueParams
+): Promise<CheckinQueueResponse> {
+  let queryParams: Record<string, unknown> = {};
+
+  if (typeof params === "string") {
+    queryParams = { date: params || undefined };
+  } else if (params) {
+    queryParams = {
+      fromDate: params.fromDate || undefined,
+      toDate: params.toDate || undefined,
+      date: params.date || undefined,
+      status: params.status || undefined,
+      search: params.search || undefined,
+      page: params.page,
+      pageSize: params.pageSize,
+    };
+  }
+
   const { data } = await apiClient.get<ApiResponse<CheckinQueueResponse>>(
     `${BASE}/checkin-queue`,
     {
-      params: {
-        date: date || undefined,
-      },
+      params: queryParams,
     }
   );
 
@@ -64,4 +86,59 @@ export async function checkinByCaseId(caseId: string): Promise<void> {
   if (data.code !== 200 && data.code !== 201) {
     throw new Error(data.message || "Check-in failed");
   }
+}
+
+/**
+ * Đổi lịch hẹn / tái đặt lịch hẹn cho Nurse
+ * Endpoint: POST /api/v1/appointments/{appointmentId}/reschedule
+ */
+export async function rescheduleAppointment(
+  appointmentId: string,
+  request: RescheduleRequest
+): Promise<ApiResponse<unknown>> {
+  const { data } = await apiClient.post<ApiResponse<unknown>>(
+    `${BASE}/${appointmentId}/reschedule`,
+    request
+  );
+
+  if (data.code !== 200 && data.code !== 201) {
+    throw new Error(data.message || "Đổi lịch thất bại");
+  }
+
+  return data;
+}
+
+/**
+ * Lấy danh sách khung giờ trống (OPEN) cho Nurse
+ * Endpoint: GET /api/v1/appointments/available-slots
+ */
+export async function getAvailableSlots(params: {
+  doctorId?: string;
+  fromDate?: string;
+  toDate?: string;
+}): Promise<AvailableSlot[]> {
+  const { data } = await apiClient.get<ApiResponse<AvailableSlot[]>>(
+    `${BASE}/available-slots`,
+    { params }
+  );
+
+  if (!data.data) {
+    throw new Error(data.message || "Không tải được danh sách slot trống");
+  }
+
+  return data.data;
+}
+
+/**
+ * Lấy danh sách bác sĩ
+ * Endpoint: GET /api/v1/doctors
+ */
+export async function getDoctorList(): Promise<DoctorSummary[]> {
+  const { data } = await apiClient.get<ApiResponse<DoctorSummary[]>>("/api/v1/doctors");
+
+  if (!data.data) {
+    throw new Error(data.message || "Không tải được danh sách bác sĩ");
+  }
+
+  return data.data;
 }

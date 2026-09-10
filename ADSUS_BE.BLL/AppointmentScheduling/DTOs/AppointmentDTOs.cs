@@ -53,6 +53,27 @@ public sealed class FollowUpAppointmentRequest
     public string Reason { get; init; } = string.Empty;
 }
 
+/// <summary>
+/// Request đổi lịch / tái đặt lịch hẹn bởi Nurse (Milestone 1).
+/// </summary>
+public sealed class RescheduleAppointmentRequest
+{
+    /// <summary>Slot mới cần chuyển tới (phải OPEN).</summary>
+    public Guid NewScheduleSlotId { get; init; }
+
+    /// <summary>Lý do đổi lịch (bắt buộc).</summary>
+    public string RescheduleReason { get; init; } = string.Empty;
+
+    /// <summary>Lý do khám mới (null = giữ nguyên lý do cũ).</summary>
+    public string? NewReason { get; init; }
+
+    /// <summary>
+    /// True = auto check-in: appointment mới = COMPLETED, Case = InProgress.
+    /// False = appointment mới = BOOKED, Case = Booked.
+    /// </summary>
+    public bool AutoCheckin { get; init; }
+}
+
 // ─── Responses ─────────────────────────────────────────────────────────────────
 
 /// <summary>
@@ -148,10 +169,14 @@ public sealed class CheckinQueueItemResponse
 }
 
 /// <summary>
-/// Response cho queue check-in của Nurse.
+/// Response cho queue check-in của Nurse, hỗ trợ phân trang và bộ lọc khoảng thời gian.
 /// </summary>
 public sealed class CheckinQueueResponse
 {
     public IReadOnlyList<CheckinQueueItemResponse> Items { get; init; } = [];
+    public int Page { get; init; } = 1;
+    public int PageSize { get; init; } = 15;
     public int TotalCount { get; init; }
+    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
 }
+

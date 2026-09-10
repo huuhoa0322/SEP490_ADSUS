@@ -14,6 +14,8 @@ import {
   type LucideIcon,
   PackagePlus,
   Activity,
+  MessageSquareQuote,
+  ScrollText,
 } from "lucide-react";
 
 import type { Role } from "@/types/api.types";
@@ -99,6 +101,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { title: "Tài khoản nhân sự", href: "/admin/users", icon: Users, roles: ["ADMIN"] },
       { title: "Mô hình AI", href: "/admin/ai-models", icon: BrainCircuit, roles: ["ADMIN"] },
       { title: "Blog", href: "/admin/blog", icon: FileText, roles: ["ADMIN"] },
+      { title: "Nhật ký hệ thống", href: "/admin/audit-logs", icon: ScrollText, roles: ["ADMIN"] },
+      { title: "Phản hồi dịch vụ", href: "/admin/feedback", icon: MessageSquareQuote, roles: ["ADMIN"] },
     ],
   },
 ];

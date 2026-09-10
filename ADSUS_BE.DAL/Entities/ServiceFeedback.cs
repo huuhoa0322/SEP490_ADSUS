@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ADSUS_BE.DAL.Entities;
@@ -18,9 +18,9 @@ public partial class ServiceFeedback
 
     public DateTime SubmittedAt { get; set; }
 
-    public Guid CaseId { get; set; }
+    public Guid? CaseId { get; set; }
 
-    public virtual Case Case { get; set; } = null!;
+    public virtual Case? Case { get; set; }
 
     public virtual PatientProfile PatientProfile { get; set; } = null!;
 }

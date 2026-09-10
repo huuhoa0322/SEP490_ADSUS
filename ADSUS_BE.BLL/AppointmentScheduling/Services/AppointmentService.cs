@@ -750,50 +750,362 @@ public sealed class AppointmentService : IAppointmentService
             .ToList();
     }
 
-    public async Task<CheckinQueueResponse> GetCheckinQueueAsync(
+    public Task<CheckinQueueResponse> GetCheckinQueueAsync(
         DateOnly date,
         string? search = null,
         CancellationToken ct = default)
     {
-        // Lấy tất cả appointments trong ngày đang ở Booked hoặc Approved
-        var appointments = await _db.Appointments
+        return GetCheckinQueueAsync(date, date, search, null, 1, 1000, ct);
+    }
+
+    public async Task<CheckinQueueResponse> GetCheckinQueueAsync(
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        string? search = null,
+        string? status = null,
+        int page = 1,
+        int pageSize = 15,
+        CancellationToken ct = default)
+    {
+        var effectiveFrom = fromDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveTo = toDate ?? effectiveFrom;
+        if (effectiveFrom > effectiveTo)
+        {
+            (effectiveFrom, effectiveTo) = (effectiveTo, effectiveFrom);
+        }
+
+        var query = _db.Appointments
+            .AsNoTracking()
             .Include(a => a.Slot)
                 .ThenInclude(s => s.Doctor)
             .Include(a => a.PatientProfile)
                 .ThenInclude(p => p.User)
-            .Where(a => a.Slot.SlotDate == date)
-            .Where(a => a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved)
-            .Where(a => a.Slot.Status != SlotStatus.Closed)
-            .OrderBy(a => a.Slot.StartTime)
-            .ToListAsync(ct);
+            .Where(a => a.Slot.SlotDate >= effectiveFrom && a.Slot.SlotDate <= effectiveTo);
 
-        // Filter by search if provided
+        // Filter theo status: ALL, BOOKED, APPROVED, COMPLETED, CANCELLED, NO_SHOW.
+        // Mặc định (khi không truyền status) chỉ lấy Booked hoặc Approved và slot chưa bị Closed.
+        if (!string.IsNullOrWhiteSpace(status) && !string.Equals(status, "ALL", StringComparison.OrdinalIgnoreCase))
+        {
+            var normalized = status.Trim().Replace("_", "");
+            if (Enum.TryParse<AppointmentStatus>(normalized, true, out var parsedStatus))
+            {
+                query = query.Where(a => a.Status == parsedStatus);
+            }
+        }
+        else if (string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(a => (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved) && a.Slot.Status != SlotStatus.Closed);
+        }
+
+        // Tìm kiếm ở mức EF Core query: FullName, Phone, DoctorName, Reason
         if (!string.IsNullOrWhiteSpace(search))
         {
-            appointments = appointments
-                .Where(a => a.PatientProfile.User.FullName.Contains(search, StringComparison.OrdinalIgnoreCase)
-                    || (a.PatientProfile.User.Phone != null && a.PatientProfile.User.Phone.Contains(search, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
+            var term = search.Trim().ToLower();
+            query = query.Where(a =>
+                (a.PatientProfile != null && a.PatientProfile.User != null && a.PatientProfile.User.FullName.ToLower().Contains(term)) ||
+                (a.PatientProfile != null && a.PatientProfile.User != null && a.PatientProfile.User.Phone != null && a.PatientProfile.User.Phone.Contains(term)) ||
+                (a.Slot != null && a.Slot.Doctor != null && a.Slot.Doctor.FullName.ToLower().Contains(term)) ||
+                (a.Reason != null && a.Reason.ToLower().Contains(term)));
         }
+
+        var totalCount = await query.CountAsync(ct);
+
+        var effectivePage = page < 1 ? 1 : page;
+        var effectivePageSize = pageSize is < 1 or > 1000 ? 15 : pageSize;
+
+        var appointments = await query
+            .OrderBy(a => a.Slot.SlotDate)
+            .ThenBy(a => a.Slot.StartTime)
+            .Skip((effectivePage - 1) * effectivePageSize)
+            .Take(effectivePageSize)
+            .ToListAsync(ct);
 
         var items = appointments.Select(a => new CheckinQueueItemResponse
         {
             AppointmentId = a.AppointmentId,
             SlotTime = a.Slot.SlotDate.ToDateTime(a.Slot.StartTime),
-            PatientFullName = a.PatientProfile.User.FullName,
-            PatientPhone = a.PatientProfile.User.Phone,
+            PatientFullName = a.PatientProfile?.User?.FullName ?? string.Empty,
+            PatientPhone = a.PatientProfile?.User?.Phone,
             PatientProfileId = a.PatientProfileId,
             CaseId = a.CaseId ?? Guid.Empty,
             Reason = a.Reason,
-            DoctorName = a.Slot.Doctor.FullName,
+            DoctorName = a.Slot?.Doctor?.FullName ?? string.Empty,
             Status = a.Status,
         }).ToList();
 
         return new CheckinQueueResponse
         {
             Items = items,
-            TotalCount = items.Count,
+            Page = effectivePage,
+            PageSize = effectivePageSize,
+            TotalCount = totalCount,
         };
+    }
+
+    public async Task<AppointmentResponse> RescheduleAppointmentAsync(
+        Guid oldAppointmentId,
+        RescheduleAppointmentRequest request,
+        CancellationToken ct = default)
+    {
+        if (request == null)
+        {
+            throw new ArgumentNullException(nameof(request));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.RescheduleReason))
+        {
+            throw new InvalidOperationException("Lý do đổi lịch là bắt buộc.");
+        }
+
+        var oldAppointment = await _db.Appointments
+            .Include(a => a.Slot)
+                .ThenInclude(s => s.Doctor)
+            .Include(a => a.PatientProfile)
+                .ThenInclude(p => p.User)
+            .Include(a => a.Case)
+            .FirstOrDefaultAsync(a => a.AppointmentId == oldAppointmentId, ct)
+            ?? throw new KeyNotFoundException($"Appointment '{oldAppointmentId}' not found.");
+
+        // Validate appointment status and determine scenario
+        bool isScenario1 = oldAppointment.Status == AppointmentStatus.Booked;
+        bool isScenario2 = oldAppointment.Status == AppointmentStatus.Completed || oldAppointment.Status == AppointmentStatus.Approved;
+        bool isScenario3 = oldAppointment.Status == AppointmentStatus.Cancelled || oldAppointment.Status == AppointmentStatus.NoShow;
+
+        if (!isScenario1 && !isScenario2 && !isScenario3)
+        {
+            throw new InvalidOperationException($"Không thể đổi lịch hẹn ở trạng thái '{oldAppointment.Status}'.");
+        }
+
+        if (isScenario2 && oldAppointment.Case != null &&
+            (oldAppointment.Case.Status == CaseStatus.Confirmed || oldAppointment.Case.Status == CaseStatus.End))
+        {
+            throw new InvalidOperationException("Ca khám đã kết thúc, không thể đổi lịch.");
+        }
+
+        // Validate new slot
+        var newSlot = await _db.ScheduleSlots
+            .Include(s => s.Doctor)
+            .Include(s => s.Appointments)
+            .FirstOrDefaultAsync(s => s.SlotId == request.NewScheduleSlotId, ct)
+            ?? throw new KeyNotFoundException($"Khung giờ '{request.NewScheduleSlotId}' không tồn tại.");
+
+        if (newSlot.Status != SlotStatus.Open)
+        {
+            throw new InvalidOperationException("Khung giờ này không còn nhận đặt lịch.");
+        }
+
+        if (newSlot.Appointments.Any(a => a.Status == AppointmentStatus.Booked))
+        {
+            throw new InvalidOperationException("Khung giờ này đã có người đặt.");
+        }
+
+        // Validate same-day conflicting appointment for patient (excluding old appointment)
+        var hasSameDayConflict = await _db.Appointments
+            .Include(a => a.Slot)
+            .AnyAsync(a => a.PatientProfileId == oldAppointment.PatientProfileId
+                        && a.AppointmentId != oldAppointment.AppointmentId
+                        && a.Slot != null
+                        && a.Slot.SlotDate == newSlot.SlotDate
+                        && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved), ct);
+
+        if (hasSameDayConflict)
+        {
+            throw new InvalidOperationException($"Bệnh nhân đã có lịch khám vào ngày {newSlot.SlotDate:dd/MM/yyyy}.");
+        }
+
+        var now = DateTime.UtcNow;
+        var newAppointmentStatus = request.AutoCheckin ? AppointmentStatus.Completed : AppointmentStatus.Booked;
+        var newCaseStatus = request.AutoCheckin ? CaseStatus.InProgress : CaseStatus.Booked;
+
+        var newAppointment = new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = newSlot.SlotId,
+            PatientProfileId = oldAppointment.PatientProfileId,
+            Status = newAppointmentStatus,
+            Reason = !string.IsNullOrWhiteSpace(request.NewReason) ? request.NewReason : oldAppointment.Reason,
+            CaseId = oldAppointment.CaseId,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var isRelational = _db.Database.IsRelational();
+        var transaction = isRelational ? await _db.Database.BeginTransactionAsync(ct) : null;
+        try
+        {
+            if (isScenario1)
+            {
+                // Scenario 1: BOOKED
+                oldAppointment.Status = AppointmentStatus.Cancelled;
+                oldAppointment.CancelledReason = $"Đổi lịch: {request.RescheduleReason}";
+                oldAppointment.UpdatedAt = now;
+
+                if (oldAppointment.Slot != null)
+                {
+                    oldAppointment.Slot.Status = SlotStatus.Open;
+                    oldAppointment.Slot.UpdatedAt = now;
+                }
+
+                if (oldAppointment.Case != null)
+                {
+                    if (newSlot.DoctorId != oldAppointment.Slot?.DoctorId)
+                    {
+                        oldAppointment.Case.DoctorId = newSlot.DoctorId;
+                    }
+                    oldAppointment.Case.Status = newCaseStatus;
+                    oldAppointment.Case.UpdatedAt = now;
+                }
+            }
+            else if (isScenario2)
+            {
+                // Scenario 2: COMPLETED or APPROVED
+                // Old appointment and old slot remain untouched
+                if (oldAppointment.Case != null)
+                {
+                    if (newSlot.DoctorId != oldAppointment.Slot?.DoctorId)
+                    {
+                        oldAppointment.Case.DoctorId = newSlot.DoctorId;
+                    }
+                    // Case remains InProgress (do not downgrade to Booked)
+                    oldAppointment.Case.Status = CaseStatus.InProgress;
+                    oldAppointment.Case.UpdatedAt = now;
+                }
+            }
+            else if (isScenario3)
+            {
+                // Scenario 3: CANCELLED or NO_SHOW
+                // Old appointment and old slot remain untouched
+                if (oldAppointment.Case != null)
+                {
+                    if (newSlot.DoctorId != oldAppointment.Slot?.DoctorId)
+                    {
+                        oldAppointment.Case.DoctorId = newSlot.DoctorId;
+                    }
+
+                    if (oldAppointment.Case.Status == CaseStatus.Cancelled)
+                    {
+                        oldAppointment.Case.Status = newCaseStatus;
+                        oldAppointment.Case.UpdatedAt = now;
+                    }
+                }
+            }
+
+            // New slot is booked
+            newSlot.Status = SlotStatus.Booked;
+            newSlot.UpdatedAt = now;
+
+            // Add new appointment
+            await _db.Appointments.AddAsync(newAppointment, ct);
+
+            await _db.SaveChangesAsync(ct);
+
+            if (transaction != null)
+            {
+                await transaction.CommitAsync(ct);
+            }
+        }
+        catch
+        {
+            if (transaction != null)
+            {
+                await transaction.RollbackAsync(ct);
+            }
+            throw;
+        }
+        finally
+        {
+            if (transaction != null)
+            {
+                await transaction.DisposeAsync();
+            }
+        }
+
+        // Set navigation properties for mapper
+        newAppointment.Slot = newSlot;
+        newAppointment.Case = oldAppointment.Case;
+        newAppointment.PatientProfile = oldAppointment.PatientProfile;
+
+        // Post-commit notifications (inside try-catch, best effort)
+        // 1. Patient notification
+        try
+        {
+            var patientUserId = oldAppointment.PatientProfile?.UserId;
+            if (patientUserId.HasValue && patientUserId.Value != Guid.Empty)
+            {
+                var newDoctorName = newSlot.Doctor?.FullName ?? "Bác sĩ";
+                await _notificationService.SendAsync(new SendNotificationRequest
+                {
+                    UserId = patientUserId.Value,
+                    Type = "appointment_rescheduled",
+                    Title = "Lịch hẹn đã được đổi",
+                    Body = $"Lịch hẹn đã được đổi sang {newSlot.SlotDate:dd/MM/yyyy} lúc {newSlot.StartTime} với BS. {newDoctorName}.",
+                    DeepLink = $"/appointments/{newAppointment.AppointmentId}",
+                    Metadata = new Dictionary<string, object>
+                    {
+                        ["oldAppointmentId"] = oldAppointment.AppointmentId.ToString(),
+                        ["newAppointmentId"] = newAppointment.AppointmentId.ToString(),
+                        ["slotId"] = newSlot.SlotId.ToString()
+                    }
+                }, ct);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[NOTIF-ERROR] Failed to send reschedule notification to patient for appointment {AppointmentId}", newAppointment.AppointmentId);
+        }
+
+        // 2. New Doctor notification
+        try
+        {
+            var patientName = oldAppointment.PatientProfile?.User?.FullName ?? "Bệnh nhân";
+            await _notificationService.SendAsync(new SendNotificationRequest
+            {
+                UserId = newSlot.DoctorId,
+                Type = "doctor_appointment_rescheduled",
+                Title = "Lịch hẹn được chuyển đến",
+                Body = $"BN {patientName} được chuyển sang ca của bạn lúc {newSlot.StartTime} ngày {newSlot.SlotDate:dd/MM/yyyy}.",
+                DeepLink = $"/patients/{newAppointment.PatientProfileId}",
+                Metadata = new Dictionary<string, object>
+                {
+                    ["appointmentId"] = newAppointment.AppointmentId.ToString(),
+                    ["slotId"] = newSlot.SlotId.ToString()
+                }
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[NOTIF-ERROR] Failed to send reschedule notification to new doctor for appointment {AppointmentId}", newAppointment.AppointmentId);
+        }
+
+        // 3. Old Doctor notification (if doctor changed)
+        var oldDoctorId = oldAppointment.Slot?.DoctorId;
+        if (oldDoctorId.HasValue && oldDoctorId.Value != Guid.Empty && oldDoctorId.Value != newSlot.DoctorId)
+        {
+            try
+            {
+                var patientName = oldAppointment.PatientProfile?.User?.FullName ?? "Bệnh nhân";
+                var newDoctorName = newSlot.Doctor?.FullName ?? "bác sĩ khác";
+                await _notificationService.SendAsync(new SendNotificationRequest
+                {
+                    UserId = oldDoctorId.Value,
+                    Type = "doctor_appointment_transferred",
+                    Title = "Lịch hẹn đã chuyển bác sĩ",
+                    Body = $"BN {patientName} đã được chuyển sang BS. {newDoctorName}.",
+                    DeepLink = $"/patients/{newAppointment.PatientProfileId}",
+                    Metadata = new Dictionary<string, object>
+                    {
+                        ["oldAppointmentId"] = oldAppointment.AppointmentId.ToString(),
+                        ["newAppointmentId"] = newAppointment.AppointmentId.ToString()
+                    }
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[NOTIF-ERROR] Failed to send reschedule notification to old doctor for appointment {AppointmentId}", newAppointment.AppointmentId);
+            }
+        }
+
+        return ToAppointmentResponse(newAppointment);
     }
 
     private static AppointmentResponse ToAppointmentResponse(Appointment a, Guid? caseId = null)

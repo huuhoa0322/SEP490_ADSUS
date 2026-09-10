@@ -52,9 +52,9 @@ describe("isRoleAllowedOnPath — PRD §3.2 Permission Matrix", () => {
     }
   });
 
-  it("Admin KHÔNG vào danh sách bệnh nhân (UC-09)", () => {
-    // Admin quản lý tài khoản ở SCR-06, không đụng tới màn lâm sàng.
-    expect(isRoleAllowedOnPath("ADMIN", "/patients")).toBe(false);
+  it("Admin ĐƯỢC vào danh sách/hồ sơ bệnh nhân (R3 / Feature 14 - xem từ Feedback)", () => {
+    // Theo R3 và PROJECT.md Feature 14, Admin được phép truy cập /patients để đối chiếu từ Feedback.
+    expect(isRoleAllowedOnPath("ADMIN", "/patients")).toBe(true);
   });
 
   it("Doctor và Nurse đều vào được danh sách bệnh nhân", () => {
@@ -63,9 +63,10 @@ describe("isRoleAllowedOnPath — PRD §3.2 Permission Matrix", () => {
   });
 
   it("luật áp cho cả đường dẫn con", () => {
-    // /patients/123 cũng phải bị chặn với Admin, không chỉ đúng /patients.
-    expect(isRoleAllowedOnPath("ADMIN", "/patients/123")).toBe(false);
+    // /patients/123 cũng được phép với Admin và Doctor, nhưng bị chặn với Patient.
+    expect(isRoleAllowedOnPath("ADMIN", "/patients/123")).toBe(true);
     expect(isRoleAllowedOnPath("DOCTOR", "/patients/123")).toBe(true);
+    expect(isRoleAllowedOnPath("PATIENT", "/patients/123")).toBe(false);
   });
 
   it("chỉ Admin vào được khu quản lý tài khoản (UC-04)", () => {

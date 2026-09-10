@@ -94,11 +94,32 @@ public interface IAppointmentService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Lấy danh sách appointments trong ngày đang chờ check-in cho Nurse.
+    /// Lấy danh sách appointments trong ngày đang chờ check-in cho Nurse (tương thích ngược).
     /// Trả về Booked và Approved appointments, sắp xếp theo giờ.
     /// </summary>
     Task<CheckinQueueResponse> GetCheckinQueueAsync(
         DateOnly date,
         string? search = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Lấy danh sách appointments chờ check-in theo khoảng thời gian, trạng thái, tìm kiếm và phân trang.
+    /// </summary>
+    Task<CheckinQueueResponse> GetCheckinQueueAsync(
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        string? search = null,
+        string? status = null,
+        int page = 1,
+        int pageSize = 15,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Đổi lịch hoặc tái đặt lịch hẹn bởi Nurse/Admin/Receptionist (Milestone 1).
+    /// Hỗ trợ 3 kịch bản: Booked (đổi lịch), Completed/Approved (tái đặt lịch), Cancelled/NoShow (khôi phục).
+    /// </summary>
+    Task<AppointmentResponse> RescheduleAppointmentAsync(
+        Guid oldAppointmentId,
+        RescheduleAppointmentRequest request,
         CancellationToken ct = default);
 }

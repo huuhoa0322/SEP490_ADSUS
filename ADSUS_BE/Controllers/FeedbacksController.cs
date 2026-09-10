@@ -71,15 +71,27 @@ public sealed class FeedbacksController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/v1/admin/feedbacks — Admin xem tất cả feedback.
+    /// GET /api/v1/admin/feedbacks — Admin xem danh sách feedback phân trang, tìm kiếm realtime theo tên bệnh nhân, bác sĩ, hoặc mã case, và lọc theo số sao.
     /// </summary>
     [HttpGet("api/v1/admin/feedbacks")]
     [Authorize(Roles = "ADMIN")]
-    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<FeedbackResponse>>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll(CancellationToken ct)
+    [ProducesResponseType(typeof(ApiResponse<PagedResult<FeedbackResponse>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? search = null,
+        [FromQuery] string? keyword = null,
+        [FromQuery] short? rating = null,
+        [FromQuery] int? minRating = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 15,
+        CancellationToken ct = default)
     {
-        var result = await _feedbackService.GetAllAsync(ct);
-        return Ok(ApiResponse<IReadOnlyList<FeedbackResponse>>.Ok(result));
+        var effectiveKeyword = search ?? keyword;
+        var effectiveRating = rating ?? (minRating.HasValue ? (short)minRating.Value : null);
+
+        var result = await _feedbackService.GetPagedAsync(
+            effectiveKeyword, effectiveRating, page, pageSize, ct);
+
+        return Ok(ApiResponse<PagedResult<FeedbackResponse>>.Ok(result));
     }
 
     /// <summary>

@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Eye, Loader2 } from "lucide-react";
 import type { CheckinQueueItem } from "../types/checkin.types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,9 @@ interface CheckinQueueTableProps {
   isLoading: boolean;
   onCheckin: (item: CheckinQueueItem) => void;
   checkingInId: string | null;
+  page?: number;
+  pageSize?: number;
+  onDetail?: (item: CheckinQueueItem) => void;
 }
 
 export function CheckinQueueTable({
@@ -18,6 +21,9 @@ export function CheckinQueueTable({
   isLoading,
   onCheckin,
   checkingInId,
+  page = 1,
+  pageSize = 15,
+  onDetail,
 }: CheckinQueueTableProps) {
   if (isLoading) {
     return (
@@ -30,7 +36,7 @@ export function CheckinQueueTable({
   if (queue.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center rounded-lg border border-dashed">
-        <p className="text-muted-foreground">Không có lịch hẹn nào hôm nay.</p>
+        <p className="text-muted-foreground">Không tìm thấy lịch hẹn phù hợp.</p>
       </div>
     );
   }
@@ -52,8 +58,16 @@ export function CheckinQueueTable({
         </thead>
         <tbody className="divide-y divide-border">
           {queue.map((item, index) => {
-            const isCheckedIn = item.status === "Approved";
+            const normStatus = (item.status || "").toUpperCase();
+            const isApproved = normStatus === "APPROVED";
+            const isBooked = normStatus === "BOOKED";
+            const isCompleted = normStatus === "COMPLETED";
+            const isCancelled =
+              normStatus === "CANCELLED" ||
+              normStatus === "NOSHOW" ||
+              normStatus === "NO_SHOW";
             const slotTime = new Date(item.slotTime);
+            const sttNumber = (page - 1) * pageSize + index + 1;
 
             return (
               <tr key={item.appointmentId} className="hover:bg-muted/30">
@@ -61,10 +75,10 @@ export function CheckinQueueTable({
                   <span
                     className={cn(
                       "flex size-7 items-center justify-center rounded-full text-xs font-700 tabular-nums",
-                      isCheckedIn ? "bg-accent/12 text-accent" : "bg-muted text-muted-foreground",
+                      isApproved ? "bg-accent/12 text-accent" : "bg-muted text-muted-foreground",
                     )}
                   >
-                    {index + 1}
+                    {sttNumber}
                   </span>
                 </td>
                 <td className="px-4 py-3">
@@ -85,23 +99,51 @@ export function CheckinQueueTable({
                   {item.reason || "—"}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {isCheckedIn ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-accent/12 px-3 py-1 text-sm font-medium text-accent">
-                      <Check className="h-4 w-4" />
-                      Đã check-in
-                    </span>
-                  ) : (
+                  <div className="flex items-center justify-end gap-2">
                     <Button
+                      type="button"
+                      variant="outline"
                       size="sm"
-                      onClick={() => onCheckin(item)}
-                      disabled={checkingInId !== null}
+                      onClick={() => onDetail?.(item)}
+                      className="gap-1.5"
                     >
-                      {checkingInId === item.appointmentId ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : null}
-                      Check-in
+                      <Eye className="h-4 w-4" />
+                      Chi tiết
                     </Button>
-                  )}
+                    {isApproved && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-accent/12 px-3 py-1 text-sm font-medium text-accent">
+                        <Check className="h-4 w-4" />
+                        Đã check-in
+                      </span>
+                    )}
+                    {isBooked && (
+                      <Button
+                        size="sm"
+                        onClick={() => onCheckin(item)}
+                        disabled={checkingInId !== null}
+                      >
+                        {checkingInId === item.appointmentId ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        Check-in
+                      </Button>
+                    )}
+                    {isCompleted && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-600">
+                        Đã hoàn thành
+                      </span>
+                    )}
+                    {isCancelled && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-3 py-1 text-sm font-medium text-destructive">
+                        Đã huỷ / Vắng mặt
+                      </span>
+                    )}
+                    {!isApproved && !isBooked && !isCompleted && !isCancelled && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm font-medium text-muted-foreground">
+                        {item.status}
+                      </span>
+                    )}
+                  </div>
                 </td>
               </tr>
             );
