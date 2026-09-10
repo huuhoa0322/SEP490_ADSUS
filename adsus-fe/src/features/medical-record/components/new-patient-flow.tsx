@@ -57,7 +57,7 @@ export function NewPatientFlow({ patientUserId }: Props) {
           <button
             type="button"
             onClick={() => router.push("/patients")}
-            className="mt-4 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent"
+            className="mt-4 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-[var(--success)]"
           >
             Về danh sách bệnh nhân
           </button>

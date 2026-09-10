@@ -16,7 +16,7 @@ export const ROLE_LABEL: Record<Role, string> = {
 // for warning states elsewhere (dashboard, inventory alerts).
 const ROLE_DOT_CLASS: Record<Role, string> = {
   ADMIN: "bg-primary",
-  DOCTOR: "bg-accent",
+  DOCTOR: "bg-[var(--success)]",
   NURSE: "bg-chart-3",
   PHARMACIST: "bg-[var(--status-warning)]",
   PATIENT: "bg-muted-foreground",
@@ -47,7 +47,7 @@ export function roleDotClassName(role: Role): string {
 // signed-in user's role colour — used to tint the active nav item per role.
 const ROLE_ACCENT_VAR: Record<Role, string> = {
   ADMIN: "var(--primary)",
-  DOCTOR: "var(--accent)",
+  DOCTOR: "var(--success)",
   NURSE: "var(--chart-3)",
   PHARMACIST: "var(--status-warning)",
   PATIENT: "var(--muted-foreground)",

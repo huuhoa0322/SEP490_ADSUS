@@ -55,14 +55,14 @@ export function ForgotPasswordForm() {
   if (request.isSuccess) {
     return (
       <div className="w-full max-w-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
-        <span className="flex size-12 items-center justify-center rounded-full bg-accent/12">
-          <MailCheck className="size-6 text-accent" />
+        <span className="flex size-12 items-center justify-center rounded-full bg-[var(--success)]/12">
+          <MailCheck className="size-6 text-[var(--success)]" />
         </span>
 
         <h1 className="mt-6 font-heading text-[32px] font-bold leading-[1.15] tracking-[-0.02em] text-foreground">
           Đã gửi yêu cầu
         </h1>
-        <span aria-hidden className="mt-3 block h-1 w-12 rounded-full bg-accent" />
+        <span aria-hidden className="mt-3 block h-1 w-12 rounded-full bg-[var(--success)]" />
 
         {/* Câu này cố tình mơ hồ — xem chú thích ở đầu tệp (AF-01). */}
         <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
@@ -76,7 +76,7 @@ export function ForgotPasswordForm() {
 
         <Link
           href="/login"
-          className="mt-8 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90"
+          className="mt-8 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[var(--success)] font-heading text-sm font-600 uppercase tracking-wider text-white shadow-lg shadow-[var(--success)]/25 transition-all hover:bg-[var(--success)]/90"
         >
           Về trang đăng nhập
         </Link>
@@ -94,20 +94,20 @@ export function ForgotPasswordForm() {
     <div className="w-full max-w-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
       <Link
         href="/login"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-accent"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-[var(--success)]"
       >
         <ArrowLeft className="size-4" />
         Quay lại đăng nhập
       </Link>
 
-      <span className="mt-6 flex size-12 items-center justify-center rounded-full bg-accent/12">
-        <Mail className="size-5 text-accent" />
+      <span className="mt-6 flex size-12 items-center justify-center rounded-full bg-[var(--success)]/12">
+        <Mail className="size-5 text-[var(--success)]" />
       </span>
 
       <h1 className="mt-4 font-heading text-[38px] font-bold leading-[1.15] tracking-[-0.02em] text-foreground">
         Quên mật khẩu
       </h1>
-      <span aria-hidden className="mt-3 block h-1 w-12 rounded-full bg-accent" />
+      <span aria-hidden className="mt-3 block h-1 w-12 rounded-full bg-[var(--success)]" />
       <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
         Nhập số điện thoại và email đã đăng ký. Hệ thống sẽ gửi mật khẩu mới tới email đó.
       </p>
@@ -151,7 +151,7 @@ export function ForgotPasswordForm() {
         <button
           type="submit"
           disabled={request.isPending}
-          className="mt-1 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-1 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[var(--success)] font-heading text-sm font-600 uppercase tracking-wider text-white shadow-lg shadow-[var(--success)]/25 transition-all hover:bg-[var(--success)]/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {request.isPending ? (
             <>
@@ -172,7 +172,7 @@ export function ForgotPasswordForm() {
 }
 
 const inputClass =
-  "h-14 w-full rounded-full border border-border bg-white pl-12 pr-4 text-[15px] outline-none transition-colors focus-visible:border-accent";
+  "h-14 w-full rounded-full border border-border bg-white pl-12 pr-4 text-[15px] outline-none transition-colors focus-visible:border-[var(--success)]";
 
 function FieldWithIcon({
   icon: Icon,

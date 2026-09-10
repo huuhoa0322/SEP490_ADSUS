@@ -167,7 +167,7 @@ export function SupplierFormModal({ isOpen, onClose, supplierToEdit }: SupplierF
             <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
               Hủy
             </Button>
-            <Button type="submit" disabled={isPending} className="bg-accent hover:bg-accent/90">
+            <Button type="submit" disabled={isPending} className="bg-[var(--success)] hover:bg-[var(--success)]/90">
               {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               {supplierToEdit ? "Lưu thay đổi" : "Tạo mới"}
             </Button>

@@ -61,7 +61,7 @@ function StatTile({
   accent?: "good" | "warning" | "critical";
 }) {
   const accentColor = {
-    good: "bg-accent/10 text-accent",
+    good: "bg-[var(--success)]/10 text-[var(--success)]",
     warning: "bg-[#e0912f]/10 text-[#e0912f]",
     critical: "bg-destructive/10 text-destructive",
   }[accent ?? "good"];
@@ -87,7 +87,7 @@ function StatTile({
 // ─── Progress bar ────────────────────────────────────────────────────────────
 function AdherenceBar({ percent }: { percent: number }) {
   const color =
-    percent >= 80 ? "bg-accent" : percent >= 50 ? "bg-[#e0912f]" : "bg-destructive";
+    percent >= 80 ? "bg-[var(--success)]" : percent >= 50 ? "bg-[#e0912f]" : "bg-destructive";
   return (
     <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
       <div
@@ -157,7 +157,7 @@ function PatientCard({
               <span
                 className={`font-semibold ${
                   patient.adherenceLevel === "good"
-                    ? "text-accent"
+                    ? "text-[var(--success)]"
                     : patient.adherenceLevel === "warning"
                       ? "text-[#e0912f]"
                       : "text-destructive"
@@ -175,7 +175,7 @@ function PatientCard({
           <span
             className={`font-heading text-xl font-semibold ${
               patient.adherenceLevel === "good"
-                ? "text-accent"
+                ? "text-[var(--success)]"
                 : patient.adherenceLevel === "warning"
                   ? "text-[#e0912f]"
                   : "text-destructive"

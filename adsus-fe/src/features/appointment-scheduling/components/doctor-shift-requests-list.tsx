@@ -30,7 +30,7 @@ export function DoctorShiftRequestsList() {
       case "PENDING":
         return <Badge variant="outline" className="text-[var(--status-warning)] bg-[var(--status-warning)]/10 border-[var(--status-warning)]/25">Chờ duyệt</Badge>;
       case "APPROVED":
-        return <Badge variant="outline" className="text-accent bg-accent/10 border-accent/25">Đã duyệt</Badge>;
+        return <Badge variant="outline" className="text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/25">Đã duyệt</Badge>;
       case "REJECTED":
         return <Badge variant="outline" className="text-destructive bg-destructive/10 border-destructive/25">Từ chối</Badge>;
     }
@@ -86,7 +86,7 @@ export function DoctorShiftRequestsList() {
                     {req.requestType?.toUpperCase() === 'LEAVE' ? (
                       <span className="text-destructive font-medium">Xin nghỉ</span>
                     ) : (
-                      <span className="text-accent font-medium">Tăng ca</span>
+                      <span className="text-[var(--success)] font-medium">Tăng ca</span>
                     )}
                   </TableCell>
                   <TableCell>

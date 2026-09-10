@@ -58,7 +58,7 @@ export default function InventoryHistoryPage() {
               setSearchTerm(e.target.value);
               setPage(1); // Reset page on search
             }}
-            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-accent"
+            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-[var(--success)]"
           />
         </div>
 
@@ -69,7 +69,7 @@ export default function InventoryHistoryPage() {
               onClick={() => handleTypeChange(type)}
               className={`h-9 rounded-full px-4 text-sm font-medium transition-colors border ${
                 txnType === type
-                  ? 'border-accent bg-accent text-accent-foreground shadow-sm'
+                  ? 'border-[var(--success)] bg-[var(--success)] text-white shadow-sm'
                   : 'border-border hover:bg-secondary text-foreground'
               }`}
             >

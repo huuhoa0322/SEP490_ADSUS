@@ -57,7 +57,7 @@ export function AdminBlogListView() {
         </div>
         <Link
           href="/admin/blog/new"
-          className="flex h-12 items-center gap-2 rounded-full bg-accent px-6 font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90"
+          className="flex h-12 items-center gap-2 rounded-full bg-[var(--success)] px-6 font-heading text-sm font-600 uppercase tracking-wider text-[var(--success)]-foreground shadow-lg shadow-[var(--success)]/25 transition-all hover:bg-[var(--success)]/90"
         >
           <Plus className="size-4" />
           Tạo bài viết mới
@@ -147,7 +147,7 @@ export function AdminBlogListView() {
 
 function FilterButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className={`h-9 rounded-full px-4 text-sm font-medium transition-colors border ${active ? "border-accent bg-accent text-accent-foreground shadow-sm" : "border-border text-muted-foreground hover:bg-secondary"}`}>
+    <button onClick={onClick} className={`h-9 rounded-full px-4 text-sm font-medium transition-colors border ${active ? "border-[var(--success)] bg-[var(--success)] text-[var(--success)]-foreground shadow-sm" : "border-border text-muted-foreground hover:bg-secondary"}`}>
       {children}
     </button>
   );
@@ -276,7 +276,7 @@ function BlogPostModal({ postId, initialMode, onClose }: { postId: string; initi
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-xl font-bold outline-none focus:border-accent"
+                  className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-xl font-bold outline-none focus:border-[var(--success)]"
                   placeholder="Tiêu đề bài viết"
                 />
               ) : (
@@ -289,7 +289,7 @@ function BlogPostModal({ postId, initialMode, onClose }: { postId: string; initi
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   rows={12}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 font-mono text-sm outline-none focus:border-accent"
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 font-mono text-sm outline-none focus:border-[var(--success)]"
                   placeholder="Nội dung bài viết (Markdown)"
                 />
               ) : (
@@ -331,7 +331,7 @@ function BlogPostModal({ postId, initialMode, onClose }: { postId: string; initi
                 <button
                   onClick={handleSave}
                   disabled={updateMutation.isPending}
-                  className="rounded-full bg-accent px-5 py-2.5 text-sm font-600 text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-50"
+                  className="rounded-full bg-[var(--success)] px-5 py-2.5 text-sm font-600 text-[var(--success)]-foreground transition-colors hover:bg-[var(--success)]/90 disabled:opacity-50"
                 >
                   {updateMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"}
                 </button>
@@ -342,7 +342,7 @@ function BlogPostModal({ postId, initialMode, onClose }: { postId: string; initi
                   <button
                     onClick={handlePublish}
                     disabled={publishMutation.isPending}
-                    className="rounded-full border border-accent px-5 py-2.5 text-sm font-600 text-accent transition-colors hover:bg-accent/10 disabled:opacity-50"
+                    className="rounded-full border border-[var(--success)] px-5 py-2.5 text-sm font-600 text-[var(--success)] transition-colors hover:bg-[var(--success)]/10 disabled:opacity-50"
                   >
                     {publishMutation.isPending ? "Đang xuất bản..." : "Xuất bản"}
                   </button>
@@ -350,7 +350,7 @@ function BlogPostModal({ postId, initialMode, onClose }: { postId: string; initi
                 {post.status === "DRAFT" && (
                   <button
                     onClick={() => setMode("edit")}
-                    className="rounded-full bg-accent px-5 py-2.5 text-sm font-600 text-accent-foreground transition-colors hover:bg-accent/90"
+                    className="rounded-full bg-[var(--success)] px-5 py-2.5 text-sm font-600 text-[var(--success)]-foreground transition-colors hover:bg-[var(--success)]/90"
                   >
                     Chỉnh sửa
                   </button>

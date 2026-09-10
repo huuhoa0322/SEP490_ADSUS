@@ -88,15 +88,15 @@ export function SignInForm() {
   // 56px tall, fully rounded — matches .services-form .form-group input in the team template.
   const inputClass =
     "h-14 rounded-full border-border bg-white pl-12 pr-4 text-[15px] shadow-none " +
-    "focus-visible:border-accent focus-visible:ring-accent/25";
+    "focus-visible:border-[var(--success)] focus-visible:ring-[var(--success)]/25";
 
   return (
     <div className="w-full max-w-md">
       <div className="mb-9 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
-        <span className="inline-flex items-center gap-2 text-sm font-700 uppercase tracking-[0.2em] text-accent">
+        <span className="inline-flex items-center gap-2 text-sm font-700 uppercase tracking-[0.2em] text-[var(--success)]">
           <span aria-hidden className="relative flex size-1.5">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-75" />
-            <span className="relative inline-flex size-1.5 rounded-full bg-accent" />
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--success)] opacity-75" />
+            <span className="relative inline-flex size-1.5 rounded-full bg-[var(--success)]" />
           </span>
           Chào mừng trở lại
         </span>
@@ -177,7 +177,7 @@ export function SignInForm() {
               onClick={() => setShowPassword((v) => !v)}
               disabled={isSubmitting}
               aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-              className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-accent disabled:opacity-50"
+              className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-[var(--success)] disabled:opacity-50"
             >
               {showPassword ? (
                 <EyeOff className="size-4.5" />
@@ -204,7 +204,7 @@ export function SignInForm() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="mt-1 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-sm font-700 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90 hover:shadow-accent/35 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-1 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[var(--success)] text-sm font-700 uppercase tracking-wider text-white shadow-lg shadow-[var(--success)]/25 transition-all hover:bg-[var(--success)]/90 hover:shadow-[var(--success)]/35 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? (
             <>
@@ -220,7 +220,7 @@ export function SignInForm() {
         <p className="text-center text-sm text-muted-foreground">
           <Link
             href="/forgot-password"
-            className="font-600 text-accent transition-colors hover:text-accent/80"
+            className="font-600 text-[var(--success)] transition-colors hover:text-white/80"
           >
             Quên mật khẩu?
           </Link>
@@ -231,7 +231,7 @@ export function SignInForm() {
         {androidApkUrl ? (
           <a
             href={androidApkUrl}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-border text-sm font-600 text-foreground transition-colors hover:border-accent hover:text-accent"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-border text-sm font-600 text-foreground transition-colors hover:border-[var(--success)] hover:text-[var(--success)]"
           >
             <Smartphone aria-hidden className="size-4" />
             Tải ứng dụng Android

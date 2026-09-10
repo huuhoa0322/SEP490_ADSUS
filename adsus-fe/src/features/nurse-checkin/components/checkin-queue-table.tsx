@@ -61,7 +61,7 @@ export function CheckinQueueTable({
                   <span
                     className={cn(
                       "flex size-7 items-center justify-center rounded-full text-xs font-700 tabular-nums",
-                      isCheckedIn ? "bg-accent/12 text-accent" : "bg-muted text-muted-foreground",
+                      isCheckedIn ? "bg-[var(--success)]/12 text-[var(--success)]" : "bg-muted text-muted-foreground",
                     )}
                   >
                     {index + 1}
@@ -86,7 +86,7 @@ export function CheckinQueueTable({
                 </td>
                 <td className="px-4 py-3 text-right">
                   {isCheckedIn ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-accent/12 px-3 py-1 text-sm font-medium text-accent">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--success)]/12 px-3 py-1 text-sm font-medium text-[var(--success)]">
                       <Check className="h-4 w-4" />
                       Đã check-in
                     </span>
