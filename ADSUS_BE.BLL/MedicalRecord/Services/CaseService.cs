@@ -61,10 +61,18 @@ public sealed class CaseService : ICaseService
             .ToList();
     }
 
-    public async Task<CaseResponse> GetForStaffAsync(Guid caseId, CancellationToken ct = default)
+    public async Task<CaseResponse> GetForStaffAsync(Guid caseId, bool callerIsDoctor, CancellationToken ct = default)
     {
         var medicalCase = await _cases.GetDetailAsync(caseId, ct)
             ?? throw new ResourceNotFoundException("Case not found.");
+
+        // Bác sĩ chỉ thao tác được với ca sau khi Điều dưỡng check-in (Booked → InProgress).
+        // Điều dưỡng không bị chặn — chính họ là người thực hiện bước check-in đó.
+        if (callerIsDoctor && medicalCase.Status == CaseStatus.Booked)
+        {
+            throw new BusinessException(
+                "This case has not been checked in yet. Please wait for the nurse to check in the patient first.");
+        }
 
         var urls = await BuildImageUrlsAsync(medicalCase.UltrasoundImages.ToList(), ct);
 
@@ -236,7 +244,7 @@ public sealed class CaseService : ICaseService
             _logger.LogWarning(ex, "Failed to send medical record notification for case {CaseId}", caseId);
         }
 
-        return await GetForStaffAsync(caseId, ct);
+        return await GetForStaffAsync(caseId, false, ct);
     }
 
     public async Task<CaseResponse> SaveConclusionAsync(
@@ -257,7 +265,7 @@ public sealed class CaseService : ICaseService
 
         _logger.LogInformation("Case {CaseId} conclusion saved by doctor {DoctorId}", caseId, actingDoctorId);
 
-        return await GetForStaffAsync(caseId, ct);
+        return await GetForStaffAsync(caseId, false, ct);
     }
 
     public async Task<CaseResponse> ConfirmAsync(
@@ -277,7 +285,7 @@ public sealed class CaseService : ICaseService
 
         _logger.LogInformation("Case {CaseId} confirmed by doctor {DoctorId}", caseId, actingDoctorId);
 
-        return await GetForStaffAsync(caseId, ct);
+        return await GetForStaffAsync(caseId, false, ct);
     }
 
     public async Task<CaseResponse> EndWithoutPrescriptionAsync(
@@ -305,7 +313,7 @@ public sealed class CaseService : ICaseService
 
         _logger.LogInformation("Case {CaseId} ended without prescription by doctor {DoctorId}", caseId, actingDoctorId);
 
-        return await GetForStaffAsync(caseId, ct);
+        return await GetForStaffAsync(caseId, false, ct);
     }
 
     /// <inheritdoc />

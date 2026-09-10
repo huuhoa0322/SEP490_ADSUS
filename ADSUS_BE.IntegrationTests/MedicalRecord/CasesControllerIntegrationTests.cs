@@ -85,6 +85,46 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
+    public async Task GetCaseById_CalledByDoctorOnBookedCase_Returns422UnprocessableEntity()
+    {
+        // Arrange — yêu cầu 10/09/2026: bác sĩ không mở được case detail khi ca còn BOOKED.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Booked);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}", TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
+        Assert.Equal("This case has not been checked in yet. Please wait for the nurse to check in the patient first.", body!.Message);
+    }
+
+    [Fact]
+    public async Task GetCaseById_CalledByNurseOnBookedCase_Returns200WithFullStaffShape()
+    {
+        // Arrange — Điều dưỡng không bị chặn bởi luật này.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _nurse);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Booked);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}", TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
+        Assert.Equal(200, body!.Code);
+    }
+
+    [Fact]
     public async Task GetCaseById_CalledByOwningPatientOnEndedCase_Returns200WithPatientShape()
     {
         // Arrange — Quyết định 14/08/2026 (sau khi trao đổi lại): Patient chỉ xem được ca đã

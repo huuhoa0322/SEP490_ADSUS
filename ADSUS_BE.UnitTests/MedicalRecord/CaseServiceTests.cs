@@ -49,7 +49,7 @@ public class CaseServiceTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
+        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, false, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(medicalCase.CaseId, response.CaseId);
@@ -64,7 +64,36 @@ public class CaseServiceTests
               .ReturnsAsync((Case?)null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.GetForStaffAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.GetForStaffAsync(Guid.NewGuid(), false, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task GetForStaffAsync_DoctorViewsBookedCase_ThrowsBusinessException()
+    {
+        // Arrange — yêu cầu 10/09/2026: bác sĩ không mở được case detail nào khi ca còn BOOKED.
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Booked);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.GetForStaffAsync(medicalCase.CaseId, true, TestContext.Current.CancellationToken));
+        Assert.Equal("This case has not been checked in yet. Please wait for the nurse to check in the patient first.", ex.Message);
+    }
+
+    [Fact]
+    public async Task GetForStaffAsync_NurseViewsBookedCase_ReturnsFullStaffResponse()
+    {
+        // Arrange — Điều dưỡng không bị chặn bởi luật này (chính họ là người check-in).
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Booked);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, false, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(medicalCase.CaseId, response.CaseId);
     }
 
     // ---------- GetForPatientAsync (GB-05: 3 kịch bản trượt phải trả CÙNG 1 lỗi) ----------
