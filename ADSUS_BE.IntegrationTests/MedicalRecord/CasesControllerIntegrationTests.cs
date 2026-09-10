@@ -721,6 +721,27 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
+    public async Task PutConfirm_CaseNotCheckedIn_Returns422UnprocessableEntity()
+    {
+        // Arrange — ca còn BOOKED (chưa check-in).
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Booked);
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/confirm", ValidConfirmBody(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
+        Assert.Equal("This case has not been checked in yet. Please wait for the nurse to check in the patient first.", body!.Message);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task PutConfirm_EmptyConclusion_Returns400BadRequest()
     {
         // Arrange — validator chặn trước khi chạm tới service.
@@ -793,6 +814,27 @@ public class CasesControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PutConclusion_CaseNotCheckedIn_Returns422UnprocessableEntity()
+    {
+        // Arrange — cùng luật với /confirm.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.Booked);
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/conclusion", ValidConfirmBody(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
+        Assert.Equal("This case has not been checked in yet. Please wait for the nurse to check in the patient first.", body!.Message);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

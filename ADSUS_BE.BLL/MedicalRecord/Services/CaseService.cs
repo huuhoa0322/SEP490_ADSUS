@@ -384,6 +384,15 @@ public sealed class CaseService : ICaseService
         var medicalCase = await _cases.GetForUpdateAsync(caseId, ct)
             ?? throw new ResourceNotFoundException("Case not found.");
 
+        // Chưa check-in thì ca chưa "bắt đầu" theo nghĩa lâm sàng — Điều dưỡng phải check-in
+        // (Booked → InProgress, xem AppointmentService.CheckinByCaseIdAsync) trước khi Bác sĩ
+        // thao tác được với ca này (yêu cầu 10/09/2026).
+        if (medicalCase.Status == CaseStatus.Booked)
+        {
+            throw new BusinessException(
+                "This case has not been checked in yet. Please wait for the nurse to check in the patient first.");
+        }
+
         // P2/GB-01 — CONFIRMED là trạng thái cuối, không có đường lùi. Ca đã khoá thì không
         // sửa được nữa dưới bất kỳ hình thức nào, kể cả chỉ lưu nháp lại đúng nội dung cũ.
         if (medicalCase.Status == CaseStatus.Confirmed)
