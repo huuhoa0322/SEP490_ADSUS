@@ -183,5 +183,8 @@ public sealed class CheckinQueueResponse
     public int PageSize { get; init; } = 15;
     public int TotalCount { get; init; }
     public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
+    public int BookedCount { get; init; }
+    public int CheckedInCount { get; init; }
+    public int CancelledCount { get; init; }
 }
 

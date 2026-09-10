@@ -44,6 +44,32 @@ public sealed class AppointmentService : IAppointmentService
         _logger = logger;
     }
 
+    private static readonly TimeZoneInfo VietnamZone = GetVietnamTimeZone();
+
+    private static TimeZoneInfo GetVietnamTimeZone()
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh");
+        }
+        catch
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            }
+            catch
+            {
+                return TimeZoneInfo.CreateCustomTimeZone("Vietnam Standard Time", TimeSpan.FromHours(7), "Vietnam Standard Time", "Vietnam Standard Time");
+            }
+        }
+    }
+
+    private static DateTime GetNowVietnam()
+    {
+        return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, VietnamZone);
+    }
+
     public async Task<IReadOnlyList<OpenSlotResponse>> ListOpenSlotsAsync(
         string? doctorId = null,
         DateOnly? fromDate = null,
@@ -61,10 +87,16 @@ public sealed class AppointmentService : IAppointmentService
         // test bằng mock repository.
         var rangeSlots = await _slotRepo.ListByRangeAsync(from, to, docGuid, SlotStatus.Open, ct);
 
-        // Chỉ trả về slot của bác sĩ ACTIVE, và loại slot đã có appointment BOOKED.
+        var nowVn = GetNowVietnam();
+        var todayVn = DateOnly.FromDateTime(nowVn);
+        var currentTimeVn = TimeOnly.FromDateTime(nowVn);
+
+        // Chỉ trả về slot của bác sĩ ACTIVE, loại slot đã có appointment BOOKED,
+        // và ẩn toàn bộ các slot trong quá khứ (SlotDate < today hoặc SlotDate == today && StartTime <= currentTime).
         var slots = rangeSlots
             .Where(s => s.Doctor.Status == UserStatus.Active)
             .Where(s => !s.Appointments.Any(a => a.Status == AppointmentStatus.Booked))
+            .Where(s => s.SlotDate > todayVn || (s.SlotDate == todayVn && s.StartTime > currentTimeVn))
             .OrderBy(s => s.SlotDate)
             .ThenBy(s => s.StartTime);
 
@@ -142,16 +174,25 @@ public sealed class AppointmentService : IAppointmentService
             throw new InvalidOperationException("Slot này đã có người đặt.");
         }
 
+        // Không cho phép đặt lịch vào khung giờ đã qua
+        var nowVn = GetNowVietnam();
+        var todayVn = DateOnly.FromDateTime(nowVn);
+        var currentTimeVn = TimeOnly.FromDateTime(nowVn);
+        if (slot.SlotDate < todayVn || (slot.SlotDate == todayVn && slot.StartTime <= currentTimeVn))
+        {
+            throw new InvalidOperationException("Không thể đặt lịch vào khung giờ đã qua.");
+        }
+
         // =====================================================
         // VALIDATION RULES - Chống spam đặt lịch
         // =====================================================
 
         var now = DateTime.UtcNow;
 
-        // Rule 1: Max 3 active appointments (BOOKED hoặc APPROVED)
+        // Rule 1: Max 3 active appointments (BOOKED)
         var activeAppointments = await _db.Appointments
             .Where(a => a.PatientProfileId == patientProfileId
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved))
+                && a.Status == AppointmentStatus.Booked)
             .CountAsync(ct);
         if (activeAppointments >= 3)
         {
@@ -165,7 +206,7 @@ public sealed class AppointmentService : IAppointmentService
             .AnyAsync(a =>
                 a.PatientProfileId == patientProfileId
                 && a.Slot.SlotDate == slot.SlotDate
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
+                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Completed),
                 ct);
         if (hasSameDayAppointment)
         {
@@ -174,7 +215,7 @@ public sealed class AppointmentService : IAppointmentService
                 .FirstOrDefaultAsync(a =>
                     a.PatientProfileId == patientProfileId
                     && a.Slot.SlotDate == slot.SlotDate
-                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
+                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Completed),
                     ct);
             var doctorName = existingAppointment?.Slot?.Doctor?.FullName ?? "bác sĩ";
             throw new InvalidOperationException(
@@ -329,6 +370,15 @@ public sealed class AppointmentService : IAppointmentService
             throw new InvalidOperationException("Bệnh nhân đã có lịch hẹn trong khung giờ này.");
         }
 
+        // Không cho phép đặt lịch tái khám vào khung giờ đã qua
+        var nowVn = GetNowVietnam();
+        var todayVn = DateOnly.FromDateTime(nowVn);
+        var currentTimeVn = TimeOnly.FromDateTime(nowVn);
+        if (slot.SlotDate < todayVn || (slot.SlotDate == todayVn && slot.StartTime <= currentTimeVn))
+        {
+            throw new InvalidOperationException("Không thể đặt lịch tái khám vào khung giờ đã qua.");
+        }
+
         // 5. Patient Profile phải tồn tại
         var patientProfile = await _profileRepo.GetByIdAsync(request.PatientProfileId, ct);
         if (patientProfile == null)
@@ -339,7 +389,7 @@ public sealed class AppointmentService : IAppointmentService
         // 6. Validation: Max 3 active appointments cho bệnh nhân
         var activeAppointments = await _db.Appointments
             .Where(a => a.PatientProfileId == request.PatientProfileId
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved))
+                && a.Status == AppointmentStatus.Booked)
             .CountAsync(ct);
         if (activeAppointments >= 3)
         {
@@ -353,7 +403,7 @@ public sealed class AppointmentService : IAppointmentService
             .AnyAsync(a =>
                 a.PatientProfileId == request.PatientProfileId
                 && a.Slot.SlotDate == slot.SlotDate
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
+                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Completed),
                 ct);
         if (hasSameDayAppointment)
         {
@@ -362,7 +412,7 @@ public sealed class AppointmentService : IAppointmentService
                 .FirstOrDefaultAsync(a =>
                     a.PatientProfileId == request.PatientProfileId
                     && a.Slot.SlotDate == slot.SlotDate
-                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
+                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Completed),
                     ct);
             var existingDoctorName = existingAppointment?.Slot?.Doctor?.FullName ?? "bác sĩ";
             throw new InvalidOperationException(
@@ -570,6 +620,19 @@ public sealed class AppointmentService : IAppointmentService
         appointment.Status = AppointmentStatus.Completed;
         appointment.UpdatedAt = DateTime.UtcNow;
 
+        // Cập nhật Case status nếu có liên kết
+        if (appointment.CaseId.HasValue)
+        {
+            var medicalCase = await _db.Cases
+                .FirstOrDefaultAsync(c => c.CaseId == appointment.CaseId.Value, ct);
+
+            if (medicalCase != null && medicalCase.Status == CaseStatus.Booked)
+            {
+                medicalCase.Status = CaseStatus.InProgress;
+                medicalCase.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
         await _db.SaveChangesAsync(ct);
 
         _logger.LogInformation(
@@ -629,23 +692,31 @@ public sealed class AppointmentService : IAppointmentService
         Guid caseId,
         CancellationToken ct = default)
     {
-        // Tìm appointment đang BOOKED liên quan đến case này
+        // Tìm appointment đang BOOKED liên quan đến case này (ưu tiên lịch mới nhất nếu case từng đổi lịch)
         var appointment = await _db.Appointments
             .Include(a => a.Slot)
                 .ThenInclude(s => s.Doctor)
-            .FirstOrDefaultAsync(a => a.CaseId == caseId, ct)
-            ?? throw new InvalidOperationException($"Không tìm thấy lịch hẹn cho case '{caseId}'.");
+            .OrderByDescending(a => a.CreatedAt)
+            .FirstOrDefaultAsync(a => a.CaseId == caseId && a.Status == AppointmentStatus.Booked, ct);
 
-        // Kiểm tra status hợp lệ - đã check-in (bao gồm dữ liệu cũ: Approved và mới: Completed)
-        if (appointment.Status == AppointmentStatus.Approved || appointment.Status == AppointmentStatus.Completed)
+        if (appointment == null)
         {
-            throw new InvalidOperationException("Bệnh nhân đã được check-in trước đó.");
-        }
+            var existingAppt = await _db.Appointments
+                .OrderByDescending(a => a.CreatedAt)
+                .FirstOrDefaultAsync(a => a.CaseId == caseId, ct)
+                ?? throw new InvalidOperationException($"Không tìm thấy lịch hẹn cho case '{caseId}'.");
 
-        // Không thể check-in nếu đã cancelled hoặc no-show
-        if (appointment.Status == AppointmentStatus.Cancelled || appointment.Status == AppointmentStatus.NoShow)
-        {
-            throw new InvalidOperationException($"Lịch hẹn đã bị hủy (status: {appointment.Status}), không thể check-in.");
+            if (existingAppt.Status == AppointmentStatus.Approved || existingAppt.Status == AppointmentStatus.Completed)
+            {
+                throw new InvalidOperationException("Bệnh nhân đã được check-in trước đó.");
+            }
+
+            if (existingAppt.Status == AppointmentStatus.Cancelled || existingAppt.Status == AppointmentStatus.NoShow)
+            {
+                throw new InvalidOperationException($"Lịch hẹn đã bị hủy (status: {existingAppt.Status}), không thể check-in.");
+            }
+
+            throw new InvalidOperationException($"Không tìm thấy lịch hẹn ở trạng thái ĐÃ ĐẶT cho case '{caseId}'.");
         }
 
         // Xử lý No-Show nếu đã quá grace time
@@ -737,8 +808,6 @@ public sealed class AppointmentService : IAppointmentService
         var appointments = await _appointmentRepo.ListByDoctorAsync(doctorId, fromDate, toDate, ct);
 
         // Hiện cả BOOKED và APPROVED — Cancelled và Completed ẩn hẳn.
-        // Lý do: Approved = bệnh nhân đã đến (nurse checkin) — vẫn cần hiện trên màn "Lịch bệnh nhân"
-        // để bác sĩ biết ai đã đến, không bị mất khỏi danh sách khám ngay từ khi được checkin.
         return appointments
             .Where(a => a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved)
             .Select(a => new DoctorPatientAppointmentResponse
@@ -778,7 +847,7 @@ public sealed class AppointmentService : IAppointmentService
             (effectiveFrom, effectiveTo) = (effectiveTo, effectiveFrom);
         }
 
-        var query = _db.Appointments
+        var baseQuery = _db.Appointments
             .AsNoTracking()
             .Include(a => a.Slot)
                 .ThenInclude(s => s.Doctor)
@@ -786,30 +855,48 @@ public sealed class AppointmentService : IAppointmentService
                 .ThenInclude(p => p.User)
             .Where(a => a.Slot.SlotDate >= effectiveFrom && a.Slot.SlotDate <= effectiveTo);
 
-        // Filter theo status: ALL, BOOKED, APPROVED, COMPLETED, CANCELLED, NO_SHOW.
-        // Mặc định (khi không truyền status) chỉ lấy Booked hoặc Approved và slot chưa bị Closed.
+        // Tìm kiếm ở mức EF Core query: FullName, Phone, DoctorName, Reason
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            baseQuery = baseQuery.Where(a =>
+                (a.PatientProfile != null && a.PatientProfile.User != null && a.PatientProfile.User.FullName.ToLower().Contains(term)) ||
+                (a.PatientProfile != null && a.PatientProfile.User != null && a.PatientProfile.User.Phone != null && a.PatientProfile.User.Phone.Contains(term)) ||
+                (a.Slot != null && a.Slot.Doctor != null && a.Slot.Doctor.FullName.ToLower().Contains(term)) ||
+                (a.Reason != null && a.Reason.ToLower().Contains(term)));
+        }
+
+        // Đếm số lượng theo trạng thái trên toàn bộ mốc thời gian đã chọn (không phụ thuộc phân trang)
+        var bookedCount = await baseQuery.CountAsync(a => a.Status == AppointmentStatus.Booked, ct);
+        var checkedInCount = await baseQuery.CountAsync(a => a.Status == AppointmentStatus.Completed, ct);
+        var cancelledCount = await baseQuery.CountAsync(a => a.Status == AppointmentStatus.Cancelled || a.Status == AppointmentStatus.NoShow, ct);
+
+        // Filter theo status: ALL, BOOKED, APPROVED (Đã check-in), CANCELLED
+        var query = baseQuery;
         if (!string.IsNullOrWhiteSpace(status) && !string.Equals(status, "ALL", StringComparison.OrdinalIgnoreCase))
         {
             var normalized = status.Trim().Replace("_", "");
-            if (Enum.TryParse<AppointmentStatus>(normalized, true, out var parsedStatus))
+            if (string.Equals(normalized, "APPROVED", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "CHECKEDIN", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "COMPLETED", StringComparison.OrdinalIgnoreCase))
+            {
+                // Bệnh nhân check-in trong DB mang trạng thái COMPLETED
+                query = query.Where(a => a.Status == AppointmentStatus.Completed);
+            }
+            else if (string.Equals(normalized, "CANCELLED", StringComparison.OrdinalIgnoreCase)
+                     || string.Equals(normalized, "NOSHOW", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(a => a.Status == AppointmentStatus.Cancelled || a.Status == AppointmentStatus.NoShow);
+            }
+            else if (Enum.TryParse<AppointmentStatus>(normalized, true, out var parsedStatus)
+                     && parsedStatus != AppointmentStatus.Approved)
             {
                 query = query.Where(a => a.Status == parsedStatus);
             }
         }
         else if (string.IsNullOrWhiteSpace(status))
         {
-            query = query.Where(a => (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved) && a.Slot.Status != SlotStatus.Closed);
-        }
-
-        // Tìm kiếm ở mức EF Core query: FullName, Phone, DoctorName, Reason
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var term = search.Trim().ToLower();
-            query = query.Where(a =>
-                (a.PatientProfile != null && a.PatientProfile.User != null && a.PatientProfile.User.FullName.ToLower().Contains(term)) ||
-                (a.PatientProfile != null && a.PatientProfile.User != null && a.PatientProfile.User.Phone != null && a.PatientProfile.User.Phone.Contains(term)) ||
-                (a.Slot != null && a.Slot.Doctor != null && a.Slot.Doctor.FullName.ToLower().Contains(term)) ||
-                (a.Reason != null && a.Reason.ToLower().Contains(term)));
+            query = query.Where(a => (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Completed) && a.Slot.Status != SlotStatus.Closed);
         }
 
         var totalCount = await query.CountAsync(ct);
@@ -817,8 +904,12 @@ public sealed class AppointmentService : IAppointmentService
         var effectivePage = page < 1 ? 1 : page;
         var effectivePageSize = pageSize is < 1 or > 1000 ? 15 : pageSize;
 
+        // Sắp xếp: Đang chờ check-in (Booked = 0) lên đầu -> Đã check-in (Completed = 1) ở giữa -> Đã hủy / vắng mặt (Cancelled/NoShow = 2) ở cuối.
+        // Trong cùng mỗi nhóm: sắp xếp tăng dần theo thời gian (SlotDate, StartTime).
         var appointments = await query
-            .OrderBy(a => a.Slot.SlotDate)
+            .OrderBy(a => a.Status == AppointmentStatus.Booked ? 0
+                        : (a.Status == AppointmentStatus.Completed ? 1 : 2))
+            .ThenBy(a => a.Slot.SlotDate)
             .ThenBy(a => a.Slot.StartTime)
             .Skip((effectivePage - 1) * effectivePageSize)
             .Take(effectivePageSize)
@@ -843,6 +934,9 @@ public sealed class AppointmentService : IAppointmentService
             Page = effectivePage,
             PageSize = effectivePageSize,
             TotalCount = totalCount,
+            BookedCount = bookedCount,
+            CheckedInCount = checkedInCount,
+            CancelledCount = cancelledCount,
         };
     }
 
@@ -903,6 +997,15 @@ public sealed class AppointmentService : IAppointmentService
             throw new InvalidOperationException("Khung giờ này đã có người đặt.");
         }
 
+        // Chặn đổi lịch sang khung giờ đã qua
+        var nowVn = GetNowVietnam();
+        var todayVn = DateOnly.FromDateTime(nowVn);
+        var currentTimeVn = TimeOnly.FromDateTime(nowVn);
+        if (newSlot.SlotDate < todayVn || (newSlot.SlotDate == todayVn && newSlot.StartTime <= currentTimeVn))
+        {
+            throw new InvalidOperationException("Không thể đổi lịch sang khung giờ đã qua.");
+        }
+
         // Validate same-day conflicting appointment for patient (excluding old appointment)
         var hasSameDayConflict = await _db.Appointments
             .Include(a => a.Slot)
@@ -910,7 +1013,7 @@ public sealed class AppointmentService : IAppointmentService
                         && a.AppointmentId != oldAppointment.AppointmentId
                         && a.Slot != null
                         && a.Slot.SlotDate == newSlot.SlotDate
-                        && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved), ct);
+                        && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Completed), ct);
 
         if (hasSameDayConflict)
         {

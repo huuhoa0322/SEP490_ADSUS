@@ -49,14 +49,17 @@ public class HealthLogsControllerIntegrationTests
         };
 
     private static PatientProfile NewPatientProfile(Guid userId)
-        => new()
+    {
+        var user = NewUser(userId, UserRole.Patient);
+        user.Gender = GenderType.Male;
+        return new()
         {
             PatientProfileId = Guid.NewGuid(),
             UserId = userId,
-            User = NewUser(userId, UserRole.Patient),
-            Gender = GenderType.Male,
+            User = user,
             CreatedAt = DateTime.UtcNow,
         };
+    }
 
     #endregion
 

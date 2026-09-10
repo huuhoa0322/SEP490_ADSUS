@@ -114,21 +114,21 @@ public class AppointmentServiceTests : IDisposable
         // Arrange — mock only matches the exact date range the service is expected to pass
         // through, proving ListOpenSlotsAsync correctly forwards fromDate/toDate.
         var doctor = CreateDoctor();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var slotToday = CreateScheduleSlot(SlotStatus.Open, doctor, today);
+        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2));
+        var slotFuture = CreateScheduleSlot(SlotStatus.Open, doctor, futureDate);
 
-        _slotRepo.Setup(r => r.ListByRangeAsync(today, today, It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ScheduleSlot> { slotToday });
+        _slotRepo.Setup(r => r.ListByRangeAsync(futureDate, futureDate, It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot> { slotFuture });
 
         // Act
         var result = await _sut.ListOpenSlotsAsync(
-            fromDate: today,
-            toDate: today,
+            fromDate: futureDate,
+            toDate: futureDate,
             ct: TestContext.Current.CancellationToken);
 
         // Assert
         var slot = Assert.Single(result);
-        Assert.Equal(today, slot.SlotDate);
+        Assert.Equal(futureDate, slot.SlotDate);
     }
 
     [Fact]

@@ -13,6 +13,7 @@ import {
   Loader2,
   ArrowLeft,
   CalendarClock,
+  ClipboardList,
 } from "lucide-react";
 import {
   Dialog,
@@ -77,6 +78,11 @@ function AppointmentDetailModalInner({
   const isCaseEnded =
     normCaseStatus === "CONFIRMED" ||
     normCaseStatus === "END";
+
+  const hasCase = Boolean(
+    item.caseId &&
+    item.caseId !== "00000000-0000-0000-0000-000000000000"
+  );
 
   const canReschedule = useMemo(() => {
     if (isBooked) return true;
@@ -162,6 +168,43 @@ function AppointmentDetailModalInner({
     toDate: selectedDate || undefined,
   });
 
+  // Filter out slots that have already passed (past dates or earlier time slots today)
+  const filteredAvailableSlots = useMemo(() => {
+    const now = new Date();
+    const todayStr = format(now, "yyyy-MM-dd");
+    const currentTimeStr = format(now, "HH:mm:ss");
+
+    return availableSlots.filter((slot) => {
+      let slotDateStr = selectedDate;
+      if (slot.slotDate) {
+        try {
+          slotDateStr = format(new Date(slot.slotDate), "yyyy-MM-dd");
+        } catch {
+          slotDateStr = slot.slotDate;
+        }
+      }
+
+      // Hide if date is before today
+      if (slotDateStr < todayStr) {
+        return false;
+      }
+
+      // If date is today, hide if slot startTime <= currentTime
+      if (slotDateStr === todayStr) {
+        const start = slot.startTime?.length === 5 ? `${slot.startTime}:00` : slot.startTime || "";
+        return start > currentTimeStr;
+      }
+
+      return true;
+    });
+  }, [availableSlots, selectedDate]);
+
+  // Derived effective selected slot: ensures slot is valid in filteredAvailableSlots without triggering setState in an effect
+  const effectiveSelectedSlotId = useMemo(() => {
+    if (!selectedSlotId) return "";
+    return filteredAvailableSlots.some((s) => s.slotId === selectedSlotId) ? selectedSlotId : "";
+  }, [filteredAvailableSlots, selectedSlotId]);
+
   const slotDateTime = new Date(item.slotTime);
 
   const formatSlotLabel = (slot: AvailableSlot): string => {
@@ -183,8 +226,14 @@ function AppointmentDetailModalInner({
   };
 
   const handleSubmitReschedule = async () => {
-    if (!selectedSlotId) {
+    if (!effectiveSelectedSlotId) {
       setValidationError("Vui lòng chọn khung giờ khám mới.");
+      return;
+    }
+
+    const chosenSlot = filteredAvailableSlots.find((s) => s.slotId === effectiveSelectedSlotId);
+    if (!chosenSlot) {
+      setValidationError("Khung giờ đã chọn không hợp lệ hoặc đã qua thời gian.");
       return;
     }
 
@@ -199,7 +248,7 @@ function AppointmentDetailModalInner({
       await rescheduleMutation.mutateAsync({
         appointmentId: item.appointmentId,
         request: {
-          newScheduleSlotId: selectedSlotId,
+          newScheduleSlotId: effectiveSelectedSlotId,
           rescheduleReason: rescheduleReason.trim(),
           newReason: newReason.trim() || undefined,
           autoCheckin,
@@ -224,11 +273,8 @@ function AppointmentDetailModalInner({
                 {isBooked && (
                   <Badge variant="soft-warning">Đang chờ check-in</Badge>
                 )}
-                {isApproved && (
+                {(isApproved || isCompleted) && (
                   <Badge variant="soft-primary">Đã check-in</Badge>
-                )}
-                {isCompleted && (
-                  <Badge variant="soft-success">Đã hoàn thành</Badge>
                 )}
                 {isCancelled && (
                   <Badge variant="destructive">Đã huỷ / Vắng mặt</Badge>
@@ -288,6 +334,23 @@ function AppointmentDetailModalInner({
                   Số điện thoại
                 </span>
                 <p className="text-foreground">{item.patientPhone || "—"}</p>
+              </div>
+              <div className="space-y-1">
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  Hồ sơ ca khám đi kèm
+                </span>
+                <div>
+                  {hasCase ? (
+                    <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      Có ca khám liên kết
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      Không có ca khám (Khám trực tiếp)
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="col-span-2 space-y-1 border-t border-border/50 pt-2">
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -361,7 +424,7 @@ function AppointmentDetailModalInner({
               </Label>
               <select
                 id="reschedule-slot"
-                value={selectedSlotId}
+                value={effectiveSelectedSlotId}
                 onChange={(e) => {
                   setSelectedSlotId(e.target.value);
                   setValidationError(null);
@@ -378,14 +441,14 @@ function AppointmentDetailModalInner({
                   <option value="">Đang tải khung giờ...</option>
                 ) : !selectedDoctorId || !selectedDate ? (
                   <option value="">Vui lòng chọn bác sĩ và ngày</option>
-                ) : availableSlots.length === 0 ? (
+                ) : filteredAvailableSlots.length === 0 ? (
                   <option value="">Không có khung giờ trống</option>
                 ) : (
                   <>
                     <option value="">
-                      -- Chọn khung giờ ({availableSlots.length} slot trống) --
+                      -- Chọn khung giờ ({filteredAvailableSlots.length} slot trống) --
                     </option>
-                    {availableSlots.map((slot) => (
+                    {filteredAvailableSlots.map((slot) => (
                       <option key={slot.slotId} value={slot.slotId}>
                         {formatSlotLabel(slot)}
                       </option>

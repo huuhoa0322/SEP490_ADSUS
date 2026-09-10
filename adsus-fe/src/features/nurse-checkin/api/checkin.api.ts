@@ -47,25 +47,25 @@ export async function getCheckinQueue(
 }
 
 /**
- * Check-in appointment dựa trên caseId hoặc appointmentId.
- * - Nếu caseId là empty GUID → gọi endpoint appointmentId (appointment không có case)
- * - Nếu caseId là GUID hợp lệ → gọi endpoint caseId (appointment có case)
+ * Check-in appointment.
+ * Ưu tiên gọi endpoint appointmentId để chỉ đích danh lịch hẹn cần check-in trên bảng,
+ * tránh nhầm lẫn khi một case có nhiều lịch hẹn (lịch cũ đã hủy/đổi lịch và lịch mới BOOKED).
  */
 export async function checkinAppointment(
   appointmentId: string,
-  caseId: string
+  caseId?: string
 ): Promise<ApiResponse<null>> {
   let url: string;
   let id: string;
 
-  if (caseId === EMPTY_GUID) {
-    // Appointment không có case → dùng appointmentId endpoint
+  if (appointmentId && appointmentId !== EMPTY_GUID) {
     url = `/api/v1/cases/appointment/${appointmentId}/checkin`;
     id = appointmentId;
-  } else {
-    // Appointment có case → dùng caseId endpoint
+  } else if (caseId && caseId !== EMPTY_GUID) {
     url = `/api/v1/cases/${caseId}/appointment/checkin`;
     id = caseId;
+  } else {
+    throw new Error("Không có appointmentId hoặc caseId hợp lệ để check-in.");
   }
 
   const { data } = await apiClient.post<ApiResponse<null>>(url);

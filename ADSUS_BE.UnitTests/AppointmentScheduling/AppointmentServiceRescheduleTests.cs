@@ -83,7 +83,6 @@ public class AppointmentServiceRescheduleTests : IDisposable
             PatientProfileId = Guid.NewGuid(),
             UserId = user.UserId,
             User = user,
-            Gender = GenderType.Female,
             CreatedBy = Guid.NewGuid(),
         };
     }
@@ -929,6 +928,163 @@ public class AppointmentServiceRescheduleTests : IDisposable
                 r.Body != null && r.Body.Contains(patient.FullName) &&
                 r.Body.Contains(newDoctor.FullName)),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    #endregion
+
+    #region Past Slot Prevention Tests
+
+    /// <summary>
+    /// Test: Reschedule blocks target slots with dates in the past.
+    /// </summary>
+    [Fact]
+    public async Task Reschedule_TargetSlotDateInPast_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var doctor = CreateUser(Guid.NewGuid(), "BS Nguyễn Văn A", UserRole.Doctor);
+        var patient = CreateUser(Guid.NewGuid(), "Trần Thị B", UserRole.Patient);
+        var profile = CreatePatientProfile(patient);
+
+        var oldDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        var pastDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2));
+
+        var oldSlot = CreateSlot(doctor, oldDate, new TimeOnly(10, 0), new TimeOnly(11, 0), SlotStatus.Booked);
+        var pastSlot = CreateSlot(doctor, pastDate, new TimeOnly(14, 0), new TimeOnly(15, 0), SlotStatus.Open);
+        var oldAppt = CreateAppointment(oldSlot, profile, AppointmentStatus.Booked);
+
+        _db.Users.AddRange(doctor, patient);
+        _db.PatientProfiles.Add(profile);
+        _db.ScheduleSlots.AddRange(oldSlot, pastSlot);
+        _db.Appointments.Add(oldAppt);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var request = new RescheduleAppointmentRequest
+        {
+            NewScheduleSlotId = pastSlot.SlotId,
+            RescheduleReason = "Thử đổi lịch về ngày trong quá khứ",
+            AutoCheckin = false
+        };
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.RescheduleAppointmentAsync(oldAppt.AppointmentId, request, TestContext.Current.CancellationToken));
+        Assert.Contains("Không thể đổi lịch sang khung giờ đã qua.", ex.Message);
+    }
+
+    /// <summary>
+    /// Test: Reschedule blocks target slots on today whose start time has already passed.
+    /// </summary>
+    [Fact]
+    public async Task Reschedule_TargetSlotTodayWithPastStartTime_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var doctor = CreateUser(Guid.NewGuid(), "BS Nguyễn Văn A", UserRole.Doctor);
+        var patient = CreateUser(Guid.NewGuid(), "Trần Thị B", UserRole.Patient);
+        var profile = CreatePatientProfile(patient);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7)); // Vietnam today
+        var oldDate = today.AddDays(1);
+
+        // A slot starting early morning (06:00) is guaranteed to be in the past when running in afternoon
+        // Or using 1 minute past epoch if midnight
+        var pastStartTime = new TimeOnly(0, 1); // 00:01 AM is in the past for any test run after 00:01
+        var pastEndTime = new TimeOnly(0, 30);
+
+        var oldSlot = CreateSlot(doctor, oldDate, new TimeOnly(10, 0), new TimeOnly(11, 0), SlotStatus.Booked);
+        var pastSlotToday = CreateSlot(doctor, today, pastStartTime, pastEndTime, SlotStatus.Open);
+        var oldAppt = CreateAppointment(oldSlot, profile, AppointmentStatus.Booked);
+
+        _db.Users.AddRange(doctor, patient);
+        _db.PatientProfiles.Add(profile);
+        _db.ScheduleSlots.AddRange(oldSlot, pastSlotToday);
+        _db.Appointments.Add(oldAppt);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var request = new RescheduleAppointmentRequest
+        {
+            NewScheduleSlotId = pastSlotToday.SlotId,
+            RescheduleReason = "Thử đổi lịch vào slot đã qua giờ hôm nay",
+            AutoCheckin = false
+        };
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.RescheduleAppointmentAsync(oldAppt.AppointmentId, request, TestContext.Current.CancellationToken));
+        Assert.Contains("Không thể đổi lịch sang khung giờ đã qua.", ex.Message);
+    }
+
+    /// <summary>
+    /// Test: Reschedule succeeds when target slot is today and in the future (e.g. 23:30).
+    /// </summary>
+    [Fact]
+    public async Task Reschedule_TargetSlotTodayWithFutureStartTime_Succeeds()
+    {
+        // Arrange
+        var doctor = CreateUser(Guid.NewGuid(), "BS Nguyễn Văn A", UserRole.Doctor);
+        var patient = CreateUser(Guid.NewGuid(), "Trần Thị B", UserRole.Patient);
+        var profile = CreatePatientProfile(patient);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var oldDate = today.AddDays(1);
+
+        var futureStartTime = new TimeOnly(23, 30);
+        var futureEndTime = new TimeOnly(23, 59);
+
+        var oldSlot = CreateSlot(doctor, oldDate, new TimeOnly(10, 0), new TimeOnly(11, 0), SlotStatus.Booked);
+        var futureSlotToday = CreateSlot(doctor, today, futureStartTime, futureEndTime, SlotStatus.Open);
+        var oldAppt = CreateAppointment(oldSlot, profile, AppointmentStatus.Booked);
+
+        _db.Users.AddRange(doctor, patient);
+        _db.PatientProfiles.Add(profile);
+        _db.ScheduleSlots.AddRange(oldSlot, futureSlotToday);
+        _db.Appointments.Add(oldAppt);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var request = new RescheduleAppointmentRequest
+        {
+            NewScheduleSlotId = futureSlotToday.SlotId,
+            RescheduleReason = "Đổi lịch sang khung giờ tối hôm nay",
+            AutoCheckin = false
+        };
+
+        // Act
+        var result = await _sut.RescheduleAppointmentAsync(oldAppt.AppointmentId, request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(AppointmentStatus.Booked, result.Status);
+        Assert.Equal(futureSlotToday.SlotId, result.ScheduleSlotId);
+    }
+
+    /// <summary>
+    /// Test: ListOpenSlotsAsync excludes slots from past dates and past times today.
+    /// </summary>
+    [Fact]
+    public async Task ListOpenSlotsAsync_PastSlotsAndPastTimesToday_Excluded()
+    {
+        // Arrange
+        var doctor = CreateUser(Guid.NewGuid(), "BS Nguyễn Văn A", UserRole.Doctor);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var yesterday = today.AddDays(-1);
+        var tomorrow = today.AddDays(1);
+
+        var slotPastDate = CreateSlot(doctor, yesterday, new TimeOnly(10, 0), new TimeOnly(11, 0));
+        var slotTodayPastTime = CreateSlot(doctor, today, new TimeOnly(0, 1), new TimeOnly(0, 30));
+        var slotTodayFutureTime = CreateSlot(doctor, today, new TimeOnly(23, 30), new TimeOnly(23, 59));
+        var slotTomorrow = CreateSlot(doctor, tomorrow, new TimeOnly(9, 0), new TimeOnly(10, 0));
+
+        _slotRepo.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), SlotStatus.Open, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot> { slotPastDate, slotTodayPastTime, slotTodayFutureTime, slotTomorrow });
+
+        // Act
+        var result = await _sut.ListOpenSlotsAsync(ct: TestContext.Current.CancellationToken);
+
+        // Assert: slotPastDate and slotTodayPastTime must be excluded. Only slotTodayFutureTime and slotTomorrow remain.
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, s => s.SlotId == slotTodayFutureTime.SlotId);
+        Assert.Contains(result, s => s.SlotId == slotTomorrow.SlotId);
+        Assert.DoesNotContain(result, s => s.SlotId == slotPastDate.SlotId);
+        Assert.DoesNotContain(result, s => s.SlotId == slotTodayPastTime.SlotId);
     }
 
     #endregion

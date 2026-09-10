@@ -116,7 +116,7 @@ public class AppointmentCheckinStressTests : IDisposable
                 Slot = slot,
                 PatientProfileId = profile.PatientProfileId,
                 PatientProfile = profile,
-                Status = i % 2 == 0 ? AppointmentStatus.Booked : AppointmentStatus.Approved,
+                Status = i % 2 == 0 ? AppointmentStatus.Booked : AppointmentStatus.Completed,
                 Reason = i == 0 ? "General Checkup" : $"Routine Check {i}",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,

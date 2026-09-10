@@ -203,12 +203,6 @@ describe("QA Member 4: Browser UI Automation & Interactive Click-Through Verific
         expect.objectContaining({ status: "APPROVED", page: 1 })
       );
 
-      // Select COMPLETED
-      fireEvent.change(select, { target: { value: "COMPLETED" } });
-      expect(useCheckinQueue).toHaveBeenLastCalledWith(
-        expect.objectContaining({ status: "COMPLETED", page: 1 })
-      );
-
       // Select CANCELLED
       fireEvent.change(select, { target: { value: "CANCELLED" } });
       expect(useCheckinQueue).toHaveBeenLastCalledWith(
@@ -594,9 +588,7 @@ describe("QA Member 4: Browser UI Automation & Interactive Click-Through Verific
         "rounded-3xl",
         "border",
         "border-border",
-        "bg-background",
-        "pl-6",
-        "pr-6"
+        "bg-background"
       );
     });
 

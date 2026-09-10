@@ -57,5 +57,8 @@ export interface CheckinQueueResponse {
   page?: number;
   pageSize?: number;
   totalPages?: number;
+  bookedCount?: number;
+  checkedInCount?: number;
+  cancelledCount?: number;
 }
 

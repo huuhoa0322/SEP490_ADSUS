@@ -1,4 +1,4 @@
-﻿using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
+using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Services;
 using ADSUS_BE.BLL.Common.DTOs;
 using ADSUS_BE.BLL.Common.Interfaces;
@@ -82,7 +82,6 @@ public class AppointmentServiceRescheduleAdversarialTests : IDisposable
             PatientProfileId = Guid.NewGuid(),
             UserId = user.UserId,
             User = user,
-            Gender = GenderType.Female,
             CreatedBy = Guid.NewGuid(),
         };
     }

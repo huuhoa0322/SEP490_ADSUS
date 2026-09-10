@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { Search, RefreshCw, Check, Clock } from "lucide-react";
+import { Search, RefreshCw, Check, Clock, XCircle } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 import { cn } from "@/lib/utils";
@@ -59,18 +59,17 @@ export function NurseCheckinView() {
   const totalPages =
     data?.totalPages ?? (totalCount === 0 ? 0 : Math.ceil(totalCount / pageSize));
 
-  const checkedIn = queue.filter(
-    (item) => item.status?.toUpperCase() === "APPROVED"
-  );
-  const pending = queue.filter(
-    (item) => item.status?.toUpperCase() === "BOOKED"
-  );
+  // Period-wide counts directly from backend across the selected date range
+  const bookedCount = data?.bookedCount ?? 0;
+  const checkedInCount = data?.checkedInCount ?? 0;
+  const cancelledCount = data?.cancelledCount ?? 0;
 
-  // Zero-division safe progress calculation
+  // Zero-division safe progress calculation across active appointments (booked + checked-in)
+  const activeCount = bookedCount + checkedInCount;
   const progressPercent =
-    totalCount === 0
+    activeCount === 0
       ? 0
-      : Math.min(100, Math.max(0, Math.round((checkedIn.length / totalCount) * 100)));
+      : Math.min(100, Math.max(0, Math.round((checkedInCount / activeCount) * 100)));
 
   const handleFromDateChange = (val: string | Date | null | undefined) => {
     if (!val) return;
@@ -197,7 +196,7 @@ export function NurseCheckinView() {
           />
         </div>
 
-        {/* Status category dropdown filter */}
+        {/* Status category dropdown filter: ONLY Booked, Approved/Checked-in, and Cancelled/NoShow */}
         <select
           value={status}
           onChange={(e) => {
@@ -209,7 +208,6 @@ export function NurseCheckinView() {
           <option value="ALL">Tất cả trạng thái</option>
           <option value="BOOKED">Đang chờ check-in</option>
           <option value="APPROVED">Đã check-in</option>
-          <option value="COMPLETED">Đã hoàn thành</option>
           <option value="CANCELLED">Đã huỷ / Vắng mặt</option>
         </select>
       </div>
@@ -228,24 +226,50 @@ export function NurseCheckinView() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="mb-6 flex gap-4">
-        <div className="flex items-center gap-3 rounded-lg border border-[var(--success)]/20 bg-[var(--success)]/8 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--success)]/15 text-[var(--success)]">
-            <Check className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-[var(--success)]">Đã check-in</p>
-            <p className="text-2xl font-bold text-[var(--success)] tabular-nums">{checkedIn.length}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 rounded-lg border border-[var(--status-warning)]/20 bg-[var(--status-warning)]/8 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--status-warning)]/15 text-[var(--status-warning)]">
+      {/* Stats cards: Clear, vibrant colors matching action column in table */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Card 1: Đang chờ check-in - matches Check-in button */}
+        <div className="flex items-center gap-3.5 rounded-xl border border-[#2E37A4]/25 bg-[#2E37A4]/5 p-4 shadow-xs">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#2E37A4] text-white shadow-xs">
             <Clock className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-medium text-[var(--status-warning)]">Đang chờ</p>
-            <p className="text-2xl font-bold text-[var(--status-warning)] tabular-nums">{pending.length}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#2E37A4]">
+              Đang chờ check-in
+            </p>
+            <p className="text-2xl font-bold text-[#2E37A4] tabular-nums">
+              {bookedCount}
+            </p>
+          </div>
+        </div>
+
+        {/* Card 2: Đã check-in - matches Đã check-in badge */}
+        <div className="flex items-center gap-3.5 rounded-xl border border-emerald-600/25 bg-emerald-50/80 p-4 shadow-xs dark:bg-emerald-950/20">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
+            <Check className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+              Đã check-in
+            </p>
+            <p className="text-2xl font-bold text-emerald-700 tabular-nums dark:text-emerald-400">
+              {checkedInCount}
+            </p>
+          </div>
+        </div>
+
+        {/* Card 3: Đã huỷ / Vắng mặt - matches Đã huỷ badge */}
+        <div className="flex items-center gap-3.5 rounded-xl border border-rose-600/25 bg-rose-50/80 p-4 shadow-xs dark:bg-rose-950/20">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-600 text-white shadow-xs">
+            <XCircle className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-400">
+              Đã huỷ / Vắng mặt
+            </p>
+            <p className="text-2xl font-bold text-rose-700 tabular-nums dark:text-rose-400">
+              {cancelledCount}
+            </p>
           </div>
         </div>
       </div>
@@ -253,14 +277,14 @@ export function NurseCheckinView() {
       {/* Progress bar */}
       <div className="mb-6">
         <div className="mb-1 flex items-center justify-between text-sm text-muted-foreground">
-          <span>Tiến độ check-in</span>
+          <span>Tiến độ check-in (toàn mốc thời gian)</span>
           <span className="tabular-nums">
-            {checkedIn.length} / {totalCount} bệnh nhân ({progressPercent}%)
+            {checkedInCount} / {activeCount} bệnh nhân ({progressPercent}%)
           </span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-[var(--success)] transition-all duration-300"
+            className="h-full rounded-full bg-emerald-600 transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
