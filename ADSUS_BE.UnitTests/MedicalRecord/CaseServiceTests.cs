@@ -1,4 +1,3 @@
-using ADSUS_BE.BLL.Common.Events;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Services;
@@ -18,7 +17,6 @@ public class CaseServiceTests
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IFileStorageService> _storage = new();
     private readonly Mock<INotificationService> _notificationService = new();
-    private readonly Mock<IEventPublisher> _eventPublisher = new();
     private readonly CaseService _sut;
 
     public CaseServiceTests()
@@ -27,7 +25,6 @@ public class CaseServiceTests
             _cases.Object, _images.Object, _profiles.Object, _users.Object,
             new System.Lazy<IFileStorageService>(() => _storage.Object),
             _notificationService.Object,
-            _eventPublisher.Object,
             Mock.Of<ILogger<CaseService>>());
 
         // Setup notification service mock for all tests

@@ -20,7 +20,7 @@ public partial class AppDbContext : DbContext
     private static readonly string[] AuthOauthResponseTypeValues = { "code" };
     private static readonly string[] AuthOneTimeTokenTypeValues = { "confirmation_token", "reauthentication_token", "recovery_token", "email_change_token_new", "email_change_token_current", "phone_change_token" };
     private static readonly string[] BlogStatusValues = { "DRAFT", "PUBLISHED" };
-    private static readonly string[] CaseStatusValues = { "END", "CONFIRMED", "BOOKED", "IN_PROGRESS", "CANCELLED" };
+    private static readonly string[] CaseStatusValues = { "BOOKED", "IN_PROGRESS", "CONFIRMED", "END", "CANCELLED" };
     private static readonly string[] ChatRoleValues = { "USER", "ASSISTANT" };
     private static readonly string[] GenderTypeValues = { "FEMALE", "MALE", "OTHER" };
     private static readonly string[] HealthLogTypeValues = { "EXERCISE", "DIET" };
@@ -392,7 +392,7 @@ public partial class AppDbContext : DbContext
         {
             entity.HasKey(e => e.CaseId).HasName("pk_cases");
 
-            entity.ToTable("cases", tb => tb.HasComment("Một lượt khám của một bệnh nhân — mốc neo cho ảnh siêu âm, kết quả AI, đơn thuốc. Theo dõi tiến triển (FT-22) = so sánh dữ liệu qua nhiều cases theo visit_date. Vòng đời CREATED → ANALYZED → CONFIRMED một chiều (GBR) — enforce ở tầng ứng dụng."));
+            entity.ToTable("cases", tb => tb.HasComment("Một lượt khám của một bệnh nhân — mốc neo cho ảnh siêu âm, kết quả AI, đơn thuốc. Theo dõi tiến triển (FT-22) = so sánh dữ liệu qua nhiều cases theo visit_date. Vòng đời một chiều: Booked → InProgress → Confirmed → End (GBR) — enforce ở tầng ứng dụng. Booked → Cancelled cũng có thể xảy ra."));
 
             entity.HasIndex(e => new { e.DoctorId, e.VisitDate }, "idx_cases_doctor_worklist").IsDescending(false, true);
 

@@ -101,7 +101,7 @@ vi.mock("@/features/prescription-adherence/hooks/use-invoices", () => ({
 }));
 
 function makeCase(
-  status: "CREATED" | "ANALYZED" | "CONFIRMED" | "END",
+  status: "BOOKED" | "IN_PROGRESS" | "CONFIRMED" | "END" | "CANCELLED",
   draft?: { finalDiagnosis: string; doctorConclusion: string },
 ) {
   return {
@@ -203,7 +203,7 @@ describe("CaseDetailView", () => {
 
   it("cho bổ sung ảnh khi ca chưa kết luận", () => {
     signInAs("DOCTOR", "doctor-1");
-    detailMock.mockReturnValue(makeCase("CREATED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
 
     render(<CaseDetailView caseId="case-1" />);
 
@@ -212,7 +212,7 @@ describe("CaseDetailView", () => {
 
   it("hiện ô hỏng cho ảnh không ký được URL", () => {
     // Flag F5 — imageUrl null khi Storage ký URL thất bại.
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
 
     render(<CaseDetailView caseId="case-1" />);
 
@@ -241,7 +241,7 @@ describe("CaseDetailView", () => {
 
   it("không hiện id ca khám dạng UUID thô trên màn hình", () => {
     // Sửa 07/08/2026 — cùng lý do đã bỏ UUID thô ở SCR-12 (Task C12): không có ích cho người đọc.
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
 
     render(<CaseDetailView caseId="case-1" />);
 
@@ -252,7 +252,7 @@ describe("CaseDetailView", () => {
 
   it("hiện form nhập kết luận cho đúng Bác sĩ phụ trách ca này khi chưa CONFIRMED", () => {
     signInAs("DOCTOR", "doctor-1");
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
 
     render(<CaseDetailView caseId="case-1" />);
 
@@ -264,7 +264,7 @@ describe("CaseDetailView", () => {
   it("KHÔNG hiện form cho Bác sĩ khác (không phải người phụ trách ca này)", () => {
     // GB-04 — chỉ đúng bác sĩ phụ trách CA NÀY (doctorId "doctor-1"), không phải bác sĩ bất kỳ.
     signInAs("DOCTOR", "doctor-2");
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
 
     render(<CaseDetailView caseId="case-1" />);
 
@@ -274,7 +274,7 @@ describe("CaseDetailView", () => {
 
   it("KHÔNG hiện form cho Điều dưỡng dù ca chưa CONFIRMED", () => {
     signInAs("NURSE", "nurse-1");
-    detailMock.mockReturnValue(makeCase("CREATED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
 
     render(<CaseDetailView caseId="case-1" />);
 
@@ -286,7 +286,7 @@ describe("CaseDetailView", () => {
     // chưa CONFIRMED — form phải hiện lại đúng nội dung đó, không trống.
     signInAs("DOCTOR", "doctor-1");
     detailMock.mockReturnValue(
-      makeCase("ANALYZED", {
+      makeCase("IN_PROGRESS", {
         finalDiagnosis: "Nghi u lành",
         doctorConclusion: "Chờ thêm ảnh siêu âm",
       }),
@@ -300,7 +300,7 @@ describe("CaseDetailView", () => {
 
   it("chặn Lưu kết luận khi bỏ trống chẩn đoán hoặc kết luận", async () => {
     signInAs("DOCTOR", "doctor-1");
-    detailMock.mockReturnValue(makeCase("CREATED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
@@ -312,7 +312,7 @@ describe("CaseDetailView", () => {
 
   it("chặn Kết thúc ca khám khi bỏ trống chẩn đoán hoặc kết luận", async () => {
     signInAs("DOCTOR", "doctor-1");
-    detailMock.mockReturnValue(makeCase("CREATED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
@@ -324,7 +324,7 @@ describe("CaseDetailView", () => {
 
   it("Lưu kết luận gọi đúng hàm lưu (không đổi trạng thái), không gọi hàm kết thúc", async () => {
     signInAs("DOCTOR", "doctor-1");
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
@@ -341,7 +341,7 @@ describe("CaseDetailView", () => {
 
   it("Kết thúc ca khám gọi đúng hàm khoá ca, không gọi hàm lưu", async () => {
     signInAs("DOCTOR", "doctor-1");
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
@@ -360,7 +360,7 @@ describe("CaseDetailView", () => {
 
   it("khoá 2 trường và nút Bổ sung ảnh siêu âm ngay sau khi Lưu kết luận thành công", async () => {
     signInAs("DOCTOR", "doctor-1");
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
@@ -377,7 +377,7 @@ describe("CaseDetailView", () => {
 
   it("bấm Sửa mở khoá lại 2 trường và nút Bổ sung ảnh siêu âm", async () => {
     signInAs("DOCTOR", "doctor-1");
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
@@ -395,7 +395,7 @@ describe("CaseDetailView", () => {
 
   it("vẫn bấm được Kết thúc ca khám ngay cả khi đang khoá tạm sau Lưu kết luận", async () => {
     signInAs("DOCTOR", "doctor-1");
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
@@ -414,9 +414,9 @@ describe("CaseDetailView", () => {
 
   it("áp dụng viền phân vùng (bounding boxes) rõ ràng và chữ đậm tối màu cho các khối thông tin", () => {
     const caseWithProfile = {
-      ...makeCase("ANALYZED"),
+      ...makeCase("IN_PROGRESS"),
       data: {
-        ...makeCase("ANALYZED").data,
+        ...makeCase("IN_PROGRESS").data,
         patientProfile: {
           patientProfileId: "profile-1",
           patientUserId: "user-1",
@@ -538,7 +538,7 @@ describe("CaseDetailView", () => {
 
   it("bác sĩ mở form Bổ sung ảnh siêu âm và gửi ảnh qua Xem kết quả AI sẽ lưu session vào Zustand store và chuyển trang /diagnostic", async () => {
     signInAs("DOCTOR", "doctor-1");
-    detailMock.mockReturnValue(makeCase("CREATED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
@@ -568,7 +568,7 @@ describe("CaseDetailView", () => {
 
   it("áp dụng Bounding Box và chữ đậm tối màu cho phần Kết luận của bác sĩ (Milestone 3)", async () => {
     signInAs("DOCTOR", "doctor-1");
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
@@ -621,7 +621,7 @@ describe("CaseDetailView", () => {
   // ---------- Requirement R1: Bố cục 90% chiều rộng màn hình (Layout & Width) ----------
 
   it("giao diện chính bao phủ 90% chiều rộng màn hình với max-w-[90%] và w-[90%] mx-auto", () => {
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
 
     const { container } = render(<CaseDetailView caseId="case-1" />);
 
@@ -674,7 +674,7 @@ describe("CaseDetailView", () => {
   });
 
   it("lưới làm việc chính chia 2 cột responsive (grid lg:grid-cols-[1.7fr_1fr]) theo Phase 4", () => {
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
 
     const { container } = render(<CaseDetailView caseId="case-1" />);
 
@@ -687,9 +687,9 @@ describe("CaseDetailView", () => {
 
   it("tất cả tiêu đề (h1-h4, dt, label) tuyệt đối không chứa class text-muted-foreground", () => {
     const caseWithDetails = {
-      ...makeCase("ANALYZED"),
+      ...makeCase("IN_PROGRESS"),
       data: {
-        ...makeCase("ANALYZED").data,
+        ...makeCase("IN_PROGRESS").data,
         patientProfile: {
           patientProfileId: "profile-1",
           patientUserId: "user-1",
@@ -729,7 +729,7 @@ describe("CaseDetailView", () => {
   });
 
   it("link điều hướng danh sách ca khám và subtitle bác sĩ dùng font đậm text-foreground", () => {
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
 
     render(<CaseDetailView caseId="case-1" />);
 
@@ -748,7 +748,7 @@ describe("CaseDetailView", () => {
 
   it("hộp cảnh báo dành cho bác sĩ không phụ trách ca có viền đứt nét border-black/40 và chữ đậm text-foreground", () => {
     signInAs("DOCTOR", "doctor-different");
-    detailMock.mockReturnValue(makeCase("ANALYZED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
 
     render(<CaseDetailView caseId="case-1" />);
 
@@ -833,7 +833,7 @@ describe("CaseDetailView", () => {
 
   it("bác sĩ nhập ghi chú khi bổ sung ảnh siêu âm thì ghi chú được cập nhật trong form", async () => {
     signInAs("DOCTOR", "doctor-1");
-    detailMock.mockReturnValue(makeCase("CREATED"));
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);

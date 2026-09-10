@@ -28,7 +28,7 @@ export function addDays(date: Date, days: number): Date {
 }
 
 /**
- * Nhóm appointment (đã lọc BOOKED/APPROVED sẵn ở Backend) theo 7 ngày trong tuần (T2 -> CN, tính
+ * Nhóm appointment (đã lọc chỉ-BOOKED sẵn ở Backend) theo 7 ngày trong tuần (T2 -> CN, tính
  * từ weekStart), rồi theo khung giờ trong mỗi ngày. Ngày/khung giờ không có ai thì mảng rỗng —
  * component tự quyết định hiện "Không có bệnh nhân" khi groups rỗng.
  */

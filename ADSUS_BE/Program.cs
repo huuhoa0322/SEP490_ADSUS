@@ -23,7 +23,6 @@ using ADSUS_BE.Jobs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.Services;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
-using ADSUS_BE.BLL.MedicalRecord.Events;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Services;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;

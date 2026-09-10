@@ -82,10 +82,11 @@ public interface IAppointmentService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Danh sách bệnh nhân BOOKED và APPROVED với Doctor trong khoảng ngày — cho màn
-    /// "Lịch bệnh nhân". Cancelled và Completed bị lọc bỏ hoàn toàn.
-    /// Approved = bệnh nhân đã checkin tại phòng khám, vẫn cần hiện trên màn để bác sĩ
-    /// biết ai đã đến.
+    /// Danh sách bệnh nhân BOOKED với Doctor trong khoảng ngày — cho màn "Lịch bệnh nhân".
+    /// Chỉ Booked; Cancelled, Completed và các trạng thái khác bị lọc bỏ hoàn toàn.
+    /// Bác sĩ không cần theo dõi việc bệnh nhân đã đến hay chưa qua Appointment —
+    /// việc đó do Nurse xử lý qua checkin; bác sĩ chỉ quản lý case khám (theo dõi
+    /// tiến trình qua Case.Status).
     /// </summary>
     Task<IReadOnlyList<DoctorPatientAppointmentResponse>> ListForDoctorAsync(
         Guid doctorId,
