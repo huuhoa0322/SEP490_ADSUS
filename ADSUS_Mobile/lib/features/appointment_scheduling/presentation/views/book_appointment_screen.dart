@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../domain/entities/schedule_slot.dart' show DoctorGender;
 import '../viewmodels/book_appointment_view_model.dart';
 import '../widgets/symptom_selector.dart';
 import 'widgets/slot_pill.dart';
@@ -231,6 +232,30 @@ class _BookAppointmentScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _sectionLabel('GIỚI TÍNH BÁC SĨ (TÙY CHỌN)'), // 2026-01
+        // Gender filter chips
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _genderChip(
+              'Tất cả',
+              null,
+              state.selectedDoctorGender,
+            ),
+            _genderChip(
+              '👨 Nam',
+              DoctorGender.male,
+              state.selectedDoctorGender,
+            ),
+            _genderChip(
+              '👩 Nữ',
+              DoctorGender.female,
+              state.selectedDoctorGender,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
         _sectionLabel('BÁC SĨ PHỤ TRÁCH'),
         DropdownSearch<String>(
           popupProps: PopupProps.menu(
@@ -243,7 +268,8 @@ class _BookAppointmentScreenState
             ),
             fit: FlexFit.loose,
           ),
-          items: state.doctorOptions.map((d) => d.name).toList(),
+          // 2026-01: Dùng filteredDoctorOptions thay vì doctorOptions
+          items: state.filteredDoctorOptions.map((d) => d.name).toList(),
           selectedItem: state.selectedDoctorId != null
               ? state.doctorOptions
                   .firstWhere(
@@ -265,6 +291,23 @@ class _BookAppointmentScreenState
           ),
         ),
       ],
+    );
+  }
+
+  // 2026-01: Gender filter chip widget
+  Widget _genderChip(String label, DoctorGender? value, DoctorGender? selected) {
+    final isSelected = value == selected;
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (_) {
+        ref.read(bookAppointmentViewModelProvider.notifier).selectDoctorGender(value);
+      },
+      selectedColor: AppColors.teal.withOpacity(0.2),
+      checkmarkColor: AppColors.teal,
+      side: BorderSide(
+        color: isSelected ? AppColors.teal : AppColors.border,
+      ),
     );
   }
 

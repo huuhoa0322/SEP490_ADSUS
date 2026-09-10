@@ -145,17 +145,9 @@ public sealed class AppointmentService : IAppointmentService
         // VALIDATION RULES - Chống spam đặt lịch
         // =====================================================
 
-        // Rule 4: Minimum 2h advance booking
-        var slotDateTime = slot.SlotDate.ToDateTime(slot.StartTime);
         var now = DateTime.UtcNow;
-        var hoursUntilSlot = (slotDateTime - now).TotalHours;
-        if (hoursUntilSlot < 2)
-        {
-            throw new InvalidOperationException(
-                "Phải đặt lịch trước tối thiểu 2 giờ. Vui lòng chọn ca khám khác.");
-        }
 
-        // Rule 1: Max 3 active appointments
+        // Rule 1: Max 3 active appointments (BOOKED hoặc APPROVED)
         var activeAppointments = await _db.Appointments
             .Where(a => a.PatientProfileId == patientProfileId
                 && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved))
@@ -166,9 +158,9 @@ public sealed class AppointmentService : IAppointmentService
                 "Bạn đã có 3 lịch hẹn đang chờ. Vui lòng hoàn thành hoặc hủy lịch cũ trước khi đặt mới.");
         }
 
-        // Rule 3: Không đặt trùng ngày (QUAN TRỌNG NHẤT)
+        // Rule 2: 1 bệnh nhân - 1 ngày - tối đa 1 lịch (KHÔNG phân biệt bác sĩ)
         var hasSameDayAppointment = await _db.Appointments
-            .Include(a => a.Slot)
+            .Include(a => a.Slot).ThenInclude(s => s.Doctor)
             .AnyAsync(a =>
                 a.PatientProfileId == patientProfileId
                 && a.Slot.SlotDate == slot.SlotDate
@@ -176,36 +168,17 @@ public sealed class AppointmentService : IAppointmentService
                 ct);
         if (hasSameDayAppointment)
         {
+            var existingAppointment = await _db.Appointments
+                .Include(a => a.Slot).ThenInclude(s => s.Doctor)
+                .FirstOrDefaultAsync(a =>
+                    a.PatientProfileId == patientProfileId
+                    && a.Slot.SlotDate == slot.SlotDate
+                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
+                    ct);
+            var doctorName = existingAppointment?.Slot?.Doctor?.FullName ?? "bác sĩ";
             throw new InvalidOperationException(
-                $"Bạn đã có lịch khám vào ngày {slot.SlotDate:dd/MM/yyyy}. Vui lòng hủy lịch cũ trước khi đặt lịch mới.");
-        }
-
-        // Rule 2: Giới hạn đặt trong phạm vi 3 ngày
-        var next3Days = DateOnly.FromDateTime(now.AddDays(3));
-        var hasAppointmentWithin3Days = await _db.Appointments
-            .Include(a => a.Slot)
-            .AnyAsync(a =>
-                a.PatientProfileId == patientProfileId
-                && a.Slot.SlotDate > slot.SlotDate
-                && a.Slot.SlotDate <= next3Days
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
-                ct);
-        if (hasAppointmentWithin3Days)
-        {
-            throw new InvalidOperationException(
-                "Bạn đã có lịch hẹn trong vòng 3 ngày tới. Vui lòng đặt lịch sau khi đã hoàn thành lịch hiện tại.");
-        }
-
-        // Rule 5: Max 2 appointments/day cho cùng ngày (bao gồm slot đang đặt)
-        var todayAppointments = await _db.Appointments
-            .Where(a => a.PatientProfileId == patientProfileId
-                && a.Slot.SlotDate == slot.SlotDate
-                && a.Status == AppointmentStatus.Booked)
-            .CountAsync(ct);
-        if (todayAppointments >= 2)
-        {
-            throw new InvalidOperationException(
-                $"Ngày {slot.SlotDate:dd/MM/yyyy} đã có 2 lịch hẹn. Vui lòng chọn ngày khác.");
+                $"Bạn đã có lịch khám với {doctorName} vào ngày {slot.SlotDate:dd/MM/yyyy}. " +
+                "Mỗi ngày chỉ được đặt tối đa 1 lịch. Vui lòng hủy lịch cũ trước khi đặt lịch mới.");
         }
 
         // =====================================================
@@ -360,6 +333,40 @@ public sealed class AppointmentService : IAppointmentService
         if (patientProfile == null)
         {
             throw new KeyNotFoundException("Không tìm thấy hồ sơ bệnh nhân.");
+        }
+
+        // 6. Validation: Max 3 active appointments cho bệnh nhân
+        var activeAppointments = await _db.Appointments
+            .Where(a => a.PatientProfileId == request.PatientProfileId
+                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved))
+            .CountAsync(ct);
+        if (activeAppointments >= 3)
+        {
+            throw new InvalidOperationException(
+                "Bệnh nhân đã có 3 lịch hẹn đang chờ. Vui lòng hoàn thành hoặc hủy lịch cũ trước khi đặt mới.");
+        }
+
+        // 7. Validation: 1 bệnh nhân - 1 ngày - tối đa 1 lịch
+        var hasSameDayAppointment = await _db.Appointments
+            .Include(a => a.Slot).ThenInclude(s => s.Doctor)
+            .AnyAsync(a =>
+                a.PatientProfileId == request.PatientProfileId
+                && a.Slot.SlotDate == slot.SlotDate
+                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
+                ct);
+        if (hasSameDayAppointment)
+        {
+            var existingAppointment = await _db.Appointments
+                .Include(a => a.Slot).ThenInclude(s => s.Doctor)
+                .FirstOrDefaultAsync(a =>
+                    a.PatientProfileId == request.PatientProfileId
+                    && a.Slot.SlotDate == slot.SlotDate
+                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
+                    ct);
+            var existingDoctorName = existingAppointment?.Slot?.Doctor?.FullName ?? "bác sĩ";
+            throw new InvalidOperationException(
+                $"Bệnh nhân đã có lịch khám với {existingDoctorName} vào ngày {slot.SlotDate:dd/MM/yyyy}. " +
+                "Mỗi ngày chỉ được đặt tối đa 1 lịch. Vui lòng hủy lịch cũ trước khi đặt lịch mới.");
         }
 
         var appointment = new Appointment
