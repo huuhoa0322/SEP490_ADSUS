@@ -7,6 +7,9 @@ enum SlotStatus { open, closed }
 /// Trạng thái tài khoản bác sĩ.
 enum DoctorStatus { active, inactive }
 
+/// Giới tính bác sĩ (2026-01).
+enum DoctorGender { male, female, other }
+
 /// Khung giờ khám do Bác sĩ/Điều dưỡng đăng ký (UC-15).
 ///
 /// Bệnh nhân chỉ thấy các khung ở trạng thái [SlotStatus.open] khi đặt lịch (UC-13).
@@ -22,6 +25,7 @@ class ScheduleSlot {
     required this.endTime,
     required this.status,
     this.doctorStatus = DoctorStatus.active,
+    this.doctorGender, // 2026-01: thêm gender của bác sĩ
   });
 
   final String id;
@@ -33,6 +37,9 @@ class ScheduleSlot {
 
   /// Trạng thái tài khoản bác sĩ — dùng để filter bác sĩ active trong dropdown.
   final DoctorStatus doctorStatus;
+
+  /// Giới tính bác sĩ — dùng để filter theo giới tính (2026-01).
+  final DoctorGender? doctorGender;
 
   /// Ngày khám (chỉ giờ phút bằng 0).
   final DateTime slotDate;

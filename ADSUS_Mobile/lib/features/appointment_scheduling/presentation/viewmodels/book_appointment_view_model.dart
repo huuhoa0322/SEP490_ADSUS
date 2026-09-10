@@ -4,8 +4,41 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../data/dtos/symptom_dtos.dart';
-import '../../domain/entities/schedule_slot.dart' show ScheduleSlot, DoctorStatus;
+import '../../domain/entities/schedule_slot.dart' show ScheduleSlot, DoctorStatus, DoctorGender;
 import '../../domain/entities/symptom.dart' show SymptomCategory;
+
+/// Cache cho slots với TTL 60 giây (2026-01: Performance optimization)
+class SlotCache {
+  static const _cacheValidityMs = 60000; // 1 phút
+  List<ScheduleSlot>? _cachedSlots;
+  DateTime? _cacheTimestamp;
+  String? _lastDoctorId;
+  String? _lastGenderFilter;
+
+  bool isValid(String? doctorId, DoctorGender? genderFilter) {
+    if (_cachedSlots == null || _cacheTimestamp == null) return false;
+    final elapsed = DateTime.now().difference(_cacheTimestamp!).inMilliseconds;
+    if (elapsed > _cacheValidityMs) return false;
+    // Cache chỉ valid nếu filter giống nhau
+    return _lastDoctorId == doctorId && _lastGenderFilter == genderFilter?.name;
+  }
+
+  List<ScheduleSlot>? get slots => _cachedSlots;
+
+  void set(List<ScheduleSlot> slots, String? doctorId, DoctorGender? genderFilter) {
+    _cachedSlots = slots;
+    _cacheTimestamp = DateTime.now();
+    _lastDoctorId = doctorId;
+    _lastGenderFilter = genderFilter?.name;
+  }
+
+  void invalidate() {
+    _cachedSlots = null;
+    _cacheTimestamp = null;
+  }
+}
+
+final _slotCache = SlotCache();
 
 /// Một block triệu chứng trong UI (tương ứng với 1 category)
 class SymptomBlock {
@@ -73,6 +106,8 @@ class BookAppointmentState {
     this.errorMessage,
     this.bookingSuccess,
     this.showWeekView = true, // Mặc định hiển thị tuần hiện tại
+    // Gender filter (2026-01)
+    this.selectedDoctorGender,
     // Symptoms state
     this.symptomCategories = const [],
     this.symptomBlocks = const [],
@@ -103,6 +138,9 @@ class BookAppointmentState {
   /// false = hiện tất cả 5 tuần (tuần này + 4 tuần tiếp)
   final bool showWeekView;
 
+  /// Filter theo giới tính bác sĩ (2026-01)
+  final DoctorGender? selectedDoctorGender;
+
   final String reason;
   final bool isLoading;
   final bool isBooking;
@@ -130,6 +168,7 @@ class BookAppointmentState {
     String? errorMessage,
     String? bookingSuccess,
     bool? showWeekView,
+    DoctorGender? selectedDoctorGender,
     List<SymptomCategory>? symptomCategories,
     List<SymptomBlock>? symptomBlocks,
     bool? isLoadingSymptoms,
@@ -155,6 +194,7 @@ class BookAppointmentState {
       bookingSuccess:
           clearBookingSuccess ? null : (bookingSuccess ?? this.bookingSuccess),
       showWeekView: showWeekView ?? this.showWeekView,
+      selectedDoctorGender: selectedDoctorGender ?? this.selectedDoctorGender,
       symptomCategories: symptomCategories ?? this.symptomCategories,
       symptomBlocks: symptomBlocks ?? this.symptomBlocks,
       isLoadingSymptoms: isLoadingSymptoms ?? this.isLoadingSymptoms,
@@ -231,6 +271,14 @@ class BookAppointmentState {
     }).toList();
   }
 
+  /// Danh sách bác sĩ đã lọc theo gender (2026-01)
+  List<DoctorOption> get filteredDoctorOptions {
+    if (selectedDoctorGender == null) return doctorOptions;
+    return doctorOptions
+        .where((d) => d.gender == selectedDoctorGender)
+        .toList();
+  }
+
   /// Kiểm tra giờ slot có hợp lệ (chưa qua giờ hiện tại).
   bool _isSlotTimeValid(String? startTime, DateTime now) {
     if (startTime == null) return true;
@@ -248,10 +296,16 @@ class BookAppointmentState {
 }
 
 class DoctorOption {
-  const DoctorOption({required this.id, required this.name, this.status = DoctorStatus.active});
+  const DoctorOption({
+    required this.id,
+    required this.name,
+    this.status = DoctorStatus.active,
+    this.gender, // 2026-01: thêm gender
+  });
   final String id;
   final String name;
   final DoctorStatus status;
+  final DoctorGender? gender;
 }
 
 class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
@@ -304,6 +358,16 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
     state = state.copyWith(selectedSlotId: slotId);
   }
 
+  // 2026-01: Gender filter selection
+  void selectDoctorGender(DoctorGender? gender) {
+    state = state.copyWith(
+      selectedDoctorGender: gender,
+      selectedDoctorId: null, // Reset doctor khi đổi gender
+      selectedSlotId: null,
+      selectedDate: null,
+    );
+  }
+
   void toggleWeekView() {
     state = state.copyWith(
       showWeekView: !state.showWeekView,
@@ -330,6 +394,7 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       selectedDate: null,
       selectedDoctorId: null,
       reason: '',
+      selectedDoctorGender: null, // 2026-01
     );
   }
 
@@ -346,6 +411,7 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       selectedDate: null,
       selectedDoctorId: null,
       reason: '',
+      selectedDoctorGender: null, // 2026-01
     );
     _successShown = false;
   }
@@ -366,6 +432,7 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       errorMessage: null,
       bookingSuccess: null,
       showWeekView: state.showWeekView,
+      selectedDoctorGender: state.selectedDoctorGender, // 2026-01
     );
   }
 
@@ -523,10 +590,12 @@ List<DoctorOption> _extractDoctors(List<ScheduleSlot> slots) {
     if (s.doctorId.isEmpty) continue;
     // Chỉ thêm bác sĩ có trạng thái active
     if (s.doctorStatus != DoctorStatus.active) continue;
+    // 2026-01: Thêm gender vào DoctorOption
     seen.putIfAbsent(s.doctorId, () => DoctorOption(
       id: s.doctorId,
       name: s.doctorName,
       status: s.doctorStatus,
+      gender: s.doctorGender,
     ));
   }
   final list = seen.values.toList()
