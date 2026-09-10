@@ -158,7 +158,7 @@ public sealed class AppointmentService : IAppointmentService
         // Rule 1: Max 3 active appointments
         var activeAppointments = await _db.Appointments
             .Where(a => a.PatientProfileId == patientProfileId
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved))
+                && a.Status == AppointmentStatus.Booked)
             .CountAsync(ct);
         if (activeAppointments >= 3)
         {
@@ -172,7 +172,7 @@ public sealed class AppointmentService : IAppointmentService
             .AnyAsync(a =>
                 a.PatientProfileId == patientProfileId
                 && a.Slot.SlotDate == slot.SlotDate
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
+                && a.Status == AppointmentStatus.Booked,
                 ct);
         if (hasSameDayAppointment)
         {
@@ -188,7 +188,7 @@ public sealed class AppointmentService : IAppointmentService
                 a.PatientProfileId == patientProfileId
                 && a.Slot.SlotDate > slot.SlotDate
                 && a.Slot.SlotDate <= next3Days
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
+                && a.Status == AppointmentStatus.Booked,
                 ct);
         if (hasAppointmentWithin3Days)
         {

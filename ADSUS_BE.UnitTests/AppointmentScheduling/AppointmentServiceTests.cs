@@ -357,6 +357,215 @@ public class AppointmentServiceTests : IDisposable
         _slotRepo.Verify(r => r.UpdateAsync(It.Is<ScheduleSlot>(s => s.Status == SlotStatus.Booked), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task BookAppointmentAsync_PatientHasThreeCompletedAppointments_StillAllowsBooking()
+    {
+        // Arrange — this is a forward regression guard, NOT RED->GREEN evidence for the
+        // Booked-only fix itself: Completed was never part of the old "Booked || Approved"
+        // condition, so this test passes against both the pre-fix and post-fix code. It
+        // guards against a different, previously-rejected change — a mechanical
+        // Approved->Completed rename that would make Completed count toward Rule 1 forever.
+        // See BookAppointmentAsync_PatientHasThreeApprovedAppointments_StillAllowsBooking
+        // below for the genuine RED->GREEN evidence of this diff.
+        var slot = SetupBookSlotScenario();
+
+        for (var i = 0; i < 3; i++)
+        {
+            var doctor = CreateDoctor($"Dr. Other {i}", Guid.NewGuid());
+            var completedSlot = CreateScheduleSlot(SlotStatus.Booked, doctor, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-10 - i)));
+            _db.ScheduleSlots.Add(completedSlot);
+            _db.Appointments.Add(new Appointment
+            {
+                AppointmentId = Guid.NewGuid(),
+                SlotId = completedSlot.SlotId,
+                PatientProfileId = _patientId,
+                Status = AppointmentStatus.Completed,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            });
+        }
+        _db.SaveChanges();
+
+        // Act
+        var result = await _sut.BookAppointmentAsync(_patientId,
+            new BookAppointmentRequest { ScheduleSlotId = _slotId }, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(AppointmentStatus.Booked, result.Status);
+    }
+
+    [Fact]
+    public async Task BookAppointmentAsync_PatientHasCompletedAppointmentSameDay_StillAllowsBooking()
+    {
+        // Arrange — this is a forward regression guard, NOT RED->GREEN evidence for the
+        // Booked-only fix itself: Completed was never part of the old "Booked || Approved"
+        // condition, so this test passes against both the pre-fix and post-fix code. It
+        // guards against a different, previously-rejected change — a mechanical
+        // Approved->Completed rename that would make Completed count toward Rule 3 forever.
+        // See BookAppointmentAsync_PatientHasApprovedAppointmentSameDay_StillAllowsBooking
+        // below for the genuine RED->GREEN evidence of this diff.
+        var slot = SetupBookSlotScenario();
+        var doctor = CreateDoctor("Dr. Other", Guid.NewGuid());
+
+        var sameDaySlot = CreateScheduleSlot(SlotStatus.Booked, doctor, slot.SlotDate);
+        _db.ScheduleSlots.Add(sameDaySlot);
+        _db.Appointments.Add(new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = sameDaySlot.SlotId,
+            PatientProfileId = _patientId,
+            Status = AppointmentStatus.Completed,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        });
+        _db.SaveChanges();
+
+        // Act
+        var result = await _sut.BookAppointmentAsync(_patientId,
+            new BookAppointmentRequest { ScheduleSlotId = _slotId }, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(AppointmentStatus.Booked, result.Status);
+    }
+
+    [Fact]
+    public async Task BookAppointmentAsync_PatientHasCompletedAppointmentWithin3Days_StillAllowsBooking()
+    {
+        // Arrange — this is a forward regression guard, NOT RED->GREEN evidence for the
+        // Booked-only fix itself: Completed was never part of the old "Booked || Approved"
+        // condition, so this test passes against both the pre-fix and post-fix code. It
+        // guards against a different, previously-rejected change — a mechanical
+        // Approved->Completed rename that would make Completed count toward Rule 2 forever.
+        // See BookAppointmentAsync_PatientHasApprovedAppointmentWithin3Days_StillAllowsBooking
+        // below for the genuine RED->GREEN evidence of this diff.
+        var slot = SetupBookSlotScenario();
+        var doctor = CreateDoctor("Dr. Other", Guid.NewGuid());
+
+        var withinWindowSlot = CreateScheduleSlot(SlotStatus.Booked, doctor, slot.SlotDate.AddDays(2));
+        _db.ScheduleSlots.Add(withinWindowSlot);
+        _db.Appointments.Add(new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = withinWindowSlot.SlotId,
+            PatientProfileId = _patientId,
+            Status = AppointmentStatus.Completed,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        });
+        _db.SaveChanges();
+
+        // Act
+        var result = await _sut.BookAppointmentAsync(_patientId,
+            new BookAppointmentRequest { ScheduleSlotId = _slotId }, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(AppointmentStatus.Booked, result.Status);
+    }
+
+    // =====================================================================================
+    // The 3 tests below seed AppointmentStatus.Approved (not Completed) and are the genuine
+    // RED->GREEN evidence for this diff: Approved WAS part of the old "Booked || Approved"
+    // condition, so each of these fails against the pre-fix code (the appointment counts and
+    // booking is blocked) and passes against the post-fix Booked-only code (Approved no
+    // longer counts). AppointmentStatus.Approved still exists in the C# enum as of this
+    // writing (its removal from the enum is a later, still-blocked step) — this is
+    // deliberately the last opportunity to capture this evidence before that member is
+    // deleted and seeding it becomes impossible.
+    // =====================================================================================
+
+    [Fact]
+    public async Task BookAppointmentAsync_PatientHasThreeApprovedAppointments_StillAllowsBooking()
+    {
+        // Arrange
+        var slot = SetupBookSlotScenario();
+
+        for (var i = 0; i < 3; i++)
+        {
+            var doctor = CreateDoctor($"Dr. Other {i}", Guid.NewGuid());
+            var approvedSlot = CreateScheduleSlot(SlotStatus.Booked, doctor, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-10 - i)));
+            _db.ScheduleSlots.Add(approvedSlot);
+            _db.Appointments.Add(new Appointment
+            {
+                AppointmentId = Guid.NewGuid(),
+                SlotId = approvedSlot.SlotId,
+                PatientProfileId = _patientId,
+                Status = AppointmentStatus.Approved,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            });
+        }
+        _db.SaveChanges();
+
+        // Act
+        var result = await _sut.BookAppointmentAsync(_patientId,
+            new BookAppointmentRequest { ScheduleSlotId = _slotId }, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(AppointmentStatus.Booked, result.Status);
+    }
+
+    [Fact]
+    public async Task BookAppointmentAsync_PatientHasApprovedAppointmentSameDay_StillAllowsBooking()
+    {
+        // Arrange
+        var slot = SetupBookSlotScenario();
+        var doctor = CreateDoctor("Dr. Other", Guid.NewGuid());
+
+        var sameDaySlot = CreateScheduleSlot(SlotStatus.Booked, doctor, slot.SlotDate);
+        _db.ScheduleSlots.Add(sameDaySlot);
+        _db.Appointments.Add(new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = sameDaySlot.SlotId,
+            PatientProfileId = _patientId,
+            Status = AppointmentStatus.Approved,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        });
+        _db.SaveChanges();
+
+        // Act
+        var result = await _sut.BookAppointmentAsync(_patientId,
+            new BookAppointmentRequest { ScheduleSlotId = _slotId }, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(AppointmentStatus.Booked, result.Status);
+    }
+
+    [Fact]
+    public async Task BookAppointmentAsync_PatientHasApprovedAppointmentWithin3Days_StillAllowsBooking()
+    {
+        // Arrange
+        var slot = SetupBookSlotScenario();
+        var doctor = CreateDoctor("Dr. Other", Guid.NewGuid());
+
+        var withinWindowSlot = CreateScheduleSlot(SlotStatus.Booked, doctor, slot.SlotDate.AddDays(2));
+        _db.ScheduleSlots.Add(withinWindowSlot);
+        _db.Appointments.Add(new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = withinWindowSlot.SlotId,
+            PatientProfileId = _patientId,
+            Status = AppointmentStatus.Approved,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        });
+        _db.SaveChanges();
+
+        // Act
+        var result = await _sut.BookAppointmentAsync(_patientId,
+            new BookAppointmentRequest { ScheduleSlotId = _slotId }, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(AppointmentStatus.Booked, result.Status);
+    }
+
     #endregion
 
     #region CreateFollowUpAppointmentAsync Tests
