@@ -137,6 +137,7 @@ class AuthViewModel extends StateNotifier<AuthState> {
       state = state.copyWith(
         isLoading: false,
         session: AuthSession(
+          userId: AuthSession.extractUserId(token),
           accessToken: token,
           fullName: profile.fullName,
           email: profile.email,
@@ -168,6 +169,7 @@ class AuthViewModel extends StateNotifier<AuthState> {
     if (current == null) return;
     state = state.copyWith(
       session: AuthSession(
+        userId: current.userId,
         accessToken: current.accessToken,
         fullName: current.fullName,
         email: current.email,

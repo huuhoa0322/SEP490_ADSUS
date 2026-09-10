@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../domain/entities/chat_message.dart' as entity;
 import '../viewmodels/ai_chat_view_model.dart';
 
@@ -22,10 +23,10 @@ class _AiChatbotScreenState extends ConsumerState<AiChatbotScreen> {
   @override
   void initState() {
     super.initState();
-    // Tải lịch sử khi mở màn hình
-    Future.microtask(() {
-      ref.read(aiChatViewModelProvider.notifier).loadHistory();
-    });
+    // initState là lifecycle đầu tiên — chạy khi widget được tạo trong
+    // IndexedStack (MainShell). Tuy nhiên IndexedStack không dispose/recreate
+    // screen khi tab chưa active, nên microtask đảm bảo auth session đã sẵn sàng.
+    Future.microtask(_initializeIfSignedIn);
   }
 
   @override
@@ -33,6 +34,13 @@ class _AiChatbotScreenState extends ConsumerState<AiChatbotScreen> {
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _initializeIfSignedIn() {
+    final auth = ref.read(authViewModelProvider);
+    final session = auth.session;
+    if (session == null) return;
+    ref.read(aiChatViewModelProvider.notifier).initialize(session.userId);
   }
 
   void _send() {

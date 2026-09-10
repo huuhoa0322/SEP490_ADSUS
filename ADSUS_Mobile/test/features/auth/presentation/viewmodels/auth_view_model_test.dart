@@ -52,6 +52,7 @@ void main() {
             phoneNumber: any(named: 'phoneNumber'),
             password: any(named: 'password'),
           )).thenAnswer((_) async => const AuthSession(
+            userId: 'test-user-id',
             accessToken: 'token-b',
             fullName: 'Benh nhan B',
             role: UserRole.patient,
