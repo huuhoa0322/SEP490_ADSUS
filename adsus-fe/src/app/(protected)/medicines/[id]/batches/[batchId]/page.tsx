@@ -22,8 +22,8 @@ type TxnTypeFilter = '' | 'Import' | 'Dispense' | 'Adjustment';
 function SortIcon({ field, current, dir }: { field: SortKey; current: SortKey; dir: 'asc' | 'desc' }) {
   if (field !== current) return <ChevronsUpDown className="ml-1 inline size-3.5 text-muted-foreground/40" />;
   return dir === 'asc'
-    ? <ChevronUp className="ml-1 inline size-3.5 text-accent" />
-    : <ChevronDown className="ml-1 inline size-3.5 text-accent" />;
+    ? <ChevronUp className="ml-1 inline size-3.5 text-[var(--success)]" />
+    : <ChevronDown className="ml-1 inline size-3.5 text-[var(--success)]" />;
 }
 
 
@@ -90,7 +90,7 @@ export default function BatchHistoryPage() {
         <div className="flex-1 flex justify-between items-start">
           <div>
             <p className="text-sm text-muted-foreground">
-              <button onClick={() => router.push(`/medicines/${medicineId}/batches`)} className="hover:text-accent transition-colors">
+              <button onClick={() => router.push(`/medicines/${medicineId}/batches`)} className="hover:text-[var(--success)] transition-colors">
                 {medicine?.name ?? 'Thuốc'} / Danh sách lô
               </button>
             </p>
@@ -120,7 +120,7 @@ export default function BatchHistoryPage() {
             placeholder="Tìm theo nhà cung cấp..."
             value={searchInput}
             onChange={e => handleSearch(e.target.value)}
-            className="w-full h-10 rounded-full border border-border bg-background py-2 pl-10 pr-4 text-sm outline-none transition-colors focus:border-accent"
+            className="w-full h-10 rounded-full border border-border bg-background py-2 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[var(--success)]"
           />
         </div>
 
@@ -132,7 +132,7 @@ export default function BatchHistoryPage() {
               onClick={() => handleTypeChange(type)}
               className={`h-9 rounded-full px-4 text-sm font-medium transition-colors border ${
                 txnType === type
-                  ? 'border-accent bg-accent text-white shadow-sm'
+                  ? 'border-[var(--success)] bg-[var(--success)] text-white shadow-sm'
                   : 'border-border hover:bg-secondary text-foreground'
               }`}
             >
@@ -175,7 +175,7 @@ export default function BatchHistoryPage() {
             {isLoading ? (
               <tr>
                 <td colSpan={6} className="px-5 py-14 text-center text-muted-foreground">
-                  <div className="mx-auto size-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+                  <div className="mx-auto size-5 animate-spin rounded-full border-2 border-[var(--success)] border-t-transparent" />
                 </td>
               </tr>
             ) : isError ? (

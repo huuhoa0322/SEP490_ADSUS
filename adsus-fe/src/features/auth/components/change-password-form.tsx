@@ -14,7 +14,7 @@ import { PASSWORD_POLICY } from "../types/auth.types";
 
 const inputClass =
   "h-14 rounded-full border-border bg-white pl-12 pr-12 text-[15px] shadow-none " +
-  "focus-visible:border-accent focus-visible:ring-accent/25";
+  "focus-visible:border-[var(--success)] focus-visible:ring-[var(--success)]/25";
 
 export function ChangePasswordForm() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -109,7 +109,7 @@ export function ChangePasswordForm() {
             onClick={() => setVisible((v) => ({ ...v, [id]: !v[id] }))}
             disabled={isSubmitting}
             aria-label={visible[id] ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-            className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-accent disabled:opacity-50"
+            className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-[var(--success)] disabled:opacity-50"
           >
             {visible[id] ? <EyeOff className="size-4.5" /> : <Eye className="size-4.5" />}
           </button>
@@ -122,10 +122,10 @@ export function ChangePasswordForm() {
     <div className="w-full max-w-lg motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
       {/* Shown to users who arrived here because an admin issued them a temporary password */}
       {mustChangePassword && (
-        <div className="mb-7 flex items-start gap-3 rounded-2xl border border-accent/30 bg-accent/8 px-5 py-4">
+        <div className="mb-7 flex items-start gap-3 rounded-2xl border border-[var(--success)]/30 bg-[var(--success)]/8 px-5 py-4">
           <span aria-hidden className="relative mt-0.5 flex size-2 shrink-0">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-75" />
-            <span className="relative inline-flex size-2 rounded-full bg-accent" />
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--success)] opacity-75" />
+            <span className="relative inline-flex size-2 rounded-full bg-[var(--success)]" />
           </span>
           <div className="text-sm leading-relaxed">
             <p className="font-heading font-600 text-foreground">
@@ -139,14 +139,14 @@ export function ChangePasswordForm() {
         </div>
       )}
 
-      <span className="flex size-12 items-center justify-center rounded-full bg-accent/12">
-        <Lock className="size-5 text-accent" />
+      <span className="flex size-12 items-center justify-center rounded-full bg-[var(--success)]/12">
+        <Lock className="size-5 text-[var(--success)]" />
       </span>
 
       <h1 className="mt-4 font-heading text-[32px] font-bold leading-tight tracking-[-0.02em] text-foreground">
         Đổi mật khẩu
       </h1>
-      <span aria-hidden className="mt-3 block h-1 w-12 rounded-full bg-accent" />
+      <span aria-hidden className="mt-3 block h-1 w-12 rounded-full bg-[var(--success)]" />
       <p className="mt-4 text-[15px] text-muted-foreground">
         {mustChangePassword
           ? "Nhập mật khẩu mới bạn muốn dùng."
@@ -167,7 +167,7 @@ export function ChangePasswordForm() {
               key={label}
               className={cn(
                 "flex items-center gap-2.5 text-sm transition-colors",
-                passed ? "text-accent" : "text-muted-foreground",
+                passed ? "text-[var(--success)]" : "text-muted-foreground",
               )}
             >
               {passed ? (
@@ -181,7 +181,7 @@ export function ChangePasswordForm() {
           <li
             className={cn(
               "flex items-center gap-2.5 text-sm transition-colors",
-              confirmMatches ? "text-accent" : "text-muted-foreground",
+              confirmMatches ? "text-[var(--success)]" : "text-muted-foreground",
             )}
           >
             {confirmMatches ? (
@@ -206,7 +206,7 @@ export function ChangePasswordForm() {
 
         {succeeded && (
           <div
-            className="flex items-start gap-2.5 rounded-2xl border border-accent/30 bg-accent/8 px-4 py-3 text-sm text-accent"
+            className="flex items-start gap-2.5 rounded-2xl border border-[var(--success)]/30 bg-[var(--success)]/8 px-4 py-3 text-sm text-[var(--success)]"
             role="status"
             aria-live="polite"
           >
@@ -218,7 +218,7 @@ export function ChangePasswordForm() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="mt-1 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90 hover:shadow-accent/35 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-1 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[var(--success)] font-heading text-sm font-600 uppercase tracking-wider text-white shadow-lg shadow-[var(--success)]/25 transition-all hover:bg-[var(--success)]/90 hover:shadow-[var(--success)]/35 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? (
             <>

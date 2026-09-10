@@ -320,7 +320,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                     <button
                       type="button"
                       onClick={() => setIsEndCaseModalOpen(false)}
-                      className="rounded-lg border border-gray-300 dark:border-gray-700 px-6 py-2 text-base font-bold text-foreground hover:bg-accent transition-colors"
+                      className="rounded-lg border border-gray-300 dark:border-gray-700 px-6 py-2 text-base font-bold text-foreground hover:bg-[var(--success)] transition-colors"
                     >
                       Hủy
                     </button>
@@ -362,7 +362,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
 
             <Link
               href={`/patients/${medicalCase.patientProfileId}`}
-              className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-accent transition-colors"
+              className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-[var(--success)] transition-colors"
             >
               Mở hồ sơ bệnh nhân
             </Link>
@@ -473,7 +473,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                     onClick={() => setShowUpload((open) => !open)}
                     // GB-01 — ca đã chốt không nhận thêm ảnh. isLocked — khoá tạm sau "Lưu kết luận".
                     disabled={isConfirmedOrEnd || isLocked}
-                    className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-accent disabled:opacity-50 transition-colors"
+                    className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-[var(--success)] disabled:opacity-50 transition-colors"
                   >
                     Bổ sung ảnh siêu âm
                   </button>
@@ -642,7 +642,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                     <button
                       type="button"
                       onClick={handleEditConclusion}
-                      className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-accent transition-colors"
+                      className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-[var(--success)] transition-colors"
                     >
                       Sửa
                     </button>
@@ -651,7 +651,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                       type="button"
                       onClick={handleSaveConclusion}
                       disabled={saveConclusionMutation.isPending || confirmMutation.isPending}
-                      className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-accent disabled:opacity-50 transition-colors"
+                      className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-[var(--success)] disabled:opacity-50 transition-colors"
                     >
                       {saveConclusionMutation.isPending ? "Đang lưu..." : "Lưu kết luận"}
                     </button>

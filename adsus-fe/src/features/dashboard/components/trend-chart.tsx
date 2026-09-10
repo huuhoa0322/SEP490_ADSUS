@@ -4,6 +4,13 @@ import { useState } from "react";
 
 import type { DailyPoint } from "../types/dashboard.types";
 
+/** Format ngày yyyy-MM-dd thành dd/MM để hiển thị trên trục X biểu đồ. */
+function formatChartDate(dateStr: string): string {
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+  return `${parts[2]}/${parts[1]}`;
+}
+
 /** Đại lượng nào của một ngày sẽ được vẽ. */
 type Measure = "newAccounts" | "cases" | "appointments";
 
@@ -292,7 +299,7 @@ export function GroupedBarChart({ points, series, title }: GroupedBarProps) {
             style={{ width: `${BAR_GROUP_W}px` }}
           >
             <span className="text-xs tabular-nums text-muted-foreground">
-              {p.date.slice(5)}
+              {formatChartDate(p.date)}
             </span>
           </div>
         ))}

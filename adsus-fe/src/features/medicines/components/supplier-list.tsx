@@ -68,7 +68,7 @@ export function SupplierList() {
         </div>
         <button
           onClick={handleOpenCreate}
-          className="flex h-12 items-center gap-2 rounded-full bg-accent px-6 font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90"
+          className="flex h-12 items-center gap-2 rounded-full bg-[var(--success)] px-6 font-heading text-sm font-600 uppercase tracking-wider text-white shadow-lg shadow-[var(--success)]/25 transition-all hover:bg-[var(--success)]/90"
         >
           <PlusCircle className="size-4" />
           Thêm nhà cung cấp
@@ -87,7 +87,7 @@ export function SupplierList() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-accent"
+            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-[var(--success)]"
           />
         </div>
       </div>
@@ -131,7 +131,7 @@ export function SupplierList() {
                     </div>
                   </td>
                   <td className="px-5 py-4">
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-600 ${supplier.isActive ? "bg-accent/12 text-accent" : "bg-destructive/12 text-destructive"}`}>
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-600 ${supplier.isActive ? "bg-[var(--success)]/12 text-[var(--success)]" : "bg-destructive/12 text-destructive"}`}>
                       {supplier.isActive ? "Đang giao dịch" : "Ngừng giao dịch"}
                     </span>
                   </td>

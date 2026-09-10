@@ -76,7 +76,7 @@ export function AdminShiftRequestsPage() {
       case "PENDING":
         return <Badge variant="outline" className="text-[var(--status-warning)] bg-[var(--status-warning)]/10 border-[var(--status-warning)]/25">Chờ duyệt</Badge>;
       case "APPROVED":
-        return <Badge variant="outline" className="text-accent bg-accent/10 border-accent/25">Đã duyệt</Badge>;
+        return <Badge variant="outline" className="text-[var(--success)] bg-[var(--success)]/10 border-[var(--success)]/25">Đã duyệt</Badge>;
       case "REJECTED":
         return <Badge variant="outline" className="text-destructive bg-destructive/10 border-destructive/25">Từ chối</Badge>;
     }
@@ -142,7 +142,7 @@ export function AdminShiftRequestsPage() {
                     {req.requestType?.toUpperCase() === 'LEAVE' ? (
                       <span className="text-destructive font-medium">Xin nghỉ</span>
                     ) : (
-                      <span className="text-accent font-medium">Tăng ca</span>
+                      <span className="text-[var(--success)] font-medium">Tăng ca</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -161,7 +161,7 @@ export function AdminShiftRequestsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-accent border-accent/30 hover:bg-accent/10"
+                          className="text-[var(--success)] border-[var(--success)]/30 hover:bg-[var(--success)]/10"
                           onClick={() => { setSelectedRequest(req); setAction("APPROVE"); }}
                           disabled={isReviewing}
                         >
@@ -216,7 +216,7 @@ export function AdminShiftRequestsPage() {
                 Hủy
               </Button>
               {action === "APPROVE" ? (
-                <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={confirmApprove} disabled={isReviewing}>
+                <Button className="bg-[var(--success)] text-white hover:bg-[var(--success)]/90" onClick={confirmApprove} disabled={isReviewing}>
                   {isReviewing ? "Đang xử lý..." : "Xác nhận duyệt"}
                 </Button>
               ) : (

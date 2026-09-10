@@ -75,7 +75,7 @@ export function CheckinQueueTable({
                   <span
                     className={cn(
                       "flex size-7 items-center justify-center rounded-full text-xs font-700 tabular-nums",
-                      isApproved ? "bg-accent/12 text-accent" : "bg-muted text-muted-foreground",
+                      isApproved ? "bg-[var(--success)]/12 text-[var(--success)]" : "bg-muted text-muted-foreground",
                     )}
                   >
                     {sttNumber}
@@ -111,7 +111,7 @@ export function CheckinQueueTable({
                       Chi tiết
                     </Button>
                     {isApproved && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-accent/12 px-3 py-1 text-sm font-medium text-accent">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[var(--success)]/12 px-3 py-1 text-sm font-medium text-[var(--success)]">
                         <Check className="h-4 w-4" />
                         Đã check-in
                       </span>

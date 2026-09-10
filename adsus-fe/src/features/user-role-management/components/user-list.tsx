@@ -110,7 +110,7 @@ export function UserList() {
 
         <Link
           href="/admin/users/new"
-          className="flex h-12 items-center gap-2 rounded-full bg-accent px-6 font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90"
+          className="flex h-12 items-center gap-2 rounded-full bg-[var(--success)] px-6 font-heading text-sm font-600 uppercase tracking-wider text-white shadow-lg shadow-[var(--success)]/25 transition-all hover:bg-[var(--success)]/90"
         >
           <UserPlus className="size-4" />
           Tạo tài khoản
@@ -129,7 +129,7 @@ export function UserList() {
             onChange={(e) => changeFilter(() => setKeyword(e.target.value))}
             placeholder="Tìm theo họ tên hoặc số điện thoại"
             aria-label="Tìm kiếm tài khoản"
-            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-accent"
+            className="h-12 w-full rounded-full border border-border bg-background pl-11 pr-4 text-[15px] outline-none transition-colors focus:border-[var(--success)]"
           />
         </div>
 
@@ -137,7 +137,7 @@ export function UserList() {
           value={role}
           onChange={(e) => changeFilter(() => setRole(e.target.value as Role | ""))}
           aria-label="Lọc theo vai trò"
-          className="h-12 rounded-full border border-border bg-background px-5 text-[15px] outline-none focus:border-accent"
+          className="h-12 rounded-full border border-border bg-background px-5 text-[15px] outline-none focus:border-[var(--success)]"
         >
           <option value="">Tất cả vai trò</option>
           <option value="DOCTOR">Bác sĩ</option>
@@ -150,7 +150,7 @@ export function UserList() {
           value={status}
           onChange={(e) => changeFilter(() => setStatus(e.target.value as AccountStatus | ""))}
           aria-label="Lọc theo trạng thái"
-          className="h-12 rounded-full border border-border bg-background px-5 text-[15px] outline-none focus:border-accent"
+          className="h-12 rounded-full border border-border bg-background px-5 text-[15px] outline-none focus:border-[var(--success)]"
         >
           <option value="">Tất cả trạng thái</option>
           <option value="ACTIVE">Đang hoạt động</option>
@@ -232,7 +232,7 @@ export function UserList() {
                     <Link
                       href={`/admin/users/${user.userId}`}
                       title="Sửa thông tin và phân quyền"
-                      className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+                      className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-[var(--success)]"
                     >
                       <Pencil className="size-4" />
                     </Link>
@@ -251,7 +251,7 @@ export function UserList() {
                           type="button"
                           title="Cấp lại mật khẩu"
                           onClick={() => setPending({ kind: "reset", user })}
-                          className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+                          className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-[var(--success)]"
                         >
                           <KeyRound className="size-4" />
                         </button>
@@ -331,7 +331,7 @@ export function UserList() {
               đăng nhập lần đầu.
             </p>
 
-            <div className="mt-5 rounded-2xl border border-dashed border-accent bg-accent/5 px-4 py-3">
+            <div className="mt-5 rounded-2xl border border-dashed border-[var(--success)] bg-[var(--success)]/5 px-4 py-3">
               <div className="font-heading text-xs font-600 uppercase tracking-wider text-muted-foreground">
                 Mật khẩu tạm
               </div>
@@ -344,7 +344,7 @@ export function UserList() {
               <button
                 type="button"
                 onClick={() => setResetResult(null)}
-                className="flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground transition-colors hover:bg-accent/90"
+                className="flex items-center gap-2 rounded-full bg-[var(--success)] px-5 py-2.5 font-heading text-sm font-600 uppercase tracking-wider text-white transition-colors hover:bg-[var(--success)]/90"
               >
                 <CheckCircle2 className="size-4" />
                 Đã đọc cho họ — Xong

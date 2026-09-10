@@ -230,13 +230,13 @@ export function NurseCheckinView() {
 
       {/* Stats */}
       <div className="mb-6 flex gap-4">
-        <div className="flex items-center gap-3 rounded-lg border border-accent/20 bg-accent/8 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+        <div className="flex items-center gap-3 rounded-lg border border-[var(--success)]/20 bg-[var(--success)]/8 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--success)]/15 text-[var(--success)]">
             <Check className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-medium text-accent">Đã check-in</p>
-            <p className="text-2xl font-bold text-accent tabular-nums">{checkedIn.length}</p>
+            <p className="text-sm font-medium text-[var(--success)]">Đã check-in</p>
+            <p className="text-2xl font-bold text-[var(--success)] tabular-nums">{checkedIn.length}</p>
           </div>
         </div>
         <div className="flex items-center gap-3 rounded-lg border border-[var(--status-warning)]/20 bg-[var(--status-warning)]/8 p-4">
@@ -260,7 +260,7 @@ export function NurseCheckinView() {
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-accent transition-all duration-300"
+            className="h-full rounded-full bg-[var(--success)] transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>

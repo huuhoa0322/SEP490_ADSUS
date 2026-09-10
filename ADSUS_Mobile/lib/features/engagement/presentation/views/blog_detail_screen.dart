@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+// 2026-09-11: chuyển từ `flutter_markdown` (discontinued) sang `flutter_markdown_plus`
+// (continuation chính thức). API giữ nguyên — MarkdownBody, MarkdownStyleSheet.
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';

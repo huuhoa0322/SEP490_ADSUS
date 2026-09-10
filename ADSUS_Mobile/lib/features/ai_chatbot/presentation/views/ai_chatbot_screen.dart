@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../domain/entities/chat_message.dart' as entity;
 import '../viewmodels/ai_chat_view_model.dart';
 
@@ -22,10 +23,10 @@ class _AiChatbotScreenState extends ConsumerState<AiChatbotScreen> {
   @override
   void initState() {
     super.initState();
-    // Tải lịch sử khi mở màn hình
-    Future.microtask(() {
-      ref.read(aiChatViewModelProvider.notifier).loadHistory();
-    });
+    // initState là lifecycle đầu tiên — chạy khi widget được tạo trong
+    // IndexedStack (MainShell). Tuy nhiên IndexedStack không dispose/recreate
+    // screen khi tab chưa active, nên microtask đảm bảo auth session đã sẵn sàng.
+    Future.microtask(_initializeIfSignedIn);
   }
 
   @override
@@ -33,6 +34,13 @@ class _AiChatbotScreenState extends ConsumerState<AiChatbotScreen> {
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _initializeIfSignedIn() {
+    final auth = ref.read(authViewModelProvider);
+    final session = auth.session;
+    if (session == null) return;
+    ref.read(aiChatViewModelProvider.notifier).initialize(session.userId);
   }
 
   void _send() {
@@ -716,21 +724,15 @@ class _InputBar extends StatelessWidget {
             child: TextField(
               controller: controller,
               enabled: enabled,
-              // Tắt mọi OS-level text transformation để bộ gõ tiếng Việt
-              // (Telex/VNI) không bị strip khi gõ "ê" → "ee", "ô" → "oo", "â" → "aa".
+              // KHÔNG tắt autocorrect/enableSuggestions/spellCheckConfiguration ở đây.
               //
-              // Cần 3 thuộc tính cùng lúc:
-              //   1. autocorrect=false  — tắt word-level autocorrect
-              //   2. enableSuggestions=false — tắt suggestion bar
-              //   3. spellCheckConfiguration=SpellCheckConfiguration.disabled()
-              //      — TẮT OS spell-checker (Android). ĐÂY LÀ FIX CHÍNH.
-              //        Trên Android, dù autocorrect=false nhưng OS spell-checker
-              //        vẫn chạy và strip intermediate keystrokes (vd "ee") trước
-              //        khi Flutter nhận được. spellCheckConfiguration disabled
-              //        giải quyết triệt để vấn đề này mà không cần visiblePassword.
-              autocorrect: false,
-              enableSuggestions: false,
-              spellCheckConfiguration: SpellCheckConfiguration.disabled(),
+              // Từng bị tắt cả 3 với suy đoán rằng OS spell-checker "strip" phím gõ dở
+              // (vd "ee" trước khi ghép thành "ê") của bộ gõ Telex — sai. Bộ gõ Telex tiếng
+              // Việt (Gboard...) DÙNG CHÍNH cơ chế suggestion/composing của Android để ghép
+              // dấu; enableSuggestions=false gửi cờ TYPE_TEXT_FLAG_NO_SUGGESTIONS cho IME và
+              // phá luôn khả năng ghép, không phải bảo vệ nó. Đây là màn hình DUY NHẤT trong
+              // app từng set 3 thuộc tính này — mọi TextField khác dùng mặc định và gõ tiếng
+              // Việt bình thường, xác nhận đúng đây là nguyên nhân.
               keyboardType: TextInputType.text,
               decoration: InputDecoration(
                 hintText: 'Nhập câu hỏi…',

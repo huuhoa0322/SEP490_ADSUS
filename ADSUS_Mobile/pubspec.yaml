@@ -39,6 +39,7 @@ dependencies:
   go_router: ^17.3.0
   flutter_secure_storage: ^10.3.1
   connectivity_plus: ^7.3.1
+  hive_flutter: ^1.1.0
   # UC-02 đăng nhập sinh trắc học. Mẫu vân tay/khuôn mặt nằm trong secure enclave của
   # hệ điều hành, thư viện này chỉ hỏi OS "xác thực có đúng không" chứ không đọc được mẫu.
   local_auth: ^2.3.0
@@ -58,11 +59,15 @@ dependencies:
   # Markdown (chưa sanitize HTML), package này an toàn hơn flutter_html — chỉ render cú pháp
   # MD, không thực thi script/iframe. Đây là lý do CLAUDE rule GB-03 + medical-safety.md yêu cầu
   # dùng markdown thay vì render HTML thô.
-  flutter_markdown: ^0.7.6+1
+  #
+  # 2026-09-11: chuyển sang `flutter_markdown_plus` vì `flutter_markdown` đã discontinued
+  # trên pub.dev (CI fail --enforce-lockfile). flutter_markdown_plus là continuation chính thức
+  # của package gốc, API giữ nguyên (MarkdownBody, MarkdownStyleSheet), import path đổi.
+  flutter_markdown_plus: ^1.0.12
 
   # ADSUS Widget — Android Home Screen Widget (T-1.1).
   # home_widget: giao tiếp Flutter ↔ Android widget qua SharedPreferences.
-  home_widget: ^0.7.0
+  home_widget: ^0.9.4
   # workmanager: background periodic sync mỗi 15 phút (Android O+ battery-compliant).
   workmanager: ^0.10.9
   google_fonts: ^8.2.1

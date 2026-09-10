@@ -114,6 +114,9 @@
   --cat-violet:  #7C5CD9;
   --cat-magenta: #DD2590;
   --cat-teal:    #0E9384;
+  --success: #1E9E6B;
+  --success-foreground: #ffffff;
+  --success-light: #E4F5F3;
   --cat-blue:    #2F80ED;
   --cat-green:   #27AE60;
   --cat-amber:   #E2B93B;
@@ -162,6 +165,7 @@
      nền tối. Dải độ sáng cho nền tối hẹp và THẤP hơn nền sáng, nên ba màu này tối hơn bản
      ở trên chứ không sáng hơn. */
   --status-good: #0f9c83;
+  --success: #0f9c83;
   --status-warning: #b8801a;
   --status-critical: #e03a66;
   --sidebar: oklch(0.205 0 0);

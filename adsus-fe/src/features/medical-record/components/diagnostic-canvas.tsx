@@ -684,10 +684,10 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
             </span>
           
           <div className="ml-auto flex items-center gap-1 shrink-0">
-            <button className="flex h-7 w-7 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => aiPzRef.current?.zoomOut()}>−</button>
+            <button className="flex h-7 w-7 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-[var(--success)]" onClick={() => aiPzRef.current?.zoomOut()}>−</button>
             <span className="min-w-[42px] text-center font-mono text-sm font-bold text-foreground">{aiZoom}</span>
-            <button className="flex h-7 w-7 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => aiPzRef.current?.zoomIn()}>+</button>
-            <button className="px-2 h-7 text-xs font-sans rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => aiPzRef.current?.reset()}>↺ Fit</button>
+            <button className="flex h-7 w-7 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-[var(--success)]" onClick={() => aiPzRef.current?.zoomIn()}>+</button>
+            <button className="px-2 h-7 text-xs font-sans rounded bg-background text-foreground border border-border hover:bg-[var(--success)]" onClick={() => aiPzRef.current?.reset()}>↺ Fit</button>
           </div>
         </div>
         
@@ -714,7 +714,7 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
           <button 
             onClick={toggleAdding}
             className={`rounded-md border px-3 py-1.5 text-sm font-semibold font-sans transition-colors shrink-0 ${
-              addingMode ? 'bg-[#00ff00] text-black border-[#00ff00]' : 'border-border text-foreground hover:bg-accent'
+              addingMode ? 'bg-[#00ff00] text-black border-[#00ff00]' : 'border-border text-foreground hover:bg-[var(--success)]'
             }`}
           >
             + Thêm caliper
@@ -724,10 +724,10 @@ export function DiagnosticCanvas({ caseId, file, onConfirm }: DiagnosticCanvasPr
           </span>
 
           <div className="ml-auto flex items-center gap-1 shrink-0">
-            <button className="flex h-7 w-7 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => editPzRef.current?.zoomOut()}>−</button>
+            <button className="flex h-7 w-7 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-[var(--success)]" onClick={() => editPzRef.current?.zoomOut()}>−</button>
             <span className="min-w-[42px] text-center font-mono text-sm font-bold text-foreground">{editZoom}</span>
-            <button className="flex h-7 w-7 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => editPzRef.current?.zoomIn()}>+</button>
-            <button className="px-2 h-7 text-xs font-sans rounded bg-background text-foreground border border-border hover:bg-accent" onClick={() => editPzRef.current?.reset()}>↺ Fit</button>
+            <button className="flex h-7 w-7 items-center justify-center rounded bg-background text-foreground border border-border hover:bg-[var(--success)]" onClick={() => editPzRef.current?.zoomIn()}>+</button>
+            <button className="px-2 h-7 text-xs font-sans rounded bg-background text-foreground border border-border hover:bg-[var(--success)]" onClick={() => editPzRef.current?.reset()}>↺ Fit</button>
           </div>
         </div>
 

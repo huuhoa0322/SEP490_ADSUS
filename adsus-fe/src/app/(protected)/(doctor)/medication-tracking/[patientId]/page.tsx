@@ -42,7 +42,7 @@ function doseStatusConfig(status: TodayDoseDto["status"]) {
     case "TAKEN":
       return {
         label: "Đã uống",
-        pillClass: "bg-accent/10 text-accent border-accent/20",
+        pillClass: "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/40",
         icon: Check,
       };
     case "OVERTIME":
@@ -84,7 +84,7 @@ function AdherenceBadge({
 }) {
   const textClass =
     percent >= 80
-      ? "text-accent"
+      ? "text-[var(--success)]"
       : percent >= 50
         ? "text-[#e0912f]"
         : "text-destructive";
@@ -125,13 +125,13 @@ const lifecycleConfig: Record<
 > = {
   today_active: {
     label: "Có liều hôm nay",
-    pillClass: "bg-accent/10 text-accent border-accent/20",
+    pillClass: "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/40",
     icon: CalendarClock,
     rowClass: "",
   },
   completed: {
     label: "Hoàn thành",
-    pillClass: "bg-accent/10 text-accent border-accent/20",
+    pillClass: "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/40",
     icon: CircleCheck,
     rowClass: "opacity-60",
   },
@@ -435,12 +435,12 @@ function PatientHeader({
             <span className="text-muted-foreground">liều hôm nay</span>
           </div>
           {stats.completedCount > 0 && (
-            <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-1">
-              <CircleCheck className="size-4 text-accent" />
-              <span className="font-mono font-semibold text-accent">
+            <div className="flex items-center gap-1.5 rounded-full bg-[var(--success)]/10 px-2.5 py-1">
+              <CircleCheck className="size-4 text-[var(--success)]" />
+              <span className="font-mono font-semibold text-[var(--success)]">
                 {stats.completedCount}
               </span>
-              <span className="text-accent">hoàn thành</span>
+              <span className="text-[var(--success)]">hoàn thành</span>
             </div>
           )}
           {stats.overdueToday > 0 && (

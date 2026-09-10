@@ -326,7 +326,7 @@ export function PatientAccountForm() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="rounded-md border border-[#E7E8EB] bg-white px-4 py-2 text-sm font-semibold text-foreground shadow-2xs transition-colors hover:bg-accent hover:text-accent-foreground"
+            className="rounded-md border border-[#E7E8EB] bg-white px-4 py-2 text-sm font-semibold text-foreground shadow-2xs transition-colors hover:bg-[var(--success)] hover:text-[var(--success)]-foreground"
           >
             Huỷ bỏ
           </button>

@@ -87,7 +87,7 @@ export function DashboardView() {
             value={fromDate}
             maxDate={toDate ? new Date(toDate) : undefined}
             onChange={(val) => setFromDate(val)}
-            className="w-[180px] rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-accent"
+            className="w-[180px] rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-[var(--success)]"
           />
           <span className="text-muted-foreground">→</span>
           <DatePicker
@@ -95,7 +95,7 @@ export function DashboardView() {
             minDate={fromDate ? new Date(fromDate) : undefined}
             maxDate={new Date(TODAY)}
             onChange={(val) => setToDate(val)}
-            className="w-[180px] rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-accent"
+            className="w-[180px] rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-[var(--success)]"
           />
         </div>
       </div>

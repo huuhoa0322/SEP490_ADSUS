@@ -70,6 +70,7 @@ void main() {
           phoneNumber: any(named: 'phoneNumber'),
           password: any(named: 'password'),
         )).thenAnswer((_) async => const AuthSession(
+          userId: 'test-user-id',
           accessToken: 'tok',
           fullName: 'Nguyen Van A',
           role: UserRole.patient,

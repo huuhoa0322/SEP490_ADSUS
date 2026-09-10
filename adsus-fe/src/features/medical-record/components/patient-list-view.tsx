@@ -68,7 +68,7 @@ function renderStatusBadge(status: CaseStatus | null) {
       );
     case "END":
       return (
-        <Badge variant="soft-teal" className="font-medium text-xs px-2.5 py-0.5">
+        <Badge variant="soft-success" className="font-medium text-xs px-2.5 py-0.5">
           {caseStatusLabel(status)}
         </Badge>
       );

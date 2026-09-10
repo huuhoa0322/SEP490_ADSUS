@@ -188,7 +188,7 @@ function UserFormFields({
           nhập lần đầu.
         </p>
 
-        <div className="mt-6 rounded-2xl border border-dashed border-accent bg-accent/5 px-5 py-4">
+        <div className="mt-6 rounded-2xl border border-dashed border-[var(--success)] bg-[var(--success)]/5 px-5 py-4">
           <div className="font-heading text-xs font-600 uppercase tracking-wider text-muted-foreground">
             Mật khẩu tạm
           </div>
@@ -200,7 +200,7 @@ function UserFormFields({
         <button
           type="button"
           onClick={() => router.push("/admin/users")}
-          className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90"
+          className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[var(--success)] font-heading text-sm font-600 uppercase tracking-wider text-white shadow-lg shadow-[var(--success)]/25 transition-all hover:bg-[var(--success)]/90"
         >
           <CheckCircle2 className="size-4" />
           Đã đọc cho họ — Xong
@@ -332,7 +332,7 @@ function UserFormFields({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="mt-2 flex h-14 items-center justify-center gap-2 rounded-full bg-accent font-heading text-sm font-600 uppercase tracking-wider text-accent-foreground shadow-lg shadow-accent/25 transition-all hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 flex h-14 items-center justify-center gap-2 rounded-full bg-[var(--success)] font-heading text-sm font-600 uppercase tracking-wider text-white shadow-lg shadow-[var(--success)]/25 transition-all hover:bg-[var(--success)]/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? (
             <>
@@ -352,13 +352,13 @@ function UserFormFields({
 }
 
 const inputClass =
-  "h-14 w-full rounded-full border border-border bg-background px-5 text-[15px] outline-none transition-colors focus:border-accent disabled:bg-secondary/50 disabled:text-muted-foreground";
+  "h-14 w-full rounded-full border border-border bg-background px-5 text-[15px] outline-none transition-colors focus:border-[var(--success)] disabled:bg-secondary/50 disabled:text-muted-foreground";
 
 function BackLink() {
   return (
     <Link
       href="/admin/users"
-      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
+      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-[var(--success)]"
     >
       <ArrowLeft className="size-4" />
       Danh sách tài khoản
