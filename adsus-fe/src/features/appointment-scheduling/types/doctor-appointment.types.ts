@@ -1,4 +1,4 @@
-/** Khớp DoctorPatientAppointmentResponse phía Backend — appointment còn Booked hoặc Approved (Approved = đã checkin), Cancelled/Completed bị lọc bỏ. */
+/** Khớp DoctorPatientAppointmentResponse phía Backend — chỉ appointment còn Booked, Cancelled/Completed/khác bị lọc bỏ. Bác sĩ chỉ quản lý case khám, không theo dõi checkin qua Appointment. */
 export interface DoctorPatientAppointment {
   appointmentId: string;
   slotDate: string; // yyyy-MM-dd

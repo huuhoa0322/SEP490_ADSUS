@@ -116,8 +116,9 @@ public sealed class OpenSlotResponse
 }
 
 /// <summary>
-/// Response cho màn "Lịch bệnh nhân" của Doctor — appointment còn BOOKED hoặc APPROVED
-/// (Approved = bệnh nhân đã checkin, vẫn phải hiện). Cancelled và Completed bị lọc bỏ.
+/// Response cho màn "Lịch bệnh nhân" của Doctor — chỉ appointment còn BOOKED.
+/// Cancelled, Completed và các trạng thái khác bị lọc bỏ hoàn toàn — bác sĩ không cần
+/// theo dõi việc bệnh nhân đã checkin hay chưa qua Appointment, chỉ quản lý case khám.
 /// Độc lập với ScheduleSlotResponse: đây là góc nhìn theo BỆNH NHÂN, không phải theo slot.
 /// </summary>
 public sealed class DoctorPatientAppointmentResponse

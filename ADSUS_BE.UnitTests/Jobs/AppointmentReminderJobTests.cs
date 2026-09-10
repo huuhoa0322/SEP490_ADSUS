@@ -211,10 +211,10 @@ public class AppointmentReminderJobTests
 
     #endregion
 
-    #region TC-005: Already Approved (Checked In)
+    #region TC-005: Already Completed (Checked In)
 
     [Fact]
-    public async Task Execute_AlreadyApproved_DoesNotSendNotification()
+    public async Task Execute_AlreadyCompleted_DoesNotSendNotification()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -223,7 +223,7 @@ public class AppointmentReminderJobTests
 
         var slotTime = DateTime.UtcNow.AddHours(22);
         var patient = CreatePatientListRow(userId, profileId);
-        var appointment = CreateAppointment(slotId, AppointmentStatus.Approved, slotTime);
+        var appointment = CreateAppointment(slotId, AppointmentStatus.Completed, slotTime);
 
         _patientProfileRepo.Setup(r => r.SearchAsync(null, null, null, 1, int.MaxValue, It.IsAny<CancellationToken>()))
             .ReturnsAsync((new List<PatientListRow> { patient }, 1));

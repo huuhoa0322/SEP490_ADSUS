@@ -158,7 +158,7 @@ public sealed class AppointmentService : IAppointmentService
         // Rule 1: Max 3 active appointments
         var activeAppointments = await _db.Appointments
             .Where(a => a.PatientProfileId == patientProfileId
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved))
+                && a.Status == AppointmentStatus.Booked)
             .CountAsync(ct);
         if (activeAppointments >= 3)
         {
@@ -172,7 +172,7 @@ public sealed class AppointmentService : IAppointmentService
             .AnyAsync(a =>
                 a.PatientProfileId == patientProfileId
                 && a.Slot.SlotDate == slot.SlotDate
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
+                && a.Status == AppointmentStatus.Booked,
                 ct);
         if (hasSameDayAppointment)
         {
@@ -188,7 +188,7 @@ public sealed class AppointmentService : IAppointmentService
                 a.PatientProfileId == patientProfileId
                 && a.Slot.SlotDate > slot.SlotDate
                 && a.Slot.SlotDate <= next3Days
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved),
+                && a.Status == AppointmentStatus.Booked,
                 ct);
         if (hasAppointmentWithin3Days)
         {
@@ -558,8 +558,8 @@ public sealed class AppointmentService : IAppointmentService
                 $"Lịch hẹn đã tự động hủy do không check-in trong 15 phút kể từ lịch hẹn.");
         }
 
-        // Cập nhật Appointment: Booked → Approved
-        appointment.Status = AppointmentStatus.Approved;
+        // Cập nhật Appointment: Booked → Completed
+        appointment.Status = AppointmentStatus.Completed;
         appointment.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
@@ -629,14 +629,9 @@ public sealed class AppointmentService : IAppointmentService
             ?? throw new InvalidOperationException($"Không tìm thấy lịch hẹn cho case '{caseId}'.");
 
         // Kiểm tra status hợp lệ
-        if (appointment.Status == AppointmentStatus.Approved)
-        {
-            throw new InvalidOperationException("Bệnh nhân đã được check-in trước đó.");
-        }
-
         if (appointment.Status == AppointmentStatus.Completed)
         {
-            throw new InvalidOperationException("Lịch hẹn đã hoàn thành, không thể check-in.");
+            throw new InvalidOperationException("Bệnh nhân đã được check-in trước đó.");
         }
 
         if (appointment.Status == AppointmentStatus.Cancelled || appointment.Status == AppointmentStatus.NoShow)
@@ -652,8 +647,8 @@ public sealed class AppointmentService : IAppointmentService
                 $"Lịch hẹn đã tự động hủy do không check-in trong 15 phút kể từ lịch hẹn.");
         }
 
-        // Chuyển sang Approved
-        appointment.Status = AppointmentStatus.Approved;
+        // Chuyển sang Completed
+        appointment.Status = AppointmentStatus.Completed;
         appointment.UpdatedAt = DateTime.UtcNow;
 
         // Cập nhật Case status nếu có liên kết
@@ -732,11 +727,12 @@ public sealed class AppointmentService : IAppointmentService
     {
         var appointments = await _appointmentRepo.ListByDoctorAsync(doctorId, fromDate, toDate, ct);
 
-        // Hiện cả BOOKED và APPROVED — Cancelled và Completed ẩn hẳn.
-        // Lý do: Approved = bệnh nhân đã đến (nurse checkin) — vẫn cần hiện trên màn "Lịch bệnh nhân"
-        // để bác sĩ biết ai đã đến, không bị mất khỏi danh sách khám ngay từ khi được checkin.
+        // Chỉ hiện BOOKED — Cancelled, Completed và mọi trạng thái khác đều ẩn.
+        // Lý do: màn "Lịch bệnh nhân" của bác sĩ chỉ quan tâm lịch hẹn còn hiệu lực chưa diễn ra;
+        // trạng thái "đã đến/đang khám" được theo dõi qua Case.Status (InProgress), không qua
+        // Appointment.Status — hai khái niệm tách biệt theo quyết định của user (2026-09-10).
         return appointments
-            .Where(a => a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved)
+            .Where(a => a.Status == AppointmentStatus.Booked)
             .Select(a => new DoctorPatientAppointmentResponse
             {
                 AppointmentId = a.AppointmentId,
@@ -755,14 +751,15 @@ public sealed class AppointmentService : IAppointmentService
         string? search = null,
         CancellationToken ct = default)
     {
-        // Lấy tất cả appointments trong ngày đang ở Booked hoặc Approved
+        // Lấy tất cả appointments trong ngày đang ở Booked hoặc Completed (đã check-in) — hàng đợi
+        // tiếp đón của y tá cần thấy cả hai để tính tiến độ check-in trong ngày.
         var appointments = await _db.Appointments
             .Include(a => a.Slot)
                 .ThenInclude(s => s.Doctor)
             .Include(a => a.PatientProfile)
                 .ThenInclude(p => p.User)
             .Where(a => a.Slot.SlotDate == date)
-            .Where(a => a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Approved)
+            .Where(a => a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Completed)
             .Where(a => a.Slot.Status != SlotStatus.Closed)
             .OrderBy(a => a.Slot.StartTime)
             .ToListAsync(ct);

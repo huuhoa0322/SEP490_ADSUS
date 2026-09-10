@@ -11,7 +11,7 @@ export interface CheckinQueueItem {
   caseId: string;
   reason: string | null;
   doctorName: string;
-  status: "Booked" | "Approved";
+  status: "Booked" | "Completed";
 }
 
 export interface CheckinQueueResponse {

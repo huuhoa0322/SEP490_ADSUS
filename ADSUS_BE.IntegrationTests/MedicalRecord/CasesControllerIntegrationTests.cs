@@ -117,7 +117,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _patientUser);
         var profile = MakePatientProfile();
-        var pendingCase = MakeCase(profile, CaseStatus.Created);
+        var pendingCase = MakeCase(profile, CaseStatus.InProgress);
         _profiles.Setup(r => r.GetByUserIdAsync(_patientUser.UserId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
         _cases.Setup(r => r.GetDetailAsync(pendingCase.CaseId, It.IsAny<CancellationToken>()))
@@ -259,7 +259,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
-        var medicalCase = MakeCase(profile, CaseStatus.Created);
+        var medicalCase = MakeCase(profile, CaseStatus.InProgress);
         _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
         _cases.Setup(r => r.SearchByPatientAsync(
@@ -298,7 +298,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
-        var medicalCase = MakeCase(profile, CaseStatus.Created);
+        var medicalCase = MakeCase(profile, CaseStatus.InProgress);
         var image = new UltrasoundImage
         {
             ImageId = Guid.NewGuid(), CaseId = medicalCase.CaseId,
@@ -587,7 +587,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
-        var pendingCase = MakeCase(profile, CaseStatus.Created);
+        var pendingCase = MakeCase(profile, CaseStatus.InProgress);
         _cases.Setup(r => r.GetDetailAsync(pendingCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(pendingCase);
 

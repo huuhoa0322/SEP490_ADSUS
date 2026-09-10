@@ -1,10 +1,8 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.Common;
-using ADSUS_BE.BLL.Common.Events;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
-using ADSUS_BE.BLL.MedicalRecord.Events;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Mappers;
 using ADSUS_BE.DAL.Data;
@@ -26,7 +24,6 @@ public sealed class CaseService : ICaseService
     private readonly IUserRepository _users;
     private readonly System.Lazy<IFileStorageService> _storageLazy;
     private readonly INotificationService _notificationService;
-    private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<CaseService> _logger;
 
     private IFileStorageService _storage => _storageLazy.Value;
@@ -38,7 +35,6 @@ public sealed class CaseService : ICaseService
         IUserRepository users,
         System.Lazy<IFileStorageService> storageLazy,
         INotificationService notificationService,
-        IEventPublisher eventPublisher,
         ILogger<CaseService> logger)
     {
         _cases = cases;
@@ -47,7 +43,6 @@ public sealed class CaseService : ICaseService
         _users = users;
         _storageLazy = storageLazy;
         _notificationService = notificationService;
-        _eventPublisher = eventPublisher;
         _logger = logger;
     }
 
@@ -305,14 +300,6 @@ public sealed class CaseService : ICaseService
 
         medicalCase.Status = CaseStatus.End;
         medicalCase.UpdatedAt = DateTime.UtcNow;
-
-        // Publish CaseEndEvent - handlers will complete related appointments
-        await _eventPublisher.PublishAsync(CaseEndEvent.Create(
-            caseId: caseId,
-            patientProfileId: medicalCase.PatientProfileId,
-            doctorId: actingDoctorId,
-            notes: "Ended without prescription"
-        ), ct);
 
         await _cases.SaveChangesAsync(ct);
 

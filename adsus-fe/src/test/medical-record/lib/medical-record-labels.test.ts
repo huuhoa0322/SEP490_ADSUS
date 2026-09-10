@@ -8,8 +8,7 @@ import {
 } from "@/features/medical-record/lib/medical-record-labels";
 
 describe("caseStatusLabel", () => {
-  it("dịch cả ba trạng thái ca khám sang tiếng Việt", () => {
-    expect(caseStatusLabel("CREATED")).toBe("Mới tạo");
+  it("dịch các trạng thái ca khám sang tiếng Việt", () => {
     expect(caseStatusLabel("END")).toBe("Đã kết thúc ca");
     expect(caseStatusLabel("CONFIRMED")).toBe("Đã kết luận");
   });
