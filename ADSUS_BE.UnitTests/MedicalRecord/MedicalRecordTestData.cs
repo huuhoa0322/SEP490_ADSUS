@@ -54,7 +54,7 @@ internal static class MedicalRecordTestData
             PatientProfileId = Guid.NewGuid(),
             UserId = patientUser.UserId,
             User = patientUser,
-            Gender = GenderType.Female,
+            // Gender đã chuyển sang User (2026-01)
             CreatedBy = createdBy ?? Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,

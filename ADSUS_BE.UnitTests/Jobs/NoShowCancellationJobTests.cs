@@ -91,7 +91,7 @@ public class NoShowCancellationJobTests : IDisposable
             PatientProfileId = Guid.NewGuid(),
             UserId = user.UserId,
             User = user,
-            Gender = GenderType.Female,
+            // Gender đã chuyển sang User (2026-01)
             CreatedBy = Guid.NewGuid(),
         };
     }

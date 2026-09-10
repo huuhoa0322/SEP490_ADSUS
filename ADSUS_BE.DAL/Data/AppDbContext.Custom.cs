@@ -22,6 +22,10 @@ public partial class AppDbContext
             entity.Property(e => e.Status)
                 .HasColumnName("status")
                 .HasDefaultValue(UserStatus.Active);
+
+            // Gender - chuyển từ patient_profiles (2026-01)
+            entity.Property(e => e.Gender)
+                .HasColumnName("gender");
         });
 
         // Module Kế toán (Billing)
@@ -56,12 +60,7 @@ public partial class AppDbContext
         modelBuilder.HasPostgresEnum<CaseStatus>("public", "case_status");
         modelBuilder.HasPostgresEnum<PrescriptionStatus>("public", "prescription_status");
 
-        modelBuilder.Entity<PatientProfile>(entity =>
-        {
-            entity.Property(e => e.Gender)
-                .HasColumnName("gender")
-                .HasDefaultValue(GenderType.Female);
-        });
+        // Gender đã chuyển sang User entity (2026-01) - PatientProfile không còn cột gender
 
         modelBuilder.Entity<Case>(entity =>
         {

@@ -6,24 +6,27 @@ namespace ADSUS_BE.BLL.MedicalRecord.DTOs;
 /// #17 — tạo hồ sơ nền (UC-06).
 /// createdBy KHÔNG nằm ở đây: nó lấy từ token của người đang thao tác, nhận từ body thì ai
 /// cũng ghi tên người khác vào được.
+/// Gender sẽ được set vào User entity (2026-01 - đã chuyển từ PatientProfile).
 /// </summary>
 public sealed record CreatePatientProfileRequest(
     Guid PatientUserId,
-    string? Gender,
-    IReadOnlyList<PatientDiseaseInput> Diseases,
-    IReadOnlyList<PatientAllergyInput> Allergies);
+    string? Gender, // Set vào User.Gender
+    IReadOnlyList<PatientDiseaseInput>? Diseases,
+    IReadOnlyList<PatientAllergyInput>? Allergies);
 
 /// <summary>
 /// #18 — thay toàn bộ hồ sơ nền (UC-06). patientUserId không sửa được: quan hệ 1–1 chốt lúc tạo.
+/// Gender sẽ được set vào User entity (2026-01 - đã chuyển từ PatientProfile).
 /// </summary>
 public sealed record UpdatePatientProfileRequest(
-    string Gender,
-    IReadOnlyList<PatientDiseaseInput> Diseases,
-    IReadOnlyList<PatientAllergyInput> Allergies);
+    string? Gender, // Set vào User.Gender
+    IReadOnlyList<PatientDiseaseInput>? Diseases,
+    IReadOnlyList<PatientAllergyInput>? Allergies);
 
 /// <summary>
 /// #17, #18, #19 và nhúng trong #23.
 /// fullName/phone/dateOfBirth là dữ liệu chỉ đọc lấy từ bảng users (UC-06 bước 2).
+/// Gender lấy từ users (2026-01).
 /// </summary>
 public sealed record PatientProfileResponse(
     Guid PatientProfileId,
@@ -31,7 +34,7 @@ public sealed record PatientProfileResponse(
     string FullName,
     string Phone,
     DateOnly? DateOfBirth,
-    string Gender,
+    string? Gender, // Lấy từ User.Gender (nullable vì User.Gender cũng nullable)
     IReadOnlyList<PatientDiseaseResponse> Diseases,
     IReadOnlyList<PatientAllergyResponse> Allergies,
     Guid CreatedBy,

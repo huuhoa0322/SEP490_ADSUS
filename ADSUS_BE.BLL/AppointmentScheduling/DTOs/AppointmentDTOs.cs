@@ -109,6 +109,11 @@ public sealed class OpenSlotResponse
     /// </summary>
     public UserStatus DoctorStatus { get; init; }
 
+    /// <summary>
+    /// Giới tính bác sĩ — dùng để mobile filter theo giới tính (2026-01).
+    /// </summary>
+    public GenderType? DoctorGender { get; init; }
+
     public DateOnly SlotDate { get; init; }
     public TimeOnly StartTime { get; init; }
     public TimeOnly EndTime { get; init; }

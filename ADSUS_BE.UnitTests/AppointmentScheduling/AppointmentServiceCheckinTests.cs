@@ -102,7 +102,7 @@ public class AppointmentServiceCheckinTests : IDisposable
             PatientProfileId = Guid.NewGuid(),
             UserId = user.UserId,
             User = user,
-            Gender = GenderType.Female,
+            // Gender đã chuyển sang User (2026-01)
             CreatedBy = Guid.NewGuid(),
         };
     }
@@ -168,20 +168,20 @@ public class AppointmentServiceCheckinTests : IDisposable
         var result = await _sut.CheckinAppointmentAsync(_appointmentId, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal(AppointmentStatus.Approved, result.Status);
+        Assert.Equal(AppointmentStatus.Completed, result.Status);
 
         // Verify DB was updated
         var updatedAppointment = await _db.Appointments.FindAsync(new object[] { _appointmentId }, TestContext.Current.CancellationToken);
-        Assert.Equal(AppointmentStatus.Approved, updatedAppointment!.Status);
+        Assert.Equal(AppointmentStatus.Completed, updatedAppointment!.Status);
     }
 
     #endregion
 
-    #region TC-002: Already Approved Appointment
+    #region TC-002: Already Checked-in Appointment (Completed or Approved - backward compat)
 
     /// <summary>
     /// TC-UNIT-AppointmentServiceCheckin-002
-    /// Edge case: Appointment đã Approved (đã checkin) → Checkin lại → Throw InvalidOperationException
+    /// Edge case: Appointment đã checkin (Completed mới hoặc Approved cũ) → Checkin lại → Throw InvalidOperationException
     /// </summary>
     [Fact]
     public async Task CheckinAppointmentAsync_AlreadyApproved_ThrowsInvalidOperationException()
@@ -191,7 +191,7 @@ public class AppointmentServiceCheckinTests : IDisposable
         var patient = CreatePatient();
         var profile = CreatePatientProfile(patient);
         var slot = CreateSlot(doctor, SlotStatus.Booked);
-        var appointment = CreateAppointment(slot, profile, AppointmentStatus.Approved);
+        var appointment = CreateAppointment(slot, profile, AppointmentStatus.Completed); // Đã checkin rồi (Completed = mới, Approved = cũ)
 
         await SeedAppointmentAsync(appointment);
 
@@ -311,7 +311,7 @@ public class AppointmentServiceCheckinTests : IDisposable
         Assert.Equal(slot.StartTime, result.StartTime);
         Assert.Equal(slot.EndTime, result.EndTime);
         Assert.Equal(doctor.FullName, result.DoctorName);
-        Assert.Equal(AppointmentStatus.Approved, result.Status);
+        Assert.Equal(AppointmentStatus.Completed, result.Status); // Check-in → Completed (thay vì Approved)
         Assert.Equal("Follow-up visit", result.Reason);
     }
 
@@ -354,10 +354,10 @@ public class AppointmentServiceCheckinTests : IDisposable
 
     /// <summary>
     /// TC-UNIT-AppointmentServiceCheckin-008
-    /// Happy path: Tìm appointment theo caseId → Checkin → Status chuyển thành Approved
+    /// Happy path: Tìm appointment theo caseId → Checkin → Status chuyển thành Completed
     /// </summary>
     [Fact]
-    public async Task CheckinByCaseIdAsync_ValidCaseWithBookedAppointment_StatusChangesToApproved()
+    public async Task CheckinByCaseIdAsync_ValidCaseWithBookedAppointment_StatusChangesToCompleted()
     {
         // Arrange
         var doctor = CreateDoctor();
@@ -385,11 +385,11 @@ public class AppointmentServiceCheckinTests : IDisposable
         var result = await _sut.CheckinByCaseIdAsync(caseId, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal(AppointmentStatus.Approved, result.Status);
+        Assert.Equal(AppointmentStatus.Completed, result.Status);
 
         // Verify DB was updated
         var updatedAppointment = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
-        Assert.Equal(AppointmentStatus.Approved, updatedAppointment!.Status);
+        Assert.Equal(AppointmentStatus.Completed, updatedAppointment!.Status);
     }
 
     /// <summary>
@@ -406,7 +406,7 @@ public class AppointmentServiceCheckinTests : IDisposable
         var slot = CreateSlot(doctor, SlotStatus.Booked);
         var caseId = Guid.NewGuid();
 
-        // Tạo appointment đã Approved (không phải Booked)
+        // Tạo appointment đã checkin (Completed mới hoặc Approved cũ - backward compat)
         var appointment = new Appointment
         {
             AppointmentId = Guid.NewGuid(),
@@ -415,7 +415,7 @@ public class AppointmentServiceCheckinTests : IDisposable
             PatientProfileId = profile.PatientProfileId,
             PatientProfile = profile,
             CaseId = caseId,
-            Status = AppointmentStatus.Approved, // Đã checkin rồi
+            Status = AppointmentStatus.Completed, // Đã checkin rồi (Completed = mới, Approved = cũ)
             Reason = "Follow-up",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
@@ -481,7 +481,7 @@ public class AppointmentServiceCheckinTests : IDisposable
 
         // Assert
         Assert.Equal(caseId, result.CaseId);
-        Assert.Equal(AppointmentStatus.Approved, result.Status);
+        Assert.Equal(AppointmentStatus.Completed, result.Status); // Check-in → Completed (thay vì Approved)
         Assert.Equal(doctor.FullName, result.DoctorName);
     }
 

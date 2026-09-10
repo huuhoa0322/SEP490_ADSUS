@@ -49,14 +49,16 @@ public sealed class PatientProfileService : IPatientProfileService
 
         var now = DateTime.UtcNow;
 
+        // Set Gender vào User (2026-01 - đã chuyển từ PatientProfile)
+        patient.Gender = EnumExtensions.ParseGenderType(request.Gender) ?? GenderType.Female;
+        patient.UpdatedAt = now;
+
         var profile = new PatientProfile
         {
             PatientProfileId = Guid.NewGuid(),
             UserId = request.PatientUserId,
 
-            // Validator đã bảo đảm chuỗi này đọc được nếu có gửi. Không gửi gì thì lấy đúng
-            // mặc định của cột DB — nhưng giao diện vẫn nên luôn gửi giá trị rõ ràng.
-            Gender = EnumExtensions.ParseGenderType(request.Gender) ?? GenderType.Female,
+            // Gender đã chuyển sang User entity (2026-01)
             PatientDiseases = request.Diseases?.Select(d => new PatientDisease
             {
                 Id = Guid.NewGuid(),
@@ -84,6 +86,7 @@ public sealed class PatientProfileService : IPatientProfileService
         try
         {
             await _profiles.AddAsync(profile, ct);
+            await _users.SaveChangesAsync(ct); // Lưu User.Gender đã set ở trên
         }
         catch (Exception ex)
         {
@@ -108,9 +111,15 @@ public sealed class PatientProfileService : IPatientProfileService
         var profile = await _profiles.GetForUpdateAsync(patientProfileId, ct)
             ?? throw new ResourceNotFoundException("Patient profile not found.");
 
-        profile.Gender = EnumExtensions.ParseGenderType(request.Gender) ?? GenderType.Female;
-        
         var now = DateTime.UtcNow;
+
+        // Set Gender vào User (2026-01 - đã chuyển từ PatientProfile)
+        if (request.Gender != null)
+        {
+            profile.User.Gender = EnumExtensions.ParseGenderType(request.Gender);
+            profile.User.UpdatedAt = now;
+        }
+
         profile.PatientDiseases.Clear();
         if (request.Diseases != null)
         {
@@ -144,6 +153,7 @@ public sealed class PatientProfileService : IPatientProfileService
         try
         {
             await _profiles.UpdateAsync(profile, ct);
+            await _users.SaveChangesAsync(ct); // Lưu User.Gender đã set ở trên
             _logger.LogInformation("Patient profile {PatientProfileId} updated", patientProfileId);
             return PatientProfileMapper.ToResponse(profile);
         }
