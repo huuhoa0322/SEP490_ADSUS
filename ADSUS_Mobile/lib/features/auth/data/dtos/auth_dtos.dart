@@ -21,6 +21,7 @@ class AuthMapper {
   const AuthMapper._();
 
   static AuthSession sessionFromJson(Map<String, dynamic> json) => AuthSession(
+        userId: json['userId'] as String? ?? '',
         accessToken: json['accessToken'] as String? ?? '',
         fullName: json['fullName'] as String? ?? '',
         email: json['email'] as String?,

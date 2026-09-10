@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
@@ -11,6 +12,7 @@ import 'core/theme/app_theme.dart';
 import 'features/notification/services/notification_service.dart';
 import 'features/medication_reminder/data/services/widget_sync_service.dart';
 import 'features/medication_reminder/presentation/providers/medication_tab_provider.dart';
+import 'features/ai_chatbot/data/models/chat_message_model.dart';
 
 void main() async {
   // Đảm bảo Flutter engine đã sẵn sàng trước khi gọi plugin channel.
@@ -19,7 +21,12 @@ void main() async {
   // 1. Khởi tạo Firebase — bắt buộc phải trước khi dùng bất kỳ Firebase service nào.
   await Firebase.initializeApp();
 
-  // 2. Khởi tạo NotificationService — setup FCM listeners.
+  // 2. Hive: đăng ký adapters trước khi mở box bất kỳ.
+  Hive.registerAdapter(HiveChatRoleAdapter());
+  Hive.registerAdapter(ChatMessageModelAdapter());
+  await Hive.initFlutter();
+
+  // 3. Khởi tạo NotificationService — setup FCM listeners.
   // Phải gọi SAU Firebase.initializeApp() vì service dùng FirebaseMessaging.
   await notificationService.initialize();
 
