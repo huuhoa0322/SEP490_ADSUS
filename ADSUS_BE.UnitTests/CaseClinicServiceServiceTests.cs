@@ -93,20 +93,33 @@ public class CaseClinicServiceServiceTests
     }
 
     [Fact]
-    public async Task TC_2_1_2_AddService_CaseBooked_CreatedSuccessfully()
+    public async Task TC_2_1_2_AddService_CaseBooked_ThrowsBusinessException()
     {
         // Arrange
         using var context = CreateContext();
         var service = CreateService(context);
         var (c, s) = SeedCaseAndService(context, CaseStatus.Booked);
 
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(() =>
+            service.AddServiceToCaseAsync(c.CaseId, s.Id, TestContext.Current.CancellationToken));
+        Assert.Equal("Không thể thêm dịch vụ vào ca khám chưa check-in.", ex.Message);
+    }
+
+    [Fact]
+    public async Task TC_2_1_2b_AddServiceByCode_CaseBooked_CreatedSuccessfully()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context, CaseStatus.Booked, serviceCode: "GENERAL_EXAM");
+
         // Act
-        var result = await service.AddServiceToCaseAsync(c.CaseId, s.Id, TestContext.Current.CancellationToken);
+        await service.AddServiceToCaseByCodeAsync(c.CaseId, "GENERAL_EXAM", TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(c.CaseId, result.CaseId);
-        Assert.Equal(s.Id, result.ClinicServiceId);
+        var exists = await context.CaseClinicServices.AnyAsync(cs => cs.CaseId == c.CaseId && cs.ClinicServiceId == s.Id, TestContext.Current.CancellationToken);
+        Assert.True(exists);
     }
 
     [Fact]
@@ -622,6 +635,70 @@ public class CaseClinicServiceServiceTests
         var ex = await Assert.ThrowsAsync<BusinessException>(() =>
             service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, TestContext.Current.CancellationToken));
         Assert.Equal("Không thể xóa dịch vụ khi hóa đơn đã thanh toán.", ex.Message);
+    }
+
+    [Fact]
+    public async Task TC_2_4_3b_RemoveService_CaseBooked_ThrowsBusinessException()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context, CaseStatus.Booked);
+
+        var junction = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            ClinicServiceId = s.Id,
+            PriceAtTime = s.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.Add(junction);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(() =>
+            service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, TestContext.Current.CancellationToken));
+        Assert.Equal("Không thể xóa dịch vụ khỏi ca khám chưa check-in.", ex.Message);
+    }
+
+    [Fact]
+    public async Task TC_2_4_3c_RemoveService_CaseEndOrCancelled_ThrowsBusinessException()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (cEnd, s1) = SeedCaseAndService(context, CaseStatus.End);
+        var (cCancelled, s2) = SeedCaseAndService(context, CaseStatus.Cancelled);
+
+        var junctionEnd = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = cEnd.CaseId,
+            ClinicServiceId = s1.Id,
+            PriceAtTime = s1.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        var junctionCancelled = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = cCancelled.CaseId,
+            ClinicServiceId = s2.Id,
+            PriceAtTime = s2.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.AddRange(junctionEnd, junctionCancelled);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert - End
+        var exEnd = await Assert.ThrowsAsync<BusinessException>(() =>
+            service.RemoveServiceFromCaseAsync(cEnd.CaseId, junctionEnd.Id, TestContext.Current.CancellationToken));
+        Assert.Equal("Không thể xóa dịch vụ khỏi ca khám đã hoàn thành hoặc bị hủy.", exEnd.Message);
+
+        // Act & Assert - Cancelled
+        var exCancelled = await Assert.ThrowsAsync<BusinessException>(() =>
+            service.RemoveServiceFromCaseAsync(cCancelled.CaseId, junctionCancelled.Id, TestContext.Current.CancellationToken));
+        Assert.Equal("Không thể xóa dịch vụ khỏi ca khám đã hoàn thành hoặc bị hủy.", exCancelled.Message);
     }
 
     [Fact]

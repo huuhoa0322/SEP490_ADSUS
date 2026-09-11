@@ -100,7 +100,7 @@ export function InvoiceListView() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="mx-auto w-[90%] max-w-[90%] py-8 space-y-6">
       <div className="flex justify-between items-center border-b-2 pb-4">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-primary">Quản lý hóa đơn</h1>

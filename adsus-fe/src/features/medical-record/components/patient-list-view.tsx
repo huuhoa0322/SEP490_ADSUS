@@ -14,7 +14,6 @@ import {
   UserCheck,
 } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -35,15 +34,6 @@ import {
 import type { CaseStatus, PatientSummary, VisitStatusFilter } from "../types/medical-record.types";
 
 const VISIT_FILTERS: VisitStatusFilter[] = ["All", "Pending", "Confirmed"];
-
-/** Tạo initials từ họ tên bệnh nhân (ví dụ: Trần Thị Mai -> TM). */
-function getInitials(fullName: string): string {
-  if (!fullName) return "PT";
-  const words = fullName.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "PT";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
-}
 
 /**
  * Trả về subtext nếu bệnh nhân chưa lập hồ sơ nền.
@@ -229,29 +219,22 @@ export function PatientListView() {
                     <tr key={patient.patientUserId} className="transition-colors hover:bg-[#F5F6F8]/60 [&>th:first-child]:pl-6 [&>td:first-child]:pl-6">
                       {/* Cột Bệnh nhân */}
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="size-8 shrink-0 rounded-lg">
-                            <AvatarFallback className="rounded-lg bg-primary/10 text-xs font-bold text-primary">
-                              {getInitials(patient.fullName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            {patient.patientProfileId ? (
-                              <Link
-                                href={`/patients/${patient.patientProfileId}`}
-                                className="font-semibold text-foreground transition-colors hover:text-primary"
-                              >
-                                {patient.fullName}
-                              </Link>
-                            ) : (
-                              <span className="font-semibold text-foreground">
-                                {patient.fullName}
-                              </span>
-                            )}
-                            {subtext ? (
-                              <span className="block text-xs font-semibold text-amber-700">{subtext}</span>
-                            ) : null}
-                          </div>
+                        <div>
+                          {patient.patientProfileId ? (
+                            <Link
+                              href={`/patients/${patient.patientProfileId}`}
+                              className="font-semibold text-foreground transition-colors hover:text-primary"
+                            >
+                              {patient.fullName}
+                            </Link>
+                          ) : (
+                            <span className="font-semibold text-foreground">
+                              {patient.fullName}
+                            </span>
+                          )}
+                          {subtext ? (
+                            <span className="block text-xs font-semibold text-amber-700">{subtext}</span>
+                          ) : null}
                         </div>
                       </td>
 

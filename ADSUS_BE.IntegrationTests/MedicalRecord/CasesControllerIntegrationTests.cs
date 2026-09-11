@@ -89,9 +89,9 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
-    public async Task GetCaseById_CalledByDoctorOnBookedCase_Returns422UnprocessableEntity()
+    public async Task GetCaseById_CalledByDoctorOnBookedCase_Returns200WithFullStaffShape()
     {
-        // Arrange — yêu cầu 10/09/2026: bác sĩ không mở được case detail khi ca còn BOOKED.
+        // Arrange — Bác sĩ được phép xem case detail kể cả khi ca còn BOOKED (read-only view).
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
@@ -103,9 +103,11 @@ public class CasesControllerIntegrationTests
         var response = await client.GetAsync($"/api/v1/cases/{medicalCase.CaseId}", TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
-        Assert.Equal("This case has not been checked in yet. Please wait for the nurse to check in the patient first.", body!.Message);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
+        Assert.Equal(200, body!.Code);
+        Assert.Equal("BOOKED", body.Data!.Status);
+        Assert.NotNull(body.Data!.PatientProfile);
     }
 
     [Fact]

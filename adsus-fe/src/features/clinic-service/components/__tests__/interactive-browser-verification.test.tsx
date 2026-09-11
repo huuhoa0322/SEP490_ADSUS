@@ -408,7 +408,19 @@ describe("Interactive Browser Verification: Clinic Service Workflows", () => {
 
       expect(screen.queryByRole("button", { name: /thêm dịch vụ/i })).not.toBeInTheDocument();
 
-      const deleteBtn = screen.getByTitle("Không thể xóa dịch vụ khi ca khám đã kết thúc.");
+      const deleteBtn = screen.getByTitle("Không thể xóa dịch vụ khi ca khám đã kết thúc hoặc đã hủy.");
+      expect(deleteBtn).toBeDisabled();
+    });
+
+    it("enforces waiting check-in guard (BOOKED): hides add button and disables deletion with alert banner", () => {
+      renderWithClient(<CaseClinicServicesPanel caseId="case-999" caseStatus="BOOKED" />);
+
+      expect(screen.queryByRole("button", { name: /thêm dịch vụ/i })).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/Ca khám đang chờ check-in\. Không thể thêm hoặc xóa dịch vụ khám\./i),
+      ).toBeInTheDocument();
+
+      const deleteBtn = screen.getByTitle("Không thể xóa dịch vụ khi ca khám đang chờ check-in.");
       expect(deleteBtn).toBeDisabled();
     });
   });

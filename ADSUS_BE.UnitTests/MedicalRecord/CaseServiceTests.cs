@@ -49,7 +49,7 @@ public class CaseServiceTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, false, TestContext.Current.CancellationToken);
+        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(medicalCase.CaseId, response.CaseId);
@@ -64,33 +64,35 @@ public class CaseServiceTests
               .ReturnsAsync((Case?)null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.GetForStaffAsync(Guid.NewGuid(), false, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.GetForStaffAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
-    public async Task GetForStaffAsync_DoctorViewsBookedCase_ThrowsBusinessException()
+    public async Task GetForStaffAsync_BookedCase_ReturnsFullStaffResponse_AllowingReadonlyView()
     {
-        // Arrange — yêu cầu 10/09/2026: bác sĩ không mở được case detail nào khi ca còn BOOKED.
-        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Booked);
-        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(medicalCase);
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.GetForStaffAsync(medicalCase.CaseId, true, TestContext.Current.CancellationToken));
-        Assert.Equal("This case has not been checked in yet. Please wait for the nurse to check in the patient first.", ex.Message);
-    }
-
-    [Fact]
-    public async Task GetForStaffAsync_NurseViewsBookedCase_ReturnsFullStaffResponse()
-    {
-        // Arrange — Điều dưỡng không bị chặn bởi luật này (chính họ là người check-in).
+        // Arrange — Bác sĩ / Điều dưỡng đều có thể xem ca ở trạng thái Booked để nắm bắt thông tin
         var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Booked);
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, false, TestContext.Current.CancellationToken);
+        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(medicalCase.CaseId, response.CaseId);
+        Assert.Equal("BOOKED", response.Status);
+    }
+
+    [Fact]
+    public async Task GetForStaffAsync_NurseViewsBookedCase_ReturnsFullStaffResponse()
+    {
+        // Arrange — Điều dưỡng cũng xem bình thường
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Booked);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(medicalCase.CaseId, response.CaseId);

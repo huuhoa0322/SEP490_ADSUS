@@ -149,6 +149,28 @@ describe("CaseClinicServicesPanel", () => {
     expect(screen.queryByRole("button", { name: /thêm dịch vụ/i })).not.toBeInTheDocument();
   });
 
+  it("hides add button and disables delete button with warning banner when case is BOOKED in card variant", () => {
+    renderWithClient(<CaseClinicServicesPanel caseId="case-123" caseStatus="BOOKED" />);
+
+    expect(screen.queryByRole("button", { name: /thêm dịch vụ/i })).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Ca khám đang chờ check-in\. Không thể thêm hoặc xóa dịch vụ khám\./i),
+    ).toBeInTheDocument();
+
+    const deleteButtons = screen.getAllByTitle("Không thể xóa dịch vụ khi ca khám đang chờ check-in.");
+    expect(deleteButtons.length).toBe(2);
+    expect(deleteButtons[0]).toBeDisabled();
+  });
+
+  it("hides add button and delete buttons when case is BOOKED in compact variant", () => {
+    renderWithClient(
+      <CaseClinicServicesPanel caseId="case-123" caseStatus="BOOKED" variant="compact" />,
+    );
+
+    expect(screen.queryByRole("button", { name: /thêm dịch vụ/i })).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Xóa dịch vụ này khỏi ca khám")).not.toBeInTheDocument();
+  });
+
   it("opens add dialog and allows selecting available services", async () => {
     renderWithClient(<CaseClinicServicesPanel caseId="case-123" caseStatus="IN_PROGRESS" />);
 

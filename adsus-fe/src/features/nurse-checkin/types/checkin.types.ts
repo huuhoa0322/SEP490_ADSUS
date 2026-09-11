@@ -60,5 +60,6 @@ export interface CheckinQueueResponse {
   bookedCount?: number;
   checkedInCount?: number;
   cancelledCount?: number;
+  noShowCount?: number;
 }
 

@@ -73,18 +73,10 @@ public sealed class CaseService : ICaseService
             .ToList();
     }
 
-    public async Task<CaseResponse> GetForStaffAsync(Guid caseId, bool callerIsDoctor, CancellationToken ct = default)
+    public async Task<CaseResponse> GetForStaffAsync(Guid caseId, CancellationToken ct = default)
     {
         var medicalCase = await _cases.GetDetailAsync(caseId, ct)
             ?? throw new ResourceNotFoundException("Case not found.");
-
-        // Bác sĩ chỉ thao tác được với ca sau khi Điều dưỡng check-in (Booked → InProgress).
-        // Điều dưỡng không bị chặn — chính họ là người thực hiện bước check-in đó.
-        if (callerIsDoctor && medicalCase.Status == CaseStatus.Booked)
-        {
-            throw new BusinessException(
-                "This case has not been checked in yet. Please wait for the nurse to check in the patient first.");
-        }
 
         var urls = await BuildImageUrlsAsync(medicalCase.UltrasoundImages.ToList(), ct);
 
@@ -269,7 +261,7 @@ public sealed class CaseService : ICaseService
             _logger.LogWarning(ex, "Failed to send medical record notification for case {CaseId}", caseId);
         }
 
-        return await GetForStaffAsync(caseId, false, ct);
+        return await GetForStaffAsync(caseId, ct);
     }
 
     public async Task<CaseResponse> SaveConclusionAsync(
@@ -290,7 +282,7 @@ public sealed class CaseService : ICaseService
 
         _logger.LogInformation("Case {CaseId} conclusion saved by doctor {DoctorId}", caseId, actingDoctorId);
 
-        return await GetForStaffAsync(caseId, false, ct);
+        return await GetForStaffAsync(caseId, ct);
     }
 
     public async Task<CaseResponse> ConfirmAsync(
@@ -310,7 +302,7 @@ public sealed class CaseService : ICaseService
 
         _logger.LogInformation("Case {CaseId} confirmed by doctor {DoctorId}", caseId, actingDoctorId);
 
-        return await GetForStaffAsync(caseId, false, ct);
+        return await GetForStaffAsync(caseId, ct);
     }
 
     public async Task<CaseResponse> EndWithoutPrescriptionAsync(
@@ -365,7 +357,7 @@ public sealed class CaseService : ICaseService
 
         _logger.LogInformation("Case {CaseId} ended without prescription by doctor {DoctorId}", caseId, actingDoctorId);
 
-        return await GetForStaffAsync(caseId, false, ct);
+        return await GetForStaffAsync(caseId, ct);
     }
 
     /// <inheritdoc />
@@ -466,9 +458,14 @@ public sealed class CaseService : ICaseService
                 "This case has not been checked in yet. Please wait for the nurse to check in the patient first.");
         }
 
-        // P2/GB-01 — CONFIRMED là trạng thái cuối, không có đường lùi. Ca đã khoá thì không
+        if (medicalCase.Status == CaseStatus.Cancelled)
+        {
+            throw new BusinessException("This case has been cancelled and cannot be changed.");
+        }
+
+        // P2/GB-01 — CONFIRMED/END là trạng thái cuối, không có đường lùi. Ca đã khoá thì không
         // sửa được nữa dưới bất kỳ hình thức nào, kể cả chỉ lưu nháp lại đúng nội dung cũ.
-        if (medicalCase.Status == CaseStatus.Confirmed)
+        if (medicalCase.Status == CaseStatus.Confirmed || medicalCase.Status == CaseStatus.End)
         {
             throw new BusinessException("This case has already been confirmed and cannot be changed.");
         }

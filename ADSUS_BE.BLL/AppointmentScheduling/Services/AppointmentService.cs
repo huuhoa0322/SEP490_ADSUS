@@ -900,9 +900,10 @@ public sealed class AppointmentService : IAppointmentService
         // Đếm số lượng theo trạng thái trên toàn bộ mốc thời gian đã chọn (không phụ thuộc phân trang)
         var bookedCount = await baseQuery.CountAsync(a => a.Status == AppointmentStatus.Booked, ct);
         var checkedInCount = await baseQuery.CountAsync(a => a.Status == AppointmentStatus.Completed, ct);
-        var cancelledCount = await baseQuery.CountAsync(a => a.Status == AppointmentStatus.Cancelled || a.Status == AppointmentStatus.NoShow, ct);
+        var cancelledCount = await baseQuery.CountAsync(a => a.Status == AppointmentStatus.Cancelled, ct);
+        var noShowCount = await baseQuery.CountAsync(a => a.Status == AppointmentStatus.NoShow, ct);
 
-        // Filter theo status: ALL, BOOKED, APPROVED (Đã check-in), CANCELLED
+        // Filter theo status: ALL (mặc định không hiện ca hủy), BOOKED, APPROVED (Đã check-in), NOSHOW (Vắng mặt), CANCELLED (Đã hủy)
         var query = baseQuery;
         if (!string.IsNullOrWhiteSpace(status) && !string.Equals(status, "ALL", StringComparison.OrdinalIgnoreCase))
         {
@@ -914,19 +915,25 @@ public sealed class AppointmentService : IAppointmentService
                 // Bệnh nhân check-in trong DB mang trạng thái COMPLETED
                 query = query.Where(a => a.Status == AppointmentStatus.Completed);
             }
-            else if (string.Equals(normalized, "CANCELLED", StringComparison.OrdinalIgnoreCase)
-                     || string.Equals(normalized, "NOSHOW", StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(normalized, "CANCELLED", StringComparison.OrdinalIgnoreCase))
             {
-                query = query.Where(a => a.Status == AppointmentStatus.Cancelled || a.Status == AppointmentStatus.NoShow);
+                query = query.Where(a => a.Status == AppointmentStatus.Cancelled);
+            }
+            else if (string.Equals(normalized, "NOSHOW", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(a => a.Status == AppointmentStatus.NoShow);
             }
             else if (Enum.TryParse<AppointmentStatus>(normalized, true, out var parsedStatus))
             {
                 query = query.Where(a => a.Status == parsedStatus);
             }
         }
-        else if (string.IsNullOrWhiteSpace(status))
+        else
         {
-            query = query.Where(a => (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Completed) && a.Slot.Status != SlotStatus.Closed);
+            // Màn hình mặc định (ALL hoặc không chọn category):
+            // KHÔNG hiển thị những ca đã hủy (Cancelled), chỉ hiện ca Booked, Completed, NoShow.
+            // Chỉ khi điều dưỡng chọn đích danh category 'Đã huỷ' (CANCELLED) thì mới hiển thị.
+            query = query.Where(a => a.Status != AppointmentStatus.Cancelled);
         }
 
         var totalCount = await query.CountAsync(ct);
@@ -934,11 +941,12 @@ public sealed class AppointmentService : IAppointmentService
         var effectivePage = page < 1 ? 1 : page;
         var effectivePageSize = pageSize is < 1 or > 1000 ? 15 : pageSize;
 
-        // Sắp xếp: Đang chờ check-in (Booked = 0) lên đầu -> Đã check-in (Completed = 1) ở giữa -> Đã hủy / vắng mặt (Cancelled/NoShow = 2) ở cuối.
+        // Sắp xếp: Đang chờ check-in (Booked = 0) lên đầu -> Đã check-in (Completed = 1) ở giữa -> Vắng mặt (NoShow = 2) -> Đã hủy (Cancelled = 3) ở cuối.
         // Trong cùng mỗi nhóm: sắp xếp tăng dần theo thời gian (SlotDate, StartTime).
         var appointments = await query
             .OrderBy(a => a.Status == AppointmentStatus.Booked ? 0
-                        : (a.Status == AppointmentStatus.Completed ? 1 : 2))
+                        : (a.Status == AppointmentStatus.Completed ? 1
+                        : (a.Status == AppointmentStatus.NoShow ? 2 : 3)))
             .ThenBy(a => a.Slot.SlotDate)
             .ThenBy(a => a.Slot.StartTime)
             .Skip((effectivePage - 1) * effectivePageSize)
@@ -967,6 +975,7 @@ public sealed class AppointmentService : IAppointmentService
             BookedCount = bookedCount,
             CheckedInCount = checkedInCount,
             CancelledCount = cancelledCount,
+            NoShowCount = noShowCount,
         };
     }
 

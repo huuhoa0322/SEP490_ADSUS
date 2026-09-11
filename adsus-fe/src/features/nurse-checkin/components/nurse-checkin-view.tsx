@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { Search, RefreshCw, Check, Clock, XCircle } from "lucide-react";
+import { Search, RefreshCw, Check, Clock, UserX, XCircle } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 import { cn } from "@/lib/utils";
@@ -54,7 +54,12 @@ export function NurseCheckinView() {
 
   const { mutate: checkin, isPending: isCheckingIn } = useCheckin();
 
-  const queue = data?.items ?? [];
+  const rawQueue = data?.items ?? [];
+  // Màn hình mặc định ("ALL") không hiện các ca hủy (Cancelled), chỉ hiện khi chọn category 'Đã huỷ'
+  const queue = status === "ALL"
+    ? rawQueue.filter((item) => (item.status || "").toUpperCase() !== "CANCELLED")
+    : rawQueue;
+
   const totalCount = data?.totalCount ?? 0;
   const totalPages =
     data?.totalPages ?? (totalCount === 0 ? 0 : Math.ceil(totalCount / pageSize));
@@ -62,6 +67,7 @@ export function NurseCheckinView() {
   // Period-wide counts directly from backend across the selected date range
   const bookedCount = data?.bookedCount ?? 0;
   const checkedInCount = data?.checkedInCount ?? 0;
+  const noShowCount = data?.noShowCount ?? 0;
   const cancelledCount = data?.cancelledCount ?? 0;
 
   // Zero-division safe progress calculation across active appointments (booked + checked-in)
@@ -196,7 +202,7 @@ export function NurseCheckinView() {
           />
         </div>
 
-        {/* Status category dropdown filter: ONLY Booked, Approved/Checked-in, and Cancelled/NoShow */}
+        {/* Status category dropdown filter: Booked, Approved/Checked-in, NoShow, and Cancelled */}
         <select
           value={status}
           onChange={(e) => {
@@ -208,7 +214,8 @@ export function NurseCheckinView() {
           <option value="ALL">Tất cả trạng thái</option>
           <option value="BOOKED">Đang chờ check-in</option>
           <option value="APPROVED">Đã check-in</option>
-          <option value="CANCELLED">Đã huỷ / Vắng mặt</option>
+          <option value="NOSHOW">Vắng mặt</option>
+          <option value="CANCELLED">Đã huỷ</option>
         </select>
       </div>
 
@@ -227,7 +234,7 @@ export function NurseCheckinView() {
       </div>
 
       {/* Stats cards: Clear, vibrant colors matching action column in table */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Đang chờ check-in - matches Check-in button */}
         <div className="flex items-center gap-3.5 rounded-xl border border-[#2E37A4]/25 bg-[#2E37A4]/5 p-4 shadow-xs">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#2E37A4] text-white shadow-xs">
@@ -258,14 +265,29 @@ export function NurseCheckinView() {
           </div>
         </div>
 
-        {/* Card 3: Đã huỷ / Vắng mặt - matches Đã huỷ badge */}
+        {/* Card 3: Vắng mặt */}
+        <div className="flex items-center gap-3.5 rounded-xl border border-amber-600/25 bg-amber-50/80 p-4 shadow-xs dark:bg-amber-950/20">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-600 text-white shadow-xs">
+            <UserX className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+              Vắng mặt
+            </p>
+            <p className="text-2xl font-bold text-amber-700 tabular-nums dark:text-amber-400">
+              {noShowCount}
+            </p>
+          </div>
+        </div>
+
+        {/* Card 4: Đã huỷ - matches Đã huỷ badge */}
         <div className="flex items-center gap-3.5 rounded-xl border border-rose-600/25 bg-rose-50/80 p-4 shadow-xs dark:bg-rose-950/20">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-600 text-white shadow-xs">
             <XCircle className="h-5 w-5" />
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-400">
-              Đã huỷ / Vắng mặt
+              Đã huỷ
             </p>
             <p className="text-2xl font-bold text-rose-700 tabular-nums dark:text-rose-400">
               {cancelledCount}
