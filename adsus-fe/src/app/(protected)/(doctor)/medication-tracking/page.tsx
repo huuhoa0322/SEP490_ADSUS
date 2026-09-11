@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useDeferredValue, useMemo } from "react";
+import { useState, useDeferredValue, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { Pill, AlertCircle, CheckCircle2, Users, TrendingUp, Clock, FileText } from "lucide-react";
+import { Pill, AlertCircle, CheckCircle2, Users, TrendingUp, Clock, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -115,7 +115,7 @@ function PatientCard({
 
   return (
     <Card
-      className={`cursor-pointer transition-shadow hover:shadow-md ${isFetching ? "opacity-60" : ""}`}
+      className={`w-full cursor-pointer transition-shadow hover:shadow-md ${isFetching ? "opacity-60" : ""}`}
       onClick={onClick}
     >
       <CardContent className="flex items-start gap-4 p-4">
@@ -127,7 +127,7 @@ function PatientCard({
         {/* Main info */}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">{patient.patientName}</span>
+            <span className="break-words font-medium">{patient.patientName}</span>
             <Badge
               variant={
                 patient.adherenceLevel === "good"
@@ -171,7 +171,7 @@ function PatientCard({
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex shrink-0 flex-col items-end gap-2">
           <span
             className={`font-heading text-xl font-semibold ${
               patient.adherenceLevel === "good"
@@ -190,6 +190,68 @@ function PatientCard({
   );
 }
 
+const PAGE_SIZE = 10;
+
+// ─── Pagination controls ────────────────────────────────────────────────────
+function Pagination({
+  page,
+  totalPages,
+  totalCount,
+  pageSize,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  totalCount: number;
+  pageSize: number;
+  onPageChange: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, totalCount);
+
+  return (
+    <div className="flex items-center justify-between px-1 pt-4">
+      <span className="text-sm text-muted-foreground">
+        Hiển thị <span className="font-medium text-foreground">{start}–{end}</span> /{" "}
+        <span className="font-medium text-foreground">{totalCount}</span> bệnh nhân
+      </span>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+          <Button
+            key={p}
+            variant={p === page ? "default" : "outline"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onPageChange(p)}
+          >
+            {p}
+          </Button>
+        ))}
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function MedicationTrackingPage() {
   const router = useRouter();
@@ -198,6 +260,12 @@ export default function MedicationTrackingPage() {
 
   const [adherenceLevel, setAdherenceLevel] = useState<string>("");
   const [hasOverdue, setHasOverdue] = useState<string>("");
+  const [page, setPage] = useState(1);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [deferredSearch, adherenceLevel, hasOverdue]);
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
@@ -206,6 +274,7 @@ export default function MedicationTrackingPage() {
       deferredSearch,
       adherenceLevel || undefined,
       hasOverdue || undefined,
+      page,
     ],
     queryFn: () =>
       getPatientList({
@@ -213,6 +282,8 @@ export default function MedicationTrackingPage() {
         adherenceLevel: adherenceLevel || undefined,
         hasOverdueDoses:
           hasOverdue === "true" ? true : hasOverdue === "false" ? false : undefined,
+        page,
+        pageSize: PAGE_SIZE,
       }),
   });
 
@@ -228,6 +299,7 @@ export default function MedicationTrackingPage() {
     setSearch("");
     setAdherenceLevel("");
     setHasOverdue("");
+    setPage(1);
   }
 
   return (
@@ -335,18 +407,27 @@ export default function MedicationTrackingPage() {
           <p>Không có bệnh nhân nào được tìm thấy.</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {(data?.patients ?? []).map((patient) => (
-            <PatientCard
-              key={patient.patientProfileId}
-              patient={patient}
-              isFetching={isFetching}
-              onClick={() =>
-                router.push(`/medication-tracking/${patient.patientProfileId}`)
-              }
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {(data?.patients ?? []).map((patient) => (
+              <PatientCard
+                key={patient.patientProfileId}
+                patient={patient}
+                isFetching={isFetching}
+                onClick={() =>
+                  router.push(`/medication-tracking/${patient.patientProfileId}`)
+                }
+              />
+            ))}
+          </div>
+          <Pagination
+            page={data?.page ?? 1}
+            totalPages={data?.totalPages ?? 1}
+            totalCount={data?.totalCount ?? 0}
+            pageSize={PAGE_SIZE}
+            onPageChange={(p) => setPage(p)}
+          />
+        </>
       )}
     </div>
   );

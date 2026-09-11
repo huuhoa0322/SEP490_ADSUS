@@ -15,6 +15,7 @@ import {
   TrendingUp,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   AlertTriangle,
   CircleCheck,
   Hourglass,
@@ -28,6 +29,81 @@ import {
   type PrescriptionCardDto,
 } from "@/features/medication-tracking/api/medication-tracking.api";
 import toast from "react-hot-toast";
+
+// ─── Pagination ───────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 5;
+
+function Pagination({
+  page,
+  totalPages,
+  totalCount,
+  pageSize,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  totalCount: number;
+  pageSize: number;
+  onPageChange: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, totalCount);
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1).filter(
+    (p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1,
+  );
+
+  return (
+    <div className="flex flex-col items-center gap-3 py-4 sm:flex-row sm:justify-between">
+      <p className="text-sm text-muted-foreground">
+        Hiển thị {start}–{end} / <span className="font-medium">{totalCount}</span> đơn
+      </p>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        {pages.map((p, i) => {
+          const prev = pages[i - 1];
+          const showEllipsis = prev !== undefined && p - prev > 1;
+          return (
+            <span key={p} className="contents">
+              {showEllipsis && (
+                <span className="flex h-8 w-8 items-center justify-center text-sm text-muted-foreground">
+                  …
+                </span>
+              )}
+              <Button
+                variant={p === page ? "default" : "outline"}
+                size="sm"
+                className="h-8 min-w-8 px-0"
+                onClick={() => onPageChange(p)}
+              >
+                {p}
+              </Button>
+            </span>
+          );
+        })}
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -57,6 +133,22 @@ function doseStatusConfig(status: TodayDoseDto["status"]) {
         pillClass: "bg-[#e0912f]/10 text-[#e0912f] border-[#e0912f]/20",
         icon: Clock,
       };
+    case "MISSED":
+      return {
+        label: "Bỏ qua",
+        pillClass: "bg-destructive/10 text-destructive border-destructive/20",
+        icon: AlertCircle,
+      };
+    default: {
+      // Fail-safe: BE có thể trả status mới mà FE chưa cập nhật.
+      // Không crash — hiển thị nhãn raw, dùng icon mặc định.
+      const _exhaustive: never = status;
+      return {
+        label: status,
+        pillClass: "bg-muted text-muted-foreground border-border",
+        icon: AlertCircle,
+      };
+    }
   }
 }
 
@@ -371,7 +463,10 @@ interface PatientStats {
   completedCount: number;
 }
 
-function deriveStats(prescriptions: PrescriptionCardDto[]): PatientStats {
+function deriveStats(
+  prescriptions: PrescriptionCardDto[],
+  totalPrescriptions: number,
+): PatientStats {
   let totalDosesToday = 0;
   let takenToday = 0;
   let overdueToday = 0;
@@ -387,11 +482,11 @@ function deriveStats(prescriptions: PrescriptionCardDto[]): PatientStats {
       ? Math.round((takenToday / totalDosesToday) * 100)
       : 0;
   return {
-    totalPrescriptions: prescriptions.length,
+    totalPrescriptions,
     totalDosesToday,
     takenToday,
     overdueToday,
-    warningCount: overallPercent < 80 && prescriptions.length > 0 ? 1 : 0,
+    warningCount: overallPercent < 80 && totalPrescriptions > 0 ? 1 : 0,
     completedCount: prescriptions.filter(
       (p) => p.adherenceOverall.percent >= 100,
     ).length,
@@ -465,17 +560,19 @@ export default function PatientPrescriptionDetailPage() {
   const router = useRouter();
   const patientId = params.patientId as string;
 
+  const [page, setPage] = useState(1);
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["doctor-medication-tracking", "prescriptions", patientId],
-    queryFn: () => getPatientPrescriptions(patientId),
+    queryKey: ["doctor-medication-tracking", "prescriptions", patientId, page],
+    queryFn: () => getPatientPrescriptions(patientId, { page, pageSize: PAGE_SIZE }),
     enabled: !!patientId,
   });
 
   const now = useMemo(() => new Date(), []);
 
   const stats = useMemo(
-    () => deriveStats(data?.prescriptions ?? []),
-    [data?.prescriptions],
+    () => deriveStats(data?.prescriptions ?? [], data?.totalCount ?? 0),
+    [data?.prescriptions, data?.totalCount],
   );
 
   // Annotate prescriptions with lifecycle + case date, then group by date
@@ -549,75 +646,85 @@ export default function PatientPrescriptionDetailPage() {
         <>
           <PatientHeader name={data.patientName} stats={stats} />
 
-          {/* Compact grouped table */}
-          <Card className="overflow-hidden">
-            <CardContent className="p-0">
-              {sortedDates.map((dateKey) => {
-                const group = grouped[dateKey];
-                const groupDate = group[0]?.caseDate;
-                const dayTotalDoses = group.reduce(
-                  (sum, a) => sum + a.prescription.adherenceToday.total,
-                  0,
-                );
-                const dayTaken = group.reduce(
-                  (sum, a) => sum + a.prescription.adherenceToday.taken,
-                  0,
-                );
-                return (
-                  <section key={dateKey}>
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2 text-xs">
-                      <div className="flex items-center gap-2 font-semibold uppercase tracking-wide text-muted-foreground">
-                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground" />
-                        {groupDate
-                          ? formatDateHeader(groupDate)
-                          : "Chưa rõ ngày"}
+          {/* Compact grouped table — tách riêng từng ngày bằng gap-4 */}
+          <div className="flex flex-col gap-4">
+            {sortedDates.map((dateKey) => {
+              const group = grouped[dateKey];
+              const groupDate = group[0]?.caseDate;
+              const dayTotalDoses = group.reduce(
+                (sum, a) => sum + a.prescription.adherenceToday.total,
+                0,
+              );
+              const dayTaken = group.reduce(
+                (sum, a) => sum + a.prescription.adherenceToday.taken,
+                0,
+              );
+              return (
+                <Card key={dateKey} className="overflow-hidden">
+                  <CardContent className="p-0">
+                    <section>
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2 text-xs">
+                        <div className="flex items-center gap-2 font-semibold uppercase tracking-wide text-muted-foreground">
+                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+                          {groupDate
+                            ? formatDateHeader(groupDate)
+                            : "Chưa rõ ngày"}
+                        </div>
+                        {dayTotalDoses > 0 && (
+                          <span className="text-muted-foreground">
+                            Hôm nay:{" "}
+                            <span className="font-mono font-semibold text-foreground">
+                              {dayTaken}/{dayTotalDoses}
+                            </span>{" "}
+                            liều · {group.length} đơn
+                          </span>
+                        )}
                       </div>
-                      {dayTotalDoses > 0 && (
-                        <span className="text-muted-foreground">
-                          Hôm nay:{" "}
-                          <span className="font-mono font-semibold text-foreground">
-                            {dayTaken}/{dayTotalDoses}
-                          </span>{" "}
-                          liều · {group.length} đơn
-                        </span>
-                      )}
-                    </div>
 
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted/20 text-xs uppercase tracking-wide text-muted-foreground">
-                          <tr>
-                            <th className="w-8 px-2 py-2"></th>
-                            <th className="px-3 py-2 text-left font-medium">
-                              Đơn thuốc
-                            </th>
-                            <th className="hidden px-3 py-2 text-left font-medium sm:table-cell">
-                              Hôm nay
-                            </th>
-                            <th className="hidden px-3 py-2 text-left font-medium md:table-cell">
-                              Toàn đơn
-                            </th>
-                            <th className="px-3 py-2 text-right font-medium">
-                              Hành động
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {group.map(({ prescription, lifecycle }) => (
-                            <PrescriptionRow
-                              key={prescription.prescriptionId}
-                              prescription={prescription}
-                              lifecycle={lifecycle}
-                            />
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </section>
-                );
-              })}
-            </CardContent>
-          </Card>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-muted/20 text-xs uppercase tracking-wide text-muted-foreground">
+                            <tr>
+                              <th className="w-8 px-2 py-2"></th>
+                              <th className="px-3 py-2 text-left font-medium">
+                                Đơn thuốc
+                              </th>
+                              <th className="hidden px-3 py-2 text-left font-medium sm:table-cell">
+                                Hôm nay
+                              </th>
+                              <th className="hidden px-3 py-2 text-left font-medium md:table-cell">
+                                Toàn đơn
+                              </th>
+                              <th className="px-3 py-2 text-right font-medium">
+                                Hành động
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.map(({ prescription, lifecycle }) => (
+                              <PrescriptionRow
+                                key={prescription.prescriptionId}
+                                prescription={prescription}
+                                lifecycle={lifecycle}
+                              />
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          <Pagination
+            page={data.page}
+            totalPages={data.totalPages}
+            totalCount={data.totalCount}
+            pageSize={data.pageSize}
+            onPageChange={setPage}
+          />
         </>
       )}
     </div>
