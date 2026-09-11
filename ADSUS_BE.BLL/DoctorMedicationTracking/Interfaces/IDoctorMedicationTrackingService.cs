@@ -11,14 +11,18 @@ public interface IDoctorMedicationTrackingService
         string? adherenceLevel,
         bool? hasOverdueDoses,
         DateTime? nowUtc = null,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        int page = 1,
+        int pageSize = 10);
 
     /// <param name="nowUtc">Mốc thời gian hiện tại.</param>
     Task<PatientPrescriptionDetailResponse> GetPatientDetailAsync(
         Guid doctorId,
         Guid patientId,
         DateTime? nowUtc = null,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        int page = 1,
+        int pageSize = 10);
 
     /// <param name="nowUtc">Mốc thời gian hiện tại.</param>
     Task<RemindResponse> SendRemindersAsync(

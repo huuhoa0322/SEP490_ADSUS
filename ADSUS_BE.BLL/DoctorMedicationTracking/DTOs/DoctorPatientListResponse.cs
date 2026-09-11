@@ -12,4 +12,7 @@ public sealed record DoctorPatientDto(
 
 public sealed record DoctorPatientListResponse(
     IReadOnlyList<DoctorPatientDto> Patients,
-    int TotalCount);
+    int TotalCount,
+    int Page,
+    int PageSize,
+    int TotalPages);
