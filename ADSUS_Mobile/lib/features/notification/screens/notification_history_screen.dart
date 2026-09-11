@@ -18,6 +18,29 @@ class _NotificationHistoryScreenState
     extends ConsumerState<NotificationHistoryScreen> {
   final ScrollController _scrollController = ScrollController();
 
+  /// Delete notification with undo snackbar
+  void _deleteWithUndo(NotificationDto notification) {
+    final notifier = ref.read(notificationsProvider.notifier);
+
+    // Remove from UI and call API immediately
+    notifier.deleteNotification(notification.logId);
+
+    // Show snackbar with undo (API already called)
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Thông báo đã bị xóa'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'Hoàn tác',
+          onPressed: () {
+            notifier.undoDelete();
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -124,46 +147,118 @@ class _NotificationHistoryScreenState
           }
 
           final notification = state.notifications[index];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 8),
-            child: ListTile(
-              leading: Icon(
-                notification.isRead
-                    ? Icons.notifications_outlined
-                    : Icons.notifications,
-                color: notification.isRead ? AppColors.muted : AppColors.teal,
-              ),
-              title: Text(
-                notification.title,
-                style: TextStyle(
-                  fontWeight:
-                      notification.isRead ? FontWeight.normal : FontWeight.bold,
+          return Dismissible(
+            key: Key(notification.logId),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              color: Colors.red,
+              child: const Icon(Icons.delete, color: Colors.white),
+            ),
+            onDismissed: (_) {
+              _deleteWithUndo(notification);
+            },
+            child: Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: Icon(
+                  notification.isRead
+                      ? Icons.notifications_outlined
+                      : Icons.notifications,
+                  color: notification.isRead ? AppColors.muted : AppColors.teal,
                 ),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (notification.body != null) Text(notification.body!),
-                  Text(
-                    _formatDate(notification.sentAt),
-                    style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                title: Text(
+                  notification.title,
+                  style: TextStyle(
+                    fontWeight:
+                        notification.isRead ? FontWeight.normal : FontWeight.bold,
                   ),
-                ],
-              ),
-              trailing: notification.isRead
-                  ? null
-                  : Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.teal,
-                        shape: BoxShape.circle,
-                      ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (notification.body != null) Text(notification.body!),
+                    Text(
+                      _formatDate(notification.sentAt),
+                      style: const TextStyle(fontSize: 12, color: AppColors.muted),
                     ),
-              onTap: () {
-                final navService = NotificationNavigationService(context, ref);
-                navService.navigate(notification);
-              },
+                  ],
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!notification.isRead)
+                      Container(
+                        width: 8,
+                        height: 8,
+                        margin: const EdgeInsets.only(right: 4),
+                        decoration: const BoxDecoration(
+                          color: AppColors.teal,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, size: 20),
+                      padding: EdgeInsets.zero,
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'mark_read':
+                            ref.read(notificationsProvider.notifier)
+                                .markAsRead(notification.logId);
+                            break;
+                          case 'mark_unread':
+                            ref.read(notificationsProvider.notifier)
+                                .markAsUnread(notification.logId);
+                            break;
+                          case 'delete':
+                            _deleteWithUndo(notification);
+                            break;
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: notification.isRead ? 'mark_unread' : 'mark_read',
+                          child: Row(
+                            children: [
+                              Icon(
+                                notification.isRead
+                                    ? Icons.mark_email_unread
+                                    : Icons.mark_email_read,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                notification.isRead
+                                    ? 'Đánh dấu chưa đọc'
+                                    : 'Đánh dấu đã đọc',
+                              ),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, color: Colors.red, size: 20),
+                              SizedBox(width: 12),
+                              Text(
+                                'Xóa thông báo',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                onTap: () {
+                  final navService = NotificationNavigationService(context, ref);
+                  navService.navigate(notification);
+                },
+              ),
             ),
           );
         },

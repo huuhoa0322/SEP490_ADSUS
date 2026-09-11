@@ -31,9 +31,17 @@ class NotificationNavigationService {
         _navigateToMedication(notification);
         break;
 
+      case NotificationTypeEnum.adherenceSummary:
+        // Tạm thời bỏ - chỉ mark as read
+        _showTempUnavailableSnackbar();
+        break;
+
       case NotificationTypeEnum.appointmentReminder:
       case NotificationTypeEnum.appointmentBooking:
       case NotificationTypeEnum.appointmentCancellation:
+      case NotificationTypeEnum.appointmentCancelledByPatient:
+      case NotificationTypeEnum.appointmentRescheduled:
+      case NotificationTypeEnum.appointmentCheckin:
         _navigateToAppointment(notification);
         break;
 
@@ -46,7 +54,10 @@ class NotificationNavigationService {
         break;
 
       case NotificationTypeEnum.weeklyHealthReport:
-      case NotificationTypeEnum.adherenceSummary:
+        // Tạm thời bỏ - chỉ mark as read
+        _showTempUnavailableSnackbar();
+        break;
+
       case NotificationTypeEnum.healthlogReminder:
         _navigateToHealthLog(notification);
         break;
@@ -127,6 +138,15 @@ class NotificationNavigationService {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
       (route) => false,
+    );
+  }
+
+  void _showTempUnavailableSnackbar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Tính năng tạm thời không khả dụng'),
+        duration: Duration(seconds: 2),
+      ),
     );
   }
 }

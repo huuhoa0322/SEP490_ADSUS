@@ -68,6 +68,7 @@ class HealthLogCalendar extends ConsumerWidget {
       initialDate: currentDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
+      locale: const Locale('vi', 'VN'), // Vietnamese locale
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(

@@ -13,6 +13,9 @@ enum NotificationTypeEnum {
   appointmentBooking,
   appointmentReminder,
   appointmentCancellation,
+  appointmentCancelledByPatient,
+  appointmentRescheduled,
+  appointmentCheckin,
   healthlogReminder,
   medicalRecordAdded,
   blogNewPost,
@@ -35,6 +38,12 @@ extension NotificationTypeEnumExtension on NotificationTypeEnum {
         return 'appointment_reminder';
       case NotificationTypeEnum.appointmentCancellation:
         return 'appointment_cancellation';
+      case NotificationTypeEnum.appointmentCancelledByPatient:
+        return 'appointment_cancelled_by_patient';
+      case NotificationTypeEnum.appointmentRescheduled:
+        return 'appointment_rescheduled';
+      case NotificationTypeEnum.appointmentCheckin:
+        return 'appointment_checkin';
       case NotificationTypeEnum.healthlogReminder:
         return 'healthlog_reminder';
       case NotificationTypeEnum.medicalRecordAdded:
@@ -62,6 +71,12 @@ extension NotificationTypeEnumExtension on NotificationTypeEnum {
         return 'Nhắc lịch khám';
       case NotificationTypeEnum.appointmentCancellation:
         return 'Hủy lịch khám';
+      case NotificationTypeEnum.appointmentCancelledByPatient:
+        return 'Lịch hẹn bị hủy';
+      case NotificationTypeEnum.appointmentRescheduled:
+        return 'Lịch hẹn bị đổi';
+      case NotificationTypeEnum.appointmentCheckin:
+        return 'Check-in lịch hẹn';
       case NotificationTypeEnum.healthlogReminder:
         return 'Nhắc nhật ký sức khoẻ';
       case NotificationTypeEnum.medicalRecordAdded:
@@ -120,6 +135,7 @@ class NotificationDto {
       case NotificationTypeEnum.appointmentReminder:
       case NotificationTypeEnum.appointmentBooking:
       case NotificationTypeEnum.appointmentCancellation:
+      case NotificationTypeEnum.appointmentCancelledByPatient:
         return metadata!['appointmentId']?.toString();
       case NotificationTypeEnum.medicalRecordAdded:
         return metadata!['recordId']?.toString();
@@ -196,6 +212,9 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
 
   final Ref _ref;
   Dio? _dio;
+
+  // Store pending delete notification (not yet sent to API)
+  NotificationDto? _pendingDeleteNotification;
 
   String get _accessToken =>
       _ref.read(authViewModelProvider).session?.accessToken ?? '';
@@ -398,6 +417,138 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
       // Re-fetch on error
       fetchNotifications();
     }
+  }
+
+  Future<void> deleteNotification(String logId) async {
+    // Store notification for undo BEFORE removing
+    final notification = state.notifications.firstWhere(
+      (n) => n.logId == logId,
+      orElse: () => throw Exception('Notification not found'),
+    );
+
+    _pendingDeleteNotification = notification;
+
+    // Remove from UI immediately
+    final updated = state.notifications
+        .where((n) => n.logId != logId)
+        .toList();
+
+    final deletedWasUnread = !notification.isRead;
+    state = state.copyWith(
+      notifications: updated,
+      unreadCount: deletedWasUnread && state.unreadCount > 0
+          ? state.unreadCount - 1
+          : state.unreadCount,
+    );
+
+    // Call API to delete immediately
+    try {
+      _dio ??= Dio(BaseOptions(
+        baseUrl: ApiConstants.baseUrl,
+        connectTimeout: ApiConstants.timeout,
+        receiveTimeout: ApiConstants.timeout,
+      ));
+
+      await _dio!.delete(
+        '${ApiConstants.notifications}/$logId',
+        options: Options(
+          headers: {'Authorization': 'Bearer $_accessToken'},
+        ),
+      );
+      debugPrint('[NotificationNotifier] Deleted notification from API: $logId');
+    } catch (e) {
+      debugPrint('[NotificationNotifier] Failed to delete notification: $e');
+      // Re-fetch to sync on error
+      fetchNotifications();
+    }
+  }
+
+  /// Undo last delete operation - restore to correct position based on SentAt + call API
+  Future<void> undoDelete() async {
+    if (_pendingDeleteNotification == null) return;
+
+    final notification = _pendingDeleteNotification!;
+    _pendingDeleteNotification = null;
+
+    // Find correct insert position based on SentAt (descending order - newest first)
+    final sentAt = notification.sentAt;
+    int insertIndex = state.notifications.length;
+
+    for (int i = 0; i < state.notifications.length; i++) {
+      if (state.notifications[i].sentAt.isBefore(sentAt)) {
+        insertIndex = i;
+        break;
+      }
+    }
+
+    // Insert at correct position (local first)
+    final updated = [...state.notifications];
+    updated.insert(insertIndex, notification);
+
+    final restoredWasUnread = !notification.isRead;
+    state = state.copyWith(
+      notifications: updated,
+      unreadCount: restoredWasUnread
+          ? state.unreadCount + 1
+          : state.unreadCount,
+    );
+
+    // Call API to restore on backend
+    try {
+      _dio ??= Dio(BaseOptions(
+        baseUrl: ApiConstants.baseUrl,
+        connectTimeout: ApiConstants.timeout,
+        receiveTimeout: ApiConstants.timeout,
+      ));
+
+      await _dio!.put(
+        '${ApiConstants.notifications}/${notification.logId}/restore',
+        options: Options(
+          headers: {'Authorization': 'Bearer $_accessToken'},
+        ),
+      );
+      debugPrint('[NotificationNotifier] Restored notification via API: ${notification.logId}');
+    } catch (e) {
+      debugPrint('[NotificationNotifier] Failed to restore: $e');
+    }
+
+    // Re-fetch to sync with server
+    await fetchNotifications();
+  }
+
+  /// Mark notification as unread (CALL API)
+  Future<void> markAsUnread(String logId) async {
+    // Call API first
+    try {
+      _dio ??= Dio(BaseOptions(
+        baseUrl: ApiConstants.baseUrl,
+        connectTimeout: ApiConstants.timeout,
+        receiveTimeout: ApiConstants.timeout,
+      ));
+
+      await _dio!.put(
+        '${ApiConstants.notifications}/$logId/unread',
+        options: Options(
+          headers: {'Authorization': 'Bearer $_accessToken'},
+        ),
+      );
+      debugPrint('[NotificationNotifier] Marked as unread via API: $logId');
+    } catch (e) {
+      debugPrint('[NotificationNotifier] Failed to mark as unread: $e');
+    }
+
+    // Update local state
+    final updated = state.notifications.map((n) {
+      if (n.logId == logId && n.isRead) {
+        return n.copyWith(readAt: null, isRead: false);
+      }
+      return n;
+    }).toList();
+
+    state = state.copyWith(
+      notifications: updated,
+      unreadCount: state.unreadCount + 1,
+    );
   }
 
   void reset() {

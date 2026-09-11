@@ -246,37 +246,53 @@ class _MyAppointmentsScreenState
   }
 
   Future<void> _onReschedule(BuildContext context, Appointment ap) async {
-    // Hiện dialog xác nhận trước khi đặt lịch mới
+    await _showRescheduleDialog(context, ap);
+  }
+
+  Future<void> _showRescheduleDialog(BuildContext context, Appointment ap) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Đặt lịch mới'),
+        title: const Center(
+          child: Text('Đặt lịch mới'),
+        ),
         content: const Text(
           'Bạn có muốn đặt lịch mới không?\n'
           'Lịch khám hiện tại sẽ bị hủy.',
         ),
-        actionsAlignment: MainAxisAlignment.end,
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy bỏ'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.teal,
-              foregroundColor: Colors.white,
+          SizedBox(
+            width: 120,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context, false),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.navy,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: const Text('Hủy bỏ'),
             ),
-            child: const Text('Xác nhận'),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 120,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.teal,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: const Text('Xác nhận'),
+            ),
           ),
         ],
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.only(bottom: 16, left: 16, right: 16, top: 8),
       ),
     );
 
     if (confirmed != true || !context.mounted) return;
 
-    // Tiến hành hủy lịch cũ và mở màn đặt lịch
     final ok = await ref
         .read(myAppointmentsViewModelProvider.notifier)
         .reschedule(ap);
