@@ -691,7 +691,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
-        var medicalCase = MakeCase(profile, CaseStatus.End);
+        var medicalCase = MakeCase(profile, CaseStatus.InProgress);
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
@@ -737,7 +737,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, otherDoctor);
         var profile = MakePatientProfile();
-        var medicalCase = MakeCase(profile, CaseStatus.End);
+        var medicalCase = MakeCase(profile, CaseStatus.InProgress);
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
 
@@ -756,6 +756,24 @@ public class CasesControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
         var medicalCase = MakeCase(profile, CaseStatus.Confirmed);
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/confirm", ValidConfirmBody(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PutConfirm_CaseAlreadyEnded_Returns422UnprocessableEntity()
+    {
+        // Arrange — P2/GB-01: ca đã kết thúc thì không thể confirm lại.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.End);
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
 
@@ -811,7 +829,7 @@ public class CasesControllerIntegrationTests
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
-        var medicalCase = MakeCase(profile, CaseStatus.End);
+        var medicalCase = MakeCase(profile, CaseStatus.InProgress);
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
@@ -823,7 +841,7 @@ public class CasesControllerIntegrationTests
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
-        Assert.Equal("END", body!.Data!.Status);
+        Assert.Equal("IN_PROGRESS", body!.Data!.Status);
         Assert.Equal("Nhân xơ tử cung", body.Data.FinalDiagnosis);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -852,6 +870,24 @@ public class CasesControllerIntegrationTests
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
         var medicalCase = MakeCase(profile, CaseStatus.Confirmed);
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/cases/{medicalCase.CaseId}/conclusion", ValidConfirmBody(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PutConclusion_CaseAlreadyEnded_Returns422UnprocessableEntity()
+    {
+        // Arrange — P2/GB-01: ca đã kết thúc thì "Lưu kết luận" cũng bị từ chối.
+        using var app = MakeApp();
+        var client = MakeClientWithToken(app, _doctor);
+        var profile = MakePatientProfile();
+        var medicalCase = MakeCase(profile, CaseStatus.End);
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
 
