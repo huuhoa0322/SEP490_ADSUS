@@ -76,9 +76,9 @@ public sealed class AppointmentService : IAppointmentService
         DateOnly? toDate = null,
         CancellationToken ct = default)
     {
-        // Giới hạn: trong vòng 2 tuần (mặc định nếu không truyền from/to).
+        // Giới hạn: trong vòng 30 ngày (mặc định nếu không truyền from/to).
         var from = fromDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        var to = toDate ?? from.AddDays(14);
+        var to = toDate ?? from.AddDays(30);
 
         Guid? docGuid = doctorId != null && Guid.TryParse(doctorId, out var parsed) ? parsed : null;
 
@@ -131,6 +131,8 @@ public sealed class AppointmentService : IAppointmentService
         return appointments.Select(a => new AppointmentSummaryResponse
         {
             AppointmentId = a.AppointmentId,
+            ScheduleSlotId = a.SlotId,
+            DoctorId = a.Slot.DoctorId,
             SlotDate = a.Slot.SlotDate,
             StartTime = a.Slot.StartTime,
             EndTime = a.Slot.EndTime,
@@ -139,6 +141,7 @@ public sealed class AppointmentService : IAppointmentService
             CreatedAt = a.CreatedAt,
             Reason = a.Reason,
             CancellationReason = a.CancelledReason,
+            CaseId = a.CaseId,
         }).ToList();
     }
 

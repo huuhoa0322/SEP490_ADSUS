@@ -32,8 +32,11 @@ public class NotificationsController : ControllerBase
                 StatusCodes.Status401Unauthorized, "Invalid access token."));
         }
 
+        // Convert fromDate to UTC if provided (mobile sends local time)
+        DateTime? utcFromDate = fromDate?.ToUniversalTime();
+
         var notifications = await _notificationLogRepo.GetByUserIdAsync(
-            userId, page, pageSize, false, fromDate, cancellationToken);
+            userId, page, pageSize, false, utcFromDate, cancellationToken);
 
         var unreadCount = await _notificationLogRepo.CountUnreadAsync(userId, cancellationToken);
 
@@ -82,6 +85,32 @@ public class NotificationsController : ControllerBase
 
         await _notificationLogRepo.MarkAsReadAsync(logId, cancellationToken);
         return Ok(ApiResponse<object>.Ok(null!, "Notification marked as read."));
+    }
+
+    [HttpPut("{logId}/unread")]
+    public async Task<IActionResult> MarkAsUnread(Guid logId, CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized(ApiResponse<object>.Fail(
+                StatusCodes.Status401Unauthorized, "Invalid access token."));
+        }
+
+        await _notificationLogRepo.MarkAsUnreadAsync(logId, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(null!, "Notification marked as unread."));
+    }
+
+    [HttpPut("{logId}/restore")]
+    public async Task<IActionResult> RestoreNotification(Guid logId, CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized(ApiResponse<object>.Fail(
+                StatusCodes.Status401Unauthorized, "Invalid access token."));
+        }
+
+        await _notificationLogRepo.RestoreAsync(logId, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(null!, "Notification restored."));
     }
 
     [HttpPut("read-all")]

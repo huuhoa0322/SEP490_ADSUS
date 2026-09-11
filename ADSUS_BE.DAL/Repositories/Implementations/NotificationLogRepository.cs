@@ -68,6 +68,18 @@ public class NotificationLogRepository : INotificationLogRepository
         }
     }
 
+    public async Task MarkAsUnreadAsync(Guid logId, CancellationToken ct = default)
+    {
+        var log = await _db.NotificationLogs
+            .FirstOrDefaultAsync(n => n.LogId == logId, ct);
+
+        if (log is not null)
+        {
+            log.ReadAt = null;
+            await _db.SaveChangesAsync(ct);
+        }
+    }
+
     public async Task MarkAllAsReadAsync(Guid userId, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
@@ -85,6 +97,19 @@ public class NotificationLogRepository : INotificationLogRepository
         {
             log.IsDeleted = true;
             log.DeletedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+        }
+    }
+
+    public async Task RestoreAsync(Guid logId, CancellationToken ct = default)
+    {
+        var log = await _db.NotificationLogs
+            .FirstOrDefaultAsync(n => n.LogId == logId, ct);
+
+        if (log is not null)
+        {
+            log.IsDeleted = false;
+            log.DeletedAt = null;
             await _db.SaveChangesAsync(ct);
         }
     }

@@ -14,6 +14,8 @@ public interface INotificationLogRepository
         CancellationToken ct = default);
     Task<int> CountUnreadAsync(Guid userId, CancellationToken ct = default);
     Task MarkAsReadAsync(Guid logId, CancellationToken ct = default);
+    Task MarkAsUnreadAsync(Guid logId, CancellationToken ct = default);
     Task MarkAllAsReadAsync(Guid userId, CancellationToken ct = default);
     Task DeleteAsync(Guid logId, CancellationToken ct = default);
+    Task RestoreAsync(Guid logId, CancellationToken ct = default);
 }

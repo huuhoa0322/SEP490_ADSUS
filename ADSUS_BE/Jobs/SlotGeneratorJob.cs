@@ -8,8 +8,8 @@ namespace ADSUS_BE.Jobs;
 
 /// <summary>
 /// JOB-02 — Tự sinh slot mỗi ngày.
-/// Chạy lúc 00:05 sáng hàng ngày.
-/// Sinh slot cho 14 ngày (hôm nay → 13 ngày tới = 2 tuần T2-CN).
+/// Chạy lúc 00:00 sáng hàng ngày theo giờ Việt Nam.
+/// Sinh slot cho 30 ngày (hôm nay → 29 ngày tới).
 /// Chia ca 30 phút: 8h-12h (8 ca), 13h-17h (8 ca) = 16 ca/ngày.
 /// </summary>
 [DisallowConcurrentExecution]
@@ -62,9 +62,9 @@ public sealed class SlotGeneratorJob : IJob
             var doctors = await _userRepo.ListActiveDoctorsAsync(context.CancellationToken);
             _logger.LogInformation("[JOB-02] Found {Count} active doctors", doctors.Count);
 
-            // 2. Tính ngày: hôm nay → 13 ngày tới = 14 ngày (2 tuần)
+            // 2. Tính ngày: hôm nay → 29 ngày tới = 30 ngày
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            var endDate = today.AddDays(13); // Hôm nay + 13 = 14 ngày
+            var endDate = today.AddDays(29); // Hôm nay + 29 = 30 ngày
             _logger.LogInformation("[JOB-02] Generating slots from {From} to {To}", today, endDate);
 
             // 3. Với mỗi Doctor, sinh slot cho 14 ngày

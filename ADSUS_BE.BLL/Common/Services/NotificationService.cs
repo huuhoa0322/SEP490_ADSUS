@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace ADSUS_BE.BLL.Common.Services;
 
 /// <summary>
-/// Implementation gửi notification: lưu DB + push FCM + SignalR.
+/// Implementation gui notification: luu DB + push FCM + SignalR.
 /// </summary>
 public sealed class NotificationService : INotificationService
 {
@@ -53,7 +53,7 @@ public sealed class NotificationService : INotificationService
             LogId = logId,
             UserId = request.UserId,
             Type = request.Type,
-            NotificationType = request.Type, // Database column notification_type
+            NotificationType = request.Type,
             Title = request.Title,
             Body = request.Body,
             DeepLink = request.DeepLink,
@@ -63,7 +63,10 @@ public sealed class NotificationService : INotificationService
 
         await SaveToDbAsync(log, ct);
 
-        // 3. Build FCM payload
+        // 3. Build mobile deep link for SignalR (adsus:// scheme)
+        var mobileDeepLink = ToMobileDeepLink(request.DeepLink, logId);
+
+        // 4. Build FCM payload
         var metadataDict = request.Metadata?
             .ToDictionary(kv => kv.Key, kv => kv.Value?.ToString() ?? "")
             ?? new Dictionary<string, string>();
@@ -71,10 +74,10 @@ public sealed class NotificationService : INotificationService
         var pushMessage = new PushMessage(
             Title: request.Title,
             Body: request.Body ?? "",
-            DeepLink: request.DeepLink,
+            DeepLink: mobileDeepLink,
             Data: metadataDict);
 
-        // 4. Send FCM
+        // 5. Send FCM
         try
         {
             _logger.LogInformation(
@@ -89,13 +92,12 @@ public sealed class NotificationService : INotificationService
         }
         catch (Exception ex)
         {
-            // Log lỗi nhưng không throw — notification đã lưu DB, FCM có thể retry sau
             _logger.LogError(ex,
                 "[Notification] FCM push failed for user {UserId}. Type={Type}",
                 request.UserId, request.Type);
         }
 
-        // 5. Send via SignalR (real-time)
+        // 6. Send via SignalR (real-time) with mobile deep link
         try
         {
             var notificationMessage = new NotificationMessage
@@ -104,7 +106,7 @@ public sealed class NotificationService : INotificationService
                 Type = request.Type,
                 Title = request.Title,
                 Body = request.Body,
-                DeepLink = request.DeepLink,
+                DeepLink = mobileDeepLink,
                 SentAt = now
             };
 
@@ -148,5 +150,20 @@ public sealed class NotificationService : INotificationService
         _logger.LogInformation(
             "[NOTIF-DB] Saved notification to DB: LogId={LogId}, UserId={UserId}",
             log.LogId, log.UserId);
+    }
+
+    /// <summary>
+    /// Convert web deep link to mobile app scheme (adsus://)
+    /// </summary>
+    private static string ToMobileDeepLink(string? webDeepLink, Guid logId)
+    {
+        if (string.IsNullOrEmpty(webDeepLink))
+            return $"adsus://notifications/{logId}";
+
+        return webDeepLink
+            .Replace("https://adsus.example.com", "adsus://")
+            .Replace("http://adsus.example.com", "adsus://")
+            .Replace("https://adsus.com", "adsus://")
+            .Replace("http://adsus.com", "adsus://");
     }
 }
