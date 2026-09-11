@@ -16,6 +16,19 @@ public interface IAuditLogRepository
     Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(
         int limit,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tìm kiếm và phân trang nhật ký thao tác theo từ khóa, hành động, vai trò và khoảng thời gian.
+    /// </summary>
+    Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount)> GetPagedAsync(
+        string? keyword,
+        string? action,
+        string? actorRole,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

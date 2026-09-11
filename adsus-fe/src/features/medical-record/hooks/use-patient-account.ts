@@ -18,7 +18,7 @@ import { medicalRecordQueryKeys } from "./query-keys";
 /**
  * UC-06 AF-01/AF-02/AF-03 — CHỈ Điều dưỡng.
  *
- * Backend chặn bằng [Authorize(Roles="NURSE")]. Component gọi các hook này phải tự ẩn nút
+ * Backend chặn bằng [Authorize(Roles="STAFF")]. Component gọi các hook này phải tự ẩn nút
  * khỏi Bác sĩ (xem `patient-account-actions.tsx`) — để anh ấy bấm rồi nhận 403 là trải
  * nghiệm tệ, và trái nguyên tắc "không bày ra hành động không dùng được".
  */
@@ -42,7 +42,7 @@ export function usePatientAccount(userId: string, enabled: boolean) {
   return useQuery({
     queryKey: medicalRecordQueryKeys.account(userId),
     queryFn: () => getPatientAccount(userId),
-    // Endpoint chỉ [Authorize(Roles="NURSE")] — không gọi khi vai trò khác, tránh một request
+    // Endpoint chỉ [Authorize(Roles="STAFF")] — không gọi khi vai trò khác, tránh một request
     // chắc chắn nhận 403 mỗi lần Bác sĩ mở màn này.
     enabled,
   });

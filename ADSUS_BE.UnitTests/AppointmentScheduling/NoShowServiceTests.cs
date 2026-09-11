@@ -133,7 +133,7 @@ public class NoShowServiceTests : IDisposable
 
     /// <summary>
     /// TC-UNIT-NoShowService-001
-    /// Appointment đang Approved (đã checkin) → Không xử lý
+    /// Appointment đang Completed (đã checkin) → Không xử lý
     /// </summary>
     [Fact]
     public async Task ProcessNoShowAsync_StatusNotBooked_ReturnsFalse()

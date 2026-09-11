@@ -8,14 +8,16 @@ namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
 /// Vai trò tài khoản — enum <c>user_role</c> trong DB.
-/// Thứ tự khai báo phải khớp thứ tự trong DB: ADMIN, DOCTOR, NURSE, PATIENT, PHARMACIST.
-/// NURSE có quyền giống hệt DOCTOR (theo quyết định ghi đè PRD trong UCS).
+/// Thứ tự khai báo phải khớp thứ tự trong DB: ADMIN, DOCTOR, STAFF, PATIENT, PHARMACIST.
+/// STAFF có quyền giống hệt DOCTOR (theo quyết định ghi đè PRD trong UCS). Đổi tên từ NURSE
+/// ngày 11/09/2026 — vẫn đúng 1 role như cũ, đặt tên tổng quát hơn để dự phòng thêm role phụ
+/// trợ khác vào cùng nhóm sau này mà không phải đổi tên lần nữa.
 /// </summary>
 public enum UserRole
 {
     [PgName("ADMIN")] Admin,
     [PgName("DOCTOR")] Doctor,
-    [PgName("NURSE")] Nurse,
+    [PgName("STAFF")] Staff,
     [PgName("PATIENT")] Patient,
     [PgName("PHARMACIST")] Pharmacist,
 }
@@ -44,14 +46,17 @@ public enum BlogPostStatus
 
 /// <summary>
 /// Trạng thái lịch hẹn — enum <c>appointment_status</c> trong DB (Module 8).
-/// Flow: Booked → Approved (nurse checkin) → Completed (doctor end case)
+/// Flow: Booked → Completed (patient checks in) | Booked → NoShow (grace time expires) |
+/// Booked → Cancelled (patient cancels). No separate "checked in but not seen yet" state —
+/// checkin marks the Appointment's own obligation fulfilled; whether the clinical visit itself
+/// is still ongoing is tracked separately on Case.Status (see CaseStatus.InProgress).
 /// </summary>
 public enum AppointmentStatus
 {
     [PgName("BOOKED")] Booked,
     [PgName("CANCELLED")] Cancelled,
-    [PgName("COMPLETED")] Completed,   // Nurse check-in thì appointment chuyển sang COMPLETED
-    [PgName("NO_SHOW")] NoShow,        // Tự động hủy khi bệnh nhân không check-in trong grace time
+    [PgName("COMPLETED")] Completed,   // Patient checked in (nurse checkin)
+    [PgName("NO_SHOW")] NoShow,        // Tự động hủy khi không check-in trong grace time
 }
 
 /// <summary>
@@ -60,7 +65,6 @@ public enum AppointmentStatus
 ///   BOOKED (từ mobile) → IN_PROGRESS (checkin) → CONFIRMED → END (có đơn thuốc)
 ///   BOOKED → CANCELLED (no-show hoặc hủy lịch)
 /// END là trạng thái cuối — không có đường lùi (GB-01).
-/// CREATED giữ lại để tương thích với DB cũ.
 /// </summary>
 public enum CaseStatus
 {
@@ -69,7 +73,6 @@ public enum CaseStatus
     [PgName("CONFIRMED")] Confirmed,      // Bác sĩ kết luận
     [PgName("END")] End,                  // Hoàn thành (có đơn thuốc)
     [PgName("CANCELLED")] Cancelled,       // NoShow hoặc bệnh nhân hủy
-    [PgName("CREATED")] Created,          // Tương thích DB cũ
 }
 
 /// <summary>
@@ -96,14 +99,12 @@ public enum PrescriptionStatus
 
 /// <summary>
 /// Trạng thái 1 liều thuốc — enum <c>intake_status</c> trong DB (Module 5).
-/// MISSED chỉ là giá trị fallback khi DB trả giá trị không nhận diện được.
-/// Không bao giờ được ghi vào DB vì MISSED là derived on-read (same as OVERTIME).
+/// Không có "Missed" — JOB-01 nhắc lặp lại liên tục cho tới khi bệnh nhân xác nhận Taken.
 /// </summary>
 public enum IntakeStatus
 {
     [PgName("PENDING")] Pending,
     [PgName("TAKEN")] Taken,
-    [PgName("MISSED")] Missed,
 }
 
 /// <summary>

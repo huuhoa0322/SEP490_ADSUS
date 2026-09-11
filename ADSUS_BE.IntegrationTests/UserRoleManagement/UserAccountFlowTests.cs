@@ -265,5 +265,16 @@ public class UserAccountFlowTests
         public Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(
             int limit, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
+
+        public Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount)> GetPagedAsync(
+            string? keyword,
+            string? action,
+            string? actorRole,
+            DateTime? fromDate,
+            DateTime? toDate,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<(IReadOnlyList<AuditLogEntry>, int)>((Array.Empty<AuditLogEntry>(), 0));
     }
 }

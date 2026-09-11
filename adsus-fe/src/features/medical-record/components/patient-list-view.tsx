@@ -107,7 +107,7 @@ export function PatientListView() {
   const [page, setPage] = useState(1);
 
   // UC-06 BR-03 — chỉ Điều dưỡng tạo được tài khoản bệnh nhân mới.
-  const isNurse = useAuthStore((state) => state.user?.role) === "NURSE";
+  const isNurse = useAuthStore((state) => state.user?.role) === "STAFF";
 
   const { data, isLoading, isError, error } = usePatientList({
     search,

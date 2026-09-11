@@ -106,8 +106,8 @@ describe("AppSidebar", () => {
       expect(screen.getByText("Danh mục thuốc")).toBeInTheDocument();
     });
 
-    it("renders correct navigation items for NURSE", () => {
-      useAuthStore.setState({ user: mockUser("NURSE") });
+    it("renders correct navigation items for STAFF", () => {
+      useAuthStore.setState({ user: mockUser("STAFF") });
       pathnameMock.mockReturnValue("/patients");
       render(<AppSidebar />);
 
@@ -169,7 +169,7 @@ describe("AppSidebar", () => {
 
   describe("Active Route & Role-Accent Contrast Styling", () => {
     it("applies correct role accent CSS variable to sidebar container", () => {
-      const roles: Role[] = ["ADMIN", "DOCTOR", "NURSE", "PHARMACIST", "PATIENT"];
+      const roles: Role[] = ["ADMIN", "DOCTOR", "STAFF", "PHARMACIST", "PATIENT"];
 
       roles.forEach((role) => {
         useAuthStore.setState({ user: mockUser(role) });

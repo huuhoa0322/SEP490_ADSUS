@@ -133,7 +133,7 @@ public class CaseReportServiceTests
     }
 
     [Theory]
-    [InlineData(CaseStatus.Created)]
+    [InlineData(CaseStatus.InProgress)]
     [InlineData(CaseStatus.Confirmed)]
     public async Task GenerateReportAsync_CaseNotYetEnded_ThrowsBusinessException(CaseStatus incompleteStatus)
     {

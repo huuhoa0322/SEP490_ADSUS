@@ -176,7 +176,7 @@ export function DashboardView() {
               <DonutChart
                 segments={[
                   { label: "Bác sĩ", value: data.accounts.doctorCount, color: "var(--cat-navy)" },
-                  { label: "Điều dưỡng", value: data.accounts.nurseCount, color: "var(--cat-teal)" },
+                  { label: "Nhân viên", value: data.accounts.nurseCount, color: "var(--cat-teal)" },
                   { label: "Bệnh nhân", value: data.accounts.patientCount, color: "var(--cat-magenta)" },
                   { label: "Quản trị", value: data.accounts.adminCount, color: "var(--cat-amber)" },
                 ]}
@@ -192,7 +192,7 @@ export function DashboardView() {
               <BarList
                 items={[
                   { label: "Bác sĩ", value: data.accounts.doctorCount },
-                  { label: "Điều dưỡng", value: data.accounts.nurseCount },
+                  { label: "Nhân viên", value: data.accounts.nurseCount },
                   { label: "Bệnh nhân", value: data.accounts.patientCount },
                   { label: "Quản trị", value: data.accounts.adminCount },
                 ]}

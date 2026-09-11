@@ -211,10 +211,10 @@ public class AppointmentReminderJobTests
 
     #endregion
 
-    #region TC-005: Already Approved (Checked In)
+    #region TC-005: Already Completed (Checked In)
 
     [Fact]
-    public async Task Execute_AlreadyApproved_DoesNotSendNotification()
+    public async Task Execute_AlreadyCompleted_DoesNotSendNotification()
     {
         // Arrange
         var userId = Guid.NewGuid();

@@ -1,10 +1,8 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.Common;
-using ADSUS_BE.BLL.Common.Events;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
-using ADSUS_BE.BLL.MedicalRecord.Events;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Mappers;
 using ADSUS_BE.DAL.Data;
@@ -26,7 +24,6 @@ public sealed class CaseService : ICaseService
     private readonly IUserRepository _users;
     private readonly System.Lazy<IFileStorageService> _storageLazy;
     private readonly INotificationService _notificationService;
-    private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<CaseService> _logger;
 
     private IFileStorageService _storage => _storageLazy.Value;
@@ -38,7 +35,6 @@ public sealed class CaseService : ICaseService
         IUserRepository users,
         System.Lazy<IFileStorageService> storageLazy,
         INotificationService notificationService,
-        IEventPublisher eventPublisher,
         ILogger<CaseService> logger)
     {
         _cases = cases;
@@ -47,7 +43,6 @@ public sealed class CaseService : ICaseService
         _users = users;
         _storageLazy = storageLazy;
         _notificationService = notificationService;
-        _eventPublisher = eventPublisher;
         _logger = logger;
     }
 
@@ -66,10 +61,18 @@ public sealed class CaseService : ICaseService
             .ToList();
     }
 
-    public async Task<CaseResponse> GetForStaffAsync(Guid caseId, CancellationToken ct = default)
+    public async Task<CaseResponse> GetForStaffAsync(Guid caseId, bool callerIsDoctor, CancellationToken ct = default)
     {
         var medicalCase = await _cases.GetDetailAsync(caseId, ct)
             ?? throw new ResourceNotFoundException("Case not found.");
+
+        // Bác sĩ chỉ thao tác được với ca sau khi Điều dưỡng check-in (Booked → InProgress).
+        // Điều dưỡng không bị chặn — chính họ là người thực hiện bước check-in đó.
+        if (callerIsDoctor && medicalCase.Status == CaseStatus.Booked)
+        {
+            throw new BusinessException(
+                "This case has not been checked in yet. Please wait for the nurse to check in the patient first.");
+        }
 
         var urls = await BuildImageUrlsAsync(medicalCase.UltrasoundImages.ToList(), ct);
 
@@ -241,7 +244,7 @@ public sealed class CaseService : ICaseService
             _logger.LogWarning(ex, "Failed to send medical record notification for case {CaseId}", caseId);
         }
 
-        return await GetForStaffAsync(caseId, ct);
+        return await GetForStaffAsync(caseId, false, ct);
     }
 
     public async Task<CaseResponse> SaveConclusionAsync(
@@ -262,7 +265,7 @@ public sealed class CaseService : ICaseService
 
         _logger.LogInformation("Case {CaseId} conclusion saved by doctor {DoctorId}", caseId, actingDoctorId);
 
-        return await GetForStaffAsync(caseId, ct);
+        return await GetForStaffAsync(caseId, false, ct);
     }
 
     public async Task<CaseResponse> ConfirmAsync(
@@ -282,7 +285,7 @@ public sealed class CaseService : ICaseService
 
         _logger.LogInformation("Case {CaseId} confirmed by doctor {DoctorId}", caseId, actingDoctorId);
 
-        return await GetForStaffAsync(caseId, ct);
+        return await GetForStaffAsync(caseId, false, ct);
     }
 
     public async Task<CaseResponse> EndWithoutPrescriptionAsync(
@@ -306,19 +309,11 @@ public sealed class CaseService : ICaseService
         medicalCase.Status = CaseStatus.End;
         medicalCase.UpdatedAt = DateTime.UtcNow;
 
-        // Publish CaseEndEvent - handlers will complete related appointments
-        await _eventPublisher.PublishAsync(CaseEndEvent.Create(
-            caseId: caseId,
-            patientProfileId: medicalCase.PatientProfileId,
-            doctorId: actingDoctorId,
-            notes: "Ended without prescription"
-        ), ct);
-
         await _cases.SaveChangesAsync(ct);
 
         _logger.LogInformation("Case {CaseId} ended without prescription by doctor {DoctorId}", caseId, actingDoctorId);
 
-        return await GetForStaffAsync(caseId, ct);
+        return await GetForStaffAsync(caseId, false, ct);
     }
 
     /// <inheritdoc />
@@ -388,7 +383,7 @@ public sealed class CaseService : ICaseService
     }
 
     /// <summary>
-    /// Tải ca (có theo dõi) và kiểm hai điều kiện dùng chung cho cả SaveConclusionAsync lẫn
+    /// Tải ca (có theo dõi) và kiểm ba điều kiện dùng chung cho cả SaveConclusionAsync lẫn
     /// ConfirmAsync — tách ra một chỗ để hai hành động không bao giờ lệch luật với nhau.
     /// </summary>
     private async Task<Case> LoadForConclusionUpdateAsync(
@@ -396,6 +391,15 @@ public sealed class CaseService : ICaseService
     {
         var medicalCase = await _cases.GetForUpdateAsync(caseId, ct)
             ?? throw new ResourceNotFoundException("Case not found.");
+
+        // Chưa check-in thì ca chưa "bắt đầu" theo nghĩa lâm sàng — Điều dưỡng phải check-in
+        // (Booked → InProgress, xem AppointmentService.CheckinByCaseIdAsync) trước khi Bác sĩ
+        // thao tác được với ca này (yêu cầu 10/09/2026).
+        if (medicalCase.Status == CaseStatus.Booked)
+        {
+            throw new BusinessException(
+                "This case has not been checked in yet. Please wait for the nurse to check in the patient first.");
+        }
 
         // P2/GB-01 — CONFIRMED là trạng thái cuối, không có đường lùi. Ca đã khoá thì không
         // sửa được nữa dưới bất kỳ hình thức nào, kể cả chỉ lưu nháp lại đúng nội dung cũ.

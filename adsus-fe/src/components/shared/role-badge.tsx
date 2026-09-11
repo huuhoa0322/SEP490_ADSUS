@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 export const ROLE_LABEL: Record<Role, string> = {
   ADMIN: "Quản trị viên",
   DOCTOR: "Bác sĩ",
-  NURSE: "Điều dưỡng",
+  STAFF: "Nhân viên",
   PATIENT: "Bệnh nhân",
   PHARMACIST: "Dược sĩ",
 };
@@ -17,7 +17,7 @@ export const ROLE_LABEL: Record<Role, string> = {
 const ROLE_DOT_CLASS: Record<Role, string> = {
   ADMIN: "bg-primary",
   DOCTOR: "bg-[var(--success)]",
-  NURSE: "bg-chart-3",
+  STAFF: "bg-chart-3",
   PHARMACIST: "bg-[var(--status-warning)]",
   PATIENT: "bg-muted-foreground",
 };
@@ -48,7 +48,7 @@ export function roleDotClassName(role: Role): string {
 const ROLE_ACCENT_VAR: Record<Role, string> = {
   ADMIN: "var(--primary)",
   DOCTOR: "var(--success)",
-  NURSE: "var(--chart-3)",
+  STAFF: "var(--chart-3)",
   PHARMACIST: "var(--status-warning)",
   PATIENT: "var(--muted-foreground)",
 };

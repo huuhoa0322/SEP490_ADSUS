@@ -80,13 +80,13 @@ public class AccountProvisioningLifecycleTests
         var updateResponse = await admin.PutAsJsonAsync($"/api/v1/admin/users/{created.Account.UserId}", new
         {
             fullName = "STC003 Original Doctor",
-            role = "NURSE",
+            role = "STAFF",
         });
         Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
 
         var getResponse = await admin.GetAsync($"/api/v1/admin/users/{created.Account.UserId}");
         var fetched = await getResponse.Content.ReadFromJsonAsync<ApiResponse<UserAccountResponse>>();
-        Assert.Equal("NURSE", fetched!.Data!.Role);
+        Assert.Equal("STAFF", fetched!.Data!.Role);
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public class AccountProvisioningLifecycleTests
         using var app = CreateApp();
         var admin = await LoginAsAdminAsync(app);
 
-        var nurse = await CreateAccountAsync(admin, "STC004 Nurse", "NURSE");
+        var nurse = await CreateAccountAsync(admin, "STC004 Nurse", "STAFF");
         var doctor = await CreateAccountAsync(admin, "STC004 Doctor", "DOCTOR");
 
         var nurseClient = await LoginAndAuthorizeAsync(app, nurse.Account.PhoneNumber, nurse.TemporaryPassword);

@@ -26,19 +26,39 @@ public class AuditLogsController : ControllerBase
     public AuditLogsController(IAuditLogService auditLogs) => _auditLogs = auditLogs;
 
     /// <summary>
-    /// Các thao tác gần đây nhất, mới nhất lên đầu.
-    ///
-    /// Dashboard (SCR-08) gọi với limit mặc định là 10. Tham số để sẵn cho màn nhật ký đầy đủ
-    /// sau này — lúc đó chỉ cần thêm phân trang, không phải viết lại endpoint.
+    /// Danh sách nhật ký thao tác: hỗ trợ phân trang (15 dòng/trang), tìm kiếm realtime (keyword/search),
+    /// lọc theo hành động/category (action), vai trò (role/actorRole), và khoảng thời gian (fromDate, toDate).
+    /// Duy trì tương thích ngược cho Dashboard khi gọi với limit mà không truyền page.
     /// </summary>
     [HttpGet]
+    [ProducesResponseType(typeof(ApiResponse<ADSUS_BE.BLL.Common.PagedResult<AuditLogResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<AuditLogResponse>>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetRecent(
-        [FromQuery] int limit = 10,
+    public async Task<IActionResult> GetAuditLogs(
+        [FromQuery] string? search = null,
+        [FromQuery] string? keyword = null,
+        [FromQuery] string? action = null,
+        [FromQuery] string? role = null,
+        [FromQuery] string? actorRole = null,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null,
+        [FromQuery] int? limit = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 15,
         CancellationToken cancellationToken = default)
     {
-        var logs = await _auditLogs.GetRecentAsync(limit, cancellationToken);
+        // Tương thích ngược: Dashboard (SCR-08) gọi với limit (ví dụ ?limit=10) mà không truyền page
+        if (limit.HasValue && !Request.Query.ContainsKey("page"))
+        {
+            var recent = await _auditLogs.GetRecentAsync(limit.Value, cancellationToken);
+            return Ok(ApiResponse<IReadOnlyList<AuditLogResponse>>.Ok(recent, "Audit log loaded."));
+        }
 
-        return Ok(ApiResponse<IReadOnlyList<AuditLogResponse>>.Ok(logs, "Audit log loaded."));
+        var effectiveKeyword = search ?? keyword;
+        var effectiveRole = role ?? actorRole;
+
+        var result = await _auditLogs.GetPagedAsync(
+            effectiveKeyword, action, effectiveRole, fromDate, toDate, page, pageSize, cancellationToken);
+
+        return Ok(ApiResponse<ADSUS_BE.BLL.Common.PagedResult<AuditLogResponse>>.Ok(result, "Audit log loaded."));
     }
 }

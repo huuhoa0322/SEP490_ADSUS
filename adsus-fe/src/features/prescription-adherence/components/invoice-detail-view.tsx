@@ -36,7 +36,7 @@ import toast from "react-hot-toast";
 
 export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
   const router = useRouter();
-  const isNurse = useAuthStore((s) => s.user?.role === "NURSE");
+  const isNurse = useAuthStore((s) => s.user?.role === "STAFF");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
 

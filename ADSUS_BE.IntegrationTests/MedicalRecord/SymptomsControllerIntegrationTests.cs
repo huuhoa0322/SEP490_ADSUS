@@ -21,7 +21,7 @@ public class SymptomsControllerIntegrationTests
 
     // [Authorize] trần ở SymptomsController — không giới hạn theo role, mọi tài khoản đã đăng
     // nhập đều dùng được để render UI tạo ca khám.
-    private readonly User _nurseCaller = MakeUser(UserRole.Nurse, "ĐD. Võ Thị Thu Hà");
+    private readonly User _nurseCaller = MakeUser(UserRole.Staff, "ĐD. Võ Thị Thu Hà");
 
     private static User MakeUser(UserRole role, string fullName) => new()
     {

@@ -14,7 +14,7 @@ namespace ADSUS_BE.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/patient-profiles")]
-[Authorize(Roles = "DOCTOR,NURSE")]
+[Authorize(Roles = "DOCTOR,STAFF")]
 [Produces("application/json")]
 public sealed class PatientProfilesController : ControllerBase
 {

@@ -51,7 +51,7 @@ public sealed class CasesController : ControllerBase
 
     /// <summary>Danh sách ảnh siêu âm thô của một ca (UC-07, UC-08).</summary>
     [HttpGet("{caseId:guid}/ultrasound-images")]
-    [Authorize(Roles = "DOCTOR,NURSE")]
+    [Authorize(Roles = "DOCTOR,STAFF")]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<UltrasoundImageResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ListImages(Guid caseId, CancellationToken ct)
@@ -64,7 +64,7 @@ public sealed class CasesController : ControllerBase
     /// Danh sách lần khám của một bệnh nhân, cho Bác sĩ/Điều dưỡng (Web SCR-12) (UC-08).
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = "DOCTOR,NURSE")]
+    [Authorize(Roles = "DOCTOR,STAFF")]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<StaffCaseSummaryResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ListByPatient(
@@ -121,9 +121,10 @@ public sealed class CasesController : ControllerBase
     /// một hình dạng nên phần mô tả này là nơi ghi lại điều đó.
     /// </summary>
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = "DOCTOR,NURSE,PATIENT")]
+    [Authorize(Roles = "DOCTOR,STAFF,PATIENT")]
     [ProducesResponseType(typeof(ApiResponse<CaseResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         if (User.IsInRole("PATIENT"))
@@ -132,7 +133,7 @@ public sealed class CasesController : ControllerBase
             return Ok(ApiResponse<PatientCaseResponse>.Ok(patientView));
         }
 
-        var staffView = await _cases.GetForStaffAsync(id, ct);
+        var staffView = await _cases.GetForStaffAsync(id, User.IsInRole("DOCTOR"), ct);
         return Ok(ApiResponse<CaseResponse>.Ok(staffView));
     }
 
@@ -141,7 +142,7 @@ public sealed class CasesController : ControllerBase
     /// Appointment: Booked → Approved
     /// </summary>
     [HttpPost("{caseId:guid}/appointment/checkin")]
-    [Authorize(Roles = "NURSE")]
+    [Authorize(Roles = "STAFF")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -168,7 +169,7 @@ public sealed class CasesController : ControllerBase
     /// Appointment: Booked → Approved
     /// </summary>
     [HttpPost("appointment/{appointmentId:guid}/checkin")]
-    [Authorize(Roles = "NURSE")]
+    [Authorize(Roles = "STAFF")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -194,7 +195,7 @@ public sealed class CasesController : ControllerBase
     /// 07/08/2026) — bỏ trống được, bổ sung sau qua AddImages (`#21`, vẫn bắt buộc ≥1 ảnh).
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "DOCTOR,NURSE")]
+    [Authorize(Roles = "DOCTOR,STAFF")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(120L * 1024 * 1024)]
     [ProducesResponseType(typeof(ApiResponse<CaseResponse>), StatusCodes.Status201Created)]
@@ -326,7 +327,7 @@ public sealed class CasesController : ControllerBase
     /// không có chức năng xuất file (quyết định UCS ngày 01/08/2026).
     /// </summary>
     [HttpGet("{id:guid}/report")]
-    [Authorize(Roles = "DOCTOR,NURSE")]
+    [Authorize(Roles = "DOCTOR,STAFF")]
     [Produces("application/pdf")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -341,7 +342,7 @@ public sealed class CasesController : ControllerBase
     /// Lấy đơn thuốc mới nhất của một ca (Module 7 — case detail hiển thị đơn sau khi kê).
     /// </summary>
     [HttpGet("{caseId:guid}/prescription")]
-    [Authorize(Roles = "DOCTOR,NURSE")]
+    [Authorize(Roles = "DOCTOR,STAFF")]
     [ProducesResponseType(typeof(ApiResponse<PrescriptionResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCasePrescription(Guid caseId, CancellationToken ct)
     {
@@ -357,7 +358,7 @@ public sealed class CasesController : ControllerBase
     /// đơn bác sĩ khác → null (GB guard).
     /// </summary>
     [HttpGet("{caseId:guid}/prescriptions/with-compliance")]
-    [Authorize(Roles = "DOCTOR,NURSE")]
+    [Authorize(Roles = "DOCTOR,STAFF")]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<PrescriptionWithComplianceResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCasePrescriptionsWithCompliance(Guid caseId, CancellationToken ct)
     {

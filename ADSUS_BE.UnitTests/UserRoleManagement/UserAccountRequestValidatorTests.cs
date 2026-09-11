@@ -75,7 +75,7 @@ public class UserAccountRequestValidatorTests
         var result = _update.Validate(request);
         Assert.Contains(result.Errors, error =>
             error.PropertyName == "Role" &&
-            error.ErrorMessage.Equals("Role must be one of ADMIN, DOCTOR, NURSE, PATIENT or PHARMACIST."));
+            error.ErrorMessage.Equals("Role must be one of ADMIN, DOCTOR, STAFF, PATIENT or PHARMACIST."));
     }
 
     [Fact]

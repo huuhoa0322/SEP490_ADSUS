@@ -38,7 +38,7 @@ public class InvoicesControllerAuthorizationTests
     {
         // Arrange
         using var app = CreateApp();
-        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Nurse);
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Staff);
 
         var mockResult = new PagedResult<InvoiceResponse>(new List<InvoiceResponse>(), 1, 10, 0, 0);
 

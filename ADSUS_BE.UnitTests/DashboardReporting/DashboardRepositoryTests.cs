@@ -34,7 +34,7 @@ public class DashboardRepositoryTests
         db.Users.AddRange(
             BuildUser(UserRole.Doctor, UserStatus.Active),
             BuildUser(UserRole.Doctor, UserStatus.Deactivated),
-            BuildUser(UserRole.Nurse, UserStatus.Active),
+            BuildUser(UserRole.Staff, UserStatus.Active),
             BuildUser(UserRole.Patient, UserStatus.Active),
             BuildUser(UserRole.Patient, UserStatus.Active),
             BuildUser(UserRole.Admin, UserStatus.Active));

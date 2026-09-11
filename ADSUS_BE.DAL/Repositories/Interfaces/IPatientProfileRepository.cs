@@ -30,7 +30,7 @@ public interface IPatientProfileRepository
     /// sơ nền không bao giờ xuất hiện, và luồng tạo hồ sơ nền (#17) không có cách nào lấy được
     /// patientUserId.
     /// </summary>
-    /// <param name="visitStatus">null = tất cả; "Pending" = ca mới nhất ở CREATED/ANALYZED; "Confirmed" = CONFIRMED.</param>
+    /// <param name="visitStatus">null = tất cả; "Pending" = ca mới nhất ở InProgress/End; "Confirmed" = Confirmed.</param>
     /// <param name="hasProfile">null = tất cả; true = chỉ người đã có hồ sơ nền; false = chỉ người chưa có.</param>
     Task<(IReadOnlyList<PatientListRow> Items, int TotalCount)> SearchAsync(
         string? search,

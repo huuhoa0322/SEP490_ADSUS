@@ -87,9 +87,9 @@ describe("updateUser", () => {
       }),
     );
 
-    await updateUser("user-123", { fullName: "Tên mới", role: "NURSE" });
+    await updateUser("user-123", { fullName: "Tên mới", role: "STAFF" });
 
-    expect(capturedBody).toEqual({ fullName: "Tên mới", role: "NURSE" });
+    expect(capturedBody).toEqual({ fullName: "Tên mới", role: "STAFF" });
   });
 });
 
