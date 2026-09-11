@@ -45,12 +45,14 @@ export interface CaseClinicServicesPanelProps {
   caseId: string;
   caseStatus: string;
   variant?: "card" | "compact";
+  isResponsibleDoctor?: boolean;
 }
 
 function CaseClinicServicesPanelContent({
   caseId,
   caseStatus,
   variant = "card",
+  isResponsibleDoctor = true,
 }: CaseClinicServicesPanelProps) {
   const { data: caseServices, isLoading: isLoadingServices } =
     useCaseClinicServices(caseId);
@@ -74,8 +76,8 @@ function CaseClinicServicesPanelContent({
     [invoices],
   );
 
-  const canAdd = !isCaseClosed && !isBooked;
-  const canDelete = !isCaseClosed && !isBooked && !hasPaidInvoice;
+  const canAdd = isResponsibleDoctor && !isCaseClosed && !isBooked;
+  const canDelete = isResponsibleDoctor && !isCaseClosed && !isBooked && !hasPaidInvoice;
 
   // Filter out services already attached to this case
   const availableServices = useMemo(() => {

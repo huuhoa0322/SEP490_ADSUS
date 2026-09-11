@@ -931,4 +931,92 @@ public class CaseClinicServiceServiceTests
     }
 
     #endregion
+
+    #region 2.6 Doctor Authorization (Bác sĩ phụ trách ca)
+
+    [Fact]
+    public async Task AddService_ActingDoctorIsNotResponsibleDoctor_ThrowsBusinessException()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context, CaseStatus.InProgress);
+        var otherDoctorId = Guid.NewGuid();
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(() =>
+            service.AddServiceToCaseAsync(c.CaseId, s.Id, otherDoctorId, TestContext.Current.CancellationToken));
+        Assert.Equal("Chỉ bác sĩ phụ trách ca khám mới có quyền chọn dịch vụ khám.", ex.Message);
+    }
+
+    [Fact]
+    public async Task AddService_ActingDoctorIsResponsibleDoctor_Succeeds()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context, CaseStatus.InProgress);
+
+        // Act
+        var result = await service.AddServiceToCaseAsync(c.CaseId, s.Id, c.DoctorId, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(c.CaseId, result.CaseId);
+        Assert.Equal(s.Id, result.ClinicServiceId);
+    }
+
+    [Fact]
+    public async Task RemoveService_ActingDoctorIsNotResponsibleDoctor_ThrowsBusinessException()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context, CaseStatus.InProgress);
+        var otherDoctorId = Guid.NewGuid();
+
+        var junction = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            ClinicServiceId = s.Id,
+            PriceAtTime = s.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.Add(junction);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(() =>
+            service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, otherDoctorId, TestContext.Current.CancellationToken));
+        Assert.Equal("Chỉ bác sĩ phụ trách ca khám mới có quyền xóa dịch vụ khám.", ex.Message);
+    }
+
+    [Fact]
+    public async Task RemoveService_ActingDoctorIsResponsibleDoctor_Succeeds()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context, CaseStatus.InProgress);
+
+        var junction = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            ClinicServiceId = s.Id,
+            PriceAtTime = s.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.Add(junction);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        await service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, c.DoctorId, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.False(await context.CaseClinicServices.AnyAsync(cs => cs.Id == junction.Id, TestContext.Current.CancellationToken));
+    }
+
+    #endregion
 }

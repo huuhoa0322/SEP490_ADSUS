@@ -885,4 +885,16 @@ describe("CaseDetailView", () => {
     expect(screen.getByText(/^ca khám đã hủy \/ vắng mặt$/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/chẩn đoán cuối cùng/i)).not.toBeInTheDocument();
   });
+
+  it("bác sĩ khác (Bác sĩ B) không có quyền thêm hoặc xóa dịch vụ khám trên ca của Bác sĩ A", () => {
+    signInAs("DOCTOR", "doctor-2"); // Bác sĩ B truy cập ca của Bác sĩ A (doctor-1)
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    // Nút "Thêm dịch vụ" không được hiển thị cho Bác sĩ B
+    expect(screen.queryByRole("button", { name: /thêm dịch vụ/i })).not.toBeInTheDocument();
+    // Nút xóa dịch vụ không được hiển thị cho Bác sĩ B
+    expect(screen.queryByTitle(/xóa dịch vụ/i)).not.toBeInTheDocument();
+  });
 });

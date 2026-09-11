@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ADSUS_BE.BLL.CaseClinicServices;
 using ADSUS_BE.BLL.CaseClinicServices.DTOs;
 using ADSUS_BE.BLL.Common;
@@ -35,7 +36,7 @@ public class CaseClinicServicesController : ControllerBase
         [FromBody] AddCaseClinicServiceRequest request,
         CancellationToken ct)
     {
-        var result = await _caseClinicServiceService.AddServiceToCaseAsync(caseId, request.ClinicServiceId, ct);
+        var result = await _caseClinicServiceService.AddServiceToCaseAsync(caseId, request.ClinicServiceId, GetCallerUserId(), ct);
         return Ok(ApiResponse<CaseClinicServiceResponse>.Ok(result, "Thêm dịch vụ thành công."));
     }
 
@@ -46,7 +47,12 @@ public class CaseClinicServicesController : ControllerBase
         Guid id,
         CancellationToken ct)
     {
-        await _caseClinicServiceService.RemoveServiceFromCaseAsync(caseId, id, ct);
+        await _caseClinicServiceService.RemoveServiceFromCaseAsync(caseId, id, GetCallerUserId(), ct);
         return Ok(ApiResponse<object?>.Ok(null, "Xóa dịch vụ thành công."));
     }
+
+    private Guid GetCallerUserId() =>
+        Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
+            ? id
+            : throw new UnauthorizedAccessException("Invalid access token.");
 }

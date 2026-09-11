@@ -184,4 +184,18 @@ describe("CaseClinicServicesPanel", () => {
     // Blood test is the only unattached service
     expect(screen.getByText(/Xét nghiệm máu/i)).toBeInTheDocument();
   });
+
+  it("hides add button and delete buttons when isResponsibleDoctor is false in compact variant", () => {
+    renderWithClient(
+      <CaseClinicServicesPanel
+        caseId="case-123"
+        caseStatus="IN_PROGRESS"
+        variant="compact"
+        isResponsibleDoctor={false}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /thêm dịch vụ/i })).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Xóa dịch vụ này khỏi ca khám")).not.toBeInTheDocument();
+  });
 });

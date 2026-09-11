@@ -369,7 +369,12 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
       </div>
 
         {/* Dịch vụ khám: hiển thị nhỏ gọn ngay trong ô Lần khám để bác sĩ theo dõi */}
-        <CaseClinicServicesPanel caseId={caseId} caseStatus={medicalCase.status} variant="compact" />
+        <CaseClinicServicesPanel
+          caseId={caseId}
+          caseStatus={medicalCase.status}
+          variant="compact"
+          isResponsibleDoctor={isResponsibleDoctor}
+        />
       </header>
 
       {report.error ? (
