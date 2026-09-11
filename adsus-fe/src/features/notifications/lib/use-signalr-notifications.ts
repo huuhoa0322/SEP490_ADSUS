@@ -5,8 +5,9 @@ import * as signalR from "@microsoft/signalr";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth-store";
 import { NOTIFICATION_KEYS } from "../hooks/use-notifications";
+import { API_BASE_URL } from "@/lib/api-client";
 
-const HUB_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5036"}/hubs/notifications`;
+const HUB_URL = `${API_BASE_URL}/hubs/notifications`;
 
 // Refresh token every 10 minutes (before 15-minute access token expiry)
 const TOKEN_REFRESH_INTERVAL = 10 * 60 * 1000;
@@ -76,8 +77,10 @@ export function useSignalRNotifications() {
       // Xử lý khi nhận notification
       connection.on("ReceiveNotification", (notification: NotificationMessage) => {
         console.log("📬 SignalR: Received notification:", notification);
-        // Invalidate notifications cache để trigger refetch
+        // Invalidate và ép refetch ngay lập tức cache
         queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.all });
+        queryClient.refetchQueries({ queryKey: NOTIFICATION_KEYS.infiniteList() });
+        queryClient.refetchQueries({ queryKey: NOTIFICATION_KEYS.unreadCount() });
       });
 
       // Connection events
@@ -96,6 +99,8 @@ export function useSignalRNotifications() {
         setIsConnected(true);
         // Refetch notifications when reconnected
         queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.all });
+        queryClient.refetchQueries({ queryKey: NOTIFICATION_KEYS.infiniteList() });
+        queryClient.refetchQueries({ queryKey: NOTIFICATION_KEYS.unreadCount() });
       });
 
       connection.onclose((error) => {

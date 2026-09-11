@@ -15,4 +15,5 @@ public class InvoiceItemResponse
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal TotalPrice { get; set; }
+    public string ItemType { get; set; } = "MEDICINE";
 }

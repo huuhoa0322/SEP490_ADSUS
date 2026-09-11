@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, CheckCheck } from "lucide-react";
-import { useInfiniteNotifications, useMarkAllAsRead } from "../hooks/use-notifications";
+import { useEffect, useState } from "react";
+import { Bell, CheckCheck, Loader2, RefreshCw } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  NOTIFICATION_KEYS,
+  useInfiniteNotifications,
+  useMarkAllAsRead,
+} from "../hooks/use-notifications";
 import { NotificationItem } from "./notification-item";
 import { NotificationEmpty } from "./notification-empty";
 import { Button } from "@/components/ui/button";
@@ -18,16 +23,29 @@ export function NotificationDropdown({
   children: React.ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const queryClient = useQueryClient();
   
   const {
     data,
     isLoading,
+    isRefetching,
+    refetch,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage
-  } = useInfiniteNotifications(10);
+  } = useInfiniteNotifications(10, {
+    refetchInterval: isOpen ? 10_000 : false,
+  });
   
   const markAllAsRead = useMarkAllAsRead();
+
+  // Khi mở dropdown (click chuông), lập tức làm mới danh sách và số lượng chưa đọc
+  useEffect(() => {
+    if (isOpen) {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.unreadCount() });
+    }
+  }, [isOpen, refetch, queryClient]);
 
   const allNotifications = data?.pages.flatMap((p) => p.notifications) ?? [];
   const hasUnread = allNotifications.some((n) => !n.isRead);
@@ -54,19 +72,37 @@ export function NotificationDropdown({
           <div className="flex items-center gap-2">
             <Bell className="size-5 text-foreground" />
             <h3 className="font-semibold text-foreground">Thông báo</h3>
+            {isRefetching && !isFetchingNextPage && (
+              <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+            )}
           </div>
-          {hasUnread && (
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleMarkAllRead}
-              disabled={markAllAsRead.isPending}
-              className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                refetch();
+                queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.unreadCount() });
+              }}
+              disabled={isRefetching}
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+              title="Làm mới thông báo"
             >
-              <CheckCheck className="mr-1 size-4" />
-              Đánh dấu đã đọc
+              <RefreshCw className={`size-3.5 ${isRefetching ? "animate-spin" : ""}`} />
             </Button>
-          )}
+            {hasUnread && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleMarkAllRead}
+                disabled={markAllAsRead.isPending}
+                className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <CheckCheck className="mr-1 size-4" />
+                Đánh dấu đã đọc
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Notification List */}

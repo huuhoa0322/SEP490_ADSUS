@@ -36,6 +36,8 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
   function handleNext() {
     queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
     queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.images(caseId) });
+    queryClient.invalidateQueries({ queryKey: ["case-clinic-services", caseId] });
+    queryClient.invalidateQueries({ queryKey: ["invoices"] });
     removeImage(currentIndex);
   }
 
@@ -124,6 +126,8 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
 
       queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
       queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.images(caseId) });
+      queryClient.invalidateQueries({ queryKey: ["case-clinic-services", caseId] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
       clearSession();
       router.push(`/cases/${caseId}`);
 
