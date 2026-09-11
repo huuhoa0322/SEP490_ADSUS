@@ -11,7 +11,7 @@ import type {
 /**
  * UC-06 AF-01/AF-02/AF-03 (quyết định ghi đè 04/08/2026) — CHỈ Điều dưỡng.
  *
- * Backend chặn bằng [Authorize(Roles="NURSE")]; giao diện phải ẩn hẳn các nút này khỏi Bác
+ * Backend chặn bằng [Authorize(Roles="STAFF")]; giao diện phải ẩn hẳn các nút này khỏi Bác
  * sĩ chứ đừng để anh ấy bấm rồi nhận 403.
  *
  * Ba endpoint dưới đây nằm ngoài API Catalog v1.1 — xem Flags Summary.
