@@ -57,8 +57,8 @@ class MedicationWidgetProvider : AppWidgetProvider() {
         const val PREFS_NAME = "HomeWidgetPreferences"
         const val KEY_WIDGET_DATA = "widget_data"
 
-        // Widget size constraints (dp) — 4 rows cho widget 4×3
-        const val DOSE_ROW_COUNT = 4
+        // Widget size constraints — 3 rows cho widget 4×2 (tối đa 3 liều hiển thị)
+        const val DOSE_ROW_COUNT = 3
 
         fun updateAppWidget(
             context: Context,
@@ -197,42 +197,36 @@ class MedicationWidgetProvider : AppWidgetProvider() {
                     1 -> R.id.dose_row_1
                     2 -> R.id.dose_row_2
                     3 -> R.id.dose_row_3
-                    4 -> R.id.dose_row_4
                     else -> 0
                 }
                 val timeId = when (i) {
                     1 -> R.id.text_time_1
                     2 -> R.id.text_time_2
                     3 -> R.id.text_time_3
-                    4 -> R.id.text_time_4
                     else -> 0
                 }
                 val nameId = when (i) {
                     1 -> R.id.text_name_1
                     2 -> R.id.text_name_2
                     3 -> R.id.text_name_3
-                    4 -> R.id.text_name_4
                     else -> 0
                 }
                 val dosageId = when (i) {
                     1 -> R.id.text_dosage_1
                     2 -> R.id.text_dosage_2
                     3 -> R.id.text_dosage_3
-                    4 -> R.id.text_dosage_4
                     else -> 0
                 }
                 val statusId = when (i) {
                     1 -> R.id.text_status_1
                     2 -> R.id.text_status_2
                     3 -> R.id.text_status_3
-                    4 -> R.id.text_status_4
                     else -> 0
                 }
                 val borderId = when (i) {
                     1 -> R.id.border_1
                     2 -> R.id.border_2
                     3 -> R.id.border_3
-                    4 -> R.id.border_4
                     else -> 0
                 }
 
@@ -276,7 +270,7 @@ class MedicationWidgetProvider : AppWidgetProvider() {
                 }
             }
 
-            // "và X liều khác" nếu có nhiều hơn 4
+            // "và X liều khác" nếu có nhiều hơn 3 liều
             val remaining = doses.length() - DOSE_ROW_COUNT
             if (remaining > 0) {
                 views.setViewVisibility(R.id.text_more, View.VISIBLE)
@@ -323,7 +317,7 @@ class MedicationWidgetProvider : AppWidgetProvider() {
                 return
             }
 
-            val rowIds = listOf(R.id.dose_row_1, R.id.dose_row_2, R.id.dose_row_3, R.id.dose_row_4)
+            val rowIds = listOf(R.id.dose_row_1, R.id.dose_row_2, R.id.dose_row_3)
             for (i in 0 until minOf(doses.length(), DOSE_ROW_COUNT)) {
                 val dose = doses.getJSONObject(i)
                 val intakeId = dose.optString("intakeId", "")
