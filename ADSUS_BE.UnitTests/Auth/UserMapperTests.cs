@@ -32,7 +32,7 @@ public class UserMapperTests
     [Theory]
     [InlineData(UserRole.Admin, "ADMIN")]
     [InlineData(UserRole.Doctor, "DOCTOR")]
-    [InlineData(UserRole.Nurse, "NURSE")]
+    [InlineData(UserRole.Staff, "STAFF")]
     [InlineData(UserRole.Patient, "PATIENT")]
     public void ToLoginResponse_RoleIsUppercaseApiString(UserRole role, string expected)
     {

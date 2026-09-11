@@ -219,7 +219,7 @@ public class AppointmentsControllerIntegrationTests
     {
         // Arrange - Nurse does NOT have PATIENT role
         using var app = CreateApp();
-        var client = CreateNurseClient(app);
+        var client = CreateStaffClient(app);
 
         var request = new BookAppointmentRequest
         {
@@ -642,7 +642,7 @@ public class AppointmentsControllerIntegrationTests
         var client = role switch
         {
             "patient" => TestAuthHelper.CreatePatientClient(app, _users),
-            "nurse" => TestAuthHelper.CreateNurseClient(app, _users),
+            "nurse" => TestAuthHelper.CreateStaffClient(app, _users),
             _ => TestAuthHelper.CreateAdminClient(app, _users),
         };
 
@@ -760,7 +760,7 @@ public class AppointmentsControllerIntegrationTests
         return client;
     }
 
-    private HttpClient CreateNurseClient(WebApplicationFactory<Program> app)
+    private HttpClient CreateStaffClient(WebApplicationFactory<Program> app)
     {
         var nurseId = Guid.NewGuid();
         var nurse = new User
@@ -769,7 +769,7 @@ public class AppointmentsControllerIntegrationTests
             Phone = "0900000003",
             FullName = "Nurse Test",
             PasswordHash = "hash",
-            Role = UserRole.Nurse,
+            Role = UserRole.Staff,
             Status = UserStatus.Active,
         };
 

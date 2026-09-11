@@ -16,7 +16,7 @@ namespace ADSUS_BE.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/patients")]
-[Authorize(Roles = "DOCTOR,NURSE")]
+[Authorize(Roles = "DOCTOR,STAFF")]
 [Produces("application/json")]
 public sealed class PatientsController : ControllerBase
 {
@@ -90,7 +90,7 @@ public sealed class PatientsController : ControllerBase
     /// Endpoint nằm ngoài API Catalog v1.1, đã ghi vào Flags Summary.
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "NURSE")]
+    [Authorize(Roles = "STAFF")]
     [ProducesResponseType(typeof(ApiResponse<PatientAccountCreatedResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
@@ -118,7 +118,7 @@ public sealed class PatientsController : ControllerBase
     /// CHỈ NURSE (BR-03), CHỈ 4 trường liên hệ (BR-04) — role và status vẫn là việc của Admin.
     /// </summary>
     [HttpPut("{userId:guid}")]
-    [Authorize(Roles = "NURSE")]
+    [Authorize(Roles = "STAFF")]
     [ProducesResponseType(typeof(ApiResponse<PatientAccountResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
@@ -148,7 +148,7 @@ public sealed class PatientsController : ControllerBase
     /// thì lưu là xoá mất email đang có.
     /// </summary>
     [HttpGet("{userId:guid}")]
-    [Authorize(Roles = "NURSE")]
+    [Authorize(Roles = "STAFF")]
     [ProducesResponseType(typeof(ApiResponse<PatientAccountResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -164,7 +164,7 @@ public sealed class PatientsController : ControllerBase
     /// tài khoản có email hay không — không còn gửi email ở đường này nữa.
     /// </summary>
     [HttpPut("{userId:guid}/reset-password")]
-    [Authorize(Roles = "NURSE")]
+    [Authorize(Roles = "STAFF")]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

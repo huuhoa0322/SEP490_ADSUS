@@ -40,7 +40,7 @@ interface Props {
  * UpdateContactAsync thay TOÀN BỘ 4 trường (BR-04), bấm Lưu là xoá mất email đang có.
  */
 export function PatientAccountActions({ userId, fullName, phone, dateOfBirth }: Props) {
-  const isNurse = useAuthStore((state) => state.user?.role) === "NURSE";
+  const isNurse = useAuthStore((state) => state.user?.role) === "STAFF";
 
   const [editing, setEditing] = useState(false);
   const [confirmingReset, setConfirmingReset] = useState(false);

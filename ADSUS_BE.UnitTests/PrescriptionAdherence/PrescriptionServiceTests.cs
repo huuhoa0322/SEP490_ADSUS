@@ -266,7 +266,7 @@ public class PrescriptionServiceTests
 
         _userRepoMock
             .Setup(r => r.GetByIdAsync(nurseId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { UserId = nurseId, Role = UserRole.Nurse, Status = UserStatus.Active });
+            .ReturnsAsync(new User { UserId = nurseId, Role = UserRole.Staff, Status = UserStatus.Active });
 
         var request = new CreatePrescriptionRequest(
             CaseId: Guid.NewGuid(),

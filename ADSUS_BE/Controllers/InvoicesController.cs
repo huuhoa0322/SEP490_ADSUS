@@ -11,7 +11,7 @@ namespace ADSUS_BE.Controllers;
 
 [ApiController]
 [Route("api/v1/invoices")]
-[Authorize(Roles = "NURSE,DOCTOR")]
+[Authorize(Roles = "STAFF,DOCTOR")]
 public class InvoicesController : ControllerBase
 {
     private readonly IInvoiceService _invoiceService;

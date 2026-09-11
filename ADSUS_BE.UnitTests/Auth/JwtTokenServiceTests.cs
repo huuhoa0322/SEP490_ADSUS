@@ -46,7 +46,7 @@ public class JwtTokenServiceTests
     [Theory]
     [InlineData(UserRole.Admin, "ADMIN")]
     [InlineData(UserRole.Doctor, "DOCTOR")]
-    [InlineData(UserRole.Nurse, "NURSE")]
+    [InlineData(UserRole.Staff, "STAFF")]
     [InlineData(UserRole.Patient, "PATIENT")]
     public void GenerateAccessToken_RoleClaim_IsUppercaseApiString(UserRole role, string expected)
     {

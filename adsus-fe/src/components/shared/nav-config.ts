@@ -47,8 +47,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Lâm sàng",
     items: [
-      { title: "Danh sách bệnh nhân", href: "/patients", icon: ClipboardList, roles: ["DOCTOR", "NURSE"] },
-      { title: "Tiếp đón / Check-in", href: "/checkin", icon: ClipboardCheck, roles: ["NURSE"] },
+      { title: "Danh sách bệnh nhân", href: "/patients", icon: ClipboardList, roles: ["DOCTOR", "STAFF"] },
+      { title: "Tiếp đón / Check-in", href: "/checkin", icon: ClipboardCheck, roles: ["STAFF"] },
     ],
   },
   {
@@ -93,7 +93,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Tài chính",
-    items: [{ title: "Quản lý hóa đơn", href: "/invoices", icon: Receipt, roles: ["NURSE"] }],
+    items: [{ title: "Quản lý hóa đơn", href: "/invoices", icon: Receipt, roles: ["STAFF"] }],
   },
   {
     label: "Hệ thống",
@@ -111,7 +111,7 @@ export const ACCOUNT_ITEM: NavLeaf = {
   title: "Đổi mật khẩu",
   href: "/change-password",
   icon: KeyRound,
-  roles: ["ADMIN", "DOCTOR", "NURSE", "PHARMACIST"],
+  roles: ["ADMIN", "DOCTOR", "STAFF", "PHARMACIST"],
 };
 
 /** Groups filtered to a role's visible items — groups with 0 matching items are

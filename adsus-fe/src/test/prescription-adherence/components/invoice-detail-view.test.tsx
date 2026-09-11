@@ -29,7 +29,7 @@ vi.mock("next/navigation", () => ({
 // Mock auth store — Nurse role
 vi.mock("@/store/auth-store", () => ({
   useAuthStore: vi.fn(() => ({
-    user: { role: "NURSE", userId: "nurse-1", fullName: "Nurse One", email: null, mustChangePassword: false },
+    user: { role: "STAFF", userId: "nurse-1", fullName: "Nurse One", email: null, mustChangePassword: false },
     accessToken: "token",
     refreshToken: "refresh",
   })),

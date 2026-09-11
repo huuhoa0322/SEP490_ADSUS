@@ -36,7 +36,7 @@ public class FeedbacksControllerIntegrationTests
 
     [Theory]
     [InlineData(UserRole.Doctor)]
-    [InlineData(UserRole.Nurse)]
+    [InlineData(UserRole.Staff)]
     [InlineData(UserRole.Patient)]
     public async Task GetAll_NonAdmin_IsForbidden(UserRole role)
     {

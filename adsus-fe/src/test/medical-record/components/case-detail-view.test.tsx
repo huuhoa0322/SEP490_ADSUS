@@ -144,7 +144,7 @@ function makeCase(
   };
 }
 
-function signInAs(role: "DOCTOR" | "NURSE", userId: string) {
+function signInAs(role: "DOCTOR" | "STAFF", userId: string) {
   useAuthStore.getState().signIn("access-token", "refresh-token", {
     userId,
     fullName: "Người dùng",
@@ -273,7 +273,7 @@ describe("CaseDetailView", () => {
   });
 
   it("KHÔNG hiện form cho Điều dưỡng dù ca chưa CONFIRMED", () => {
-    signInAs("NURSE", "nurse-1");
+    signInAs("STAFF", "nurse-1");
     detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
 
     render(<CaseDetailView caseId="case-1" />);
@@ -792,7 +792,7 @@ describe("CaseDetailView", () => {
     detailMock.mockReturnValue(makeCase("CONFIRMED"));
 
     // Case 1: Điều dưỡng
-    signInAs("NURSE", "nurse-1");
+    signInAs("STAFF", "nurse-1");
     const { unmount } = render(<CaseDetailView caseId="case-1" />);
 
     expect(screen.queryByRole("link", { name: /kê đơn thuốc/i })).not.toBeInTheDocument();

@@ -15,10 +15,10 @@ vi.mock("@/features/medical-record/hooks/use-patients", () => ({
   usePatientList: () => listMock(),
 }));
 
-function signInAs(role: "DOCTOR" | "NURSE") {
+function signInAs(role: "DOCTOR" | "STAFF") {
   useAuthStore.getState().signIn("access-token", "refresh-token", {
     userId: "user-1",
-    fullName: role === "NURSE" ? "ĐD. Võ Thị Thu Hà" : "BS. Nguyễn Văn An",
+    fullName: role === "STAFF" ? "ĐD. Võ Thị Thu Hà" : "BS. Nguyễn Văn An",
     email: null,
     role,
     mustChangePassword: false,
@@ -91,7 +91,7 @@ describe("PatientListView", () => {
   });
 
   it("hiện nút Thêm bệnh nhân mới cho Điều dưỡng", () => {
-    signInAs("NURSE");
+    signInAs("STAFF");
     mockList([withProfile]);
 
     render(<PatientListView />);

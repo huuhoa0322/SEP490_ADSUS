@@ -45,9 +45,9 @@ const MESSAGES: Record<string, string> = {
   "Full name is required.": "Vui lòng nhập họ và tên.",
   "Full name must not exceed 100 characters.": "Họ và tên không được quá 100 ký tự.",
   "Role is required.": "Vui lòng chọn vai trò.",
-  "Role must be one of DOCTOR, NURSE or PATIENT.":
-    "Vai trò chỉ được là Bác sĩ, Điều dưỡng hoặc Bệnh nhân.",
-  "Role must be one of ADMIN, DOCTOR, NURSE, PHARMACIST or PATIENT.":
+  "Role must be one of DOCTOR, STAFF or PATIENT.":
+    "Vai trò chỉ được là Bác sĩ, Nhân viên hoặc Bệnh nhân.",
+  "Role must be one of ADMIN, DOCTOR, STAFF, PHARMACIST or PATIENT.":
     "Vai trò không hợp lệ.",
   "Email is required.": "Vui lòng nhập email.",
   "Email is not a valid address.": "Email không đúng định dạng.",

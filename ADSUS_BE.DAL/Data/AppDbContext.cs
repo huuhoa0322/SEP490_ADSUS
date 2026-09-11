@@ -123,7 +123,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("shift_type", new[] { "MORNING", "AFTERNOON", "EVENING", "FULL_DAY" })
             .HasPostgresEnum("slot_status", new[] { "OPEN", "CLOSED", "BOOKED" })
             .HasPostgresEnum("storage", "buckettype", new[] { "STANDARD", "ANALYTICS", "VECTOR" })
-            .HasPostgresEnum("user_role", new[] { "ADMIN", "DOCTOR", "PATIENT", "NURSE", "PHARMACIST" })
+            .HasPostgresEnum("user_role", new[] { "ADMIN", "DOCTOR", "PATIENT", "STAFF", "PHARMACIST" })
             .HasPostgresEnum("user_status", new[] { "ACTIVE", "DEACTIVATED" })
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")

@@ -333,7 +333,7 @@ describe("Tier 3: Cross-Feature Combinations (Pairwise & Multi-Feature Interacti
 
       const auditEntry = generateAuditLog({
         actorName: "Nurse Lan",
-        actorRole: "NURSE",
+        actorRole: "STAFF",
         action: "CHECKIN_APPOINTMENT",
         detail: `Checked in appointment ${checkinItem.appointmentId}`,
       });

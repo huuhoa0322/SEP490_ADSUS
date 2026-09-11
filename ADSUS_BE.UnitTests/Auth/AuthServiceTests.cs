@@ -108,7 +108,7 @@ public class AuthServiceTests
     [InlineData(UserRole.Admin, "ADMIN")]
     [InlineData(UserRole.Doctor, "DOCTOR")]
     [InlineData(UserRole.Patient, "PATIENT")]
-    [InlineData(UserRole.Nurse, "NURSE")]
+    [InlineData(UserRole.Staff, "STAFF")]
     public async Task LoginAsync_RoleIsReturnedInUppercase(UserRole role, string expected)
     {
         // The client and the database both use uppercase labels; C# uses PascalCase.

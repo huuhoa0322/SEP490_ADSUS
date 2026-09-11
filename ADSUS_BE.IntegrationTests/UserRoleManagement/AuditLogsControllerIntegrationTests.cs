@@ -50,7 +50,7 @@ public class AuditLogsControllerIntegrationTests
 
     [Theory]
     [InlineData(UserRole.Doctor)]
-    [InlineData(UserRole.Nurse)]
+    [InlineData(UserRole.Staff)]
     [InlineData(UserRole.Patient)]
     public async Task GetAuditLogs_NonAdmin_IsForbidden(UserRole role)
     {

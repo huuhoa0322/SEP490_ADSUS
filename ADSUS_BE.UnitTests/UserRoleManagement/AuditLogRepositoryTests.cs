@@ -1,4 +1,4 @@
-﻿using ADSUS_BE.DAL.Data;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Implementations;
 using Microsoft.EntityFrameworkCore;
@@ -58,7 +58,7 @@ public class AuditLogRepositoryTests : IDisposable
     {
         // Arrange
         var user1 = CreateUser("Nguyen Van Admin", "0901111111", UserRole.Admin);
-        var user2 = CreateUser("Tran Thi Nurse", "0902222222", UserRole.Nurse);
+        var user2 = CreateUser("Tran Thi Nurse", "0902222222", UserRole.Staff);
 
         var log1 = CreateLog(user1, "CREATE_ACCOUNT", "Created doctor account", DateTime.UtcNow.AddMinutes(-10));
         var log2 = CreateLog(user2, "NURSE_CHECKIN", "Checked in patient with severe cough", DateTime.UtcNow.AddMinutes(-5));

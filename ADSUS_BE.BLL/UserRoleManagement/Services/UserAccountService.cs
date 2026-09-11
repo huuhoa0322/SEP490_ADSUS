@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
@@ -27,7 +27,7 @@ public class UserAccountService : IUserAccountService
     /// UC-04: tài khoản Admin cấp lúc dựng hệ thống, không tạo ở đây.
     /// </summary>
     private static readonly UserRole[] AssignableRoles =
-        { UserRole.Doctor, UserRole.Nurse, UserRole.Patient };
+        { UserRole.Doctor, UserRole.Staff, UserRole.Patient };
 
     private readonly IUserRepository _users;
     private readonly AccountAuditTrail _audit;

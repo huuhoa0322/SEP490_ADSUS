@@ -718,8 +718,8 @@ describe("QA Member 4: Browser UI Automation & Interactive Click-Through Verific
     it("confirms non-ADMIN roles cannot access /admin routes", () => {
       expect(isRoleAllowedOnPath("DOCTOR", "/admin/audit-logs")).toBe(false);
       expect(isRoleAllowedOnPath("DOCTOR", "/admin/feedback")).toBe(false);
-      expect(isRoleAllowedOnPath("NURSE", "/admin/audit-logs")).toBe(false);
-      expect(isRoleAllowedOnPath("NURSE", "/admin/feedback")).toBe(false);
+      expect(isRoleAllowedOnPath("STAFF", "/admin/audit-logs")).toBe(false);
+      expect(isRoleAllowedOnPath("STAFF", "/admin/feedback")).toBe(false);
     });
 
     it("confirms navigation menu config contains new routes for respective roles", () => {
@@ -728,7 +728,7 @@ describe("QA Member 4: Browser UI Automation & Interactive Click-Through Verific
       expect(adminHrefs).toContain("/admin/audit-logs");
       expect(adminHrefs).toContain("/admin/feedback");
 
-      const nurseGroups = visibleGroupsForRole("NURSE");
+      const nurseGroups = visibleGroupsForRole("STAFF");
       const nurseHrefs = nurseGroups.flatMap((g) => g.items.map((i) => i.href));
       expect(nurseHrefs).toContain("/checkin");
     });

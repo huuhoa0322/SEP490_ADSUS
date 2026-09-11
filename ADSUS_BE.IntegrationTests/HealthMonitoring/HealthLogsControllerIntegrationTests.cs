@@ -125,8 +125,8 @@ public class HealthLogsControllerIntegrationTests
     private HttpClient CreateDoctorClient(WebApplicationFactory<Program> app)
         => CreateAuthenticatedClient(app, _users, UserRole.Doctor, Guid.NewGuid());
 
-    private HttpClient CreateNurseClient(WebApplicationFactory<Program> app)
-        => CreateAuthenticatedClient(app, _users, UserRole.Nurse, Guid.NewGuid());
+    private HttpClient CreateStaffClient(WebApplicationFactory<Program> app)
+        => CreateAuthenticatedClient(app, _users, UserRole.Staff, Guid.NewGuid());
 
     private HttpClient CreateAdminClient(WebApplicationFactory<Program> app)
         => CreateAuthenticatedClient(app, _users, UserRole.Admin, Guid.NewGuid());
@@ -378,7 +378,7 @@ public class HealthLogsControllerIntegrationTests
     {
         // Arrange
         using var app = CreateApp();
-        var client = CreateNurseClient(app);
+        var client = CreateStaffClient(app);
 
         var request = new LogHealthDataRequest
         {
@@ -668,7 +668,7 @@ public class HealthLogsControllerIntegrationTests
     {
         // Arrange
         using var app = CreateApp();
-        var client = CreateNurseClient(app);
+        var client = CreateStaffClient(app);
 
         // Act
         var response = await client.GetAsync("/api/v1/health-logs", TestContext.Current.CancellationToken);

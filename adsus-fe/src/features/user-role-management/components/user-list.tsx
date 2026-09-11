@@ -141,7 +141,7 @@ export function UserList() {
         >
           <option value="">Tất cả vai trò</option>
           <option value="DOCTOR">Bác sĩ</option>
-          <option value="NURSE">Điều dưỡng</option>
+          <option value="STAFF">Nhân viên</option>
           <option value="PATIENT">Bệnh nhân</option>
           <option value="ADMIN">Quản trị viên</option>
         </select>

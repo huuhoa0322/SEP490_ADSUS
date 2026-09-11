@@ -19,7 +19,7 @@ public static class TestAuthHelper
     /// </summary>
     /// <param name="app">WebApplicationFactory for the app.</param>
     /// <param name="userRepo">Mocked IUserRepository for user lookup.</param>
-    /// <param name="role">User role (Doctor, Patient, Nurse, Admin).</param>
+    /// <param name="role">User role (Doctor, Patient, Staff, Admin).</param>
     /// <param name="userId">Optional user ID. If null, a new GUID will be generated.</param>
     /// <returns>HttpClient with Bearer token in Authorization header.</returns>
     public static HttpClient CreateAuthenticatedClient(
@@ -79,14 +79,14 @@ public static class TestAuthHelper
     }
 
     /// <summary>
-    /// Creates an HTTP client for a Nurse user.
+    /// Creates an HTTP client for a Staff user.
     /// </summary>
-    public static HttpClient CreateNurseClient(
+    public static HttpClient CreateStaffClient(
         WebApplicationFactory<Program> app,
         Mock<IUserRepository> userRepo,
-        Guid? nurseId = null)
+        Guid? staffId = null)
     {
-        return CreateAuthenticatedClient(app, userRepo, UserRole.Nurse, nurseId);
+        return CreateAuthenticatedClient(app, userRepo, UserRole.Staff, staffId);
     }
 
     /// <summary>
