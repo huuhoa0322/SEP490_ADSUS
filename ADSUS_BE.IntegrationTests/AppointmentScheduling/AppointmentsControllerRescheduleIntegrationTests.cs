@@ -31,7 +31,7 @@ public class AppointmentsControllerRescheduleIntegrationTests
     #region POST /api/v1/appointments/{id}/reschedule RBAC Tests
 
     [Theory]
-    [InlineData(UserRole.Nurse)]
+    [InlineData(UserRole.Staff)]
     [InlineData(UserRole.Admin)]
     public async Task RescheduleAppointment_AuthorizedRoles_ReturnsCreated(UserRole role)
     {
@@ -122,7 +122,7 @@ public class AppointmentsControllerRescheduleIntegrationTests
     #region GET /api/v1/appointments/available-slots RBAC Tests
 
     [Theory]
-    [InlineData(UserRole.Nurse)]
+    [InlineData(UserRole.Staff)]
     [InlineData(UserRole.Admin)]
     public async Task GetAvailableSlots_AuthorizedRoles_ReturnsOk(UserRole role)
     {

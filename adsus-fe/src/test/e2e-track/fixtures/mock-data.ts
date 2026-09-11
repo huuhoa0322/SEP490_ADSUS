@@ -100,7 +100,7 @@ export function generateAuditLogList(count: number): AuditLogResponse[] {
       logId: `log-${i + 1}-uuid`,
       action,
       actorName: i % 2 === 0 ? "Admin System" : "Nurse Sarah",
-      actorRole: i % 2 === 0 ? "ADMIN" : "NURSE",
+      actorRole: i % 2 === 0 ? "ADMIN" : "STAFF",
       performedAt: new Date(Date.now() - i * 60000).toISOString(),
     });
   });

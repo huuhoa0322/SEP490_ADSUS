@@ -25,7 +25,7 @@ interface Props {
  */
 export function NewPatientFlow({ patientUserId }: Props) {
   const router = useRouter();
-  const isNurse = useAuthStore((state) => state.user?.role) === "NURSE";
+  const isNurse = useAuthStore((state) => state.user?.role) === "STAFF";
 
   // Chỉ nạp khi cần đọc thông tin định danh của một tài khoản đã có.
   const accountsQuery = usePatientList({ hasProfile: false, pageSize: 100 });

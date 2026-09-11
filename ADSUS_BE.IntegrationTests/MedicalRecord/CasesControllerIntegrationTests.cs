@@ -41,7 +41,7 @@ public class CasesControllerIntegrationTests
     private readonly User _nurse = new()
     {
         UserId = Guid.NewGuid(), FullName = "ĐD. Võ Thị Thu Hà", Phone = "0915678901",
-        PasswordHash = "x", Role = UserRole.Nurse, Status = UserStatus.Active,
+        PasswordHash = "x", Role = UserRole.Staff, Status = UserStatus.Active,
         CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
     };
 
@@ -544,7 +544,7 @@ public class CasesControllerIntegrationTests
         var nurse = new User
         {
             UserId = Guid.NewGuid(), FullName = "ĐD. Võ Thị Thu Hà", Phone = "0915678901",
-            PasswordHash = "x", Role = UserRole.Nurse, Status = UserStatus.Active,
+            PasswordHash = "x", Role = UserRole.Staff, Status = UserStatus.Active,
             CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
         };
         _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))

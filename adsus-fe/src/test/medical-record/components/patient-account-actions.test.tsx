@@ -49,7 +49,7 @@ const props = {
   dateOfBirth: "1984-03-12",
 };
 
-function signInAs(role: "DOCTOR" | "NURSE") {
+function signInAs(role: "DOCTOR" | "STAFF") {
   useAuthStore.getState().signIn("access-token", "refresh-token", {
     userId: "me",
     fullName: "Người dùng",
@@ -77,7 +77,7 @@ describe("PatientAccountActions", () => {
   });
 
   it("hiện hai nút với Điều dưỡng", () => {
-    signInAs("NURSE");
+    signInAs("STAFF");
 
     render(<PatientAccountActions {...props} />);
 
@@ -86,7 +86,7 @@ describe("PatientAccountActions", () => {
   });
 
   it("hỏi xác nhận trước khi cấp lại mật khẩu", async () => {
-    signInAs("NURSE");
+    signInAs("STAFF");
     const user = userEvent.setup();
 
     render(<PatientAccountActions {...props} />);
@@ -109,7 +109,7 @@ describe("PatientAccountActions", () => {
       options?.onSuccess?.("Xk4mnpq8rt2Z");
     });
 
-    signInAs("NURSE");
+    signInAs("STAFF");
     const user = userEvent.setup();
 
     render(<PatientAccountActions {...props} />);
@@ -120,7 +120,7 @@ describe("PatientAccountActions", () => {
   });
 
   it("gửi đủ bốn trường liên hệ khi lưu", async () => {
-    signInAs("NURSE");
+    signInAs("STAFF");
     const user = userEvent.setup();
 
     render(<PatientAccountActions {...props} />);

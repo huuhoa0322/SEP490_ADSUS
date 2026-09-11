@@ -186,7 +186,7 @@ export function getHomePathForRole(role: Role): string {
     case "ADMIN":
       return "/dashboard";
     case "DOCTOR":
-    case "NURSE":
+    case "STAFF":
       // Nurse có quyền giống hệt Doctor (UCS), nên cũng vào danh sách bệnh nhân.
       return "/patients";
     case "PATIENT":
@@ -211,9 +211,9 @@ const ROUTE_ROLES: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
   // "Statistics dashboard | View": Admin = Full, Doctor/Nurse = No, Patient = No.
   { prefix: "/dashboard", roles: ["ADMIN"] },
   // UC-09 & R3: Bác sĩ, Điều dưỡng và Admin (xem hồ sơ bệnh nhân từ feedback).
-  { prefix: "/patients", roles: ["DOCTOR", "NURSE", "ADMIN"] },
+  { prefix: "/patients", roles: ["DOCTOR", "STAFF", "ADMIN"] },
   // SCR-30 & R3: Chi tiết ca khám cho Bác sĩ, Điều dưỡng và Admin (xem chi tiết ca khám từ feedback).
-  { prefix: "/cases", roles: ["DOCTOR", "NURSE", "ADMIN"] },
+  { prefix: "/cases", roles: ["DOCTOR", "STAFF", "ADMIN"] },
   // UC-04 (SCR-06, SCR-07): "Create", "Lock / Deactivate" và "Assign role" đều là No cho
   // Doctor/Nurse/Patient. Đây là chỗ đầu tiên NURSE khác DOCTOR.
   { prefix: "/admin", roles: ["ADMIN"] },

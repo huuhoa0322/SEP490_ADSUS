@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
@@ -30,7 +30,7 @@ public class AppointmentsControllerRescheduleAdversarialIntegrationTests
     public async Task RescheduleAppointment_BusinessRuleViolation_ReturnsBadRequest()
     {
         using var app = CreateApp();
-        var client = CreateClient(app, UserRole.Nurse);
+        var client = CreateClient(app, UserRole.Staff);
         var appointmentId = Guid.NewGuid();
 
         _appointmentService.Setup(s => s.RescheduleAppointmentAsync(
@@ -58,7 +58,7 @@ public class AppointmentsControllerRescheduleAdversarialIntegrationTests
     public async Task RescheduleAppointment_AppointmentNotFound_ReturnsNotFound()
     {
         using var app = CreateApp();
-        var client = CreateClient(app, UserRole.Nurse);
+        var client = CreateClient(app, UserRole.Staff);
         var appointmentId = Guid.NewGuid();
 
         _appointmentService.Setup(s => s.RescheduleAppointmentAsync(
@@ -86,7 +86,7 @@ public class AppointmentsControllerRescheduleAdversarialIntegrationTests
     public async Task RescheduleAppointment_EmptyReasonArgumentException_ReturnsBadRequest()
     {
         using var app = CreateApp();
-        var client = CreateClient(app, UserRole.Nurse);
+        var client = CreateClient(app, UserRole.Staff);
         var appointmentId = Guid.NewGuid();
 
         _appointmentService.Setup(s => s.RescheduleAppointmentAsync(
@@ -114,7 +114,7 @@ public class AppointmentsControllerRescheduleAdversarialIntegrationTests
     public async Task RescheduleAppointment_SlotNotOpen_ReturnsBadRequest()
     {
         using var app = CreateApp();
-        var client = CreateClient(app, UserRole.Nurse);
+        var client = CreateClient(app, UserRole.Staff);
         var appointmentId = Guid.NewGuid();
 
         _appointmentService.Setup(s => s.RescheduleAppointmentAsync(

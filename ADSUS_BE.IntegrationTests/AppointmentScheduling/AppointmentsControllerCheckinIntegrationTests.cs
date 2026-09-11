@@ -20,7 +20,7 @@ public class AppointmentsControllerCheckinIntegrationTests
     private readonly Mock<IAppointmentService> _appointmentService = new();
 
     [Theory]
-    [InlineData(UserRole.Nurse)]
+    [InlineData(UserRole.Staff)]
     [InlineData(UserRole.Admin)]
     public async Task GetCheckinQueue_AuthorizedRoles_ReturnsOk(UserRole role)
     {

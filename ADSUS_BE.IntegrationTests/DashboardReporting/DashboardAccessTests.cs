@@ -29,7 +29,7 @@ public class DashboardAccessTests
 
     [Theory]
     [InlineData(UserRole.Doctor)]
-    [InlineData(UserRole.Nurse)]
+    [InlineData(UserRole.Staff)]
     [InlineData(UserRole.Patient)]
     public async Task NonAdminRole_IsForbidden(UserRole role)
     {

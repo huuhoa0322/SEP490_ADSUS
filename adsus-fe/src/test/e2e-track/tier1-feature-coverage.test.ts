@@ -446,7 +446,7 @@ describe("Tier 1: Feature Coverage (>=5 tests per feature for all 15 features)",
     it("T1.F8.2: Search by actor role (e.g. ADMIN, NURSE) filters matching logs", () => {
       const logs = [
         generateAuditLog({ actorRole: "ADMIN" }),
-        generateAuditLog({ actorRole: "NURSE" }),
+        generateAuditLog({ actorRole: "STAFF" }),
       ];
 
       const match = logs.filter((l) => l.actorRole === "ADMIN");

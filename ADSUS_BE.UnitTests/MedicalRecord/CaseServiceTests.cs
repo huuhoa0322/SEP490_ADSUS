@@ -537,7 +537,7 @@ public class CaseServiceTests
         // Arrange — GB-04: người phụ trách bắt buộc là tài khoản role DOCTOR, kể cả khi Điều
         // dưỡng đang tạo ca hộ.
         var profile = MedicalRecordTestData.MakePatientProfile();
-        var nurse = MedicalRecordTestData.MakeNurse();
+        var nurse = MedicalRecordTestData.MakeStaff();
         _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
         _users.Setup(r => r.GetByIdAsync(nurse.UserId, It.IsAny<CancellationToken>()))

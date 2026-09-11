@@ -30,7 +30,7 @@ public class CaseDiagnosisControllerIntegrationTests
     private readonly User _nurse = new()
     {
         UserId = Guid.NewGuid(), FullName = "ĐD. Hà", Phone = "0911111111",
-        PasswordHash = "x", Role = UserRole.Nurse, Status = UserStatus.Active,
+        PasswordHash = "x", Role = UserRole.Staff, Status = UserStatus.Active,
         CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
     };
 
@@ -121,12 +121,12 @@ public class CaseDiagnosisControllerIntegrationTests
     }
 
     [Theory]
-    [InlineData("NURSE")]
+    [InlineData("STAFF")]
     [InlineData("PATIENT")]
     public async Task AnalyzeImage_WrongRole_Returns403Forbidden(string role)
     {
         using var app = MakeApp();
-        var user = role == "NURSE" ? _nurse : _patient;
+        var user = role == "STAFF" ? _nurse : _patient;
         var client = MakeClientWithToken(app, user);
         var response = await client.PostAsync($"/api/v1/cases/{Guid.NewGuid()}/analyze", MakeAnalyzePayload(true), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);

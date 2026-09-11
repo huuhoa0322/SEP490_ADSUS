@@ -20,13 +20,13 @@ internal static class MedicalRecordTestData
         UpdatedAt = DateTime.UtcNow,
     };
 
-    public static User MakeNurse(string fullName = "ĐD. Võ Thị Thu Hà") => new()
+    public static User MakeStaff(string fullName = "ĐD. Võ Thị Thu Hà") => new()
     {
         UserId = Guid.NewGuid(),
         FullName = fullName,
         Phone = "0915678901",
         PasswordHash = "khong-dung-toi-trong-test",
-        Role = UserRole.Nurse,
+        Role = UserRole.Staff,
         Status = UserStatus.Active,
         CreatedAt = DateTime.UtcNow,
         UpdatedAt = DateTime.UtcNow,

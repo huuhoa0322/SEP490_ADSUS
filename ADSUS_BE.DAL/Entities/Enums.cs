@@ -8,14 +8,16 @@ namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
 /// Vai trò tài khoản — enum <c>user_role</c> trong DB.
-/// Thứ tự khai báo phải khớp thứ tự trong DB: ADMIN, DOCTOR, NURSE, PATIENT, PHARMACIST.
-/// NURSE có quyền giống hệt DOCTOR (theo quyết định ghi đè PRD trong UCS).
+/// Thứ tự khai báo phải khớp thứ tự trong DB: ADMIN, DOCTOR, STAFF, PATIENT, PHARMACIST.
+/// STAFF có quyền giống hệt DOCTOR (theo quyết định ghi đè PRD trong UCS). Đổi tên từ NURSE
+/// ngày 11/09/2026 — vẫn đúng 1 role như cũ, đặt tên tổng quát hơn để dự phòng thêm role phụ
+/// trợ khác vào cùng nhóm sau này mà không phải đổi tên lần nữa.
 /// </summary>
 public enum UserRole
 {
     [PgName("ADMIN")] Admin,
     [PgName("DOCTOR")] Doctor,
-    [PgName("NURSE")] Nurse,
+    [PgName("STAFF")] Staff,
     [PgName("PATIENT")] Patient,
     [PgName("PHARMACIST")] Pharmacist,
 }

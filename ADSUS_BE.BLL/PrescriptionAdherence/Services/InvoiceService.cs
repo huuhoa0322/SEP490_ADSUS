@@ -145,7 +145,7 @@ public class InvoiceService : IInvoiceService
 
         // Send notification to all nurses
         var nurseIds = await _context.Users
-            .Where(u => u.Role == UserRole.Nurse)
+            .Where(u => u.Role == UserRole.Staff)
             .Select(u => u.UserId)
             .ToListAsync();
 

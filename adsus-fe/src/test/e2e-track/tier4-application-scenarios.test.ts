@@ -120,7 +120,7 @@ describe("Tier 4: Real-World Application Scenarios", () => {
     // 1. Security Admin accesses /admin/audit-logs
     const rbac = new RbacPolicyEvaluator();
     expect(rbac.isAllowed("ADMIN", "/admin/audit-logs")).toBe(true);
-    expect(rbac.isAllowed("NURSE", "/admin/audit-logs")).toBe(false);
+    expect(rbac.isAllowed("STAFF", "/admin/audit-logs")).toBe(false);
 
     // 2. Generate large audit dataset (120 events)
     const auditLogs = generateAuditLogList(120);

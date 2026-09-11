@@ -211,7 +211,7 @@ export class StarRatingCalculator {
   }
 }
 
-export type Role = "ADMIN" | "DOCTOR" | "NURSE" | "PATIENT" | "PHARMACIST";
+export type Role = "ADMIN" | "DOCTOR" | "STAFF" | "PATIENT" | "PHARMACIST";
 
 export class RbacPolicyEvaluator {
   private routeRoles: Array<{ prefix: string; roles: Role[] }>;
@@ -220,8 +220,8 @@ export class RbacPolicyEvaluator {
     // Baseline + Target configuration matching auth-store.ts & M4 grant
     this.routeRoles = customRouteRoles ?? [
       { prefix: "/dashboard", roles: ["ADMIN"] },
-      { prefix: "/patients", roles: ["DOCTOR", "NURSE", "ADMIN"] }, // Target grant for Admin
-      { prefix: "/cases", roles: ["DOCTOR", "NURSE", "ADMIN"] },    // Target grant for Admin
+      { prefix: "/patients", roles: ["DOCTOR", "STAFF", "ADMIN"] }, // Target grant for Admin
+      { prefix: "/cases", roles: ["DOCTOR", "STAFF", "ADMIN"] },    // Target grant for Admin
       { prefix: "/admin", roles: ["ADMIN"] },
       { prefix: "/medicines", roles: ["ADMIN", "PHARMACIST", "DOCTOR"] },
       { prefix: "/suppliers", roles: ["ADMIN", "PHARMACIST"] },

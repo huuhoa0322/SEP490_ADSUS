@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
@@ -250,7 +250,7 @@ public class AdminUsersController : ControllerBase
 
         AccountOperationResult.InvalidRole =>
             BadRequest(ApiResponse<T>.Fail(
-                StatusCodes.Status400BadRequest, "Role must be one of DOCTOR, NURSE or PATIENT.")),
+                StatusCodes.Status400BadRequest, "Role must be one of DOCTOR, STAFF or PATIENT.")),
 
         AccountOperationResult.CannotTargetSelf =>
             BadRequest(ApiResponse<T>.Fail(

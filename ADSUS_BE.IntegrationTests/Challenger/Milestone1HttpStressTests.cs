@@ -90,7 +90,7 @@ public class Milestone1HttpStressTests
     public async Task CheckinQueue_InvertedDatesAndMaliciousSearch_Returns200AndValidEnvelope()
     {
         using var app = CreateApp();
-        var client = CreateClient(app, UserRole.Nurse);
+        var client = CreateClient(app, UserRole.Staff);
 
         _appointmentService.Setup(s => s.GetCheckinQueueAsync(
             It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(),

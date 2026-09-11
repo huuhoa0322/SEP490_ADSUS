@@ -17,7 +17,7 @@ describe("getHomePathForRole — UC-01 BR-03", () => {
   it("Doctor và Nurse vào cùng một chỗ", () => {
     // Quyết định ghi đè PRD trong UCS: Nurse là giá trị vai trò riêng nhưng quyền hạn
     // giống hệt Doctor. Nếu ai đó lỡ tay tách hai vai trò này ra, test sẽ đỏ.
-    expect(getHomePathForRole("NURSE")).toBe(getHomePathForRole("DOCTOR"));
+    expect(getHomePathForRole("STAFF")).toBe(getHomePathForRole("DOCTOR"));
     expect(getHomePathForRole("DOCTOR")).toBe("/patients");
   });
 });
@@ -32,7 +32,7 @@ describe("Bất biến chống treo màn hình", () => {
     // làm gì được.
     //
     // Test này đỏ ngay khi ai đó thêm một luật vào ROUTE_ROLES mà quên chỉnh đích đến.
-    for (const role of ["ADMIN", "DOCTOR", "NURSE", "PATIENT"] satisfies Role[]) {
+    for (const role of ["ADMIN", "DOCTOR", "STAFF", "PATIENT"] satisfies Role[]) {
       const home = getHomePathForRole(role);
 
       expect(
@@ -47,7 +47,7 @@ describe("isRoleAllowedOnPath — PRD §3.2 Permission Matrix", () => {
   it('chỉ Admin xem được màn thống kê ("Statistics dashboard | View")', () => {
     expect(isRoleAllowedOnPath("ADMIN", "/dashboard")).toBe(true);
 
-    for (const role of ["DOCTOR", "NURSE", "PATIENT"] satisfies Role[]) {
+    for (const role of ["DOCTOR", "STAFF", "PATIENT"] satisfies Role[]) {
       expect(isRoleAllowedOnPath(role, "/dashboard")).toBe(false);
     }
   });
@@ -59,7 +59,7 @@ describe("isRoleAllowedOnPath — PRD §3.2 Permission Matrix", () => {
 
   it("Doctor và Nurse đều vào được danh sách bệnh nhân", () => {
     expect(isRoleAllowedOnPath("DOCTOR", "/patients")).toBe(true);
-    expect(isRoleAllowedOnPath("NURSE", "/patients")).toBe(true);
+    expect(isRoleAllowedOnPath("STAFF", "/patients")).toBe(true);
   });
 
   it("luật áp cho cả đường dẫn con", () => {
@@ -71,19 +71,19 @@ describe("isRoleAllowedOnPath — PRD §3.2 Permission Matrix", () => {
 
   it("chỉ Admin vào được khu quản lý tài khoản (UC-04)", () => {
     // Bảng quyền: Create, Lock/Deactivate, Assign role đều là No cho Doctor/Nurse/Patient.
-    // Đây là chỗ đầu tiên NURSE bị chặn trong khi DOCTOR cũng bị chặn — hai vai trò này
+    // Đây là chỗ đầu tiên STAFF bị chặn trong khi DOCTOR cũng bị chặn — hai vai trò này
     // giống nhau ở mọi màn lâm sàng nên rất dễ bị hiểu nhầm là giống nhau ở mọi nơi.
     expect(isRoleAllowedOnPath("ADMIN", "/admin/users")).toBe(true);
     expect(isRoleAllowedOnPath("ADMIN", "/admin/users/new")).toBe(true);
 
-    for (const role of ["DOCTOR", "NURSE", "PATIENT"] satisfies Role[]) {
+    for (const role of ["DOCTOR", "STAFF", "PATIENT"] satisfies Role[]) {
       expect(isRoleAllowedOnPath(role, "/admin/users")).toBe(false);
       expect(isRoleAllowedOnPath(role, "/admin/users/new")).toBe(false);
     }
   });
 
   it('đổi mật khẩu thì mọi vai trò đều vào được ("Change own password" = Full)', () => {
-    for (const role of ["ADMIN", "DOCTOR", "NURSE", "PATIENT"] satisfies Role[]) {
+    for (const role of ["ADMIN", "DOCTOR", "STAFF", "PATIENT"] satisfies Role[]) {
       expect(isRoleAllowedOnPath(role, "/change-password")).toBe(true);
     }
   });
