@@ -175,12 +175,18 @@ class NotificationState {
     this.notifications = const [],
     this.unreadCount = 0,
     this.isLoading = false,
+    this.hasMore = true,
+    this.currentPage = 1,
+    this.fromDate,
     this.error,
   });
 
   final List<NotificationDto> notifications;
   final int unreadCount;
   final bool isLoading;
+  final bool hasMore;
+  final int currentPage;
+  final DateTime? fromDate;
   final String? error;
 }
 
@@ -194,8 +200,14 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
   String get _accessToken =>
       _ref.read(authViewModelProvider).session?.accessToken ?? '';
 
-  Future<void> fetchNotifications({int page = 1, int pageSize = 20}) async {
+  Future<void> fetchNotifications({
+    int page = 1,
+    int pageSize = 20,
+    DateTime? fromDate,
+    bool isLoadMore = false,
+  }) async {
     if (state.isLoading) return;
+    if (isLoadMore && !state.hasMore) return;
 
     // Skip if no access token
     if (_accessToken.isEmpty) {
@@ -203,6 +215,9 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
       state = state.copyWith(isLoading: false, error: 'Not authenticated');
       return;
     }
+
+    // Default fromDate = 60 days ago if not specified
+    final effectiveFromDate = fromDate ?? DateTime.now().subtract(const Duration(days: 60));
 
     state = state.copyWith(isLoading: true, error: null);
 
@@ -217,7 +232,11 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
 
       final response = await _dio!.get(
         ApiConstants.notifications,
-        queryParameters: {'page': page, 'pageSize': pageSize},
+        queryParameters: {
+          'page': page,
+          'pageSize': pageSize,
+          'fromDate': effectiveFromDate.toIso8601String(),
+        },
         options: Options(
           headers: {'Authorization': 'Bearer $_accessToken'},
         ),
@@ -228,15 +247,21 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
 
       if (response.statusCode == 200) {
         final data = response.data['data'];
-        final notifications = (data['notifications'] as List)
+        final newNotifications = (data['notifications'] as List)
             .map((e) => NotificationDto.fromJson(e))
             .toList();
+        final hasMore = data['hasMore'] as bool? ?? false;
 
-        debugPrint('[NotificationNotifier] Parsed ${notifications.length} notifications');
+        debugPrint('[NotificationNotifier] Parsed ${newNotifications.length} notifications, hasMore: $hasMore');
 
         state = state.copyWith(
-          notifications: notifications,
+          notifications: isLoadMore
+              ? [...state.notifications, ...newNotifications]
+              : newNotifications,
           unreadCount: data['unreadCount'] as int,
+          hasMore: hasMore,
+          currentPage: page,
+          fromDate: effectiveFromDate,
           isLoading: false,
         );
       } else {
@@ -254,6 +279,16 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
         error: e.toString(),
       );
     }
+  }
+
+  Future<void> loadMoreNotifications() async {
+    if (!state.hasMore || state.isLoading) return;
+    await fetchNotifications(
+      page: state.currentPage + 1,
+      pageSize: 10,
+      fromDate: state.fromDate,
+      isLoadMore: true,
+    );
   }
 
   Future<void> fetchUnreadCount() async {
@@ -389,12 +424,18 @@ extension NotificationStateCopyWith on NotificationState {
     List<NotificationDto>? notifications,
     int? unreadCount,
     bool? isLoading,
+    bool? hasMore,
+    int? currentPage,
+    DateTime? fromDate,
     String? error,
   }) {
     return NotificationState(
       notifications: notifications ?? this.notifications,
       unreadCount: unreadCount ?? this.unreadCount,
       isLoading: isLoading ?? this.isLoading,
+      hasMore: hasMore ?? this.hasMore,
+      currentPage: currentPage ?? this.currentPage,
+      fromDate: fromDate ?? this.fromDate,
       error: error,
     );
   }

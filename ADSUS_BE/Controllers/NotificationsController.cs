@@ -23,6 +23,7 @@ public class NotificationsController : ControllerBase
     public async Task<IActionResult> GetNotifications(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] DateTime? fromDate = null,
         CancellationToken cancellationToken = default)
     {
         if (!TryGetUserId(out var userId))
@@ -32,7 +33,7 @@ public class NotificationsController : ControllerBase
         }
 
         var notifications = await _notificationLogRepo.GetByUserIdAsync(
-            userId, page, pageSize, false, cancellationToken);
+            userId, page, pageSize, false, fromDate, cancellationToken);
 
         var unreadCount = await _notificationLogRepo.CountUnreadAsync(userId, cancellationToken);
 
@@ -51,6 +52,7 @@ public class NotificationsController : ControllerBase
                 IsRead = n.ReadAt != null,
             }).ToList(),
             UnreadCount = unreadCount,
+            HasMore = notifications.Count == pageSize,
         };
 
         return Ok(ApiResponse<NotificationListResponse>.Ok(response));
@@ -131,6 +133,7 @@ public class NotificationListResponse
 {
     public List<NotificationDto> Notifications { get; init; } = new();
     public int UnreadCount { get; init; }
+    public bool HasMore { get; init; }
 }
 
 public class NotificationDto

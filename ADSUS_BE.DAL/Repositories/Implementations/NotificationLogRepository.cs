@@ -23,6 +23,7 @@ public class NotificationLogRepository : INotificationLogRepository
         int page,
         int pageSize,
         bool includeDeleted = false,
+        DateTime? fromDate = null,
         CancellationToken ct = default)
     {
         var query = _db.NotificationLogs.AsNoTracking();
@@ -30,6 +31,12 @@ public class NotificationLogRepository : INotificationLogRepository
         if (!includeDeleted)
         {
             query = query.Where(n => n.IsDeleted != true);
+        }
+
+        // Filter by fromDate (60 days default from mobile)
+        if (fromDate.HasValue)
+        {
+            query = query.Where(n => n.SentAt >= fromDate.Value);
         }
 
         return await query

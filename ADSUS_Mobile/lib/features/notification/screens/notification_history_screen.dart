@@ -16,12 +16,36 @@ class NotificationHistoryScreen extends ConsumerStatefulWidget {
 
 class _NotificationHistoryScreenState
     extends ConsumerState<NotificationHistoryScreen> {
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
+    // Load notifications trong 60 ngày với 20 items đầu tiên
     Future.microtask(() {
-      ref.read(notificationsProvider.notifier).fetchNotifications();
+      ref.read(notificationsProvider.notifier).fetchNotifications(
+            fromDate: DateTime.now().subtract(const Duration(days: 60)),
+            pageSize: 20,
+          );
     });
+
+    // Lắng nghe scroll để load thêm
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      // Khi còn cách bottom 200px, load thêm
+      ref.read(notificationsProvider.notifier).loadMoreNotifications();
+    }
   }
 
   @override
@@ -54,8 +78,10 @@ class _NotificationHistoryScreenState
             Text(state.error!, style: const TextStyle(color: AppColors.danger)),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () =>
-                  ref.read(notificationsProvider.notifier).fetchNotifications(),
+              onPressed: () => ref.read(notificationsProvider.notifier).fetchNotifications(
+                    fromDate: DateTime.now().subtract(const Duration(days: 60)),
+                    pageSize: 20,
+                  ),
               child: const Text('Thử lại'),
             ),
           ],
@@ -78,11 +104,25 @@ class _NotificationHistoryScreenState
     }
 
     return RefreshIndicator(
-      onRefresh: () => ref.read(notificationsProvider.notifier).fetchNotifications(),
+      onRefresh: () => ref.read(notificationsProvider.notifier).fetchNotifications(
+            fromDate: DateTime.now().subtract(const Duration(days: 60)),
+            pageSize: 20,
+          ),
       child: ListView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
-        itemCount: state.notifications.length,
+        itemCount: state.notifications.length + (state.hasMore ? 1 : 0),
         itemBuilder: (context, index) {
+          // Nếu là item cuối và còn hasMore, hiện loading indicator
+          if (index == state.notifications.length && state.hasMore) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+
           final notification = state.notifications[index];
           return Card(
             margin: const EdgeInsets.only(bottom: 8),

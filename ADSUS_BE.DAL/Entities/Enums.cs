@@ -8,14 +8,14 @@ namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
 /// Vai trò tài khoản — enum <c>user_role</c> trong DB.
-/// Thứ tự khai báo phải khớp thứ tự trong DB: ADMIN, DOCTOR, NURSE, PATIENT, PHARMACIST.
-/// NURSE có quyền giống hệt DOCTOR (theo quyết định ghi đè PRD trong UCS).
+/// Thứ tự khai báo phải khớp thứ tự trong DB: ADMIN, DOCTOR, STAFF, PATIENT, PHARMACIST.
+/// STAFF có quyền giống hệt DOCTOR (theo quyết định ghi đè PRD trong UCS).
 /// </summary>
 public enum UserRole
 {
     [PgName("ADMIN")] Admin,
     [PgName("DOCTOR")] Doctor,
-    [PgName("NURSE")] Nurse,
+    [PgName("STAFF")] Staff,
     [PgName("PATIENT")] Patient,
     [PgName("PHARMACIST")] Pharmacist,
 }
@@ -69,7 +69,6 @@ public enum CaseStatus
     [PgName("CONFIRMED")] Confirmed,      // Bác sĩ kết luận
     [PgName("END")] End,                  // Hoàn thành (có đơn thuốc)
     [PgName("CANCELLED")] Cancelled,       // NoShow hoặc bệnh nhân hủy
-    [PgName("CREATED")] Created,          // Tương thích DB cũ
 }
 
 /// <summary>
