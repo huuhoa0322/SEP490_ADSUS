@@ -14,7 +14,7 @@ export interface TodayDoseDto {
   medicineName: string;
   dosage: string;
   scheduledTime: string; // "HH:mm" local
-  status: "PENDING" | "OVERTIME" | "TAKEN";
+  status: "PENDING" | "OVERTIME" | "TAKEN" | "MISSED";
 }
 
 export interface PrescriptionCardDto {
@@ -40,11 +40,18 @@ export interface DoctorPatientDto {
 export interface DoctorPatientListResponse {
   patients: DoctorPatientDto[];
   totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface PatientPrescriptionDetailResponse {
   patientName: string;
   prescriptions: PrescriptionCardDto[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface RemindRequest {
@@ -60,33 +67,37 @@ export interface RemindResponse {
 
 /**
  * GET /api/v1/me/medication-tracking/patients
- * List bệnh nhân có đơn Active do bác sĩ kê.
+ * List bệnh nhân có đơn Active do bác sĩ kê (có phân trang).
  */
 export async function getPatientList(params?: {
   search?: string;
   adherenceLevel?: string;
   hasOverdueDoses?: boolean;
+  page?: number;
+  pageSize?: number;
 }): Promise<DoctorPatientListResponse> {
   const { data } = await apiClient.get<
     ApiResponse<DoctorPatientListResponse>
   >("/api/v1/me/medication-tracking/patients", { params });
   if (!data.data) {
-    return { patients: [], totalCount: 0 };
+    return { patients: [], totalCount: 0, page: 1, pageSize: 10, totalPages: 0 };
   }
   return data.data;
 }
 
 /**
  * GET /api/v1/me/medication-tracking/patients/{patientId}/prescriptions
- * Đơn Active của bệnh nhân + liều hôm nay + adherence.
+ * Đơn Active của bệnh nhân + liều hôm nay + adherence (có phân trang).
  */
 export async function getPatientPrescriptions(
   patientId: string,
+  params?: { page?: number; pageSize?: number },
 ): Promise<PatientPrescriptionDetailResponse> {
   const { data } = await apiClient.get<
     ApiResponse<PatientPrescriptionDetailResponse>
   >(
     `/api/v1/me/medication-tracking/patients/${patientId}/prescriptions`,
+    { params },
   );
   if (!data.data) {
     throw new Error(data.message || "Không tải được đơn thuốc.");

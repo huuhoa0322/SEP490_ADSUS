@@ -22,4 +22,8 @@ public sealed record PrescriptionCardDto(
 
 public sealed record PatientPrescriptionDetailResponse(
     string PatientName,
-    IReadOnlyList<PrescriptionCardDto> Prescriptions);
+    IReadOnlyList<PrescriptionCardDto> Prescriptions,
+    int TotalCount,
+    int Page,
+    int PageSize,
+    int TotalPages);
