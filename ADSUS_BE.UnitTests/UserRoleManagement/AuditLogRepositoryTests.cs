@@ -26,7 +26,7 @@ public class AuditLogRepositoryTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private User CreateUser(string name, string phone, UserRole role)
+    private static User CreateUser(string name, string phone, UserRole role)
     {
         return new User
         {
@@ -40,7 +40,7 @@ public class AuditLogRepositoryTests : IDisposable
         };
     }
 
-    private AuditLog CreateLog(User actor, string action, string? detail, DateTime performedAt)
+    private static AuditLog CreateLog(User actor, string action, string? detail, DateTime performedAt)
     {
         return new AuditLog
         {

@@ -62,7 +62,7 @@ function ClinicServiceForm({ service, onClose }: ClinicServiceFormProps) {
     }
 
     const parsedPrice = Number(price);
-    if (price === "" || isNaN(parsedPrice) || parsedPrice < 0) {
+    if (price === "" || Number.isNaN(parsedPrice) || parsedPrice < 0) {
       errs.price = "Đơn giá phải là số lớn hơn hoặc bằng 0.";
     }
 

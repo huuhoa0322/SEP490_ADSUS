@@ -21,7 +21,7 @@ import type { AdminFeedbackItem } from "../types/feedback.types";
 const EMPTY_GUID = "00000000-0000-0000-0000-000000000000";
 
 function normalizeRating(raw: number): number {
-  if (isNaN(raw)) return 1;
+  if (Number.isNaN(raw)) return 1;
   const rounded = Math.round(raw);
   return Math.min(5, Math.max(1, rounded));
 }

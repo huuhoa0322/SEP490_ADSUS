@@ -61,7 +61,7 @@ public class AppointmentServiceRescheduleAdversarialTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private User CreateUser(Guid userId, string name, UserRole role, string phone = "0900000001")
+    private static User CreateUser(Guid userId, string name, UserRole role, string phone = "0900000001")
     {
         return new User
         {
@@ -75,7 +75,7 @@ public class AppointmentServiceRescheduleAdversarialTests : IDisposable
         };
     }
 
-    private PatientProfile CreatePatientProfile(User user)
+    private static PatientProfile CreatePatientProfile(User user)
     {
         return new PatientProfile
         {
@@ -86,7 +86,7 @@ public class AppointmentServiceRescheduleAdversarialTests : IDisposable
         };
     }
 
-    private ScheduleSlot CreateSlot(User doctor, DateOnly date, TimeOnly start, TimeOnly end, SlotStatus status = SlotStatus.Open)
+    private static ScheduleSlot CreateSlot(User doctor, DateOnly date, TimeOnly start, TimeOnly end, SlotStatus status = SlotStatus.Open)
     {
         return new ScheduleSlot
         {
@@ -100,7 +100,7 @@ public class AppointmentServiceRescheduleAdversarialTests : IDisposable
         };
     }
 
-    private Case CreateCase(PatientProfile profile, User doctor, DateOnly visitDate, CaseStatus status = CaseStatus.Booked)
+    private static Case CreateCase(PatientProfile profile, User doctor, DateOnly visitDate, CaseStatus status = CaseStatus.Booked)
     {
         return new Case
         {
@@ -116,7 +116,7 @@ public class AppointmentServiceRescheduleAdversarialTests : IDisposable
         };
     }
 
-    private Appointment CreateAppointment(
+    private static Appointment CreateAppointment(
         ScheduleSlot slot,
         PatientProfile profile,
         AppointmentStatus status,

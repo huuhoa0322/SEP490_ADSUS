@@ -63,9 +63,9 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
         string? adherenceLevel,
         bool? hasOverdueDoses,
         DateTime? nowUtc = null,
-        CancellationToken ct = default,
         int page = 1,
-        int pageSize = 10)
+        int pageSize = 10,
+        CancellationToken ct = default)
     {
         var now = nowUtc ?? DateTime.UtcNow;
         var todayStartUtc = DateOnly.FromDateTime(now);
@@ -179,9 +179,9 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
         Guid doctorId,
         Guid patientId,
         DateTime? nowUtc = null,
-        CancellationToken ct = default,
         int page = 1,
-        int pageSize = 10)
+        int pageSize = 10,
+        CancellationToken ct = default)
     {
         var now = nowUtc ?? DateTime.UtcNow;
         var todayStartUtc = DateOnly.FromDateTime(now);

@@ -596,8 +596,8 @@ public class CaseClinicServiceServiceTests
         // Assert
         var updatedInvoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoice.Id, TestContext.Current.CancellationToken);
         Assert.Equal(150000, updatedInvoice.TotalAmount);
-        Assert.Single(updatedInvoice.InvoiceItems);
-        Assert.Equal(InvoiceItemType.Medicine, updatedInvoice.InvoiceItems.First().ItemType);
+        var remainingItem = Assert.Single(updatedInvoice.InvoiceItems);
+        Assert.Equal(InvoiceItemType.Medicine, remainingItem.ItemType);
         Assert.False(await context.CaseClinicServices.AnyAsync(cs => cs.Id == junction.Id, TestContext.Current.CancellationToken));
     }
 
@@ -854,8 +854,8 @@ public class CaseClinicServiceServiceTests
         var updatedInvoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoice.Id, TestContext.Current.CancellationToken);
         Assert.Equal(InvoiceStatus.PENDING, updatedInvoice.Status);
         Assert.Equal(100000, updatedInvoice.TotalAmount);
-        Assert.Single(updatedInvoice.InvoiceItems);
-        Assert.Equal(medicineItem.Id, updatedInvoice.InvoiceItems.First().Id);
+        var remainingItem = Assert.Single(updatedInvoice.InvoiceItems);
+        Assert.Equal(medicineItem.Id, remainingItem.Id);
     }
 
     #endregion

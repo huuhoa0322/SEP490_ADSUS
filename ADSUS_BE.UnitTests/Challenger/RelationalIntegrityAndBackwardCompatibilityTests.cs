@@ -50,7 +50,7 @@ public class RelationalIntegrityAndBackwardCompatibilityTests
         return new AppDbContext(options);
     }
 
-    private AppointmentService CreateAppointmentService(
+    private static AppointmentService CreateAppointmentService(
         AppDbContext db,
         Mock<IAppointmentRepository>? apptRepo = null,
         Mock<IScheduleSlotRepository>? slotRepo = null,
@@ -307,7 +307,7 @@ public class RelationalIntegrityAndBackwardCompatibilityTests
         using (var verifyDb = CreateDbContext())
         {
             var finalAppt = await verifyDb.Appointments.FindAsync(new object[] { apptId }, TestContext.Current.CancellationToken);
-            Assert.Equal(AppointmentStatus.Completed, finalAppt.Status);
+            Assert.Equal(AppointmentStatus.Completed, finalAppt!.Status);
         }
     }
 
