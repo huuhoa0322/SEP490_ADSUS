@@ -18,7 +18,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 // change which class it uses.
 const inter = Inter({
   variable: "--font-inter",
-  subsets: ["latin", "vietnamese"],
+  subsets: ["latin", "latin-ext"],
   weight: "variable",
 });
 
@@ -28,7 +28,7 @@ const inter = Inter({
 // monospace stack.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin", "vietnamese"],
+  subsets: ["latin", "latin-ext"],
   weight: "variable",
 });
 
