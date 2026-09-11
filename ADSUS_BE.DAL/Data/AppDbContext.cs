@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using ADSUS_BE.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +7,6 @@ namespace ADSUS_BE.DAL.Data;
 
 public partial class AppDbContext : DbContext
 {
-
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
     {
@@ -27,7 +26,11 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Case> Cases { get; set; }
 
+    public virtual DbSet<CaseClinicService> CaseClinicServices { get; set; }
+
     public virtual DbSet<CaseSymptom> CaseSymptoms { get; set; }
+
+    public virtual DbSet<ClinicService> ClinicServices { get; set; }
 
     public virtual DbSet<DoctorAnnotation> DoctorAnnotations { get; set; }
 
@@ -102,12 +105,13 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("auth", "oauth_response_type", new[] { "code" })
             .HasPostgresEnum("auth", "one_time_token_type", new[] { "confirmation_token", "reauthentication_token", "recovery_token", "email_change_token_new", "email_change_token_current", "phone_change_token" })
             .HasPostgresEnum("blog_status", new[] { "DRAFT", "PUBLISHED" })
-            .HasPostgresEnum("case_status", new[] { "CREATED", "END", "CONFIRMED", "BOOKED", "IN_PROGRESS", "CANCELLED" })
+            .HasPostgresEnum("case_status", new[] { "BOOKED", "IN_PROGRESS", "CONFIRMED", "END", "CANCELLED" })
             .HasPostgresEnum("chat_role", new[] { "USER", "ASSISTANT" })
             .HasPostgresEnum("gender_type", new[] { "FEMALE", "MALE", "OTHER" })
             .HasPostgresEnum("health_log_type", new[] { "EXERCISE", "DIET" })
             .HasPostgresEnum("intake_status", new[] { "PENDING", "TAKEN", "OVERTIME", "MISSED" })
             .HasPostgresEnum("inventory_txn_type", new[] { "IMPORT", "DISPENSE", "ADJUSTMENT" })
+            .HasPostgresEnum("invoice_item_type", new[] { "MEDICINE", "SERVICE" })
             .HasPostgresEnum("invoice_status", new[] { "PENDING", "PAID", "CANCELLED" })
             .HasPostgresEnum("medicines_status", new[] { "ACTIVE", "INACTIVE" })
             .HasPostgresEnum("model_version_status", new[] { "ACTIVE", "INACTIVE" })
@@ -359,7 +363,7 @@ public partial class AppDbContext : DbContext
         {
             entity.HasKey(e => e.CaseId).HasName("pk_cases");
 
-            entity.ToTable("cases", tb => tb.HasComment("Một lượt khám của một bệnh nhân — mốc neo cho ảnh siêu âm, kết quả AI, đơn thuốc. Theo dõi tiến triển (FT-22) = so sánh dữ liệu qua nhiều cases theo visit_date. Vòng đời một chiều: Booked → InProgress → Confirmed → End (GBR) — enforce ở tầng ứng dụng. Booked → Cancelled cũng có thể xảy ra."));
+            entity.ToTable("cases", tb => tb.HasComment("Một lượt khám của một bệnh nhân — mốc neo cho ảnh siêu âm, kết quả AI, đơn thuốc. Theo dõi tiến triển (FT-22) = so sánh dữ liệu qua nhiều cases theo visit_date. Vòng đời CREATED → ANALYZED → CONFIRMED một chiều (GBR) — enforce ở tầng ứng dụng."));
 
             entity.HasIndex(e => new { e.DoctorId, e.VisitDate }, "idx_cases_doctor_worklist").IsDescending(false, true);
 
@@ -398,6 +402,36 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("fk_cases_patient_profile");
         });
 
+        modelBuilder.Entity<CaseClinicService>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("case_clinic_services_pkey");
+
+            entity.ToTable("case_clinic_services", tb => tb.HasComment("Dịch vụ đã áp dụng cho ca khám. Hệ thống tự thêm hoặc doctor thêm tay. price_at_time = snapshot giá."));
+
+            entity.HasIndex(e => new { e.CaseId, e.ClinicServiceId }, "case_clinic_services_case_id_clinic_service_id_key").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CaseId).HasColumnName("case_id");
+            entity.Property(e => e.ClinicServiceId).HasColumnName("clinic_service_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.PriceAtTime)
+                .HasPrecision(18, 2)
+                .HasColumnName("price_at_time");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.CaseClinicServices)
+                .HasForeignKey(d => d.CaseId)
+                .HasConstraintName("case_clinic_services_case_id_fkey");
+
+            entity.HasOne(d => d.ClinicService).WithMany(p => p.CaseClinicServices)
+                .HasForeignKey(d => d.ClinicServiceId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("case_clinic_services_clinic_service_id_fkey");
+        });
+
         modelBuilder.Entity<CaseSymptom>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("case_symptoms_pkey");
@@ -427,6 +461,38 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.SymptomId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("case_symptoms_symptom_id_fkey");
+        });
+
+        modelBuilder.Entity<ClinicService>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("clinic_services_pkey");
+
+            entity.ToTable("clinic_services", tb => tb.HasComment("Danh mục dịch vụ phòng khám do Admin cấu hình giá. Admin có thể CRUD tự do."));
+
+            entity.HasIndex(e => e.Code, "clinic_services_code_key").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.Code)
+                .HasMaxLength(50)
+                .HasColumnName("code");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .HasColumnName("name");
+            entity.Property(e => e.Price)
+                .HasPrecision(18, 2)
+                .HasColumnName("price");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
         });
 
         modelBuilder.Entity<DoctorAnnotation>(entity =>
@@ -1100,7 +1166,6 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.Case).WithOne(p => p.ServiceFeedback)
                 .HasForeignKey<ServiceFeedback>(d => d.CaseId)
-                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_service_feedbacks_case");
 

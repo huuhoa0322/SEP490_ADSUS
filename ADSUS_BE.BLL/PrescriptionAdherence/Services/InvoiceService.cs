@@ -49,18 +49,25 @@ public class InvoiceService : IInvoiceService
             return existingInvoice.Id;
         }
 
-        // 2. Lấy đơn thuốc của Case này (chỉ lấy đơn đang Active)
+        // 2. Lấy danh sách dịch vụ và đơn thuốc của Case này
+        var caseClinicServices = await _context.CaseClinicServices
+            .AsNoTracking()
+            .Include(cs => cs.ClinicService)
+            .Where(cs => cs.CaseId == caseId)
+            .ToListAsync();
+
         var prescription = await _context.Prescriptions
             .AsNoTracking()
             .Include(p => p.PrescriptionItems)
                 .ThenInclude(pi => pi.Medicine)
             .FirstOrDefaultAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active);
 
+        bool hasMedicine = prescription != null && prescription.PrescriptionItems.Count > 0;
+        bool hasService = caseClinicServices.Count > 0;
 
-
-        if (prescription == null || prescription.PrescriptionItems.Count == 0)
+        if (!hasMedicine && !hasService)
         {
-            throw new BusinessException("Không tìm thấy đơn thuốc hoặc đơn thuốc trống cho ca khám này.");
+            throw new BusinessException("Không tìm thấy dịch vụ hoặc đơn thuốc cho ca khám này (Không tìm thấy đơn thuốc).");
         }
 
         // Tạo Hóa đơn mới
@@ -76,66 +83,88 @@ public class InvoiceService : IInvoiceService
 
         decimal grandTotal = 0;
 
-        // 3. Xử lý từng món thuốc (Greedy Allocation)
-        foreach (var pItem in prescription.PrescriptionItems)
+        // 3. Xử lý từng dịch vụ phòng khám
+        foreach (var cs in caseClinicServices)
         {
-            var remainingQuantity = pItem.QuantityBase;
-            decimal volumePerBaseUnit = pItem.Medicine.VolumePerBaseUnit ?? 1m;
-            if (remainingQuantity <= 0) continue;
-
-            // Lấy tất cả các quy cách đóng gói được phép bán của loại thuốc này, xếp từ lớn xuống nhỏ
-            var packagings = await _context.MedicinePackagings
-                .Include(mp => mp.MedicineUnit)
-                .Where(mp => mp.MedicineId == pItem.MedicineId && mp.IsSellable)
-                .OrderByDescending(mp => mp.ConversionFactor)
-                .ToListAsync();
-
-            if (packagings.Count == 0)
+            var serviceItem = new InvoiceItem
             {
-                throw new BusinessException($"Thuốc '{pItem.Medicine.Name}' chưa được cấu hình đơn vị bán (IsSellable = true).");
-            }
+                Id = Guid.NewGuid(),
+                InvoiceId = invoice.Id,
+                Description = cs.ClinicService?.Name ?? "Dịch vụ phòng khám",
+                Quantity = 1,
+                UnitPrice = cs.PriceAtTime,
+                TotalPrice = cs.PriceAtTime,
+                ItemType = InvoiceItemType.Service,
+                ReferenceId = cs.Id
+            };
+            _context.InvoiceItems.Add(serviceItem);
+            grandTotal += serviceItem.TotalPrice;
+        }
 
-            // Gom số lượng theo từng packaging trước, sau đó mới tạo InvoiceItem
-            var billingLines = new List<(MedicinePackaging Pack, int Qty)>();
-
-            foreach (var pack in packagings)
+        // 4. Xử lý từng món thuốc (Greedy Allocation)
+        if (hasMedicine && prescription != null)
+        {
+            foreach (var pItem in prescription.PrescriptionItems)
             {
-                int packCapacityUS = (int)(pack.ConversionFactor * volumePerBaseUnit);
+                var remainingQuantity = pItem.QuantityBase;
+                decimal volumePerBaseUnit = pItem.Medicine.VolumePerBaseUnit ?? 1m;
+                if (remainingQuantity <= 0) continue;
 
-                if (remainingQuantity >= packCapacityUS)
+                // Lấy tất cả các quy cách đóng gói được phép bán của loại thuốc này, xếp từ lớn xuống nhỏ
+                var packagings = await _context.MedicinePackagings
+                    .Include(mp => mp.MedicineUnit)
+                    .Where(mp => mp.MedicineId == pItem.MedicineId && mp.IsSellable)
+                    .OrderByDescending(mp => mp.ConversionFactor)
+                    .ToListAsync();
+
+                if (packagings.Count == 0)
                 {
-                    int qtyToBill = remainingQuantity / packCapacityUS;
-                    remainingQuantity = remainingQuantity % packCapacityUS;
-                    billingLines.Add((pack, qtyToBill));
+                    throw new BusinessException($"Thuốc '{pItem.Medicine.Name}' chưa được cấu hình đơn vị bán (IsSellable = true).");
                 }
-            }
 
-            // Nếu vẫn còn lẻ, cộng thêm 1 vào đơn vị nhỏ nhất (không tạo dòng riêng)
-            if (remainingQuantity > 0)
-            {
-                var smallestPack = packagings.Last();
-                var idx = billingLines.FindIndex(b => b.Pack.Id == smallestPack.Id);
-                if (idx >= 0)
-                    billingLines[idx] = (billingLines[idx].Pack, billingLines[idx].Qty + 1);
-                else
-                    billingLines.Add((smallestPack, 1));
-            }
+                // Gom số lượng theo từng packaging trước, sau đó mới tạo InvoiceItem
+                var billingLines = new List<(MedicinePackaging Pack, int Qty)>();
 
-            // Tạo InvoiceItem từ danh sách đã gộp
-            foreach (var (pack, qty) in billingLines)
-            {
-                var invoiceItem = new InvoiceItem
+                foreach (var pack in packagings)
                 {
-                    Id = Guid.NewGuid(),
-                    InvoiceId = invoice.Id,
-                    Description = $"{pItem.Medicine.Name} - {pack.MedicineUnit.Name}",
-                    Quantity = qty,
-                    UnitPrice = pack.SalePrice,
-                    TotalPrice = qty * pack.SalePrice,
-                    ReferenceId = pItem.PrescriptionItemId
-                };
-                _context.InvoiceItems.Add(invoiceItem);
-                grandTotal += invoiceItem.TotalPrice;
+                    int packCapacityUS = (int)(pack.ConversionFactor * volumePerBaseUnit);
+
+                    if (remainingQuantity >= packCapacityUS)
+                    {
+                        int qtyToBill = remainingQuantity / packCapacityUS;
+                        remainingQuantity = remainingQuantity % packCapacityUS;
+                        billingLines.Add((pack, qtyToBill));
+                    }
+                }
+
+                // Nếu vẫn còn lẻ, cộng thêm 1 vào đơn vị nhỏ nhất (không tạo dòng riêng)
+                if (remainingQuantity > 0)
+                {
+                    var smallestPack = packagings.Last();
+                    var idx = billingLines.FindIndex(b => b.Pack.Id == smallestPack.Id);
+                    if (idx >= 0)
+                        billingLines[idx] = (billingLines[idx].Pack, billingLines[idx].Qty + 1);
+                    else
+                        billingLines.Add((smallestPack, 1));
+                }
+
+                // Tạo InvoiceItem từ danh sách đã gộp
+                foreach (var (pack, qty) in billingLines)
+                {
+                    var invoiceItem = new InvoiceItem
+                    {
+                        Id = Guid.NewGuid(),
+                        InvoiceId = invoice.Id,
+                        Description = $"{pItem.Medicine.Name} - {pack.MedicineUnit.Name}",
+                        Quantity = qty,
+                        UnitPrice = pack.SalePrice,
+                        TotalPrice = qty * pack.SalePrice,
+                        ItemType = InvoiceItemType.Medicine,
+                        ReferenceId = pItem.PrescriptionItemId
+                    };
+                    _context.InvoiceItems.Add(invoiceItem);
+                    grandTotal += invoiceItem.TotalPrice;
+                }
             }
         }
         
@@ -254,7 +283,8 @@ public class InvoiceService : IInvoiceService
                 Description = item.Description,
                 Quantity = item.Quantity,
                 UnitPrice = item.UnitPrice,
-                TotalPrice = item.TotalPrice
+                TotalPrice = item.TotalPrice,
+                ItemType = item.ItemType == InvoiceItemType.Service ? "SERVICE" : "MEDICINE"
             }).ToList()
         };
     }
@@ -272,11 +302,15 @@ public class InvoiceService : IInvoiceService
         invoice.PaidAt = DateTime.UtcNow;
         invoice.PaymentMethod = method;
 
-        // 2. Dispense items (FEFO, Inventory deduct)
-        await _inventoryService.DispenseAsync(invoice.CaseId);
+        // 2. Dispense items (FEFO, Inventory deduct) and generate intake logs only if prescription exists
+        var hasPrescription = await _context.Prescriptions
+            .AnyAsync(p => p.CaseId == invoice.CaseId && p.Status == PrescriptionStatus.Active && p.PrescriptionItems.Any());
 
-        // 3. Sinh MedicationIntakeLog sau khi đã xuất kho
-        await GenerateIntakeLogsForPrescriptionAsync(invoice.CaseId);
+        if (hasPrescription)
+        {
+            await _inventoryService.DispenseAsync(invoice.CaseId);
+            await GenerateIntakeLogsForPrescriptionAsync(invoice.CaseId);
+        }
 
         // Lưu trạng thái hóa đơn (giao dịch Inventory đã được add bên trong DispenseAsync)
         await _context.SaveChangesAsync();

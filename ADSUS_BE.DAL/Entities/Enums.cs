@@ -217,6 +217,12 @@ public enum PaymentMethod
     [PgName("BANK_TRANSFER")] BANK_TRANSFER,
 }
 
+public enum InvoiceItemType
+{
+    [PgName("MEDICINE")] Medicine,
+    [PgName("SERVICE")] Service,
+}
+
 public enum ShiftRequestType
 {
     [PgName("LEAVE")] Leave,

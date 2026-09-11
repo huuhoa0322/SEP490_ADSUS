@@ -31,7 +31,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
-import { ArrowLeft, CheckCircle2, Ban } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Ban, Pill, Stethoscope } from "lucide-react";
 import toast from "react-hot-toast";
 
 export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
@@ -174,13 +174,14 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
 
           <Card className="border-2">
             <CardHeader>
-              <CardTitle className="font-bold">Chi tiết bóc tách thuốc</CardTitle>
+              <CardTitle className="font-bold">Chi tiết hóa đơn</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="font-bold">Tên thuốc & Quy cách</TableHead>
+                    <TableHead className="font-bold">Mô tả chi tiết</TableHead>
+                    <TableHead className="font-bold w-[120px]">Loại</TableHead>
                     <TableHead className="text-right font-bold">Số lượng</TableHead>
                     <TableHead className="text-right font-bold">Đơn giá</TableHead>
                     <TableHead className="text-right font-bold">Thành tiền</TableHead>
@@ -190,13 +191,26 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
                   {data.items.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-bold">{item.description}</TableCell>
+                      <TableCell>
+                        {item.itemType === "SERVICE" ? (
+                          <Badge variant="soft-primary" className="inline-flex items-center gap-1 font-semibold">
+                            <Stethoscope className="size-3" />
+                            Dịch vụ
+                          </Badge>
+                        ) : (
+                          <Badge variant="soft-success" className="inline-flex items-center gap-1 font-semibold">
+                            <Pill className="size-3" />
+                            Thuốc
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
                       <TableCell className="text-right font-bold">{formatCurrency(item.totalPrice)}</TableCell>
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell colSpan={3} className="text-right font-extrabold text-lg">Tổng cộng:</TableCell>
+                    <TableCell colSpan={4} className="text-right font-extrabold text-lg">Tổng cộng:</TableCell>
                     <TableCell className="text-right font-extrabold text-lg text-primary">{formatCurrency(data.totalAmount)}</TableCell>
                   </TableRow>
                 </TableBody>

@@ -29,6 +29,7 @@ export interface InvoiceItemResponse {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  itemType?: "MEDICINE" | "SERVICE" | string;
 }
 
 export interface InvoiceDetailResponse extends InvoiceResponse {
@@ -55,7 +56,7 @@ export const invoiceService = {
   },
 
   payAndDispense: async (id: string, paymentMethod: string): Promise<void> => {
-    const response = await api.put<ApiResponse<void>>(`/api/v1/invoices/${id}/pay`, { paymentMethod });
+    await api.put<ApiResponse<void>>(`/api/v1/invoices/${id}/pay`, { paymentMethod });
     // no return value needed, throwing if not 2xx
   },
 

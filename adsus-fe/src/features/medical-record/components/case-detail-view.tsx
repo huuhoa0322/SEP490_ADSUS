@@ -40,6 +40,7 @@ import { useDiagnosticStore } from "../stores/use-diagnostic-store";
 import { UltrasoundImageGallery } from "./ultrasound-image-gallery";
 import { UltrasoundUploadField } from "./ultrasound-upload-field";
 import { PrescriptionSection } from "@/features/prescriptions/components/prescription-section";
+import { CaseClinicServicesPanel } from "@/features/clinic-service/components/case-clinic-services-panel";
 
 function statusBadgeClass(status: CaseStatus): string {
   switch (status) {
@@ -240,16 +241,17 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         </Link>
       </div>
 
-      <header className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-card p-6 shadow-sm">
-        <div>
-          <h1 className="font-heading text-[26px] font-bold tracking-[-0.02em] text-foreground">
-            Lần khám ngày {formatIsoDate(medicalCase.visitDate)}
-          </h1>
-          <p className="mt-2 text-sm font-semibold text-foreground">
-            Bác sĩ phụ trách:{" "}
-            <strong className="font-bold text-foreground">{medicalCase.doctorName}</strong>
-          </p>
-        </div>
+      <header className="flex flex-col gap-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-card p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="font-heading text-[26px] font-bold tracking-[-0.02em] text-foreground">
+              Lần khám ngày {formatIsoDate(medicalCase.visitDate)}
+            </h1>
+            <p className="mt-2 text-sm font-semibold text-foreground">
+              Bác sĩ phụ trách:{" "}
+              <strong className="font-bold text-foreground">{medicalCase.doctorName}</strong>
+            </p>
+          </div>
 
         <div className="flex flex-col items-end gap-3">
           <span
@@ -338,6 +340,10 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             </div>
           ) : null}
         </div>
+      </div>
+
+        {/* Dịch vụ khám: hiển thị nhỏ gọn ngay trong ô Lần khám để bác sĩ theo dõi */}
+        <CaseClinicServicesPanel caseId={caseId} caseStatus={medicalCase.status} variant="compact" />
       </header>
 
       {report.error ? (

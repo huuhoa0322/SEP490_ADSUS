@@ -13,6 +13,7 @@ using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using ADSUS_BE.BLL.CaseClinicServices;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
 
@@ -41,6 +42,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
     private readonly IDoctorAnnotationRepository _annotations;
     private readonly ICaseRepository _cases;
     private readonly ILogger<CaseDiagnosisService> _logger;
+    private readonly ICaseClinicServiceService? _caseClinicServiceService;
     private readonly string _aiBackendUrl;
     private readonly string? _aiBackendToken;
 
@@ -54,7 +56,8 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         IDoctorAnnotationRepository annotations,
         ICaseRepository cases,
         IConfiguration configuration,
-        ILogger<CaseDiagnosisService> logger)
+        ILogger<CaseDiagnosisService> logger,
+        ICaseClinicServiceService? caseClinicServiceService = null)
     {
         _db = db;
         _storage = storage;
@@ -65,6 +68,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         _annotations = annotations;
         _cases = cases;
         _logger = logger;
+        _caseClinicServiceService = caseClinicServiceService;
 
         var configuredUrl = configuration["AiBackend:WebhookUrl"];
         if (string.IsNullOrEmpty(configuredUrl))
@@ -278,6 +282,19 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
 
             await _aiModelVersionRepo.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
+
+            // Auto-add ULTRASOUND_EXAM (Khám siêu âm) service
+            if (_caseClinicServiceService != null)
+            {
+                try
+                {
+                    await _caseClinicServiceService.AddServiceToCaseByCodeAsync(caseId, "ULTRASOUND_EXAM", ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Tự động gắn dịch vụ ULTRASOUND_EXAM thất bại cho ca {CaseId}", caseId);
+                }
+            }
         }
         catch
         {

@@ -7,6 +7,7 @@ using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.PrescriptionAdherence;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 
 namespace ADSUS_BE.BLL.PrescriptionAdherence.Services;
@@ -27,6 +28,8 @@ public sealed class PrescriptionService : IPrescriptionService
     private readonly IUserRepository _userRepo;
     private readonly IMedicineRepository _medicineRepo;
     private readonly IAppointmentService _appointmentService;
+    private readonly IInvoiceService? _invoiceService;
+    private readonly Microsoft.Extensions.Logging.ILogger<PrescriptionService>? _logger;
 
     public PrescriptionService(
         AppDbContext db,
@@ -36,7 +39,9 @@ public sealed class PrescriptionService : IPrescriptionService
         ICaseRepository caseRepo,
         IUserRepository userRepo,
         IMedicineRepository medicineRepo,
-        IAppointmentService appointmentService)
+        IAppointmentService appointmentService,
+        IInvoiceService? invoiceService = null,
+        Microsoft.Extensions.Logging.ILogger<PrescriptionService>? logger = null)
     {
         _db = db;
         _prescriptionRepo = prescriptionRepo;
@@ -46,6 +51,8 @@ public sealed class PrescriptionService : IPrescriptionService
         _userRepo = userRepo;
         _medicineRepo = medicineRepo;
         _appointmentService = appointmentService;
+        _invoiceService = invoiceService;
+        _logger = logger;
     }
 
     public async Task<PrescriptionResponse> CreateAsync(
@@ -165,6 +172,33 @@ public sealed class PrescriptionService : IPrescriptionService
             
             if (transaction != null)
                 await transaction.CommitAsync(ct);
+
+            // Auto-trigger: Sinh hóa đơn khi ca kết thúc nếu có dịch vụ/thuốc và chưa có hóa đơn
+            if (_invoiceService != null)
+            {
+                var hasInvoice = await _db.Invoices.AnyAsync(i => i.CaseId == request.CaseId 
+                    && (i.Status == InvoiceStatus.PENDING || i.Status == InvoiceStatus.PAID), ct);
+
+                if (!hasInvoice)
+                {
+                    var hasServiceOrMedicine = 
+                        await _db.CaseClinicServices.AnyAsync(cs => cs.CaseId == request.CaseId, ct)
+                        || await _db.Prescriptions.AnyAsync(p => p.CaseId == request.CaseId 
+                            && p.Status == PrescriptionStatus.Active, ct);
+
+                    if (hasServiceOrMedicine)
+                    {
+                        try
+                        {
+                            await _invoiceService.GenerateInvoiceForCaseAsync(request.CaseId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogError(ex, "Tự động tạo hóa đơn khi kê đơn cho ca {CaseId} thất bại", request.CaseId);
+                        }
+                    }
+                }
+            }
 
             // Reload with navigation for response
             var response = await _prescriptionRepo.GetByIdAsync(prescription.PrescriptionId, ct)

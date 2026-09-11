@@ -15,7 +15,8 @@ public class NotificationHub : Hub
 
     public override async Task OnConnectedAsync()
     {
-        var userId = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? Context.User?.FindFirst("sub")?.Value;
         var isAuth = Context.User?.Identity?.IsAuthenticated ?? false;
 
         _logger.LogInformation(
