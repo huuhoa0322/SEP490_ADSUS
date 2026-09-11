@@ -124,7 +124,6 @@ public sealed class CasesController : ControllerBase
     [Authorize(Roles = "DOCTOR,STAFF,PATIENT")]
     [ProducesResponseType(typeof(ApiResponse<CaseResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         if (User.IsInRole("PATIENT"))
@@ -133,7 +132,7 @@ public sealed class CasesController : ControllerBase
             return Ok(ApiResponse<PatientCaseResponse>.Ok(patientView));
         }
 
-        var staffView = await _cases.GetForStaffAsync(id, User.IsInRole("DOCTOR"), ct);
+        var staffView = await _cases.GetForStaffAsync(id, ct);
         return Ok(ApiResponse<CaseResponse>.Ok(staffView));
     }
 

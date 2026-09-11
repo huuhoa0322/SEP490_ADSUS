@@ -94,7 +94,7 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
   const qrUrl = `https://api.vietqr.io/image/970436-123456789-9z73xT0.jpg?amount=${data.totalAmount}&addInfo=TT%20HOA%20DON%20${data.id.substring(0,8)}&accountName=PHONG%20KHAM%20ADSUS`;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="mx-auto w-[90%] max-w-[90%] py-8 space-y-6">
       <Button variant="ghost" onClick={() => router.push("/invoices")} className="mb-4">
         <ArrowLeft className="mr-2 h-4 w-4" /> Quay lại danh sách
       </Button>
@@ -134,14 +134,14 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
           <Card className="border-2">
             <CardHeader>
               <CardTitle className="font-bold">Thông tin bệnh nhân</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground font-bold">Tên bệnh nhân:</span>
                   <p className="font-bold text-base">{data.caseName}</p>
@@ -163,7 +163,7 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
                   </div>
                 )}
                 {data.cancelledReason && (
-                  <div className="col-span-2">
+                  <div className="col-span-2 md:col-span-4">
                     <span className="text-muted-foreground font-bold">Lý do hủy:</span>
                     <p className="font-bold text-destructive">{data.cancelledReason}</p>
                   </div>
@@ -174,13 +174,14 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
 
           <Card className="border-2">
             <CardHeader>
-              <CardTitle className="font-bold">Chi tiết bóc tách thuốc</CardTitle>
+              <CardTitle className="font-bold">Chi tiết hóa đơn</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="font-bold">Tên thuốc & Quy cách</TableHead>
+                    <TableHead className="font-bold">Mô tả chi tiết</TableHead>
+                    <TableHead className="font-bold w-[120px]">Loại</TableHead>
                     <TableHead className="text-right font-bold">Số lượng</TableHead>
                     <TableHead className="text-right font-bold">Đơn giá</TableHead>
                     <TableHead className="text-right font-bold">Thành tiền</TableHead>
@@ -190,13 +191,24 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
                   {data.items.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-bold">{item.description}</TableCell>
+                      <TableCell>
+                        {item.itemType === "SERVICE" ? (
+                          <Badge variant="soft-primary" className="font-semibold">
+                            Dịch vụ
+                          </Badge>
+                        ) : (
+                          <Badge variant="soft-success" className="font-semibold">
+                            Thuốc
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
                       <TableCell className="text-right font-bold">{formatCurrency(item.totalPrice)}</TableCell>
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell colSpan={3} className="text-right font-extrabold text-lg">Tổng cộng:</TableCell>
+                    <TableCell colSpan={4} className="text-right font-extrabold text-lg">Tổng cộng:</TableCell>
                     <TableCell className="text-right font-extrabold text-lg text-primary">{formatCurrency(data.totalAmount)}</TableCell>
                   </TableRow>
                 </TableBody>

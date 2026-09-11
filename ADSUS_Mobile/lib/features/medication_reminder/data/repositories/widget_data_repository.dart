@@ -38,9 +38,11 @@ class WidgetDataRepository {
           log.scheduledTimeUtc.isAfter(startOfDay) &&
           log.scheduledTimeUtc.isBefore(endOfDay)).toList();
 
-      // Lọc bỏ liều đã uống — widget chỉ hiện pending + overtime
+      // Lọc bỏ liều đã uống và bỏ lỡ — widget chỉ hiện pending + overtime
       final pendingOvertime = allTodayIntakes
-          .where((log) => log.status != IntakeStatus.taken)
+          .where((log) =>
+              log.status != IntakeStatus.taken &&
+              log.status != IntakeStatus.missed)
           .toList();
 
       // Sắp xếp: overtime trước, rồi pending, theo scheduledTime

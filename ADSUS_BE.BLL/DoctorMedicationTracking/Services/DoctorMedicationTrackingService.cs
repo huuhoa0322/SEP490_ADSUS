@@ -63,6 +63,8 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
         string? adherenceLevel,
         bool? hasOverdueDoses,
         DateTime? nowUtc = null,
+        int page = 1,
+        int pageSize = 10,
         CancellationToken ct = default)
     {
         var now = nowUtc ?? DateTime.UtcNow;
@@ -161,15 +163,24 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
                 group.Count()));
         }
 
-        return new DoctorPatientListResponse(
-            result.OrderBy(p => p.PatientName).ToList(),
-            result.Count);
+        // Paginate: sort by name, skip/take, then calculate total pages
+        var totalCount = result.Count;
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+        var paged = result
+            .OrderBy(p => p.PatientName)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return new DoctorPatientListResponse(paged, totalCount, page, pageSize, totalPages);
     }
 
     public async Task<PatientPrescriptionDetailResponse> GetPatientDetailAsync(
         Guid doctorId,
         Guid patientId,
         DateTime? nowUtc = null,
+        int page = 1,
+        int pageSize = 10,
         CancellationToken ct = default)
     {
         var now = nowUtc ?? DateTime.UtcNow;
@@ -263,7 +274,16 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
                 adherenceOverall));
         }
 
-        return new PatientPrescriptionDetailResponse(patientName, cards);
+        var totalCount = cards.Count;
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+        var paged = cards
+            .OrderBy(c => c.CaseName)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return new PatientPrescriptionDetailResponse(
+            patientName, paged, totalCount, page, pageSize, totalPages);
     }
 
     public async Task<RemindResponse> SendRemindersAsync(
@@ -365,7 +385,9 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
     private static string DeriveStatus(MedicationIntakeLog log, DateTime nowUtc)
         => log.ConfirmedAt.HasValue
             ? AdherenceCalculator.StatusTaken
-            : (log.ScheduledTime <= nowUtc
-                ? AdherenceCalculator.StatusOvertime
-                : AdherenceCalculator.StatusPending);
+            : (log.ScheduledTime.AddHours(2) <= nowUtc
+                ? AdherenceCalculator.StatusMissed
+                : (log.ScheduledTime <= nowUtc
+                    ? AdherenceCalculator.StatusOvertime
+                    : AdherenceCalculator.StatusPending));
 }

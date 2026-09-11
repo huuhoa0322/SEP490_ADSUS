@@ -846,4 +846,55 @@ describe("CaseDetailView", () => {
     await user.type(noteInput, "Chụp góc nghiêng bên trái");
     expect(noteInput).toHaveValue("Chụp góc nghiêng bên trái");
   });
+
+  it("hiển thị thông tin ca khám ở trạng thái BOOKED, hiển thị banner chờ check-in, khóa nút thêm ảnh và hiển thị thông báo chờ check-in ở phần kết luận", () => {
+    signInAs("DOCTOR", "doctor-1");
+    detailMock.mockReturnValue(makeCase("BOOKED"));
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    // 1. Banner trạng thái chờ check-in
+    expect(screen.getByText(/ca khám đang ở trạng thái chờ check-in/i)).toBeInTheDocument();
+    expect(screen.getByText(/bệnh nhân chưa được điều dưỡng tiếp đón check-in tại quầy/i)).toBeInTheDocument();
+
+    // 2. Nút Bổ sung ảnh siêu âm bị disabled kèm thông báo
+    const addImageBtn = screen.getByRole("button", { name: /bổ sung ảnh siêu âm/i });
+    expect(addImageBtn).toBeDisabled();
+    expect(screen.getByText(/chờ điều dưỡng check-in trước khi tải ảnh/i)).toBeInTheDocument();
+
+    // 3. Khung kết luận hiển thị trạng thái chờ check-in thay vì form nhập
+    expect(screen.getByText(/^ca khám đang chờ check-in$/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/chẩn đoán cuối cùng/i)).not.toBeInTheDocument();
+  });
+
+  it("hiển thị thông tin ca khám ở trạng thái CANCELLED, hiển thị banner đã huỷ, khóa nút thêm ảnh và hiển thị thông báo ca đã huỷ ở phần kết luận", () => {
+    signInAs("DOCTOR", "doctor-1");
+    detailMock.mockReturnValue(makeCase("CANCELLED"));
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    // 1. Banner trạng thái đã huỷ
+    expect(screen.getByText(/ca khám đã huỷ \/ bệnh nhân vắng mặt/i)).toBeInTheDocument();
+
+    // 2. Nút Bổ sung ảnh siêu âm bị disabled kèm thông báo
+    const addImageBtn = screen.getByRole("button", { name: /bổ sung ảnh siêu âm/i });
+    expect(addImageBtn).toBeDisabled();
+    expect(screen.getByText(/ca đã huỷ không nhận thêm ảnh/i)).toBeInTheDocument();
+
+    // 3. Khung kết luận hiển thị trạng thái đã huỷ
+    expect(screen.getByText(/^ca khám đã hủy \/ vắng mặt$/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/chẩn đoán cuối cùng/i)).not.toBeInTheDocument();
+  });
+
+  it("bác sĩ khác (Bác sĩ B) không có quyền thêm hoặc xóa dịch vụ khám trên ca của Bác sĩ A", () => {
+    signInAs("DOCTOR", "doctor-2"); // Bác sĩ B truy cập ca của Bác sĩ A (doctor-1)
+    detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
+
+    render(<CaseDetailView caseId="case-1" />);
+
+    // Nút "Thêm dịch vụ" không được hiển thị cho Bác sĩ B
+    expect(screen.queryByRole("button", { name: /thêm dịch vụ/i })).not.toBeInTheDocument();
+    // Nút xóa dịch vụ không được hiển thị cho Bác sĩ B
+    expect(screen.queryByTitle(/xóa dịch vụ/i)).not.toBeInTheDocument();
+  });
 });

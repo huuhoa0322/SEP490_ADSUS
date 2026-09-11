@@ -596,11 +596,16 @@ public class AppointmentServiceCheckinTests : IDisposable
         Assert.Equal(AppointmentStatus.Completed, item.Status);
     }
 
-    [Fact]
-    public async Task GetCheckinQueueAsync_StatusAll_ReturnsAllAppointments()
+    [Theory]
+    [InlineData("ALL")]
+    [InlineData("all")]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task GetCheckinQueueAsync_StatusAllOrEmpty_ExcludesCancelledAppointments_AndReturnsIndependentCounters(string? status)
     {
-        // Arrange
-        var doctor = CreateDoctor("Dr. All");
+        // Arrange: Tạo 4 ca với 4 trạng thái khác nhau trong ngày
+        var doctor = CreateDoctor("Dr. StatusAll");
         var patient = CreatePatient();
         var profile = CreatePatientProfile(patient);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -608,22 +613,169 @@ public class AppointmentServiceCheckinTests : IDisposable
         var slot1 = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(9, 0) };
         var slot2 = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(10, 0) };
         var slot3 = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(10, 0), EndTime = new TimeOnly(11, 0) };
+        var slot4 = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(11, 0), EndTime = new TimeOnly(12, 0) };
 
-        var appt1 = CreateAppointment(slot1, profile, AppointmentStatus.Booked, Guid.NewGuid());
-        var appt2 = CreateAppointment(slot2, profile, AppointmentStatus.Cancelled, Guid.NewGuid());
-        var appt3 = CreateAppointment(slot3, profile, AppointmentStatus.NoShow, Guid.NewGuid());
+        var apptBooked = CreateAppointment(slot1, profile, AppointmentStatus.Booked, Guid.NewGuid());
+        var apptCompleted = CreateAppointment(slot2, profile, AppointmentStatus.Completed, Guid.NewGuid());
+        var apptNoShow = CreateAppointment(slot3, profile, AppointmentStatus.NoShow, Guid.NewGuid());
+        var apptCancelled = CreateAppointment(slot4, profile, AppointmentStatus.Cancelled, Guid.NewGuid());
 
-        await SeedAppointmentAsync(appt1);
-        await SeedAppointmentAsync(appt2);
-        await SeedAppointmentAsync(appt3);
+        await SeedAppointmentAsync(apptBooked);
+        await SeedAppointmentAsync(apptCompleted);
+        await SeedAppointmentAsync(apptNoShow);
+        await SeedAppointmentAsync(apptCancelled);
 
-        // Act: Status = ALL
+        // Act: Filter theo ALL hoặc null/empty
+        var result = await _sut.GetCheckinQueueAsync(
+            today, today, null, status, 1, 15, TestContext.Current.CancellationToken);
+
+        // Assert: Query phải LOẠI TRỪ Cancelled -> chỉ còn 3 ca (Booked, Completed, NoShow)
+        Assert.Equal(3, result.TotalCount);
+        Assert.Equal(3, result.Items.Count);
+        Assert.Contains(result.Items, i => i.AppointmentId == apptBooked.AppointmentId && i.Status == AppointmentStatus.Booked);
+        Assert.Contains(result.Items, i => i.AppointmentId == apptCompleted.AppointmentId && i.Status == AppointmentStatus.Completed);
+        Assert.Contains(result.Items, i => i.AppointmentId == apptNoShow.AppointmentId && i.Status == AppointmentStatus.NoShow);
+        Assert.DoesNotContain(result.Items, i => i.AppointmentId == apptCancelled.AppointmentId);
+        Assert.DoesNotContain(result.Items, i => i.Status == AppointmentStatus.Cancelled);
+
+        // Assert: Các biến đếm được tính độc lập trên toàn bộ ca trong ngày
+        Assert.Equal(1, result.BookedCount);
+        Assert.Equal(1, result.CheckedInCount);
+        Assert.Equal(1, result.CancelledCount);
+        Assert.Equal(1, result.NoShowCount);
+    }
+
+    [Theory]
+    [InlineData("NOSHOW")]
+    [InlineData("noshow")]
+    [InlineData("NO_SHOW")]
+    [InlineData("no_show")]
+    public async Task GetCheckinQueueAsync_StatusNoShow_ReturnsOnlyNoShowAppointments_AndCountersRemainIndependent(string status)
+    {
+        // Arrange: Tạo 4 ca đủ 4 trạng thái
+        var doctor = CreateDoctor("Dr. NoShowTest");
+        var patient = CreatePatient();
+        var profile = CreatePatientProfile(patient);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var slot1 = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(9, 0) };
+        var slot2 = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(10, 0) };
+        var slot3 = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(10, 0), EndTime = new TimeOnly(11, 0) };
+        var slot4 = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(11, 0), EndTime = new TimeOnly(12, 0) };
+
+        var apptBooked = CreateAppointment(slot1, profile, AppointmentStatus.Booked, Guid.NewGuid());
+        var apptCompleted = CreateAppointment(slot2, profile, AppointmentStatus.Completed, Guid.NewGuid());
+        var apptNoShow = CreateAppointment(slot3, profile, AppointmentStatus.NoShow, Guid.NewGuid());
+        var apptCancelled = CreateAppointment(slot4, profile, AppointmentStatus.Cancelled, Guid.NewGuid());
+
+        await SeedAppointmentAsync(apptBooked);
+        await SeedAppointmentAsync(apptCompleted);
+        await SeedAppointmentAsync(apptNoShow);
+        await SeedAppointmentAsync(apptCancelled);
+
+        // Act: Filter chỉ lấy NOSHOW
+        var result = await _sut.GetCheckinQueueAsync(
+            today, today, null, status, 1, 15, TestContext.Current.CancellationToken);
+
+        // Assert: Chỉ có duy nhất ca NoShow
+        Assert.Equal(1, result.TotalCount);
+        var singleItem = Assert.Single(result.Items);
+        Assert.Equal(apptNoShow.AppointmentId, singleItem.AppointmentId);
+        Assert.Equal(AppointmentStatus.NoShow, singleItem.Status);
+
+        // Assert: Counters vẫn phản ánh toàn bộ ca trong ngày (không bị ảnh hưởng bởi status filter)
+        Assert.Equal(1, result.BookedCount);
+        Assert.Equal(1, result.CheckedInCount);
+        Assert.Equal(1, result.CancelledCount);
+        Assert.Equal(1, result.NoShowCount);
+    }
+
+    [Theory]
+    [InlineData("CANCELLED")]
+    [InlineData("cancelled")]
+    [InlineData("Cancelled")]
+    public async Task GetCheckinQueueAsync_StatusCancelled_ReturnsOnlyCancelledAppointments_AndCountersRemainIndependent(string status)
+    {
+        // Arrange: Tạo 4 ca đủ 4 trạng thái
+        var doctor = CreateDoctor("Dr. CancelledTest");
+        var patient = CreatePatient();
+        var profile = CreatePatientProfile(patient);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var slot1 = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(9, 0) };
+        var slot2 = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(10, 0) };
+        var slot3 = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(10, 0), EndTime = new TimeOnly(11, 0) };
+        var slot4 = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(11, 0), EndTime = new TimeOnly(12, 0) };
+
+        var apptBooked = CreateAppointment(slot1, profile, AppointmentStatus.Booked, Guid.NewGuid());
+        var apptCompleted = CreateAppointment(slot2, profile, AppointmentStatus.Completed, Guid.NewGuid());
+        var apptNoShow = CreateAppointment(slot3, profile, AppointmentStatus.NoShow, Guid.NewGuid());
+        var apptCancelled = CreateAppointment(slot4, profile, AppointmentStatus.Cancelled, Guid.NewGuid());
+
+        await SeedAppointmentAsync(apptBooked);
+        await SeedAppointmentAsync(apptCompleted);
+        await SeedAppointmentAsync(apptNoShow);
+        await SeedAppointmentAsync(apptCancelled);
+
+        // Act: Filter chỉ lấy CANCELLED
+        var result = await _sut.GetCheckinQueueAsync(
+            today, today, null, status, 1, 15, TestContext.Current.CancellationToken);
+
+        // Assert: Chỉ có duy nhất ca Cancelled
+        Assert.Equal(1, result.TotalCount);
+        var singleItem = Assert.Single(result.Items);
+        Assert.Equal(apptCancelled.AppointmentId, singleItem.AppointmentId);
+        Assert.Equal(AppointmentStatus.Cancelled, singleItem.Status);
+
+        // Assert: Counters vẫn phản ánh toàn bộ ca trong ngày
+        Assert.Equal(1, result.BookedCount);
+        Assert.Equal(1, result.CheckedInCount);
+        Assert.Equal(1, result.CancelledCount);
+        Assert.Equal(1, result.NoShowCount);
+    }
+
+    [Fact]
+    public async Task GetCheckinQueueAsync_SortingOrder_PrioritizesBookedThenCompletedThenNoShowThenSlotTime()
+    {
+        // Arrange
+        var doctor = CreateDoctor("Dr. Sorter");
+        var patient = CreatePatient();
+        var profile = CreatePatientProfile(patient);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // Tạo slot với thời gian không theo thứ tự status
+        var slotNoShow = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(9, 0) };
+        var slotCompleted = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(10, 0) };
+        var slotBookedLate = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(11, 0), EndTime = new TimeOnly(12, 0) };
+        var slotBookedEarly = new ScheduleSlot { SlotId = Guid.NewGuid(), DoctorId = doctor.UserId, Doctor = doctor, SlotDate = today, StartTime = new TimeOnly(10, 0), EndTime = new TimeOnly(11, 0) };
+
+        var apptNoShow = CreateAppointment(slotNoShow, profile, AppointmentStatus.NoShow, Guid.NewGuid());
+        var apptCompleted = CreateAppointment(slotCompleted, profile, AppointmentStatus.Completed, Guid.NewGuid());
+        var apptBookedLate = CreateAppointment(slotBookedLate, profile, AppointmentStatus.Booked, Guid.NewGuid());
+        var apptBookedEarly = CreateAppointment(slotBookedEarly, profile, AppointmentStatus.Booked, Guid.NewGuid());
+
+        await SeedAppointmentAsync(apptNoShow);
+        await SeedAppointmentAsync(apptCompleted);
+        await SeedAppointmentAsync(apptBookedLate);
+        await SeedAppointmentAsync(apptBookedEarly);
+
+        // Act: Filter ALL
         var result = await _sut.GetCheckinQueueAsync(
             today, today, null, "ALL", 1, 15, TestContext.Current.CancellationToken);
 
-        // Assert: All 3 should be returned
-        Assert.Equal(3, result.TotalCount);
-        Assert.Equal(3, result.Items.Count);
+        // Assert: Sắp xếp theo: Booked (theo StartTime) -> Completed -> NoShow
+        Assert.Equal(4, result.TotalCount);
+        Assert.Equal(apptBookedEarly.AppointmentId, result.Items[0].AppointmentId);
+        Assert.Equal(AppointmentStatus.Booked, result.Items[0].Status);
+
+        Assert.Equal(apptBookedLate.AppointmentId, result.Items[1].AppointmentId);
+        Assert.Equal(AppointmentStatus.Booked, result.Items[1].Status);
+
+        Assert.Equal(apptCompleted.AppointmentId, result.Items[2].AppointmentId);
+        Assert.Equal(AppointmentStatus.Completed, result.Items[2].Status);
+
+        Assert.Equal(apptNoShow.AppointmentId, result.Items[3].AppointmentId);
+        Assert.Equal(AppointmentStatus.NoShow, result.Items[3].Status);
     }
 
     [Fact]
@@ -655,23 +807,23 @@ public class AppointmentServiceCheckinTests : IDisposable
 
         // Act 1: search patient name "Stark"
         var res1 = await _sut.GetCheckinQueueAsync(today, today, "Stark", null, 1, 15, TestContext.Current.CancellationToken);
-        Assert.Single(res1.Items);
-        Assert.Equal("Tony Stark", res1.Items[0].PatientFullName);
+        var item1 = Assert.Single(res1.Items);
+        Assert.Equal("Tony Stark", item1.PatientFullName);
 
         // Act 2: search doctor name "House"
         var res2 = await _sut.GetCheckinQueueAsync(today, today, "House", null, 1, 15, TestContext.Current.CancellationToken);
-        Assert.Single(res2.Items);
-        Assert.Equal("Bruce Wayne", res2.Items[0].PatientFullName);
+        var item2 = Assert.Single(res2.Items);
+        Assert.Equal("Bruce Wayne", item2.PatientFullName);
 
         // Act 3: search reason "Cardiac"
         var res3 = await _sut.GetCheckinQueueAsync(today, today, "Cardiac", null, 1, 15, TestContext.Current.CancellationToken);
-        Assert.Single(res3.Items);
-        Assert.Equal(apptA.AppointmentId, res3.Items[0].AppointmentId);
+        var item3 = Assert.Single(res3.Items);
+        Assert.Equal(apptA.AppointmentId, item3.AppointmentId);
 
         // Act 4: search phone "012345"
         var res4 = await _sut.GetCheckinQueueAsync(today, today, "012345", null, 1, 15, TestContext.Current.CancellationToken);
-        Assert.Single(res4.Items);
-        Assert.Equal("Bruce Wayne", res4.Items[0].PatientFullName);
+        var item4 = Assert.Single(res4.Items);
+        Assert.Equal("Bruce Wayne", item4.PatientFullName);
     }
 
     [Fact]

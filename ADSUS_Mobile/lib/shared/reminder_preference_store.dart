@@ -91,9 +91,9 @@ class ReminderPreferenceNotifier extends AsyncNotifier<ReminderPreference> {
 
     return ReminderPreference(
       notifEnabled: m['notifEnabled'] == 'true',
-      morningTime: parseTime('morningTime'),
-      middayTime: parseTime('middayTime'),
-      eveningTime: parseTime('eveningTime'),
+      morningTime: _snapToWindow(parseTime('morningTime'), const TimeOfDay(hour: 7, minute: 0), 'Sáng'),
+      middayTime: _snapToWindow(parseTime('middayTime'), const TimeOfDay(hour: 12, minute: 0), 'Trưa'),
+      eveningTime: _snapToWindow(parseTime('eveningTime'), const TimeOfDay(hour: 20, minute: 0), 'Tối'),
     );
   }
 
@@ -110,11 +110,12 @@ class ReminderPreferenceNotifier extends AsyncNotifier<ReminderPreference> {
       final data = await repo.get();
 
       // Đồng bộ xuống local cache để dùng khi offline.
+      // Snap data cũ nằm ngoài ±2h về biên gần nhất.
       final local = ReminderPreference(
         notifEnabled: data.notifEnabled,
-        morningTime: _parseApiTime(data.morningTime),
-        middayTime: _parseApiTime(data.middayTime),
-        eveningTime: _parseApiTime(data.eveningTime),
+        morningTime: _snapToWindow(_parseApiTime(data.morningTime), const TimeOfDay(hour: 7, minute: 0), 'Sáng'),
+        middayTime: _snapToWindow(_parseApiTime(data.middayTime), const TimeOfDay(hour: 12, minute: 0), 'Trưa'),
+        eveningTime: _snapToWindow(_parseApiTime(data.eveningTime), const TimeOfDay(hour: 20, minute: 0), 'Tối'),
       );
       await _saveLocal(patientId, local);
       return local;
@@ -173,6 +174,23 @@ class ReminderPreferenceNotifier extends AsyncNotifier<ReminderPreference> {
 
   String _fmt(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  /// Snap giờ về biên ±2h quanh default nếu nằm ngoài khoảng.
+  TimeOfDay _snapToWindow(TimeOfDay current, TimeOfDay defaultTime, String slotLabel) {
+    final minMinutes = (defaultTime.hour - 2) * 60;
+    final maxMinutes = switch (slotLabel) {
+      'Sáng' => (defaultTime.hour + 2) * 60 + 59,
+      _       => (defaultTime.hour + 2) * 60 - 1,
+    };
+    final currentMinutes = current.hour * 60 + current.minute;
+    if (currentMinutes < minMinutes) {
+      return TimeOfDay(hour: minMinutes ~/ 60, minute: 0);
+    }
+    if (currentMinutes > maxMinutes) {
+      return TimeOfDay(hour: maxMinutes ~/ 60, minute: maxMinutes % 60);
+    }
+    return current;
+  }
 
   TimeOfDay _parseApiTime(String api) {
     final parts = api.split(':');

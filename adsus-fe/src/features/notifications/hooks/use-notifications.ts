@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { notificationsApi } from "../api/notifications.api";
 
@@ -17,7 +18,10 @@ export function useNotifications(page = 1, pageSize = 20) {
   });
 }
 
-export function useInfiniteNotifications(pageSize = 10) {
+export function useInfiniteNotifications(
+  pageSize = 10,
+  options?: { refetchInterval?: number | false }
+) {
   return useInfiniteQuery({
     queryKey: NOTIFICATION_KEYS.infiniteList(),
     queryFn: ({ pageParam = 1 }) => notificationsApi.getNotifications(pageParam, pageSize),
@@ -27,15 +31,27 @@ export function useInfiniteNotifications(pageSize = 10) {
       if (lastPage.notifications.length < pageSize) return undefined;
       return allPages.length + 1;
     },
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchInterval: options?.refetchInterval,
   });
 }
 
 export function useUnreadCount() {
+  const queryClient = useQueryClient();
+  const prevCountRef = useRef<number | null>(null);
+
   return useQuery({
     queryKey: NOTIFICATION_KEYS.unreadCount(),
-    queryFn: () => notificationsApi.getUnreadCount(),
-    refetchInterval: 30_000,
+    queryFn: async () => {
+      const count = await notificationsApi.getUnreadCount();
+      if (prevCountRef.current !== null && count > prevCountRef.current) {
+        // Có thông báo mới tới -> tự động invalidate danh sách để lần mở chuông kế tiếp có data mới ngay
+        queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.infiniteList() });
+      }
+      prevCountRef.current = count;
+      return count;
+    },
+    refetchInterval: 15_000,
     refetchIntervalInBackground: false,
   });
 }

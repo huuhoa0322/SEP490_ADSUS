@@ -206,7 +206,7 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
       expect(screen.getByText("Đã đặt lịch")).toBeInTheDocument();
     });
 
-    it("A6. Initials generator variations: single-name, initials fallback on empty name", () => {
+    it("A6. Name variations: single-name, empty name, multi-word name render correctly", () => {
       const nameEdgePatients: PatientSummary[] = [
         {
           patientUserId: "usr-single",
@@ -249,12 +249,10 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
 
       render(<PatientListView />);
 
-      // "Tuấn" -> 1 word, slice(0, 2) -> "TU"
-      expect(screen.getByText("TU")).toBeInTheDocument();
-      // "" -> fallback -> "PT"
-      expect(screen.getByText("PT")).toBeInTheDocument();
-      // "Nguyễn Công Phượng" -> first 'N' + last 'P' -> "NP"
-      expect(screen.getByText("NP")).toBeInTheDocument();
+      // "Tuấn" renders correctly
+      expect(screen.getByText("Tuấn")).toBeInTheDocument();
+      // "Nguyễn Công Phượng" renders correctly
+      expect(screen.getByText("Nguyễn Công Phượng")).toBeInTheDocument();
     });
 
     it("A7. Filter & Search triggers page reset to 1", () => {
@@ -321,7 +319,7 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
       expect(screen.getByRole("button", { name: "3" })).toBeInTheDocument();
     });
 
-    it("A9. Adversarial Bug Discovery: fullName with only whitespace throws TypeError in getInitials", () => {
+    it("A9. Adversarial Bug Discovery: fullName with only whitespace does not throw", () => {
       listMock.mockReturnValue({
         data: {
           items: [
@@ -353,7 +351,6 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
       }
 
       expect(caughtError).toBeNull();
-      expect(screen.getByText("PT")).toBeInTheDocument();
     });
 
     it("A10. Adversarial Bug Discovery: malformed data payload where items is undefined causes TypeError", () => {
@@ -678,7 +675,7 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
       expect(screen.getByText(/Trang 1 \/ 2 · 25 lần khám/)).toBeInTheDocument();
     });
 
-    it("B10. Adversarial Bug Discovery: profile fullName with only whitespace throws TypeError in getInitials", () => {
+    it("B10. Adversarial Bug Discovery: profile fullName with only whitespace does not throw", () => {
       const whitespaceProfile: PatientProfile = {
         ...baseProfile,
         fullName: "   ",
@@ -706,7 +703,6 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
       }
 
       expect(caughtError).toBeNull();
-      expect(screen.getByText("PT")).toBeInTheDocument();
     });
 
     it("B11. Adversarial Bug Discovery: cases payload where items is undefined causes TypeError", () => {

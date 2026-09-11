@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { AlertCircle, Clock } from "lucide-react";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ import { useDiagnosticStore } from "../stores/use-diagnostic-store";
 import { UltrasoundImageGallery } from "./ultrasound-image-gallery";
 import { UltrasoundUploadField } from "./ultrasound-upload-field";
 import { PrescriptionSection } from "@/features/prescriptions/components/prescription-section";
+import { CaseClinicServicesPanel } from "@/features/clinic-service/components/case-clinic-services-panel";
 
 function statusBadgeClass(status: CaseStatus): string {
   switch (status) {
@@ -170,6 +172,8 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
 
   // CONFIRMED hoặc END đều cho phép xem (END = ca đã kê đơn, không bổ sung được nữa).
   const isConfirmedOrEnd = medicalCase.status === "CONFIRMED" || medicalCase.status === "END";
+  const isBooked = medicalCase.status === "BOOKED";
+  const isCancelled = medicalCase.status === "CANCELLED";
   // GB-04 — chỉ hiện form kết luận cho ĐÚNG Bác sĩ phụ trách ca này, không phải Bác sĩ bất kỳ
   // hay Điều dưỡng. Đây chỉ là lớp trải nghiệm; backend chặn thật ở SaveConclusionAsync/ConfirmAsync.
   const isResponsibleDoctor =
@@ -240,16 +244,40 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         </Link>
       </div>
 
-      <header className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-card p-6 shadow-sm">
-        <div>
-          <h1 className="font-heading text-[26px] font-bold tracking-[-0.02em] text-foreground">
-            Lần khám ngày {formatIsoDate(medicalCase.visitDate)}
-          </h1>
-          <p className="mt-2 text-sm font-semibold text-foreground">
-            Bác sĩ phụ trách:{" "}
-            <strong className="font-bold text-foreground">{medicalCase.doctorName}</strong>
-          </p>
+      {/* Banner thông báo trạng thái Chờ check-in khi ca là BOOKED */}
+      {isBooked && (
+        <div className="flex items-center gap-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-4 text-amber-900 dark:text-amber-200">
+          <Clock className="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="text-sm">
+            <strong className="font-bold">Ca khám đang ở trạng thái Chờ check-in: </strong>
+            <span>
+              Bệnh nhân chưa được điều dưỡng tiếp đón check-in tại quầy. Bác sĩ hiện có thể xem trước thông tin hành chính, triệu chứng và tiền sử bệnh.
+            </span>
+          </div>
         </div>
+      )}
+
+      {isCancelled && (
+        <div className="flex items-center gap-3 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/40 p-4 text-rose-900 dark:text-rose-200">
+          <AlertCircle className="size-5 shrink-0 text-rose-600 dark:text-rose-400" />
+          <div className="text-sm">
+            <strong className="font-bold">Ca khám đã huỷ / Bệnh nhân vắng mặt: </strong>
+            <span>Ca khám này không diễn ra hoặc đã bị huỷ lịch. Toàn bộ thông tin được lưu trữ ở chế độ chỉ đọc.</span>
+          </div>
+        </div>
+      )}
+
+      <header className="flex flex-col gap-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-card p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="font-heading text-[26px] font-bold tracking-[-0.02em] text-foreground">
+              Lần khám ngày {formatIsoDate(medicalCase.visitDate)}
+            </h1>
+            <p className="mt-2 text-sm font-semibold text-foreground">
+              Bác sĩ phụ trách:{" "}
+              <strong className="font-bold text-foreground">{medicalCase.doctorName}</strong>
+            </p>
+          </div>
 
         <div className="flex flex-col items-end gap-3">
           <span
@@ -338,6 +366,15 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             </div>
           ) : null}
         </div>
+      </div>
+
+        {/* Dịch vụ khám: hiển thị nhỏ gọn ngay trong ô Lần khám để bác sĩ theo dõi */}
+        <CaseClinicServicesPanel
+          caseId={caseId}
+          caseStatus={medicalCase.status}
+          variant="compact"
+          isResponsibleDoctor={isResponsibleDoctor}
+        />
       </header>
 
       {report.error ? (
@@ -472,12 +509,20 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                     type="button"
                     onClick={() => setShowUpload((open) => !open)}
                     // GB-01 — ca đã chốt không nhận thêm ảnh. isLocked — khoá tạm sau "Lưu kết luận".
-                    disabled={isConfirmedOrEnd || isLocked}
+                    disabled={isConfirmedOrEnd || isLocked || isBooked || isCancelled}
                     className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-[var(--success)] disabled:opacity-50 transition-colors"
                   >
                     Bổ sung ảnh siêu âm
                   </button>
-                  {isConfirmedOrEnd ? (
+                  {isBooked ? (
+                    <span className="text-xs font-bold italic text-amber-700 dark:text-amber-400">
+                      Chờ điều dưỡng check-in trước khi tải ảnh
+                    </span>
+                  ) : isCancelled ? (
+                    <span className="text-xs font-bold italic text-rose-700 dark:text-rose-400">
+                      Ca đã huỷ không nhận thêm ảnh
+                    </span>
+                  ) : isConfirmedOrEnd ? (
                     <span className="text-xs font-bold italic text-foreground">
                       Ca đã kết luận nên không nhận thêm ảnh
                     </span>
@@ -491,7 +536,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             </div>
           </div>
 
-          {showUpload && isResponsibleDoctor && !isConfirmedOrEnd && !isLocked ? (
+          {showUpload && isResponsibleDoctor && !isConfirmedOrEnd && !isLocked && !isBooked && !isCancelled ? (
             <div className="mb-5 space-y-4 rounded-lg border-2 border-dashed border-border bg-muted/20 p-4">
               <UltrasoundUploadField
                 files={pendingImages}
@@ -584,6 +629,24 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                   </dd>
                 </div>
               </dl>
+            ) : isBooked ? (
+              <div className="rounded-lg border-2 border-dashed border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-5 text-center">
+                <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                  Ca khám đang chờ check-in
+                </p>
+                <p className="mt-1 text-xs font-medium leading-relaxed text-amber-800 dark:text-amber-300">
+                  Bác sĩ phụ trách có thể nhập chẩn đoán và kết luận sau khi bệnh nhân đã được điều dưỡng check-in tại quầy tiếp đón.
+                </p>
+              </div>
+            ) : isCancelled ? (
+              <div className="rounded-lg border-2 border-dashed border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 p-5 text-center">
+                <p className="text-sm font-bold text-rose-900 dark:text-rose-200">
+                  Ca khám đã hủy / Vắng mặt
+                </p>
+                <p className="mt-1 text-xs font-medium leading-relaxed text-rose-800 dark:text-rose-300">
+                  Không thể nhập hoặc chỉnh sửa kết luận cho ca khám đã hủy.
+                </p>
+              </div>
             ) : isResponsibleDoctor ? (
               <div className="space-y-4">
                 <div>

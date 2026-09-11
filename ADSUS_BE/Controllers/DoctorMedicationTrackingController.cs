@@ -26,10 +26,14 @@ public sealed class DoctorMedicationTrackingController : ControllerBase
         [FromQuery] string? search,
         [FromQuery] string? adherenceLevel,
         [FromQuery] bool? hasOverdueDoses,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
         CancellationToken ct = default)
     {
         var doctorId = GetDoctorId();
-        var result = await _service.GetPatientListAsync(doctorId, search, adherenceLevel, hasOverdueDoses, DateTime.UtcNow, ct);
+        var result = await _service.GetPatientListAsync(
+            doctorId, search, adherenceLevel, hasOverdueDoses,
+            DateTime.UtcNow, page, pageSize, ct);
         return Ok(ApiResponse<DoctorPatientListResponse>.Ok(result, "Patient list retrieved successfully"));
     }
 
@@ -38,10 +42,12 @@ public sealed class DoctorMedicationTrackingController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPatientPrescriptions(
         Guid patientId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
         CancellationToken ct = default)
     {
         var doctorId = GetDoctorId();
-        var result = await _service.GetPatientDetailAsync(doctorId, patientId, null, ct);
+        var result = await _service.GetPatientDetailAsync(doctorId, patientId, null, page, pageSize, ct);
         return Ok(ApiResponse<PatientPrescriptionDetailResponse>.Ok(result, "Patient prescriptions retrieved successfully"));
     }
 

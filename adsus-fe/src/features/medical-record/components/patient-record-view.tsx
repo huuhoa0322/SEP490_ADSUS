@@ -16,7 +16,6 @@ import {
   User,
 } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,19 +32,10 @@ import {
 } from "../lib/medical-record-labels";
 import type { CaseStatus } from "../types/medical-record.types";
 
-/** Tạo initials từ họ tên bệnh nhân (ví dụ: Trần Thị Mai -> TM). */
-function getInitials(fullName: string): string {
-  if (!fullName) return "PT";
-  const words = fullName.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "PT";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
-}
-
 /** Tính tuổi dựa trên ngày sinh. */
 function calculateAge(dateOfBirth: string | null | undefined): string {
   if (!dateOfBirth) return EMPTY_VALUE;
-  const birthYear = parseInt(dateOfBirth.slice(0, 4), 10);
+  const birthYear = Number.parseInt(dateOfBirth.slice(0, 4), 10);
   if (Number.isNaN(birthYear)) return EMPTY_VALUE;
   const currentYear = new Date().getFullYear();
   return `${currentYear - birthYear} tuổi`;
@@ -142,36 +132,27 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
       {/* Preclinic Header Profile Card (patient-details.html standard) */}
       <div className="overflow-hidden rounded-lg border border-[#E7E8EB] bg-white p-6 shadow-xs">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            {/* Avatar và Thông tin bệnh nhân */}
-            <Avatar className="size-20 shrink-0 rounded-xl">
-              <AvatarFallback className="rounded-xl bg-primary/10 text-2xl font-bold text-primary">
-                {getInitials(profile.fullName)}
-              </AvatarFallback>
-            </Avatar>
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
+                {profile.fullName}
+              </h1>
+            </div>
 
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
-                  {profile.fullName}
-                </h1>
-              </div>
-
-              {/* Thông tin nhanh nhân khẩu học */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-semibold text-foreground">
-                <span className="flex items-center gap-1">
-                  <User className="size-3.5 text-foreground/70" />
-                  {genderLabel(profile.gender)} {ageStr !== EMPTY_VALUE ? `· ${ageStr}` : ""}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Calendar className="size-3.5 text-foreground/70" />
-                  {formatIsoDate(profile.dateOfBirth)}
-                </span>
-                <span className="flex items-center gap-1 font-mono">
-                  <Phone className="size-3.5 text-foreground/70" />
-                  {profile.phone || EMPTY_VALUE}
-                </span>
-              </div>
+            {/* Thông tin nhanh nhân khẩu học */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-semibold text-foreground">
+              <span className="flex items-center gap-1">
+                <User className="size-3.5 text-foreground/70" />
+                {genderLabel(profile.gender)} {ageStr !== EMPTY_VALUE ? `· ${ageStr}` : ""}
+              </span>
+              <span className="flex items-center gap-1">
+                <Calendar className="size-3.5 text-foreground/70" />
+                {formatIsoDate(profile.dateOfBirth)}
+              </span>
+              <span className="flex items-center gap-1 font-mono">
+                <Phone className="size-3.5 text-foreground/70" />
+                {profile.phone || EMPTY_VALUE}
+              </span>
             </div>
           </div>
 

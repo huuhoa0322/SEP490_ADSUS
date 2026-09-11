@@ -22,6 +22,7 @@ public static class AdherenceCalculator
     public const string StatusPending = "PENDING";
     public const string StatusTaken = "TAKEN";
     public const string StatusOvertime = "OVERTIME";
+    public const string StatusMissed = "MISSED";
 
     /// <summary>Tính tỉ lệ tuân thủ (% 0..100, làm tròn 2 chữ số).</summary>
     /// <param name="logs">Tất cả intake logs của 1 PrescriptionItem (bất kỳ order).</param>

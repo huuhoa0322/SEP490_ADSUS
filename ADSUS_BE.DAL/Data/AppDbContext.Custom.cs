@@ -31,6 +31,7 @@ public partial class AppDbContext
         // Module Kế toán (Billing)
         modelBuilder.HasPostgresEnum<InvoiceStatus>("public", "invoice_status");
         modelBuilder.HasPostgresEnum<PaymentMethod>("public", "payment_method");
+        modelBuilder.HasPostgresEnum<InvoiceItemType>("public", "invoice_item_type");
 
         // Hai enum của module khác, khai ở đây vì Dashboard (UC-05) cần đếm theo trạng thái.
         // Xem chú thích trong Enums.cs. Ai làm Module 5 / Module 8 dùng lại, đừng khai lại.
@@ -66,7 +67,7 @@ public partial class AppDbContext
         {
             entity.Property(e => e.Status)
                 .HasColumnName("status")
-                .HasDefaultValue(CaseStatus.InProgress);
+                .ValueGeneratedNever();
         });
 
         // Cột của Module 7 nhưng phải map ở đây: CaseResponse nhúng trạng thái đơn thuốc (#23).
@@ -94,6 +95,19 @@ public partial class AppDbContext
             entity.Property(e => e.ScheduleSlots)
                 .HasColumnName("schedule_slots")
                 .HasColumnType("reminder_slot[]");
+        });
+
+        modelBuilder.Entity<InvoiceItem>(entity =>
+        {
+            entity.Property(e => e.ItemType).HasColumnName("item_type");
+        });
+
+        modelBuilder.Entity<ServiceFeedback>(entity =>
+        {
+            entity.HasOne(d => d.Case)
+                .WithOne(p => p.ServiceFeedback)
+                .HasForeignKey<ServiceFeedback>(d => d.CaseId)
+                .IsRequired(false);
         });
 
         // ---------- Module: Shift Request ----------

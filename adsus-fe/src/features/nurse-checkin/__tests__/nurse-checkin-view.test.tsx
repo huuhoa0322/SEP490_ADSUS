@@ -137,6 +137,11 @@ describe("NurseCheckinView", () => {
     render(<NurseCheckinView />);
 
     const select = screen.getByRole("combobox");
+
+    // Verify separate options for NOSHOW and CANCELLED exist
+    expect(screen.getByRole("option", { name: "Vắng mặt" })).toHaveValue("NOSHOW");
+    expect(screen.getByRole("option", { name: "Đã huỷ" })).toHaveValue("CANCELLED");
+
     fireEvent.change(select, { target: { value: "BOOKED" } });
 
     expect(useCheckinQueue).toHaveBeenLastCalledWith(
@@ -153,6 +158,124 @@ describe("NurseCheckinView", () => {
         page: 1,
       })
     );
+
+    fireEvent.change(select, { target: { value: "NOSHOW" } });
+    expect(useCheckinQueue).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        status: "NOSHOW",
+        page: 1,
+      })
+    );
+
+    fireEvent.change(select, { target: { value: "CANCELLED" } });
+    expect(useCheckinQueue).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        status: "CANCELLED",
+        page: 1,
+      })
+    );
+  });
+
+  it("should hide CANCELLED appointments on default ALL screen and show them when CANCELLED is selected", () => {
+    const mixedItems = [
+      {
+        appointmentId: "app-booked",
+        slotTime: "2026-09-10T08:00:00Z",
+        patientFullName: "Bệnh nhân Đã Đặt",
+        patientPhone: "0901111111",
+        patientProfileId: "prof-1",
+        caseId: "case-1",
+        reason: null,
+        doctorName: "BS. Minh",
+        status: "Booked",
+      },
+      {
+        appointmentId: "app-noshow",
+        slotTime: "2026-09-10T08:30:00Z",
+        patientFullName: "Bệnh nhân Vắng Mặt",
+        patientPhone: "0902222222",
+        patientProfileId: "prof-2",
+        caseId: "case-2",
+        reason: null,
+        doctorName: "BS. Minh",
+        status: "NoShow",
+      },
+      {
+        appointmentId: "app-cancelled",
+        slotTime: "2026-09-10T09:00:00Z",
+        patientFullName: "Bệnh nhân Đã Huỷ",
+        patientPhone: "0903333333",
+        patientProfileId: "prof-3",
+        caseId: "case-3",
+        reason: null,
+        doctorName: "BS. Minh",
+        status: "Cancelled",
+      },
+    ];
+
+    vi.mocked(useCheckinQueue).mockReturnValue({
+      data: {
+        items: mixedItems,
+        totalCount: 3,
+        page: 1,
+        pageSize: 15,
+        totalPages: 1,
+        bookedCount: 1,
+        checkedInCount: 0,
+        noShowCount: 1,
+        cancelledCount: 1,
+      },
+      isLoading: false,
+      refetch: mockRefetch,
+      isRefetching: false,
+    } as unknown as ReturnType<typeof useCheckinQueue>);
+
+    render(<NurseCheckinView />);
+
+    // In default screen (status="ALL"), CANCELLED item must NOT be displayed
+    expect(screen.getByText("Bệnh nhân Đã Đặt")).toBeInTheDocument();
+    expect(screen.getByText("Bệnh nhân Vắng Mặt")).toBeInTheDocument();
+    expect(screen.queryByText("Bệnh nhân Đã Huỷ")).not.toBeInTheDocument();
+
+    // When changing status dropdown to "CANCELLED"
+    const select = screen.getByRole("combobox");
+    fireEvent.change(select, { target: { value: "CANCELLED" } });
+
+    // When status is "CANCELLED", raw items are NOT filtered client-side, so CANCELLED item is displayed
+    expect(screen.getByText("Bệnh nhân Đã Huỷ")).toBeInTheDocument();
+  });
+
+  it("should display 4 stats cards for Booked, Checked-in, NoShow, and Cancelled with correct counts", () => {
+    vi.mocked(useCheckinQueue).mockReturnValue({
+      data: {
+        items: [],
+        totalCount: 20,
+        page: 1,
+        pageSize: 15,
+        totalPages: 2,
+        bookedCount: 12,
+        checkedInCount: 8,
+        noShowCount: 4,
+        cancelledCount: 3,
+      },
+      isLoading: false,
+      refetch: mockRefetch,
+      isRefetching: false,
+    } as unknown as ReturnType<typeof useCheckinQueue>);
+
+    render(<NurseCheckinView />);
+
+    // Check titles of 4 cards
+    expect(screen.getAllByText("Đang chờ check-in").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Đã check-in").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Vắng mặt").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Đã huỷ").length).toBeGreaterThan(0);
+
+    // Check count values in the cards
+    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.getByText("8")).toBeInTheDocument();
+    expect(screen.getByText("4")).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
   });
 
   it("should debounce realtime search with 300ms timer", () => {

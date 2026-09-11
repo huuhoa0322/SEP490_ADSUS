@@ -49,6 +49,17 @@ describe("CheckinQueueTable", () => {
       doctorName: "BS. Lê Hoa",
       status: "Cancelled",
     },
+    {
+      appointmentId: "app-5",
+      slotTime: "2026-09-10T10:30:00Z",
+      patientFullName: "Hoàng Văn Tuấn",
+      patientPhone: "0988776655",
+      patientProfileId: "prof-5",
+      caseId: "case-5",
+      reason: "Tái khám huyết áp",
+      doctorName: "BS. Hoàng Long",
+      status: "NoShow",
+    },
   ];
 
   it("should render loading spinner when isLoading is true", () => {
@@ -130,6 +141,53 @@ describe("CheckinQueueTable", () => {
 
     // Cancelled -> Đã huỷ badge
     expect(screen.getByText("Đã huỷ")).toBeInTheDocument();
+
+    // NoShow -> Vắng mặt badge
+    expect(screen.getByText("Vắng mặt")).toBeInTheDocument();
+  });
+
+  it("should display NoShow (amber) and Cancelled (rose) badges independently with correct styling", () => {
+    render(
+      <CheckinQueueTable
+        queue={[
+          {
+            appointmentId: "app-cancel",
+            slotTime: "2026-09-10T10:00:00Z",
+            patientFullName: "Võ Thị Mai",
+            patientPhone: "0911223344",
+            patientProfileId: "prof-4",
+            caseId: "case-4",
+            reason: null,
+            doctorName: "BS. Lê Hoa",
+            status: "Cancelled",
+          },
+          {
+            appointmentId: "app-noshow",
+            slotTime: "2026-09-10T10:30:00Z",
+            patientFullName: "Hoàng Văn Tuấn",
+            patientPhone: "0988776655",
+            patientProfileId: "prof-5",
+            caseId: "case-5",
+            reason: null,
+            doctorName: "BS. Trần Văn Minh",
+            status: "NoShow",
+          },
+        ]}
+        isLoading={false}
+        onCheckin={vi.fn()}
+        checkingInId={null}
+      />
+    );
+
+    const cancelledBadge = screen.getByText("Đã huỷ");
+    expect(cancelledBadge).toBeInTheDocument();
+    expect(cancelledBadge.className).toContain("text-rose-700");
+    expect(cancelledBadge.className).toContain("border-rose-600/30");
+
+    const noShowBadge = screen.getByText("Vắng mặt");
+    expect(noShowBadge).toBeInTheDocument();
+    expect(noShowBadge.className).toContain("text-amber-700");
+    expect(noShowBadge.className).toContain("border-amber-600/30");
   });
 
   it("should trigger onCheckin callback when Check-in button is clicked", () => {

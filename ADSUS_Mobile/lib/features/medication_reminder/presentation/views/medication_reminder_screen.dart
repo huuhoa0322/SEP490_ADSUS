@@ -144,6 +144,7 @@ class _MedicationBody extends ConsumerWidget {
     final pending = logs.where((l) => l.status == IntakeStatus.pending).toList();
     final taken = logs.where((l) => l.status == IntakeStatus.taken).toList();
     final overtime = logs.where((l) => l.status == IntakeStatus.overtime).toList();
+    final missed = logs.where((l) => l.status == IntakeStatus.missed).toList();
 
     final pendingToday = pending
         .where((l) => _isSameDay(l.scheduledTimeUtc.toLocal(), now))
@@ -154,6 +155,9 @@ class _MedicationBody extends ConsumerWidget {
             _isSameDay(l.confirmedAtUtc!.toLocal(), now))
         .toList();
     final overtimeToday = overtime
+        .where((l) => _isSameDay(l.scheduledTimeUtc.toLocal(), now))
+        .toList();
+    final missedToday = missed
         .where((l) => _isSameDay(l.scheduledTimeUtc.toLocal(), now))
         .toList();
 
@@ -214,6 +218,7 @@ class _MedicationBody extends ConsumerWidget {
                   takenToday: takenToday,
                   pendingToday: pendingToday,
                   overtimeToday: overtimeToday,
+                  missedToday: missedToday,
                 ),
                 const SizedBox(height: 12),
                 _AdherenceSummaryCard(
@@ -222,6 +227,7 @@ class _MedicationBody extends ConsumerWidget {
                   takenToday: takenToday.length,
                   pendingToday: pendingToday.length,
                   overtimeToday: overtimeToday.length,
+                  missedToday: missedToday.length,
                 ),
                 const SizedBox(height: 16),
               ],
@@ -290,6 +296,37 @@ class _MedicationBody extends ConsumerWidget {
             ),
           ),
         ],
+        if (missedToday.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.cancel_outlined, size: 14, color: AppColors.danger),
+                  const SizedBox(width: 4),
+                  Text(
+                    'ĐÃ BỎ LỠ',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.danger,
+                      letterSpacing: 0.06,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: _IntakeMissedCard(log: missedToday[index]),
+              ),
+              childCount: missedToday.length,
+            ),
+          ),
+        ],
         if (takenToday.isNotEmpty) ...[
           SliverToBoxAdapter(
             child: Padding(
@@ -315,7 +352,7 @@ class _MedicationBody extends ConsumerWidget {
             ),
           ),
         ],
-        if (pendingToday.isEmpty && overtimeToday.isEmpty && takenToday.isEmpty)
+        if (pendingToday.isEmpty && overtimeToday.isEmpty && takenToday.isEmpty && missedToday.isEmpty)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(32),
@@ -386,6 +423,7 @@ class _DayAxisCard extends StatelessWidget {
     required this.takenToday,
     required this.pendingToday,
     required this.overtimeToday,
+    required this.missedToday,
   });
 
   final DateTime now;
@@ -394,6 +432,7 @@ class _DayAxisCard extends StatelessWidget {
   final List<IntakeLog> takenToday;
   final List<IntakeLog> pendingToday;
   final List<IntakeLog> overtimeToday;
+  final List<IntakeLog> missedToday;
 
   @override
   Widget build(BuildContext context) {
@@ -562,6 +601,7 @@ class _AdherenceSummaryCard extends StatelessWidget {
     required this.takenToday,
     required this.pendingToday,
     required this.overtimeToday,
+    required this.missedToday,
   });
 
   final int? adherencePct;
@@ -569,11 +609,13 @@ class _AdherenceSummaryCard extends StatelessWidget {
   final int takenToday;
   final int pendingToday;
   final int overtimeToday;
+  final int missedToday;
 
   @override
   Widget build(BuildContext context) {
     final hasOvertime = overtimeToday > 0;
-    final allDone = pendingToday == 0 && takenToday > 0 && !hasOvertime;
+    final hasMissed = missedToday > 0;
+    final allDone = pendingToday == 0 && takenToday > 0 && !hasOvertime && !hasMissed;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -610,16 +652,37 @@ class _AdherenceSummaryCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                 ],
+                if (hasMissed) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.cancel_outlined, size: 16, color: AppColors.danger),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '$missedToday liều đã bỏ lỡ.',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                ],
                 Text(
                   allDone
                       ? 'Tất cả liều đã được ghi nhận!'
-                      : hasOvertime
+                      : hasMissed
                           ? 'Còn ${pendingToday > 0 ? "$pendingToday " : ""}liều chưa uống.'
-                          : pendingToday > 0
-                              ? 'Còn $pendingToday liều chưa uống hôm nay.'
-                              : takenToday > 0
-                                  ? '$takenToday liều đã uống hôm nay.'
-                                  : 'Chưa có lịch uống thuốc hôm nay.',
+                          : hasOvertime
+                              ? 'Còn ${pendingToday > 0 ? "$pendingToday " : ""}liều chưa uống.'
+                              : pendingToday > 0
+                                  ? 'Còn $pendingToday liều chưa uống hôm nay.'
+                                  : takenToday > 0
+                                      ? '$takenToday liều đã uống hôm nay.'
+                                      : 'Chưa có lịch uống thuốc hôm nay.',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -1042,6 +1105,110 @@ class _IntakeTakenCard extends StatelessWidget {
   }
 }
 
+class _IntakeMissedCard extends StatelessWidget {
+  const _IntakeMissedCard({required this.log});
+
+  final IntakeLog log;
+
+  @override
+  Widget build(BuildContext context) {
+    final localTime = log.scheduledTimeUtc.toLocal();
+    // Display: thời gian quá giờ (scheduled + 2h là thời điểm vào MISSED)
+    final missedSince = log.scheduledTimeUtc.add(const Duration(hours: 2)).toLocal();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: const Border(
+          left: BorderSide(color: AppColors.danger, width: 4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.danger.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _slotTimeLabel(localTime),
+                style: AppFonts.mono(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.danger,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    log.medicineName,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    log.instructions != null
+                        ? '${log.dosage} · ${log.instructions}'
+                        : log.dosage,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      const Icon(Icons.cancel_outlined, size: 14, color: AppColors.danger),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Đã bỏ lỡ',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'Quá giờ từ ${_formatTime(missedSince)}',
+                          style: AppFonts.mono(
+                            fontSize: 11,
+                            color: AppColors.danger.withValues(alpha: 0.7),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ReminderSettingsCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1202,7 +1369,8 @@ class _TimeSlotRow extends StatelessWidget {
     );
     if (picked == null) return;
 
-    final result = _clampToSlot(label, picked);
+    final defaultTime = _defaultForSlot(label);
+    final result = _clampToSlot(label, defaultTime, picked);
     if (result.adjusted) {
       final clamped = TimeOfDay(hour: result.hour, minute: result.minute);
       messenger.showSnackBar(
@@ -1271,58 +1439,47 @@ class _ClampResult {
   final bool adjusted;
 }
 
-/// Clamp giờ vào khoảng hợp lệ của slot.
-/// Sáng: 05:00–10:59 | Trưa: 11:00–16:59 | Tối: 17:00–23:59
-///
-/// Trả về _ClampResult.
-/// adjusted = true khi giờ nằm ngoài khoảng và đã bị snap.
-_ClampResult _clampToSlot(String label, TimeOfDay picked) {
-  switch (label) {
-    case 'Sáng': // 05:00–10:59
-      if (picked.hour < 5) {
-        return _ClampResult(hour: 5, minute: 0, adjusted: true);
-      }
-      if (picked.hour > 10 || (picked.hour == 10 && picked.minute > 59)) {
-        return _ClampResult(hour: 10, minute: 59, adjusted: true);
-      }
-      return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
+/// Giờ mặc định theo slot.
+TimeOfDay _defaultForSlot(String label) => switch (label) {
+      'Sáng' => const TimeOfDay(hour: 7, minute: 0),
+      'Trưa' => const TimeOfDay(hour: 12, minute: 0),
+      'Tối'  => const TimeOfDay(hour: 20, minute: 0),
+      _       => const TimeOfDay(hour: 7, minute: 0),
+    };
 
-    case 'Trưa': // 11:00–16:59
-      if (picked.hour < 11) {
-        return _ClampResult(hour: 11, minute: 0, adjusted: true);
-      }
-      if (picked.hour > 16 || (picked.hour == 16 && picked.minute > 59)) {
-        return _ClampResult(hour: 16, minute: 59, adjusted: true);
-      }
-      return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
+/// Clamp giờ vào khoảng ±2h quanh giờ default của slot.
+/// Sáng (default 07:00): 05:00–09:59 | Trưa (default 12:00): 10:00–13:59 | Tối (default 20:00): 18:00–21:59
+_ClampResult _clampToSlot(String label, TimeOfDay defaultTime, TimeOfDay picked) {
+  final minMinutes = (defaultTime.hour - 2) * 60;
+  final maxMinutes = switch (label) {
+    'Sáng' => (defaultTime.hour + 2) * 60 + 59,
+    _       => (defaultTime.hour + 2) * 60 - 1,
+  };
 
-    case 'Tối': // 17:00–23:59
-      if (picked.hour < 17) {
-        return _ClampResult(hour: 17, minute: 0, adjusted: true);
-      }
-      if (picked.hour > 23) {
-        return _ClampResult(hour: 23, minute: 59, adjusted: true);
-      }
-      return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
+  final pickedMinutes = picked.hour * 60 + picked.minute;
 
-    default:
-      return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
+  if (pickedMinutes < minMinutes) {
+    return _ClampResult(hour: minMinutes ~/ 60, minute: 0, adjusted: true);
   }
+  if (pickedMinutes > maxMinutes) {
+    return _ClampResult(hour: maxMinutes ~/ 60, minute: maxMinutes % 60, adjusted: true);
+  }
+  return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
 }
 
-String _slotMinTime(String label) => switch (label) {
-      'Sáng' => '05:00',
-      'Trưa' => '11:00',
-      'Tối' => '17:00',
-      _ => ''
-    };
+String _slotMinTime(String label) {
+  final def = _defaultForSlot(label);
+  return '${(def.hour - 2).toString().padLeft(2, '0')}:00';
+}
 
-String _slotMaxTime(String label) => switch (label) {
-      'Sáng' => '10:59',
-      'Trưa' => '16:59',
-      'Tối' => '23:59',
-      _ => ''
-    };
+String _slotMaxTime(String label) {
+  final def = _defaultForSlot(label);
+  // Sáng → 09:59, Trưa/Tối → hh:59 (1 phút trước giờ cao nhất)
+  if (label == 'Sáng') {
+    return '${(def.hour + 2).toString().padLeft(2, '0')}:59';
+  }
+  return '${(def.hour + 1).toString().padLeft(2, '0')}:59';
+}
 
 bool _isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;

@@ -487,7 +487,7 @@ function MedicationRow({
       </div>
 
       {/* Schedule slots (checkboxes) */}
-      <div className="col-span-3 flex flex-wrap gap-1.5 pt-2">
+      <div className="col-span-3 flex flex-wrap items-center gap-1.5 pt-1.5">
         {allSlots.map((slot) => {
           const slotKey = `items.${index}.scheduleSlots` as const;
           return (
@@ -499,10 +499,10 @@ function MedicationRow({
                 const checked = (field.value as ScheduleSlot[] | undefined)?.includes(slot);
                 return (
                   <label
-                    className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition cursor-pointer ${
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold select-none cursor-pointer transition-all shadow-xs ${
                       checked
-                        ? "border-teal bg-teal/10 text-teal"
-                        : "border-border text-foreground font-semibold"
+                        ? "border-teal-600 bg-teal-600 text-white shadow-teal-600/25 hover:bg-teal-700 hover:border-teal-700"
+                        : "border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
                     }`}
                   >
                     <input
@@ -518,7 +518,12 @@ function MedicationRow({
                         }
                       }}
                     />
-                    {slot === "Morning" ? "Sáng" : slot === "Noon" ? "Trưa" : "Tối"}
+                    {checked ? (
+                      <Check className="size-3 stroke-[3]" />
+                    ) : (
+                      <span className="size-3 rounded-full border-2 border-slate-300 dark:border-slate-500" />
+                    )}
+                    <span>{slot === "Morning" ? "Sáng" : slot === "Noon" ? "Trưa" : "Tối"}</span>
                   </label>
                 );
               }}

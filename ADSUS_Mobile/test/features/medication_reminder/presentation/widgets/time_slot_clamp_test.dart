@@ -3,156 +3,160 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Tests cho clamp giờ nhắc trong _TimeSlotRow.
 ///
-/// Bug: time picker cho phép chọn giờ ngoài khung hợp lệ
-/// → "Thông báo tiếp theo: Trưa 17:55" hiển thị sai logic.
-///
-/// Fix: clamp giờ về khoảng hợp lệ + snackbar warning.
-///   Sáng: 05:00–10:59
-///   Trưa: 11:00–16:59
-///   Tối:  17:00–23:59
+/// Rule mới: mỗi slot chỉ cho phép ±2h quanh default.
+///   Sáng (default 07:00): 05:00–09:59
+///   Trưa (default 12:00): 10:00–13:59
+///   Tối  (default 20:00): 18:00–21:59
 
 void main() {
   group('time slot clamp logic', () {
     // Tests for _TimeSlotRow._clampToSlot
     // We test the clamping logic by calling the static helper directly.
 
-    group('Sáng 05:00–10:59', () {
-      test('07:00 — trong khoảng → không clamp', () {
-        final result = _clampToSlot('Sáng', const TimeOfDay(hour: 7, minute: 0));
+    group('Sáng (default 07:00) → 05:00–09:59', () {
+      test('07:00 — default → không clamp', () {
+        final result = _clampToSlot('Sáng', const TimeOfDay(hour: 7, minute: 0), const TimeOfDay(hour: 7, minute: 0));
         expect(result.adjusted, isFalse);
         expect(result.hour, 7);
         expect(result.minute, 0);
       });
 
-      test('05:00 — biên dưới → không clamp', () {
-        final result = _clampToSlot('Sáng', const TimeOfDay(hour: 5, minute: 0));
+      test('05:00 — biên dưới ±2h → không clamp', () {
+        final result = _clampToSlot('Sáng', const TimeOfDay(hour: 7, minute: 0), const TimeOfDay(hour: 5, minute: 0));
         expect(result.adjusted, isFalse);
         expect(result.hour, 5);
         expect(result.minute, 0);
       });
 
-      test('10:59 — biên trên → không clamp', () {
-        final result = _clampToSlot('Sáng', const TimeOfDay(hour: 10, minute: 59));
+      test('09:59 — biên trên ±2h → không clamp', () {
+        final result = _clampToSlot('Sáng', const TimeOfDay(hour: 7, minute: 0), const TimeOfDay(hour: 9, minute: 59));
         expect(result.adjusted, isFalse);
-        expect(result.hour, 10);
+        expect(result.hour, 9);
         expect(result.minute, 59);
       });
 
-      test('04:59 — dưới khoảng → clamp lên 05:00', () {
-        final result = _clampToSlot('Sáng', const TimeOfDay(hour: 4, minute: 59));
+      test('04:00 — dưới khoảng → clamp lên 05:00', () {
+        final result = _clampToSlot('Sáng', const TimeOfDay(hour: 7, minute: 0), const TimeOfDay(hour: 4, minute: 0));
         expect(result.adjusted, isTrue);
         expect(result.hour, 5);
         expect(result.minute, 0);
       });
 
-      test('11:00 — trên khoảng → clamp xuống 10:59', () {
-        final result = _clampToSlot('Sáng', const TimeOfDay(hour: 11, minute: 0));
+      test('10:00 — trên khoảng → clamp xuống 09:59', () {
+        final result = _clampToSlot('Sáng', const TimeOfDay(hour: 7, minute: 0), const TimeOfDay(hour: 10, minute: 0));
         expect(result.adjusted, isTrue);
-        expect(result.hour, 10);
+        expect(result.hour, 9);
         expect(result.minute, 59);
       });
 
-      test('17:55 — hoàn toàn ngoài → clamp xuống 10:59', () {
-        final result = _clampToSlot('Sáng', const TimeOfDay(hour: 17, minute: 55));
+      test('17:55 — hoàn toàn ngoài → clamp xuống 09:59', () {
+        final result = _clampToSlot('Sáng', const TimeOfDay(hour: 7, minute: 0), const TimeOfDay(hour: 17, minute: 55));
         expect(result.adjusted, isTrue);
-        expect(result.hour, 10);
+        expect(result.hour, 9);
         expect(result.minute, 59);
       });
     });
 
-    group('Trưa 11:00–16:59', () {
-      test('12:00 — trong khoảng → không clamp', () {
-        final result = _clampToSlot('Trưa', const TimeOfDay(hour: 12, minute: 0));
+    group('Trưa (default 12:00) → 10:00–13:59', () {
+      test('12:00 — default → không clamp', () {
+        final result = _clampToSlot('Trưa', const TimeOfDay(hour: 12, minute: 0), const TimeOfDay(hour: 12, minute: 0));
         expect(result.adjusted, isFalse);
         expect(result.hour, 12);
         expect(result.minute, 0);
       });
 
-      test('11:00 — biên dưới → không clamp', () {
-        final result = _clampToSlot('Trưa', const TimeOfDay(hour: 11, minute: 0));
+      test('10:00 — biên dưới ±2h → không clamp', () {
+        final result = _clampToSlot('Trưa', const TimeOfDay(hour: 12, minute: 0), const TimeOfDay(hour: 10, minute: 0));
         expect(result.adjusted, isFalse);
-        expect(result.hour, 11);
+        expect(result.hour, 10);
         expect(result.minute, 0);
       });
 
-      test('16:59 — biên trên → không clamp', () {
-        final result = _clampToSlot('Trưa', const TimeOfDay(hour: 16, minute: 59));
+      test('13:59 — biên trên ±2h → không clamp', () {
+        final result = _clampToSlot('Trưa', const TimeOfDay(hour: 12, minute: 0), const TimeOfDay(hour: 13, minute: 59));
         expect(result.adjusted, isFalse);
-        expect(result.hour, 16);
+        expect(result.hour, 13);
         expect(result.minute, 59);
       });
 
-      test('10:59 — dưới khoảng → clamp lên 11:00', () {
-        final result = _clampToSlot('Trưa', const TimeOfDay(hour: 10, minute: 59));
+      test('09:59 — dưới khoảng → clamp lên 10:00', () {
+        final result = _clampToSlot('Trưa', const TimeOfDay(hour: 12, minute: 0), const TimeOfDay(hour: 9, minute: 59));
         expect(result.adjusted, isTrue);
-        expect(result.hour, 11);
+        expect(result.hour, 10);
         expect(result.minute, 0);
       });
 
-      test('17:00 — trên khoảng → clamp xuống 16:59', () {
-        final result = _clampToSlot('Trưa', const TimeOfDay(hour: 17, minute: 0));
+      test('14:00 — trên khoảng → clamp xuống 13:59', () {
+        final result = _clampToSlot('Trưa', const TimeOfDay(hour: 12, minute: 0), const TimeOfDay(hour: 14, minute: 0));
         expect(result.adjusted, isTrue);
-        expect(result.hour, 16);
+        expect(result.hour, 13);
         expect(result.minute, 59);
       });
 
-      test('17:55 — trên khoảng → clamp xuống 16:59 (bug repro)', () {
-        final result = _clampToSlot('Trưa', const TimeOfDay(hour: 17, minute: 55));
+      test('17:55 — trên khoảng → clamp xuống 13:59 (rule mới)', () {
+        final result = _clampToSlot('Trưa', const TimeOfDay(hour: 12, minute: 0), const TimeOfDay(hour: 17, minute: 55));
         expect(result.adjusted, isTrue);
-        expect(result.hour, 16);
+        expect(result.hour, 13);
         expect(result.minute, 59);
         expect(result.hour, isNot(equals(17)),
-            reason: '17:55 is evening, not noon — must snap to 16:59');
+            reason: '17:55 is evening, outside ±2h of noon — must snap to 13:59');
       });
     });
 
-    group('Tối 17:00–23:59', () {
-      test('20:00 — trong khoảng → không clamp', () {
-        final result = _clampToSlot('Tối', const TimeOfDay(hour: 20, minute: 0));
+    group('Tối (default 20:00) → 18:00–21:59', () {
+      test('20:00 — default → không clamp', () {
+        final result = _clampToSlot('Tối', const TimeOfDay(hour: 20, minute: 0), const TimeOfDay(hour: 20, minute: 0));
         expect(result.adjusted, isFalse);
         expect(result.hour, 20);
         expect(result.minute, 0);
       });
 
-      test('17:00 — biên dưới → không clamp', () {
-        final result = _clampToSlot('Tối', const TimeOfDay(hour: 17, minute: 0));
+      test('18:00 — biên dưới ±2h → không clamp', () {
+        final result = _clampToSlot('Tối', const TimeOfDay(hour: 20, minute: 0), const TimeOfDay(hour: 18, minute: 0));
         expect(result.adjusted, isFalse);
-        expect(result.hour, 17);
+        expect(result.hour, 18);
         expect(result.minute, 0);
       });
 
-      test('23:59 — biên trên → không clamp', () {
-        final result = _clampToSlot('Tối', const TimeOfDay(hour: 23, minute: 59));
+      test('21:59 — biên trên ±2h → không clamp', () {
+        final result = _clampToSlot('Tối', const TimeOfDay(hour: 20, minute: 0), const TimeOfDay(hour: 21, minute: 59));
         expect(result.adjusted, isFalse);
-        expect(result.hour, 23);
+        expect(result.hour, 21);
         expect(result.minute, 59);
       });
 
-      test('16:59 — dưới khoảng → clamp lên 17:00', () {
-        final result = _clampToSlot('Tối', const TimeOfDay(hour: 16, minute: 59));
+      test('17:59 — dưới khoảng → clamp lên 18:00', () {
+        final result = _clampToSlot('Tối', const TimeOfDay(hour: 20, minute: 0), const TimeOfDay(hour: 17, minute: 59));
         expect(result.adjusted, isTrue);
-        expect(result.hour, 17);
+        expect(result.hour, 18);
         expect(result.minute, 0);
       });
 
-      test('04:00 — hoàn toàn ngoài → clamp lên 17:00', () {
-        final result = _clampToSlot('Tối', const TimeOfDay(hour: 4, minute: 0));
+      test('22:00 — trên khoảng → clamp xuống 21:59', () {
+        final result = _clampToSlot('Tối', const TimeOfDay(hour: 20, minute: 0), const TimeOfDay(hour: 22, minute: 0));
         expect(result.adjusted, isTrue);
-        expect(result.hour, 17);
+        expect(result.hour, 21);
+        expect(result.minute, 59);
+      });
+
+      test('04:00 — hoàn toàn ngoài → clamp lên 18:00', () {
+        final result = _clampToSlot('Tối', const TimeOfDay(hour: 20, minute: 0), const TimeOfDay(hour: 4, minute: 0));
+        expect(result.adjusted, isTrue);
+        expect(result.hour, 18);
         expect(result.minute, 0);
       });
 
-      test('00:30 — dưới khoảng → clamp lên 17:00', () {
-        final result = _clampToSlot('Tối', const TimeOfDay(hour: 0, minute: 30));
+      test('00:30 — dưới khoảng → clamp lên 18:00', () {
+        final result = _clampToSlot('Tối', const TimeOfDay(hour: 20, minute: 0), const TimeOfDay(hour: 0, minute: 30));
         expect(result.adjusted, isTrue);
-        expect(result.hour, 17);
+        expect(result.hour, 18);
         expect(result.minute, 0);
       });
     });
 
     group('unknown slot label', () {
       test('không known label → không clamp', () {
-        final result = _clampToSlot('Unknown', const TimeOfDay(hour: 17, minute: 55));
+        final result = _clampToSlot('Unknown', const TimeOfDay(hour: 7, minute: 0), const TimeOfDay(hour: 17, minute: 55));
         expect(result.adjusted, isFalse);
         expect(result.hour, 17);
         expect(result.minute, 55);
@@ -215,38 +219,33 @@ class _ClampResult {
 ///
 /// Trả về (hour, minute, adjusted).
 /// adjusted = true khi giờ nằm ngoài khoảng và đã bị snap.
-_ClampResult _clampToSlot(String label, TimeOfDay picked) {
-  switch (label) {
-    case 'Sáng': // 05:00–10:59
-      if (picked.hour < 5) {
-        return _ClampResult(hour: 5, minute: 0, adjusted: true);
-      }
-      if (picked.hour > 10 || (picked.hour == 10 && picked.minute > 59)) {
-        return _ClampResult(hour: 10, minute: 59, adjusted: true);
-      }
-      return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
-
-    case 'Trưa': // 11:00–16:59
-      if (picked.hour < 11) {
-        return _ClampResult(hour: 11, minute: 0, adjusted: true);
-      }
-      if (picked.hour > 16 || (picked.hour == 16 && picked.minute > 59)) {
-        return _ClampResult(hour: 16, minute: 59, adjusted: true);
-      }
-      return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
-
-    case 'Tối': // 17:00–23:59
-      if (picked.hour < 17) {
-        return _ClampResult(hour: 17, minute: 0, adjusted: true);
-      }
-      if (picked.hour > 23) {
-        return _ClampResult(hour: 23, minute: 59, adjusted: true);
-      }
-      return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
-
-    default:
-      return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
+_ClampResult _clampToSlot(String label, TimeOfDay defaultTime, TimeOfDay picked) {
+  // Unknown label → no clamp (return as-is)
+  if (label != 'Sáng' && label != 'Trưa' && label != 'Tối') {
+    return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
   }
+
+  // minMinutes = start of (default-2h), e.g. Trưa 12:00 → 10:00 (600)
+  // maxMinutes = last minute of (default+2h-1), e.g. Trưa 12:00 → 13:59 (839)
+  // minMinutes: start of (default-2h), e.g. Sáng 07:00 → 05:00 (300)
+  final minMinutes = (defaultTime.hour - 2) * 60;
+  // maxMinutes: last minute allowed, e.g. Sáng 07:00 → 09:59 (599)
+  // Sáng default=7 → 09:59 (need +2h:00 not -1), Trưa/Tối default→ need -1 minute
+  final maxMinutes = switch (label) {
+    'Sáng' => (defaultTime.hour + 2) * 60 + 59,
+    _       => (defaultTime.hour + 2) * 60 - 1,
+  };
+
+  final pickedMinutes = picked.hour * 60 + picked.minute;
+
+  if (pickedMinutes < minMinutes) {
+    return _ClampResult(hour: minMinutes ~/ 60, minute: 0, adjusted: true);
+  }
+  if (pickedMinutes > maxMinutes) {
+    return _ClampResult(hour: maxMinutes ~/ 60, minute: maxMinutes % 60, adjusted: true);
+  }
+
+  return _ClampResult(hour: picked.hour, minute: picked.minute, adjusted: false);
 }
 
 /// Format giờ theo HH:mm.

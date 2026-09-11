@@ -11,6 +11,8 @@ public interface IDoctorMedicationTrackingService
         string? adherenceLevel,
         bool? hasOverdueDoses,
         DateTime? nowUtc = null,
+        int page = 1,
+        int pageSize = 10,
         CancellationToken ct = default);
 
     /// <param name="nowUtc">Mốc thời gian hiện tại.</param>
@@ -18,6 +20,8 @@ public interface IDoctorMedicationTrackingService
         Guid doctorId,
         Guid patientId,
         DateTime? nowUtc = null,
+        int page = 1,
+        int pageSize = 10,
         CancellationToken ct = default);
 
     /// <param name="nowUtc">Mốc thời gian hiện tại.</param>

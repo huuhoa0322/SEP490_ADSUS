@@ -1,14 +1,17 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
+using ADSUS_BE.BLL.CaseClinicServices;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Mappers;
+using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.MedicalRecord.Services;
@@ -25,6 +28,9 @@ public sealed class CaseService : ICaseService
     private readonly System.Lazy<IFileStorageService> _storageLazy;
     private readonly INotificationService _notificationService;
     private readonly ILogger<CaseService> _logger;
+    private readonly ICaseClinicServiceService? _caseClinicServiceService;
+    private readonly IInvoiceService? _invoiceService;
+    private readonly AppDbContext? _context;
 
     private IFileStorageService _storage => _storageLazy.Value;
 
@@ -35,7 +41,10 @@ public sealed class CaseService : ICaseService
         IUserRepository users,
         System.Lazy<IFileStorageService> storageLazy,
         INotificationService notificationService,
-        ILogger<CaseService> logger)
+        ILogger<CaseService> logger,
+        ICaseClinicServiceService? caseClinicServiceService = null,
+        IInvoiceService? invoiceService = null,
+        AppDbContext? context = null)
     {
         _cases = cases;
         _images = images;
@@ -44,6 +53,9 @@ public sealed class CaseService : ICaseService
         _storageLazy = storageLazy;
         _notificationService = notificationService;
         _logger = logger;
+        _caseClinicServiceService = caseClinicServiceService;
+        _invoiceService = invoiceService;
+        _context = context;
     }
 
     public async Task<IReadOnlyList<UltrasoundImageResponse>> ListImagesAsync(
@@ -61,18 +73,10 @@ public sealed class CaseService : ICaseService
             .ToList();
     }
 
-    public async Task<CaseResponse> GetForStaffAsync(Guid caseId, bool callerIsDoctor, CancellationToken ct = default)
+    public async Task<CaseResponse> GetForStaffAsync(Guid caseId, CancellationToken ct = default)
     {
         var medicalCase = await _cases.GetDetailAsync(caseId, ct)
             ?? throw new ResourceNotFoundException("Case not found.");
-
-        // Bác sĩ chỉ thao tác được với ca sau khi Điều dưỡng check-in (Booked → InProgress).
-        // Điều dưỡng không bị chặn — chính họ là người thực hiện bước check-in đó.
-        if (callerIsDoctor && medicalCase.Status == CaseStatus.Booked)
-        {
-            throw new BusinessException(
-                "This case has not been checked in yet. Please wait for the nurse to check in the patient first.");
-        }
 
         var urls = await BuildImageUrlsAsync(medicalCase.UltrasoundImages.ToList(), ct);
 
@@ -222,6 +226,19 @@ public sealed class CaseService : ICaseService
             "Case {CaseId} created for patient profile {PatientProfileId} with {ImageCount} image(s)",
             caseId, profile.PatientProfileId, images.Count);
 
+        // Auto-add GENERAL_EXAM (Khám thường) service
+        if (_caseClinicServiceService != null)
+        {
+            try
+            {
+                await _caseClinicServiceService.AddServiceToCaseByCodeAsync(caseId, "GENERAL_EXAM", ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Tự động gắn dịch vụ GENERAL_EXAM thất bại cho ca {CaseId}", caseId);
+            }
+        }
+
         // Send notification to patient about new medical record (best effort - don't fail case creation)
         try
         {
@@ -244,7 +261,7 @@ public sealed class CaseService : ICaseService
             _logger.LogWarning(ex, "Failed to send medical record notification for case {CaseId}", caseId);
         }
 
-        return await GetForStaffAsync(caseId, false, ct);
+        return await GetForStaffAsync(caseId, ct);
     }
 
     public async Task<CaseResponse> SaveConclusionAsync(
@@ -265,7 +282,7 @@ public sealed class CaseService : ICaseService
 
         _logger.LogInformation("Case {CaseId} conclusion saved by doctor {DoctorId}", caseId, actingDoctorId);
 
-        return await GetForStaffAsync(caseId, false, ct);
+        return await GetForStaffAsync(caseId, ct);
     }
 
     public async Task<CaseResponse> ConfirmAsync(
@@ -285,7 +302,7 @@ public sealed class CaseService : ICaseService
 
         _logger.LogInformation("Case {CaseId} confirmed by doctor {DoctorId}", caseId, actingDoctorId);
 
-        return await GetForStaffAsync(caseId, false, ct);
+        return await GetForStaffAsync(caseId, ct);
     }
 
     public async Task<CaseResponse> EndWithoutPrescriptionAsync(
@@ -311,9 +328,36 @@ public sealed class CaseService : ICaseService
 
         await _cases.SaveChangesAsync(ct);
 
+        // Auto-trigger: Sinh hóa đơn khi ca kết thúc nếu có dịch vụ/thuốc và chưa có hóa đơn
+        if (_context != null && _invoiceService != null)
+        {
+            var hasInvoice = await _context.Invoices.AnyAsync(i => i.CaseId == caseId 
+                && (i.Status == InvoiceStatus.PENDING || i.Status == InvoiceStatus.PAID), ct);
+
+            if (!hasInvoice)
+            {
+                var hasServiceOrMedicine = 
+                    await _context.CaseClinicServices.AnyAsync(cs => cs.CaseId == caseId, ct)
+                    || await _context.Prescriptions.AnyAsync(p => p.CaseId == caseId 
+                        && p.Status == PrescriptionStatus.Active, ct);
+
+                if (hasServiceOrMedicine)
+                {
+                    try
+                    {
+                        await _invoiceService.GenerateInvoiceForCaseAsync(caseId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Tự động tạo hóa đơn khi kết thúc ca {CaseId} thất bại", caseId);
+                    }
+                }
+            }
+        }
+
         _logger.LogInformation("Case {CaseId} ended without prescription by doctor {DoctorId}", caseId, actingDoctorId);
 
-        return await GetForStaffAsync(caseId, false, ct);
+        return await GetForStaffAsync(caseId, ct);
     }
 
     /// <inheritdoc />
@@ -353,6 +397,19 @@ public sealed class CaseService : ICaseService
         _logger.LogInformation(
             "Case {CaseId} created from appointment booking for patient profile {PatientProfileId} with {SymptomCount} symptoms",
             caseId, patientProfileId, symptoms.Count);
+
+        // Auto-add GENERAL_EXAM (Khám thường) service
+        if (_caseClinicServiceService != null)
+        {
+            try
+            {
+                await _caseClinicServiceService.AddServiceToCaseByCodeAsync(caseId, "GENERAL_EXAM", ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Tự động gắn dịch vụ GENERAL_EXAM thất bại cho ca {CaseId}", caseId);
+            }
+        }
 
         // Gửi notification cho doctor về case mới được tạo từ booking
         try
@@ -401,9 +458,14 @@ public sealed class CaseService : ICaseService
                 "This case has not been checked in yet. Please wait for the nurse to check in the patient first.");
         }
 
-        // P2/GB-01 — CONFIRMED là trạng thái cuối, không có đường lùi. Ca đã khoá thì không
+        if (medicalCase.Status == CaseStatus.Cancelled)
+        {
+            throw new BusinessException("This case has been cancelled and cannot be changed.");
+        }
+
+        // P2/GB-01 — CONFIRMED/END là trạng thái cuối, không có đường lùi. Ca đã khoá thì không
         // sửa được nữa dưới bất kỳ hình thức nào, kể cả chỉ lưu nháp lại đúng nội dung cũ.
-        if (medicalCase.Status == CaseStatus.Confirmed)
+        if (medicalCase.Status == CaseStatus.Confirmed || medicalCase.Status == CaseStatus.End)
         {
             throw new BusinessException("This case has already been confirmed and cannot be changed.");
         }

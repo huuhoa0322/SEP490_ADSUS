@@ -17,6 +17,8 @@ using ADSUS_BE.BLL.AIModelManagement.Interfaces;
 using ADSUS_BE.BLL.AIModelManagement.Services;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
 using ADSUS_BE.BLL.PrescriptionAdherence.Services;
+using ADSUS_BE.BLL.ClinicServiceManagement;
+using ADSUS_BE.BLL.CaseClinicServices;
 using ADSUS_BE.BLL.DoctorMedicationTracking.Interfaces;
 using ADSUS_BE.BLL.DoctorMedicationTracking.Services;
 using ADSUS_BE.Jobs;
@@ -216,6 +218,7 @@ namespace ADSUS_BE
             dataSourceBuilder.MapEnum<InventoryTxnType>("inventory_txn_type");
             dataSourceBuilder.MapEnum<InvoiceStatus>("invoice_status");
             dataSourceBuilder.MapEnum<PaymentMethod>("payment_method");
+            dataSourceBuilder.MapEnum<InvoiceItemType>("invoice_item_type");
             dataSourceBuilder.MapEnum<NotificationStatus>("notification_status");
             dataSourceBuilder.MapEnum<NotificationType>("notification_type");
             dataSourceBuilder.MapEnum<ShiftRequestType>("shift_request_type");
@@ -432,6 +435,8 @@ namespace ADSUS_BE
             builder.Services.AddScoped<ISupplierService, SupplierService>();
             builder.Services.AddScoped<IInventoryService, InventoryService>();
             builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+            builder.Services.AddScoped<IClinicServiceManagementService, ClinicServiceManagementService>();
+            builder.Services.AddScoped<ICaseClinicServiceService, CaseClinicServiceService>();
 
             // BLL — Module 8: Appointment Scheduling (UC-15)
             builder.Services.AddScoped<IScheduleSlotRepository, ScheduleSlotRepository>();

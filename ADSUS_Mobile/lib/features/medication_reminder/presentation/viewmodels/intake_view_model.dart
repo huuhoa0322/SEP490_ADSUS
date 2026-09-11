@@ -37,14 +37,51 @@ class IntakeListState {
       );
 }
 
-/// Cho widget SCR-19 lấy danh sách intake log.
+/// Notifier quản lý danh sách intake log.
 ///
-/// `autoDispose` để provider bị dispose khi không còn widget listening (logout / navigate
-/// away), đảm bảo user mới login luôn trigger refetch thay vì dùng cache user cũ.
-/// Xác nhận uống thành công → `invalidate` gọi refetch bình thường.
-final intakeLogsProvider = FutureProvider.autoDispose<List<IntakeLog>>((ref) async {
-  return ref.watch(medicationIntakeRepositoryProvider).getMyIntakeLogs();
-});
+/// Đổi từ `FutureProvider` sang `AsyncNotifierProvider` (review 26/09/2026) để
+/// cho phép patch 1 item vào state sau khi `confirmIntake` thành công — UI
+/// chuyển card sang "Đã xác nhận" NGAY LẬP TỨC thay vì phải chờ refetch cả list.
+class IntakeLogsNotifier extends AutoDisposeAsyncNotifier<List<IntakeLog>> {
+  @override
+  Future<List<IntakeLog>> build() async {
+    return ref.watch(medicationIntakeRepositoryProvider).getMyIntakeLogs();
+  }
+
+  /// Patch trạng thái 1 intake log sau khi confirm thành công.
+  ///
+  /// Gán `confirmedAtUtc` = now và `status` = TAKEN ngay trong memory state —
+  /// không cần chờ `invalidate` refetch cả list từ server.
+  Future<void> patchConfirmed(String intakeId) async {
+    final current = state.valueOrNull;
+    if (current == null) return; // Dang loading, invalid, hoac khong co data.
+
+    final patched = current.map((log) {
+      if (log.intakeId == intakeId) {
+        return log.copyWith(
+          confirmedAtUtc: DateTime.now().toUtc(),
+          status: IntakeStatus.taken,
+        );
+      }
+      return log;
+    }).toList();
+
+    state = AsyncData(patched);
+  }
+}
+
+/// Provider danh sách intake log.
+///
+/// `autoDispose` để provider bị dispose khi không còn widget listening (logout /
+/// navigate away), đảm bảo user mới login luôn trigger refetch thay vì dùng
+/// cache user cũ.
+///
+/// Sau khi `confirmIntake` thành công → `patchConfirmed` được gọi ngay để UI
+/// re-render TỨC THÌ với card "Đã xác nhận". `invalidate` vẫn chạy nền để
+/// sync dữ liệu thật từ server (single source of truth).
+final intakeLogsProvider =
+    AsyncNotifierProvider.autoDispose<IntakeLogsNotifier, List<IntakeLog>>(
+        IntakeLogsNotifier.new);
 
 /// Lịch uống của 1 đơn cụ thể — dùng cho màn chi tiết đơn (SCR-19 lọc theo đơn).
 final intakeLogsByPrescriptionProvider =
@@ -54,24 +91,40 @@ final intakeLogsByPrescriptionProvider =
       .getIntakeLogsByPrescription(prescriptionId);
 });
 
-/// ViewModel xử lý confirmIntake + invalidate các query liên quan.
+/// ViewModel xử lý confirmIntake.
+///
+/// Sau khi `POST /confirm` thành công:
+/// 1. Gọi `patchConfirmed` ngay → UI re-render tức thì (optimistic patch).
+/// 2. `widgetSyncService.triggerSync()` → cập nhật Android widget.
+/// 3. `invalidate` chạy nền → refetch từ server (single source of truth).
 class IntakeListViewModel extends StateNotifier<IntakeListState> {
   IntakeListViewModel(this._ref) : super(const IntakeListState());
 
   final Ref _ref;
 
   Future<bool> confirmIntake(String intakeId) async {
+    // Client-side guard: MISSED doses cannot be confirmed (GB-01 terminal state).
+    // Backend also enforces this, but guard here avoids unnecessary API call.
+    final logs = _ref.read(intakeLogsProvider).valueOrNull ?? [];
+    final log = logs.where((l) => l.intakeId == intakeId).firstOrNull;
+    if (log != null && log.status == IntakeStatus.missed) return false;
+
     final next = {...state.isSubmittingIds, intakeId};
     state = state.copyWith(isSubmittingIds: next, clearError: true);
     try {
       await _ref.read(medicationIntakeRepositoryProvider).confirmIntake(intakeId);
-      // T-6.2: Sau khi confirm thành công → cập nhật widget ngay.
+
+      // Bước 1: patch UI ngay — user thấy "Đã xác nhận" tức thì.
+      _ref.read(intakeLogsProvider.notifier).patchConfirmed(intakeId);
+
+      // Bước 2: cập nhật Android widget.
       _ref.read(widgetSyncServiceProvider).triggerSync();
-      // Server đã chuyển status → TAKEN (§22.2 fix #7). Refetch lại danh sách để UI
-      // đồng bộ. Optimistic update ở tầng use-prescriptions Web làm tương tự.
+
+      // Bước 3: invalidate chạy nền — server là single source of truth.
+      // Sau invalidate, state có thể tạm sang AsyncLoading rồi resolve lại.
       _ref.invalidate(intakeLogsProvider);
-      // family provider cũng cần invalidate, vì IntakeLog có thể thuộc 1 đơn cụ thể.
       _ref.invalidate(intakeLogsByPrescriptionProvider);
+
       final after = {...state.isSubmittingIds}..remove(intakeId);
       state = state.copyWith(isSubmittingIds: after);
       return true;

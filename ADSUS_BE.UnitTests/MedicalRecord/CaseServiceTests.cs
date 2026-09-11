@@ -49,7 +49,7 @@ public class CaseServiceTests
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, false, TestContext.Current.CancellationToken);
+        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(medicalCase.CaseId, response.CaseId);
@@ -64,33 +64,35 @@ public class CaseServiceTests
               .ReturnsAsync((Case?)null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.GetForStaffAsync(Guid.NewGuid(), false, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.GetForStaffAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
-    public async Task GetForStaffAsync_DoctorViewsBookedCase_ThrowsBusinessException()
+    public async Task GetForStaffAsync_BookedCase_ReturnsFullStaffResponse_AllowingReadonlyView()
     {
-        // Arrange — yêu cầu 10/09/2026: bác sĩ không mở được case detail nào khi ca còn BOOKED.
-        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Booked);
-        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(medicalCase);
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.GetForStaffAsync(medicalCase.CaseId, true, TestContext.Current.CancellationToken));
-        Assert.Equal("This case has not been checked in yet. Please wait for the nurse to check in the patient first.", ex.Message);
-    }
-
-    [Fact]
-    public async Task GetForStaffAsync_NurseViewsBookedCase_ReturnsFullStaffResponse()
-    {
-        // Arrange — Điều dưỡng không bị chặn bởi luật này (chính họ là người check-in).
+        // Arrange — Bác sĩ / Điều dưỡng đều có thể xem ca ở trạng thái Booked để nắm bắt thông tin
         var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Booked);
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
 
         // Act
-        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, false, TestContext.Current.CancellationToken);
+        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(medicalCase.CaseId, response.CaseId);
+        Assert.Equal("BOOKED", response.Status);
+    }
+
+    [Fact]
+    public async Task GetForStaffAsync_NurseViewsBookedCase_ReturnsFullStaffResponse()
+    {
+        // Arrange — Điều dưỡng cũng xem bình thường
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Booked);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        var response = await _sut.GetForStaffAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(medicalCase.CaseId, response.CaseId);
@@ -615,7 +617,7 @@ public class CaseServiceTests
     {
         // Arrange
         var doctor = MedicalRecordTestData.MakeDoctor();
-        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.End);
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.InProgress);
         var request = MakeConfirmRequest();
 
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
@@ -652,13 +654,29 @@ public class CaseServiceTests
     }
 
     [Fact]
+    public async Task ConfirmAsync_CaseAlreadyEnded_ThrowsBusinessExceptionWithoutSaving()
+    {
+        // Arrange — P2/GB-01: END cũng là trạng thái cuối, ca đã kết thúc thì không thể confirm lại.
+        var doctor = MedicalRecordTestData.MakeDoctor();
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.End);
+
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.ConfirmAsync(medicalCase.CaseId, doctor.UserId, MakeConfirmRequest(), TestContext.Current.CancellationToken));
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task ConfirmAsync_ActingDoctorIsNotResponsibleDoctor_ThrowsBusinessExceptionWithoutSaving()
     {
         // Arrange — GB-04: chỉ đúng bác sĩ phụ trách CA NÀY mới chốt được, không phải bác sĩ
         // bất kỳ đang đăng nhập.
         var responsibleDoctor = MedicalRecordTestData.MakeDoctor("BS. Lê Minh Hoàng");
         var otherDoctor = MedicalRecordTestData.MakeDoctor("BS. Nguyễn Văn An");
-        var medicalCase = MedicalRecordTestData.MakeCase(doctor: responsibleDoctor, status: CaseStatus.End);
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: responsibleDoctor, status: CaseStatus.InProgress);
 
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
@@ -707,7 +725,7 @@ public class CaseServiceTests
         // Arrange — "Lưu kết luận" KHÔNG đổi trạng thái, khác hẳn ConfirmAsync ("Kết thúc ca
         // khám"). Bác sĩ có thể lưu nháp nhiều lần trước khi bấm Kết thúc.
         var doctor = MedicalRecordTestData.MakeDoctor();
-        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.End);
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.InProgress);
         var request = MakeConfirmRequest();
 
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
@@ -719,8 +737,8 @@ public class CaseServiceTests
         var response = await _sut.SaveConclusionAsync(medicalCase.CaseId, doctor.UserId, request, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal("END", response.Status);
-        Assert.Equal(CaseStatus.End, medicalCase.Status);
+        Assert.Equal("IN_PROGRESS", response.Status);
+        Assert.Equal(CaseStatus.InProgress, medicalCase.Status);
         Assert.Equal("Nhân xơ tử cung", medicalCase.FinalDiagnosis);
         Assert.Equal("Theo dõi định kỳ sau 6 tháng", medicalCase.DoctorConclusion);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -733,6 +751,22 @@ public class CaseServiceTests
         // kể cả chỉ lưu nháp lại đúng nội dung cũ.
         var doctor = MedicalRecordTestData.MakeDoctor();
         var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.Confirmed);
+
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.SaveConclusionAsync(medicalCase.CaseId, doctor.UserId, MakeConfirmRequest(), TestContext.Current.CancellationToken));
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SaveConclusionAsync_CaseAlreadyEnded_ThrowsBusinessExceptionWithoutSaving()
+    {
+        // Arrange — P2/GB-01: ca đã kết thúc thì không sửa kết luận được nữa.
+        var doctor = MedicalRecordTestData.MakeDoctor();
+        var medicalCase = MedicalRecordTestData.MakeCase(doctor: doctor, status: CaseStatus.End);
 
         _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(medicalCase);
