@@ -244,12 +244,12 @@ class _BookAppointmentScreenState
               state.selectedDoctorGender,
             ),
             _genderChip(
-              '👨 Nam',
+              'Nam',
               DoctorGender.male,
               state.selectedDoctorGender,
             ),
             _genderChip(
-              '👩 Nữ',
+              'Nữ',
               DoctorGender.female,
               state.selectedDoctorGender,
             ),

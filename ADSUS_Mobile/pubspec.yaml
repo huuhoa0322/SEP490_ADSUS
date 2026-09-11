@@ -45,11 +45,14 @@ dependencies:
   local_auth: ^2.3.0
   firebase_core: ^4.13.0
   firebase_messaging: ^16.4.3
-  flutter_local_notifications: ^19.0.0
+  flutter_local_notifications: ^18.0.1
   shared_preferences: ^2.3.5
 
   # UC-16 — đồng bộ lịch hẹn vào Calendar hệ thống (Google/Apple).
-  add_2_calendar: ^3.1.1
+  device_calendar: ^4.3.1
+  permission_handler: ^11.3.0
+  timezone: ^0.9.2
+  url_launcher: ^6.2.5
 
   # Dropdown có search — dùng cho doctor selection ở màn Đặt lịch khám.
   # NOTE: Dùng 5.0.6 thay vì 6.x vì 6.x có breaking change API (items là async callback).

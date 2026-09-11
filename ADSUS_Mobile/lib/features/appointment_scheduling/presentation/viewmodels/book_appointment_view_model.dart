@@ -7,39 +7,6 @@ import '../../data/dtos/symptom_dtos.dart';
 import '../../domain/entities/schedule_slot.dart' show ScheduleSlot, DoctorStatus, DoctorGender;
 import '../../domain/entities/symptom.dart' show SymptomCategory;
 
-/// Cache cho slots với TTL 60 giây (2026-01: Performance optimization)
-class SlotCache {
-  static const _cacheValidityMs = 60000; // 1 phút
-  List<ScheduleSlot>? _cachedSlots;
-  DateTime? _cacheTimestamp;
-  String? _lastDoctorId;
-  String? _lastGenderFilter;
-
-  bool isValid(String? doctorId, DoctorGender? genderFilter) {
-    if (_cachedSlots == null || _cacheTimestamp == null) return false;
-    final elapsed = DateTime.now().difference(_cacheTimestamp!).inMilliseconds;
-    if (elapsed > _cacheValidityMs) return false;
-    // Cache chỉ valid nếu filter giống nhau
-    return _lastDoctorId == doctorId && _lastGenderFilter == genderFilter?.name;
-  }
-
-  List<ScheduleSlot>? get slots => _cachedSlots;
-
-  void set(List<ScheduleSlot> slots, String? doctorId, DoctorGender? genderFilter) {
-    _cachedSlots = slots;
-    _cacheTimestamp = DateTime.now();
-    _lastDoctorId = doctorId;
-    _lastGenderFilter = genderFilter?.name;
-  }
-
-  void invalidate() {
-    _cachedSlots = null;
-    _cacheTimestamp = null;
-  }
-}
-
-final _slotCache = SlotCache();
-
 /// Một block triệu chứng trong UI (tương ứng với 1 category)
 class SymptomBlock {
   final String id; // Unique ID cho block này
@@ -358,10 +325,11 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
     state = state.copyWith(selectedSlotId: slotId);
   }
 
-  // 2026-01: Gender filter selection
+  // 2026-01: Gender filter selection - click again to deselect
   void selectDoctorGender(DoctorGender? gender) {
+    final newGender = gender == state.selectedDoctorGender ? null : gender;
     state = state.copyWith(
-      selectedDoctorGender: gender,
+      selectedDoctorGender: newGender,
       selectedDoctorId: null, // Reset doctor khi đổi gender
       selectedSlotId: null,
       selectedDate: null,
