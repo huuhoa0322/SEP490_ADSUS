@@ -11,16 +11,9 @@ public interface ICaseService
 
     /// <summary>
     /// #23 cho Bác sĩ/Điều dưỡng — bản đầy đủ.
+    /// Cho phép xem ca ở mọi trạng thái (kể cả BOOKED trước check-in).
     /// </summary>
-    /// <param name="callerIsDoctor">
-    /// True khi người gọi có role DOCTOR — áp luật "chưa check-in thì bác sĩ chưa xem được ca"
-    /// (ca còn Booked, yêu cầu 10/09/2026). Điều dưỡng (false) không bị luật này ràng buộc —
-    /// chính họ là người thực hiện check-in. Các lệnh gọi nội bộ trong CaseService (CreateAsync/
-    /// SaveConclusionAsync/ConfirmAsync/EndWithoutPrescriptionAsync tự dựng lại response sau khi
-    /// đã thao tác xong) luôn truyền false: tại thời điểm đó trạng thái ca chắc chắn không còn
-    /// Booked nữa, nên không cần áp lại luật.
-    /// </param>
-    Task<CaseResponse> GetForStaffAsync(Guid caseId, bool callerIsDoctor, CancellationToken ct = default);
+    Task<CaseResponse> GetForStaffAsync(Guid caseId, CancellationToken ct = default);
 
     /// <summary>
     /// #23 cho Bệnh nhân — chỉ ca của chính họ và chỉ khi đã CONFIRMED.

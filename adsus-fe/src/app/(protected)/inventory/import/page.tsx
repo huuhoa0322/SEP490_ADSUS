@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 
 export default function InventoryImportPage() {
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
+    <div className="mx-auto w-[90%] max-w-[90%] py-8">
       <InventoryImportForm />
     </div>
   );

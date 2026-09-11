@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useDeferredValue, useMemo, useEffect } from "react";
+import { useState, useDeferredValue, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Pill, AlertCircle, CheckCircle2, Users, TrendingUp, Clock, FileText, ChevronLeft, ChevronRight } from "lucide-react";
@@ -262,11 +262,6 @@ export default function MedicationTrackingPage() {
   const [hasOverdue, setHasOverdue] = useState<string>("");
   const [page, setPage] = useState(1);
 
-  // Reset page to 1 when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [deferredSearch, adherenceLevel, hasOverdue]);
-
   const { data, isLoading, isFetching } = useQuery({
     queryKey: [
       "doctor-medication-tracking",
@@ -365,10 +360,19 @@ export default function MedicationTrackingPage() {
         <Input
           placeholder="Tìm bệnh nhân..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
           className="w-full sm:w-56"
         />
-        <Select value={adherenceLevel} onValueChange={setAdherenceLevel}>
+        <Select
+          value={adherenceLevel}
+          onValueChange={(val) => {
+            setAdherenceLevel(val);
+            setPage(1);
+          }}
+        >
           <SelectTrigger className="w-full sm:w-44">
             <SelectValue placeholder="Mức tuân thủ" />
           </SelectTrigger>
@@ -378,7 +382,13 @@ export default function MedicationTrackingPage() {
             <SelectItem value="poor">Kém (&lt;50%)</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={hasOverdue} onValueChange={setHasOverdue}>
+        <Select
+          value={hasOverdue}
+          onValueChange={(val) => {
+            setHasOverdue(val);
+            setPage(1);
+          }}
+        >
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="Quá giờ" />
           </SelectTrigger>

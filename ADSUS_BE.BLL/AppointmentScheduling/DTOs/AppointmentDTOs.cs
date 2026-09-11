@@ -187,5 +187,6 @@ public sealed class CheckinQueueResponse
     public int BookedCount { get; init; }
     public int CheckedInCount { get; init; }
     public int CancelledCount { get; init; }
+    public int NoShowCount { get; init; }
 }
 

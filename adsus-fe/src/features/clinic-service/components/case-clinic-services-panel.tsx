@@ -45,12 +45,14 @@ export interface CaseClinicServicesPanelProps {
   caseId: string;
   caseStatus: string;
   variant?: "card" | "compact";
+  isResponsibleDoctor?: boolean;
 }
 
 function CaseClinicServicesPanelContent({
   caseId,
   caseStatus,
   variant = "card",
+  isResponsibleDoctor = true,
 }: CaseClinicServicesPanelProps) {
   const { data: caseServices, isLoading: isLoadingServices } =
     useCaseClinicServices(caseId);
@@ -66,14 +68,16 @@ function CaseClinicServicesPanelContent({
     useState<CaseClinicService | null>(null);
 
   // Business Rules / Deletion & Addition Guards
-  const isCaseClosed = caseStatus === "END" || caseStatus === "CANCELLED";
+  const normalizedStatus = (caseStatus || "").toUpperCase();
+  const isBooked = normalizedStatus === "BOOKED";
+  const isCaseClosed = normalizedStatus === "END" || normalizedStatus === "CANCELLED";
   const hasPaidInvoice = useMemo(
     () => invoices?.some((inv) => inv.status === "PAID") ?? false,
     [invoices],
   );
 
-  const canAdd = !isCaseClosed;
-  const canDelete = !isCaseClosed && !hasPaidInvoice;
+  const canAdd = isResponsibleDoctor && !isCaseClosed && !isBooked;
+  const canDelete = isResponsibleDoctor && !isCaseClosed && !isBooked && !hasPaidInvoice;
 
   // Filter out services already attached to this case
   const availableServices = useMemo(() => {
@@ -345,6 +349,15 @@ function CaseClinicServicesPanelContent({
       </CardHeader>
 
       <CardContent className="p-4 sm:p-6">
+        {isBooked && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 p-3 text-xs font-semibold text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>
+              Ca khám đang chờ check-in. Không thể thêm hoặc xóa dịch vụ khám.
+            </span>
+          </div>
+        )}
+
         {hasPaidInvoice && (
           <div className="mb-4 flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 p-3 text-xs font-semibold text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
             <AlertCircle className="size-4 shrink-0" />
@@ -406,9 +419,11 @@ function CaseClinicServicesPanelContent({
                     const deleteDisabled = !canDelete;
                     const tooltipText = hasPaidInvoice
                       ? "Không thể xóa dịch vụ vì hóa đơn đã được thanh toán."
-                      : isCaseClosed
-                        ? "Không thể xóa dịch vụ khi ca khám đã kết thúc."
-                        : "Xóa dịch vụ này khỏi ca khám";
+                      : isBooked
+                        ? "Không thể xóa dịch vụ khi ca khám đang chờ check-in."
+                        : isCaseClosed
+                          ? "Không thể xóa dịch vụ khi ca khám đã kết thúc hoặc đã hủy."
+                          : "Xóa dịch vụ này khỏi ca khám";
 
                     return (
                       <TableRow key={service.id} className="hover:bg-muted/20">

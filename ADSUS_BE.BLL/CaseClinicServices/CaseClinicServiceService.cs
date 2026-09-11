@@ -41,12 +41,32 @@ public class CaseClinicServiceService : ICaseClinicServiceService
         }).ToList();
     }
 
-    public async Task<CaseClinicServiceResponse> AddServiceToCaseAsync(Guid caseId, Guid clinicServiceId, CancellationToken ct = default)
+    public Task<CaseClinicServiceResponse> AddServiceToCaseAsync(Guid caseId, Guid clinicServiceId, CancellationToken ct = default)
+    {
+        return AddServiceToCaseInternalAsync(caseId, clinicServiceId, allowBooked: false, actingDoctorId: null, ct: ct);
+    }
+
+    public Task<CaseClinicServiceResponse> AddServiceToCaseAsync(Guid caseId, Guid clinicServiceId, Guid actingDoctorId, CancellationToken ct = default)
+    {
+        return AddServiceToCaseInternalAsync(caseId, clinicServiceId, allowBooked: false, actingDoctorId: actingDoctorId, ct: ct);
+    }
+
+    private async Task<CaseClinicServiceResponse> AddServiceToCaseInternalAsync(Guid caseId, Guid clinicServiceId, bool allowBooked, Guid? actingDoctorId = null, CancellationToken ct = default)
     {
         var medicalCase = await _context.Cases.FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
         if (medicalCase == null)
         {
             throw new BusinessException("Không tìm thấy ca khám.");
+        }
+
+        if (actingDoctorId.HasValue && medicalCase.DoctorId != actingDoctorId.Value)
+        {
+            throw new BusinessException("Chỉ bác sĩ phụ trách ca khám mới có quyền chọn dịch vụ khám.");
+        }
+
+        if (medicalCase.Status == CaseStatus.Booked && !allowBooked)
+        {
+            throw new BusinessException("Không thể thêm dịch vụ vào ca khám chưa check-in.");
         }
 
         if (medicalCase.Status == CaseStatus.End || medicalCase.Status == CaseStatus.Cancelled)
@@ -140,17 +160,43 @@ public class CaseClinicServiceService : ICaseClinicServiceService
             return;
         }
 
-        await AddServiceToCaseAsync(caseId, service.Id, ct);
+        await AddServiceToCaseInternalAsync(caseId, service.Id, allowBooked: true, actingDoctorId: null, ct: ct);
     }
 
-    public async Task RemoveServiceFromCaseAsync(Guid caseId, Guid caseClinicServiceId, CancellationToken ct = default)
+    public Task RemoveServiceFromCaseAsync(Guid caseId, Guid caseClinicServiceId, CancellationToken ct = default)
+    {
+        return RemoveServiceFromCaseInternalAsync(caseId, caseClinicServiceId, actingDoctorId: null, ct: ct);
+    }
+
+    public Task RemoveServiceFromCaseAsync(Guid caseId, Guid caseClinicServiceId, Guid actingDoctorId, CancellationToken ct = default)
+    {
+        return RemoveServiceFromCaseInternalAsync(caseId, caseClinicServiceId, actingDoctorId: actingDoctorId, ct: ct);
+    }
+
+    private async Task RemoveServiceFromCaseInternalAsync(Guid caseId, Guid caseClinicServiceId, Guid? actingDoctorId, CancellationToken ct)
     {
         var record = await _context.CaseClinicServices
+            .Include(cs => cs.Case)
             .FirstOrDefaultAsync(cs => cs.Id == caseClinicServiceId, ct);
 
         if (record == null || record.CaseId != caseId)
         {
             throw new BusinessException("Không tìm thấy dịch vụ.");
+        }
+
+        if (actingDoctorId.HasValue && record.Case?.DoctorId != actingDoctorId.Value)
+        {
+            throw new BusinessException("Chỉ bác sĩ phụ trách ca khám mới có quyền xóa dịch vụ khám.");
+        }
+
+        if (record.Case?.Status == CaseStatus.Booked)
+        {
+            throw new BusinessException("Không thể xóa dịch vụ khỏi ca khám chưa check-in.");
+        }
+
+        if (record.Case?.Status == CaseStatus.End || record.Case?.Status == CaseStatus.Cancelled)
+        {
+            throw new BusinessException("Không thể xóa dịch vụ khỏi ca khám đã hoàn thành hoặc bị hủy.");
         }
 
         var invoices = await _context.Invoices

@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { Check, Eye, Loader2, XCircle } from "lucide-react";
+import { Check, Eye, Loader2, UserX, XCircle } from "lucide-react";
 import type { CheckinQueueItem } from "../types/checkin.types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -63,10 +63,10 @@ export function CheckinQueueTable({
             const isBooked = normStatus === "BOOKED";
             const isCompleted = normStatus === "COMPLETED";
             const isCheckedIn = isApproved || isCompleted;
-            const isCancelled =
-              normStatus === "CANCELLED" ||
+            const isNoShow =
               normStatus === "NOSHOW" ||
               normStatus === "NO_SHOW";
+            const isCancelled = normStatus === "CANCELLED";
             const slotTime = new Date(item.slotTime);
             const sttNumber = (page - 1) * pageSize + index + 1;
 
@@ -131,13 +131,19 @@ export function CheckinQueueTable({
                           Check-in
                         </Button>
                       )}
+                      {isNoShow && (
+                        <span className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-600/30 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                          <UserX className="h-3.5 w-3.5" />
+                          Vắng mặt
+                        </span>
+                      )}
                       {isCancelled && (
                         <span className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-rose-600/30 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
                           <XCircle className="h-3.5 w-3.5" />
                           Đã huỷ
                         </span>
                       )}
-                      {!isCheckedIn && !isBooked && !isCancelled && (
+                      {!isCheckedIn && !isBooked && !isNoShow && !isCancelled && (
                         <span className="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                           {item.status}
                         </span>

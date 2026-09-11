@@ -31,7 +31,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
-import { ArrowLeft, CheckCircle2, Ban, Pill, Stethoscope } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Ban } from "lucide-react";
 import toast from "react-hot-toast";
 
 export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
@@ -94,7 +94,7 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
   const qrUrl = `https://api.vietqr.io/image/970436-123456789-9z73xT0.jpg?amount=${data.totalAmount}&addInfo=TT%20HOA%20DON%20${data.id.substring(0,8)}&accountName=PHONG%20KHAM%20ADSUS`;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="mx-auto w-[90%] max-w-[90%] py-8 space-y-6">
       <Button variant="ghost" onClick={() => router.push("/invoices")} className="mb-4">
         <ArrowLeft className="mr-2 h-4 w-4" /> Quay lại danh sách
       </Button>
@@ -134,14 +134,14 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
           <Card className="border-2">
             <CardHeader>
               <CardTitle className="font-bold">Thông tin bệnh nhân</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground font-bold">Tên bệnh nhân:</span>
                   <p className="font-bold text-base">{data.caseName}</p>
@@ -163,7 +163,7 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
                   </div>
                 )}
                 {data.cancelledReason && (
-                  <div className="col-span-2">
+                  <div className="col-span-2 md:col-span-4">
                     <span className="text-muted-foreground font-bold">Lý do hủy:</span>
                     <p className="font-bold text-destructive">{data.cancelledReason}</p>
                   </div>
@@ -193,13 +193,11 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
                       <TableCell className="font-bold">{item.description}</TableCell>
                       <TableCell>
                         {item.itemType === "SERVICE" ? (
-                          <Badge variant="soft-primary" className="inline-flex items-center gap-1 font-semibold">
-                            <Stethoscope className="size-3" />
+                          <Badge variant="soft-primary" className="font-semibold">
                             Dịch vụ
                           </Badge>
                         ) : (
-                          <Badge variant="soft-success" className="inline-flex items-center gap-1 font-semibold">
-                            <Pill className="size-3" />
+                          <Badge variant="soft-success" className="font-semibold">
                             Thuốc
                           </Badge>
                         )}
