@@ -192,7 +192,7 @@ export class KpiCalculator {
 
 export class StarRatingCalculator {
   public static normalizeRating(rawRating: number): number {
-    if (isNaN(rawRating)) return 1;
+    if (Number.isNaN(rawRating)) return 1;
     const rounded = Math.round(rawRating);
     return Math.min(5, Math.max(1, rounded));
   }

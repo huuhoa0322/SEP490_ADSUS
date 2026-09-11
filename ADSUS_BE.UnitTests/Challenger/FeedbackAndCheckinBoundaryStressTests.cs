@@ -35,7 +35,7 @@ namespace ADSUS_BE.UnitTests.Challenger;
 /// </summary>
 public class FeedbackAndCheckinBoundaryStressTests
 {
-    private AppDbContext CreateDbContext()
+    private static AppDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(databaseName: $"BoundaryStress_{Guid.NewGuid()}")
@@ -43,7 +43,7 @@ public class FeedbackAndCheckinBoundaryStressTests
         return new AppDbContext(options);
     }
 
-    private AppointmentService CreateAppointmentService(AppDbContext db)
+    private static AppointmentService CreateAppointmentService(AppDbContext db)
     {
         var apptRepo = new Mock<IAppointmentRepository>();
         var slotRepo = new Mock<IScheduleSlotRepository>();

@@ -307,8 +307,7 @@ public class AppointmentCheckinStressTests : IDisposable
             today, today, search: null, status: null, page: 1, pageSize: 15, ct: TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
-        Assert.Single(result.Items);
-        var item = result.Items[0];
+        var item = Assert.Single(result.Items);
         Assert.Equal("Patient NullField", item.PatientFullName);
         Assert.Equal("0900000099", item.PatientPhone);
         Assert.Equal("Dr. NullField", item.DoctorName);

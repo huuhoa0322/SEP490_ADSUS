@@ -820,8 +820,8 @@ public class EdgeAndResilienceTests
         // Assert - Invoice total adjusted downwards
         var updatedInvoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == invoiceId, TestContext.Current.CancellationToken);
         Assert.Equal(100000, updatedInvoice.TotalAmount);
-        Assert.Single(updatedInvoice.InvoiceItems);
-        Assert.Equal(s1.Name, updatedInvoice.InvoiceItems.First().Description);
+        var remainingItem = Assert.Single(updatedInvoice.InvoiceItems);
+        Assert.Equal(s1.Name, remainingItem.Description);
     }
 
     [Fact]

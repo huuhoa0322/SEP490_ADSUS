@@ -196,10 +196,10 @@ public class InvoiceServiceClinicServiceTests
         var medicineItems = items.Where(i => i.ItemType == InvoiceItemType.Medicine).ToList();
 
         Assert.Equal(2, serviceItems.Count);
-        Assert.Single(medicineItems);
+        var medicineItem = Assert.Single(medicineItems);
         Assert.Contains(serviceItems, s => s.ReferenceId == cs1.Id && s.UnitPrice == 100000);
         Assert.Contains(serviceItems, s => s.ReferenceId == cs2.Id && s.UnitPrice == 200000);
-        Assert.Equal(pItem.PrescriptionItemId, medicineItems.First().ReferenceId);
+        Assert.Equal(pItem.PrescriptionItemId, medicineItem.ReferenceId);
     }
 
     [Fact]

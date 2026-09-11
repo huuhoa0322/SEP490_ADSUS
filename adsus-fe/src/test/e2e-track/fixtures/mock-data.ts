@@ -34,14 +34,16 @@ export function generateCheckinItem(
 
 export function generateCheckinQueue(
   count: number,
-  statusDist: Record<AppointmentStatus, number> = { BOOKED: count, APPROVED: 0, COMPLETED: 0, CANCELLED: 0 }
+  statusDist?: Record<AppointmentStatus, number>
 ): CheckinQueueItemResponse[] {
+  const resolvedStatusDist =
+    statusDist ?? { BOOKED: count, APPROVED: 0, COMPLETED: 0, CANCELLED: 0 };
   const items: CheckinQueueItemResponse[] = [];
   const statuses: AppointmentStatus[] = ["BOOKED", "APPROVED", "COMPLETED", "CANCELLED"];
 
   let generated = 0;
   for (const status of statuses) {
-    const quota = statusDist[status] ?? 0;
+    const quota = resolvedStatusDist[status] ?? 0;
     for (let i = 0; i < quota && generated < count; i++) {
       items.push(
         generateCheckinItem({
