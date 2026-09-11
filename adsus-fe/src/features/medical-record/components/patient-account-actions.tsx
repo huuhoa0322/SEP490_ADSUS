@@ -28,7 +28,7 @@ interface Props {
  * là ngoại lệ đầu tiên trong bộ quyền vốn giống hệt nhau giữa Bác sĩ và Điều dưỡng, nên gom
  * luật vào đúng một chỗ để không sót.
  *
- * Lưu ý: đây chỉ là lớp trải nghiệm. Chặn thật nằm ở [Authorize(Roles="NURSE")] phía backend.
+ * Lưu ý: đây chỉ là lớp trải nghiệm. Chặn thật nằm ở [Authorize(Roles="STAFF")] phía backend.
  *
  * AF-03 (cấp lại mật khẩu) sửa lại 06/08/2026, mở rộng lần 2 (sau Task C11-ext, sau Task
  * C10-ext đổi luồng tạo tài khoản #28): không còn phân biệt có/không có email nữa — LUÔN hiện
