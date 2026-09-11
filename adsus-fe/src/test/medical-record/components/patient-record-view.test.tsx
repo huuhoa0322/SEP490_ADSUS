@@ -38,7 +38,7 @@ describe("PatientRecordView", () => {
           {
             caseId: "case-1",
             visitDate: "2026-07-22",
-            status: "ANALYZED",
+            status: "IN_PROGRESS",
             doctorId: "doctor-1",
             createdAt: "2026-07-22T14:05:00Z",
           },

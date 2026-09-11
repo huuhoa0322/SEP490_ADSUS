@@ -174,10 +174,10 @@ public class NoShowCancellationJobTests : IDisposable
         var patient = CreatePatient();
         var profile = CreatePatientProfile(patient);
 
-        // Slot bắt đầu 10 phút trước (vẫn trong grace time 15 phút)
-        var now = DateTime.UtcNow;
-        var slotDate = DateOnly.FromDateTime(now.AddMinutes(-10));
-        var startTime = TimeOnly.FromDateTime(now.AddMinutes(-10));
+        // Slot bắt đầu 10 phút trước theo giờ phòng khám (vẫn trong grace time 15 phút)
+        var clinicNow = DateTime.UtcNow.Add(ClinicClock.Offset);
+        var slotDate = DateOnly.FromDateTime(clinicNow.AddMinutes(-10));
+        var startTime = TimeOnly.FromDateTime(clinicNow.AddMinutes(-10));
 
         var slot = CreateSlot(doctor, slotDate, startTime);
         slot.Status = SlotStatus.Booked;
@@ -234,14 +234,14 @@ public class NoShowCancellationJobTests : IDisposable
 
     #endregion
 
-    #region TC-004: Already Approved - Should NOT Cancel
+    #region TC-004: Already Completed - Should NOT Cancel
 
     /// <summary>
-    /// TC-UNIT-NoShowCancellationJob-004: Appointment đã Approved (đã checkin)
+    /// TC-UNIT-NoShowCancellationJob-004: Appointment đã Completed (đã checkin)
     /// → Không bị cancel dù đã quá thời gian
     /// </summary>
     [Fact]
-    public async Task Execute_AlreadyApproved_DoesNotCancel()
+    public async Task Execute_AlreadyCompleted_DoesNotCancel()
     {
         // Arrange
         var doctor = CreateDoctor();
@@ -254,7 +254,7 @@ public class NoShowCancellationJobTests : IDisposable
         var startTime = TimeOnly.FromDateTime(now.AddHours(-2));
 
         var slot = CreateSlot(doctor, slotDate, startTime);
-        var appointment = CreateAppointment(slot, profile, AppointmentStatus.Approved);
+        var appointment = CreateAppointment(slot, profile, AppointmentStatus.Completed);
 
         await SeedAppointmentAsync(appointment);
 
@@ -263,9 +263,9 @@ public class NoShowCancellationJobTests : IDisposable
         // Act
         await _sut.Execute(context);
 
-        // Assert - Appointment vẫn Approved
+        // Assert - Appointment vẫn Completed
         var updatedAppointment = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
-        Assert.Equal(AppointmentStatus.Approved, updatedAppointment!.Status);
+        Assert.Equal(AppointmentStatus.Completed, updatedAppointment!.Status);
     }
 
     #endregion
@@ -319,25 +319,25 @@ public class NoShowCancellationJobTests : IDisposable
         var patient = CreatePatient();
         var profile = CreatePatientProfile(patient);
 
-        var now = DateTime.UtcNow;
+        var clinicNow = DateTime.UtcNow.Add(ClinicClock.Offset);
 
         // Appointment 1: Quá ngưỡng, đang Booked → Sẽ bị cancel
-        var slot1Date = DateOnly.FromDateTime(now.AddHours(-2));
-        var slot1Time = TimeOnly.FromDateTime(now.AddHours(-2));
+        var slot1Date = DateOnly.FromDateTime(clinicNow.AddHours(-2));
+        var slot1Time = TimeOnly.FromDateTime(clinicNow.AddHours(-2));
         var slot1 = CreateSlot(doctor, slot1Date, slot1Time);
         var appointment1 = CreateAppointment(slot1, profile, AppointmentStatus.Booked);
 
         // Appointment 2: Trong ngưỡng, đang Booked → Không cancel
-        var slot2Date = DateOnly.FromDateTime(now.AddMinutes(-10));
-        var slot2Time = TimeOnly.FromDateTime(now.AddMinutes(-10));
+        var slot2Date = DateOnly.FromDateTime(clinicNow.AddMinutes(-10));
+        var slot2Time = TimeOnly.FromDateTime(clinicNow.AddMinutes(-10));
         var slot2 = CreateSlot(doctor, slot2Date, slot2Time);
         var appointment2 = CreateAppointment(slot2, profile, AppointmentStatus.Booked);
 
-        // Appointment 3: Quá ngưỡng, đã Approved → Không cancel
-        var slot3Date = DateOnly.FromDateTime(now.AddHours(-2));
-        var slot3Time = TimeOnly.FromDateTime(now.AddHours(-2));
+        // Appointment 3: Quá ngưỡng, đã Completed → Không cancel
+        var slot3Date = DateOnly.FromDateTime(clinicNow.AddHours(-2));
+        var slot3Time = TimeOnly.FromDateTime(clinicNow.AddHours(-2));
         var slot3 = CreateSlot(doctor, slot3Date, slot3Time);
-        var appointment3 = CreateAppointment(slot3, profile, AppointmentStatus.Approved);
+        var appointment3 = CreateAppointment(slot3, profile, AppointmentStatus.Completed);
 
         _db.Appointments.AddRange(appointment1, appointment2, appointment3);
         await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -354,7 +354,7 @@ public class NoShowCancellationJobTests : IDisposable
 
         Assert.Equal(AppointmentStatus.NoShow, ap1!.Status); // Đã bị no-show
         Assert.Equal(AppointmentStatus.Booked, ap2!.Status);   // Vẫn Booked
-        Assert.Equal(AppointmentStatus.Approved, ap3!.Status); // Vẫn Approved
+        Assert.Equal(AppointmentStatus.Completed, ap3!.Status); // Vẫn Completed
     }
 
     #endregion

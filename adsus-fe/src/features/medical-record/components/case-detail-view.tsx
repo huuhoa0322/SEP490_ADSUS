@@ -102,7 +102,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const report = useExportCaseReport(caseId);
 
   // Module 9 — Invoice summary card: chỉ hiện cho Nurse, bất kể status ca.
-  const isNurse = currentUser?.role === "NURSE";
+  const isNurse = currentUser?.role === "STAFF";
   const { data: caseInvoices } = useCaseInvoices(isNurse ? caseId : undefined);
 
   const [isEndCaseModalOpen, setIsEndCaseModalOpen] = useState(false);

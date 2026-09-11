@@ -33,7 +33,7 @@ public class AdminOnlyAccessTests
 
     [Theory]
     [InlineData(UserRole.Doctor)]
-    [InlineData(UserRole.Nurse)]
+    [InlineData(UserRole.Staff)]
     [InlineData(UserRole.Patient)]
     public async Task NonAdminRole_IsForbidden(UserRole role)
     {
@@ -58,7 +58,7 @@ public class AdminOnlyAccessTests
 
     [Theory]
     [InlineData(UserRole.Doctor)]
-    [InlineData(UserRole.Nurse)]
+    [InlineData(UserRole.Staff)]
     public async Task NonAdminRole_CannotCreateAccount(UserRole role)
     {
         using var app = CreateApp();

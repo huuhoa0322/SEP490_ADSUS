@@ -166,7 +166,7 @@ public class ScheduleSlotsControllerIntegrationTests
     {
         // Arrange - Nurse does NOT have DOCTOR role
         using var app = CreateApp();
-        var client = CreateNurseClient(app);
+        var client = CreateStaffClient(app);
         var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
 
         var request = new CreateScheduleSlotRequest
@@ -685,7 +685,7 @@ public class ScheduleSlotsControllerIntegrationTests
         return client;
     }
 
-    private HttpClient CreateNurseClient(WebApplicationFactory<Program> app)
+    private HttpClient CreateStaffClient(WebApplicationFactory<Program> app)
     {
         var nurseId = Guid.NewGuid();
         var nurse = new User
@@ -694,7 +694,7 @@ public class ScheduleSlotsControllerIntegrationTests
             Phone = "0900000003",
             FullName = "Nurse Test",
             PasswordHash = "hash",
-            Role = UserRole.Nurse,
+            Role = UserRole.Staff,
             Status = UserStatus.Active,
         };
 

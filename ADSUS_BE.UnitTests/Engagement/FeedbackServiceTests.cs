@@ -82,6 +82,100 @@ public class FeedbackServiceTests
         Assert.Equal("Nguyen Van A", feedback.PatientName);
     }
 
+    [Fact]
+    public async Task GetPagedAsync_ReturnsPagedResultWithEnrichedFields()
+    {
+        var doctor = new User
+        {
+            UserId = Guid.NewGuid(),
+            FullName = "Dr. House",
+            Phone = "0909999999",
+            PasswordHash = "x",
+            Role = UserRole.Doctor,
+        };
+
+        var patient = new User
+        {
+            UserId = Guid.NewGuid(),
+            FullName = "John Doe",
+            Phone = "0901234567",
+            PasswordHash = "x",
+            Role = UserRole.Patient,
+        };
+
+        var patientProfile = new PatientProfile
+        {
+            PatientProfileId = Guid.NewGuid(),
+            UserId = patient.UserId,
+            User = patient,
+        };
+
+        var caseEntity = new Case
+        {
+            CaseId = Guid.NewGuid(),
+            DoctorId = doctor.UserId,
+            Doctor = doctor,
+            PatientProfileId = patientProfile.PatientProfileId,
+        };
+
+        var feedback = new ServiceFeedback
+        {
+            FeedbackId = Guid.NewGuid(),
+            CaseId = caseEntity.CaseId,
+            Case = caseEntity,
+            PatientProfileId = patientProfile.PatientProfileId,
+            PatientProfile = patientProfile,
+            Rating = 5,
+            Content = "Dịch vụ xuất sắc",
+            SubmittedAt = DateTime.UtcNow,
+        };
+
+        var repo = new Mock<IFeedbackRepository>();
+        repo.Setup(r => r.GetPagedAsync(
+            "John", 5, 1, 15, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new[] { feedback }, 1));
+
+        var sut = new FeedbackService(repo.Object);
+
+        var result = await sut.GetPagedAsync("John", 5, 1, 15, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, result.TotalItems);
+        Assert.Equal(1, result.Page);
+        Assert.Equal(15, result.PageSize);
+        Assert.Equal(1, result.TotalPages);
+
+        var item = Assert.Single(result.Items);
+        Assert.Equal(feedback.FeedbackId, item.Id);
+        Assert.Equal(caseEntity.CaseId, item.CaseId);
+        Assert.Equal(patientProfile.PatientProfileId, item.PatientProfileId);
+        Assert.Equal("John Doe", item.PatientName);
+        Assert.Equal("0901234567", item.PatientPhone);
+        Assert.Equal(doctor.UserId, item.DoctorId);
+        Assert.Equal("Dr. House", item.DoctorName);
+        Assert.Equal((short)5, item.Rating);
+        Assert.Equal("Dịch vụ xuất sắc", item.Content);
+    }
+
+    [Theory]
+    [InlineData(0, 0, 1, 15)]
+    [InlineData(-1, -5, 1, 15)]
+    [InlineData(1, 101, 1, 15)]
+    [InlineData(2, 20, 2, 20)]
+    public async Task GetPagedAsync_ClampsPageAndPageSize(int page, int pageSize, int expectedPage, int expectedPageSize)
+    {
+        var repo = new Mock<IFeedbackRepository>();
+        repo.Setup(r => r.GetPagedAsync(
+            It.IsAny<string?>(), It.IsAny<short?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Array.Empty<ServiceFeedback>(), 0));
+
+        var sut = new FeedbackService(repo.Object);
+
+        await sut.GetPagedAsync(null, null, page, pageSize, TestContext.Current.CancellationToken);
+
+        repo.Verify(r => r.GetPagedAsync(
+            null, null, expectedPage, expectedPageSize, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     // ==================== FT-37: Case Feedback ====================
 
     [Fact]

@@ -51,7 +51,7 @@ vi.mock("@/features/medical-record/hooks/use-patient-profile", () => ({
   usePatientProfile: (id: string) => patientProfileMock(id),
 }));
 
-function signInAs(role: "DOCTOR" | "NURSE", userId: string, fullName: string) {
+function signInAs(role: "DOCTOR" | "STAFF", userId: string, fullName: string) {
   useAuthStore.getState().signIn("access-token", "refresh-token", {
     userId,
     fullName,
@@ -126,7 +126,7 @@ describe("CreateCaseForm", () => {
   it("Điều dưỡng phải chọn bác sĩ phụ trách, mặc định để trống", () => {
     // UC-07 bước 5 — Điều dưỡng tạo ca hộ thì phải chọn đúng bác sĩ chịu trách nhiệm; điền
     // sẵn một cái tên bất kỳ là mời gọi gán nhầm.
-    signInAs("NURSE", "nurse-1", "Điều dưỡng");
+    signInAs("STAFF", "nurse-1", "Điều dưỡng");
 
     render(<CreateCaseForm patientProfileId="profile-1" />);
 
@@ -135,7 +135,7 @@ describe("CreateCaseForm", () => {
   });
 
   it("chặn lưu khi Điều dưỡng chưa chọn bác sĩ", async () => {
-    signInAs("NURSE", "nurse-1", "Điều dưỡng");
+    signInAs("STAFF", "nurse-1", "Điều dưỡng");
     const user = userEvent.setup();
 
     render(<CreateCaseForm patientProfileId="profile-1" />);
@@ -166,7 +166,7 @@ describe("CreateCaseForm", () => {
   });
 
   it("gửi đúng bác sĩ đã chọn khi Điều dưỡng lưu ca khám", async () => {
-    signInAs("NURSE", "nurse-1", "Điều dưỡng");
+    signInAs("STAFF", "nurse-1", "Điều dưỡng");
     const user = userEvent.setup();
 
     render(<CreateCaseForm patientProfileId="profile-1" />);

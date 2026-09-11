@@ -12,7 +12,7 @@ import type { AccountStatus } from "../types/user.types";
 export const ROLE_LABEL: Record<Role, string> = {
   ADMIN: "Quản trị viên",
   DOCTOR: "Bác sĩ",
-  NURSE: "Điều dưỡng",
+  STAFF: "Nhân viên",
   PATIENT: "Bệnh nhân",
   PHARMACIST: "Dược sĩ",
 };

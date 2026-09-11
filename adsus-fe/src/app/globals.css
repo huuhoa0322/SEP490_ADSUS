@@ -44,7 +44,7 @@
   --color-primary: var(--primary);
   --color-role-admin: var(--role-admin);
   --color-role-doctor: var(--role-doctor);
-  --color-role-nurse: var(--role-nurse);
+  --color-role-staff: var(--role-staff);
   --color-role-pharmacist: var(--role-pharmacist);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);

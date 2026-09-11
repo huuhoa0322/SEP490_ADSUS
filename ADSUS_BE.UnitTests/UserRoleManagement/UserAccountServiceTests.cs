@@ -443,11 +443,11 @@ public class UserAccountServiceTests
         var result = await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
         {
             FullName = "Vũ Thị Cẩm Tú",
-            Role = "NURSE",
+            Role = "STAFF",
         }, _adminId, TestContext.Current.CancellationToken);
 
         Assert.Equal(AccountOperationResult.Success, result);
-        Assert.Equal(UserRole.Nurse, user.Role);
+        Assert.Equal(UserRole.Staff, user.Role);
     }
 
     [Fact]
@@ -519,7 +519,7 @@ public class UserAccountServiceTests
 
     [Theory]
     [InlineData("DOCTOR")]
-    [InlineData("NURSE")]
+    [InlineData("STAFF")]
     [InlineData("PATIENT")]
     public async Task UpdateAsync_CannotDemoteAdminRole(string vaiTroMoi)
     {
@@ -622,13 +622,13 @@ public class UserAccountServiceTests
         await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
         {
             FullName = "Vũ Thị Cẩm Tú",
-            Role = "NURSE",
+            Role = "STAFF",
         }, _adminId, TestContext.Current.CancellationToken);
 
         var log = Assert.Single(_audited);
         Assert.Equal("UPDATE_ACCOUNT", log.Action);
         Assert.Contains("DOCTOR", log.Detail);
-        Assert.Contains("NURSE", log.Detail);
+        Assert.Contains("STAFF", log.Detail);
     }
 
     [Fact]

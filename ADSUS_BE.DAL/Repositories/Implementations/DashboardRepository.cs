@@ -37,7 +37,7 @@ public class DashboardRepository : IDashboardRepository
             Total: groups.Sum(g => g.Count),
             AdminCount: ByRole(UserRole.Admin),
             DoctorCount: ByRole(UserRole.Doctor),
-            NurseCount: ByRole(UserRole.Nurse),
+            NurseCount: ByRole(UserRole.Staff),
             PatientCount: ByRole(UserRole.Patient),
             ActiveCount: ByStatus(UserStatus.Active),
             DeactivatedCount: ByStatus(UserStatus.Deactivated));

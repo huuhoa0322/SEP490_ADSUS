@@ -1,3 +1,4 @@
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 using ADSUS_BE.DAL.Repositories.Interfaces;
@@ -41,4 +42,38 @@ public class AuditLogService : IAuditLogService
             })
             .ToList();
     }
+
+    public async Task<ADSUS_BE.BLL.Common.PagedResult<AuditLogResponse>> GetPagedAsync(
+        string? keyword,
+        string? action,
+        string? actorRole,
+        DateTime? fromDate,
+        DateTime? toDate,
+        int page = 1,
+        int pageSize = 15,
+        CancellationToken cancellationToken = default)
+    {
+        var effectivePage = page < 1 ? 1 : page;
+        var effectivePageSize = pageSize is < 1 or > MaxLimit ? 15 : pageSize;
+
+        var (entries, totalCount) = await _auditLogs.GetPagedAsync(
+            keyword, action, actorRole, fromDate, toDate, effectivePage, effectivePageSize, cancellationToken);
+
+        var dtos = entries
+            .Select(e => new AuditLogResponse
+            {
+                LogId = e.LogId,
+                ActorId = e.ActorId,
+                ActorName = e.ActorName,
+                ActorRole = e.ActorRole,
+                Action = e.Action,
+                Detail = e.Detail,
+                PerformedAt = e.PerformedAt,
+            })
+            .ToList();
+
+        var totalPages = effectivePageSize > 0 ? (int)Math.Ceiling((double)totalCount / effectivePageSize) : 0;
+        return new ADSUS_BE.BLL.Common.PagedResult<AuditLogResponse>(dtos, effectivePage, effectivePageSize, totalCount, totalPages);
+    }
 }
+

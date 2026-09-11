@@ -20,9 +20,9 @@ export interface PagedResult<T> {
 }
 
 export type Gender = "FEMALE" | "MALE" | "OTHER";
-export type CaseStatus = "CREATED" | "END" | "CONFIRMED" | "BOOKED" | "IN_PROGRESS" | "CANCELLED";
+export type CaseStatus = "END" | "CONFIRMED" | "BOOKED" | "IN_PROGRESS" | "CANCELLED";
 
-/** Bộ lọc của #26. "Pending" gộp cả CREATED lẫn ANALYZED. */
+/** Bộ lọc của #26. "Pending" gộp ca có LatestCase.Status là IN_PROGRESS hoặc END (chưa Confirmed). */
 export type VisitStatusFilter = "All" | "Pending" | "Confirmed";
 
 /** Một dòng danh sách bệnh nhân (#26, SCR-09). */

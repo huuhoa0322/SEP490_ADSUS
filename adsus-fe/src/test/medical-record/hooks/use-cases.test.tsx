@@ -29,7 +29,7 @@ const fakeCase = {
   doctorName: "BS. Lê Minh Hoàng",
   visitDate: "2026-08-01",
   clinicalInfo: "Đau tức vú trái",
-  status: "CREATED",
+  status: "IN_PROGRESS",
   finalDiagnosis: null,
   doctorConclusion: null,
   patientProfile: null,

@@ -26,10 +26,10 @@ vi.mock("@/features/medical-record/components/patient-profile-form", () => ({
   ),
 }));
 
-function signInAs(role: "DOCTOR" | "NURSE") {
+function signInAs(role: "DOCTOR" | "STAFF") {
   useAuthStore.getState().signIn("access-token", "refresh-token", {
     userId: "user-1",
-    fullName: role === "NURSE" ? "ĐD. Võ Thị Thu Hà" : "BS. Nguyễn Văn An",
+    fullName: role === "STAFF" ? "ĐD. Võ Thị Thu Hà" : "BS. Nguyễn Văn An",
     email: null,
     role,
     mustChangePassword: false,
@@ -53,7 +53,7 @@ describe("NewPatientFlow", () => {
   });
 
   it("luồng A: đang tải danh sách tài khoản", () => {
-    signInAs("NURSE");
+    signInAs("STAFF");
     listMock.mockReturnValue({ isLoading: true, isError: false, data: undefined, error: null });
 
     render(<NewPatientFlow patientUserId="user-10" />);
@@ -62,7 +62,7 @@ describe("NewPatientFlow", () => {
   });
 
   it("luồng A: lỗi tải danh sách tài khoản", () => {
-    signInAs("NURSE");
+    signInAs("STAFF");
     listMock.mockReturnValue({
       isLoading: false,
       isError: true,
@@ -76,7 +76,7 @@ describe("NewPatientFlow", () => {
   });
 
   it("luồng A: tài khoản đã có hồ sơ nền từ trước (tab khác vừa tạo) → hiện fallback và điều hướng về danh sách", async () => {
-    signInAs("NURSE");
+    signInAs("STAFF");
     listMock.mockReturnValue({
       isLoading: false,
       isError: false,
@@ -93,7 +93,7 @@ describe("NewPatientFlow", () => {
   });
 
   it("luồng A: tìm thấy tài khoản → render PatientProfileForm với đúng patientUserId", () => {
-    signInAs("NURSE");
+    signInAs("STAFF");
     listMock.mockReturnValue({
       isLoading: false,
       isError: false,
@@ -117,7 +117,7 @@ describe("NewPatientFlow", () => {
   });
 
   it("luồng B: Điều dưỡng thấy form tạo tài khoản mới", () => {
-    signInAs("NURSE");
+    signInAs("STAFF");
     listMock.mockReturnValue({ isLoading: false, isError: false, data: undefined, error: null });
 
     render(<NewPatientFlow />);

@@ -76,7 +76,7 @@ public class PharmacistAuthorizationTests : IClassFixture<WebApplicationFactory<
     public async Task NursePatient_CannotAccess_MedicineAdminEndpoints(string url)
     {
         // Arrange
-        var nurseClient = TestAuthHelper.CreateNurseClient(_factory, _users);
+        var nurseClient = TestAuthHelper.CreateStaffClient(_factory, _users);
         var patientClient = TestAuthHelper.CreatePatientClient(_factory, _users);
 
         // Act & Assert

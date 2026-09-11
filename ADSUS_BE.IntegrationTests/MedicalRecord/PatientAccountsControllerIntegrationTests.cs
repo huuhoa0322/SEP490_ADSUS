@@ -25,7 +25,7 @@ public class PatientAccountsControllerIntegrationTests
     private readonly Mock<IPatientAccountService> _accounts = new();
     private readonly Mock<IUserRepository> _users = new();
 
-    private readonly User _nurse = MakeUser(UserRole.Nurse, "ĐD. Võ Thị Thu Hà");
+    private readonly User _nurse = MakeUser(UserRole.Staff, "ĐD. Võ Thị Thu Hà");
     private readonly User _doctor = MakeUser(UserRole.Doctor, "BS. Lê Minh Hoàng");
 
     private static User MakeUser(UserRole role, string fullName) => new()

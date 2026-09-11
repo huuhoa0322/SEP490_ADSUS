@@ -34,6 +34,7 @@ public class PatientProfilesControllerIntegrationTests
         UserId = Guid.NewGuid(), FullName = "Nguyễn Thị Hoa", Phone = "0981111001",
         PasswordHash = "x", Role = UserRole.Patient, Status = UserStatus.Active,
         DateOfBirth = new DateOnly(1992, 5, 14),
+        Gender = GenderType.Female,
         CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
     };
 
@@ -190,7 +191,7 @@ public class PatientProfilesControllerIntegrationTests
         var profile = new PatientProfile
         {
             PatientProfileId = Guid.NewGuid(), UserId = _patient.UserId, User = _patient,
-            Gender = GenderType.Female, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
         };
         _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);
@@ -215,7 +216,7 @@ public class PatientProfilesControllerIntegrationTests
         var profile = new PatientProfile
         {
             PatientProfileId = Guid.NewGuid(), UserId = _patient.UserId, User = _patient,
-            Gender = GenderType.Female, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
         };
         _profiles.Setup(r => r.GetForUpdateAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(profile);

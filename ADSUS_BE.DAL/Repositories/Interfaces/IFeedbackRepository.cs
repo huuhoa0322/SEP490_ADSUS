@@ -18,4 +18,12 @@ public interface IFeedbackRepository
 
     /// <summary>Lấy feedback theo case ID (FT-37 — ca khám).</summary>
     Task<ServiceFeedback?> GetByCaseIdAsync(Guid caseId, CancellationToken ct = default);
+
+    /// <summary>Lấy danh sách feedback phân trang, hỗ trợ tìm kiếm và lọc theo số sao.</summary>
+    Task<(IReadOnlyList<ServiceFeedback> Items, int TotalCount)> GetPagedAsync(
+        string? keyword,
+        short? rating,
+        int page,
+        int pageSize,
+        CancellationToken ct = default);
 }

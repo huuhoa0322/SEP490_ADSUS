@@ -26,7 +26,6 @@ public static class EnumExtensions
         CaseStatus.Confirmed => "CONFIRMED",
         CaseStatus.End => "END",
         CaseStatus.Cancelled => "CANCELLED",
-        CaseStatus.Created => "CREATED",
         _ => throw new ArgumentOutOfRangeException(nameof(status)),
     };
 

@@ -1,12 +1,12 @@
 import 'dart:convert';
 
 /// Vai trò tài khoản. Khớp với enum user_role trong database.
-enum UserRole { admin, doctor, nurse, patient, unknown }
+enum UserRole { admin, doctor, staff, patient, unknown }
 
 UserRole userRoleFromApi(String? value) => switch (value?.toUpperCase()) {
       'ADMIN' => UserRole.admin,
       'DOCTOR' => UserRole.doctor,
-      'NURSE' => UserRole.nurse,
+      'STAFF' => UserRole.staff,
       'PATIENT' => UserRole.patient,
       _ => UserRole.unknown,
     };

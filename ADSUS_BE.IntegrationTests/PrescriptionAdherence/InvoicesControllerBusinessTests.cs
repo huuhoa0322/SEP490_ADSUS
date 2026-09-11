@@ -48,7 +48,7 @@ public class InvoicesControllerBusinessTests
     public async Task GetInvoiceDetail_NotFound_Returns422WithMessage()
     {
         using var app = CreateApp();
-        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Nurse);
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Staff);
 
         var nonExistentId = Guid.NewGuid();
         _invoiceService
@@ -71,7 +71,7 @@ public class InvoicesControllerBusinessTests
     public async Task PayAndDispense_InvoiceNotFound_Returns422WithMessage()
     {
         using var app = CreateApp();
-        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Nurse);
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Staff);
 
         var nonExistentId = Guid.NewGuid();
         _invoiceService
@@ -94,7 +94,7 @@ public class InvoicesControllerBusinessTests
     public async Task PayAndDispense_AlreadyPaid_Returns422WithMessage()
     {
         using var app = CreateApp();
-        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Nurse);
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Staff);
 
         var invoiceId = Guid.NewGuid();
         _invoiceService
@@ -117,7 +117,7 @@ public class InvoicesControllerBusinessTests
     public async Task PayAndDispense_InvalidPaymentMethod_Returns400()
     {
         using var app = CreateApp();
-        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Nurse);
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Staff);
 
         var invoiceId = Guid.NewGuid();
 
@@ -142,7 +142,7 @@ public class InvoicesControllerBusinessTests
     public async Task GenerateInvoice_NoPrescription_Returns422WithMessage()
     {
         using var app = CreateApp();
-        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Nurse);
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Staff);
 
         var caseId = Guid.NewGuid();
         _invoiceService
@@ -210,7 +210,7 @@ public class InvoicesControllerBusinessTests
     public async Task CancelInvoice_Nurse_OK()
     {
         using var app = CreateApp();
-        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Nurse);
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Staff);
         var id = Guid.NewGuid();
 
         _invoiceService
@@ -230,7 +230,7 @@ public class InvoicesControllerBusinessTests
     public async Task CancelInvoice_MissingReason_ReturnsBadRequest()
     {
         using var app = CreateApp();
-        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Nurse);
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Staff);
         var id = Guid.NewGuid();
 
         var payload = new StringContent(
@@ -246,7 +246,7 @@ public class InvoicesControllerBusinessTests
     public async Task CancelInvoice_NotFound_ReturnsUnprocessableEntity()
     {
         using var app = CreateApp();
-        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Nurse);
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Staff);
         var id = Guid.NewGuid();
 
         _invoiceService

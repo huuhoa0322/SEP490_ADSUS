@@ -45,7 +45,7 @@ public class CasesControllerCheckinIntegrationTests
         FullName = "Nurse Test",
         Phone = "0900000003",
         PasswordHash = "hash",
-        Role = UserRole.Nurse,
+        Role = UserRole.Staff,
         Status = UserStatus.Active,
         CreatedAt = DateTime.UtcNow,
         UpdatedAt = DateTime.UtcNow,
