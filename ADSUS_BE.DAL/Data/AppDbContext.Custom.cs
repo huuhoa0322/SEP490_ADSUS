@@ -95,5 +95,23 @@ public partial class AppDbContext
                 .HasColumnName("schedule_slots")
                 .HasColumnType("reminder_slot[]");
         });
+
+        // ---------- Module: Shift Request ----------
+        modelBuilder.HasPostgresEnum<ShiftRequestType>("public", "shift_request_type");
+        modelBuilder.HasPostgresEnum<ShiftType>("public", "shift_type");
+        modelBuilder.HasPostgresEnum<ShiftRequestStatus>("public", "shift_request_status");
+
+        modelBuilder.Entity<ShiftRequest>(entity =>
+        {
+            entity.Property(e => e.RequestType)
+                .HasColumnName("request_type");
+
+            entity.Property(e => e.ShiftType)
+                .HasColumnName("shift_type");
+
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasDefaultValue(ShiftRequestStatus.Pending);
+        });
     }
 }
