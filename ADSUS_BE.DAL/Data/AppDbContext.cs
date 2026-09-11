@@ -105,7 +105,7 @@ public partial class AppDbContext : DbContext
             .HasPostgresEnum("chat_role", new[] { "USER", "ASSISTANT" })
             .HasPostgresEnum("gender_type", new[] { "FEMALE", "MALE", "OTHER" })
             .HasPostgresEnum("health_log_type", new[] { "EXERCISE", "DIET" })
-            .HasPostgresEnum("intake_status", new[] { "PENDING", "TAKEN", "OVERTIME" })
+            .HasPostgresEnum("intake_status", new[] { "PENDING", "TAKEN", "OVERTIME", "MISSED" })
             .HasPostgresEnum("inventory_txn_type", new[] { "IMPORT", "DISPENSE", "ADJUSTMENT" })
             .HasPostgresEnum("invoice_status", new[] { "PENDING", "PAID", "CANCELLED" })
             .HasPostgresEnum("medicines_status", new[] { "ACTIVE", "INACTIVE" })

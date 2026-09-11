@@ -1,9 +1,11 @@
 /// Trạng thái 1 intake log — derive từ ConfirmedAt + ScheduledTime vs now ở backend (Opt-X).
-/// Map từ IntakeLogResponse.Status (string "PENDING" / "TAKEN" / "OVERTIME").
+/// Map từ IntakeLogResponse.Status (string "PENDING" / "TAKEN" / "OVERTIME" / "MISSED").
+/// MISSED: ScheduledTime + 2h <= now && chưa confirm. Không cho confirm lại.
 enum IntakeStatus {
   pending,
   taken,
-  overtime;
+  overtime,
+  missed;
 
   static IntakeStatus fromWire(String value) {
     switch (value.toUpperCase()) {
@@ -11,6 +13,8 @@ enum IntakeStatus {
         return IntakeStatus.taken;
       case 'OVERTIME':
         return IntakeStatus.overtime;
+      case 'MISSED':
+        return IntakeStatus.missed;
       default:
         return IntakeStatus.pending;
     }
@@ -72,4 +76,9 @@ class IntakeLog {
   bool isReady(DateTime nowUtc) =>
       !scheduledTimeUtc.isAfter(nowUtc) &&
       (status == IntakeStatus.pending || status == IntakeStatus.overtime);
+
+  /// True nếu intake log có thể được xác nhận (PENDING/OVERTIME, không phải MISSED).
+  /// MISSED là trạng thái cuối — không cho confirm.
+  bool get canConfirm =>
+      status == IntakeStatus.pending || status == IntakeStatus.overtime;
 }

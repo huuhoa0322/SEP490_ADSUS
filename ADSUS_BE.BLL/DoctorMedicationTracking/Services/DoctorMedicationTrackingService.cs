@@ -365,7 +365,9 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
     private static string DeriveStatus(MedicationIntakeLog log, DateTime nowUtc)
         => log.ConfirmedAt.HasValue
             ? AdherenceCalculator.StatusTaken
-            : (log.ScheduledTime <= nowUtc
-                ? AdherenceCalculator.StatusOvertime
-                : AdherenceCalculator.StatusPending);
+            : (log.ScheduledTime.AddHours(2) <= nowUtc
+                ? AdherenceCalculator.StatusMissed
+                : (log.ScheduledTime <= nowUtc
+                    ? AdherenceCalculator.StatusOvertime
+                    : AdherenceCalculator.StatusPending));
 }

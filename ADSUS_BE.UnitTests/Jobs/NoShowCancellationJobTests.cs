@@ -254,7 +254,7 @@ public class NoShowCancellationJobTests : IDisposable
         var startTime = TimeOnly.FromDateTime(now.AddHours(-2));
 
         var slot = CreateSlot(doctor, slotDate, startTime);
-        var appointment = CreateAppointment(slot, profile, AppointmentStatus.Approved);
+        var appointment = CreateAppointment(slot, profile, AppointmentStatus.Completed);
 
         await SeedAppointmentAsync(appointment);
 
@@ -265,7 +265,7 @@ public class NoShowCancellationJobTests : IDisposable
 
         // Assert - Appointment vẫn Approved
         var updatedAppointment = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
-        Assert.Equal(AppointmentStatus.Approved, updatedAppointment!.Status);
+        Assert.Equal(AppointmentStatus.Completed, updatedAppointment!.Status);
     }
 
     #endregion
@@ -337,7 +337,7 @@ public class NoShowCancellationJobTests : IDisposable
         var slot3Date = DateOnly.FromDateTime(now.AddHours(-2));
         var slot3Time = TimeOnly.FromDateTime(now.AddHours(-2));
         var slot3 = CreateSlot(doctor, slot3Date, slot3Time);
-        var appointment3 = CreateAppointment(slot3, profile, AppointmentStatus.Approved);
+        var appointment3 = CreateAppointment(slot3, profile, AppointmentStatus.Completed);
 
         _db.Appointments.AddRange(appointment1, appointment2, appointment3);
         await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -354,7 +354,7 @@ public class NoShowCancellationJobTests : IDisposable
 
         Assert.Equal(AppointmentStatus.NoShow, ap1!.Status); // Đã bị no-show
         Assert.Equal(AppointmentStatus.Booked, ap2!.Status);   // Vẫn Booked
-        Assert.Equal(AppointmentStatus.Approved, ap3!.Status); // Vẫn Approved
+        Assert.Equal(AppointmentStatus.Completed, ap3!.Status); // Vẫn Approved
     }
 
     #endregion

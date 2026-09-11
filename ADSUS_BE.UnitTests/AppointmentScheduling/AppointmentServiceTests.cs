@@ -817,7 +817,7 @@ public class AppointmentServiceTests : IDisposable
             Slot = slot,
             PatientProfileId = patientProfile.PatientProfileId,
             PatientProfile = patientProfile,
-            Status = AppointmentStatus.Approved,  // Nurse checked in
+            Status = AppointmentStatus.Completed,  // Nurse checked in
             Reason = "Khám theo dõi",
         };
 

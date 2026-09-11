@@ -96,12 +96,14 @@ public enum PrescriptionStatus
 
 /// <summary>
 /// Trạng thái 1 liều thuốc — enum <c>intake_status</c> trong DB (Module 5).
-/// Không có "Missed" — JOB-01 nhắc lặp lại liên tục cho tới khi bệnh nhân xác nhận Taken.
+/// MISSED chỉ là giá trị fallback khi DB trả giá trị không nhận diện được.
+/// Không bao giờ được ghi vào DB vì MISSED là derived on-read (same as OVERTIME).
 /// </summary>
 public enum IntakeStatus
 {
     [PgName("PENDING")] Pending,
     [PgName("TAKEN")] Taken,
+    [PgName("MISSED")] Missed,
 }
 
 /// <summary>

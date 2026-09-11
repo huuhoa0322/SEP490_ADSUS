@@ -143,7 +143,7 @@ public class NoShowServiceTests : IDisposable
         var patient = CreatePatient();
         var profile = CreatePatientProfile(patient);
         var slot = CreateSlot(doctor, DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-2)), TimeOnly.FromDateTime(DateTime.UtcNow.AddHours(-2)));
-        var appointment = CreateAppointment(slot, profile, AppointmentStatus.Approved);
+        var appointment = CreateAppointment(slot, profile, AppointmentStatus.Completed);
 
         await SeedAppointmentAsync(appointment);
 

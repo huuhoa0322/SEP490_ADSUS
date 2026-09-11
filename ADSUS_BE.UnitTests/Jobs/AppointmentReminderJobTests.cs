@@ -223,7 +223,7 @@ public class AppointmentReminderJobTests
 
         var slotTime = DateTime.UtcNow.AddHours(22);
         var patient = CreatePatientListRow(userId, profileId);
-        var appointment = CreateAppointment(slotId, AppointmentStatus.Approved, slotTime);
+        var appointment = CreateAppointment(slotId, AppointmentStatus.Completed, slotTime);
 
         _patientProfileRepo.Setup(r => r.SearchAsync(null, null, null, 1, int.MaxValue, It.IsAny<CancellationToken>()))
             .ReturnsAsync((new List<PatientListRow> { patient }, 1));

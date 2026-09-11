@@ -47,7 +47,8 @@ public class IntakeLogResponseMapperTests
     [Fact]
     public void FromEntity_NoConfirmedAtAndScheduledTimeInPast_ReturnsOvertime()
     {
-        var log = Log(NowUtc.AddHours(-2)); // scheduled 08:00, now is 10:00 — already late
+        // scheduled 09:00, now is 10:00 — 1 hour late, within the 2-hour OVERTIME window
+        var log = Log(NowUtc.AddHours(-1));
 
         var result = IntakeLogResponseMapper.FromEntity(log, NowUtc);
 
@@ -62,6 +63,50 @@ public class IntakeLogResponseMapperTests
         var result = IntakeLogResponseMapper.FromEntity(log, NowUtc);
 
         Assert.Equal("OVERTIME", result.Status);
+    }
+
+    [Fact]
+    public void FromEntity_ScheduledTimeMoreThanTwoHoursAgo_NoConfirmed_ReturnsMissed()
+    {
+        // scheduled 08:00, now is 10:00 — already 2 hours late → MISSED
+        var log = Log(NowUtc.AddHours(-3), null);
+
+        var result = IntakeLogResponseMapper.FromEntity(log, NowUtc);
+
+        Assert.Equal("MISSED", result.Status);
+    }
+
+    [Fact]
+    public void FromEntity_ScheduledTimeExactlyTwoHoursAgo_NoConfirmed_ReturnsMissed()
+    {
+        // exactly 2 hours late → boundary: >= 2h = MISSED
+        var log = Log(NowUtc.AddHours(-2), null);
+
+        var result = IntakeLogResponseMapper.FromEntity(log, NowUtc);
+
+        Assert.Equal("MISSED", result.Status);
+    }
+
+    [Fact]
+    public void FromEntity_ScheduledTimeJustUnderTwoHours_NoConfirmed_ReturnsOvertime()
+    {
+        // 1 hour 59 minutes late → still in the 2-hour window → OVERTIME
+        var log = Log(NowUtc.AddHours(-1).AddMinutes(-59), null);
+
+        var result = IntakeLogResponseMapper.FromEntity(log, NowUtc);
+
+        Assert.Equal("OVERTIME", result.Status);
+    }
+
+    [Fact]
+    public void FromEntity_ConfirmedBeforeTwoHours_ReturnsTaken_EvenIfPastTwoHours()
+    {
+        // confirmed at 09:00, scheduled 08:00, now 10:00 — taken before MISSED window → TAKEN
+        var log = Log(NowUtc.AddHours(-2), NowUtc.AddHours(-1));
+
+        var result = IntakeLogResponseMapper.FromEntity(log, NowUtc);
+
+        Assert.Equal("TAKEN", result.Status);
     }
 
     [Fact]
