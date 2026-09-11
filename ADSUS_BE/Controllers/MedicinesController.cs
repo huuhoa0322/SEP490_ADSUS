@@ -41,9 +41,9 @@ public class MedicinesController : ControllerBase
     [HttpGet("admin")]
     [Authorize(Roles = "ADMIN,PHARMACIST,DOCTOR")]
     [ProducesResponseType(typeof(PagedResult<MedicineResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetPagedMedicines([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool? inStock = null, CancellationToken ct = default)
+    public async Task<IActionResult> GetPagedMedicines([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = "", [FromQuery] bool? inStock = null, [FromQuery] string? status = null, CancellationToken ct = default)
     {
-        var result = await _medicineService.GetPagedAsync(page, pageSize, search, inStock, ct);
+        var result = await _medicineService.GetPagedAsync(page, pageSize, search, inStock, status, ct);
         return Ok(result);
     }
 

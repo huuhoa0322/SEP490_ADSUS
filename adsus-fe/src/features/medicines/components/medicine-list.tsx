@@ -29,12 +29,14 @@ export function MedicineList() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [inStockFilter, setInStockFilter] = useState<"all" | "in_stock" | "out_of_stock">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "ACTIVE" | "INACTIVE">("all");
   
   const { data, isLoading } = useMedicines(
     page, 
     pageSize, 
     search, 
-    inStockFilter === "all" ? undefined : inStockFilter === "in_stock"
+    inStockFilter === "all" ? undefined : inStockFilter === "in_stock",
+    statusFilter === "all" ? undefined : statusFilter
   );
   
   const { data: alertSummary } = useInventoryAlerts();
@@ -77,7 +79,7 @@ export function MedicineList() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
+    <div className="mx-auto w-[95%] max-w-[95%] py-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">Danh mục thuốc</h1>
@@ -89,9 +91,9 @@ export function MedicineList() {
           {!isDoctor && (
             <button
               onClick={() => router.push('/medicines/inventory-alerts')}
-              className="flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--status-warning)]/30 bg-[var(--status-warning)]/10 px-6 font-heading text-sm font-600 tracking-wider text-[var(--status-warning)] transition-colors hover:bg-[var(--status-warning)]/15"
+              className="flex h-12 items-center justify-center gap-2 rounded-full border-2 border-amber-500 bg-amber-50 px-6 font-heading text-sm font-bold tracking-wide text-amber-900 shadow-sm transition-all hover:bg-amber-100 hover:border-amber-600 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-600"
             >
-              <AlertTriangle className="size-4" />
+              <AlertTriangle className="size-4.5 text-amber-600 dark:text-amber-400" />
               Cảnh báo kho
             </button>
           )}
@@ -110,46 +112,46 @@ export function MedicineList() {
       {/* Tổng quan tồn kho — 4 số thật lấy từ InventoryAlertSummary, không suy diễn thêm. */}
       {!isDoctor && (
         <div className="mt-8 grid gap-4 md:grid-cols-4">
-          <div className="preclinic-card flex items-center gap-3.5 p-4">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <div className="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-xs transition-all hover:shadow-sm">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
               <Pill className="size-5" />
             </span>
             <div>
-              <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Tổng thuốc</p>
-              <p className="font-heading text-2xl font-bold text-foreground">{alertSummary?.totalMedicinesCount ?? 0}</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tổng thuốc</p>
+              <p className="font-heading text-3xl font-extrabold text-foreground">{alertSummary?.totalMedicinesCount ?? 0}</p>
             </div>
           </div>
 
-          <div className="preclinic-card flex items-center gap-3.5 p-4">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--status-good)]/12 text-[var(--status-good)]">
+          <div className="flex items-center gap-3.5 rounded-2xl border border-emerald-500/40 bg-emerald-50/20 dark:bg-emerald-950/20 p-4 shadow-xs transition-all hover:border-emerald-500 hover:shadow-sm">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm shadow-emerald-600/25">
               <PackageCheck className="size-5" />
             </span>
             <div>
-              <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Còn hàng</p>
-              <p className="font-heading text-2xl font-bold text-[var(--status-good)]">{alertSummary?.inStockCount ?? 0}</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Còn hàng</p>
+              <p className="font-heading text-3xl font-extrabold text-emerald-700 dark:text-emerald-400">{alertSummary?.inStockCount ?? 0}</p>
             </div>
           </div>
 
-          <div className="preclinic-card flex items-center gap-3.5 p-4">
-            <span className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--status-warning)]/12 text-[var(--status-warning)]">
+          <div className="flex items-center gap-3.5 rounded-2xl border-2 border-amber-500/60 bg-amber-50/40 dark:bg-amber-950/30 p-4 shadow-xs transition-all hover:border-amber-500 hover:shadow-sm">
+            <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm shadow-amber-500/25">
               {(alertSummary?.lowStockCount ?? 0) > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex size-2.5 animate-pulse rounded-full bg-[var(--status-warning)]" />
+                <span className="absolute -right-0.5 -top-0.5 flex size-2.5 animate-pulse rounded-full bg-amber-600 ring-2 ring-white dark:ring-background" />
               )}
               <AlertTriangle className="size-5" />
             </span>
             <div>
-              <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Sắp hết</p>
-              <p className="font-heading text-2xl font-bold text-[var(--status-warning)]">{alertSummary?.lowStockCount ?? 0}</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-200">Sắp hết</p>
+              <p className="font-heading text-3xl font-extrabold text-amber-600 dark:text-amber-400">{alertSummary?.lowStockCount ?? 0}</p>
             </div>
           </div>
 
-          <div className="preclinic-card flex items-center gap-3.5 p-4">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/12 text-destructive">
+          <div className="flex items-center gap-3.5 rounded-2xl border-2 border-rose-500/60 bg-rose-50/40 dark:bg-rose-950/30 p-4 shadow-xs transition-all hover:border-rose-500 hover:shadow-sm">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-rose-600 text-white shadow-sm shadow-rose-600/25">
               <PackageX className="size-5" />
             </span>
             <div>
-              <p className="text-xs font-600 uppercase tracking-wide text-muted-foreground">Hết hàng</p>
-              <p className="font-heading text-2xl font-bold text-destructive">{alertSummary?.outOfStockCount ?? 0}</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-rose-900 dark:text-rose-200">Hết hàng</p>
+              <p className="font-heading text-3xl font-extrabold text-rose-600 dark:text-rose-400">{alertSummary?.outOfStockCount ?? 0}</p>
             </div>
           </div>
         </div>
@@ -171,14 +173,26 @@ export function MedicineList() {
           />
         </div>
         <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value as "all" | "ACTIVE" | "INACTIVE");
+            setPage(1);
+          }}
+          className="h-12 rounded-full border border-border bg-background px-5 text-[15px] font-medium outline-none focus:border-[var(--success)]"
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="ACTIVE">Đang sử dụng (Active)</option>
+          <option value="INACTIVE">Ngừng sử dụng (Inactive)</option>
+        </select>
+        <select
           value={inStockFilter}
           onChange={(e) => {
             setInStockFilter(e.target.value as "all" | "in_stock" | "out_of_stock");
             setPage(1);
           }}
-          className="h-12 rounded-full border border-border bg-background px-5 text-[15px] outline-none focus:border-[var(--success)]"
+          className="h-12 rounded-full border border-border bg-background px-5 text-[15px] font-medium outline-none focus:border-[var(--success)]"
         >
-          <option value="all">Tất cả trạng thái</option>
+          <option value="all">Tất cả tồn kho</option>
           <option value="in_stock">Còn hàng</option>
           <option value="out_of_stock">Hết hàng</option>
         </select>
@@ -221,12 +235,18 @@ export function MedicineList() {
                   </td>
                   <td className="px-5 py-4">
                     {isOut ? (
-                      <span className="text-muted-foreground italic">Hết hàng</span>
+                      <span className="font-semibold text-foreground">Hết hàng</span>
                     ) : (
-                      <span className={`font-mono font-semibold ${isLow ? "text-[var(--status-warning)]" : "text-[var(--status-good)]"}`}>
-                        {medicine.totalInventoryBase.toLocaleString()} {medicine.baseUnitName || '?'}
-                        {isLow && <span className="ml-1.5 text-xs font-sans font-500">(dưới ngưỡng {medicine.lowStockThreshold})</span>}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-mono font-semibold text-foreground">
+                          {medicine.totalInventoryBase.toLocaleString()} {medicine.baseUnitName || '?'}
+                        </span>
+                        {isLow && (
+                          <span className="rounded bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.5 text-[11px] font-sans font-bold text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800">
+                            (dưới ngưỡng {medicine.lowStockThreshold})
+                          </span>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td className="px-5 py-4">

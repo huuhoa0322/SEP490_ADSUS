@@ -111,4 +111,43 @@ public partial class MedicineServiceTests
             () => _sut.ActivateMedicineAsync(id, CancellationToken.None)
         );
     }
+
+    [Fact]
+    public async Task GetPagedAsync_WithStatusAndInStockFilters_CallsRepositoryAndMapsResponses()
+    {
+        // Arrange
+        var medId = Guid.NewGuid();
+        var medicines = new List<Medicine>
+        {
+            new Medicine
+            {
+                MedicineId = medId,
+                Name = "Med A",
+                Status = MedicineStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                LowStockThreshold = 10,
+                MedicineBatches = new List<MedicineBatch>
+                {
+                    new MedicineBatch { Id = Guid.NewGuid(), QuantityBase = 50 }
+                }
+            }
+        };
+
+        _medicineRepoMock.Setup(repo => repo.GetPagedAsync(1, 10, "med", true, "ACTIVE", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((medicines, 1));
+
+        // Act
+        var result = await _sut.GetPagedAsync(1, 10, "med", true, "ACTIVE", CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(1, result.TotalItems);
+        Assert.Equal(1, result.TotalPages);
+        Assert.Single(result.Items);
+        Assert.Equal("Med A", result.Items[0].Name);
+        Assert.Equal("ACTIVE", result.Items[0].Status);
+        Assert.Equal(50, result.Items[0].TotalInventoryBase);
+
+        _medicineRepoMock.Verify(repo => repo.GetPagedAsync(1, 10, "med", true, "ACTIVE", It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

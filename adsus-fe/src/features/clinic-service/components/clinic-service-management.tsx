@@ -101,7 +101,7 @@ export function ClinicServiceManagement() {
   }, [services, searchQuery]);
 
   return (
-    <div className="container mx-auto space-y-6 p-4 sm:p-6 lg:p-8 max-w-[95%]">
+    <div className="mx-auto w-[95%] max-w-[95%] space-y-6 py-8">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -192,35 +192,38 @@ export function ClinicServiceManagement() {
           <Table>
             <TableHeader className="bg-muted/40">
               <TableRow>
-                <TableHead className="w-[140px] font-bold">Mã dịch vụ</TableHead>
-                <TableHead className="font-bold">Tên dịch vụ</TableHead>
-                <TableHead className="font-bold">Mô tả</TableHead>
-                <TableHead className="text-right font-bold w-[160px]">Đơn giá</TableHead>
-                <TableHead className="text-center font-bold w-[150px]">Trạng thái</TableHead>
-                <TableHead className="text-right font-bold w-[170px]">Thao tác</TableHead>
+                <TableHead className="w-[150px] font-bold">Mã dịch vụ</TableHead>
+                <TableHead className="min-w-[160px] max-w-[220px] font-bold">Tên dịch vụ</TableHead>
+                <TableHead className="w-[180px] max-w-[200px] font-bold">Mô tả</TableHead>
+                <TableHead className="text-right font-bold w-[130px]">Đơn giá</TableHead>
+                <TableHead className="text-center font-bold w-[160px]">Trạng thái</TableHead>
+                <TableHead className="text-right font-bold w-[190px] pr-6">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={index}>
-                    <TableCell>
+                    <TableCell className="w-[150px]">
                       <Skeleton className="h-5 w-20" />
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-40" />
+                    <TableCell className="min-w-[160px] max-w-[220px]">
+                      <Skeleton className="h-5 w-32" />
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-56" />
+                    <TableCell className="w-[180px] max-w-[200px]">
+                      <Skeleton className="h-5 w-28" />
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="h-5 w-24 ml-auto" />
+                    <TableCell className="w-[130px] text-right">
+                      <Skeleton className="h-5 w-20 ml-auto" />
                     </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-6 w-24 mx-auto rounded-full" />
+                    <TableCell className="w-[160px] text-center">
+                      <Skeleton className="h-6 w-[125px] mx-auto rounded-full" />
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="h-8 w-20 ml-auto" />
+                    <TableCell className="w-[190px] text-right pr-6">
+                      <div className="flex items-center justify-end gap-2">
+                        <Skeleton className="h-8 w-[68px]" />
+                        <Skeleton className="h-8 w-[92px]" />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -239,31 +242,37 @@ export function ClinicServiceManagement() {
               ) : (
                 filteredServices.map((service) => (
                   <TableRow key={service.id} className="hover:bg-muted/30">
-                    <TableCell className="font-mono font-bold text-xs text-foreground">
+                    <TableCell className="w-[150px] font-mono font-bold text-xs text-foreground truncate" title={service.code}>
                       {service.code}
                     </TableCell>
-                    <TableCell className="font-semibold text-foreground">
-                      {service.name}
+                    <TableCell className="min-w-[160px] max-w-[220px] font-semibold text-foreground">
+                      <div className="truncate" title={service.name}>
+                        {service.name}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-md truncate">
-                      {service.description || "—"}
+                    <TableCell className="w-[180px] max-w-[200px] text-sm text-muted-foreground">
+                      <div className="max-w-[200px] truncate" title={service.description || "—"}>
+                        {service.description || "—"}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-right font-bold text-primary">
+                    <TableCell className="w-[130px] text-right font-bold text-primary font-mono">
                       {formatCurrency(service.price)}
                     </TableCell>
-                    <TableCell className="text-center">
-                      {service.isActive ? (
-                        <Badge variant="soft-success" className="font-semibold">
-                          Hoạt động
-                        </Badge>
-                      ) : (
-                        <Badge variant="soft-danger" className="font-semibold">
-                          Ngưng hoạt động
-                        </Badge>
-                      )}
+                    <TableCell className="w-[160px] text-center">
+                      <div className="flex justify-center">
+                        {service.isActive ? (
+                          <Badge variant="soft-success" className="w-[125px] justify-center font-semibold text-center">
+                            Hoạt động
+                          </Badge>
+                        ) : (
+                          <Badge variant="soft-danger" className="w-[125px] justify-center font-semibold text-center">
+                            Ngưng hoạt động
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                    <TableCell className="w-[190px] text-right pr-6">
+                      <div className="flex items-center justify-end gap-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -271,7 +280,7 @@ export function ClinicServiceManagement() {
                             setEditingService(service);
                             setIsModalOpen(true);
                           }}
-                          className="h-8 gap-1 text-xs font-semibold"
+                          className="h-8 w-[68px] justify-center gap-1 text-xs font-semibold"
                         >
                           <Edit2 className="size-3.5" />
                           Sửa
@@ -283,7 +292,7 @@ export function ClinicServiceManagement() {
                             variant="ghost"
                             size="sm"
                             onClick={() => setDeactivateService(service)}
-                            className="h-8 gap-1 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            className="h-8 w-[92px] justify-center gap-1 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
                           >
                             <PowerOff className="size-3.5" />
                             Ngưng
@@ -294,7 +303,7 @@ export function ClinicServiceManagement() {
                             size="sm"
                             onClick={() => handleReactivate(service)}
                             disabled={updateMutation.isPending}
-                            className="h-8 gap-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                            className="h-8 w-[92px] justify-center gap-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
                           >
                             <RefreshCw className="size-3.5" />
                             Kích hoạt
