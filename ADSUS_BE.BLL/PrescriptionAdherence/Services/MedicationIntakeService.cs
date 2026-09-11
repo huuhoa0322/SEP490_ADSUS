@@ -101,6 +101,11 @@ public sealed class MedicationIntakeService : IMedicationIntakeService
             throw new BusinessException(
                 "Chưa đến giờ uống thuốc. Không thể xác nhận sớm hơn giờ đã hẹn.");
 
+        // MISSED: đã quá 2 tiếng từ giờ uống, không cho confirm (GB-01 — trạng thái cuối)
+        if (log.ScheduledTime.AddHours(2) <= now)
+            throw new BusinessException(
+                "Liều thuốc đã quá 2 tiếng và không thể xác nhận sau thời điểm này.");
+
         await _intakeLogRepo.ConfirmTakenAsync(intakeId, now, ct);
 
         // Gửi notification xác nhận đã uống thuốc

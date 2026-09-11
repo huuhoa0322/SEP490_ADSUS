@@ -21,22 +21,26 @@ public static class IntakeLogResponseMapper
 {
     /// <summary>
     /// Derive status từ ConfirmedAt + ScheduledTime vs nowUtc.
-    /// - ConfirmedAt has value  → TAKEN
-    /// - ScheduledTime <= now   → OVERTIME (quá giờ, chưa xác nhận)
-    /// - ScheduledTime > now   → PENDING (chưa đến giờ)
+    /// Thứ tự kiểm tra: TAKEN → MISSED → OVERTIME → PENDING (từ cuối chuỗi ngược lại).
     /// </summary>
     public static IntakeLogResponse FromEntity(MedicationIntakeLog log, DateTime nowUtc)
-        => new(
+    {
+        var status = log.ConfirmedAt.HasValue
+            ? AdherenceCalculator.StatusTaken
+            : (log.ScheduledTime.AddHours(2) <= nowUtc
+                ? AdherenceCalculator.StatusMissed
+                : (log.ScheduledTime <= nowUtc
+                    ? AdherenceCalculator.StatusOvertime
+                    : AdherenceCalculator.StatusPending));
+
+        return new IntakeLogResponse(
             log.IntakeId,
             log.PrescriptionItemId,
             log.ScheduledTime,
             log.ConfirmedAt,
-            log.ConfirmedAt.HasValue
-                ? AdherenceCalculator.StatusTaken
-                : (log.ScheduledTime <= nowUtc
-                    ? AdherenceCalculator.StatusOvertime
-                    : AdherenceCalculator.StatusPending),
+            status,
             log.PrescriptionItem?.Medicine?.Name ?? string.Empty,
             log.PrescriptionItem?.Dosage ?? string.Empty,
             log.PrescriptionItem?.Instructions);
+    }
 }
