@@ -1,15 +1,16 @@
-import 'package:add_2_calendar/add_2_calendar.dart';
+import 'package:device_calendar/device_calendar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 
 import '../../domain/entities/appointment.dart';
 import '../../domain/services/calendar_sync_service.dart';
 
-/// Triển khai [CalendarSyncService] — dùng plugin `add_2_calendar`.
+/// Triển khai [CalendarSyncService] — dùng plugin `device_calendar`.
 ///
 /// Gọi OS-level Calendar API để thêm event vào Calendar mặc định hoặc bất kỳ
 /// calendar app nào user chọn trên thiết bị (Google Calendar, Samsung Calendar,
-/// Outlook, v.v.). OS hiện dialog chọn app và tự xử lý quyền — không cần
-/// runtime permission từ phía app.
+/// Outlook, v.v.).
 ///
 /// Tạo 3 events:
 /// 1. Event chính: thông tin lịch khám đầy đủ
@@ -21,6 +22,15 @@ class CalendarSyncServiceImpl implements CalendarSyncService {
   final SharedPreferences _prefs;
   static const _prefix = 'synced_';
 
+  static bool _initialized = false;
+
+  static void _ensureInitialized() {
+    if (!_initialized) {
+      tz_data.initializeTimeZones();
+      _initialized = true;
+    }
+  }
+
   @override
   Future<bool> addAppointmentToCalendar(Appointment appointment) async {
     if (appointment.slotDate == null || appointment.startTime == null) {
@@ -29,6 +39,8 @@ class CalendarSyncServiceImpl implements CalendarSyncService {
         'Vui lòng mở chi tiết cuộc hẹn trước.',
       );
     }
+
+    _ensureInitialized();
 
     final startDateTime = _buildDateTime(
       appointment.slotDate!,
@@ -42,61 +54,61 @@ class CalendarSyncServiceImpl implements CalendarSyncService {
         ? 'BS. ${appointment.doctorName}'
         : 'Bác sĩ';
 
-    // 1. Event chính - thông tin lịch khám đầy đủ
-    final mainEvent = Event(
-      title: 'Lịch khám ADSUS: $doctorTitle',
-      description: _buildDescription(appointment),
-      location: 'Phòng khám ADSUS',
-      startDate: startDateTime,
-      endDate: endDateTime,
-      allDay: false,
-    );
-
-    // 2. Reminder 24h trước giờ khám
-    final reminder24hTime = startDateTime.subtract(const Duration(hours: 24));
-    final reminder24h = Event(
-      title: '🔔 NHẮC LỊCH: 24h nữa khám $doctorTitle',
-      description: 'Nhắc lịch khám ADSUS vào lúc ${_formatDateTime(startDateTime)}',
-      startDate: reminder24hTime,
-      endDate: reminder24hTime.add(const Duration(minutes: 30)),
-      allDay: false,
-    );
-
-    // 3. Reminder 1h trước giờ khám
-    final reminder1hTime = startDateTime.subtract(const Duration(hours: 1));
-    final reminder1h = Event(
-      title: '🔔 NHẮC LỊCH: 1h nữa khám $doctorTitle',
-      description: 'Nhắc lịch khám ADSUS vào lúc ${_formatDateTime(startDateTime)}',
-      startDate: reminder1hTime,
-      endDate: reminder1hTime.add(const Duration(minutes: 30)),
-      allDay: false,
-    );
-
-    // Gọi lần lượt - user sẽ thấy 3 dialog calendar
-    final result1 = await Add2Calendar.addEvent2Cal(mainEvent);
-    final result2 = await Add2Calendar.addEvent2Cal(reminder24h);
-    final result3 = await Add2Calendar.addEvent2Cal(reminder1h);
-
-    // Thành công nếu ít nhất 1 event được thêm
-    final anySuccess = result1 || result2 || result3;
-    if (anySuccess) {
-      await _prefs.setBool('$_prefix${appointment.id}', true);
-    }
-
-    return anySuccess;
-  }
-
-  String _buildDescription(Appointment appointment) {
+    // Build description
+    String description;
     if (appointment.reason != null && appointment.reason!.isNotEmpty) {
-      return 'Lý do khám: ${appointment.reason}';
+      description = 'Lý do khám: ${appointment.reason}';
+    } else {
+      description = 'Lịch khám bệnh qua ứng dụng ADSUS';
     }
-    return 'Lịch khám bệnh qua ứng dụng ADSUS';
+
+    // Get device calendars
+    final calendarPlugin = DeviceCalendarPlugin();
+    final calendarsResult = await calendarPlugin.retrieveCalendars();
+
+    if (calendarsResult.isSuccess && calendarsResult.data != null) {
+      // Find primary/default calendar
+      final defaultCalendar = calendarsResult.data!.firstWhere(
+        (cal) => cal.isDefault == true,
+        orElse: () => calendarsResult.data!.first,
+      );
+
+      final startTz = tz.TZDateTime.from(startDateTime, tz.local);
+      final endTz = tz.TZDateTime.from(endDateTime, tz.local);
+
+      // Create main event
+      final mainEvent = Event(
+        defaultCalendar.id,
+        title: 'Lịch khám ADSUS: $doctorTitle',
+        description: description,
+        start: startTz,
+        end: endTz,
+        reminders: [
+          Reminder(minutes: 60 * 24), // 24 hours before
+          Reminder(minutes: 60), // 1 hour before
+        ],
+      );
+
+      // Add event to calendar
+      final result = await calendarPlugin.createOrUpdateEvent(mainEvent);
+
+      if (result?.isSuccess == true) {
+        await _prefs.setBool('$_prefix${appointment.id}', true);
+        return true;
+      }
+    }
+
+    return false;
   }
 
-  String _formatDateTime(DateTime dt) {
-    return '${dt.day.toString().padLeft(2, '0')}/'
-        '${dt.month.toString().padLeft(2, '0')}/${dt.year} '
-        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  @override
+  Future<bool> hasSynced(String appointmentId) async {
+    return _prefs.getBool('$_prefix$appointmentId') ?? false;
+  }
+
+  @override
+  Future<void> clearSyncFlag(String appointmentId) async {
+    await _prefs.remove('$_prefix$appointmentId');
   }
 
   DateTime _buildDateTime(DateTime date, String time) {
@@ -108,15 +120,5 @@ class CalendarSyncServiceImpl implements CalendarSyncService {
       int.parse(parts[0]),
       parts.length > 1 ? int.parse(parts[1]) : 0,
     );
-  }
-
-  @override
-  Future<bool> hasSynced(String appointmentId) async {
-    return _prefs.getBool('$_prefix$appointmentId') ?? false;
-  }
-
-  @override
-  Future<void> clearSyncFlag(String appointmentId) async {
-    await _prefs.remove('$_prefix$appointmentId');
   }
 }

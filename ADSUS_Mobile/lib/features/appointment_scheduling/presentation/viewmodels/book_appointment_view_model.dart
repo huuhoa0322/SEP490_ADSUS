@@ -7,39 +7,6 @@ import '../../data/dtos/symptom_dtos.dart';
 import '../../domain/entities/schedule_slot.dart' show ScheduleSlot, DoctorStatus, DoctorGender;
 import '../../domain/entities/symptom.dart' show SymptomCategory;
 
-/// Cache cho slots với TTL 60 giây (2026-01: Performance optimization)
-class SlotCache {
-  static const _cacheValidityMs = 60000; // 1 phút
-  List<ScheduleSlot>? _cachedSlots;
-  DateTime? _cacheTimestamp;
-  String? _lastDoctorId;
-  String? _lastGenderFilter;
-
-  bool isValid(String? doctorId, DoctorGender? genderFilter) {
-    if (_cachedSlots == null || _cacheTimestamp == null) return false;
-    final elapsed = DateTime.now().difference(_cacheTimestamp!).inMilliseconds;
-    if (elapsed > _cacheValidityMs) return false;
-    // Cache chỉ valid nếu filter giống nhau
-    return _lastDoctorId == doctorId && _lastGenderFilter == genderFilter?.name;
-  }
-
-  List<ScheduleSlot>? get slots => _cachedSlots;
-
-  void set(List<ScheduleSlot> slots, String? doctorId, DoctorGender? genderFilter) {
-    _cachedSlots = slots;
-    _cacheTimestamp = DateTime.now();
-    _lastDoctorId = doctorId;
-    _lastGenderFilter = genderFilter?.name;
-  }
-
-  void invalidate() {
-    _cachedSlots = null;
-    _cacheTimestamp = null;
-  }
-}
-
-final _slotCache = SlotCache();
-
 /// Một block triệu chứng trong UI (tương ứng với 1 category)
 class SymptomBlock {
   final String id; // Unique ID cho block này
@@ -105,7 +72,7 @@ class BookAppointmentState {
     this.isBooking = false,
     this.errorMessage,
     this.bookingSuccess,
-    this.showWeekView = true, // Mặc định hiển thị tuần hiện tại
+    this.selectedWeekIndex = 0, // Mặc định: tuần này (index 0–3 = 4 tuần)
     // Gender filter (2026-01)
     this.selectedDoctorGender,
     // Symptoms state
@@ -134,9 +101,8 @@ class BookAppointmentState {
   /// Rút từ [slots] — chỉ những ngày thật sự có slot (T2-CN, trong giới hạn 5 tuần).
   final List<DateTime> availableDates;
 
-  /// true = chỉ hiện tuần hiện tại (T2-CN)
-  /// false = hiện tất cả 5 tuần (tuần này + 4 tuần tiếp)
-  final bool showWeekView;
+  /// Chỉ số tuần đang chọn: 0 = tuần này, 1 = tuần sau, 2 = tuần 3, 3 = tuần 4.
+  final int selectedWeekIndex;
 
   /// Filter theo giới tính bác sĩ (2026-01)
   final DoctorGender? selectedDoctorGender;
@@ -167,7 +133,7 @@ class BookAppointmentState {
     bool? isBooking,
     String? errorMessage,
     String? bookingSuccess,
-    bool? showWeekView,
+    int? selectedWeekIndex,
     DoctorGender? selectedDoctorGender,
     List<SymptomCategory>? symptomCategories,
     List<SymptomBlock>? symptomBlocks,
@@ -176,6 +142,7 @@ class BookAppointmentState {
     bool clearError = false,
     bool clearSelection = false,
     bool clearBookingSuccess = false,
+    bool clearDoctorGender = false,
   }) {
     return BookAppointmentState(
       slots: slots ?? this.slots,
@@ -193,8 +160,10 @@ class BookAppointmentState {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       bookingSuccess:
           clearBookingSuccess ? null : (bookingSuccess ?? this.bookingSuccess),
-      showWeekView: showWeekView ?? this.showWeekView,
-      selectedDoctorGender: selectedDoctorGender ?? this.selectedDoctorGender,
+      selectedWeekIndex: selectedWeekIndex ?? this.selectedWeekIndex,
+      selectedDoctorGender: clearDoctorGender
+          ? null
+          : (selectedDoctorGender ?? this.selectedDoctorGender),
       symptomCategories: symptomCategories ?? this.symptomCategories,
       symptomBlocks: symptomBlocks ?? this.symptomBlocks,
       isLoadingSymptoms: isLoadingSymptoms ?? this.isLoadingSymptoms,
@@ -227,10 +196,10 @@ class BookAppointmentState {
   /// Ngày kết thúc của tuần sau (Chủ nhật).
   DateTime get nextWeekEnd => nextWeekStart.add(const Duration(days: 6));
 
-  /// Giới hạn đặt lịch: tối đa 2 tuần tính từ hôm nay.
+  /// Giới hạn đặt lịch: tối đa 30 ngày tính từ hôm nay.
   DateTime get maxBookingDate {
     final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day).add(const Duration(days: 14));
+    return DateTime(now.year, now.month, now.day).add(const Duration(days: 30));
   }
 
   /// Slot đã lọc theo bác sĩ + tuần + ngày — danh sách thật sự hiện trong grid.
@@ -358,20 +327,25 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
     state = state.copyWith(selectedSlotId: slotId);
   }
 
-  // 2026-01: Gender filter selection
+  // 2026-01: Gender filter selection - click again to deselect
   void selectDoctorGender(DoctorGender? gender) {
-    state = state.copyWith(
-      selectedDoctorGender: gender,
-      selectedDoctorId: null, // Reset doctor khi đổi gender
-      selectedSlotId: null,
-      selectedDate: null,
-    );
+    if (gender == null) {
+      state = state.copyWith(
+        clearDoctorGender: true,
+        clearSelection: true,
+      );
+    } else {
+      state = state.copyWith(
+        selectedDoctorGender: gender,
+        clearSelection: true,
+      );
+    }
   }
 
-  void toggleWeekView() {
+  void selectWeek(int index) {
     state = state.copyWith(
-      showWeekView: !state.showWeekView,
-      selectedDate: null, // Reset date filter khi toggle
+      selectedWeekIndex: index,
+      selectedDate: null, // Reset date filter khi đổi tuần
       selectedSlotId: null,
     );
   }
@@ -387,7 +361,7 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       slots: state.slots,
       availableDates: state.availableDates,
       doctorOptions: state.doctorOptions,
-      showWeekView: true,
+      selectedWeekIndex: 0,
       // Clear mọi selection và success state
       bookingSuccess: null,
       selectedSlotId: null,
@@ -404,7 +378,7 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       slots: state.slots,
       availableDates: state.availableDates,
       doctorOptions: state.doctorOptions,
-      showWeekView: true,
+      selectedWeekIndex: 0,
       // Clear mọi selection và success state
       bookingSuccess: null,
       selectedSlotId: null,
@@ -431,7 +405,7 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       isBooking: state.isBooking,
       errorMessage: null,
       bookingSuccess: null,
-      showWeekView: state.showWeekView,
+      selectedWeekIndex: state.selectedWeekIndex,
       selectedDoctorGender: state.selectedDoctorGender, // 2026-01
     );
   }
@@ -567,8 +541,7 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
         slots: updatedSlots,
         availableDates: _extractDates(updatedSlots),
         // Reset selection sau khi đặt thành công
-        selectedSlotId: null,
-        selectedDate: null,
+        clearSelection: true,
         // Reset symptoms
         symptomBlocks: [],
         isSymptomSectionExpanded: false,
@@ -603,14 +576,14 @@ List<DoctorOption> _extractDoctors(List<ScheduleSlot> slots) {
   return list;
 }
 
-/// Trích xuất danh sách ngày từ slots (T2-CN, từ hôm nay đến 2 tuần).
-/// Chỉ lấy ngày từ hôm nay trở đi và tối đa 2 tuần.
+/// Trích xuất danh sách ngày từ slots (T2-CN, từ hôm nay đến 30 ngày).
+/// Chỉ lấy ngày từ hôm nay trở đi và tối đa 30 ngày.
 List<DateTime> _extractDates(List<ScheduleSlot> slots) {
   final seen = <String, DateTime>{};
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
-  // Giới hạn 2 tuần = 14 ngày
-  final maxDate = today.add(const Duration(days: 14));
+  // Giới hạn 30 ngày
+  final maxDate = today.add(const Duration(days: 30));
 
   for (final s in slots) {
     // Chỉ lấy ngày T2-CN (weekday 1-7) và trong khoảng hôm nay đến 2 tuần

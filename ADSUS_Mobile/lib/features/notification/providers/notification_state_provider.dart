@@ -13,6 +13,9 @@ enum NotificationTypeEnum {
   appointmentBooking,
   appointmentReminder,
   appointmentCancellation,
+  appointmentCancelledByPatient,
+  appointmentRescheduled,
+  appointmentCheckin,
   healthlogReminder,
   medicalRecordAdded,
   blogNewPost,
@@ -35,6 +38,12 @@ extension NotificationTypeEnumExtension on NotificationTypeEnum {
         return 'appointment_reminder';
       case NotificationTypeEnum.appointmentCancellation:
         return 'appointment_cancellation';
+      case NotificationTypeEnum.appointmentCancelledByPatient:
+        return 'appointment_cancelled_by_patient';
+      case NotificationTypeEnum.appointmentRescheduled:
+        return 'appointment_rescheduled';
+      case NotificationTypeEnum.appointmentCheckin:
+        return 'appointment_checkin';
       case NotificationTypeEnum.healthlogReminder:
         return 'healthlog_reminder';
       case NotificationTypeEnum.medicalRecordAdded:
@@ -62,6 +71,12 @@ extension NotificationTypeEnumExtension on NotificationTypeEnum {
         return 'Nhắc lịch khám';
       case NotificationTypeEnum.appointmentCancellation:
         return 'Hủy lịch khám';
+      case NotificationTypeEnum.appointmentCancelledByPatient:
+        return 'Lịch hẹn bị hủy';
+      case NotificationTypeEnum.appointmentRescheduled:
+        return 'Lịch hẹn bị đổi';
+      case NotificationTypeEnum.appointmentCheckin:
+        return 'Check-in lịch hẹn';
       case NotificationTypeEnum.healthlogReminder:
         return 'Nhắc nhật ký sức khoẻ';
       case NotificationTypeEnum.medicalRecordAdded:
@@ -120,6 +135,7 @@ class NotificationDto {
       case NotificationTypeEnum.appointmentReminder:
       case NotificationTypeEnum.appointmentBooking:
       case NotificationTypeEnum.appointmentCancellation:
+      case NotificationTypeEnum.appointmentCancelledByPatient:
         return metadata!['appointmentId']?.toString();
       case NotificationTypeEnum.medicalRecordAdded:
         return metadata!['recordId']?.toString();
@@ -175,12 +191,18 @@ class NotificationState {
     this.notifications = const [],
     this.unreadCount = 0,
     this.isLoading = false,
+    this.hasMore = true,
+    this.currentPage = 1,
+    this.fromDate,
     this.error,
   });
 
   final List<NotificationDto> notifications;
   final int unreadCount;
   final bool isLoading;
+  final bool hasMore;
+  final int currentPage;
+  final DateTime? fromDate;
   final String? error;
 }
 
@@ -191,11 +213,20 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
   final Ref _ref;
   Dio? _dio;
 
+  // Store pending delete notification (not yet sent to API)
+  NotificationDto? _pendingDeleteNotification;
+
   String get _accessToken =>
       _ref.read(authViewModelProvider).session?.accessToken ?? '';
 
-  Future<void> fetchNotifications({int page = 1, int pageSize = 20}) async {
+  Future<void> fetchNotifications({
+    int page = 1,
+    int pageSize = 20,
+    DateTime? fromDate,
+    bool isLoadMore = false,
+  }) async {
     if (state.isLoading) return;
+    if (isLoadMore && !state.hasMore) return;
 
     // Skip if no access token
     if (_accessToken.isEmpty) {
@@ -203,6 +234,9 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
       state = state.copyWith(isLoading: false, error: 'Not authenticated');
       return;
     }
+
+    // Default fromDate = 60 days ago if not specified
+    final effectiveFromDate = fromDate ?? DateTime.now().subtract(const Duration(days: 60));
 
     state = state.copyWith(isLoading: true, error: null);
 
@@ -217,7 +251,11 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
 
       final response = await _dio!.get(
         ApiConstants.notifications,
-        queryParameters: {'page': page, 'pageSize': pageSize},
+        queryParameters: {
+          'page': page,
+          'pageSize': pageSize,
+          'fromDate': effectiveFromDate.toIso8601String(),
+        },
         options: Options(
           headers: {'Authorization': 'Bearer $_accessToken'},
         ),
@@ -228,15 +266,21 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
 
       if (response.statusCode == 200) {
         final data = response.data['data'];
-        final notifications = (data['notifications'] as List)
+        final newNotifications = (data['notifications'] as List)
             .map((e) => NotificationDto.fromJson(e))
             .toList();
+        final hasMore = data['hasMore'] as bool? ?? false;
 
-        debugPrint('[NotificationNotifier] Parsed ${notifications.length} notifications');
+        debugPrint('[NotificationNotifier] Parsed ${newNotifications.length} notifications, hasMore: $hasMore');
 
         state = state.copyWith(
-          notifications: notifications,
+          notifications: isLoadMore
+              ? [...state.notifications, ...newNotifications]
+              : newNotifications,
           unreadCount: data['unreadCount'] as int,
+          hasMore: hasMore,
+          currentPage: page,
+          fromDate: effectiveFromDate,
           isLoading: false,
         );
       } else {
@@ -254,6 +298,16 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
         error: e.toString(),
       );
     }
+  }
+
+  Future<void> loadMoreNotifications() async {
+    if (!state.hasMore || state.isLoading) return;
+    await fetchNotifications(
+      page: state.currentPage + 1,
+      pageSize: 10,
+      fromDate: state.fromDate,
+      isLoadMore: true,
+    );
   }
 
   Future<void> fetchUnreadCount() async {
@@ -365,6 +419,138 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
     }
   }
 
+  Future<void> deleteNotification(String logId) async {
+    // Store notification for undo BEFORE removing
+    final notification = state.notifications.firstWhere(
+      (n) => n.logId == logId,
+      orElse: () => throw Exception('Notification not found'),
+    );
+
+    _pendingDeleteNotification = notification;
+
+    // Remove from UI immediately
+    final updated = state.notifications
+        .where((n) => n.logId != logId)
+        .toList();
+
+    final deletedWasUnread = !notification.isRead;
+    state = state.copyWith(
+      notifications: updated,
+      unreadCount: deletedWasUnread && state.unreadCount > 0
+          ? state.unreadCount - 1
+          : state.unreadCount,
+    );
+
+    // Call API to delete immediately
+    try {
+      _dio ??= Dio(BaseOptions(
+        baseUrl: ApiConstants.baseUrl,
+        connectTimeout: ApiConstants.timeout,
+        receiveTimeout: ApiConstants.timeout,
+      ));
+
+      await _dio!.delete(
+        '${ApiConstants.notifications}/$logId',
+        options: Options(
+          headers: {'Authorization': 'Bearer $_accessToken'},
+        ),
+      );
+      debugPrint('[NotificationNotifier] Deleted notification from API: $logId');
+    } catch (e) {
+      debugPrint('[NotificationNotifier] Failed to delete notification: $e');
+      // Re-fetch to sync on error
+      fetchNotifications();
+    }
+  }
+
+  /// Undo last delete operation - restore to correct position based on SentAt + call API
+  Future<void> undoDelete() async {
+    if (_pendingDeleteNotification == null) return;
+
+    final notification = _pendingDeleteNotification!;
+    _pendingDeleteNotification = null;
+
+    // Find correct insert position based on SentAt (descending order - newest first)
+    final sentAt = notification.sentAt;
+    int insertIndex = state.notifications.length;
+
+    for (int i = 0; i < state.notifications.length; i++) {
+      if (state.notifications[i].sentAt.isBefore(sentAt)) {
+        insertIndex = i;
+        break;
+      }
+    }
+
+    // Insert at correct position (local first)
+    final updated = [...state.notifications];
+    updated.insert(insertIndex, notification);
+
+    final restoredWasUnread = !notification.isRead;
+    state = state.copyWith(
+      notifications: updated,
+      unreadCount: restoredWasUnread
+          ? state.unreadCount + 1
+          : state.unreadCount,
+    );
+
+    // Call API to restore on backend
+    try {
+      _dio ??= Dio(BaseOptions(
+        baseUrl: ApiConstants.baseUrl,
+        connectTimeout: ApiConstants.timeout,
+        receiveTimeout: ApiConstants.timeout,
+      ));
+
+      await _dio!.put(
+        '${ApiConstants.notifications}/${notification.logId}/restore',
+        options: Options(
+          headers: {'Authorization': 'Bearer $_accessToken'},
+        ),
+      );
+      debugPrint('[NotificationNotifier] Restored notification via API: ${notification.logId}');
+    } catch (e) {
+      debugPrint('[NotificationNotifier] Failed to restore: $e');
+    }
+
+    // Re-fetch to sync with server
+    await fetchNotifications();
+  }
+
+  /// Mark notification as unread (CALL API)
+  Future<void> markAsUnread(String logId) async {
+    // Call API first
+    try {
+      _dio ??= Dio(BaseOptions(
+        baseUrl: ApiConstants.baseUrl,
+        connectTimeout: ApiConstants.timeout,
+        receiveTimeout: ApiConstants.timeout,
+      ));
+
+      await _dio!.put(
+        '${ApiConstants.notifications}/$logId/unread',
+        options: Options(
+          headers: {'Authorization': 'Bearer $_accessToken'},
+        ),
+      );
+      debugPrint('[NotificationNotifier] Marked as unread via API: $logId');
+    } catch (e) {
+      debugPrint('[NotificationNotifier] Failed to mark as unread: $e');
+    }
+
+    // Update local state
+    final updated = state.notifications.map((n) {
+      if (n.logId == logId && n.isRead) {
+        return n.copyWith(readAt: null, isRead: false);
+      }
+      return n;
+    }).toList();
+
+    state = state.copyWith(
+      notifications: updated,
+      unreadCount: state.unreadCount + 1,
+    );
+  }
+
   void reset() {
     state = const NotificationState();
   }
@@ -389,12 +575,18 @@ extension NotificationStateCopyWith on NotificationState {
     List<NotificationDto>? notifications,
     int? unreadCount,
     bool? isLoading,
+    bool? hasMore,
+    int? currentPage,
+    DateTime? fromDate,
     String? error,
   }) {
     return NotificationState(
       notifications: notifications ?? this.notifications,
       unreadCount: unreadCount ?? this.unreadCount,
       isLoading: isLoading ?? this.isLoading,
+      hasMore: hasMore ?? this.hasMore,
+      currentPage: currentPage ?? this.currentPage,
+      fromDate: fromDate ?? this.fromDate,
       error: error,
     );
   }

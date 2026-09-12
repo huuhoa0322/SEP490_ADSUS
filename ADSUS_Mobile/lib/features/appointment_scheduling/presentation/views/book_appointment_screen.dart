@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/schedule_slot.dart' show DoctorGender;
 import '../viewmodels/book_appointment_view_model.dart';
+import '../viewmodels/my_appointments_view_model.dart';
 import '../widgets/symptom_selector.dart';
+import 'my_appointments_screen.dart';
 import 'widgets/slot_pill.dart';
 
 /// SCR-21 — Màn đặt lịch khám (UC-13).
@@ -46,10 +48,13 @@ class _BookAppointmentScreenState
   Widget build(BuildContext context) {
     final state = ref.watch(bookAppointmentViewModelProvider);
 
-    // Dùng ref.listen để xử lý booking success
+    // Dùng ref.listen để xử lý booking success và error
     // Chỉ trigger khi prev = null và next != null (chuyển từ chưa success sang success)
-    ref.listen<BookAppointmentState>(bookAppointmentViewModelProvider, (prev, next) {
+    ref.listen<BookAppointmentState>(bookAppointmentViewModelProvider, (prev, next) async {
       if (prev?.bookingSuccess == null && next.bookingSuccess != null) {
+        if (!mounted) return;
+        // FORCE RELOAD lịch hẹn TRƯỚC khi navigate (fix: lịch mới không hiện)
+        await ref.read(myAppointmentsViewModelProvider.notifier).load();
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -58,8 +63,28 @@ class _BookAppointmentScreenState
             duration: Duration(seconds: 3),
           ),
         );
-        // Pop về home
-        Navigator.of(context).pop();
+        // Navigate sang My Appointments thay vì pop về home
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => const MyAppointmentsScreen(),
+          ),
+        );
+      }
+      // Hiển thị error ở dưới cùng màn hình (bottom SnackBar)
+      if (prev?.errorMessage == null && next.errorMessage != null && !next.isBooking) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: AppColors.danger,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Đóng',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
       }
     });
 
@@ -109,20 +134,6 @@ class _BookAppointmentScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (state.errorMessage != null) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFBEAE9),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  state.errorMessage!,
-                  style: const TextStyle(color: AppColors.danger, fontSize: 13),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
             if (state.slots.isEmpty)
               Container(
                 padding: const EdgeInsets.all(24),
@@ -160,47 +171,34 @@ class _BookAppointmentScreenState
     );
   }
 
-  /// Toggle hiển thị theo tuần (Tuần này hoặc Tuần sau)
+  /// Toggle hiển thị theo tuần — 4 tuần (tuần này → tuần 4)
   Widget _viewToggleSection(BookAppointmentState state) {
-    final thisWeekLabel = 'Tuần này (${_getThisWeekLabel()})';
-    final nextWeekLabel = 'Tuần sau (${_getNextWeekLabel()})';
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel('XEM THEO TUẦN'),
-        Row(
-          children: [
-            Expanded(
-              child: _toggleButton(
-                label: thisWeekLabel,
-                selected: state.showWeekView,
-                onTap: () {
-                  if (!state.showWeekView) {
-                    ref.read(bookAppointmentViewModelProvider.notifier).toggleWeekView();
-                  }
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _toggleButton(
-                label: nextWeekLabel,
-                selected: !state.showWeekView,
-                onTap: () {
-                  if (state.showWeekView) {
-                    ref.read(bookAppointmentViewModelProvider.notifier).toggleWeekView();
-                  }
-                },
-              ),
-            ),
-          ],
+        _sectionLabel('CHỌN TUẦN KHÁM'),
+        SizedBox(
+          height: 56,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: 4,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, i) {
+              return _weekChip(
+                label: 'Tuần (${_getWeekLabel(i)})',
+                selected: state.selectedWeekIndex == i,
+                onTap: () => ref
+                    .read(bookAppointmentViewModelProvider.notifier)
+                    .selectWeek(i),
+              );
+            },
+          ),
         ),
       ],
     );
   }
 
-  Widget _toggleButton({
+  Widget _weekChip({
     required String label,
     required bool selected,
     required VoidCallback onTap,
@@ -209,10 +207,15 @@ class _BookAppointmentScreenState
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        height: 44,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           color: selected ? AppColors.teal : Colors.white,
-          border: Border.all(color: selected ? AppColors.teal : AppColors.border),
+          border: Border.all(
+            color: selected ? AppColors.teal : AppColors.border,
+            width: selected ? 1.5 : 1.0,
+          ),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
@@ -233,25 +236,31 @@ class _BookAppointmentScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionLabel('GIỚI TÍNH BÁC SĨ (TÙY CHỌN)'), // 2026-01
-        // Gender filter chips
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        // Gender filter chips — "Tất cả" bị disable khi đã filter
+        Row(
           children: [
-            _genderChip(
-              'Tất cả',
-              null,
-              state.selectedDoctorGender,
+            Expanded(
+              child: _genderChip(
+                'Tất cả',
+                null,
+                state.selectedDoctorGender,
+              ),
             ),
-            _genderChip(
-              '👨 Nam',
-              DoctorGender.male,
-              state.selectedDoctorGender,
+            const SizedBox(width: 12),
+            Expanded(
+              child: _genderChip(
+                'Nam',
+                DoctorGender.male,
+                state.selectedDoctorGender,
+              ),
             ),
-            _genderChip(
-              '👩 Nữ',
-              DoctorGender.female,
-              state.selectedDoctorGender,
+            const SizedBox(width: 12),
+            Expanded(
+              child: _genderChip(
+                'Nữ',
+                DoctorGender.female,
+                state.selectedDoctorGender,
+              ),
             ),
           ],
         ),
@@ -264,23 +273,26 @@ class _BookAppointmentScreenState
               decoration: const InputDecoration(
                 hintText: 'Tìm kiếm bác sĩ...',
                 prefixIcon: Icon(Icons.search),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               ),
             ),
+            constraints: const BoxConstraints(maxHeight: 300),
             fit: FlexFit.loose,
           ),
           // 2026-01: Dùng filteredDoctorOptions thay vì doctorOptions
           items: state.filteredDoctorOptions.map((d) => d.name).toList(),
           selectedItem: state.selectedDoctorId != null
-              ? state.doctorOptions
+              ? state.filteredDoctorOptions
                   .firstWhere(
                     (d) => d.id == state.selectedDoctorId,
-                    orElse: () => state.doctorOptions.first,
+                    orElse: () => state.filteredDoctorOptions.first,
                   )
                   .name
               : null,
           onChanged: (name) {
             if (name == null) return;
-            final doctor = state.doctorOptions.firstWhere((d) => d.name == name);
+            final doctor = state.filteredDoctorOptions.firstWhere((d) => d.name == name);
             ref.read(bookAppointmentViewModelProvider.notifier).selectDoctor(doctor.id);
           },
           dropdownDecoratorProps: DropDownDecoratorProps(
@@ -294,34 +306,52 @@ class _BookAppointmentScreenState
     );
   }
 
-  // 2026-01: Gender filter chip widget
+  // 2026-01: Gender filter chip — "Tất cả" luôn clickable, Nam/Nữ toggle
   Widget _genderChip(String label, DoctorGender? value, DoctorGender? selected) {
-    final isSelected = value == selected;
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) {
-        ref.read(bookAppointmentViewModelProvider.notifier).selectDoctorGender(value);
+    final isSelected = (value == null && selected == null) || (value == selected);
+
+    return InkWell(
+      onTap: () {
+        final notifier = ref.read(bookAppointmentViewModelProvider.notifier);
+        if (value == null) {
+          notifier.selectDoctorGender(null);
+        } else {
+          notifier.selectDoctorGender(value);
+        }
       },
-      selectedColor: AppColors.teal.withOpacity(0.2),
-      checkmarkColor: AppColors.teal,
-      side: BorderSide(
-        color: isSelected ? AppColors.teal : AppColors.border,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.teal : Colors.white,
+          border: Border.all(
+            color: isSelected ? AppColors.teal : AppColors.border,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : AppColors.navy,
+          ),
+        ),
       ),
     );
   }
 
   Widget _dateSection(BookAppointmentState state) {
-    // Lấy danh sách ngày hiển thị dựa trên chế độ xem
+    // Lấy danh sách ngày hiển thị dựa trên selectedWeekIndex
     final displayDates = _getDisplayDates(state);
-    final weekRange = _getWeekRangeLabel();
+    final weekRange = _getWeekRangeLabel(state.selectedWeekIndex);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel(state.showWeekView
-            ? 'TUẦN NÀY ($weekRange)'
-            : 'TUẦN SAU ($weekRange)'),
+        _sectionLabel('NGÀY KHÁM ($weekRange)'),
         SizedBox(
           height: 56,
           child: ListView.separated(
@@ -345,28 +375,18 @@ class _BookAppointmentScreenState
     );
   }
 
-  /// Lấy danh sách ngày hiển thị dựa trên chế độ xem.
-  /// - Tuần này: ngày trong tuần hiện tại (T2 - CN)
-  /// - Tuần sau: ngày trong tuần tiếp theo (T2 - CN)
+  /// Lấy danh sách ngày hiển thị dựa trên selectedWeekIndex (0–3 = tuần 1–4).
   List<DateTime> _getDisplayDates(BookAppointmentState state) {
     final now = DateTime.now();
     final currentMonday = DateTime(now.year, now.month, now.day)
         .subtract(Duration(days: now.weekday - 1));
 
-    if (state.showWeekView) {
-      // Tuần này: T2 đến CN của tuần hiện tại
-      final thisWeekEnd = currentMonday.add(const Duration(days: 6));
-      return state.availableDates.where((d) {
-        return !d.isBefore(currentMonday) && !d.isAfter(thisWeekEnd);
-      }).toList();
-    } else {
-      // Tuần sau: T2 đến CN của tuần tiếp theo
-      final nextMonday = currentMonday.add(const Duration(days: 7));
-      final nextSunday = nextMonday.add(const Duration(days: 6));
-      return state.availableDates.where((d) {
-        return !d.isBefore(nextMonday) && !d.isAfter(nextSunday);
-      }).toList();
-    }
+    final weekMonday = currentMonday.add(Duration(days: state.selectedWeekIndex * 7));
+    final weekSunday = weekMonday.add(const Duration(days: 6));
+
+    return state.availableDates.where((d) {
+      return !d.isBefore(weekMonday) && !d.isAfter(weekSunday);
+    }).toList();
   }
 
   Widget _dateChip({
@@ -378,6 +398,8 @@ class _BookAppointmentScreenState
       onTap: onTap,
       borderRadius: BorderRadius.circular(28),
       child: Container(
+        height: 52,
+        alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: selected ? AppColors.teal : Colors.white,
@@ -388,6 +410,7 @@ class _BookAppointmentScreenState
         ),
         child: Text(
           label,
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
@@ -559,32 +582,30 @@ class _BookAppointmentScreenState
   static bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  /// Lấy label cho tuần hiện tại (T2 - CN)
-  String _getWeekRangeLabel() {
+  /// Lấy date range label cho một tuần cụ thể (index 0–3)
+  String _getWeekRangeLabel(int weekIndex) {
     final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    final sunday = monday.add(const Duration(days: 6));
-    return '${monday.day.toString().padLeft(2, '0')}/${monday.month.toString().padLeft(2, '0')} - '
-        '${sunday.day.toString().padLeft(2, '0')}/${sunday.month.toString().padLeft(2, '0')}';
+    final currentMonday = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: now.weekday - 1));
+
+    final weekMonday = currentMonday.add(Duration(days: weekIndex * 7));
+    final weekSunday = weekMonday.add(const Duration(days: 6));
+
+    return '${weekMonday.day.toString().padLeft(2, '0')}/${weekMonday.month.toString().padLeft(2, '0')} - '
+        '${weekSunday.day.toString().padLeft(2, '0')}/${weekSunday.month.toString().padLeft(2, '0')}';
   }
 
-  /// Lấy label cho "Tuần này": ngày T2 đến CN của tuần hiện tại
-  static String _getThisWeekLabel() {
+  /// Lấy short date range label cho week chip (VD: "07/09 - 13/09")
+  static String _getWeekLabel(int weekIndex) {
     final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    final sunday = monday.add(const Duration(days: 6));
-    return '${monday.day.toString().padLeft(2, '0')}/${monday.month.toString().padLeft(2, '0')}-'
-        '${sunday.day.toString().padLeft(2, '0')}/${sunday.month.toString().padLeft(2, '0')}';
-  }
+    final currentMonday = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: now.weekday - 1));
 
-  /// Lấy label cho "Tuần sau": ngày T2 đến CN của tuần tiếp theo
-  static String _getNextWeekLabel() {
-    final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    final nextMonday = monday.add(const Duration(days: 7));
-    final nextSunday = nextMonday.add(const Duration(days: 6));
-    return '${nextMonday.day.toString().padLeft(2, '0')}/${nextMonday.month.toString().padLeft(2, '0')}-'
-        '${nextSunday.day.toString().padLeft(2, '0')}/${nextSunday.month.toString().padLeft(2, '0')}';
+    final weekMonday = currentMonday.add(Duration(days: weekIndex * 7));
+    final weekSunday = weekMonday.add(const Duration(days: 6));
+
+    return '${weekMonday.day.toString().padLeft(2, '0')}/${weekMonday.month.toString().padLeft(2, '0')} - '
+        '${weekSunday.day.toString().padLeft(2, '0')}/${weekSunday.month.toString().padLeft(2, '0')}';
   }
 
   Widget _symptomSection(BookAppointmentState state) {

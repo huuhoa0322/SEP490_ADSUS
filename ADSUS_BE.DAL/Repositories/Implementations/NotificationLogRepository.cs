@@ -23,6 +23,7 @@ public class NotificationLogRepository : INotificationLogRepository
         int page,
         int pageSize,
         bool includeDeleted = false,
+        DateTime? fromDate = null,
         CancellationToken ct = default)
     {
         var query = _db.NotificationLogs.AsNoTracking();
@@ -30,6 +31,12 @@ public class NotificationLogRepository : INotificationLogRepository
         if (!includeDeleted)
         {
             query = query.Where(n => n.IsDeleted != true);
+        }
+
+        // Filter by fromDate (60 days default from mobile)
+        if (fromDate.HasValue)
+        {
+            query = query.Where(n => n.SentAt >= fromDate.Value);
         }
 
         return await query
@@ -61,6 +68,18 @@ public class NotificationLogRepository : INotificationLogRepository
         }
     }
 
+    public async Task MarkAsUnreadAsync(Guid logId, CancellationToken ct = default)
+    {
+        var log = await _db.NotificationLogs
+            .FirstOrDefaultAsync(n => n.LogId == logId, ct);
+
+        if (log is not null)
+        {
+            log.ReadAt = null;
+            await _db.SaveChangesAsync(ct);
+        }
+    }
+
     public async Task MarkAllAsReadAsync(Guid userId, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
@@ -78,6 +97,19 @@ public class NotificationLogRepository : INotificationLogRepository
         {
             log.IsDeleted = true;
             log.DeletedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+        }
+    }
+
+    public async Task RestoreAsync(Guid logId, CancellationToken ct = default)
+    {
+        var log = await _db.NotificationLogs
+            .FirstOrDefaultAsync(n => n.LogId == logId, ct);
+
+        if (log is not null)
+        {
+            log.IsDeleted = false;
+            log.DeletedAt = null;
             await _db.SaveChangesAsync(ct);
         }
     }

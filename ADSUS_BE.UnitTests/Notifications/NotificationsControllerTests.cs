@@ -73,7 +73,7 @@ public class NotificationsControllerTests
             CreateNotificationLog(Guid.NewGuid(), _userId),
         };
 
-        _notificationLogRepo.Setup(r => r.GetByUserIdAsync(_userId, 1, 20, false, It.IsAny<CancellationToken>()))
+        _notificationLogRepo.Setup(r => r.GetByUserIdAsync(_userId, 1, 20, false, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(logs);
         _notificationLogRepo.Setup(r => r.CountUnreadAsync(_userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(2);
@@ -97,7 +97,7 @@ public class NotificationsControllerTests
     public async Task GetNotifications_Empty_ReturnsEmptyList()
     {
         // Arrange
-        _notificationLogRepo.Setup(r => r.GetByUserIdAsync(_userId, 1, 20, false, It.IsAny<CancellationToken>()))
+        _notificationLogRepo.Setup(r => r.GetByUserIdAsync(_userId, 1, 20, false, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<NotificationLog>());
         _notificationLogRepo.Setup(r => r.CountUnreadAsync(_userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
@@ -123,7 +123,7 @@ public class NotificationsControllerTests
         var unreadLog = CreateNotificationLog(Guid.NewGuid(), _userId, isRead: false);
         var readLog = CreateNotificationLog(Guid.NewGuid(), _userId, isRead: true);
 
-        _notificationLogRepo.Setup(r => r.GetByUserIdAsync(_userId, 1, 20, false, It.IsAny<CancellationToken>()))
+        _notificationLogRepo.Setup(r => r.GetByUserIdAsync(_userId, 1, 20, false, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<NotificationLog> { unreadLog, readLog });
         _notificationLogRepo.Setup(r => r.CountUnreadAsync(_userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
@@ -247,7 +247,7 @@ public class NotificationsControllerTests
     public async Task GetNotifications_WithPagination_PassesParameters()
     {
         // Arrange
-        _notificationLogRepo.Setup(r => r.GetByUserIdAsync(_userId, 2, 10, false, It.IsAny<CancellationToken>()))
+        _notificationLogRepo.Setup(r => r.GetByUserIdAsync(_userId, 2, 10, false, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<NotificationLog>());
         _notificationLogRepo.Setup(r => r.CountUnreadAsync(_userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
@@ -256,7 +256,7 @@ public class NotificationsControllerTests
         var result = await _sut.GetNotifications(page: 2, pageSize: 10, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        _notificationLogRepo.Verify(r => r.GetByUserIdAsync(_userId, 2, 10, false, It.IsAny<CancellationToken>()), Times.Once);
+        _notificationLogRepo.Verify(r => r.GetByUserIdAsync(_userId, 2, 10, false, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion

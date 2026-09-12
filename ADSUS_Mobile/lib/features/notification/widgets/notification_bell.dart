@@ -109,8 +109,11 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
       _isOpen = true;
     });
 
-    // Fetch notifications when opening dropdown
-    ref.read(notificationsProvider.notifier).fetchNotifications();
+    // Only fetch if no notifications cached
+    final currentState = ref.read(notificationsProvider);
+    if (currentState.notifications.isEmpty) {
+      ref.read(notificationsProvider.notifier).fetchNotifications();
+    }
   }
 
   void _closeDropdown() {

@@ -105,6 +105,8 @@ public sealed class AppointmentResponse
 public sealed class AppointmentSummaryResponse
 {
     public Guid AppointmentId { get; init; }
+    public Guid ScheduleSlotId { get; init; }
+    public Guid DoctorId { get; init; }
     public DateOnly SlotDate { get; init; }
     public TimeOnly StartTime { get; init; }
     public TimeOnly EndTime { get; init; }
@@ -113,6 +115,7 @@ public sealed class AppointmentSummaryResponse
     public DateTime CreatedAt { get; init; }
     public string? Reason { get; init; }
     public string? CancellationReason { get; init; }
+    public Guid? CaseId { get; init; }
 }
 
 /// <summary>

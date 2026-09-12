@@ -74,7 +74,7 @@ class AppointmentMapper {
 
   /// Parse doctor gender: "MALE", "FEMALE", "OTHER" → DoctorGender enum (2026-01)
   static DoctorGender? parseDoctorGender(dynamic raw) {
-    final str = raw?.toString()?.toUpperCase();
+    final str = raw?.toString().toUpperCase();
     switch (str) {
       case 'MALE':
         return DoctorGender.male;
