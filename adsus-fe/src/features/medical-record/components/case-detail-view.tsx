@@ -246,7 +246,9 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   function validateConclusionFields(): boolean {
     setConclusionError(null);
 
-    const plainText = finalDiagnosis.replace(/<[^>]*>/g, "").trim();
+    const plainText = DOMPurify.sanitize(finalDiagnosis, { ALLOWED_TAGS: [] })
+      .replace(/&nbsp;|\u00a0/g, " ")
+      .trim();
     if (!plainText) {
       setConclusionError("Vui lòng nhập chẩn đoán / kết luận.");
       return false;
