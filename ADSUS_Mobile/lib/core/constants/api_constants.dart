@@ -32,6 +32,12 @@ class ApiConstants {
   static const String login = '/api/v1/auth/login';
   static const String forgotPassword = '/api/v1/auth/forgot-password';
   static const String changePassword = '/api/v1/auth/change-password';
+  static const String registerRequestOtp = '/api/v1/auth/register/request-otp';
+  static const String registerVerifyOtp = '/api/v1/auth/register/verify-otp';
+  static const String registerComplete = '/api/v1/auth/register/complete';
+  static const String forgotPasswordRequestOtp = '/api/v1/auth/forgot-password/request-otp';
+  static const String forgotPasswordVerifyOtp = '/api/v1/auth/forgot-password/verify-otp';
+  static const String forgotPasswordComplete = '/api/v1/auth/forgot-password/complete';
   static const String myProfile = '/api/v1/users/me';
   static const String myBiometric = '/api/v1/users/me/biometric';
   static const String reminderPreference = '/api/v1/me/reminder-preference';
