@@ -70,4 +70,13 @@ public interface ICaseService
         DateOnly visitDate,
         IReadOnlyList<SymptomInput> symptoms,
         CancellationToken ct = default);
+
+    Task<CaseResponse> UpdateSymptomsAsync(
+        Guid caseId, UpdateCaseSymptomsRequest request, CancellationToken ct = default);
+
+    Task<CaseResponse> UpdateDiseasesAsync(
+        Guid caseId, UpdateCaseDiseasesRequest request, CancellationToken ct = default);
+
+    Task<CaseResponse> UpdateAllergiesAsync(
+        Guid caseId, UpdateCaseAllergiesRequest request, CancellationToken ct = default);
 }

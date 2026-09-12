@@ -36,7 +36,11 @@ public partial class Case
 
     public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
 
+    public virtual ICollection<CaseAllergy> CaseAllergies { get; set; } = new List<CaseAllergy>();
+
     public virtual ICollection<CaseClinicService> CaseClinicServices { get; set; } = new List<CaseClinicService>();
+
+    public virtual ICollection<CaseDisease> CaseDiseases { get; set; } = new List<CaseDisease>();
 
     public virtual ICollection<CaseSymptom> CaseSymptoms { get; set; } = new List<CaseSymptom>();
 

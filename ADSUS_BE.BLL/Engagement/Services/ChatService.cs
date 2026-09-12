@@ -337,7 +337,7 @@ public sealed class ChatService : IChatService
             foreach (var c in context.RecentCases)
             {
                 sections.Add($"  - {c.VisitDate:dd/MM/yyyy}: " +
-                    $"{(c.FinalDiagnosis?.Length > 0 == true ? c.FinalDiagnosis : "Chưa có chẩn đoán")}" +
+                    $"{(HtmlHelper.StripTags(c.FinalDiagnosis) is { Length: > 0 } fd ? fd : "Chưa có chẩn đoán")}" +
                     (c.DoctorConclusion?.Length > 0 == true ? $" — {c.DoctorConclusion}" : ""));
             }
         }

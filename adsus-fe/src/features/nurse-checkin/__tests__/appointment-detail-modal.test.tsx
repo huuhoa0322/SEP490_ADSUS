@@ -46,7 +46,7 @@ describe("AppointmentDetailModal", () => {
       slotId: "slot-1",
       doctorId: "doc-1",
       doctorName: "BS. Trần Văn Minh",
-      slotDate: "2026-09-12",
+      slotDate: "2099-09-12",
       startTime: "09:00:00",
       endTime: "10:00:00",
     },
@@ -54,7 +54,7 @@ describe("AppointmentDetailModal", () => {
       slotId: "slot-2",
       doctorId: "doc-1",
       doctorName: "BS. Trần Văn Minh",
-      slotDate: "2026-09-12",
+      slotDate: "2099-09-12",
       startTime: "10:00:00",
       endTime: "11:00:00",
     },
@@ -62,7 +62,7 @@ describe("AppointmentDetailModal", () => {
 
   const baseItem: CheckinQueueItem = {
     appointmentId: "app-100",
-    slotTime: "2026-09-12T08:30:00Z",
+    slotTime: "2099-09-12T08:30:00Z",
     patientFullName: "Nguyễn Văn An",
     patientPhone: "0901234567",
     patientProfileId: "prof-100",

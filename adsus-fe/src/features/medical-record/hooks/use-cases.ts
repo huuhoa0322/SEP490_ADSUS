@@ -10,11 +10,17 @@ import {
   listCasesByPatient,
   listUltrasoundImages,
   saveCaseConclusion,
+  updateCaseAllergies,
+  updateCaseDiseases,
+  updateCaseSymptoms,
 } from "../api/cases.api";
 import type {
+  CaseAllergyInput,
   CaseConclusionInput,
+  CaseDiseaseInput,
   CaseListQuery,
   CreateCaseInput,
+  CreateCaseSymptomInput,
 } from "../types/medical-record.types";
 
 import { medicalRecordQueryKeys } from "./query-keys";
@@ -109,3 +115,46 @@ export function useEndCaseWithoutPrescription(caseId: string) {
     },
   });
 }
+
+/**
+ * Cập nhật triệu chứng ca khám — làm mới chi tiết ca khám.
+ */
+export function useUpdateCaseSymptoms(caseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (symptoms: CreateCaseSymptomInput[]) => updateCaseSymptoms(caseId, symptoms),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
+    },
+  });
+}
+
+/**
+ * Cập nhật tiền sử bệnh snapshot cho ca khám — làm mới chi tiết ca khám.
+ */
+export function useUpdateCaseDiseases(caseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (diseases: CaseDiseaseInput[]) => updateCaseDiseases(caseId, diseases),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
+    },
+  });
+}
+
+/**
+ * Cập nhật dị ứng snapshot cho ca khám — làm mới chi tiết ca khám.
+ */
+export function useUpdateCaseAllergies(caseId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (allergies: CaseAllergyInput[]) => updateCaseAllergies(caseId, allergies),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
+    },
+  });
+}
+

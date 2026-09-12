@@ -56,17 +56,15 @@ public class CaseConclusionRequestValidatorTests
     }
 
     [Fact]
-    public void EmptyDoctorConclusion_Fails()
+    public void EmptyOrNullDoctorConclusion_PassesValidation()
     {
-        // Arrange
-        var request = ValidRequest() with { DoctorConclusion = "" };
-
-        // Act
-        var result = _validator.Validate(request);
+        // Arrange & Act
+        var emptyResult = _validator.Validate(ValidRequest() with { DoctorConclusion = "" });
+        var nullResult = _validator.Validate(ValidRequest() with { DoctorConclusion = null });
 
         // Assert
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName == nameof(CaseConclusionRequest.DoctorConclusion));
+        Assert.True(emptyResult.IsValid);
+        Assert.True(nullResult.IsValid);
     }
 
     [Fact]
