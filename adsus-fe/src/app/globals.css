@@ -3,6 +3,25 @@
 @import "shadcn/tailwind.css";
 @import "./preclinic-components.css";
 
+/* ── ADSUS Landing Page — Design tokens v2 (UI_UX_v2) ─────────────────────────
+   Scoped under .landing-* so they don't bleed into the dashboard shell.
+   The dashboard continues using --primary / --accent / --chart-* vars above.
+────────────────────────────────────────────────────────────────────────────── */
+:root {
+  --lp-navy:      #1f2a44;
+  --lp-teal:      #128c82;
+  --lp-teal-h:    #0e6e66;
+  --lp-teal-tint: #e4f5f3;
+  --lp-canvas:    #f6f8f9;
+  --lp-surface:   #ffffff;
+  --lp-border:    #e1e7e8;
+  --lp-text:      #1f2a44;
+  --lp-muted:     #5b6b70;
+  --lp-font-serif: var(--font-fraunces);
+  --lp-font-sans:  var(--font-inter);
+  --lp-font-mono:  var(--font-jetbrains);
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
