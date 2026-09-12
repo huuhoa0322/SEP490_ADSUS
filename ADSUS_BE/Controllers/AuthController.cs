@@ -292,6 +292,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> CompleteRegistration(
         [FromBody] CompleteRegistrationRequest request,
         CancellationToken cancellationToken)
@@ -304,7 +305,8 @@ public class AuthController : ControllerBase
         }
 
         // BusinessException (token sai/hết hạn) và ConflictException (số vừa bị đăng ký) được
-        // GlobalExceptionHandler dịch sang 400/409 tương ứng — không try/catch ở đây.
+        // GlobalExceptionHandler dịch sang 422/409 tương ứng (xem GlobalExceptionHandler.cs) —
+        // không try/catch ở đây. 400 ở trên chỉ dành cho lỗi hình dạng dữ liệu (FluentValidation).
         var result = await _selfRegistration.CompleteRegistrationAsync(request, cancellationToken);
 
         return Ok(ApiResponse<LoginResponse>.Ok(result, "Registration successful."));
