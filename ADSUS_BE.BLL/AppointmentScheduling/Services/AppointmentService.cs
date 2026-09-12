@@ -190,8 +190,6 @@ public sealed class AppointmentService : IAppointmentService
         // VALIDATION RULES - Chống spam đặt lịch
         // =====================================================
 
-        var now = DateTime.UtcNow;
-
         // Rule 1: Max 3 active appointments (BOOKED)
         var activeAppointments = await _db.Appointments
             .Where(a => a.PatientProfileId == patientProfileId
@@ -226,34 +224,6 @@ public sealed class AppointmentService : IAppointmentService
                 "Mỗi ngày chỉ được đặt tối đa 1 lịch. Vui lòng hủy lịch cũ trước khi đặt lịch mới.");
         }
 
-        // Rule 2: Giới hạn đặt trong phạm vi 3 ngày
-        var next3Days = DateOnly.FromDateTime(now.AddDays(3));
-        var hasAppointmentWithin3Days = await _db.Appointments
-            .Include(a => a.Slot)
-            .AnyAsync(a =>
-                a.PatientProfileId == patientProfileId
-                && a.Slot.SlotDate > slot.SlotDate
-                && a.Slot.SlotDate <= next3Days
-                && a.Status == AppointmentStatus.Booked,
-                ct);
-        if (hasAppointmentWithin3Days)
-        {
-            throw new InvalidOperationException(
-                "Bạn đã có lịch hẹn trong vòng 3 ngày tới. Vui lòng đặt lịch sau khi đã hoàn thành lịch hiện tại.");
-        }
-
-        // Rule 5: Max 2 appointments/day cho cùng ngày (bao gồm slot đang đặt)
-        var todayAppointments = await _db.Appointments
-            .Where(a => a.PatientProfileId == patientProfileId
-                && a.Slot.SlotDate == slot.SlotDate
-                && a.Status == AppointmentStatus.Booked)
-            .CountAsync(ct);
-        if (todayAppointments >= 2)
-        {
-            throw new InvalidOperationException(
-                $"Ngày {slot.SlotDate:dd/MM/yyyy} đã có 2 lịch hẹn. Vui lòng chọn ngày khác.");
-        }
-
         // =====================================================
         // END VALIDATION RULES
         // =====================================================
@@ -270,22 +240,20 @@ public sealed class AppointmentService : IAppointmentService
             UpdatedAt = DateTime.UtcNow,
         };
 
-        // Tạo Case nếu có symptoms (từ Mobile booking)
-        if (request.Symptoms?.Count > 0)
-        {
-            var caseId = await _caseService.CreateFromBookingAsync(
-                patientProfileId,
-                slot.DoctorId,
-                slot.SlotDate,
-                request.Symptoms,
-                ct);
+        // Luôn tạo Case khi đặt lịch — bác sĩ có thể thay đổi triệu chứng khi khám
+        var symptoms = request.Symptoms ?? new List<SymptomInput>();
+        var caseId = await _caseService.CreateFromBookingAsync(
+            patientProfileId,
+            slot.DoctorId,
+            slot.SlotDate,
+            symptoms,
+            ct);
 
-            appointment.CaseId = caseId;
+        appointment.CaseId = caseId;
 
-            _logger.LogInformation(
-                "Case {CaseId} created from appointment booking for appointment {AppointmentId}",
-                caseId, appointment.AppointmentId);
-        }
+        _logger.LogInformation(
+            "Case {CaseId} created from appointment booking for appointment {AppointmentId}",
+            caseId, appointment.AppointmentId);
 
         // Update slot status
         slot.Status = SlotStatus.Booked;

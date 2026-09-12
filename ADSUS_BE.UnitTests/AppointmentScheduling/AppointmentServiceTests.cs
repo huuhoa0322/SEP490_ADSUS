@@ -465,6 +465,67 @@ public class AppointmentServiceTests : IDisposable
         Assert.Equal(AppointmentStatus.Booked, result.Status);
     }
 
+    [Fact]
+    public async Task BookAppointmentAsync_WithoutSymptoms_AlwaysCreatesCase()
+    {
+        // Arrange
+        var slot = SetupBookSlotScenario();
+        var expectedCaseId = Guid.NewGuid();
+        _caseService.Setup(c => c.CreateFromBookingAsync(
+            _patientId,
+            slot.DoctorId,
+            slot.SlotDate,
+            It.Is<IReadOnlyList<SymptomInput>>(s => s != null && s.Count == 0),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedCaseId);
+
+        // Act
+        var result = await _sut.BookAppointmentAsync(_patientId,
+            new BookAppointmentRequest { ScheduleSlotId = _slotId, Symptoms = null },
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(expectedCaseId, result.CaseId);
+        _caseService.Verify(c => c.CreateFromBookingAsync(
+            _patientId,
+            slot.DoctorId,
+            slot.SlotDate,
+            It.Is<IReadOnlyList<SymptomInput>>(s => s != null && s.Count == 0),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task BookAppointmentAsync_PatientHasBookedAppointmentWithin3Days_AllowsBookingBecause3DayBufferRemoved()
+    {
+        // Arrange — Target slot to book is tomorrow
+        var slot = SetupBookSlotScenario();
+        var doctor = CreateDoctor("Dr. Other", Guid.NewGuid());
+
+        // Existing BOOKED appointment is 2 days from now (different day, within 3 days)
+        var otherDaySlot = CreateScheduleSlot(SlotStatus.Booked, doctor, slot.SlotDate.AddDays(1));
+        _db.ScheduleSlots.Add(otherDaySlot);
+        _db.Appointments.Add(new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = otherDaySlot.SlotId,
+            PatientProfileId = _patientId,
+            Status = AppointmentStatus.Booked,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        });
+        _db.SaveChanges();
+
+        // Act — Booking target slot should now succeed because the 3-day buffer rule is removed
+        var result = await _sut.BookAppointmentAsync(_patientId,
+            new BookAppointmentRequest { ScheduleSlotId = _slotId },
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(AppointmentStatus.Booked, result.Status);
+    }
+
     #endregion
 
     #region CreateFollowUpAppointmentAsync Tests

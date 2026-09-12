@@ -74,6 +74,19 @@ public sealed class RescheduleAppointmentRequest
     public bool AutoCheckin { get; init; }
 }
 
+/// <summary>
+/// Request cho Staff đặt lịch thay bệnh nhân.
+/// </summary>
+public sealed class StaffBookAppointmentRequest
+{
+    /// <summary>Hồ sơ bệnh nhân cần đặt lịch.</summary>
+    public Guid PatientProfileId { get; init; }
+    /// <summary>Slot OPEN cần đặt.</summary>
+    public Guid ScheduleSlotId { get; init; }
+    /// <summary>Lý do khám (tùy chọn).</summary>
+    public string? Reason { get; init; }
+}
+
 // ─── Responses ─────────────────────────────────────────────────────────────────
 
 /// <summary>
