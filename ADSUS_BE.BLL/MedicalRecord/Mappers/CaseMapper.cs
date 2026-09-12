@@ -46,6 +46,12 @@ public static class CaseMapper
             SymptomId: cs.SymptomId,
             SymptomName: cs.Symptom?.Name,
             OtherNote: cs.OtherNote)).ToList() ?? new List<CaseSymptomResponse>(),
+        CaseDiseases: medicalCase.CaseDiseases?.Select(cd => new CaseDiseaseResponse(
+            cd.DiseaseId, cd.Disease?.Name ?? string.Empty, cd.Disease?.IsOther ?? false, cd.Note
+        )).ToList() ?? new List<CaseDiseaseResponse>(),
+        CaseAllergies: medicalCase.CaseAllergies?.Select(ca => new CaseAllergyResponse(
+            ca.AllergyTypeId, ca.AllergyType?.Name ?? string.Empty, ca.AllergyType?.IsOther ?? false, ca.Note
+        )).ToList() ?? new List<CaseAllergyResponse>(),
         // AiResults mapping removed
         Prescription: ToPrescriptionSummary(medicalCase),
         CreatedAt: medicalCase.CreatedAt,
@@ -64,7 +70,7 @@ public static class CaseMapper
         DoctorName: medicalCase.Doctor?.FullName ?? string.Empty,
         VisitDate: medicalCase.VisitDate,
         Status: medicalCase.Status.ToApiString(),
-        FinalDiagnosis: medicalCase.FinalDiagnosis,
+        FinalDiagnosis: HtmlHelper.StripTags(medicalCase.FinalDiagnosis),
         DoctorConclusion: medicalCase.DoctorConclusion,
         Prescription: ToPrescriptionSummary(medicalCase),
         UltrasoundImages: medicalCase.UltrasoundImages

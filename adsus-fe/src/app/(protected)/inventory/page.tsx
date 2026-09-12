@@ -40,7 +40,7 @@ export default function InventoryHistoryPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl px-6 py-8">
+    <div className="mx-auto w-[95%] max-w-[95%] py-8">
       <div>
         <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">Lịch sử nhập / xuất kho</h1>
         <p className="mt-1.5 text-[15px] text-muted-foreground">
@@ -83,13 +83,13 @@ export default function InventoryHistoryPage() {
             <Table>
               <TableHeader className="bg-secondary/40">
                 <TableRow>
-                  <TableHead className="w-[180px] px-5 py-4">Thời gian</TableHead>
-                  <TableHead className="px-5 py-4">Loại giao dịch</TableHead>
-                  <TableHead className="px-5 py-4">Thuốc (Số lô)</TableHead>
-                  <TableHead className="px-5 py-4">Đối tác / Ghi chú</TableHead>
-                  <TableHead className="text-right px-5 py-4">Đơn giá nhập</TableHead>
-                  <TableHead className="text-right px-5 py-4">Số lượng (Đơn vị cơ bản)</TableHead>
-                  <TableHead className="text-right px-5 py-4">Số lượng (Đơn vị đóng gói)</TableHead>
+                  <TableHead className="w-[160px] px-5 py-4">Thời gian</TableHead>
+                  <TableHead className="w-[120px] px-5 py-4">Loại giao dịch</TableHead>
+                  <TableHead className="min-w-[180px] max-w-[240px] px-5 py-4">Thuốc (Số lô)</TableHead>
+                  <TableHead className="w-[240px] max-w-[240px] px-5 py-4">Đối tác / Ghi chú</TableHead>
+                  <TableHead className="w-[130px] text-right px-5 py-4">Đơn giá nhập</TableHead>
+                  <TableHead className="w-[160px] text-right px-5 py-4">Số lượng (Đơn vị cơ bản)</TableHead>
+                  <TableHead className="w-[160px] text-right px-5 py-4">Số lượng (Đơn vị đóng gói)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -118,31 +118,33 @@ export default function InventoryHistoryPage() {
                     const isIncrease = item.quantityBase > 0;
                     const isPositive = isImport || (!isDispense && isIncrease);
 
+                    const partnerOrNote = item.supplierName
+                      ? item.supplierName
+                      : item.txnType.toLowerCase() === 'adjustment' && item.reason
+                      ? item.reason
+                      : '—';
+
                     return (
                     <TableRow key={item.transactionId}>
-                      <TableCell className="font-medium px-5 py-4">
+                      <TableCell className="w-[160px] font-medium px-5 py-4">
                         {format(new Date(item.txnDate), 'dd/MM/yyyy HH:mm')}
                       </TableCell>
-                      <TableCell className="px-5 py-4">
+                      <TableCell className="w-[120px] px-5 py-4">
                         {getTxnTypeLabel(item.txnType)}
                       </TableCell>
-                      <TableCell className="px-5 py-4">
-                        <div className="font-medium text-primary">{item.medicineName}</div>
+                      <TableCell className="min-w-[180px] max-w-[240px] px-5 py-4">
+                        <div className="font-medium text-primary max-w-[240px] truncate" title={item.medicineName}>{item.medicineName}</div>
                         <div className="text-xs text-muted-foreground">Lô: {item.lotNumber}</div>
                       </TableCell>
-                      <TableCell className="px-5 py-4">
-                        {item.supplierName ? (
-                          item.supplierName
-                        ) : item.txnType.toLowerCase() === 'adjustment' && item.reason ? (
-                          item.reason
-                        ) : (
-                          '—'
-                        )}
+                      <TableCell className="w-[240px] max-w-[240px] px-5 py-4">
+                        <div className="max-w-[240px] truncate text-muted-foreground" title={partnerOrNote}>
+                          {partnerOrNote}
+                        </div>
                       </TableCell>
-                      <TableCell className="text-right font-mono px-5 py-4">
+                      <TableCell className="w-[130px] text-right font-mono px-5 py-4">
                         {item.unitImportPrice ? item.unitImportPrice.toLocaleString() + ' đ' : '—'}
                       </TableCell>
-                      <TableCell className="text-right px-5 py-4 font-mono">
+                      <TableCell className="w-[160px] text-right px-5 py-4 font-mono">
                         <span className={isPositive ? 'text-[var(--status-good)] font-semibold' : 'text-[var(--status-warning)] font-semibold'}>
                           {isPositive ? '+' : '-'}{Math.abs(item.quantityBase).toLocaleString()}
                         </span>
@@ -150,7 +152,7 @@ export default function InventoryHistoryPage() {
                           <span className="ml-1 font-sans text-xs text-muted-foreground">{item.baseUnitName}</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right text-sm px-5 py-4 font-mono">
+                      <TableCell className="w-[160px] text-right text-sm px-5 py-4 font-mono">
                         <span className={isPositive ? 'text-[var(--status-good)] font-semibold' : 'text-[var(--status-warning)] font-semibold'}>
                           {isPositive ? '+' : '-'}{Math.abs(item.quantityInUnit).toLocaleString()}
                         </span>

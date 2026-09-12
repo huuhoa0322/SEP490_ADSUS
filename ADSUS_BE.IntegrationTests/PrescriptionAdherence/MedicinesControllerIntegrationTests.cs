@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
@@ -106,5 +107,68 @@ public partial class MedicinesControllerIntegrationTests
         // Assert
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         _medicineService.Verify(s => s.ActivateMedicineAsync(id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetPagedMedicines_AsAdmin_WithStatusAndStockFilter_ReturnsOkAndCallsService()
+    {
+        // Arrange
+        using var app = CreateApp();
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Admin);
+
+        var mockResult = new PagedResult<MedicineResponse>(
+            new List<MedicineResponse>
+            {
+                new MedicineResponse { MedicineId = Guid.NewGuid(), Name = "Paracetamol", Status = "ACTIVE" }
+            },
+            1,
+            10,
+            1,
+            1
+        );
+
+        _medicineService.Setup(s => s.GetPagedAsync(1, 10, "para", true, "ACTIVE", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockResult);
+
+        // Act
+        var response = await client.GetAsync("/api/v1/medicines/admin?page=1&pageSize=10&search=para&inStock=true&status=ACTIVE", TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<PagedResult<MedicineResponse>>(TestContext.Current.CancellationToken);
+        Assert.NotNull(body);
+        Assert.Equal(1, body.TotalItems);
+        Assert.Single(body.Items);
+        Assert.Equal("Paracetamol", body.Items[0].Name);
+
+        _medicineService.Verify(s => s.GetPagedAsync(1, 10, "para", true, "ACTIVE", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetPagedMedicines_AsPatient_ReturnsForbidden()
+    {
+        // Arrange
+        using var app = CreateApp();
+        var client = TestAuthHelper.CreateAuthenticatedClient(app, _users, UserRole.Patient);
+
+        // Act
+        var response = await client.GetAsync("/api/v1/medicines/admin?status=ACTIVE", TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetPagedMedicines_Unauthenticated_ReturnsUnauthorized()
+    {
+        // Arrange
+        using var app = CreateApp();
+        var client = app.CreateClient(); // No token
+
+        // Act
+        var response = await client.GetAsync("/api/v1/medicines/admin?status=ACTIVE", TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

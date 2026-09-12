@@ -75,7 +75,7 @@ public sealed class MedicineRepository : IMedicineRepository
         return Task.CompletedTask;
     }
 
-    public async Task<(IReadOnlyList<Medicine> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? keyword, bool? inStock = null, CancellationToken ct = default)
+    public async Task<(IReadOnlyList<Medicine> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? keyword, bool? inStock = null, string? status = null, CancellationToken ct = default)
     {
         var query = _db.Medicines.Include(m => m.MedicineBatches).AsNoTracking();
 
@@ -95,6 +95,11 @@ public sealed class MedicineRepository : IMedicineRepository
             {
                 query = query.Where(m => m.MedicineBatches.Sum(b => b.QuantityBase) == 0);
             }
+        }
+
+        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<MedicineStatus>(status, true, out var parsedStatus))
+        {
+            query = query.Where(m => m.Status == parsedStatus);
         }
 
         var totalCount = await query.CountAsync(ct);

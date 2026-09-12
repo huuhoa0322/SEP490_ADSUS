@@ -16,10 +16,10 @@ import {
   type UpdateMedicinePackagingRequest,
 } from "../api/medicines-api";
 
-export function useMedicines(page: number, pageSize: number, search?: string, inStock?: boolean) {
+export function useMedicines(page: number, pageSize: number, search?: string, inStock?: boolean, status?: string) {
   return useQuery({
-    queryKey: ["admin-medicines", page, pageSize, search, inStock],
-    queryFn: () => getPagedMedicines(page, pageSize, search, inStock),
+    queryKey: ["admin-medicines", page, pageSize, search, inStock, status],
+    queryFn: () => getPagedMedicines(page, pageSize, search, inStock, status),
     staleTime: 5 * 60 * 1000,
   });
 }

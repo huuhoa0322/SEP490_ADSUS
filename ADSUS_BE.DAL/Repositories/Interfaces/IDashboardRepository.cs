@@ -38,10 +38,41 @@ public interface IDashboardRepository
         DateOnly fromDate,
         DateOnly toDate,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Thống kê doanh thu phát sinh từ hóa đơn trong khoảng thời gian.</summary>
+    Task<RevenueCounts> GetRevenueAsync(
+        DateOnly fromDate,
+        DateOnly toDate,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Top N thuốc được kê đơn nhiều nhất trong khoảng thời gian.</summary>
+    Task<IReadOnlyList<TopMedicine>> GetTopPrescribedMedicinesAsync(
+        DateOnly fromDate,
+        DateOnly toDate,
+        int topN = 10,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>Số phát sinh của đúng một ngày.</summary>
-public record DailyActivity(DateOnly Date, int NewAccounts, int Cases, int Appointments);
+public record DailyActivity(DateOnly Date, int NewAccounts, int Cases, int Appointments, decimal Revenue);
+
+/// <summary>Tổng hợp doanh thu từ hóa đơn đã thanh toán và hóa đơn chờ.</summary>
+public record RevenueCounts(
+    decimal TotalRevenue,
+    int PaidInvoiceCount,
+    decimal CashRevenue,
+    int CashCount,
+    decimal BankTransferRevenue,
+    int BankTransferCount,
+    int PendingInvoiceCount,
+    decimal PendingAmount);
+
+/// <summary>Thông tin thuốc được kê đơn nhiều nhất.</summary>
+public record TopMedicine(
+    Guid MedicineId,
+    string MedicineName,
+    int PrescriptionCount,
+    int TotalQuantityBase);
 
 /// <summary>Số đếm tài khoản. Bản ghi thuần số, không kèm dữ liệu cá nhân nào.</summary>
 public record AccountCounts(

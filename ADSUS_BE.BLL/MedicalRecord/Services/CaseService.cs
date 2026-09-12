@@ -206,7 +206,23 @@ public sealed class CaseService : ICaseService
                 SymptomId = s.SymptomId,
                 OtherNote = s.OtherNote,
                 CreatedAt = now
-            }).ToList() ?? new List<CaseSymptom>()
+            }).ToList() ?? new List<CaseSymptom>(),
+            CaseDiseases = profile.PatientDiseases?.Select(d => new CaseDisease
+            {
+                Id = Guid.NewGuid(),
+                CaseId = caseId,
+                DiseaseId = d.DiseaseId,
+                Note = d.Note,
+                CreatedAt = now
+            }).ToList() ?? new List<CaseDisease>(),
+            CaseAllergies = profile.PatientAllergies?.Select(a => new CaseAllergy
+            {
+                Id = Guid.NewGuid(),
+                CaseId = caseId,
+                AllergyTypeId = a.AllergyTypeId,
+                Note = a.Note,
+                CreatedAt = now
+            }).ToList() ?? new List<CaseAllergy>()
         };
 
         try
@@ -273,7 +289,7 @@ public sealed class CaseService : ICaseService
         var medicalCase = await LoadForConclusionUpdateAsync(caseId, actingDoctorId, ct);
 
         medicalCase.FinalDiagnosis = request.FinalDiagnosis.Trim();
-        medicalCase.DoctorConclusion = request.DoctorConclusion.Trim();
+        medicalCase.DoctorConclusion = request.DoctorConclusion?.Trim() ?? "";
         medicalCase.UpdatedAt = DateTime.UtcNow;
         // Trạng thái CỐ Ý không đổi — đây là lưu nháp, sửa lại được nhiều lần cho tới khi
         // Bác sĩ bấm "Kết thúc ca khám" (ConfirmAsync).
@@ -294,7 +310,7 @@ public sealed class CaseService : ICaseService
         var medicalCase = await LoadForConclusionUpdateAsync(caseId, actingDoctorId, ct);
 
         medicalCase.FinalDiagnosis = request.FinalDiagnosis.Trim();
-        medicalCase.DoctorConclusion = request.DoctorConclusion.Trim();
+        medicalCase.DoctorConclusion = request.DoctorConclusion?.Trim() ?? "";
         medicalCase.Status = CaseStatus.Confirmed;
         medicalCase.UpdatedAt = DateTime.UtcNow;
 
@@ -360,6 +376,154 @@ public sealed class CaseService : ICaseService
         return await GetForStaffAsync(caseId, ct);
     }
 
+    public async Task<CaseResponse> UpdateSymptomsAsync(
+        Guid caseId,
+        UpdateCaseSymptomsRequest request,
+        CancellationToken ct = default)
+    {
+        var medicalCase = await LoadForClinicalUpdateAsync(caseId, ct);
+
+        if (_context != null)
+        {
+            _context.CaseSymptoms.RemoveRange(medicalCase.CaseSymptoms.ToList());
+        }
+        else
+        {
+            medicalCase.CaseSymptoms.Clear();
+        }
+
+        var now = DateTime.UtcNow;
+        if (request.Symptoms != null)
+        {
+            foreach (var s in request.Symptoms)
+            {
+                var newSymptom = new CaseSymptom
+                {
+                    Id = Guid.NewGuid(),
+                    CaseId = caseId,
+                    CategoryId = s.CategoryId,
+                    SymptomId = s.SymptomId,
+                    OtherNote = s.OtherNote,
+                    CreatedAt = now
+                };
+
+                if (_context != null)
+                {
+                    _context.CaseSymptoms.Add(newSymptom);
+                }
+                else
+                {
+                    medicalCase.CaseSymptoms.Add(newSymptom);
+                }
+            }
+        }
+
+        medicalCase.UpdatedAt = now;
+        await _cases.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Case {CaseId} symptoms updated", caseId);
+
+        return await GetForStaffAsync(caseId, ct);
+    }
+
+    public async Task<CaseResponse> UpdateDiseasesAsync(
+        Guid caseId,
+        UpdateCaseDiseasesRequest request,
+        CancellationToken ct = default)
+    {
+        var medicalCase = await LoadForClinicalUpdateAsync(caseId, ct);
+
+        if (_context != null)
+        {
+            _context.CaseDiseases.RemoveRange(medicalCase.CaseDiseases.ToList());
+        }
+        else
+        {
+            medicalCase.CaseDiseases.Clear();
+        }
+
+        var now = DateTime.UtcNow;
+        if (request.Diseases != null)
+        {
+            foreach (var d in request.Diseases)
+            {
+                var newDisease = new CaseDisease
+                {
+                    Id = Guid.NewGuid(),
+                    CaseId = caseId,
+                    DiseaseId = d.DiseaseId,
+                    Note = d.Note,
+                    CreatedAt = now
+                };
+
+                if (_context != null)
+                {
+                    _context.CaseDiseases.Add(newDisease);
+                }
+                else
+                {
+                    medicalCase.CaseDiseases.Add(newDisease);
+                }
+            }
+        }
+
+        medicalCase.UpdatedAt = now;
+        await _cases.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Case {CaseId} diseases updated", caseId);
+
+        return await GetForStaffAsync(caseId, ct);
+    }
+
+    public async Task<CaseResponse> UpdateAllergiesAsync(
+        Guid caseId,
+        UpdateCaseAllergiesRequest request,
+        CancellationToken ct = default)
+    {
+        var medicalCase = await LoadForClinicalUpdateAsync(caseId, ct);
+
+        if (_context != null)
+        {
+            _context.CaseAllergies.RemoveRange(medicalCase.CaseAllergies.ToList());
+        }
+        else
+        {
+            medicalCase.CaseAllergies.Clear();
+        }
+
+        var now = DateTime.UtcNow;
+        if (request.Allergies != null)
+        {
+            foreach (var a in request.Allergies)
+            {
+                var newAllergy = new CaseAllergy
+                {
+                    Id = Guid.NewGuid(),
+                    CaseId = caseId,
+                    AllergyTypeId = a.AllergyTypeId,
+                    Note = a.Note,
+                    CreatedAt = now
+                };
+
+                if (_context != null)
+                {
+                    _context.CaseAllergies.Add(newAllergy);
+                }
+                else
+                {
+                    medicalCase.CaseAllergies.Add(newAllergy);
+                }
+            }
+        }
+
+        medicalCase.UpdatedAt = now;
+        await _cases.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Case {CaseId} allergies updated", caseId);
+
+        return await GetForStaffAsync(caseId, ct);
+    }
+
     /// <inheritdoc />
     public async Task<Guid> CreateFromBookingAsync(
         Guid patientProfileId,
@@ -370,6 +534,8 @@ public sealed class CaseService : ICaseService
     {
         var caseId = Guid.NewGuid();
         var now = DateTime.UtcNow;
+
+        var patientProfile = await _profiles.GetByIdAsync(patientProfileId, ct);
 
         var newCase = new Case
         {
@@ -389,7 +555,23 @@ public sealed class CaseService : ICaseService
                 SymptomId = s.SymptomId,
                 OtherNote = s.OtherNote,
                 CreatedAt = now
-            }).ToList()
+            }).ToList(),
+            CaseDiseases = patientProfile?.PatientDiseases?.Select(d => new CaseDisease
+            {
+                Id = Guid.NewGuid(),
+                CaseId = caseId,
+                DiseaseId = d.DiseaseId,
+                Note = d.Note,
+                CreatedAt = now
+            }).ToList() ?? new List<CaseDisease>(),
+            CaseAllergies = patientProfile?.PatientAllergies?.Select(a => new CaseAllergy
+            {
+                Id = Guid.NewGuid(),
+                CaseId = caseId,
+                AllergyTypeId = a.AllergyTypeId,
+                Note = a.Note,
+                CreatedAt = now
+            }).ToList() ?? new List<CaseAllergy>()
         };
 
         await _cases.CreateAsync(newCase, ct);
@@ -414,7 +596,6 @@ public sealed class CaseService : ICaseService
         // Gửi notification cho doctor về case mới được tạo từ booking
         try
         {
-            var patientProfile = await _profiles.GetByIdAsync(patientProfileId, ct);
             var user = patientProfile != null ? await _users.GetByIdAsync(patientProfile.UserId, ct) : null;
             var patientName = user?.FullName ?? "Bệnh nhân";
 
@@ -475,6 +656,23 @@ public sealed class CaseService : ICaseService
         if (medicalCase.DoctorId != actingDoctorId)
         {
             throw new BusinessException("Only the responsible doctor can change this case's conclusion.");
+        }
+
+        return medicalCase;
+    }
+
+    /// <summary>
+    /// Tải ca (có theo dõi kèm collections) và kiểm điều kiện trạng thái: chỉ cho phép sửa
+    /// khi ca đang ở trạng thái IN_PROGRESS hoặc BOOKED. Chặn khi CONFIRMED, END hoặc CANCELLED.
+    /// </summary>
+    private async Task<Case> LoadForClinicalUpdateAsync(Guid caseId, CancellationToken ct)
+    {
+        var medicalCase = await _cases.GetForUpdateWithCollectionsAsync(caseId, ct)
+            ?? throw new ResourceNotFoundException("Case not found.");
+
+        if (medicalCase.Status is CaseStatus.Confirmed or CaseStatus.End or CaseStatus.Cancelled)
+        {
+            throw new BusinessException("Cannot modify a locked or cancelled case.");
         }
 
         return medicalCase;

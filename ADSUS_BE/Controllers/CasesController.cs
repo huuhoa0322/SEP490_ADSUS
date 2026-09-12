@@ -316,6 +316,63 @@ public sealed class CasesController : ControllerBase
     }
 
     /// <summary>
+    /// Cập nhật danh sách triệu chứng của ca khám (Module 04).
+    /// CHỈ cho phép khi ca đang ở trạng thái BOOKED hoặc IN_PROGRESS.
+    /// </summary>
+    [HttpPut("{caseId:guid}/symptoms")]
+    [Authorize(Roles = "DOCTOR,STAFF")]
+    [ProducesResponseType(typeof(ApiResponse<CaseResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateSymptoms(
+        Guid caseId,
+        [FromBody] UpdateCaseSymptomsRequest request,
+        CancellationToken ct)
+    {
+        var result = await _cases.UpdateSymptomsAsync(caseId, request, ct);
+        return Ok(ApiResponse<CaseResponse>.Ok(result, "Case symptoms updated successfully"));
+    }
+
+    /// <summary>
+    /// Cập nhật danh sách tiền sử bệnh (snapshot) của ca khám (Module 04).
+    /// CHỈ cho phép khi ca đang ở trạng thái BOOKED hoặc IN_PROGRESS.
+    /// </summary>
+    [HttpPut("{caseId:guid}/diseases")]
+    [Authorize(Roles = "DOCTOR,STAFF")]
+    [ProducesResponseType(typeof(ApiResponse<CaseResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateDiseases(
+        Guid caseId,
+        [FromBody] UpdateCaseDiseasesRequest request,
+        CancellationToken ct)
+    {
+        var result = await _cases.UpdateDiseasesAsync(caseId, request, ct);
+        return Ok(ApiResponse<CaseResponse>.Ok(result, "Case diseases updated successfully"));
+    }
+
+    /// <summary>
+    /// Cập nhật danh sách dị ứng (snapshot) của ca khám (Module 04).
+    /// CHỈ cho phép khi ca đang ở trạng thái BOOKED hoặc IN_PROGRESS.
+    /// </summary>
+    [HttpPut("{caseId:guid}/allergies")]
+    [Authorize(Roles = "DOCTOR,STAFF")]
+    [ProducesResponseType(typeof(ApiResponse<CaseResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateAllergies(
+        Guid caseId,
+        [FromBody] UpdateCaseAllergiesRequest request,
+        CancellationToken ct)
+    {
+        var result = await _cases.UpdateAllergiesAsync(caseId, request, ct);
+        return Ok(ApiResponse<CaseResponse>.Ok(result, "Case allergies updated successfully"));
+    }
+
+    /// <summary>
     /// Xuất báo cáo PDF của một lần khám đã duyệt (UC-12).
     ///
     /// Đây là endpoint DUY NHẤT không bọc trong khuôn {code, message, data} — thân phản hồi

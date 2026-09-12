@@ -29,6 +29,19 @@ function buildStatistics(overrides: Partial<DashboardStatistics> = {}): Dashboar
     clinical: { caseCount: 11, aiRunCount: 0, aiConfirmedCount: 0, aiRejectedCount: 0, aiPendingCount: 0, aiConfirmRate: 0 },
     appointments: { bookedCount: 3, cancelledCount: 10, slotCount: 826, cancellationRate: 76.9 },
     adherence: { scheduledDoseCount: 104, takenDoseCount: 1, adherenceRate: 1 },
+    revenue: {
+      totalRevenue: 5000000,
+      paidInvoiceCount: 10,
+      cashRevenue: 3000000,
+      cashCount: 6,
+      bankTransferRevenue: 2000000,
+      bankTransferCount: 4,
+      pendingInvoiceCount: 2,
+      pendingAmount: 800000,
+    },
+    topMedicines: [
+      { medicineId: "med-1", medicineName: "Paracetamol 500mg", prescriptionCount: 25, totalQuantityBase: 750 },
+    ],
     activeAiModel: { versionCode: "YOLO26_EffNetV2S_BFV2_512", precision: 1, recall: 1, map50: 100 },
     trend: [],
     ...overrides,
@@ -106,6 +119,42 @@ describe("DashboardView — hiện số liệu", () => {
     expect(
       screen.getAllByText((_, element) => element?.textContent === "Chưa códữ liệu").length,
     ).toBeGreaterThan(0);
+  });
+
+  it("hiện tile Doanh thu với số tiền format VND", () => {
+    useDashboardStatisticsMock.mockReturnValue({
+      data: buildStatistics(), isLoading: false, isError: false, error: null,
+    });
+
+    render(<DashboardView />);
+
+    expect(screen.getAllByText("Doanh thu")[0]).toBeInTheDocument();
+    // "10 hóa đơn đã thanh toán" ở hint
+    expect(screen.getByText(/10 hóa đơn đã thanh toán/)).toBeInTheDocument();
+  });
+
+  it("hiện bảng top thuốc kê nhiều nhất", () => {
+    useDashboardStatisticsMock.mockReturnValue({
+      data: buildStatistics(), isLoading: false, isError: false, error: null,
+    });
+
+    render(<DashboardView />);
+
+    expect(screen.getByText("Top 10 thuốc kê nhiều nhất")).toBeInTheDocument();
+    expect(screen.getByText("Paracetamol 500mg")).toBeInTheDocument();
+    expect(screen.getByText("25")).toBeInTheDocument(); // prescriptionCount
+  });
+
+  it("không có thuốc kê — bảng top thuốc hiện rỗng, không crash", () => {
+    useDashboardStatisticsMock.mockReturnValue({
+      data: buildStatistics({ topMedicines: [] }), isLoading: false, isError: false, error: null,
+    });
+
+    render(<DashboardView />);
+
+    expect(screen.getByText("Top 10 thuốc kê nhiều nhất")).toBeInTheDocument();
+    // Bảng có header nhưng không có dòng dữ liệu
+    expect(screen.queryByText("Paracetamol 500mg")).not.toBeInTheDocument();
   });
 });
 

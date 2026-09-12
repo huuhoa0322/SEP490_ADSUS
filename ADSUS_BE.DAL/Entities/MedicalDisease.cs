@@ -13,5 +13,7 @@ public partial class MedicalDisease
 
     public bool IsOther { get; set; }
 
+    public virtual ICollection<CaseDisease> CaseDiseases { get; set; } = new List<CaseDisease>();
+
     public virtual ICollection<PatientDisease> PatientDiseases { get; set; } = new List<PatientDisease>();
 }

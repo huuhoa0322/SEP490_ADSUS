@@ -174,6 +174,30 @@ export interface PrescriptionSummary {
   status: string;
 }
 
+export interface CaseDiseaseDetail {
+  diseaseId: string;
+  diseaseName: string;
+  isOther: boolean;
+  note: string | null;
+}
+
+export interface CaseAllergyDetail {
+  allergyTypeId: string;
+  allergyName: string;
+  isOther: boolean;
+  note: string | null;
+}
+
+export interface CaseDiseaseInput {
+  diseaseId: string;
+  note: string | null;
+}
+
+export interface CaseAllergyInput {
+  allergyTypeId: string;
+  note: string | null;
+}
+
 /**
  * #20 (kết quả tạo) và #23 — bản đầy đủ cho Bác sĩ/Điều dưỡng.
  *
@@ -195,6 +219,8 @@ export interface CaseDetail {
   patientProfile: PatientProfile | null;
   ultrasoundImages: UltrasoundImage[];
   symptoms: CaseSymptomDetail[];
+  caseDiseases: CaseDiseaseDetail[];
+  caseAllergies: CaseAllergyDetail[];
   aiResults: AiResultSummary[];
   prescription: PrescriptionSummary | null;
   createdAt: string;
@@ -276,5 +302,5 @@ export interface CreateCaseInput {
  */
 export interface CaseConclusionInput {
   finalDiagnosis: string;
-  doctorConclusion: string;
+  doctorConclusion?: string;
 }

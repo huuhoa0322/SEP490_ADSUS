@@ -68,7 +68,7 @@ describe("AppointmentDetailModal", () => {
 
   const baseItem: CheckinQueueItem = {
     appointmentId: "app-100",
-    slotTime: "2026-09-12T08:30:00Z",
+    slotTime: "2099-09-12T08:30:00Z",
     patientFullName: "Nguyễn Văn An",
     patientPhone: "0901234567",
     patientProfileId: "prof-100",
