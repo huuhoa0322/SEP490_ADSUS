@@ -543,6 +543,33 @@ namespace ADSUS_BE
                     "ADSUS_BE.BLL/Common/SendGridSettings.cs for the required keys.");
             }
 
+            // ---------- Gửi SMS OTP (bệnh nhân tự đăng ký) ----------
+            builder.Services.Configure<EsmsSettings>(
+                builder.Configuration.GetSection(EsmsSettings.SectionName));
+
+            var esmsSettings = builder.Configuration
+                .GetSection(EsmsSettings.SectionName)
+                .Get<EsmsSettings>();
+
+            if (esmsSettings?.IsConfigured == true)
+            {
+                builder.Services.AddHttpClient("Esms");
+                builder.Services.AddScoped<IOtpSmsService, EsmsSmsService>();
+            }
+            else if (builder.Environment.IsDevelopment())
+            {
+                builder.Services.AddScoped<IOtpSmsService, DevConsoleOtpSmsService>();
+            }
+            else
+            {
+                // Dừng ngay tại đây — cùng lý do SendGrid: thiếu thì đăng ký tự đăng ký vỡ ở lần gọi
+                // đầu tiên trong môi trường thật, không phải lúc khởi động.
+                throw new InvalidOperationException(
+                    "Esms is not configured. Environment " +
+                    $"'{builder.Environment.EnvironmentName}' requires it — see " +
+                    "ADSUS_BE.BLL/Common/EsmsSettings.cs for the required keys.");
+            }
+
             // BLL — Module 10: Engagement (Blog PUBLIC endpoints)
             builder.Services.AddScoped<IBlogPostService, BlogPostService>();
 
