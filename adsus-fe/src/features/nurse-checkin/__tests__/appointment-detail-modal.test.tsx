@@ -41,12 +41,18 @@ describe("AppointmentDetailModal", () => {
     },
   ];
 
+  // Luôn tính là "ngày mai" tại thời điểm chạy test — component ẩn slot đã qua
+  // giờ trong NGÀY HÔM NAY (so với đồng hồ thật của máy chạy test, xem
+  // filteredAvailableSlots trong appointment-detail-modal.tsx). Hard-code một
+  // ngày cụ thể từng khiến các test này chỉ pass trước 09:00 giờ máy chạy test.
+  const tomorrowStr = format(new Date(Date.now() + 24 * 60 * 60 * 1000), "yyyy-MM-dd");
+
   const mockSlots: AvailableSlot[] = [
     {
       slotId: "slot-1",
       doctorId: "doc-1",
       doctorName: "BS. Trần Văn Minh",
-      slotDate: "2099-09-12",
+      slotDate: tomorrowStr,
       startTime: "09:00:00",
       endTime: "10:00:00",
     },
@@ -54,7 +60,7 @@ describe("AppointmentDetailModal", () => {
       slotId: "slot-2",
       doctorId: "doc-1",
       doctorName: "BS. Trần Văn Minh",
-      slotDate: "2099-09-12",
+      slotDate: tomorrowStr,
       startTime: "10:00:00",
       endTime: "11:00:00",
     },

@@ -157,7 +157,7 @@ public class DoctorMedicationTrackingServiceTests
         var service = CreateService(db);
         var doctorId = Guid.NewGuid();
 
-        var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, TestContext.Current.CancellationToken);
+        var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Patients);
         Assert.Equal(0, result.TotalCount);
@@ -198,7 +198,7 @@ public class DoctorMedicationTrackingServiceTests
 
         var service = CreateService(db);
 
-        var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, TestContext.Current.CancellationToken);
+        var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, ct: TestContext.Current.CancellationToken);
 
         var patient = Assert.Single(result.Patients);
         Assert.Equal("Nguyễn Văn A", patient.PatientName);
@@ -236,7 +236,7 @@ public class DoctorMedicationTrackingServiceTests
 
         var service = CreateService(db);
 
-        var result = await service.GetPatientListAsync(doctorId, "Trần", null, null, _nowUtc, TestContext.Current.CancellationToken);
+        var result = await service.GetPatientListAsync(doctorId, "Trần", null, null, _nowUtc, ct: TestContext.Current.CancellationToken);
 
         var patient = Assert.Single(result.Patients);
         Assert.Equal("Trần Thị B", patient.PatientName);
@@ -273,7 +273,7 @@ public class DoctorMedicationTrackingServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         var service = CreateService(db);
 
-        var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, TestContext.Current.CancellationToken);
+        var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, ct: TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result.Patients.Count);
         Assert.Equal("Alice", result.Patients[0].PatientName);
@@ -313,7 +313,7 @@ public class DoctorMedicationTrackingServiceTests
 
         var service = CreateService(db);
 
-        var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, TestContext.Current.CancellationToken);
+        var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, ct: TestContext.Current.CancellationToken);
 
         var patient = Assert.Single(result.Patients);
         Assert.Equal(1, patient.TodayTaken);
@@ -386,7 +386,7 @@ public class DoctorMedicationTrackingServiceTests
 
         var service = CreateService(db);
 
-        var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, TestContext.Current.CancellationToken);
+        var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, ct: TestContext.Current.CancellationToken);
 
         var patient = Assert.Single(result.Patients);
         Assert.Equal(1, patient.ActivePrescriptionCount); // chỉ đếm đơn còn hiệu lực
@@ -433,7 +433,7 @@ public class DoctorMedicationTrackingServiceTests
 
         var service = CreateService(db);
 
-        var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, TestContext.Current.CancellationToken);
+        var result = await service.GetPatientListAsync(doctorId, null, null, null, _nowUtc, ct: TestContext.Current.CancellationToken);
 
         Assert.Empty(result.Patients);
         Assert.Equal(0, result.TotalCount);
@@ -450,7 +450,7 @@ public class DoctorMedicationTrackingServiceTests
         var service = CreateService(db);
 
         await Assert.ThrowsAsync<ResourceNotFoundException>(() =>
-            service.GetPatientDetailAsync(Guid.NewGuid(), Guid.NewGuid(), _nowUtc, TestContext.Current.CancellationToken));
+            service.GetPatientDetailAsync(Guid.NewGuid(), Guid.NewGuid(), _nowUtc, ct: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -497,7 +497,7 @@ public class DoctorMedicationTrackingServiceTests
 
         var service = CreateService(db);
 
-        var result = await service.GetPatientDetailAsync(doctorId, profile.PatientProfileId, _nowUtc, TestContext.Current.CancellationToken);
+        var result = await service.GetPatientDetailAsync(doctorId, profile.PatientProfileId, _nowUtc, ct: TestContext.Current.CancellationToken);
 
         Assert.Equal("Nguyễn Văn B", result.PatientName);
         var card = Assert.Single(result.Prescriptions);
@@ -545,7 +545,7 @@ public class DoctorMedicationTrackingServiceTests
 
         var service = CreateService(db);
 
-        var result = await service.GetPatientDetailAsync(doctorId, profile.PatientProfileId, _nowUtc, TestContext.Current.CancellationToken);
+        var result = await service.GetPatientDetailAsync(doctorId, profile.PatientProfileId, _nowUtc, ct: TestContext.Current.CancellationToken);
 
         // Đơn hết hạn không xuất hiện
         Assert.Empty(result.Prescriptions);
@@ -594,7 +594,7 @@ public class DoctorMedicationTrackingServiceTests
 
         var service = CreateService(db);
 
-        var result = await service.GetPatientDetailAsync(doctorId, profile.PatientProfileId, _nowUtc, TestContext.Current.CancellationToken);
+        var result = await service.GetPatientDetailAsync(doctorId, profile.PatientProfileId, _nowUtc, ct: TestContext.Current.CancellationToken);
 
         var prescription = Assert.Single(result.Prescriptions);
         Assert.Equal("Active Med", prescription.TodayDoses[0].MedicineName);

@@ -26,7 +26,7 @@ public class PrescriptionServiceTests
     private readonly Mock<IMedicationIntakeScheduleGenerator> _scheduleGeneratorMock = new();
     private readonly Mock<ADSUS_BE.BLL.AppointmentScheduling.Interfaces.IAppointmentService> _appointmentServiceMock = new();
 
-    private PrescriptionService CreateService(AppDbContext dbContext = null)
+    private PrescriptionService CreateService(AppDbContext? dbContext = null)
     {
         var db = dbContext;
         if (db == null)
@@ -445,7 +445,7 @@ public class PrescriptionServiceTests
             ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
             LotNumber = "LOT01"
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         service = new PrescriptionService(
             db,

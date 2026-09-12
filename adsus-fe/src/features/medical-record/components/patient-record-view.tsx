@@ -35,7 +35,7 @@ import type { CaseStatus } from "../types/medical-record.types";
 /** Tính tuổi dựa trên ngày sinh. */
 function calculateAge(dateOfBirth: string | null | undefined): string {
   if (!dateOfBirth) return EMPTY_VALUE;
-  const birthYear = parseInt(dateOfBirth.slice(0, 4), 10);
+  const birthYear = Number.parseInt(dateOfBirth.slice(0, 4), 10);
   if (Number.isNaN(birthYear)) return EMPTY_VALUE;
   const currentYear = new Date().getFullYear();
   return `${currentYear - birthYear} tuổi`;

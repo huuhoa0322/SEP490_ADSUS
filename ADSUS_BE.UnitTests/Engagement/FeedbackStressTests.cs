@@ -309,8 +309,7 @@ public class FeedbackStressTests : IDisposable
             ct: TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
-        Assert.Single(result.Items);
-        var item = result.Items[0];
+        var item = Assert.Single(result.Items);
         Assert.Equal("Patient Stress Feedback", item.PatientName);
         Assert.Equal("0900000002", item.PatientPhone);
         Assert.Equal("Dr. Stress Feedback", item.DoctorName);

@@ -612,9 +612,9 @@ namespace ADSUS_BE
             // ---------- Quartz JOB-02: Slot Generator ----------
             builder.Services.AddQuartz(q =>
             {
-                // Chạy lúc 00:05 sáng mỗi ngày theo giờ Việt Nam
-                // "0 5 0 * * ?" = "At 00:05:00 every day"
-                var cronExpression = "0 5 0 * * ?";
+                // Chạy lúc 00:00 sáng mỗi ngày theo giờ Việt Nam (0h đêm VN)
+                // "0 0 0 * * ?" = "At 00:00:00 every day"
+                var cronExpression = "0 0 0 * * ?";
 
                 var jobKey = new Quartz.JobKey("SlotGeneratorJob", "schedule");
 

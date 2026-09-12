@@ -301,9 +301,9 @@ public class AuditLogStressTests : IDisposable
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
-        Assert.Single(result.Items);
-        Assert.Null(result.Items[0].Detail);
-        Assert.Equal("Admin NullDetail User", result.Items[0].ActorName);
+        var item = Assert.Single(result.Items);
+        Assert.Null(item.Detail);
+        Assert.Equal("Admin NullDetail User", item.ActorName);
     }
 
     [Fact]

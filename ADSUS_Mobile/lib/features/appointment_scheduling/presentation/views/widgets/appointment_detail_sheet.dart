@@ -116,14 +116,14 @@ class AppointmentDetailSheet extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      onReschedule?.call();
+                      onCancel?.call();
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.navy,
-                      side: const BorderSide(color: AppColors.border),
+                      foregroundColor: AppColors.danger,
+                      side: const BorderSide(color: AppColors.danger),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    child: const Text('Hủy bỏ'),
+                    child: const Text('Hủy lịch'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -134,7 +134,7 @@ class AppointmentDetailSheet extends StatelessWidget {
                       onReschedule?.call();
                     },
                     icon: const Icon(Icons.edit_calendar),
-                    label: const Text('Xác nhận đặt lại lịch'),
+                    label: const Text('Đặt lại lịch'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.teal,
                       foregroundColor: Colors.white,

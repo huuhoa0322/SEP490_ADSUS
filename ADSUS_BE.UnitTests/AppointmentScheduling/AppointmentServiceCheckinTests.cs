@@ -807,23 +807,23 @@ public class AppointmentServiceCheckinTests : IDisposable
 
         // Act 1: search patient name "Stark"
         var res1 = await _sut.GetCheckinQueueAsync(today, today, "Stark", null, 1, 15, TestContext.Current.CancellationToken);
-        Assert.Single(res1.Items);
-        Assert.Equal("Tony Stark", res1.Items[0].PatientFullName);
+        var item1 = Assert.Single(res1.Items);
+        Assert.Equal("Tony Stark", item1.PatientFullName);
 
         // Act 2: search doctor name "House"
         var res2 = await _sut.GetCheckinQueueAsync(today, today, "House", null, 1, 15, TestContext.Current.CancellationToken);
-        Assert.Single(res2.Items);
-        Assert.Equal("Bruce Wayne", res2.Items[0].PatientFullName);
+        var item2 = Assert.Single(res2.Items);
+        Assert.Equal("Bruce Wayne", item2.PatientFullName);
 
         // Act 3: search reason "Cardiac"
         var res3 = await _sut.GetCheckinQueueAsync(today, today, "Cardiac", null, 1, 15, TestContext.Current.CancellationToken);
-        Assert.Single(res3.Items);
-        Assert.Equal(apptA.AppointmentId, res3.Items[0].AppointmentId);
+        var item3 = Assert.Single(res3.Items);
+        Assert.Equal(apptA.AppointmentId, item3.AppointmentId);
 
         // Act 4: search phone "012345"
         var res4 = await _sut.GetCheckinQueueAsync(today, today, "012345", null, 1, 15, TestContext.Current.CancellationToken);
-        Assert.Single(res4.Items);
-        Assert.Equal("Bruce Wayne", res4.Items[0].PatientFullName);
+        var item4 = Assert.Single(res4.Items);
+        Assert.Equal("Bruce Wayne", item4.PatientFullName);
     }
 
     [Fact]
