@@ -49,20 +49,27 @@ public class PasswordResetOtpService : IPasswordResetOtpService
     {
         var phone = request.PhoneNumber.Trim();
 
-        var latest = await _otps.GetLatestByPhoneAsync(phone, cancellationToken);
-        if (latest is not null && DateTime.UtcNow - latest.CreatedAt < MinimumResendInterval)
-        {
-            return PasswordResetOtpResult.TooSoon;
-        }
-
         // NGƯỢC điều kiện của PatientSelfRegistrationService.RequestOtpAsync (Task 5): ở đây
         // số PHẢI đã có tài khoản Patient Active. Không đủ điều kiện thì coi như "không tìm
         // thấy" y hệt nhau — không disclose khác biệt giữa 3 lý do (xem Global Constraints).
+        //
+        // Kiểm điều kiện TRƯỚC kiểm cooldown (sửa 13/09/2026, review Task 7) — thứ tự ngược
+        // lại (cooldown trước) sẽ để lộ "vừa có hoạt động OTP cho số này" (qua HTTP 400 TooSoon
+        // thay vì 404) cho một số KHÔNG đủ điều kiện, dù bảng OTP dùng chung với đăng ký
+        // (Task 5) không có cột Purpose để phân biệt lý do. Đặt bước này lên trước triệt tiêu
+        // hẳn tín hiệu đó: số không đủ điều kiện luôn nhận 404, bất kể bảng OTP có dòng gần đây
+        // hay không.
         var user = await _users.GetByPhoneReadOnlyAsync(phone, cancellationToken);
         if (user is null || user.Role != UserRole.Patient || user.Status != UserStatus.Active)
         {
             _logger.LogInformation("Forgot-password OTP cho số không đủ điều kiện — báo 'không tìm thấy'.");
             return PasswordResetOtpResult.PhoneNotFound;
+        }
+
+        var latest = await _otps.GetLatestByPhoneAsync(phone, cancellationToken);
+        if (latest is not null && DateTime.UtcNow - latest.CreatedAt < MinimumResendInterval)
+        {
+            return PasswordResetOtpResult.TooSoon;
         }
 
         var otpCode = OtpCodeGenerator.Generate();

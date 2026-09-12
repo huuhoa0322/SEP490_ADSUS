@@ -109,6 +109,12 @@ public class PasswordResetOtpServiceTests
     [Fact]
     public async Task RequestOtpAsync_RequestedLessThanSixtySecondsAgo_ReturnsTooSoon()
     {
+        // Sửa 13/09/2026 (review Task 7): eligibility check giờ chạy TRƯỚC cooldown check
+        // (xem PasswordResetOtpService.RequestOtpAsync) — số phải là Patient Active hợp lệ để
+        // test này thật sự chạm tới nhánh cooldown, không bị chặn sớm bởi PhoneNotFound.
+        _users.Setup(r => r.GetByPhoneReadOnlyAsync("0987654321", It.IsAny<CancellationToken>()))
+              .ReturnsAsync(ActivePatient("0987654321"));
+
         var recentOtp = new PatientRegistrationOtp
         {
             OtpId = Guid.NewGuid(), Phone = "0987654321", OtpHash = "irrelevant",
