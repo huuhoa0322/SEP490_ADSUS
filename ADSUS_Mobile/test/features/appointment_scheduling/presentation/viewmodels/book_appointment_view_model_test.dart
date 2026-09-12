@@ -5,7 +5,6 @@ import 'package:adsus_mobile/core/network/api_exception.dart';
 import 'package:adsus_mobile/features/appointment_scheduling/domain/repositories/appointment_repository.dart';
 import 'package:adsus_mobile/features/appointment_scheduling/domain/repositories/symptom_repository.dart';
 import 'package:adsus_mobile/features/appointment_scheduling/domain/entities/schedule_slot.dart';
-import 'package:adsus_mobile/features/appointment_scheduling/data/dtos/symptom_dtos.dart';
 import 'package:adsus_mobile/features/appointment_scheduling/domain/entities/appointment.dart';
 import 'package:adsus_mobile/features/appointment_scheduling/presentation/viewmodels/book_appointment_view_model.dart';
 import 'package:adsus_mobile/shared/providers/app_providers.dart';
@@ -54,21 +53,16 @@ void main() {
   tearDown(() => container.dispose());
 
   /// Helper: đợi loadSlots xong (Future.microtask trong build chạy sau read đầu tiên)
-  Future<void> _loadAndWait() async {
+  Future<void> loadAndWait() async {
     await container
         .read(bookAppointmentViewModelProvider.notifier)
         .loadSlots();
     await Future.value(); // flush microtask queue
   }
 
-  /// Helper: chọn gender và đợi state update
-  void _selectGender(DoctorGender? gender) {
-    container.read(bookAppointmentViewModelProvider.notifier).selectDoctorGender(gender);
-  }
-
   group('filteredDoctorOptions — getter', () {
     test('khong filter → tra ve tat ca bac si', () async {
-      await _loadAndWait();
+      await loadAndWait();
 
       final state = container.read(bookAppointmentViewModelProvider);
       expect(state.doctorOptions.length, 3);
@@ -76,7 +70,7 @@ void main() {
     });
 
     test('filter male → chi tra ve bac si nam', () async {
-      await _loadAndWait();
+      await loadAndWait();
 
       container
           .read(bookAppointmentViewModelProvider.notifier)
@@ -92,7 +86,7 @@ void main() {
     });
 
     test('filter female → chi tra ve bac si nu', () async {
-      await _loadAndWait();
+      await loadAndWait();
 
       container
           .read(bookAppointmentViewModelProvider.notifier)
@@ -105,7 +99,7 @@ void main() {
     });
 
     test('reset ve null → tra ve tat ca bac si (BAI-01)', () async {
-      await _loadAndWait();
+      await loadAndWait();
 
       container
           .read(bookAppointmentViewModelProvider.notifier)
@@ -129,7 +123,7 @@ void main() {
 
   group('selectDoctorGender', () {
     test('chon gender → reset selectedDoctorId', () async {
-      await _loadAndWait();
+      await loadAndWait();
 
       container
           .read(bookAppointmentViewModelProvider.notifier)
@@ -152,7 +146,7 @@ void main() {
     });
 
     test('reset ve null → reset selectedDoctorId (BAI-01)', () async {
-      await _loadAndWait();
+      await loadAndWait();
 
       container
           .read(bookAppointmentViewModelProvider.notifier)
@@ -177,7 +171,7 @@ void main() {
     });
 
     test('chon gender → reset selectedSlotId', () async {
-      await _loadAndWait();
+      await loadAndWait();
 
       container
           .read(bookAppointmentViewModelProvider.notifier)
@@ -212,7 +206,7 @@ void main() {
 
   group('resetForNewBooking', () {
     test('resetForNewBooking → xoa selectedDoctorId, selectedSlotId, selectedDate', () async {
-      await _loadAndWait();
+      await loadAndWait();
 
       container
           .read(bookAppointmentViewModelProvider.notifier)
@@ -240,7 +234,7 @@ void main() {
     });
 
     test('resetForNewBooking giu nguyen slots', () async {
-      await _loadAndWait();
+      await loadAndWait();
 
       final slotsBefore =
           container.read(bookAppointmentViewModelProvider).slots;
@@ -257,14 +251,14 @@ void main() {
 
   group('visibleSlots', () {
     test('chua chon bac si → tra ve rong', () async {
-      await _loadAndWait();
+      await loadAndWait();
 
       final state = container.read(bookAppointmentViewModelProvider);
       expect(state.visibleSlots, isEmpty);
     });
 
     test('chon bac si + ngay → tra ve slot phu hop', () async {
-      await _loadAndWait();
+      await loadAndWait();
 
       container
           .read(bookAppointmentViewModelProvider.notifier)
@@ -279,7 +273,7 @@ void main() {
     });
 
     test('filter gender male → visibleSlots chi tu bac si nam', () async {
-      await _loadAndWait();
+      await loadAndWait();
 
       container
           .read(bookAppointmentViewModelProvider.notifier)
@@ -308,7 +302,7 @@ void main() {
             slotId: 'slot-m1',
           ));
 
-      await _loadAndWait();
+      await loadAndWait();
 
       container
           .read(bookAppointmentViewModelProvider.notifier)
@@ -340,7 +334,7 @@ void main() {
             symptoms: any(named: 'symptoms'),
           )).thenThrow(ApiException('Server error', statusCode: 500));
 
-      await _loadAndWait();
+      await loadAndWait();
 
       container
           .read(bookAppointmentViewModelProvider.notifier)
