@@ -8,9 +8,11 @@ export const metadata: Metadata = {
 };
 
 /**
- * SCR-26 — Blog Sức khỏe PUBLIC (UC-23).
- * GB-05: không có [Authorize] — Guest đọc được, Google index được.
- * GB-09: PUBLIC trên Web, không phải Patient-only.
+ * SCR-26 — Blog Sức khỏe (UC-23).
+ * 2026-09-12: mở public cho Guest (chưa đăng nhập) + Patient + mọi role.
+ * BE `GET /api/v1/blog-posts` đã [AllowAnonymous] — override tạm GB-09 cũ,
+ * xem project-state/decisions.md.
+ * GB-05: chỉ hiển thị bài viết Status == Published.
  */
 export default function BlogPage() {
   return <BlogListView />;

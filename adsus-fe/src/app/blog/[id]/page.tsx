@@ -7,7 +7,8 @@ interface BlogDetailPageProps {
 }
 
 /**
- * SCR-26 — Chi tiết Blog Sức khỏe PUBLIC (UC-23).
+ * SCR-26 — Chi tiết Blog Sức khỏe (UC-23).
+ * 2026-09-12: public cho Guest + Patient + mọi role (BE [AllowAnonymous]).
  * GB-05: trả 404 nếu bài viết không tồn tại hoặc chưa publish.
  */
 export async function generateMetadata(): Promise<Metadata> {
