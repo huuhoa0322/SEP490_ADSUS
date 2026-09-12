@@ -17,22 +17,46 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _auth;
     private readonly IPasswordResetService _passwordReset;
+    private readonly IPatientSelfRegistrationService _selfRegistration;
     private readonly IValidator<LoginRequest> _loginValidator;
     private readonly IValidator<ChangePasswordRequest> _changePasswordValidator;
     private readonly IValidator<ForgotPasswordRequest> _forgotPasswordValidator;
+    private readonly IValidator<RequestRegistrationOtpRequest> _requestOtpValidator;
+    private readonly IValidator<VerifyRegistrationOtpRequest> _verifyOtpValidator;
+    private readonly IValidator<CompleteRegistrationRequest> _completeRegistrationValidator;
+    private readonly IPasswordResetOtpService _passwordResetOtp;
+    private readonly IValidator<RequestPasswordResetOtpRequest> _requestPasswordResetOtpValidator;
+    private readonly IValidator<VerifyPasswordResetOtpRequest> _verifyPasswordResetOtpValidator;
+    private readonly IValidator<CompletePasswordResetWithOtpRequest> _completePasswordResetWithOtpValidator;
 
     public AuthController(
         IAuthService auth,
         IPasswordResetService passwordReset,
+        IPatientSelfRegistrationService selfRegistration,
+        IPasswordResetOtpService passwordResetOtp,
         IValidator<LoginRequest> loginValidator,
         IValidator<ChangePasswordRequest> changePasswordValidator,
-        IValidator<ForgotPasswordRequest> forgotPasswordValidator)
+        IValidator<ForgotPasswordRequest> forgotPasswordValidator,
+        IValidator<RequestRegistrationOtpRequest> requestOtpValidator,
+        IValidator<VerifyRegistrationOtpRequest> verifyOtpValidator,
+        IValidator<CompleteRegistrationRequest> completeRegistrationValidator,
+        IValidator<RequestPasswordResetOtpRequest> requestPasswordResetOtpValidator,
+        IValidator<VerifyPasswordResetOtpRequest> verifyPasswordResetOtpValidator,
+        IValidator<CompletePasswordResetWithOtpRequest> completePasswordResetWithOtpValidator)
     {
         _auth = auth;
         _passwordReset = passwordReset;
+        _selfRegistration = selfRegistration;
+        _passwordResetOtp = passwordResetOtp;
         _loginValidator = loginValidator;
         _changePasswordValidator = changePasswordValidator;
         _forgotPasswordValidator = forgotPasswordValidator;
+        _requestOtpValidator = requestOtpValidator;
+        _verifyOtpValidator = verifyOtpValidator;
+        _completeRegistrationValidator = completeRegistrationValidator;
+        _requestPasswordResetOtpValidator = requestPasswordResetOtpValidator;
+        _verifyPasswordResetOtpValidator = verifyPasswordResetOtpValidator;
+        _completePasswordResetWithOtpValidator = completePasswordResetWithOtpValidator;
     }
 
     /// <summary>
@@ -198,5 +222,198 @@ public class AuthController : ControllerBase
             _ => Unauthorized(ApiResponse<object>.Fail(
                 StatusCodes.Status401Unauthorized, "Invalid access token.")),
         };
+    }
+
+    /// <summary>
+    /// Bệnh nhân tự đăng ký, bước 1 — xin gửi mã OTP tới số điện thoại.
+    /// Báo RÕ 409 nếu số đã có tài khoản (xem PatientSelfRegistrationService.RequestOtpAsync
+    /// và Global Constraints — quyết định có chủ đích, không phải anti-enumeration mơ hồ).
+    /// </summary>
+    [HttpPost("register/request-otp")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> RequestRegistrationOtp(
+        [FromBody] RequestRegistrationOtpRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validation = await _requestOtpValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
+        }
+
+        var result = await _selfRegistration.RequestOtpAsync(request, cancellationToken);
+
+        return result switch
+        {
+            RegistrationOtpResult.Success => Ok(ApiResponse<object>.Ok(
+                null!, "Verification code sent.")),
+
+            RegistrationOtpResult.TooSoon => BadRequest(ApiResponse<object>.Fail(
+                StatusCodes.Status400BadRequest,
+                "Please wait at least 60 seconds before requesting another code.")),
+
+            // Báo RÕ — quyết định có chủ đích, xem Global Constraints.
+            RegistrationOtpResult.PhoneAlreadyRegistered => Conflict(ApiResponse<object>.Fail(
+                StatusCodes.Status409Conflict, "This phone number is already registered.")),
+
+            _ => throw new InvalidOperationException($"Unhandled {nameof(RegistrationOtpResult)}: {result}."),
+        };
+    }
+
+    /// <summary>Bệnh nhân tự đăng ký, bước 2 — xác thực mã OTP, đổi lấy registration token.</summary>
+    [HttpPost("register/verify-otp")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [ProducesResponseType(typeof(ApiResponse<VerifyRegistrationOtpResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<VerifyRegistrationOtpResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<VerifyRegistrationOtpResponse>), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> VerifyRegistrationOtp(
+        [FromBody] VerifyRegistrationOtpRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validation = await _verifyOtpValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<VerifyRegistrationOtpResponse>.Fail(
+                StatusCodes.Status400BadRequest, message));
+        }
+
+        var result = await _selfRegistration.VerifyOtpAsync(request, cancellationToken);
+
+        if (!result.Success)
+        {
+            return BadRequest(ApiResponse<VerifyRegistrationOtpResponse>.Fail(
+                StatusCodes.Status400BadRequest, "The verification code is incorrect or has expired."));
+        }
+
+        return Ok(ApiResponse<VerifyRegistrationOtpResponse>.Ok(
+            new VerifyRegistrationOtpResponse(result.RegistrationToken!), "Verification successful."));
+    }
+
+    /// <summary>Bệnh nhân tự đăng ký, bước 3 (cuối) — tạo tài khoản Patient và tự động đăng nhập.</summary>
+    [HttpPost("register/complete")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> CompleteRegistration(
+        [FromBody] CompleteRegistrationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validation = await _completeRegistrationValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<LoginResponse>.Fail(StatusCodes.Status400BadRequest, message));
+        }
+
+        // BusinessException (token sai/hết hạn) và ConflictException (số vừa bị đăng ký) được
+        // GlobalExceptionHandler dịch sang 422/409 tương ứng (xem GlobalExceptionHandler.cs) —
+        // không try/catch ở đây. 400 ở trên chỉ dành cho lỗi hình dạng dữ liệu (FluentValidation).
+        var result = await _selfRegistration.CompleteRegistrationAsync(request, cancellationToken);
+
+        return Ok(ApiResponse<LoginResponse>.Ok(result, "Registration successful."));
+    }
+
+    /// <summary>UC-03 — quên mật khẩu qua SMS OTP, bước 1. CHỈ Patient (Global Constraints):
+    /// số không thuộc Patient Active bị coi như "không tìm thấy", báo RÕ 404.</summary>
+    [HttpPost("forgot-password/request-otp")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> RequestPasswordResetOtp(
+        [FromBody] RequestPasswordResetOtpRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validation = await _requestPasswordResetOtpValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
+        }
+
+        var result = await _passwordResetOtp.RequestOtpAsync(request, cancellationToken);
+
+        return result switch
+        {
+            PasswordResetOtpResult.Success => Ok(ApiResponse<object>.Ok(null!, "Verification code sent.")),
+
+            PasswordResetOtpResult.TooSoon => BadRequest(ApiResponse<object>.Fail(
+                StatusCodes.Status400BadRequest,
+                "Please wait at least 60 seconds before requesting another code.")),
+
+            // Báo RÕ — quyết định có chủ đích (Global Constraints). 404, không phải 409 như
+            // đăng ký, vì hướng ngược lại: không tìm thấy, không phải xung đột.
+            PasswordResetOtpResult.PhoneNotFound => NotFound(ApiResponse<object>.Fail(
+                StatusCodes.Status404NotFound, "This phone number is not registered.")),
+
+            _ => throw new InvalidOperationException($"Unhandled {nameof(PasswordResetOtpResult)}: {result}."),
+        };
+    }
+
+    /// <summary>UC-03 — quên mật khẩu qua SMS OTP, bước 2.</summary>
+    [HttpPost("forgot-password/verify-otp")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [ProducesResponseType(typeof(ApiResponse<VerifyPasswordResetOtpResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<VerifyPasswordResetOtpResponse>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyPasswordResetOtp(
+        [FromBody] VerifyPasswordResetOtpRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validation = await _verifyPasswordResetOtpValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<VerifyPasswordResetOtpResponse>.Fail(
+                StatusCodes.Status400BadRequest, message));
+        }
+
+        var result = await _passwordResetOtp.VerifyOtpAsync(request, cancellationToken);
+
+        if (!result.Success)
+        {
+            return BadRequest(ApiResponse<VerifyPasswordResetOtpResponse>.Fail(
+                StatusCodes.Status400BadRequest, "The verification code is incorrect or has expired."));
+        }
+
+        return Ok(ApiResponse<VerifyPasswordResetOtpResponse>.Ok(
+            new VerifyPasswordResetOtpResponse(result.ResetToken!), "Verification successful."));
+    }
+
+    /// <summary>UC-03 — quên mật khẩu qua SMS OTP, bước 3 (cuối). Tự động đăng nhập sau khi đổi.</summary>
+    [HttpPost("forgot-password/complete")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CompletePasswordResetWithOtp(
+        [FromBody] CompletePasswordResetWithOtpRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validation = await _completePasswordResetWithOtpValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<LoginResponse>.Fail(StatusCodes.Status400BadRequest, message));
+        }
+
+        // BusinessException (token sai/hết hạn, tài khoản không còn hợp lệ) được
+        // GlobalExceptionHandler dịch sang 400/422 — không try/catch ở đây.
+        var result = await _passwordResetOtp.CompleteAsync(request, cancellationToken);
+
+        return Ok(ApiResponse<LoginResponse>.Ok(result, "Password reset successful."));
     }
 }

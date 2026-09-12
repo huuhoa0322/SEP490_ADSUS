@@ -359,6 +359,7 @@ namespace ADSUS_BE
             // DAL
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+            builder.Services.AddScoped<IPatientRegistrationOtpRepository, PatientRegistrationOtpRepository>();
             builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
             builder.Services.AddScoped<IAiModelVersionRepository, AiModelVersionRepository>();
             builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
@@ -400,7 +401,9 @@ namespace ADSUS_BE
 
             // BLL — Module 2: User & Role Management
             builder.Services.AddScoped<IUserAccountService, UserAccountService>();
+            builder.Services.AddScoped<IPatientSelfRegistrationService, PatientSelfRegistrationService>();
             builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
+            builder.Services.AddScoped<IPasswordResetOtpService, PasswordResetOtpService>();
             // Ghi và đọc nhật ký thao tác quản trị tài khoản (UC-04).
             builder.Services.AddScoped<AccountAuditTrail>();
             builder.Services.AddScoped<IAuditLogService, AuditLogService>();
@@ -540,6 +543,33 @@ namespace ADSUS_BE
                     "SendGrid is not configured. Environment " +
                     $"'{builder.Environment.EnvironmentName}' requires it — see " +
                     "ADSUS_BE.BLL/Common/SendGridSettings.cs for the required keys.");
+            }
+
+            // ---------- Gửi SMS OTP (bệnh nhân tự đăng ký) ----------
+            builder.Services.Configure<EsmsSettings>(
+                builder.Configuration.GetSection(EsmsSettings.SectionName));
+
+            var esmsSettings = builder.Configuration
+                .GetSection(EsmsSettings.SectionName)
+                .Get<EsmsSettings>();
+
+            if (esmsSettings?.IsConfigured == true)
+            {
+                builder.Services.AddHttpClient("Esms");
+                builder.Services.AddScoped<IOtpSmsService, EsmsSmsService>();
+            }
+            else if (builder.Environment.IsDevelopment())
+            {
+                builder.Services.AddScoped<IOtpSmsService, DevConsoleOtpSmsService>();
+            }
+            else
+            {
+                // Dừng ngay tại đây — cùng lý do SendGrid: thiếu thì đăng ký tự đăng ký vỡ ở lần gọi
+                // đầu tiên trong môi trường thật, không phải lúc khởi động.
+                throw new InvalidOperationException(
+                    "Esms is not configured. Environment " +
+                    $"'{builder.Environment.EnvironmentName}' requires it — see " +
+                    "ADSUS_BE.BLL/Common/EsmsSettings.cs for the required keys.");
             }
 
             // BLL — Module 10: Engagement (Blog PUBLIC endpoints)

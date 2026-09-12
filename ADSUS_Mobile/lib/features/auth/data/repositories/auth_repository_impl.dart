@@ -224,4 +224,157 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<String?> readPairedPhone() =>
       _storage.read(key: StorageKeys.pairedPhone);
+
+  @override
+  Future<void> requestRegistrationOtp({required String phoneNumber}) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        ApiConstants.registerRequestOtp,
+        data: {'phoneNumber': phoneNumber},
+      );
+    } on DioException catch (e) {
+      // Báo RÕ khi số đã có tài khoản (409) — quyết định có chủ đích, xem Global Constraints
+      // ở plan gốc. Đặt riêng nhánh này TRƯỚC ApiErrorMapper.general vì message cụ thể ở đây
+      // quan trọng hơn message chung "không gửi được".
+      if (e.response?.statusCode == 409) {
+        throw const ApiException('Số điện thoại này đã tồn tại.', statusCode: 409);
+      }
+      throw ApiErrorMapper.general(e, fallback: 'Không gửi được mã xác thực.');
+    }
+  }
+
+  @override
+  Future<String> verifyRegistrationOtp({
+    required String phoneNumber,
+    required String otpCode,
+  }) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        ApiConstants.registerVerifyOtp,
+        data: {'phoneNumber': phoneNumber, 'otpCode': otpCode},
+      );
+
+      final envelope = ApiEnvelope.fromJson(res.data ?? const {});
+      if (envelope.data == null) {
+        throw const ApiException('Mã xác thực không đúng hoặc đã hết hạn.');
+      }
+
+      return AuthMapper.registrationTokenFromJson(envelope.data!);
+    } on DioException catch (e) {
+      throw ApiErrorMapper.general(e, fallback: 'Mã xác thực không đúng hoặc đã hết hạn.');
+    }
+  }
+
+  @override
+  Future<AuthSession> completeRegistration({
+    required String registrationToken,
+    required String fullName,
+    required String password,
+    required String confirmPassword,
+    required String phoneNumber,
+    String? email,
+    String? dateOfBirth,
+  }) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        ApiConstants.registerComplete,
+        data: {
+          'registrationToken': registrationToken,
+          'fullName': fullName,
+          'password': password,
+          'confirmPassword': confirmPassword,
+          'email': email,
+          'dateOfBirth': dateOfBirth,
+        },
+      );
+
+      final envelope = ApiEnvelope.fromJson(res.data ?? const {});
+      if (envelope.data == null) {
+        throw const ApiException('Đăng ký thất bại.');
+      }
+
+      final session = AuthMapper.sessionFromJson(envelope.data!);
+
+      // Đăng ký xong tự động đăng nhập — ghi token giống hệt signIn (UC-02 BR-01: đây cũng
+      // là bước "ghép đôi thiết bị" cho sinh trắc học), để mọi màn sau đó đối xử với tài
+      // khoản mới này y như vừa đăng nhập thủ công.
+      await _storage.write(key: StorageKeys.accessToken, value: session.accessToken);
+      await _storage.write(key: StorageKeys.pairedPhone, value: phoneNumber);
+
+      return session;
+    } on DioException catch (e) {
+      throw ApiErrorMapper.general(e, fallback: 'Đăng ký thất bại.');
+    }
+  }
+
+  @override
+  Future<void> requestPasswordResetOtp({required String phoneNumber}) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        ApiConstants.forgotPasswordRequestOtp,
+        data: {'phoneNumber': phoneNumber},
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        throw const ApiException('Số điện thoại này chưa có tài khoản.', statusCode: 404);
+      }
+      throw ApiErrorMapper.general(e, fallback: 'Không gửi được mã xác thực.');
+    }
+  }
+
+  @override
+  Future<String> verifyPasswordResetOtp({
+    required String phoneNumber,
+    required String otpCode,
+  }) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        ApiConstants.forgotPasswordVerifyOtp,
+        data: {'phoneNumber': phoneNumber, 'otpCode': otpCode},
+      );
+
+      final envelope = ApiEnvelope.fromJson(res.data ?? const {});
+      if (envelope.data == null) {
+        throw const ApiException('Mã xác thực không đúng hoặc đã hết hạn.');
+      }
+
+      return envelope.data!['resetToken'] as String? ?? '';
+    } on DioException catch (e) {
+      throw ApiErrorMapper.general(e, fallback: 'Mã xác thực không đúng hoặc đã hết hạn.');
+    }
+  }
+
+  @override
+  Future<AuthSession> completePasswordResetWithOtp({
+    required String resetToken,
+    required String newPassword,
+    required String confirmNewPassword,
+    required String phoneNumber,
+  }) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        ApiConstants.forgotPasswordComplete,
+        data: {
+          'resetToken': resetToken,
+          'newPassword': newPassword,
+          'confirmNewPassword': confirmNewPassword,
+        },
+      );
+
+      final envelope = ApiEnvelope.fromJson(res.data ?? const {});
+      if (envelope.data == null) {
+        throw const ApiException('Đặt lại mật khẩu thất bại.');
+      }
+
+      final session = AuthMapper.sessionFromJson(envelope.data!);
+
+      // Tự động đăng nhập lại sau khi đổi mật khẩu — ghi token giống hệt signIn/completeRegistration.
+      await _storage.write(key: StorageKeys.accessToken, value: session.accessToken);
+      await _storage.write(key: StorageKeys.pairedPhone, value: phoneNumber);
+
+      return session;
+    } on DioException catch (e) {
+      throw ApiErrorMapper.general(e, fallback: 'Đặt lại mật khẩu thất bại.');
+    }
+  }
 }
