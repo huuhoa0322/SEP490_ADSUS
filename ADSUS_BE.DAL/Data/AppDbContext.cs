@@ -70,6 +70,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<PatientReminderPreference> PatientReminderPreferences { get; set; }
 
+    public virtual DbSet<PatientRegistrationOtp> PatientRegistrationOtps { get; set; }
+
     public virtual DbSet<Prescription> Prescriptions { get; set; }
 
     public virtual DbSet<PrescriptionItem> PrescriptionItems { get; set; }
@@ -1193,6 +1195,41 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.RefreshTokens)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("refresh_tokens_user_id_fkey");
+        });
+
+        modelBuilder.Entity<PatientRegistrationOtp>(entity =>
+        {
+            entity.HasKey(e => e.OtpId).HasName("pk_patient_registration_otps");
+
+            entity.ToTable("patient_registration_otps", tb => tb.HasComment(
+                "Mã OTP xác thực số điện thoại khi bệnh nhân tự đăng ký (không qua Admin/Điều dưỡng)."));
+
+            entity.HasIndex(e => e.Phone, "idx_patient_registration_otps_phone");
+
+            entity.Property(e => e.OtpId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("otp_id");
+            entity.Property(e => e.Phone)
+                .HasMaxLength(15)
+                .HasColumnName("phone");
+            entity.Property(e => e.OtpHash)
+                .HasMaxLength(255)
+                .HasColumnName("otp_hash");
+            entity.Property(e => e.ExpiresAt)
+                .HasColumnName("expires_at");
+            entity.Property(e => e.AttemptCount)
+                .HasDefaultValue(0)
+                .HasColumnName("attempt_count");
+            entity.Property(e => e.VerifiedAt)
+                .HasColumnName("verified_at");
+            entity.Property(e => e.VerificationTokenHash)
+                .HasMaxLength(255)
+                .HasColumnName("verification_token_hash");
+            entity.Property(e => e.VerificationTokenExpiresAt)
+                .HasColumnName("verification_token_expires_at");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
         });
 
         modelBuilder.Entity<ScheduleSlot>(entity =>

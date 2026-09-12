@@ -359,6 +359,7 @@ namespace ADSUS_BE
             // DAL
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+            builder.Services.AddScoped<IPatientRegistrationOtpRepository, PatientRegistrationOtpRepository>();
             builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
             builder.Services.AddScoped<IAiModelVersionRepository, AiModelVersionRepository>();
             builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
