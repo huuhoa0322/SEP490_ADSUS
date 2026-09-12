@@ -19,11 +19,20 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+import DOMPurify from "isomorphic-dompurify";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { MedicalHistorySelector } from "./medical-history-selector";
+import { AllergySelector } from "./allergy-selector";
+import { SymptomSelector } from "./symptom-selector";
+
 import {
   useCaseDetail,
   useConfirmCase,
   useEndCaseWithoutPrescription,
   useSaveCaseConclusion,
+  useUpdateCaseAllergies,
+  useUpdateCaseDiseases,
+  useUpdateCaseSymptoms,
 } from "../hooks/use-cases";
 import { FollowUpSection } from "@/features/appointment-scheduling/components/follow-up-section";
 import { useCreateFollowUpAppointment } from "@/features/appointment-scheduling/hooks/use-doctor-appointments";
@@ -35,7 +44,12 @@ import {
   formatIsoDate,
   formatIsoDateTime,
 } from "../lib/medical-record-labels";
-import type { CaseStatus } from "../types/medical-record.types";
+import type {
+  CaseAllergyInput,
+  CaseDiseaseInput,
+  CaseStatus,
+  CreateCaseSymptomInput,
+} from "../types/medical-record.types";
 import { useDiagnosticStore } from "../stores/use-diagnostic-store";
 
 import { UltrasoundImageGallery } from "./ultrasound-image-gallery";
@@ -88,7 +102,6 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const [pendingImages, setPendingImages] = useState<File[]>([]);
   const [note, setNote] = useState("");
   const [finalDiagnosis, setFinalDiagnosis] = useState("");
-  const [doctorConclusion, setDoctorConclusion] = useState("");
   const [conclusionError, setConclusionError] = useState<string | null>(null);
   // Khoá tạm sau khi "Lưu kết luận" thành công — xem chú thích đầu file.
   const [isLocked, setIsLocked] = useState(false);
@@ -96,6 +109,17 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   // return) để không vi phạm Rules of Hooks: mọi useState phải gọi đúng số lần, đúng thứ tự
   // ở mọi lượt render, kể cả lượt render sớm bị chặn bởi isLoading/isError.
   const [syncedCaseId, setSyncedCaseId] = useState<string | null>(null);
+
+  const [isEditingSymptoms, setIsEditingSymptoms] = useState(false);
+  const [editableSymptoms, setEditableSymptoms] = useState<CreateCaseSymptomInput[]>([]);
+  const [isEditingDiseases, setIsEditingDiseases] = useState(false);
+  const [editableDiseases, setEditableDiseases] = useState<CaseDiseaseInput[]>([]);
+  const [isEditingAllergies, setIsEditingAllergies] = useState(false);
+  const [editableAllergies, setEditableAllergies] = useState<CaseAllergyInput[]>([]);
+
+  const updateSymptomsMutation = useUpdateCaseSymptoms(caseId);
+  const updateDiseasesMutation = useUpdateCaseDiseases(caseId);
+  const updateAllergiesMutation = useUpdateCaseAllergies(caseId);
 
   const currentUser = useAuthStore((state) => state.user);
   const saveConclusionMutation = useSaveCaseConclusion(caseId);
@@ -178,6 +202,10 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   // hay Điều dưỡng. Đây chỉ là lớp trải nghiệm; backend chặn thật ở SaveConclusionAsync/ConfirmAsync.
   const isResponsibleDoctor =
     currentUser?.role === "DOCTOR" && currentUser.userId === medicalCase.doctorId;
+  const canEditClinical =
+    (currentUser?.role === "DOCTOR" || currentUser?.role === "STAFF") &&
+    !isConfirmedOrEnd &&
+    !isCancelled;
 
   // Đổ kết luận đã lưu trước đó (nếu có, từ lần "Lưu kết luận" trước) vào form ngay trong lúc
   // render — cùng mẫu "đồng bộ state khi prop đổi" đã dùng ở PatientProfileForm (Task C9).
@@ -186,15 +214,43 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   if (medicalCase.caseId !== syncedCaseId) {
     setSyncedCaseId(medicalCase.caseId);
     setFinalDiagnosis(medicalCase.finalDiagnosis ?? "");
-    setDoctorConclusion(medicalCase.doctorConclusion ?? "");
     setIsLocked(false);
+
+    // Reset edit modes
+    setIsEditingSymptoms(false);
+    setIsEditingDiseases(false);
+    setIsEditingAllergies(false);
+
+    // Map response → input types
+    setEditableSymptoms(
+      (medicalCase.symptoms ?? []).map((s) => ({
+        categoryId: s.categoryId,
+        symptomId: s.symptomId ?? null,
+        otherNote: s.otherNote ?? null,
+      })),
+    );
+    setEditableDiseases(
+      (medicalCase.caseDiseases ?? []).map((d) => ({
+        diseaseId: d.diseaseId,
+        note: d.note ?? null,
+      })),
+    );
+    setEditableAllergies(
+      (medicalCase.caseAllergies ?? []).map((a) => ({
+        allergyTypeId: a.allergyTypeId,
+        note: a.note ?? null,
+      })),
+    );
   }
 
   function validateConclusionFields(): boolean {
     setConclusionError(null);
 
-    if (!finalDiagnosis.trim() || !doctorConclusion.trim()) {
-      setConclusionError("Vui lòng nhập đầy đủ chẩn đoán và kết luận.");
+    const plainText = DOMPurify.sanitize(finalDiagnosis, { ALLOWED_TAGS: [] })
+      .replace(/&nbsp;|\u00a0/g, " ")
+      .trim();
+    if (!plainText) {
+      setConclusionError("Vui lòng nhập chẩn đoán / kết luận.");
       return false;
     }
 
@@ -205,7 +261,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
     if (!validateConclusionFields()) return;
 
     saveConclusionMutation.mutate(
-      { finalDiagnosis: finalDiagnosis.trim(), doctorConclusion: doctorConclusion.trim() },
+      { finalDiagnosis: finalDiagnosis.trim(), doctorConclusion: "" },
       { onSuccess: () => setIsLocked(true) },
     );
   }
@@ -219,8 +275,64 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
 
     confirmMutation.mutate({
       finalDiagnosis: finalDiagnosis.trim(),
-      doctorConclusion: doctorConclusion.trim(),
+      doctorConclusion: "",
     });
+  }
+
+  const isEditingClinicalHistory = isEditingDiseases || isEditingAllergies;
+  const isSavingClinicalHistory =
+    updateDiseasesMutation.isPending || updateAllergiesMutation.isPending;
+
+  async function handleSaveClinicalHistory() {
+    try {
+      await Promise.all([
+        updateDiseasesMutation.mutateAsync(editableDiseases),
+        updateAllergiesMutation.mutateAsync(editableAllergies),
+      ]);
+      toast.success("Cập nhật tiền sử bệnh & dị ứng thành công.");
+      setIsEditingDiseases(false);
+      setIsEditingAllergies(false);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Cập nhật tiền sử bệnh & dị ứng thất bại."));
+    }
+  }
+
+  function handleCancelClinicalHistory() {
+    setEditableDiseases(
+      (medicalCase?.caseDiseases ?? []).map((d) => ({
+        diseaseId: d.diseaseId,
+        note: d.note ?? null,
+      })),
+    );
+    setEditableAllergies(
+      (medicalCase?.caseAllergies ?? []).map((a) => ({
+        allergyTypeId: a.allergyTypeId,
+        note: a.note ?? null,
+      })),
+    );
+    setIsEditingDiseases(false);
+    setIsEditingAllergies(false);
+  }
+
+  async function handleSaveSymptoms() {
+    try {
+      await updateSymptomsMutation.mutateAsync(editableSymptoms);
+      toast.success("Cập nhật triệu chứng thành công.");
+      setIsEditingSymptoms(false);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Cập nhật triệu chứng thất bại."));
+    }
+  }
+
+  function handleCancelSymptoms() {
+    setEditableSymptoms(
+      (medicalCase?.symptoms ?? []).map((s) => ({
+        categoryId: s.categoryId,
+        symptomId: s.symptomId ?? null,
+        otherNote: s.otherNote ?? null,
+      })),
+    );
+    setIsEditingSymptoms(false);
   }
 
   function handleAddImages() {
@@ -397,52 +509,111 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
               )}
             </div>
 
-            <Link
-              href={`/patients/${medicalCase.patientProfileId}`}
-              className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-[var(--success)] transition-colors"
-            >
-              Mở hồ sơ bệnh nhân
-            </Link>
+            <div className="flex items-center gap-2">
+              {canEditClinical && !isEditingClinicalHistory && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingDiseases(true);
+                    setIsEditingAllergies(true);
+                  }}
+                  className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-[var(--success)] transition-colors"
+                >
+                  Sửa tiền sử &amp; dị ứng
+                </button>
+              )}
+              <Link
+                href={`/patients/${medicalCase.patientProfileId}`}
+                className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-[var(--success)] transition-colors"
+              >
+                Mở hồ sơ bệnh nhân
+              </Link>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2">
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-amber-600 block mb-1.5">
-                Tiền sử bệnh
-              </h4>
-              <div className="text-sm font-semibold">
-                {medicalCase.patientProfile.diseases && medicalCase.patientProfile.diseases.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {medicalCase.patientProfile.diseases.map((d) => (
-                      <span key={d.diseaseId} className="inline-flex items-center rounded-md bg-amber-50 px-2.5 py-1 text-amber-800 border border-amber-200">
-                        {d.isOther ? (d.note || d.diseaseName) : d.note ? `${d.diseaseName}: ${d.note}` : d.diseaseName}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="font-semibold italic text-foreground/90">Không có</span>
-                )}
+          {isEditingClinicalHistory ? (
+            <div className="space-y-4 pt-4">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-600 block mb-2">
+                  Tiền sử bệnh
+                </h4>
+                <MedicalHistorySelector
+                  value={editableDiseases}
+                  onChange={setEditableDiseases}
+                />
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-rose-600 block mb-2">
+                  Dị ứng
+                </h4>
+                <AllergySelector
+                  value={editableAllergies}
+                  onChange={setEditableAllergies}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleCancelClinicalHistory}
+                  disabled={isSavingClinicalHistory}
+                  className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-[var(--success)] disabled:opacity-50 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveClinicalHistory}
+                  disabled={isSavingClinicalHistory}
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {isSavingClinicalHistory ? "Đang lưu..." : "Lưu"}
+                </button>
               </div>
             </div>
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-rose-600 block mb-1.5">
-                Dị ứng
-              </h4>
-              <div className="text-sm font-semibold">
-                {medicalCase.patientProfile.allergies && medicalCase.patientProfile.allergies.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {medicalCase.patientProfile.allergies.map((a) => (
-                      <span key={a.allergyTypeId} className="inline-flex items-center rounded-md bg-rose-50 px-2.5 py-1 text-rose-800 border border-rose-200">
-                        {a.isOther ? (a.note || a.allergyName) : a.note ? `${a.allergyName}: ${a.note}` : a.allergyName}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="font-semibold italic text-foreground/90">Không có</span>
-                )}
+          ) : (
+            <div className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-600 block mb-1.5">
+                  Tiền sử bệnh
+                </h4>
+                <div className="text-sm font-semibold">
+                  {(medicalCase.caseDiseases ?? medicalCase.patientProfile?.diseases) &&
+                  (medicalCase.caseDiseases ?? medicalCase.patientProfile?.diseases)!.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {(medicalCase.caseDiseases ?? medicalCase.patientProfile?.diseases)!.map((d) => (
+                        <span key={d.diseaseId} className="inline-flex items-center rounded-md bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
+                          {d.isOther ? (d.note || d.diseaseName) : d.note ? `${d.diseaseName}: ${d.note}` : d.diseaseName}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="font-semibold italic text-foreground/90">Không có</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-rose-600 block mb-1.5">
+                  Dị ứng
+                </h4>
+                <div className="text-sm font-semibold">
+                  {(medicalCase.caseAllergies ?? medicalCase.patientProfile?.allergies) &&
+                  (medicalCase.caseAllergies ?? medicalCase.patientProfile?.allergies)!.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {(medicalCase.caseAllergies ?? medicalCase.patientProfile?.allergies)!.map((a) => (
+                        <span key={a.allergyTypeId} className="inline-flex items-center rounded-md bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800">
+                          {a.isOther ? (a.note || a.allergyName) : a.note ? `${a.allergyName}: ${a.note}` : a.allergyName}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="font-semibold italic text-foreground/90">Không có</span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </section>
       ) : null}
 
@@ -575,33 +746,77 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
 
         <div className="space-y-6">
           <section className="rounded-xl border border-gray-300 dark:border-gray-700 bg-card p-6 shadow-sm">
-            <h2 className="mb-4 font-heading text-xl font-bold text-foreground">
-              Thông tin lâm sàng
-            </h2>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-heading text-xl font-bold text-foreground">
+                Thông tin lâm sàng
+              </h2>
+              {canEditClinical && !isEditingSymptoms && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingSymptoms(true)}
+                  className="rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-1.5 text-xs font-bold text-foreground hover:bg-[var(--success)] transition-colors"
+                >
+                  Sửa triệu chứng
+                </button>
+              )}
+            </div>
 
-            {medicalCase.symptoms && medicalCase.symptoms.length > 0 ? (
-              <div className="mb-4">
-                <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-foreground">Triệu chứng chi tiết</h3>
-                <ul className="list-disc pl-5 space-y-1.5 text-sm font-medium text-foreground">
-                  {medicalCase.symptoms.map((s) => (
-                    <li key={`${s.categoryId}-${s.symptomId ?? "other"}`}>
-                      <span className="font-bold text-foreground">{s.categoryName}:</span>{" "}
-                      {s.symptomName ? s.symptomName : ""}
-                      {s.otherNote ? ` (${s.otherNote})` : ""}
-                    </li>
-                  ))}
-                </ul>
+            {isEditingSymptoms ? (
+              <div className="space-y-4">
+                <SymptomSelector
+                  value={editableSymptoms}
+                  onChange={setEditableSymptoms}
+                />
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCancelSymptoms}
+                    disabled={updateSymptomsMutation.isPending}
+                    className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-muted disabled:opacity-50 transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveSymptoms}
+                    disabled={updateSymptomsMutation.isPending}
+                    className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    {updateSymptomsMutation.isPending ? "Đang lưu..." : "Lưu triệu chứng"}
+                  </button>
+                </div>
               </div>
-            ) : null}
-
-            {medicalCase.clinicalInfo ? (
+            ) : (
               <>
-                <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-foreground">Ghi chú chung</h3>
-                <p className="text-sm font-medium leading-relaxed text-foreground">
-                  {medicalCase.clinicalInfo}
-                </p>
+                {medicalCase.symptoms && medicalCase.symptoms.length > 0 ? (
+                  <div className="mb-4">
+                    <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-foreground">Triệu chứng chi tiết</h3>
+                    <ul className="list-disc pl-5 space-y-1.5 text-sm font-medium text-foreground">
+                      {medicalCase.symptoms.map((s) => (
+                        <li key={`${s.categoryId}-${s.symptomId ?? "other"}`}>
+                          <span className="font-bold text-foreground">{s.categoryName}:</span>{" "}
+                          {s.symptomName ? s.symptomName : ""}
+                          {s.otherNote ? ` (${s.otherNote})` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="mb-4 text-sm italic text-foreground/70">
+                    Chưa có triệu chứng được ghi nhận.
+                  </p>
+                )}
+
+                {medicalCase.clinicalInfo ? (
+                  <>
+                    <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-foreground">Ghi chú chung</h3>
+                    <p className="text-sm font-medium leading-relaxed text-foreground">
+                      {medicalCase.clinicalInfo}
+                    </p>
+                  </>
+                ) : null}
               </>
-            ) : null}
+            )}
           </section>
 
           <section className="rounded-xl border border-gray-300 dark:border-gray-700 bg-card p-6 shadow-sm">
@@ -610,25 +825,25 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
             </h2>
 
             {isConfirmedOrEnd ? (
-              <dl className="space-y-4">
-                {/* DTO thật tách hai trường; API Spec v0.1 gộp thành một `conclusion`. */}
+              <div className="space-y-4">
                 <div>
-                  <dt className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    Chẩn đoán cuối cùng
-                  </dt>
-                  <dd className="mt-1 text-sm font-medium leading-relaxed text-foreground">
-                    {medicalCase.finalDiagnosis || EMPTY_VALUE}
-                  </dd>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground mb-2">
+                    Chẩn đoán &amp; Kết luận
+                  </h3>
+                  {medicalCase.finalDiagnosis ? (
+                    <div
+                      className="prose prose-sm dark:prose-invert max-w-none text-foreground leading-relaxed"
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(medicalCase.finalDiagnosis),
+                      }}
+                    />
+                  ) : (
+                    <p className="text-sm font-medium italic text-foreground/70">
+                      {EMPTY_VALUE}
+                    </p>
+                  )}
                 </div>
-                <div className="border-t border-border pt-4">
-                  <dt className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    Kết luận / Hướng xử trí
-                  </dt>
-                  <dd className="mt-1 text-sm font-medium leading-relaxed text-foreground">
-                    {medicalCase.doctorConclusion || EMPTY_VALUE}
-                  </dd>
-                </div>
-              </dl>
+              </div>
             ) : isBooked ? (
               <div className="rounded-lg border-2 border-dashed border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-5 text-center">
                 <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
@@ -651,30 +866,13 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
               <div className="space-y-4">
                 <div>
                   <label htmlFor="finalDiagnosis" className="mb-1.5 block text-sm font-bold text-foreground">
-                    Chẩn đoán cuối cùng *
+                    Chẩn đoán &amp; Kết luận *
                   </label>
-                  <textarea
-                    id="finalDiagnosis"
+                  <RichTextEditor
                     value={finalDiagnosis}
-                    onChange={(event) => setFinalDiagnosis(event.target.value)}
-                    rows={3}
+                    onChange={setFinalDiagnosis}
                     disabled={saveConclusionMutation.isPending || confirmMutation.isPending || isLocked}
-                    placeholder="Ví dụ: Nhân xơ tử cung (BI-RADS 3)"
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-background p-3 text-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="doctorConclusion" className="mb-1.5 block text-sm font-bold text-foreground">
-                    Kết luận / Hướng xử trí *
-                  </label>
-                  <textarea
-                    id="doctorConclusion"
-                    value={doctorConclusion}
-                    onChange={(event) => setDoctorConclusion(event.target.value)}
-                    rows={3}
-                    disabled={saveConclusionMutation.isPending || confirmMutation.isPending || isLocked}
-                    placeholder="Ví dụ: Theo dõi định kỳ sau 6 tháng"
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-background p-3 text-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                    placeholder="Nhập chẩn đoán và kết luận của bác sĩ..."
                   />
                 </div>
 

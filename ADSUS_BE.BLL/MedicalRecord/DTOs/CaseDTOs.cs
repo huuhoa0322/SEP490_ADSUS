@@ -42,6 +42,12 @@ public sealed record CaseSymptomResponse(
     string? SymptomName,
     string? OtherNote);
 
+public sealed record CaseDiseaseResponse(
+    Guid DiseaseId, string DiseaseName, bool IsOther, string? Note);
+
+public sealed record CaseAllergyResponse(
+    Guid AllergyTypeId, string AllergyName, bool IsOther, string? Note);
+
 /// <summary>
 /// #20, #23 — bản đầy đủ cho Bác sĩ/Điều dưỡng (Web SCR-12).
 /// </summary>
@@ -58,6 +64,8 @@ public sealed record CaseResponse(
     PatientProfileResponse? PatientProfile,
     IReadOnlyList<UltrasoundImageResponse> UltrasoundImages,
     IReadOnlyList<CaseSymptomResponse> Symptoms,
+    IReadOnlyList<CaseDiseaseResponse> CaseDiseases,
+    IReadOnlyList<CaseAllergyResponse> CaseAllergies,
     // AiResults removed
     PrescriptionSummary? Prescription,
     DateTime CreatedAt,
@@ -124,6 +132,18 @@ public sealed record CreateCaseRequest(
     IReadOnlyList<CreateCaseSymptomRequest>? Symptoms,
     IReadOnlyList<UploadedFile> Images);
 
+public sealed record UpdateCaseSymptomsRequest(
+    IReadOnlyList<CreateCaseSymptomRequest> Symptoms);
+
+public sealed record UpdateCaseDiseasesRequest(
+    IReadOnlyList<CaseDiseaseInput> Diseases);
+
+public sealed record UpdateCaseAllergiesRequest(
+    IReadOnlyList<CaseAllergyInput> Allergies);
+
+public sealed record CaseDiseaseInput(Guid DiseaseId, string? Note);
+public sealed record CaseAllergyInput(Guid AllergyTypeId, string? Note);
+
 /// <summary>
 /// Thêm 07/08/2026, sửa lại cùng ngày (tách Lưu/Kết thúc) — Bác sĩ phụ trách nhập/sửa kết
 /// luận cho ca khám ngay tại màn chi tiết ca (Module 04), không đợi màn duyệt kết quả AI
@@ -135,4 +155,4 @@ public sealed record CreateCaseRequest(
 /// </summary>
 public sealed record CaseConclusionRequest(
     string FinalDiagnosis,
-    string DoctorConclusion);
+    string? DoctorConclusion);

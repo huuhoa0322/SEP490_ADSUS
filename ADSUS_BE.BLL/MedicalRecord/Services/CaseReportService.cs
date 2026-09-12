@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Mappers;
@@ -159,10 +160,13 @@ public sealed class CaseReportService : ICaseReportService
                     });
 
                     column.Item().PaddingTop(10).Text("CHẨN ĐOÁN").SemiBold().FontSize(13);
-                    column.Item().Text(medicalCase.FinalDiagnosis ?? "—");
+                    column.Item().Text(HtmlHelper.StripTags(medicalCase.FinalDiagnosis) is { Length: > 0 } fd ? fd : "—");
 
-                    column.Item().PaddingTop(10).Text("HƯỚNG XỬ TRÍ").SemiBold().FontSize(13);
-                    column.Item().Text(medicalCase.DoctorConclusion ?? "—");
+                    if (!string.IsNullOrWhiteSpace(medicalCase.DoctorConclusion))
+                    {
+                        column.Item().PaddingTop(10).Text("HƯỚNG XỬ TRÍ").SemiBold().FontSize(13);
+                        column.Item().Text(medicalCase.DoctorConclusion);
+                    }
 
                     column.Item().PaddingTop(10).Text("ĐƠN THUỐC").SemiBold().FontSize(13);
 

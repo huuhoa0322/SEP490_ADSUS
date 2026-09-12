@@ -61,7 +61,23 @@ public class DashboardRepository : IDashboardRepository
         var caseCount = await _db.Cases.AsNoTracking()
             .CountAsync(c => c.VisitDate >= fromDate && c.VisitDate <= toDate, cancellationToken);
 
-        // AI Results logic removed as per UC-19 design.
+        var aiImageIds = await _db.AiPredictions.AsNoTracking()
+            .Where(p => p.CreatedAt >= fromInclusive && p.CreatedAt < toExclusive)
+            .Select(p => p.ImageId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var aiRunCount = aiImageIds.Count;
+
+        var reviewedImageIds = await _db.DoctorAnnotations.AsNoTracking()
+            .Where(da => aiImageIds.Contains(da.ImageId))
+            .Select(da => da.ImageId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var aiConfirmed = reviewedImageIds.Count;
+        var aiPending = aiRunCount - aiConfirmed;
+        var aiRejected = 0;
 
         // Lọc lịch hẹn theo NGÀY KHÁM (SlotDate), không theo ngày đặt.
         //
@@ -107,10 +123,10 @@ public class DashboardRepository : IDashboardRepository
         return BuildActivityCounts(
             newAccounts,
             caseCount,
-            0, // Total AI (removed)
-            0, // Confirmed AI (removed)
-            0, // Rejected AI (removed)
-            0, // Pending AI (removed)
+            aiRunCount,
+            aiConfirmed,
+            aiRejected,
+            aiPending,
             Appointments(AppointmentStatus.Booked),
             Appointments(AppointmentStatus.Cancelled),
             slotCount,
@@ -150,9 +166,16 @@ public class DashboardRepository : IDashboardRepository
             .Select(g => new { Date = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);
 
+        var revenueByDay = await _db.Invoices.AsNoTracking()
+            .Where(i => i.Status == InvoiceStatus.PAID && i.PaidAt >= fromInclusive && i.PaidAt < toExclusive)
+            .GroupBy(i => DateOnly.FromDateTime(i.PaidAt!.Value.AddHours(ClinicClock.OffsetHours)))
+            .Select(g => new { Date = g.Key, Total = g.Sum(i => i.TotalAmount) })
+            .ToListAsync(cancellationToken);
+
         var datesWithData = accountsByDay.Select(x => x.Date)
             .Union(casesByDay.Select(x => x.Date))
             .Union(appointmentsByDay.Select(x => x.Date))
+            .Union(revenueByDay.Select(x => x.Date))
             .OrderBy(d => d);
 
         return datesWithData
@@ -160,7 +183,80 @@ public class DashboardRepository : IDashboardRepository
                 date,
                 accountsByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0,
                 casesByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0,
-                appointmentsByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0))
+                appointmentsByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0,
+                revenueByDay.FirstOrDefault(x => x.Date == date)?.Total ?? 0m))
+            .ToList();
+    }
+
+    public async Task<RevenueCounts> GetRevenueAsync(
+        DateOnly fromDate,
+        DateOnly toDate,
+        CancellationToken cancellationToken = default)
+    {
+        var fromInclusive = ClinicClock.StartOfDayUtc(fromDate);
+        var toExclusive = ClinicClock.EndOfDayExclusiveUtc(toDate);
+
+        var paidInvoices = await _db.Invoices.AsNoTracking()
+            .Where(i => i.Status == InvoiceStatus.PAID && i.PaidAt >= fromInclusive && i.PaidAt < toExclusive)
+            .Select(i => new { i.TotalAmount, i.PaymentMethod })
+            .ToListAsync(cancellationToken);
+
+        var pendingInvoices = await _db.Invoices.AsNoTracking()
+            .Where(i => i.Status == InvoiceStatus.PENDING)
+            .Select(i => i.TotalAmount)
+            .ToListAsync(cancellationToken);
+
+        var cashInvoices = paidInvoices.Where(i => i.PaymentMethod == PaymentMethod.CASH).ToList();
+        var bankInvoices = paidInvoices.Where(i => i.PaymentMethod == PaymentMethod.BANK_TRANSFER).ToList();
+
+        return new RevenueCounts(
+            TotalRevenue: paidInvoices.Sum(i => i.TotalAmount),
+            PaidInvoiceCount: paidInvoices.Count,
+            CashRevenue: cashInvoices.Sum(i => i.TotalAmount),
+            CashCount: cashInvoices.Count,
+            BankTransferRevenue: bankInvoices.Sum(i => i.TotalAmount),
+            BankTransferCount: bankInvoices.Count,
+            PendingInvoiceCount: pendingInvoices.Count,
+            PendingAmount: pendingInvoices.Sum());
+    }
+
+    public async Task<IReadOnlyList<TopMedicine>> GetTopPrescribedMedicinesAsync(
+        DateOnly fromDate,
+        DateOnly toDate,
+        int topN = 10,
+        CancellationToken cancellationToken = default)
+    {
+        if (topN <= 0)
+        {
+            return Array.Empty<TopMedicine>();
+        }
+
+        var grouped = await (
+            from pi in _db.PrescriptionItems.AsNoTracking()
+            join p in _db.Prescriptions.AsNoTracking() on pi.PrescriptionId equals p.PrescriptionId
+            join m in _db.Medicines.AsNoTracking() on pi.MedicineId equals m.MedicineId
+            where p.PrescribedDate >= fromDate
+               && p.PrescribedDate <= toDate
+               && p.Status != PrescriptionStatus.Cancelled
+            group pi by new { m.MedicineId, m.Name } into g
+            select new
+            {
+                g.Key.MedicineId,
+                MedicineName = g.Key.Name,
+                PrescriptionCount = g.Count(),
+                TotalQuantityBase = g.Sum(x => x.QuantityBase)
+            })
+            .OrderByDescending(x => x.PrescriptionCount)
+            .ThenByDescending(x => x.TotalQuantityBase)
+            .Take(topN)
+            .ToListAsync(cancellationToken);
+
+        return grouped
+            .Select(x => new TopMedicine(
+                x.MedicineId,
+                x.MedicineName,
+                x.PrescriptionCount,
+                x.TotalQuantityBase))
             .ToList();
     }
 

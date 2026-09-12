@@ -26,7 +26,11 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Case> Cases { get; set; }
 
+    public virtual DbSet<CaseAllergy> CaseAllergies { get; set; }
+
     public virtual DbSet<CaseClinicService> CaseClinicServices { get; set; }
+
+    public virtual DbSet<CaseDisease> CaseDiseases { get; set; }
 
     public virtual DbSet<CaseSymptom> CaseSymptoms { get; set; }
 
@@ -402,6 +406,45 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("fk_cases_patient_profile");
         });
 
+        modelBuilder.Entity<CaseAllergy>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("case_allergies_pkey");
+
+            entity.ToTable("case_allergies", tb => tb.HasComment("Snapshot dị ứng của bệnh nhân tại thời điểm diễn ra ca khám. Sửa tại ca khám chỉ lưu trên ca đó, không ảnh hưởng hồ sơ nền gốc."));
+
+            entity.HasIndex(e => e.AllergyTypeId, "idx_case_allergies_allergy_type_id");
+
+            entity.HasIndex(e => e.CaseId, "idx_case_allergies_case_id");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasComment("Khóa chính bản ghi snapshot dị ứng ca khám")
+                .HasColumnName("id");
+            entity.Property(e => e.AllergyTypeId)
+                .HasComment("Khóa ngoại trỏ về danh mục loại dị ứng (medical_allergy_types)")
+                .HasColumnName("allergy_type_id");
+            entity.Property(e => e.CaseId)
+                .HasComment("Khóa ngoại trỏ về ca khám tương ứng")
+                .HasColumnName("case_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasComment("Thời điểm ghi nhận snapshot")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Note)
+                .HasMaxLength(500)
+                .HasComment("Ghi chú lâm sàng cụ thể cho dị ứng tại ca khám (tối đa 500 ký tự)")
+                .HasColumnName("note");
+
+            entity.HasOne(d => d.AllergyType).WithMany(p => p.CaseAllergies)
+                .HasForeignKey(d => d.AllergyTypeId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("case_allergies_allergy_type_id_fkey");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.CaseAllergies)
+                .HasForeignKey(d => d.CaseId)
+                .HasConstraintName("case_allergies_case_id_fkey");
+        });
+
         modelBuilder.Entity<CaseClinicService>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("case_clinic_services_pkey");
@@ -430,6 +473,45 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.ClinicServiceId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("case_clinic_services_clinic_service_id_fkey");
+        });
+
+        modelBuilder.Entity<CaseDisease>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("case_diseases_pkey");
+
+            entity.ToTable("case_diseases", tb => tb.HasComment("Snapshot tiền sử bệnh của bệnh nhân tại thời điểm diễn ra ca khám. Sửa tại ca khám chỉ lưu trên ca đó, không ảnh hưởng hồ sơ nền gốc."));
+
+            entity.HasIndex(e => e.CaseId, "idx_case_diseases_case_id");
+
+            entity.HasIndex(e => e.DiseaseId, "idx_case_diseases_disease_id");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasComment("Khóa chính bản ghi snapshot tiền sử ca khám")
+                .HasColumnName("id");
+            entity.Property(e => e.CaseId)
+                .HasComment("Khóa ngoại trỏ về ca khám tương ứng")
+                .HasColumnName("case_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasComment("Thời điểm ghi nhận snapshot")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DiseaseId)
+                .HasComment("Khóa ngoại trỏ về danh mục bệnh lý (medical_diseases)")
+                .HasColumnName("disease_id");
+            entity.Property(e => e.Note)
+                .HasMaxLength(500)
+                .HasComment("Ghi chú lâm sàng cụ thể cho bệnh lý tại ca khám (tối đa 500 ký tự)")
+                .HasColumnName("note");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.CaseDiseases)
+                .HasForeignKey(d => d.CaseId)
+                .HasConstraintName("case_diseases_case_id_fkey");
+
+            entity.HasOne(d => d.Disease).WithMany(p => p.CaseDiseases)
+                .HasForeignKey(d => d.DiseaseId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("case_diseases_disease_id_fkey");
         });
 
         modelBuilder.Entity<CaseSymptom>(entity =>

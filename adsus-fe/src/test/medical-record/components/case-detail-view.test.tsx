@@ -31,8 +31,50 @@ vi.mock("@/features/appointment-scheduling/hooks/use-schedule-slot", () => ({
 
 let isSaveSuccess = false;
 
+vi.mock("@/components/ui/rich-text-editor", () => ({
+  RichTextEditor: ({
+    value,
+    onChange,
+    disabled,
+    placeholder,
+    className,
+  }: {
+    value: string;
+    onChange: (val: string) => void;
+    disabled?: boolean;
+    placeholder?: string;
+    className?: string;
+  }) => (
+    <textarea
+      id="finalDiagnosis"
+      aria-label="Chẩn đoán & Kết luận *"
+      data-testid="rich-text-editor"
+      className={className ?? "border border-gray-300"}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      placeholder={placeholder}
+    />
+  ),
+}));
+
 vi.mock("@/features/medical-record/hooks/use-cases", () => ({
   useCaseDetail: () => detailMock(),
+  useUpdateCaseSymptoms: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useUpdateCaseDiseases: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useUpdateCaseAllergies: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useSaveCaseConclusion: () => ({
     // Component gọi mutate(input, { onSuccess }) — mock phải TỰ gọi onSuccess như react-query
     // thật thì mới kiểm được hành vi khoá tạm sau khi lưu (isLocked chuyển true trong callback đó).
@@ -219,15 +261,12 @@ describe("CaseDetailView", () => {
     expect(screen.getByText(/không tải được ảnh/i)).toBeInTheDocument();
   });
 
-  it("hiện hai trường kết luận tách rời khi ca đã kết luận", () => {
+  it("hiện chẩn đoán & kết luận khi ca đã kết luận", () => {
     detailMock.mockReturnValue(makeCase("CONFIRMED"));
 
     render(<CaseDetailView caseId="case-1" />);
 
-    // DTO thật tách finalDiagnosis và doctorConclusion, không phải một trường `conclusion`
-    // như API Spec v0.1 mô tả.
     expect(screen.getByText("Nhân xơ tử cung")).toBeInTheDocument();
-    expect(screen.getByText("Theo dõi 3 tháng")).toBeInTheDocument();
   });
 
   it("không render khối AI hay đơn thuốc dù payload có trả về", () => {
@@ -256,7 +295,7 @@ describe("CaseDetailView", () => {
 
     render(<CaseDetailView caseId="case-1" />);
 
-    expect(screen.getByLabelText(/chẩn đoán cuối cùng/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/chẩn đoán/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^lưu kết luận$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /xác nhận kết luận/i })).toBeInTheDocument();
   });
@@ -268,7 +307,7 @@ describe("CaseDetailView", () => {
 
     render(<CaseDetailView caseId="case-1" />);
 
-    expect(screen.queryByLabelText(/chẩn đoán cuối cùng/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/chẩn đoán/i)).not.toBeInTheDocument();
     expect(screen.getByText(/ca khám chưa được kết luận/i)).toBeInTheDocument();
   });
 
@@ -278,24 +317,23 @@ describe("CaseDetailView", () => {
 
     render(<CaseDetailView caseId="case-1" />);
 
-    expect(screen.queryByLabelText(/chẩn đoán cuối cùng/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/chẩn đoán/i)).not.toBeInTheDocument();
   });
 
   it("đổ sẵn kết luận đã lưu nháp trước đó vào form (chưa CONFIRMED)", () => {
-    // Ca đã có finalDiagnosis/doctorConclusion (từ lần "Lưu kết luận" trước) nhưng status vẫn
+    // Ca đã có finalDiagnosis (từ lần "Lưu kết luận" trước) nhưng status vẫn
     // chưa CONFIRMED — form phải hiện lại đúng nội dung đó, không trống.
     signInAs("DOCTOR", "doctor-1");
     detailMock.mockReturnValue(
       makeCase("IN_PROGRESS", {
         finalDiagnosis: "Nghi u lành",
-        doctorConclusion: "Chờ thêm ảnh siêu âm",
+        doctorConclusion: "",
       }),
     );
 
     render(<CaseDetailView caseId="case-1" />);
 
-    expect(screen.getByLabelText(/chẩn đoán cuối cùng/i)).toHaveValue("Nghi u lành");
-    expect(screen.getByLabelText(/kết luận \/ hướng xử trí/i)).toHaveValue("Chờ thêm ảnh siêu âm");
+    expect(screen.getByLabelText(/chẩn đoán/i)).toHaveValue("Nghi u lành");
   });
 
   it("chặn Lưu kết luận khi bỏ trống chẩn đoán hoặc kết luận", async () => {
@@ -307,7 +345,7 @@ describe("CaseDetailView", () => {
     await user.click(screen.getByRole("button", { name: /^lưu kết luận$/i }));
 
     expect(saveMutate).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent(/chẩn đoán và kết luận/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/chẩn đoán \/ kết luận/i);
   });
 
   it("chặn Kết thúc ca khám khi bỏ trống chẩn đoán hoặc kết luận", async () => {
@@ -319,7 +357,7 @@ describe("CaseDetailView", () => {
     await user.click(screen.getByRole("button", { name: /xác nhận kết luận/i }));
 
     expect(confirmMutate).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent(/chẩn đoán và kết luận/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/chẩn đoán \/ kết luận/i);
   });
 
   it("Lưu kết luận gọi đúng hàm lưu (không đổi trạng thái), không gọi hàm kết thúc", async () => {
@@ -328,13 +366,12 @@ describe("CaseDetailView", () => {
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
-    await user.type(screen.getByLabelText(/chẩn đoán cuối cùng/i), "Nhân xơ tử cung");
-    await user.type(screen.getByLabelText(/kết luận \/ hướng xử trí/i), "Theo dõi 6 tháng");
+    await user.type(screen.getByLabelText(/chẩn đoán/i), "Nhân xơ tử cung");
     await user.click(screen.getByRole("button", { name: /^lưu kết luận$/i }));
 
     expect(saveMutate).toHaveBeenCalledWith({
       finalDiagnosis: "Nhân xơ tử cung",
-      doctorConclusion: "Theo dõi 6 tháng",
+      doctorConclusion: "",
     });
     expect(confirmMutate).not.toHaveBeenCalled();
   });
@@ -345,49 +382,44 @@ describe("CaseDetailView", () => {
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
-    await user.type(screen.getByLabelText(/chẩn đoán cuối cùng/i), "Nhân xơ tử cung");
-    await user.type(screen.getByLabelText(/kết luận \/ hướng xử trí/i), "Theo dõi 6 tháng");
+    await user.type(screen.getByLabelText(/chẩn đoán/i), "Nhân xơ tử cung");
     await user.click(screen.getByRole("button", { name: /xác nhận kết luận/i }));
 
     expect(confirmMutate).toHaveBeenCalledWith({
       finalDiagnosis: "Nhân xơ tử cung",
-      doctorConclusion: "Theo dõi 6 tháng",
+      doctorConclusion: "",
     });
     expect(saveMutate).not.toHaveBeenCalled();
   });
 
   // ---------- Khoá tạm sau "Lưu kết luận" (thêm 07/08/2026) ----------
 
-  it("khoá 2 trường và nút Bổ sung ảnh siêu âm ngay sau khi Lưu kết luận thành công", async () => {
+  it("khoá trường kết luận và nút Bổ sung ảnh siêu âm ngay sau khi Lưu kết luận thành công", async () => {
     signInAs("DOCTOR", "doctor-1");
     detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
-    await user.type(screen.getByLabelText(/chẩn đoán cuối cùng/i), "Nhân xơ tử cung");
-    await user.type(screen.getByLabelText(/kết luận \/ hướng xử trí/i), "Theo dõi 6 tháng");
+    await user.type(screen.getByLabelText(/chẩn đoán/i), "Nhân xơ tử cung");
     await user.click(screen.getByRole("button", { name: /^lưu kết luận$/i }));
 
-    expect(screen.getByLabelText(/chẩn đoán cuối cùng/i)).toBeDisabled();
-    expect(screen.getByLabelText(/kết luận \/ hướng xử trí/i)).toBeDisabled();
+    expect(screen.getByLabelText(/chẩn đoán/i)).toBeDisabled();
     expect(screen.getByRole("button", { name: /bổ sung ảnh/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /^sửa$/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^lưu kết luận$/i })).not.toBeInTheDocument();
   });
 
-  it("bấm Sửa mở khoá lại 2 trường và nút Bổ sung ảnh siêu âm", async () => {
+  it("bấm Sửa mở khoá lại trường kết luận và nút Bổ sung ảnh siêu âm", async () => {
     signInAs("DOCTOR", "doctor-1");
     detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
-    await user.type(screen.getByLabelText(/chẩn đoán cuối cùng/i), "Nhân xơ tử cung");
-    await user.type(screen.getByLabelText(/kết luận \/ hướng xử trí/i), "Theo dõi 6 tháng");
+    await user.type(screen.getByLabelText(/chẩn đoán/i), "Nhân xơ tử cung");
     await user.click(screen.getByRole("button", { name: /^lưu kết luận$/i }));
     await user.click(screen.getByRole("button", { name: /^sửa$/i }));
 
-    expect(screen.getByLabelText(/chẩn đoán cuối cùng/i)).toBeEnabled();
-    expect(screen.getByLabelText(/kết luận \/ hướng xử trí/i)).toBeEnabled();
+    expect(screen.getByLabelText(/chẩn đoán/i)).toBeEnabled();
     expect(screen.getByRole("button", { name: /bổ sung ảnh/i })).toBeEnabled();
     expect(screen.getByRole("button", { name: /^lưu kết luận$/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^sửa$/i })).not.toBeInTheDocument();
@@ -399,14 +431,13 @@ describe("CaseDetailView", () => {
     const user = userEvent.setup();
 
     render(<CaseDetailView caseId="case-1" />);
-    await user.type(screen.getByLabelText(/chẩn đoán cuối cùng/i), "Nhân xơ tử cung");
-    await user.type(screen.getByLabelText(/kết luận \/ hướng xử trí/i), "Theo dõi 6 tháng");
+    await user.type(screen.getByLabelText(/chẩn đoán/i), "Nhân xơ tử cung");
     await user.click(screen.getByRole("button", { name: /^lưu kết luận$/i }));
     await user.click(screen.getByRole("button", { name: /xác nhận kết luận/i }));
 
     expect(confirmMutate).toHaveBeenCalledWith({
       finalDiagnosis: "Nhân xơ tử cung",
-      doctorConclusion: "Theo dõi 6 tháng",
+      doctorConclusion: "",
     });
   });
 
@@ -584,17 +615,11 @@ describe("CaseDetailView", () => {
     expect(conclusionSection?.className).toMatch(/border-gray-300/);
 
     // 3. Form labels và textareas bounding box
-    const diagLabel = screen.getByText(/chẩn đoán cuối cùng \*/i);
+    const diagLabel = screen.getByText(/chẩn đoán & kết luận \*/i);
     expect(diagLabel).toHaveClass("font-bold", "text-foreground");
 
-    const diagInput = screen.getByLabelText(/chẩn đoán cuối cùng/i);
+    const diagInput = screen.getByLabelText(/chẩn đoán/i);
     expect(diagInput.className).toMatch(/border-gray-300/);
-
-    const concLabel = screen.getByText(/kết luận \/ hướng xử trí \*/i);
-    expect(concLabel).toHaveClass("font-bold", "text-foreground");
-
-    const concInput = screen.getByLabelText(/kết luận \/ hướng xử trí/i);
-    expect(concInput.className).toMatch(/border-gray-300/);
 
     // 4. Action buttons: font-bold text-foreground / text-primary-foreground
     const saveBtn = screen.getByRole("button", { name: /^lưu kết luận$/i });
@@ -606,7 +631,6 @@ describe("CaseDetailView", () => {
 
     // 5. Sau khi lưu thành công: trạng thái khoá và nút Sửa
     await user.type(diagInput, "Nhân xơ tử cung");
-    await user.type(concInput, "Theo dõi 6 tháng");
     await user.click(saveBtn);
 
     const statusBanner = screen.getByRole("status");
@@ -864,7 +888,7 @@ describe("CaseDetailView", () => {
 
     // 3. Khung kết luận hiển thị trạng thái chờ check-in thay vì form nhập
     expect(screen.getByText(/^ca khám đang chờ check-in$/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/chẩn đoán cuối cùng/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/chẩn đoán/i)).not.toBeInTheDocument();
   });
 
   it("hiển thị thông tin ca khám ở trạng thái CANCELLED, hiển thị banner đã huỷ, khóa nút thêm ảnh và hiển thị thông báo ca đã huỷ ở phần kết luận", () => {
@@ -883,7 +907,7 @@ describe("CaseDetailView", () => {
 
     // 3. Khung kết luận hiển thị trạng thái đã huỷ
     expect(screen.getByText(/^ca khám đã hủy \/ vắng mặt$/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/chẩn đoán cuối cùng/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/chẩn đoán/i)).not.toBeInTheDocument();
   });
 
   it("bác sĩ khác (Bác sĩ B) không có quyền thêm hoặc xóa dịch vụ khám trên ca của Bác sĩ A", () => {
