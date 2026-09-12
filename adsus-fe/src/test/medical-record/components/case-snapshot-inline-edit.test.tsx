@@ -100,6 +100,10 @@ vi.mock("@/features/prescription-adherence/hooks/use-invoices", () => ({
   useCaseInvoices: () => ({ data: [], isLoading: false }),
 }));
 
+vi.mock("@/features/clinic-service/queries", () => ({
+  useCaseClinicServices: () => ({ data: [], isLoading: false }),
+}));
+
 vi.mock("@/features/appointment-scheduling/hooks/use-doctor-appointments", () => ({
   useCreateFollowUpAppointment: () => ({
     mutateAsync: vi.fn(),
