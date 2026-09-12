@@ -16,7 +16,7 @@ namespace ADSUS_BE.BLL.UserRoleManagement.Services;
 /// </summary>
 public class EsmsSmsService : IOtpSmsService
 {
-    private const string ApiUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
+    private const string ApiUrl = "https://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
     private const string SuccessCode = "100";
 
     /// <summary>SmsType "2" = Brandname, theo tài liệu eSMS — loại duy nhất phù hợp cho OTP nghiệp vụ.</summary>
@@ -60,7 +60,19 @@ public class EsmsSmsService : IOtpSmsService
                 return false;
             }
 
-            var result = await response.Content.ReadFromJsonAsync<EsmsResponse>(cancellationToken);
+            EsmsResponse? result;
+            try
+            {
+                result = await response.Content.ReadFromJsonAsync<EsmsResponse>(cancellationToken);
+            }
+            catch (Exception ex) when (ex is System.Text.Json.JsonException or NotSupportedException)
+            {
+                // eSMS trả 200 nhưng body không phải JSON hợp lệ (proxy/WAF chèn trang lỗi HTML,
+                // response bị cắt cụt...) — vẫn phải giữ đúng hợp đồng KHÔNG throw, không chỉ
+                // riêng lỗi mạng ở catch bên dưới.
+                _logger.LogError(ex, "eSMS trả về nội dung không phải JSON hợp lệ khi gửi OTP.");
+                return false;
+            }
 
             // KHÔNG log CodeResult/ErrorMessage kèm số điện thoại — số điện thoại là PII.
             if (result?.CodeResult != SuccessCode)

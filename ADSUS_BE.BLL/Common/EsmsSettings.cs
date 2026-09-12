@@ -25,8 +25,16 @@ public class EsmsSettings
     /// <summary>Secret key của eSMS.vn (khác ApiKey — eSMS cấp 2 khoá riêng).</summary>
     public string SecretKey { get; set; } = string.Empty;
 
-    /// <summary>Tên brandname đã đăng ký với eSMS. Rỗng thì eSMS dùng đầu số mặc định của tài khoản.</summary>
+    /// <summary>
+    /// Tên brandname đã đăng ký với eSMS. BẮT BUỘC phải có — <see cref="EsmsSmsService"/> luôn
+    /// gửi SmsType "2" (Brandname), không có nhánh dự phòng nào cho brandname rỗng. Thiếu
+    /// Brandname mà vẫn coi là "đã cấu hình" (chỉ nhờ có ApiKey/SecretKey) sẽ khiến MỌI lần
+    /// gửi thật bị eSMS từ chối — sửa lại 12/09/2026, review Task 3.
+    /// </summary>
     public string Brandname { get; set; } = string.Empty;
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(SecretKey);
+    public bool IsConfigured =>
+        !string.IsNullOrWhiteSpace(ApiKey)
+        && !string.IsNullOrWhiteSpace(SecretKey)
+        && !string.IsNullOrWhiteSpace(Brandname);
 }
