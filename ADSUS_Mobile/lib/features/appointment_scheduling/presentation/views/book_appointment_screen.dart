@@ -52,10 +52,10 @@ class _BookAppointmentScreenState
     // Chỉ trigger khi prev = null và next != null (chuyển từ chưa success sang success)
     ref.listen<BookAppointmentState>(bookAppointmentViewModelProvider, (prev, next) async {
       if (prev?.bookingSuccess == null && next.bookingSuccess != null) {
-        if (!mounted) return;
+        if (!context.mounted) return;
         // FORCE RELOAD lịch hẹn TRƯỚC khi navigate (fix: lịch mới không hiện)
         await ref.read(myAppointmentsViewModelProvider.notifier).load();
-        if (!mounted) return;
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Đặt lịch thành công. Bạn sẽ nhận nhắc nhở trước giờ khám.'),
@@ -72,7 +72,7 @@ class _BookAppointmentScreenState
       }
       // Hiển thị error ở dưới cùng màn hình (bottom SnackBar)
       if (prev?.errorMessage == null && next.errorMessage != null && !next.isBooking) {
-        if (!mounted) return;
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(next.errorMessage!),
