@@ -45,7 +45,7 @@ class _ForgotPasswordOtpCompleteScreenState extends ConsumerState<ForgotPassword
         );
 
     // Giống RegisterCompleteScreen (Task 9) — thành công thì AuthGuard/router gốc tự nhận
-    // token vừa ghi (completePasswordResetWithOtp) và điều hướng vào trang chủ.
+    // token vừa ghi (completePasswordResetWithFirebase) và điều hướng vào trang chủ.
     if (ok && mounted) {
       Navigator.of(context).popUntil((route) => route.isFirst);
     }

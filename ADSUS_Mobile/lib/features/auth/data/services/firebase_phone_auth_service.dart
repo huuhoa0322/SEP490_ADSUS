@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
+
+import '../../../../core/network/api_exception.dart';
 
 /// Bọc Firebase Phone Auth SDK — nơi DUY NHẤT trong Mobile app gọi trực tiếp
 /// `FirebaseAuth.instance` cho việc xác thực số điện thoại. Chuyển đổi định dạng số điện
@@ -9,16 +13,17 @@ class FirebasePhoneAuthService {
 
   static const String _vietnamCountryCodePrefix = '+84';
 
-  /// Gửi mã OTP qua Firebase — không trả về Future vì Firebase dùng callback, không phải
-  /// request/response đơn giản (có thể tự động xác thực trên máy Android hỗ trợ, khi đó
-  /// `onCodeSent` không được gọi và luồng UI cần xử lý ở tầng gọi nếu muốn hỗ trợ auto-retrieval;
-  /// plan này chỉ dùng đường nhập tay mã, không cần `verificationCompleted` tự động).
-  Future<void> sendCode({
-    required String localPhoneNumber,
-    required void Function(String verificationId) onCodeSent,
-    required void Function(String message) onFailed,
-  }) async {
-    await FirebaseAuth.instance.verifyPhoneNumber(
+  /// Gửi mã OTP qua Firebase, trả về `verificationId` khi mã đã gửi thành công.
+  ///
+  /// `FirebaseAuth.verifyPhoneNumber` tự nó chỉ hoàn tất sau khi đăng ký xong 1 listener trên
+  /// event channel — KHÔNG đợi tới khi `codeSent`/`verificationFailed` thực sự xảy ra (2 sự kiện
+  /// đó tới sau, độc lập, trên chính channel đó). Vì vậy phải tự bắc cầu qua `Completer` để hàm
+  /// này thực sự chờ đúng kết quả, thay vì trả về ngay khi listener vừa đăng ký xong.
+  Future<String> sendCode({required String localPhoneNumber}) {
+    final completer = Completer<String>();
+
+    FirebaseAuth.instance
+        .verifyPhoneNumber(
       phoneNumber: _toE164(localPhoneNumber),
       timeout: const Duration(seconds: 60),
       verificationCompleted: (_) {
@@ -26,13 +31,32 @@ class FirebasePhoneAuthService {
         // luôn để người dùng tự nhập mã (nhất quán trên mọi thiết bị, không phân nhánh UI).
       },
       verificationFailed: (FirebaseAuthException e) {
-        onFailed(_mapErrorMessage(e));
+        if (!completer.isCompleted) {
+          completer.completeError(ApiException(_mapErrorMessage(e)));
+        }
       },
       codeSent: (String verificationId, int? resendToken) {
-        onCodeSent(verificationId);
+        if (!completer.isCompleted) completer.complete(verificationId);
       },
-      codeAutoRetrievalTimeout: (String verificationId) {},
-    );
+      codeAutoRetrievalTimeout: (String verificationId) {
+        // Thường tới SAU `codeSent` (guard `isCompleted` chặn hoàn tất Completer 2 lần) — nhưng
+        // nếu máy tự động xác thực và `codeSent` chưa từng tới, đây là cách duy nhất Future này
+        // còn hoàn tất được, tránh treo vĩnh viễn.
+        if (!completer.isCompleted) completer.complete(verificationId);
+      },
+    )
+        .catchError((Object error) {
+      // Lỗi đồng bộ/ngoài giao thức callback (vd. platform không hỗ trợ) — không đi qua
+      // verificationFailed, nên phải tự bắt ở đây để Future không bao giờ treo hay throw
+      // ra ngoài dạng chưa dịch tiếng Việt.
+      if (!completer.isCompleted) {
+        completer.completeError(
+          const ApiException('Không xác thực được số điện thoại. Vui lòng thử lại.'),
+        );
+      }
+    });
+
+    return completer.future;
   }
 
   /// Xác thực mã người dùng nhập, trả về Firebase ID Token để gửi lên backend.

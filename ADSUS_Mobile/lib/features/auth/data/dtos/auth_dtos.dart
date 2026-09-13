@@ -38,7 +38,4 @@ class AuthMapper {
         biometricEnabled: json['biometricEnabled'] as bool? ?? false,
         mustChangePassword: json['mustChangePassword'] as bool? ?? false,
       );
-
-  static String registrationTokenFromJson(Map<String, dynamic> json) =>
-      json['registrationToken'] as String? ?? '';
 }

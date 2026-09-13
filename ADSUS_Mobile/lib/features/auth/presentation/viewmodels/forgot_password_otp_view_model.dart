@@ -30,13 +30,14 @@ class ForgotPasswordOtpState {
     String? firebaseIdToken,
     AuthSession? completedSession,
     bool clearError = false,
+    bool resetVerification = false,
   }) {
     return ForgotPasswordOtpState(
       isSubmitting: isSubmitting ?? this.isSubmitting,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       phoneNumber: phoneNumber ?? this.phoneNumber,
-      verificationId: verificationId ?? this.verificationId,
-      firebaseIdToken: firebaseIdToken ?? this.firebaseIdToken,
+      verificationId: resetVerification ? null : (verificationId ?? this.verificationId),
+      firebaseIdToken: resetVerification ? null : (firebaseIdToken ?? this.firebaseIdToken),
       completedSession: completedSession ?? this.completedSession,
     );
   }
@@ -48,21 +49,23 @@ class ForgotPasswordOtpViewModel extends StateNotifier<ForgotPasswordOtpState> {
   final Ref _ref;
 
   Future<bool> requestOtp(String phoneNumber) async {
-    state = state.copyWith(isSubmitting: true, clearError: true, phoneNumber: phoneNumber);
-    var succeeded = false;
-
-    await _ref.read(firebasePhoneAuthServiceProvider).sendCode(
-      localPhoneNumber: phoneNumber,
-      onCodeSent: (verificationId) {
-        state = state.copyWith(isSubmitting: false, verificationId: verificationId);
-        succeeded = true;
-      },
-      onFailed: (message) {
-        state = state.copyWith(isSubmitting: false, errorMessage: message);
-      },
+    state = state.copyWith(
+      isSubmitting: true,
+      clearError: true,
+      phoneNumber: phoneNumber,
+      resetVerification: true,
     );
 
-    return succeeded;
+    try {
+      final verificationId = await _ref
+          .read(firebasePhoneAuthServiceProvider)
+          .sendCode(localPhoneNumber: phoneNumber);
+      state = state.copyWith(isSubmitting: false, verificationId: verificationId);
+      return true;
+    } on ApiException catch (e) {
+      state = state.copyWith(isSubmitting: false, errorMessage: e.message);
+      return false;
+    }
   }
 
   Future<bool> verifyOtp(String otpCode) async {
