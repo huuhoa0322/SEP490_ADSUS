@@ -183,6 +183,15 @@ class BookAppointmentState {
     return null;
   }
 
+  /// Bác sĩ đang được chọn (resolve từ id) hoặc null.
+  DoctorOption? get selectedDoctor {
+    if (selectedDoctorId == null) return null;
+    for (final d in filteredDoctorOptions) {
+      if (d.id == selectedDoctorId) return d;
+    }
+    return null;
+  }
+
   /// Ngày bắt đầu của tuần hiện tại (Thứ 2).
   DateTime get currentWeekStart {
     final now = DateTime.now();

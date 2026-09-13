@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -283,11 +282,8 @@ class _BookAppointmentScreenState
           ),
           items: state.filteredDoctorOptions,
           itemAsString: (DoctorOption d) => d.name,
-          compareFn: (a, b) => a?.id == b?.id,
-          selectedItem: state.selectedDoctorId != null
-              ? state.filteredDoctorOptions
-                  .firstWhereOrNull((d) => d.id == state.selectedDoctorId)
-              : null,
+          compareFn: (a, b) => a.id == b.id,
+          selectedItem: state.selectedDoctor,
           onChanged: (DoctorOption? doctor) => ref
               .read(bookAppointmentViewModelProvider.notifier)
               .selectDoctor(doctor?.id),
