@@ -58,24 +58,10 @@ abstract interface class AuthRepository {
   /// Số điện thoại đã ghép đôi, hoặc null nếu chưa đăng nhập lần nào.
   Future<String?> readPairedPhone();
 
-  /// Tự đăng ký bước 1 — xin gửi mã OTP tới số điện thoại.
-  ///
-  /// Ném ApiException(statusCode: 409, message: 'Số điện thoại này đã tồn tại.') nếu số đã
-  /// có tài khoản — backend báo RÕ trường hợp này (quyết định có chủ đích, KHÔNG mirror
-  /// AF-01 của requestPasswordReset — xem Global Constraints ở plan gốc). Cũng ném lỗi nếu
-  /// sai định dạng số hoặc xin lại quá sớm (<60s).
-  Future<void> requestRegistrationOtp({required String phoneNumber});
-
-  /// Tự đăng ký bước 2 — xác thực mã OTP, đổi lấy registration token dùng cho bước 3.
-  Future<String> verifyRegistrationOtp({
-    required String phoneNumber,
-    required String otpCode,
-  });
-
-  /// Tự đăng ký bước 3 (cuối) — tạo tài khoản Patient và tự động đăng nhập.
-  /// Trả về AuthSession giống signIn — gọi nơi dùng chỉ cần lưu token y hệt luồng đăng nhập.
+  /// Tự đăng ký — bước duy nhất còn lại sau khi Mobile đã xác thực số điện thoại qua Firebase
+  /// (xem FirebasePhoneAuthService). Nhận `firebaseIdToken` thay vì registrationToken tự sinh.
   Future<AuthSession> completeRegistration({
-    required String registrationToken,
+    required String firebaseIdToken,
     required String fullName,
     required String password,
     required String confirmPassword,
@@ -84,22 +70,10 @@ abstract interface class AuthRepository {
     String? dateOfBirth,
   });
 
-  /// UC-03 — quên mật khẩu qua SMS OTP, bước 1 (thêm 12/09/2026). CHỈ dành cho tài khoản
-  /// Patient — khác [requestPasswordReset] (email) đã có, KHÔNG thay thế nó.
-  ///
-  /// Ném ApiException(statusCode: 404) nếu số chưa có tài khoản Patient Active — báo RÕ,
-  /// nhất quán với quyết định đã đổi ở tự đăng ký (KHÔNG mirror AF-01 của requestPasswordReset).
-  Future<void> requestPasswordResetOtp({required String phoneNumber});
-
-  /// Bước 2 — xác thực mã, đổi lấy reset token dùng cho bước 3.
-  Future<String> verifyPasswordResetOtp({
-    required String phoneNumber,
-    required String otpCode,
-  });
-
-  /// Bước 3 (cuối) — đặt mật khẩu mới và tự động đăng nhập lại.
-  Future<AuthSession> completePasswordResetWithOtp({
-    required String resetToken,
+  /// Quên mật khẩu qua Firebase — bước duy nhất. Ném ApiException(statusCode: 404) nếu số
+  /// chưa có tài khoản Patient Active.
+  Future<AuthSession> completePasswordResetWithFirebase({
+    required String firebaseIdToken,
     required String newPassword,
     required String confirmNewPassword,
     required String phoneNumber,
