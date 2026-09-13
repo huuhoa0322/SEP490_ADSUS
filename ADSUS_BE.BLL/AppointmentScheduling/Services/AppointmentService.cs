@@ -430,6 +430,20 @@ public sealed class AppointmentService : IAppointmentService
             UpdatedAt = DateTime.UtcNow,
         };
 
+        // Luôn tạo Case khi bác sĩ hẹn tái khám (mặc định không có triệu chứng ban đầu)
+        var caseId = await _caseService.CreateFromBookingAsync(
+            request.PatientProfileId,
+            slot.DoctorId,
+            slot.SlotDate,
+            new List<SymptomInput>(),
+            ct);
+
+        appointment.CaseId = caseId;
+
+        _logger.LogInformation(
+            "Case {CaseId} created from doctor follow-up appointment {AppointmentId}",
+            caseId, appointment.AppointmentId);
+
         slot.Status = SlotStatus.Booked;
         slot.UpdatedAt = DateTime.UtcNow;
 

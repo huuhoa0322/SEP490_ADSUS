@@ -583,6 +583,62 @@ public class AppointmentServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateFollowUpAppointmentAsync_AlwaysCreatesCaseWithEmptySymptoms()
+    {
+        // Arrange
+        var doctor = CreateDoctor();
+        var slot = CreateScheduleSlot(SlotStatus.Open, doctor);
+        slot.SlotId = Guid.NewGuid();
+
+        var patientProfile = new PatientProfile
+        {
+            PatientProfileId = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        _db.ScheduleSlots.Add(slot);
+        _db.PatientProfiles.Add(patientProfile);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        _appointmentRepo.Setup(r => r.CreateAsync(It.IsAny<Appointment>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Appointment a, CancellationToken _) => a);
+        _slotRepo.Setup(r => r.UpdateAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _profileRepo.Setup(r => r.GetByIdAsync(patientProfile.PatientProfileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(patientProfile);
+
+        var expectedCaseId = Guid.NewGuid();
+        _caseService.Setup(c => c.CreateFromBookingAsync(
+            patientProfile.PatientProfileId,
+            slot.DoctorId,
+            slot.SlotDate,
+            It.Is<IReadOnlyList<SymptomInput>>(s => s != null && s.Count == 0),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedCaseId);
+
+        var request = new FollowUpAppointmentRequest
+        {
+            ScheduleSlotId = slot.SlotId,
+            PatientProfileId = patientProfile.PatientProfileId,
+            Reason = "Tái khám theo hẹn"
+        };
+
+        // Act
+        var result = await _sut.CreateFollowUpAppointmentAsync(doctor.UserId, request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(expectedCaseId, result.CaseId);
+        _caseService.Verify(c => c.CreateFromBookingAsync(
+            patientProfile.PatientProfileId,
+            slot.DoctorId,
+            slot.SlotDate,
+            It.Is<IReadOnlyList<SymptomInput>>(s => s != null && s.Count == 0),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task CreateFollowUpAppointmentAsync_NotificationThrows_DoesNotFailAppointment()
     {
         // Arrange

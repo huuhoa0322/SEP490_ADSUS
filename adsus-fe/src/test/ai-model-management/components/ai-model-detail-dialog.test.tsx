@@ -67,4 +67,54 @@ describe("AiModelDetailDialog", () => {
     expect(screen.getByText("Không có mô tả")).toBeInTheDocument();
     expect(screen.getAllByText("—")).toHaveLength(3);
   });
+
+  it("hiển thị mục Đánh giá trực tiếp (Live Evaluation) với đầy đủ live metrics và counters", () => {
+    render(
+      <AiModelDetailDialog
+        open={true}
+        model={buildModel({
+          livePrecision: 0.885,
+          liveRecall: 0.912,
+          liveMap50: 89.4,
+          liveTp: 45,
+          liveFp: 6,
+          liveFn: 4,
+          lastEvaluatedAt: "2026-09-01T12:00:00Z",
+        })}
+        onClose={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("Đánh giá trực tiếp (Live Evaluation)")).toBeInTheDocument();
+    expect(screen.getByText("88.5%")).toBeInTheDocument(); // Live Precision
+    expect(screen.getByText("91.2%")).toBeInTheDocument(); // Live Recall
+    expect(screen.getByText("89.4%")).toBeInTheDocument(); // Live mAP50
+    expect(screen.getByText("45")).toBeInTheDocument(); // Live TP
+    expect(screen.getByText("6")).toBeInTheDocument();  // Live FP
+    expect(screen.getByText("4")).toBeInTheDocument();  // Live FN
+    expect(screen.getByText(/Đánh giá lần cuối:/)).toBeInTheDocument();
+  });
+
+  it("xử lý an toàn khi Live metrics chưa có dữ liệu (null/undefined)", () => {
+    render(
+      <AiModelDetailDialog
+        open={true}
+        model={buildModel({
+          livePrecision: undefined,
+          liveRecall: undefined,
+          liveMap50: undefined,
+          liveTp: undefined,
+          liveFp: undefined,
+          liveFn: undefined,
+          lastEvaluatedAt: undefined,
+        })}
+        onClose={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("Đánh giá trực tiếp (Live Evaluation)")).toBeInTheDocument();
+    expect(screen.getAllByText("Chưa có dữ liệu").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText("0")).toHaveLength(3); // Live TP, FP, FN default to 0
+  });
 });
+
