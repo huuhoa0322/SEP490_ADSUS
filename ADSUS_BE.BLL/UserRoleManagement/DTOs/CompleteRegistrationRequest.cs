@@ -1,8 +1,10 @@
 namespace ADSUS_BE.BLL.UserRoleManagement.DTOs;
 
-/// <summary>Bước 3 (cuối) của tự đăng ký — tạo tài khoản Patient thật.</summary>
+/// <summary>Tự đăng ký — bước duy nhất còn lại sau khi đổi sang Firebase Phone Auth. Số điện
+/// thoại KHÔNG nằm trong DTO này — lấy từ Firebase ID Token đã verify (xem Global Constraints
+/// trong plan gốc: không bao giờ tin số điện thoại client tự gửi).</summary>
 public record CompleteRegistrationRequest(
-    string RegistrationToken,
+    string FirebaseIdToken,
     string FullName,
     string Password,
     string ConfirmPassword,

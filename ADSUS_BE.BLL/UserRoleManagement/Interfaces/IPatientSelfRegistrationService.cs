@@ -3,19 +3,12 @@ using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 
 namespace ADSUS_BE.BLL.UserRoleManagement.Interfaces;
 
-/// <summary>Bệnh nhân tự đăng ký qua Mobile app — xác thực số điện thoại bằng OTP trước khi
-/// tạo tài khoản. Không liên quan tới <c>IAuthService.LoginAsync</c> (đăng nhập không đổi).</summary>
+/// <summary>Bệnh nhân tự đăng ký qua Mobile app — xác thực số điện thoại bằng Firebase Phone
+/// Auth (SDK chạy trên Mobile), backend chỉ verify Firebase ID Token rồi tạo tài khoản.</summary>
 public interface IPatientSelfRegistrationService
 {
-    Task<RegistrationOtpResult> RequestOtpAsync(
-        RequestRegistrationOtpRequest request, CancellationToken cancellationToken = default);
-
-    Task<VerifyOtpResult> VerifyOtpAsync(
-        VerifyRegistrationOtpRequest request, CancellationToken cancellationToken = default);
-
-    /// <summary>Tạo tài khoản Patient thật rồi tự động đăng nhập (tái dùng IAuthService.LoginAsync).
-    /// Throw BusinessException nếu registration token không hợp lệ/hết hạn; ConflictException nếu
-    /// số điện thoại vừa bị người khác đăng ký trong lúc chờ (race condition hiếm).</summary>
+    /// <summary>Throw BusinessException nếu Firebase ID Token không hợp lệ/hết hạn/thiếu số
+    /// điện thoại; ConflictException nếu số điện thoại đã có tài khoản.</summary>
     Task<LoginResponse> CompleteRegistrationAsync(
         CompleteRegistrationRequest request, CancellationToken cancellationToken = default);
 }

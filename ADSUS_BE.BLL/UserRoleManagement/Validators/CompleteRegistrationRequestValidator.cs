@@ -18,8 +18,8 @@ public class CompleteRegistrationRequestValidator : AbstractValidator<CompleteRe
 
     public CompleteRegistrationRequestValidator()
     {
-        RuleFor(x => x.RegistrationToken)
-            .NotEmpty().WithMessage("Registration token is required.");
+        RuleFor(x => x.FirebaseIdToken)
+            .NotEmpty().WithMessage("Firebase ID token is required.");
 
         RuleFor(x => x.FullName)
             .NotEmpty().WithMessage("Full name is required.")
