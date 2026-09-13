@@ -41,9 +41,7 @@ void main() {
         patientRelationshipRepositoryProvider.overrideWithValue(mockRelationshipRepo),
       ],
       child: const MaterialApp(
-        home: Scaffold(
-          body: BookAppointmentScreen(),
-        ),
+        home: BookAppointmentScreen(),
       ),
     );
   }
@@ -51,11 +49,21 @@ void main() {
   group('BookAppointmentScreen - Relative Booking Widget Tests', () {
     testWidgets('TC-FE-15: BookAppointmentScreen_NoInfiniteLoop verifies stable rebuild on relative selection',
         (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      // Ensure radio tiles are present
+      // Ensure radio tiles are present and scrolled into view
       final relativeRadio = find.text('Người thân');
+      await tester.ensureVisible(relativeRadio);
+      await tester.pumpAndSettle();
+
       expect(relativeRadio, findsOneWidget);
 
       // Switch selection to "Người thân"
@@ -72,13 +80,24 @@ void main() {
 
     testWidgets('TC-FE-16: BookAppointmentScreen_EmptyRelatives_AddButton displays empty state and direct button',
         (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
       when(() => mockRelationshipRepo.getRelatives()).thenAnswer((_) async => []);
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
       // Switch to "Người thân"
-      await tester.tap(find.text('Người thân'));
+      final relativeRadio = find.text('Người thân');
+      await tester.ensureVisible(relativeRadio);
+      await tester.pumpAndSettle();
+
+      await tester.tap(relativeRadio);
       await tester.pumpAndSettle();
 
       // Expect empty state message
