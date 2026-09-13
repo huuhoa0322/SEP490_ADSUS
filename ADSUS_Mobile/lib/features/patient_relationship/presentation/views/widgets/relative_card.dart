@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_theme.dart';
-import '../../domain/entities/patient_relationship.dart';
+import 'package:adsus_mobile/core/theme/app_theme.dart';
+import 'package:adsus_mobile/features/patient_relationship/domain/entities/patient_relationship.dart';
 
 /// Card hiển thị thông tin một người thân trong danh sách.
 class RelativeCard extends StatelessWidget {
