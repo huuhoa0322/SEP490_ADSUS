@@ -106,10 +106,12 @@ void main() {
 
     test('TC-FE-14: BookAppointmentVM_SilentSelfBooking_Blocked blocks booking without relative', () async {
       final notifier = container.read(bookAppointmentViewModelProvider.notifier);
+      await notifier.loadSlots();
 
       // Arrange: select a slot, switch to booking for relative, but DO NOT select relative
       notifier.selectSlot('slot-123');
       notifier.setIsBookingForSelf(false);
+      await notifier.loadSavedRelatives();
 
       // Verify preconditions
       var state = container.read(bookAppointmentViewModelProvider);

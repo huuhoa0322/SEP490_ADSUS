@@ -412,6 +412,7 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       slots: state.slots,
       availableDates: state.availableDates,
       doctorOptions: state.doctorOptions,
+      symptomCategories: state.symptomCategories,
       selectedWeekIndex: 0,
       // Clear mọi selection và success state
       bookingSuccess: null,
@@ -429,6 +430,7 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       slots: state.slots,
       availableDates: state.availableDates,
       doctorOptions: state.doctorOptions,
+      symptomCategories: state.symptomCategories,
       selectedWeekIndex: 0,
       // Clear mọi selection và success state
       bookingSuccess: null,

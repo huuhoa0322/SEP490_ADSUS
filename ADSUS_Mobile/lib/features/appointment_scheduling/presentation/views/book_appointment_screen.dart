@@ -626,35 +626,39 @@ class _BookAppointmentScreenState
       children: [
         _sectionLabel('ĐẶT LỊCH CHO'),
         // Radio buttons: Đặt cho tôi / Người thân
-        RadioGroup<bool>(
-          groupValue: state.isBookingForSelf,
-          onChanged: (v) {
-            final forSelf = v ?? true;
-            notifier.setIsBookingForSelf(forSelf);
-            if (!forSelf) {
-              notifier.loadSavedRelatives();
-            }
-          },
-          child: const Row(
-            children: [
-              Expanded(
-                child: RadioListTile<bool>(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  title: Text('Tôi', style: TextStyle(fontSize: 14)),
-                  value: true,
-                ),
+        Row(
+          children: [
+            Expanded(
+              child: RadioListTile<bool>(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Tôi', style: TextStyle(fontSize: 14)),
+                value: true,
+                // ignore: deprecated_member_use
+                groupValue: state.isBookingForSelf,
+                // ignore: deprecated_member_use
+                onChanged: (v) => notifier.setIsBookingForSelf(v ?? true),
               ),
-              Expanded(
-                child: RadioListTile<bool>(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  title: Text('Người thân', style: TextStyle(fontSize: 14)),
-                  value: false,
-                ),
+            ),
+            Expanded(
+              child: RadioListTile<bool>(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Người thân', style: TextStyle(fontSize: 14)),
+                value: false,
+                // ignore: deprecated_member_use
+                groupValue: state.isBookingForSelf,
+                // ignore: deprecated_member_use
+                onChanged: (v) {
+                  final forSelf = v ?? false;
+                  notifier.setIsBookingForSelf(forSelf);
+                  if (!forSelf) {
+                    notifier.loadSavedRelatives();
+                  }
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         // Nếu chọn người thân, hiện dropdown hoặc loading
         if (!state.isBookingForSelf) ...[
