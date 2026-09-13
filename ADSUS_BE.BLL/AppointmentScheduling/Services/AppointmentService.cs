@@ -870,7 +870,7 @@ public sealed class AppointmentService : IAppointmentService
         int pageSize = 15,
         CancellationToken ct = default)
     {
-        var effectiveFrom = fromDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var effectiveFrom = fromDate ?? ClinicClock.Today();
         var effectiveTo = toDate ?? effectiveFrom;
         if (effectiveFrom > effectiveTo)
         {
@@ -961,6 +961,7 @@ public sealed class AppointmentService : IAppointmentService
             PatientProfileId = a.PatientProfileId,
             CaseId = a.CaseId ?? Guid.Empty,
             Reason = a.Reason,
+            DoctorId = a.Slot?.DoctorId ?? Guid.Empty,
             DoctorName = a.Slot?.Doctor?.FullName ?? string.Empty,
             Status = a.Status,
         }).ToList();

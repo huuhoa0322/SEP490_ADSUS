@@ -576,6 +576,11 @@ public class AppointmentServiceCheckinTests : IDisposable
         Assert.Contains(result.Items, i => i.AppointmentId == appt2.AppointmentId);
         Assert.Contains(result.Items, i => i.AppointmentId == appt3.AppointmentId);
         Assert.DoesNotContain(result.Items, i => i.AppointmentId == appt1.AppointmentId);
+        Assert.All(result.Items, i =>
+        {
+            Assert.Equal(doctor.UserId, i.DoctorId);
+            Assert.Equal("Dr. Range", i.DoctorName);
+        });
     }
 
     [Fact]
@@ -915,6 +920,38 @@ public class AppointmentServiceCheckinTests : IDisposable
         Assert.NotNull(result);
         Assert.True(result.TotalCount >= 1);
         Assert.Contains(result.Items, i => i.AppointmentId == appt.AppointmentId);
+    }
+
+    [Fact]
+    public async Task GetCheckinQueueAsync_PopulatesDoctorIdAndDoctorName_OnCheckinQueueItemResponse()
+    {
+        // Arrange
+        var doctor = CreateDoctor("Dr. VerifiedCheckin");
+        var patient = CreatePatient();
+        var profile = CreatePatientProfile(patient);
+        var today = ClinicClock.Today();
+
+        var slot = new ScheduleSlot
+        {
+            SlotId = Guid.NewGuid(),
+            DoctorId = doctor.UserId,
+            Doctor = doctor,
+            SlotDate = today,
+            StartTime = new TimeOnly(10, 0),
+            EndTime = new TimeOnly(11, 0),
+            Status = SlotStatus.Booked,
+        };
+        var appt = CreateAppointment(slot, profile, AppointmentStatus.Booked, Guid.NewGuid());
+        await SeedAppointmentAsync(appt);
+
+        // Act
+        var result = await _sut.GetCheckinQueueAsync(today, today, null, "ALL", 1, 15, TestContext.Current.CancellationToken);
+
+        // Assert
+        var item = result.Items.FirstOrDefault(i => i.AppointmentId == appt.AppointmentId);
+        Assert.NotNull(item);
+        Assert.Equal(doctor.UserId, item.DoctorId);
+        Assert.Equal("Dr. VerifiedCheckin", item.DoctorName);
     }
 
     #endregion

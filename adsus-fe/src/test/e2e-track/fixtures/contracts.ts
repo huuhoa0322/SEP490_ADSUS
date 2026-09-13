@@ -28,6 +28,7 @@ export interface CheckinQueueItemResponse {
   caseId: string | null;
   reason: string;
   doctorName: string;
+  doctorId?: string;
   status: AppointmentStatus;
 }
 
@@ -122,6 +123,7 @@ export function validateCheckinQueueItem(item: unknown): item is CheckinQueueIte
     (i.caseId === null || typeof i.caseId === "string") &&
     typeof i.reason === "string" &&
     typeof i.doctorName === "string" &&
+    (i.doctorId === undefined || typeof i.doctorId === "string") &&
     ["BOOKED", "APPROVED", "COMPLETED", "CANCELLED"].includes(i.status as string)
   );
 }

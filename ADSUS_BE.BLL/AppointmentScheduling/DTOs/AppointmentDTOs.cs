@@ -186,6 +186,7 @@ public sealed class CheckinQueueItemResponse
     public Guid PatientProfileId { get; init; }
     public Guid CaseId { get; init; }
     public string? Reason { get; init; }
+    public Guid DoctorId { get; init; }
     public string DoctorName { get; init; } = string.Empty;
     public AppointmentStatus Status { get; init; }
 }
