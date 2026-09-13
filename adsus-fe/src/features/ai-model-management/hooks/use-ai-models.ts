@@ -12,12 +12,13 @@ import {
 
 import type { AiModelListQuery } from "../types/ai-model.types";
 
-const queryKeys = {
+export const queryKeys = {
   all: ["ai-models"] as const,
   lists: () => [...queryKeys.all, "list"] as const,
   list: (query: AiModelListQuery) => [...queryKeys.lists(), query] as const,
   details: () => [...queryKeys.all, "detail"] as const,
   detail: (id: string) => [...queryKeys.details(), id] as const,
+  active: () => [...queryKeys.all, "active"] as const,
 };
 
 export function useAiModelList(query: AiModelListQuery) {
@@ -29,7 +30,7 @@ export function useAiModelList(query: AiModelListQuery) {
 
 export function useActiveAiModel() {
   return useQuery({
-    queryKey: [...queryKeys.all, "active"] as const,
+    queryKey: queryKeys.active(),
     queryFn: getActiveAiModel,
   });
 }
@@ -72,8 +73,10 @@ export function useActivateAiModel() {
   return useMutation({
     mutationFn: activateAiModel,
     onSuccess: () => {
-      // Vì activate ảnh hưởng toàn bộ list (chỉ 1 thằng đc active), invalidate list
       queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.details() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.active() });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }
@@ -85,6 +88,9 @@ export function useCalculateMap50() {
     mutationFn: calculateMap50,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.details() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.active() });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }

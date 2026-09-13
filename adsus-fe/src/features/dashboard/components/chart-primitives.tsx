@@ -44,27 +44,27 @@ export function StatTile({
 }) {
   const bgVar = cat ? `var(--cat-${cat})` : "var(--cat-blue)";
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-[var(--border)] bg-background p-6 transition-shadow hover:shadow-md">
+    <div className="group relative overflow-hidden rounded-2xl border border-[var(--border)] bg-background p-4 min-[1600px]:p-5 transition-shadow hover:shadow-md">
       {/* Left accent bar */}
       <div
         className="absolute left-0 top-0 h-full w-1 rounded-l-2xl transition-all group-hover:w-1.5"
         style={{ backgroundColor: bgVar }}
       />
-      <div className="flex items-start justify-between gap-3 pl-2">
-        <div className="flex flex-col gap-3">
-          <span className="font-heading text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-start justify-between gap-1.5 pl-1">
+        <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+          <span className="font-heading text-[11px] min-[1400px]:text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
             {label}
           </span>
-          <p className="font-heading text-[34px] font-bold leading-none tracking-[-0.02em] text-foreground tabular-nums">
+          <p className="font-heading text-xl min-[1400px]:text-[21px] 2xl:text-[26px] font-bold leading-tight tracking-[-0.02em] text-foreground tabular-nums truncate" title={String(value)}>
             {value}
           </p>
           {hint && (
-            <p className="text-sm text-muted-foreground">{hint}</p>
+            <p className="text-xs text-muted-foreground line-clamp-2">{hint}</p>
           )}
         </div>
         {icon && (
           <div
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl text-white"
+            className="flex size-7 min-[1400px]:size-8 shrink-0 items-center justify-center rounded-lg text-white"
             style={{ backgroundColor: bgVar }}
           >
             {icon}

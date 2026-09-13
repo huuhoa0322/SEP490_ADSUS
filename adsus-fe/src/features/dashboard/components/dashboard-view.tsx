@@ -1,12 +1,33 @@
 "use client";
 
-import { AlertCircle, CalendarCheck, Loader2, ScanLine, Users } from "lucide-react";
+import { AlertCircle, Banknote, CalendarCheck, Loader2, ScanLine, Users } from "lucide-react";
 import { useState } from "react";
 
 import { getApiErrorMessage } from "@/lib/api-client";
+import { formatMetricPercent } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 
 import { useDashboardStatistics } from "../hooks/use-dashboard";
+
+function renderAiMetric(val: string) {
+  if (val === "Chưa có dữ liệu") {
+    return (
+      <span aria-label="Chưa có dữ liệu" className="text-lg text-muted-foreground">
+        Chưa có<br />dữ liệu
+      </span>
+    );
+  }
+  return val;
+}
+
+/** Định dạng số tiền VND không kèm phần thập phân. */
+function formatVND(amount: number): string {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
 import { AuditLogPanel } from "./audit-log-panel";
 import { BarList, ChartCard, DonutChart, RateMeter, StatTile, StatusBreakdown } from "./chart-primitives";
@@ -49,12 +70,26 @@ const TODAY = toIsoDate(new Date());
 export function DashboardView() {
   const [fromDate, setFromDate] = useState(isoDaysAgo(30));
   const [toDate, setToDate] = useState(TODAY);
+  const [activePreset, setActivePreset] = useState<number | null>(30);
 
   const { data, isLoading, isError, error } = useDashboardStatistics({ fromDate, toDate });
+
+  const revenue = data?.revenue ?? {
+    totalRevenue: 0,
+    paidInvoiceCount: 0,
+    cashRevenue: 0,
+    cashCount: 0,
+    bankTransferRevenue: 0,
+    bankTransferCount: 0,
+    pendingInvoiceCount: 0,
+    pendingAmount: 0,
+  };
+  const topMedicines = data?.topMedicines ?? [];
 
   function applyPreset(days: number) {
     setFromDate(isoDaysAgo(days));
     setToDate(TODAY);
+    setActivePreset(days);
   }
 
   return (
@@ -72,21 +107,33 @@ export function DashboardView() {
 
         {/* Date range filter */}
         <div className="flex flex-wrap items-center gap-2">
-          {PRESETS.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              onClick={() => applyPreset(preset.days)}
-              className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-[var(--secondary)]"
-            >
-              {preset.label}
-            </button>
-          ))}
+          {PRESETS.map((preset) => {
+            const isActive =
+              activePreset === preset.days ||
+              (toDate === TODAY && fromDate === isoDaysAgo(preset.days));
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => applyPreset(preset.days)}
+                className={`rounded-full border px-4 py-2 text-sm font-medium transition-all shadow-sm ${
+                  isActive
+                    ? "border-primary bg-primary text-primary-foreground font-semibold shadow-md ring-2 ring-primary/25"
+                    : "border-[var(--border)] bg-background text-foreground hover:bg-[var(--secondary)]"
+                }`}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
 
           <DatePicker
             value={fromDate}
             maxDate={toDate ? new Date(toDate) : undefined}
-            onChange={(val) => setFromDate(val)}
+            onChange={(val) => {
+              setFromDate(val);
+              setActivePreset(null);
+            }}
             className="w-[180px] rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-[var(--success)]"
           />
           <span className="text-muted-foreground">→</span>
@@ -94,7 +141,10 @@ export function DashboardView() {
             value={toDate}
             minDate={fromDate ? new Date(fromDate) : undefined}
             maxDate={new Date(TODAY)}
-            onChange={(val) => setToDate(val)}
+            onChange={(val) => {
+              setToDate(val);
+              setActivePreset(null);
+            }}
             className="w-[180px] rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-[var(--success)]"
           />
         </div>
@@ -118,8 +168,8 @@ export function DashboardView() {
 
       {data && (
         <>
-          {/* ── Row 1: 4 stat tiles ───────────────────────────────────── */}
-          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* ── Stat tiles (1 row of 5 on desktop) ───────────────────── */}
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
             <StatTile
               label="Tài khoản"
               value={data.accounts.total}
@@ -135,6 +185,16 @@ export function DashboardView() {
               icon={<ScanLine className="size-5" />}
               cat="teal"
               trend={`${data.clinical.aiRunCount} lượt AI`}
+            />
+            <StatTile
+              label="Doanh thu"
+              value={formatVND(revenue.totalRevenue)}
+              hint={`${revenue.paidInvoiceCount} hóa đơn đã thanh toán${
+                revenue.pendingInvoiceCount > 0 ? ` · ${revenue.pendingInvoiceCount} chờ thanh toán` : ""
+              }`}
+              icon={<Banknote className="size-5" />}
+              cat="green"
+              trend={`${revenue.paidInvoiceCount} đã thanh toán`}
             />
             <StatTile
               label="Lượt đặt lịch"
@@ -230,53 +290,110 @@ export function DashboardView() {
             </ChartCard>
           </div>
 
+          {/* ── Doanh thu theo phương thức & Top 10 thuốc kê nhiều nhất ──── */}
+          <div className="mt-5 grid gap-5 lg:grid-cols-2">
+            <ChartCard
+              title="Doanh thu theo phương thức thanh toán"
+              description="Phân bổ doanh thu giữa tiền mặt và chuyển khoản ngân hàng."
+            >
+              <StatusBreakdown
+                segments={[
+                  { label: "Chuyển khoản", value: revenue.bankTransferRevenue, tone: "good" },
+                  { label: "Tiền mặt", value: revenue.cashRevenue, tone: "warning" },
+                ]}
+              />
+              <div className="mt-5 grid grid-cols-2 gap-3 border-t border-[var(--border)] pt-4 text-xs">
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--secondary)]/30 p-3">
+                  <span className="font-medium text-muted-foreground">Chuyển khoản</span>
+                  <p className="mt-1 font-heading text-base font-bold text-foreground tabular-nums">
+                    {formatVND(revenue.bankTransferRevenue)}
+                  </p>
+                  <span className="text-muted-foreground">{revenue.bankTransferCount} hóa đơn</span>
+                </div>
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--secondary)]/30 p-3">
+                  <span className="font-medium text-muted-foreground">Tiền mặt</span>
+                  <p className="mt-1 font-heading text-base font-bold text-foreground tabular-nums">
+                    {formatVND(revenue.cashRevenue)}
+                  </p>
+                  <span className="text-muted-foreground">{revenue.cashCount} hóa đơn</span>
+                </div>
+              </div>
+            </ChartCard>
+
+            <ChartCard
+              title="Top 10 thuốc kê nhiều nhất"
+              description="Thuốc được kê nhiều nhất trong các đơn thuốc hợp lệ."
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--border)] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <th className="pb-3 pr-4">#</th>
+                      <th className="pb-3 pr-4">Tên thuốc</th>
+                      <th className="pb-3 pr-4 text-right">Số lần kê</th>
+                      <th className="pb-3 text-right">Tổng số lượng kê (đơn vị gốc)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {topMedicines.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                          Chưa có dữ liệu đơn thuốc trong khoảng thời gian này
+                        </td>
+                      </tr>
+                    ) : (
+                      topMedicines.map((med, idx) => (
+                        <tr key={med.medicineId || idx} className="transition-colors hover:bg-[var(--secondary)]/40">
+                          <td className="py-2.5 pr-4 text-xs font-medium text-muted-foreground tabular-nums">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2.5 pr-4 font-medium text-foreground">
+                            {med.medicineName}
+                          </td>
+                          <td className="py-2.5 pr-4 text-right font-semibold tabular-nums text-foreground">
+                            {med.prescriptionCount}
+                          </td>
+                          <td className="py-2.5 text-right font-semibold tabular-nums text-muted-foreground">
+                            {med.totalQuantityBase.toLocaleString("vi-VN")}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </ChartCard>
+          </div>
+
           {/* ── Row 4: AI accuracy + adherence ──────────────────────── */}
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
             <ChartCard
               title="Độ chính xác AI"
-              description={`Phiên bản: ${data.activeAiModel.versionCode || "Không có"}`}
+              description={`Phiên bản: ${data?.activeAiModel?.versionCode || "Không có"}`}
             >
               <div className="mt-4 flex items-center gap-6 text-center justify-around">
                 <div>
                   <div className="text-3xl font-bold font-heading text-foreground tabular-nums">
-                    {data.activeAiModel.precision != null
-                      ? (data.activeAiModel.precision * 100).toFixed(1) + "%"
-                      : (
-                        <span className="text-lg text-muted-foreground">
-                          Chưa có<br />dữ liệu
-                        </span>
-                      )}
+                    {renderAiMetric(formatMetricPercent(data?.activeAiModel?.precision, true))}
                   </div>
                   <div className="mt-1 text-sm font-medium text-muted-foreground">Precision</div>
                 </div>
                 <div className="h-12 w-px bg-[var(--border)]" />
                 <div>
                   <div className="text-3xl font-bold font-heading text-foreground tabular-nums">
-                    {data.activeAiModel.recall != null
-                      ? (data.activeAiModel.recall * 100).toFixed(1) + "%"
-                      : (
-                        <span className="text-lg text-muted-foreground">
-                          Chưa có<br />dữ liệu
-                        </span>
-                      )}
+                    {renderAiMetric(formatMetricPercent(data?.activeAiModel?.recall, true))}
                   </div>
                   <div className="mt-1 text-sm font-medium text-muted-foreground">Recall</div>
                 </div>
                 <div className="h-12 w-px bg-[var(--border)]" />
                 <div>
                   <div className="text-3xl font-bold font-heading text-[var(--cat-teal)] tabular-nums">
-                    {data.activeAiModel.map50 != null
-                      ? data.activeAiModel.map50.toFixed(1) + "%"
-                      : (
-                        <span className="text-lg text-muted-foreground">
-                          Chưa có<br />dữ liệu
-                        </span>
-                      )}
+                    {renderAiMetric(formatMetricPercent(data?.activeAiModel?.map50, false))}
                   </div>
                   <div className="mt-1 text-sm font-medium text-muted-foreground">mAP50</div>
                 </div>
               </div>
-              {data.activeAiModel.lastEvaluatedAt && (
+              {data?.activeAiModel?.lastEvaluatedAt && (
                 <p className="mt-6 border-t border-[var(--border)] pt-4 text-center text-xs text-muted-foreground">
                   mAP50 tính lần cuối: {new Date(data.activeAiModel.lastEvaluatedAt).toLocaleString("vi-VN")}
                 </p>
@@ -313,15 +430,12 @@ export function DashboardView() {
             </ChartCard>
           </div>
 
-          {/* ── Row 5: 3 trend mini-charts ─────────────────────────────
-              Reuses the existing TrendChart primitive (line + area + hover tooltip,
-              src/features/dashboard/components/trend-chart.tsx) instead of the plain
-              static bars this row used to hand-roll — same component already covered
-              by trend-chart.test.tsx, just not wired up here before. */}
-          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+          {/* ── 4 trend mini-charts ─────────────────────────────────── */}
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <TrendChart points={data.trend} measure="newAccounts" label="Tài khoản mới" />
             <TrendChart points={data.trend} measure="cases" label="Ca khám" />
             <TrendChart points={data.trend} measure="appointments" label="Lượt hẹn" />
+            <TrendChart points={data.trend} measure="revenue" label="Doanh thu" />
           </div>
 
           {/* ── Audit Log Panel ─────────────────────────────────────── */}

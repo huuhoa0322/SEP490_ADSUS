@@ -53,10 +53,10 @@ class _BookAppointmentScreenState
     // Chỉ trigger khi prev = null và next != null (chuyển từ chưa success sang success)
     ref.listen<BookAppointmentState>(bookAppointmentViewModelProvider, (prev, next) async {
       if (prev?.bookingSuccess == null && next.bookingSuccess != null) {
-        if (!mounted) return;
+        if (!context.mounted) return;
         // FORCE RELOAD lịch hẹn TRƯỚC khi navigate (fix: lịch mới không hiện)
         await ref.read(myAppointmentsViewModelProvider.notifier).load();
-        if (!mounted) return;
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Đặt lịch thành công. Bạn sẽ nhận nhắc nhở trước giờ khám.'),
@@ -73,7 +73,7 @@ class _BookAppointmentScreenState
       }
       // Hiển thị error ở dưới cùng màn hình (bottom SnackBar)
       if (prev?.errorMessage == null && next.errorMessage != null && !next.isBooking) {
-        if (!mounted) return;
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(next.errorMessage!),
@@ -269,7 +269,7 @@ class _BookAppointmentScreenState
         ),
         const SizedBox(height: 12),
         _sectionLabel('BÁC SĨ PHỤ TRÁCH'),
-        DropdownSearch<String>(
+        DropdownSearch<DoctorOption>(
           popupProps: PopupProps.menu(
             showSearchBox: true,
             searchFieldProps: TextFieldProps(
@@ -283,21 +283,13 @@ class _BookAppointmentScreenState
             constraints: const BoxConstraints(maxHeight: 300),
             fit: FlexFit.loose,
           ),
-          // 2026-01: Dùng filteredDoctorOptions thay vì doctorOptions
-          items: state.filteredDoctorOptions.map((d) => d.name).toList(),
-          selectedItem: state.selectedDoctorId != null
-              ? state.filteredDoctorOptions
-                  .firstWhere(
-                    (d) => d.id == state.selectedDoctorId,
-                    orElse: () => state.filteredDoctorOptions.first,
-                  )
-                  .name
-              : null,
-          onChanged: (name) {
-            if (name == null) return;
-            final doctor = state.filteredDoctorOptions.firstWhere((d) => d.name == name);
-            ref.read(bookAppointmentViewModelProvider.notifier).selectDoctor(doctor.id);
-          },
+          items: state.filteredDoctorOptions,
+          itemAsString: (DoctorOption d) => d.name,
+          compareFn: (a, b) => a.id == b.id,
+          selectedItem: state.selectedDoctor,
+          onChanged: (DoctorOption? doctor) => ref
+              .read(bookAppointmentViewModelProvider.notifier)
+              .selectDoctor(doctor?.id),
           dropdownDecoratorProps: DropDownDecoratorProps(
             dropdownSearchDecoration: const InputDecoration(
               prefixIcon: Icon(Icons.person_outline),
@@ -772,22 +764,27 @@ class _BookAppointmentScreenState
                     ),
                   ),
                 ),
-                if (state.symptomBlocks.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.teal,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${state.symptomBlocks.length}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                Builder(
+                  builder: (context) {
+                    final activeCount = state.symptomBlocks.where((b) => b.selectedCategoryId != null).length;
+                    if (activeCount == 0) return const SizedBox.shrink();
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.teal,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ),
-                  ),
+                      child: Text(
+                        '$activeCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),

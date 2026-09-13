@@ -236,6 +236,51 @@ public sealed class AppointmentsController : ControllerBase
     }
 
     /// <summary>
+    /// POST /api/v1/appointments/book-for-patient — Staff đặt lịch hẹn thay bệnh nhân.
+    /// Reuse logic BookAppointmentAsync, PatientProfileId từ body thay vì JWT.
+    /// </summary>
+    [HttpPost("book-for-patient")]
+    [Authorize(Roles = "STAFF,ADMIN,RECEPTIONIST")]
+    [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> BookForPatient(
+        [FromBody] StaffBookAppointmentRequest request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            // Validate input — tránh FK violation gây 500
+            if (request.PatientProfileId == Guid.Empty || request.ScheduleSlotId == Guid.Empty)
+            {
+                return BadRequest(ApiResponse<object>.Fail(400,
+                    "PatientProfileId và ScheduleSlotId không được để trống."));
+            }
+
+            var profile = await _patientProfileRepo.GetByIdAsync(request.PatientProfileId, ct);
+            if (profile == null)
+            {
+                return NotFound(ApiResponse<object>.Fail(404,
+                    "Không tìm thấy hồ sơ bệnh nhân."));
+            }
+
+            var bookRequest = new BookAppointmentRequest
+            {
+                ScheduleSlotId = request.ScheduleSlotId,
+                Reason = request.Reason,
+            };
+            var appointment = await _appointmentService.BookAppointmentAsync(
+                request.PatientProfileId, bookRequest, ct);
+            return StatusCode(StatusCodes.Status201Created,
+                ApiResponse<AppointmentResponse>.Ok(appointment, code: 201));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
+    }
+
+    /// <summary>
     /// POST /api/v1/appointments/{id}/reschedule — Đổi lịch hoặc tái đặt lịch hẹn cho Nurse / Lễ tân / Admin (Milestone 1).
     /// </summary>
     [HttpPost("{id:guid}/reschedule")]

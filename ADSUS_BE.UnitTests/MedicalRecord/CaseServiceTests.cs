@@ -956,7 +956,8 @@ public class CaseServiceTests
         _notificationService.Verify(n => n.SendAsync(
             It.Is<SendNotificationRequest>(r =>
                 r.UserId == doctorId &&
-                r.Type == "new_case_created"),
+                r.Type == "new_case_created" &&
+                r.Body == "Bệnh nhân Bệnh nhân đã đặt lịch khám. Ca khám đã được tạo tự động."),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

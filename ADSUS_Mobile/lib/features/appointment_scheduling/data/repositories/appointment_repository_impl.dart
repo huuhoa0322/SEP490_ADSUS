@@ -36,7 +36,10 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
         query['doctorId'] = doctorId;
       }
       if (slotDate != null) {
-        query['slotDate'] = _formatDate(slotDate);
+        final formattedDate = _formatDate(slotDate);
+        query['slotDate'] = formattedDate;
+        query['fromDate'] = formattedDate;
+        query['toDate'] = formattedDate;
       }
 
       final res = await _dio.get<Map<String, dynamic>>(

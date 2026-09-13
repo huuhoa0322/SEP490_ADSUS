@@ -46,6 +46,8 @@ public class DashboardService : IDashboardService
         var accounts = await _dashboard.GetAccountCountsAsync(cancellationToken);
         var activity = await _dashboard.GetActivityCountsAsync(from, to, cancellationToken);
         var daily = await _dashboard.GetDailyActivityAsync(from, to, cancellationToken);
+        var revenue = await _dashboard.GetRevenueAsync(from, to, cancellationToken);
+        var topMedicines = await _dashboard.GetTopPrescribedMedicinesAsync(from, to, 10, cancellationToken);
         var activeModel = await _aiModelRepo.GetActiveVersionReadOnlyAsync(cancellationToken);
 
         return new DashboardStatisticsResponse
@@ -96,6 +98,26 @@ public class DashboardService : IDashboardService
                 AdherenceRate = Percent(activity.MedicationTakenCount, activity.MedicationDoseCount),
             },
 
+            Revenue = new RevenueStatistics
+            {
+                TotalRevenue = revenue.TotalRevenue,
+                PaidInvoiceCount = revenue.PaidInvoiceCount,
+                CashRevenue = revenue.CashRevenue,
+                CashCount = revenue.CashCount,
+                BankTransferRevenue = revenue.BankTransferRevenue,
+                BankTransferCount = revenue.BankTransferCount,
+                PendingInvoiceCount = revenue.PendingInvoiceCount,
+                PendingAmount = revenue.PendingAmount,
+            },
+
+            TopMedicines = topMedicines.Select(m => new TopMedicineItem
+            {
+                MedicineId = m.MedicineId,
+                MedicineName = m.MedicineName,
+                PrescriptionCount = m.PrescriptionCount,
+                TotalQuantityBase = m.TotalQuantityBase,
+            }).ToList(),
+
             ActiveAiModel = activeModel == null ? new AiModelMetrics() : new AiModelMetrics
             {
                 VersionCode = activeModel.VersionCode,
@@ -136,6 +158,7 @@ public class DashboardService : IDashboardService
                 NewAccounts = d?.NewAccounts ?? 0,
                 Cases = d?.Cases ?? 0,
                 Appointments = d?.Appointments ?? 0,
+                Revenue = d?.Revenue ?? 0m,
             });
         }
 

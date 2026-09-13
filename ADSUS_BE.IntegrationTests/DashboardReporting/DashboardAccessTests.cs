@@ -83,6 +83,12 @@ public class DashboardAccessTests
                       AiRejectedCount: 0, AiPendingCount: 0,
                       AppointmentBookedCount: 6, AppointmentCancelledCount: 4,
                       ScheduleSlotCount: 8, MedicationDoseCount: 20, MedicationTakenCount: 15));
+        _dashboard.Setup(r => r.GetRevenueAsync(
+                      It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(new RevenueCounts(500_000m, 3, 300_000m, 2, 200_000m, 1, 0, 0m));
+        _dashboard.Setup(r => r.GetTopPrescribedMedicinesAsync(
+                      It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(Array.Empty<TopMedicine>());
 
         var response = await client.GetAsync(StatisticsPath, TestContext.Current.CancellationToken);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<DashboardStatisticsResponse>>(TestContext.Current.CancellationToken);
@@ -94,6 +100,35 @@ public class DashboardAccessTests
         Assert.Equal(5, body.Data.Clinical.CaseCount);
         Assert.Equal(40.0, body.Data.Appointments.CancellationRate);
         Assert.Equal(75.0, body.Data.Adherence.AdherenceRate);
+    }
+
+    [Fact]
+    public async Task Admin_ViewsStatistics_RevenueAndTopMedicinesFlowThroughPipeline()
+    {
+        using var app = CreateApp();
+        var client = CreateClient(app, UserRole.Admin);
+
+        _dashboard.Setup(r => r.GetRevenueAsync(
+                      It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(new RevenueCounts(
+                      TotalRevenue: 1_500_000m, PaidInvoiceCount: 5,
+                      CashRevenue: 1_000_000m, CashCount: 3,
+                      BankTransferRevenue: 500_000m, BankTransferCount: 2,
+                      PendingInvoiceCount: 1, PendingAmount: 200_000m));
+
+        var medId = Guid.NewGuid();
+        _dashboard.Setup(r => r.GetTopPrescribedMedicinesAsync(
+                      It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(new List<TopMedicine> { new(medId, "Paracetamol", 10, 300) });
+
+        var response = await client.GetAsync(StatisticsPath, TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<DashboardStatisticsResponse>>(TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1_500_000m, body!.Data!.Revenue.TotalRevenue);
+        Assert.Equal(5, body.Data.Revenue.PaidInvoiceCount);
+        Assert.Single(body.Data.TopMedicines);
+        Assert.Equal("Paracetamol", body.Data.TopMedicines[0].MedicineName);
     }
 
     [Fact]
@@ -119,6 +154,12 @@ public class DashboardAccessTests
         _dashboard.Setup(r => r.GetDailyActivityAsync(
                       It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(Array.Empty<DailyActivity>());
+        _dashboard.Setup(r => r.GetRevenueAsync(
+                      It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(new RevenueCounts(0m, 0, 0m, 0, 0m, 0, 0, 0m));
+        _dashboard.Setup(r => r.GetTopPrescribedMedicinesAsync(
+                      It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(Array.Empty<TopMedicine>());
         _aiModelVersions.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
                         .ReturnsAsync((AiModelVersion?)null);
 

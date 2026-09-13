@@ -22,6 +22,10 @@ public class DashboardStatisticsResponse
 
     public AdherenceStatistics Adherence { get; set; } = new();
 
+    public RevenueStatistics Revenue { get; set; } = new();
+
+    public List<TopMedicineItem> TopMedicines { get; set; } = [];
+
     public AiModelMetrics ActiveAiModel { get; set; } = new();
 
     /// <summary>
@@ -32,6 +36,26 @@ public class DashboardStatisticsResponse
     /// trong khi thực tế là không có gì.
     /// </summary>
     public IReadOnlyList<DailyPoint> Trend { get; set; } = Array.Empty<DailyPoint>();
+}
+
+public class RevenueStatistics
+{
+    public decimal TotalRevenue { get; set; }
+    public int PaidInvoiceCount { get; set; }
+    public decimal CashRevenue { get; set; }
+    public int CashCount { get; set; }
+    public decimal BankTransferRevenue { get; set; }
+    public int BankTransferCount { get; set; }
+    public int PendingInvoiceCount { get; set; }
+    public decimal PendingAmount { get; set; }
+}
+
+public class TopMedicineItem
+{
+    public Guid MedicineId { get; set; }
+    public string MedicineName { get; set; } = string.Empty;
+    public int PrescriptionCount { get; set; }
+    public int TotalQuantityBase { get; set; }
 }
 
 public class AiModelMetrics
@@ -52,6 +76,7 @@ public class DailyPoint
     public int NewAccounts { get; set; }
     public int Cases { get; set; }
     public int Appointments { get; set; }
+    public decimal Revenue { get; set; }
 }
 
 /// <summary>Tài khoản — tính trên toàn hệ thống, không lọc theo thời gian.</summary>

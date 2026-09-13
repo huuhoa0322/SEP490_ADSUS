@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MedicineList } from '@/features/medicines/components/medicine-list';
 import { useMedicines } from '@/features/medicines/hooks/use-medicines';
 import { useInventoryAlerts } from '@/features/medicines/api/inventory.api';
@@ -106,4 +106,42 @@ describe('MedicineList', () => {
     expect(screen.getByTitle('Ngừng sử dụng')).toBeInTheDocument();
     expect(screen.getByTitle('Kích hoạt lại')).toBeInTheDocument();
   });
+
+  it('renders status and stock filter dropdowns and queries with selected filters', () => {
+    vi.mocked(useMedicines).mockReturnValue({
+      data: mockMedicines,
+      isLoading: false,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+
+    vi.mocked(useInventoryAlerts).mockReturnValue({
+      data: { totalMedicinesCount: 2, inStockCount: 2, lowStockCount: 0, outOfStockCount: 0 },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(useAuthStore).mockImplementation((selector: any) => selector({ user: { role: 'ADMIN' } }));
+
+    render(<MedicineList />);
+
+    // Check dropdown options exist
+    const statusSelect = screen.getByDisplayValue('Tất cả trạng thái');
+    expect(statusSelect).toBeInTheDocument();
+    expect(within(statusSelect).getByText('Đang sử dụng (Active)')).toBeInTheDocument();
+    expect(within(statusSelect).getByText('Ngừng sử dụng (Inactive)')).toBeInTheDocument();
+
+    const stockSelect = screen.getByDisplayValue('Tất cả tồn kho');
+    expect(stockSelect).toBeInTheDocument();
+    expect(within(stockSelect).getByText('Còn hàng')).toBeInTheDocument();
+    expect(within(stockSelect).getByText('Hết hàng')).toBeInTheDocument();
+
+    // Change status filter to ACTIVE
+    fireEvent.change(statusSelect, { target: { value: 'ACTIVE' } });
+    expect(useMedicines).toHaveBeenCalledWith(1, 10, '', undefined, 'ACTIVE');
+
+    // Change stock filter to in_stock
+    fireEvent.change(stockSelect, { target: { value: 'in_stock' } });
+    expect(useMedicines).toHaveBeenCalledWith(1, 10, '', true, 'ACTIVE');
+  });
 });
+

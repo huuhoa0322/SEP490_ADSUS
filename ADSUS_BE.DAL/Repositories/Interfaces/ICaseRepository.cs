@@ -13,6 +13,9 @@ public interface ICaseRepository
     /// <summary>Bản CÓ theo dõi — dùng khi cần sửa entity rồi gọi SaveChangesAsync (vd. ConfirmAsync).</summary>
     Task<Case?> GetForUpdateAsync(Guid caseId, CancellationToken ct = default);
 
+    /// <summary>Bản CÓ theo dõi kèm các collections (Symptoms, Diseases, Allergies) — dùng khi sửa inline triệu chứng, tiền sử, dị ứng.</summary>
+    Task<Case?> GetForUpdateWithCollectionsAsync(Guid caseId, CancellationToken ct = default);
+
     /// <summary>
     /// <paramref name="statuses"/> null hoặc rỗng = không lọc trạng thái (mọi Case của patient
     /// này). Có giá trị = chỉ lấy Case nằm trong tập đó — dùng tập thay vì 1 status đơn vì

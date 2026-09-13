@@ -11,9 +11,29 @@ export interface DashboardStatistics {
   clinical: ClinicalStatistics;
   appointments: AppointmentStatistics;
   adherence: AdherenceStatistics;
+  revenue: RevenueStatistics;
+  topMedicines: TopMedicineItem[];
   activeAiModel: AiModelMetrics;
   /** Luôn đủ mọi ngày trong khoảng, ngày không phát sinh có giá trị 0. */
   trend: DailyPoint[];
+}
+
+export interface RevenueStatistics {
+  totalRevenue: number;
+  paidInvoiceCount: number;
+  cashRevenue: number;
+  cashCount: number;
+  bankTransferRevenue: number;
+  bankTransferCount: number;
+  pendingInvoiceCount: number;
+  pendingAmount: number;
+}
+
+export interface TopMedicineItem {
+  medicineId: string;
+  medicineName: string;
+  prescriptionCount: number;
+  totalQuantityBase: number;
 }
 
 export interface AiModelMetrics {
@@ -30,6 +50,7 @@ export interface DailyPoint {
   newAccounts: number;
   cases: number;
   appointments: number;
+  revenue: number;
 }
 
 export interface AccountStatistics {

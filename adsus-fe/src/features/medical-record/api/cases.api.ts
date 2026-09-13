@@ -4,11 +4,14 @@ import { apiClient } from "@/lib/api-client";
 import type { ApiResponse } from "@/types/api.types";
 
 import type {
+  CaseAllergyInput,
   CaseConclusionInput,
   CaseDetail,
+  CaseDiseaseInput,
   CaseListQuery,
   CaseSummary,
   CreateCaseInput,
+  CreateCaseSymptomInput,
   PagedResult,
   UltrasoundImage,
 } from "../types/medical-record.types";
@@ -167,3 +170,46 @@ export async function downloadCaseReport(caseId: string): Promise<Blob> {
     throw error;
   }
 }
+
+/** Cập nhật danh sách triệu chứng cho ca khám (chỉ DOCTOR, STAFF và ca chưa CONFIRMED/END/CANCELLED). */
+export async function updateCaseSymptoms(
+  caseId: string,
+  symptoms: CreateCaseSymptomInput[],
+): Promise<CaseDetail> {
+  const { data } = await apiClient.put<ApiResponse<CaseDetail>>(`${BASE}/${caseId}/symptoms`, {
+    symptoms,
+  });
+
+  if (!data.data) throw new Error(data.message || "Cập nhật triệu chứng thất bại.");
+
+  return data.data;
+}
+
+/** Cập nhật tiền sử bệnh snapshot cho ca khám (chỉ DOCTOR, STAFF và ca chưa CONFIRMED/END/CANCELLED). */
+export async function updateCaseDiseases(
+  caseId: string,
+  diseases: CaseDiseaseInput[],
+): Promise<CaseDetail> {
+  const { data } = await apiClient.put<ApiResponse<CaseDetail>>(`${BASE}/${caseId}/diseases`, {
+    diseases,
+  });
+
+  if (!data.data) throw new Error(data.message || "Cập nhật tiền sử bệnh thất bại.");
+
+  return data.data;
+}
+
+/** Cập nhật dị ứng snapshot cho ca khám (chỉ DOCTOR, STAFF và ca chưa CONFIRMED/END/CANCELLED). */
+export async function updateCaseAllergies(
+  caseId: string,
+  allergies: CaseAllergyInput[],
+): Promise<CaseDetail> {
+  const { data } = await apiClient.put<ApiResponse<CaseDetail>>(`${BASE}/${caseId}/allergies`, {
+    allergies,
+  });
+
+  if (!data.data) throw new Error(data.message || "Cập nhật dị ứng thất bại.");
+
+  return data.data;
+}
+

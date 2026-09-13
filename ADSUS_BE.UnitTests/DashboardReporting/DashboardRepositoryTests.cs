@@ -212,11 +212,150 @@ public class DashboardRepositoryTests
         Assert.Equal(1, day1Result.NewAccounts);
         Assert.Equal(2, day1Result.Cases);
         Assert.Equal(0, day1Result.Appointments);
+        Assert.Equal(0m, day1Result.Revenue);
 
         var day2Result = Assert.Single(result, d => d.Date == day2);
         Assert.Equal(0, day2Result.NewAccounts);
         Assert.Equal(0, day2Result.Cases);
         Assert.Equal(1, day2Result.Appointments);
+        Assert.Equal(0m, day2Result.Revenue);
+    }
+
+    [Fact]
+    public async Task GetActivityCountsAsync_AiRunCount_CountsDistinctImagesWithPredictions()
+    {
+        await using var db = CreateContext();
+        var from = new DateOnly(2026, 7, 10);
+        var to = new DateOnly(2026, 7, 12);
+        var fromUtc = ClinicClock.StartOfDayUtc(from);
+        var toUtc = ClinicClock.EndOfDayExclusiveUtc(to);
+
+        var imageId1 = Guid.NewGuid();
+        var imageId2 = Guid.NewGuid();
+        var imageIdOutOfRange = Guid.NewGuid();
+        var modelVersionId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
+
+        // 2 predictions on image1 (same image = 1 run), 1 on image2 (= 1 run), 1 out of range
+        db.AiPredictions.AddRange(
+            BuildAiPrediction(caseId, imageId1, modelVersionId, fromUtc.AddHours(1)),
+            BuildAiPrediction(caseId, imageId1, modelVersionId, fromUtc.AddHours(2)),
+            BuildAiPrediction(caseId, imageId2, modelVersionId, fromUtc.AddHours(3)),
+            BuildAiPrediction(caseId, imageIdOutOfRange, modelVersionId, fromUtc.AddSeconds(-1)));
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var sut = new DashboardRepository(db);
+        var result = await sut.GetActivityCountsAsync(from, to, CancellationToken.None);
+
+        Assert.Equal(2, result.AiRunCount); // 2 distinct images in range
+    }
+
+    [Fact]
+    public async Task GetActivityCountsAsync_AiConfirmedCount_CountsImagesWithDoctorAnnotations()
+    {
+        await using var db = CreateContext();
+        var from = new DateOnly(2026, 7, 10);
+        var to = new DateOnly(2026, 7, 12);
+        var fromUtc = ClinicClock.StartOfDayUtc(from);
+
+        var imageReviewed = Guid.NewGuid();
+        var imagePending = Guid.NewGuid();
+        var modelVersionId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
+
+        db.AiPredictions.AddRange(
+            BuildAiPrediction(caseId, imageReviewed, modelVersionId, fromUtc.AddHours(1)),
+            BuildAiPrediction(caseId, imagePending, modelVersionId, fromUtc.AddHours(2)));
+        db.DoctorAnnotations.Add(BuildDoctorAnnotation(caseId, imageReviewed));
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var sut = new DashboardRepository(db);
+        var result = await sut.GetActivityCountsAsync(from, to, CancellationToken.None);
+
+        Assert.Equal(2, result.AiRunCount);
+        Assert.Equal(1, result.AiConfirmedCount);
+        Assert.Equal(1, result.AiPendingCount);
+    }
+
+    [Fact]
+    public async Task GetRevenueAsync_OnlySumsPaidInvoicesWithinDateRange()
+    {
+        await using var db = CreateContext();
+        var from = new DateOnly(2026, 7, 10);
+        var to = new DateOnly(2026, 7, 12);
+        var fromUtc = ClinicClock.StartOfDayUtc(from);
+        var toUtc = ClinicClock.EndOfDayExclusiveUtc(to);
+
+        db.Invoices.AddRange(
+            BuildInvoice(InvoiceStatus.PAID, 100_000m, PaymentMethod.CASH, fromUtc.AddHours(1)),
+            BuildInvoice(InvoiceStatus.PAID, 200_000m, PaymentMethod.BANK_TRANSFER, fromUtc.AddHours(2)),
+            BuildInvoice(InvoiceStatus.PAID, 50_000m, PaymentMethod.CASH, fromUtc.AddSeconds(-1)),  // out of range
+            BuildInvoice(InvoiceStatus.CANCELLED, 999_999m, null, null),                             // cancelled
+            BuildInvoice(InvoiceStatus.PENDING, 300_000m, null, null));                               // pending
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var sut = new DashboardRepository(db);
+        var result = await sut.GetRevenueAsync(from, to, CancellationToken.None);
+
+        Assert.Equal(300_000m, result.TotalRevenue);
+        Assert.Equal(2, result.PaidInvoiceCount);
+        Assert.Equal(100_000m, result.CashRevenue);
+        Assert.Equal(1, result.CashCount);
+        Assert.Equal(200_000m, result.BankTransferRevenue);
+        Assert.Equal(1, result.BankTransferCount);
+        Assert.Equal(1, result.PendingInvoiceCount);
+        Assert.Equal(300_000m, result.PendingAmount);
+    }
+
+    [Fact]
+    public async Task GetTopPrescribedMedicinesAsync_GroupsByMedicine_ExcludesCancelled_OrdersByCount()
+    {
+        await using var db = CreateContext();
+        var from = new DateOnly(2026, 7, 1);
+        var to = new DateOnly(2026, 7, 31);
+
+        var med1 = BuildMedicine("Paracetamol 500mg");
+        var med2 = BuildMedicine("Amoxicillin 250mg");
+        db.Medicines.AddRange(med1, med2);
+
+        var rxActive = BuildPrescription(from, PrescriptionStatus.Active);
+        var rxCancelled = BuildPrescription(from, PrescriptionStatus.Cancelled);
+        db.Prescriptions.AddRange(rxActive, rxCancelled);
+
+        db.PrescriptionItems.AddRange(
+            BuildPrescriptionItem(rxActive.PrescriptionId, med1.MedicineId, quantityBase: 30),
+            BuildPrescriptionItem(rxActive.PrescriptionId, med1.MedicineId, quantityBase: 20),
+            BuildPrescriptionItem(rxActive.PrescriptionId, med2.MedicineId, quantityBase: 100),
+            BuildPrescriptionItem(rxCancelled.PrescriptionId, med1.MedicineId, quantityBase: 999)); // bỏ qua
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var sut = new DashboardRepository(db);
+        var result = await sut.GetTopPrescribedMedicinesAsync(from, to, 10, CancellationToken.None);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal("Paracetamol 500mg", result[0].MedicineName); // 2 lần kê > 1 lần
+        Assert.Equal(2, result[0].PrescriptionCount);
+        Assert.Equal(50, result[0].TotalQuantityBase); // 30 + 20
+        Assert.Equal("Amoxicillin 250mg", result[1].MedicineName);
+        Assert.Equal(1, result[1].PrescriptionCount);
+        Assert.Equal(100, result[1].TotalQuantityBase);
+    }
+
+    [Fact]
+    public async Task GetDailyActivityAsync_IncludesRevenueByDay()
+    {
+        await using var db = CreateContext();
+        var day1 = new DateOnly(2026, 7, 10);
+        var fromUtc = ClinicClock.StartOfDayUtc(day1);
+
+        db.Invoices.Add(BuildInvoice(InvoiceStatus.PAID, 500_000m, PaymentMethod.CASH, fromUtc.AddHours(9)));
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var sut = new DashboardRepository(db);
+        var result = await sut.GetDailyActivityAsync(day1, day1, CancellationToken.None);
+
+        var dayResult = Assert.Single(result);
+        Assert.Equal(500_000m, dayResult.Revenue);
     }
 
     // ---------- helpers ----------
@@ -263,5 +402,75 @@ public class DashboardRepositoryTests
         Status = status,
         CreatedAt = DateTime.UtcNow,
         UpdatedAt = DateTime.UtcNow,
+    };
+
+    private static AiPrediction BuildAiPrediction(Guid caseId, Guid imageId, Guid modelVersionId, DateTime createdAt) => new()
+    {
+        PredictionId = Guid.NewGuid(),
+        CaseId = caseId,
+        ImageId = imageId,
+        ModelVersionId = modelVersionId,
+        BboxXmin = 0,
+        BboxYmin = 0,
+        BboxXmax = 1,
+        BboxYmax = 1,
+        Confidence = 0.9m,
+        CreatedAt = createdAt,
+    };
+
+    private static DoctorAnnotation BuildDoctorAnnotation(Guid caseId, Guid imageId) => new()
+    {
+        AnnotationId = Guid.NewGuid(),
+        CaseId = caseId,
+        ImageId = imageId,
+        BboxXmin = 0,
+        BboxYmin = 0,
+        BboxXmax = 1,
+        BboxYmax = 1,
+        Source = "doctor_added",
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow,
+    };
+
+    private static Invoice BuildInvoice(InvoiceStatus status, decimal total, PaymentMethod? method, DateTime? paidAt) => new()
+    {
+        Id = Guid.NewGuid(),
+        CaseId = Guid.NewGuid(),
+        TotalAmount = total,
+        Status = status,
+        PaymentMethod = method,
+        PaidAt = paidAt,
+        CreatedAt = DateTime.UtcNow,
+    };
+
+    private static Medicine BuildMedicine(string name) => new()
+    {
+        MedicineId = Guid.NewGuid(),
+        Name = name,
+        CreatedAt = DateTime.UtcNow,
+        LowStockThreshold = 10,
+        Status = MedicineStatus.Active,
+    };
+
+    private static Prescription BuildPrescription(DateOnly date, PrescriptionStatus status) => new()
+    {
+        PrescriptionId = Guid.NewGuid(),
+        CaseId = Guid.NewGuid(),
+        DoctorId = Guid.NewGuid(),
+        PrescribedDate = date,
+        Status = status,
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow,
+    };
+
+    private static PrescriptionItem BuildPrescriptionItem(Guid rxId, Guid medId, int quantityBase) => new()
+    {
+        PrescriptionItemId = Guid.NewGuid(),
+        PrescriptionId = rxId,
+        MedicineId = medId,
+        Dosage = "1 viên",
+        DurationDays = 7,
+        StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+        QuantityBase = quantityBase,
     };
 }

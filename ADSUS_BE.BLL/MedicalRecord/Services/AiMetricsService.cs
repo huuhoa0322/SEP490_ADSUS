@@ -36,21 +36,29 @@ public sealed class AiMetricsService : IAiMetricsService
         var model = await _modelVersions.GetByIdAsync(modelVersionId, ct);
         if (model == null) throw new InvalidOperationException("Model version not found");
 
-        // 1. Fetch all predictions and GTs for this model
-        // Note: DoctorAnnotations don't have ModelVersionId directly, but we can fetch based on ImageId that the model evaluated,
-        // or just fetch all DoctorAnnotations. Actually, the most accurate is to fetch DoctorAnnotations for Images where this model made predictions.
+        // 1. Fetch all predictions and GTs for this model version (including sentinels with Confidence == 0m)
+        var allPredictions = await _predictions.ListByModelVersionAsync(modelVersionId, ct);
 
-        var predictions = await _predictions.ListByModelVersionAsync(modelVersionId, ct);
+        // Capture all evaluated image IDs (including 0-prediction images tracked via sentinels)
+        var evaluatedImageIds = allPredictions.Select(p => p.ImageId).Distinct().ToList();
 
-        var imageIds = predictions.Select(p => p.ImageId).Distinct().ToList();
-
-        var annotations = await _annotations.ListByImageIdsAsync(imageIds, ct);
+        var annotations = await _annotations.ListByImageIdsAsync(evaluatedImageIds, ct);
 
         int totalGt = annotations.Count;
 
-        if (totalGt == 0 || predictions.Count == 0)
+        // Filter real predictions (exclude sentinel records where Confidence == 0m)
+        var validPredictions = allPredictions
+            .Where(p => p.Confidence > 0m)
+            .OrderByDescending(p => p.Confidence)
+            .ThenBy(p => p.PredictionId)
+            .ToList();
+
+        if (totalGt == 0 || validPredictions.Count == 0)
         {
-            model.LiveMap50 = 0;
+            model.LiveTp = 0;
+            model.LiveFp = validPredictions.Count;
+            model.LiveFn = totalGt;
+            model.LiveMap50 = 0m;
             model.LastEvaluatedAt = DateTime.UtcNow;
             await _modelVersions.SaveChangesAsync(ct);
             return;
@@ -61,13 +69,10 @@ public sealed class AiMetricsService : IAiMetricsService
             .GroupBy(a => a.ImageId)
             .ToDictionary(g => g.Key, g => g.Select(a => new GtInfo { Box = a, IsMatched = false }).ToList());
 
-        // 3. Sort all predictions by confidence descending
-        var sortedPreds = predictions.OrderByDescending(p => p.Confidence).ToList();
-        
         var tpList = new List<int>(); // 1 for TP, 0 for FP
 
-        // 4. Match predictions
-        foreach (var pred in sortedPreds)
+        // 3. Match predictions using greedy bipartite matching with fallback
+        foreach (var pred in validPredictions)
         {
             if (!gtDict.TryGetValue(pred.ImageId, out var gtsForImage))
             {
@@ -81,10 +86,13 @@ public sealed class AiMetricsService : IAiMetricsService
             for (int i = 0; i < gtsForImage.Count; i++)
             {
                 var gtInfo = gtsForImage[i];
-                var iou = IoUCalculator.Calculate(
+                // Greedy Fallback: Skip ground truths already claimed by higher-confidence predictions
+                if (gtInfo.IsMatched) continue;
+
+                var iou = CalculateIoU(
                     pred.BboxXmin, pred.BboxYmin, pred.BboxXmax, pred.BboxYmax,
                     gtInfo.Box.BboxXmin, gtInfo.Box.BboxYmin, gtInfo.Box.BboxXmax, gtInfo.Box.BboxYmax);
-                
+
                 if (iou > maxIou)
                 {
                     maxIou = iou;
@@ -92,7 +100,7 @@ public sealed class AiMetricsService : IAiMetricsService
                 }
             }
 
-            if (maxIou >= IoUCalculator.MatchThreshold && bestGtIndex >= 0 && !gtsForImage[bestGtIndex].IsMatched)
+            if (maxIou >= IoUCalculator.MatchThreshold && bestGtIndex >= 0)
             {
                 tpList.Add(1);
                 gtsForImage[bestGtIndex].IsMatched = true;
@@ -103,7 +111,7 @@ public sealed class AiMetricsService : IAiMetricsService
             }
         }
 
-        // 5. Calculate PR curve
+        // 4. Calculate running precision and recall
         var precisions = new decimal[tpList.Count];
         var recalls = new decimal[tpList.Count];
         int accTp = 0;
@@ -118,15 +126,16 @@ public sealed class AiMetricsService : IAiMetricsService
             recalls[i] = (decimal)accTp / totalGt;
         }
 
-        // 6. Calculate mAP50 using every-point interpolation (VOC 2012)
+        // 5. Calculate mAP50 using every-point interpolation (VOC 2012)
         // Make precision monotonically decreasing
         for (int i = precisions.Length - 2; i >= 0; i--)
         {
             precisions[i] = Math.Max(precisions[i], precisions[i + 1]);
         }
 
-        decimal map50 = 0;
-        decimal prevRecall = 0;
+        // 6. Continuous rectangular area integration
+        decimal map50 = 0m;
+        decimal prevRecall = 0m;
         for (int i = 0; i < tpList.Count; i++)
         {
             decimal deltaRecall = recalls[i] - prevRecall;
@@ -134,10 +143,43 @@ public sealed class AiMetricsService : IAiMetricsService
             prevRecall = recalls[i];
         }
 
-        model.LiveMap50 = map50 * 100; // Store as percentage 0-100
+        // 7. Full live metrics resynchronization from database history
+        int totalTp = accTp;
+        int totalFp = accFp;
+        int totalFn = Math.Max(0, totalGt - totalTp);
+
+        model.LiveTp = totalTp;
+        model.LiveFp = totalFp;
+        model.LiveFn = totalFn;
+        model.LiveMap50 = Math.Round(map50 * 100m, 2);
         model.LastEvaluatedAt = DateTime.UtcNow;
 
         await _modelVersions.SaveChangesAsync(ct);
+    }
+
+    private static decimal CalculateIoU(
+        decimal xmin1, decimal ymin1, decimal xmax1, decimal ymax1,
+        decimal xmin2, decimal ymin2, decimal xmax2, decimal ymax2)
+    {
+        var xA = Math.Max(xmin1, xmin2);
+        var yA = Math.Max(ymin1, ymin2);
+        var xB = Math.Min(xmax1, xmax2);
+        var yB = Math.Min(ymax1, ymax2);
+
+        var interArea = Math.Max(0m, xB - xA) * Math.Max(0m, yB - yA);
+
+        var b1W = Math.Max(0m, xmax1 - xmin1);
+        var b1H = Math.Max(0m, ymax1 - ymin1);
+        var box1Area = b1W * b1H;
+
+        var b2W = Math.Max(0m, xmax2 - xmin2);
+        var b2H = Math.Max(0m, ymax2 - ymin2);
+        var box2Area = b2W * b2H;
+
+        var unionArea = box1Area + box2Area - interArea;
+        if (unionArea <= 0m) return 0m;
+
+        return Math.Min(1m, Math.Max(0m, interArea / unionArea));
     }
 
     private class GtInfo

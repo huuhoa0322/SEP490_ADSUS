@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, CheckCheck, Loader2, RefreshCw } from "lucide-react";
+import { Bell, Loader2, RefreshCw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   NOTIFICATION_KEYS,
@@ -39,20 +39,15 @@ export function NotificationDropdown({
   
   const markAllAsRead = useMarkAllAsRead();
 
-  // Khi mở dropdown (click chuông), lập tức làm mới danh sách và số lượng chưa đọc
+  // Khi mở dropdown (click chuông), lập tức làm mới danh sách và tự động đánh dấu tất cả đã đọc
   useEffect(() => {
     if (isOpen) {
       refetch();
-      queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.unreadCount() });
+      markAllAsRead.mutate();
     }
-  }, [isOpen, refetch, queryClient]);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allNotifications = data?.pages.flatMap((p) => p.notifications) ?? [];
-  const hasUnread = allNotifications.some((n) => !n.isRead);
-
-  const handleMarkAllRead = () => {
-    markAllAsRead.mutate();
-  };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -90,18 +85,6 @@ export function NotificationDropdown({
             >
               <RefreshCw className={`size-3.5 ${isRefetching ? "animate-spin" : ""}`} />
             </Button>
-            {hasUnread && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleMarkAllRead}
-                disabled={markAllAsRead.isPending}
-                className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <CheckCheck className="mr-1 size-4" />
-                Đánh dấu đã đọc
-              </Button>
-            )}
           </div>
         </div>
 

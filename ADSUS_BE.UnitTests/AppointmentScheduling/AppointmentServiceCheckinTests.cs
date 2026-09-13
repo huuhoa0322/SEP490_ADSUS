@@ -175,6 +175,35 @@ public class AppointmentServiceCheckinTests : IDisposable
         Assert.Equal(AppointmentStatus.Completed, updatedAppointment!.Status);
     }
 
+    [Fact]
+    public async Task CheckinAppointmentAsync_SendsDoctorNotificationWithDirectCaseDeepLink()
+    {
+        // Arrange
+        var doctor = CreateDoctor();
+        var patient = CreatePatient();
+        var profile = CreatePatientProfile(patient);
+        var slot = CreateSlot(doctor, SlotStatus.Booked);
+        var expectedCaseId = Guid.NewGuid();
+        var appointment = CreateAppointment(slot, profile, AppointmentStatus.Booked);
+        appointment.CaseId = expectedCaseId;
+
+        await SeedAppointmentAsync(appointment);
+
+        // Act
+        await _sut.CheckinAppointmentAsync(_appointmentId, TestContext.Current.CancellationToken);
+
+        // Assert: Notification sent to doctor with Title "Bệnh nhân đã tới khám" and DeepLink "/cases/{caseId}"
+        _notificationService.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r =>
+                r.UserId == doctor.UserId &&
+                r.Type == "patient_checked_in" &&
+                r.Title == "Bệnh nhân đã tới khám" &&
+                r.DeepLink == $"/cases/{expectedCaseId}" &&
+                r.Metadata != null &&
+                r.Metadata["caseId"].ToString() == expectedCaseId.ToString()),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     #endregion
 
     #region TC-002: Already Checked-in Appointment (Completed or Approved - backward compat)
@@ -547,6 +576,11 @@ public class AppointmentServiceCheckinTests : IDisposable
         Assert.Contains(result.Items, i => i.AppointmentId == appt2.AppointmentId);
         Assert.Contains(result.Items, i => i.AppointmentId == appt3.AppointmentId);
         Assert.DoesNotContain(result.Items, i => i.AppointmentId == appt1.AppointmentId);
+        Assert.All(result.Items, i =>
+        {
+            Assert.Equal(doctor.UserId, i.DoctorId);
+            Assert.Equal("Dr. Range", i.DoctorName);
+        });
     }
 
     [Fact]
@@ -886,6 +920,38 @@ public class AppointmentServiceCheckinTests : IDisposable
         Assert.NotNull(result);
         Assert.True(result.TotalCount >= 1);
         Assert.Contains(result.Items, i => i.AppointmentId == appt.AppointmentId);
+    }
+
+    [Fact]
+    public async Task GetCheckinQueueAsync_PopulatesDoctorIdAndDoctorName_OnCheckinQueueItemResponse()
+    {
+        // Arrange
+        var doctor = CreateDoctor("Dr. VerifiedCheckin");
+        var patient = CreatePatient();
+        var profile = CreatePatientProfile(patient);
+        var today = ClinicClock.Today();
+
+        var slot = new ScheduleSlot
+        {
+            SlotId = Guid.NewGuid(),
+            DoctorId = doctor.UserId,
+            Doctor = doctor,
+            SlotDate = today,
+            StartTime = new TimeOnly(10, 0),
+            EndTime = new TimeOnly(11, 0),
+            Status = SlotStatus.Booked,
+        };
+        var appt = CreateAppointment(slot, profile, AppointmentStatus.Booked, Guid.NewGuid());
+        await SeedAppointmentAsync(appt);
+
+        // Act
+        var result = await _sut.GetCheckinQueueAsync(today, today, null, "ALL", 1, 15, TestContext.Current.CancellationToken);
+
+        // Assert
+        var item = result.Items.FirstOrDefault(i => i.AppointmentId == appt.AppointmentId);
+        Assert.NotNull(item);
+        Assert.Equal(doctor.UserId, item.DoctorId);
+        Assert.Equal("Dr. VerifiedCheckin", item.DoctorName);
     }
 
     #endregion

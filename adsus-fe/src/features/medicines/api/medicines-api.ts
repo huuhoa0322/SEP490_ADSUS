@@ -36,7 +36,7 @@ export interface UpdateMedicineRequest {
   lowStockThreshold: number;
 }
 
-export async function getPagedMedicines(page: number, pageSize: number, search?: string, inStock?: boolean) {
+export async function getPagedMedicines(page: number, pageSize: number, search?: string, inStock?: boolean, status?: string) {
   const params = new URLSearchParams();
   params.append("page", page.toString());
   params.append("pageSize", pageSize.toString());
@@ -45,6 +45,9 @@ export async function getPagedMedicines(page: number, pageSize: number, search?:
   }
   if (inStock !== undefined) {
     params.append("inStock", inStock.toString());
+  }
+  if (status && status !== "all") {
+    params.append("status", status);
   }
   
   const response = await apiClient.get<PagedResult<MedicineResponse>>(`/api/v1/medicines/admin?${params.toString()}`);

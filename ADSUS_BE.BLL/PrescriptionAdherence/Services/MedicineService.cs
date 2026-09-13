@@ -49,9 +49,9 @@ public sealed class MedicineService : IMedicineService
         });
     }
 
-    public async Task<PagedResult<MedicineResponse>> GetPagedAsync(int page, int pageSize, string? keyword, bool? inStock = null, CancellationToken ct = default)
+    public async Task<PagedResult<MedicineResponse>> GetPagedAsync(int page, int pageSize, string? keyword, bool? inStock = null, string? status = null, CancellationToken ct = default)
     {
-        var (items, totalCount) = await _medicineRepository.GetPagedAsync(page, pageSize, keyword, inStock, ct);
+        var (items, totalCount) = await _medicineRepository.GetPagedAsync(page, pageSize, keyword, inStock, status, ct);
         
         var medicineIds = items.Select(m => m.MedicineId).ToList();
 

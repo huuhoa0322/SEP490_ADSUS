@@ -28,6 +28,8 @@ public sealed class CaseRepository : ICaseRepository
             .Include(c => c.UltrasoundImages)
             .Include(c => c.CaseSymptoms).ThenInclude(cs => cs.Category)
             .Include(c => c.CaseSymptoms).ThenInclude(cs => cs.Symptom)
+            .Include(c => c.CaseDiseases).ThenInclude(cd => cd.Disease)
+            .Include(c => c.CaseAllergies).ThenInclude(ca => ca.AllergyType)
             .Include(c => c.Prescriptions).ThenInclude(p => p.PrescriptionItems).ThenInclude(i => i.Medicine)
             .FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
 
@@ -38,6 +40,13 @@ public sealed class CaseRepository : ICaseRepository
 
     public Task<Case?> GetForUpdateAsync(Guid caseId, CancellationToken ct = default) =>
         _db.Cases.FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
+
+    public Task<Case?> GetForUpdateWithCollectionsAsync(Guid caseId, CancellationToken ct = default) =>
+        _db.Cases
+            .Include(c => c.CaseSymptoms)
+            .Include(c => c.CaseDiseases)
+            .Include(c => c.CaseAllergies)
+            .FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
 
     public Task SaveChangesAsync(CancellationToken ct = default) =>
         _db.SaveChangesAsync(ct);

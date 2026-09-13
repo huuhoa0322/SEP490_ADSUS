@@ -40,6 +40,14 @@ public class DashboardServiceTests
                  It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(Array.Empty<DailyActivity>());
 
+        _repo.Setup(r => r.GetRevenueAsync(
+                 It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new RevenueCounts(0m, 0, 0m, 0, 0m, 0, 0, 0m));
+
+        _repo.Setup(r => r.GetTopPrescribedMedicinesAsync(
+                 It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(Array.Empty<TopMedicine>());
+
         var aiModelRepo = new Mock<IAiModelVersionRepository>();
         _sut = new DashboardService(_repo.Object, aiModelRepo.Object);
     }
@@ -234,8 +242,8 @@ public class DashboardServiceTests
                  It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(new List<DailyActivity>
              {
-                 new(new DateOnly(2026, 7, 3), NewAccounts: 2, Cases: 1, Appointments: 0),
-             });
+                  new(new DateOnly(2026, 7, 3), NewAccounts: 2, Cases: 1, Appointments: 0, Revenue: 0m),
+              });
 
         var result = await _sut.GetStatisticsAsync("2026-07-01", "2026-07-05", TestContext.Current.CancellationToken);
 
@@ -262,7 +270,83 @@ public class DashboardServiceTests
             Assert.Equal(0, p.NewAccounts);
             Assert.Equal(0, p.Cases);
             Assert.Equal(0, p.Appointments);
+            Assert.Equal(0m, p.Revenue);
         });
+    }
+
+    [Fact]
+    public async Task NoData_RevenueAndTopMedicines_ReturnAllZerosAndEmptyList()
+    {
+        var result = await _sut.GetStatisticsAsync(null, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(0m, result.Revenue.TotalRevenue);
+        Assert.Equal(0, result.Revenue.PaidInvoiceCount);
+        Assert.Equal(0m, result.Revenue.CashRevenue);
+        Assert.Equal(0m, result.Revenue.BankTransferRevenue);
+        Assert.Equal(0, result.Revenue.PendingInvoiceCount);
+        Assert.Empty(result.TopMedicines);
+    }
+
+    [Fact]
+    public async Task Revenue_MapsFromRepositoryCorrectly()
+    {
+        _repo.Setup(r => r.GetRevenueAsync(
+                 It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new RevenueCounts(
+                 TotalRevenue: 5_000_000m,
+                 PaidInvoiceCount: 10,
+                 CashRevenue: 3_000_000m, CashCount: 6,
+                 BankTransferRevenue: 2_000_000m, BankTransferCount: 4,
+                 PendingInvoiceCount: 3, PendingAmount: 800_000m));
+
+        var result = await _sut.GetStatisticsAsync(null, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(5_000_000m, result.Revenue.TotalRevenue);
+        Assert.Equal(10, result.Revenue.PaidInvoiceCount);
+        Assert.Equal(3_000_000m, result.Revenue.CashRevenue);
+        Assert.Equal(6, result.Revenue.CashCount);
+        Assert.Equal(2_000_000m, result.Revenue.BankTransferRevenue);
+        Assert.Equal(4, result.Revenue.BankTransferCount);
+        Assert.Equal(3, result.Revenue.PendingInvoiceCount);
+        Assert.Equal(800_000m, result.Revenue.PendingAmount);
+    }
+
+    [Fact]
+    public async Task TopMedicines_MapsFromRepositoryCorrectly()
+    {
+        var medId = Guid.NewGuid();
+        _repo.Setup(r => r.GetTopPrescribedMedicinesAsync(
+                 It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new List<TopMedicine>
+             {
+                 new(medId, "Paracetamol 500mg", 25, 750),
+             });
+
+        var result = await _sut.GetStatisticsAsync(null, null, TestContext.Current.CancellationToken);
+
+        Assert.Single(result.TopMedicines);
+        Assert.Equal(medId, result.TopMedicines[0].MedicineId);
+        Assert.Equal("Paracetamol 500mg", result.TopMedicines[0].MedicineName);
+        Assert.Equal(25, result.TopMedicines[0].PrescriptionCount);
+        Assert.Equal(750, result.TopMedicines[0].TotalQuantityBase);
+    }
+
+    [Fact]
+    public async Task Trend_IncludesRevenue_FillsZeroForEmptyDays()
+    {
+        _repo.Setup(r => r.GetDailyActivityAsync(
+                 It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new List<DailyActivity>
+             {
+                 new(new DateOnly(2026, 7, 2), 0, 0, 0, 500_000m),
+             });
+
+        var result = await _sut.GetStatisticsAsync("2026-07-01", "2026-07-03", TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, result.Trend.Count);
+        Assert.Equal(0m, result.Trend[0].Revenue);
+        Assert.Equal(500_000m, result.Trend[1].Revenue);
+        Assert.Equal(0m, result.Trend[2].Revenue);
     }
 
     // ---------- helpers ----------

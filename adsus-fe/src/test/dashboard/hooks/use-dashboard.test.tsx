@@ -20,6 +20,19 @@ const SAMPLE_STATISTICS: DashboardStatistics = {
   clinical: { caseCount: 5, aiRunCount: 0, aiConfirmedCount: 0, aiRejectedCount: 0, aiPendingCount: 0, aiConfirmRate: 0 },
   appointments: { bookedCount: 6, cancelledCount: 4, slotCount: 8, cancellationRate: 40 },
   adherence: { scheduledDoseCount: 20, takenDoseCount: 15, adherenceRate: 75 },
+  revenue: {
+    totalRevenue: 5000000,
+    paidInvoiceCount: 10,
+    cashRevenue: 3000000,
+    cashCount: 6,
+    bankTransferRevenue: 2000000,
+    bankTransferCount: 4,
+    pendingInvoiceCount: 2,
+    pendingAmount: 800000,
+  },
+  topMedicines: [
+    { medicineId: "med-1", medicineName: "Paracetamol 500mg", prescriptionCount: 25, totalQuantityBase: 750 },
+  ],
   activeAiModel: { versionCode: "YOLO26_v1" },
   trend: [],
 };

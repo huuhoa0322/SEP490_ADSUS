@@ -142,3 +142,20 @@ export async function getDoctorList(): Promise<DoctorSummary[]> {
 
   return data.data;
 }
+
+/** Staff đặt lịch hẹn thay bệnh nhân */
+export async function staffBookAppointment(request: {
+  patientProfileId: string;
+  scheduleSlotId: string;
+  reason?: string;
+}): Promise<ApiResponse<unknown>> {
+  const { data } = await apiClient.post<ApiResponse<unknown>>(
+    `${BASE}/book-for-patient`,
+    request
+  );
+  if (data.code !== 200 && data.code !== 201) {
+    throw new Error(data.message || "Đặt lịch thất bại");
+  }
+  return data;
+}
+

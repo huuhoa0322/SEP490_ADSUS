@@ -5,7 +5,7 @@ import { TrendChart } from "@/features/dashboard/components/trend-chart";
 import type { DailyPoint } from "@/features/dashboard/types/dashboard.types";
 
 function buildPoint(overrides: Partial<DailyPoint>): DailyPoint {
-  return { date: "2026-07-01", newAccounts: 0, cases: 0, appointments: 0, ...overrides };
+  return { date: "2026-07-01", newAccounts: 0, cases: 0, appointments: 0, revenue: 0, ...overrides };
 }
 
 describe("TrendChart", () => {
@@ -44,5 +44,16 @@ describe("TrendChart", () => {
     expect(screen.getByRole("img", { name: /tổng 8 trong kỳ, cao nhất 5 một ngày/ })).toBeInTheDocument();
     expect(screen.getByText("2026-07-01")).toBeInTheDocument();
     expect(screen.getByText("2026-07-03")).toBeInTheDocument();
+  });
+
+  it("measure 'revenue' — render biểu đồ có nhãn Doanh thu", () => {
+    const points = [
+      { date: "2026-07-01", newAccounts: 0, cases: 0, appointments: 0, revenue: 500000 },
+      { date: "2026-07-02", newAccounts: 0, cases: 0, appointments: 0, revenue: 300000 },
+    ];
+
+    render(<TrendChart points={points} measure="revenue" label="Doanh thu" />);
+
+    expect(screen.getByText("Doanh thu")).toBeInTheDocument();
   });
 });

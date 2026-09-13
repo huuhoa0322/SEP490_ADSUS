@@ -9,12 +9,12 @@ namespace ADSUS_BE.Controllers;
 /// <summary>
 /// UC-23 — Blog Sức khỏe endpoints.
 /// GB-05: bệnh nhân chỉ thấy Published.
-/// BR-02 (UC-23): Patient phải đăng nhập mới xem được blog.
-/// UC-23 reversal 2026-08-09: bỏ [AllowAnonymous], yêu cầu PATIENT sign-in.
+/// 2026-09-12: mở public cho Guest (chưa đăng nhập) + Patient + tất cả role (Admin dùng
+/// /admin/blog-posts riêng). Quyết định chốt với user trong session landing-page.
+/// Xem project-state/decisions.md để biết lý do override GB-09 cũ.
 /// </summary>
 [ApiController]
 [Route("api/v1/blog-posts")]
-[Authorize(Roles = "PATIENT")]
 [Produces("application/json")]
 public sealed class BlogPostsController : ControllerBase
 {
@@ -27,9 +27,10 @@ public sealed class BlogPostsController : ControllerBase
 
     /// <summary>
     /// GET /api/v1/blog-posts — Danh sách bài viết đã xuất bản, phân trang.
-    /// BR-02 (UC-23): yêu cầu Patient đăng nhập.
+    /// Public: Guest + Patient + mọi role đều xem được.
     /// </summary>
     [HttpGet]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<BlogPostListItemResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> List(
         [FromQuery] int page = 1,
@@ -47,9 +48,10 @@ public sealed class BlogPostsController : ControllerBase
     /// <summary>
     /// GET /api/v1/blog-posts/{id} — Chi tiết bài viết.
     /// GB-05: trả 404 nếu Draft hoặc không tồn tại (không trả 403 để không leak status).
-    /// BR-02 (UC-23): yêu cầu Patient đăng nhập.
+    /// Public: Guest + Patient + mọi role đều xem được.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<BlogPostDetailResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<BlogPostDetailResponse>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)

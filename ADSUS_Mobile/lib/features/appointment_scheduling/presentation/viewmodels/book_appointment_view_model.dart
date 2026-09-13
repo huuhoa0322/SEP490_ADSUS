@@ -160,17 +160,20 @@ class BookAppointmentState {
     bool clearSelection = false,
     bool clearBookingSuccess = false,
     bool clearDoctorGender = false,
+    bool clearDoctor = false,
+    bool clearSlot = false,
+    bool clearDate = false,
     bool clearSelectedRelative = false,
   }) {
     return BookAppointmentState(
       slots: slots ?? this.slots,
       doctorOptions: doctorOptions ?? this.doctorOptions,
       selectedDoctorId:
-          clearSelection ? null : (selectedDoctorId ?? this.selectedDoctorId),
+          (clearSelection || clearDoctor) ? null : (selectedDoctorId ?? this.selectedDoctorId),
       selectedSlotId:
-          clearSelection ? null : (selectedSlotId ?? this.selectedSlotId),
+          (clearSelection || clearSlot) ? null : (selectedSlotId ?? this.selectedSlotId),
       selectedDate:
-          clearSelection ? null : (selectedDate ?? this.selectedDate),
+          (clearSelection || clearDate) ? null : (selectedDate ?? this.selectedDate),
       availableDates: availableDates ?? this.availableDates,
       reason: reason ?? this.reason,
       isLoading: isLoading ?? this.isLoading,
@@ -199,6 +202,15 @@ class BookAppointmentState {
     if (selectedSlotId == null) return null;
     for (final s in slots) {
       if (s.id == selectedSlotId) return s;
+    }
+    return null;
+  }
+
+  /// Bác sĩ đang được chọn (resolve từ id) hoặc null.
+  DoctorOption? get selectedDoctor {
+    if (selectedDoctorId == null) return null;
+    for (final d in filteredDoctorOptions) {
+      if (d.id == selectedDoctorId) return d;
     }
     return null;
   }
@@ -298,6 +310,17 @@ class DoctorOption {
   final String name;
   final DoctorStatus status;
   final DoctorGender? gender;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DoctorOption && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() => name;
 }
 
 class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
@@ -333,16 +356,20 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
   }
 
   void selectDoctor(String? doctorId) {
+    if (doctorId == state.selectedDoctorId) return;
     state = state.copyWith(
       selectedDoctorId: doctorId,
-      selectedSlotId: null,
+      clearDoctor: doctorId == null,
+      clearSlot: true,
     );
   }
 
   void selectDate(DateTime? date) {
+    if (date == state.selectedDate) return;
     state = state.copyWith(
       selectedDate: date,
-      selectedSlotId: null,
+      clearDate: date == null,
+      clearSlot: true,
     );
   }
 
@@ -366,10 +393,11 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
   }
 
   void selectWeek(int index) {
+    if (index == state.selectedWeekIndex) return;
     state = state.copyWith(
       selectedWeekIndex: index,
-      selectedDate: null, // Reset date filter khi đổi tuần
-      selectedSlotId: null,
+      clearDate: true,
+      clearSlot: true,
     );
   }
 
@@ -392,11 +420,6 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       selectedDoctorId: null,
       reason: '',
       selectedDoctorGender: null, // 2026-01
-      // Issue #4: Reset relative booking state
-      isBookingForSelf: true,
-      savedRelatives: const [],
-      selectedRelative: null,
-      isLoadingRelatives: false,
     );
   }
 
@@ -414,33 +437,13 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       selectedDoctorId: null,
       reason: '',
       selectedDoctorGender: null, // 2026-01
-      // Issue #4: Reset relative booking state
-      isBookingForSelf: true,
-      savedRelatives: const [],
-      selectedRelative: null,
-      isLoadingRelatives: false,
     );
     _successShown = false;
   }
 
   /// Xóa bookingSuccess để ngăn hiển thị lại khi quay lại màn hình.
   void clearBookingSuccess() {
-    // Tạo state mới với bookingSuccess = null
-    state = BookAppointmentState(
-      slots: state.slots,
-      availableDates: state.availableDates,
-      doctorOptions: state.doctorOptions,
-      selectedDoctorId: state.selectedDoctorId,
-      selectedSlotId: state.selectedSlotId,
-      selectedDate: state.selectedDate,
-      reason: state.reason,
-      isLoading: state.isLoading,
-      isBooking: state.isBooking,
-      errorMessage: null,
-      bookingSuccess: null,
-      selectedWeekIndex: state.selectedWeekIndex,
-      selectedDoctorGender: state.selectedDoctorGender, // 2026-01
-    );
+    state = state.copyWith(clearBookingSuccess: true);
   }
 
   // ============ Issue #4: Relative Booking Methods ============
