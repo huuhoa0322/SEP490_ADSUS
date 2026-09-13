@@ -24,6 +24,10 @@ class Appointment {
     this.endTime,
     this.doctorName,
     this.caseId,
+    // Issue #3: isBookedForOthers, relationshipLabel, bookedByUserName
+    this.isBookedForOthers = false,
+    this.relationshipLabel,
+    this.bookedByUserName,
   });
 
   final String id;
@@ -49,6 +53,11 @@ class Appointment {
 
   // Case được tạo từ booking (nếu có triệu chứng)
   final String? caseId;
+
+  // Issue #3: isBookedForOthers, relationshipLabel, bookedByUserName
+  final bool isBookedForOthers;
+  final String? relationshipLabel;
+  final String? bookedByUserName;
 
   bool get isBooked => status == AppointmentStatus.booked;
   bool get isCancelled => status == AppointmentStatus.cancelled;

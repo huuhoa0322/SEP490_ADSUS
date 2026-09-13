@@ -261,7 +261,7 @@ public sealed class CaseService : ICaseService
             var patientUserId = profile.UserId;
             await _notificationService.SendAsync(new SendNotificationRequest
             {
-                UserId = patientUserId,
+                UserId = patientUserId ?? Guid.Empty,
                 Type = "medical_record_added",
                 Title = "Hồ sơ y tế mới được tạo",
                 Body = $"BS. {doctor.FullName} đã tạo hồ sơ khám cho bạn vào ngày {ClinicClock.Today():dd/MM/yyyy}.",
@@ -596,7 +596,8 @@ public sealed class CaseService : ICaseService
         // Gửi notification cho doctor về case mới được tạo từ booking
         try
         {
-            var user = patientProfile != null ? await _users.GetByIdAsync(patientProfile.UserId, ct) : null;
+            patientProfile ??= await _profiles.GetByIdAsync(patientProfileId, ct);
+            var user = patientProfile?.UserId != null ? await _users.GetByIdAsync(patientProfile.UserId.Value, ct) : null;
             var patientName = user?.FullName ?? "Bệnh nhân";
 
             await _notificationService.SendAsync(new SendNotificationRequest

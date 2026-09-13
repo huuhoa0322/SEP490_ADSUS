@@ -94,7 +94,7 @@ public sealed class NoShowService
             {
                 await _notificationService.SendAsync(new SendNotificationRequest
                 {
-                    UserId = patientProfile.UserId,
+                    UserId = patientProfile.UserId ?? Guid.Empty,
                     Type = "appointment_no_show",
                     Title = "Lịch khám đã bị hủy (No-Show)",
                     Body = $"Lịch khám ngày {appointment.Slot.SlotDate:dd/MM/yyyy} lúc {appointment.Slot.StartTime} đã bị hủy do không check-in trong {_settings.GraceTimeMinutes} phút.",

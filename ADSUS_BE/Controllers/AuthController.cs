@@ -199,4 +199,48 @@ public class AuthController : ControllerBase
                 StatusCodes.Status401Unauthorized, "Invalid access token.")),
         };
     }
+
+    /// <summary>
+    /// UC-02 — đăng ký tài khoản bệnh nhân (Mobile).
+    /// Hỗ trợ Account Linking: nếu cung cấp GuestPatientProfileId, hệ thống sẽ
+    /// liên kết tài khoản mới với PatientProfile đã tồn tại và xóa các trường guest.
+    /// </summary>
+    [HttpPost("register")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [ProducesResponseType(typeof(ApiResponse<RegisterResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Register(
+        [FromBody] RegisterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _auth.RegisterAsync(request, cancellationToken);
+
+        return result.Result switch
+        {
+            RegisterResult.Success =>
+                StatusCode(StatusCodes.Status201Created,
+                    ApiResponse<RegisterResponse>.Ok(result.Response!, "Registration successful.")),
+
+            RegisterResult.PhoneAlreadyUsed =>
+                Conflict(ApiResponse<object>.Fail(
+                    StatusCodes.Status409Conflict, "This phone number is already registered.")),
+
+            RegisterResult.EmailAlreadyUsed =>
+                Conflict(ApiResponse<object>.Fail(
+                    StatusCodes.Status409Conflict, "This email is already used by another account.")),
+
+            RegisterResult.PasswordMismatch =>
+                BadRequest(ApiResponse<object>.Fail(
+                    StatusCodes.Status400BadRequest, "Password and confirm password do not match.")),
+
+            RegisterResult.GuestProfileNotFound =>
+                BadRequest(ApiResponse<object>.Fail(
+                    StatusCodes.Status400BadRequest, "Guest patient profile not found.")),
+
+            _ => BadRequest(ApiResponse<object>.Fail(
+                StatusCodes.Status400BadRequest, "Registration failed.")),
+        };
+    }
 }

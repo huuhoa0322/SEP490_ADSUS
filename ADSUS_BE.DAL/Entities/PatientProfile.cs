@@ -10,7 +10,10 @@ public partial class PatientProfile
 {
     public Guid PatientProfileId { get; set; }
 
-    public Guid UserId { get; set; }
+    /// <summary>
+    /// NULL = guest (người thân chưa có tài khoản)
+    /// </summary>
+    public Guid? UserId { get; set; }
 
     /// <summary>
     /// Bác sĩ lập hồ sơ (UC-06). Bệnh nhân không tự đăng ký.
@@ -20,6 +23,21 @@ public partial class PatientProfile
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Chỉ dùng khi user_id IS NULL
+    /// </summary>
+    public string? FullName { get; set; }
+
+    /// <summary>
+    /// Chỉ dùng khi user_id IS NULL
+    /// </summary>
+    public string? Phone { get; set; }
+
+    /// <summary>
+    /// Chỉ dùng khi user_id IS NULL
+    /// </summary>
+    public DateOnly? DateOfBirth { get; set; }
 
     public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
 
@@ -33,9 +51,11 @@ public partial class PatientProfile
 
     public virtual ICollection<PatientDisease> PatientDiseases { get; set; } = new List<PatientDisease>();
 
+    public virtual ICollection<PatientRelationship> PatientRelationships { get; set; } = new List<PatientRelationship>();
+
     public virtual PatientReminderPreference? PatientReminderPreference { get; set; }
 
     public virtual ICollection<ServiceFeedback> ServiceFeedbacks { get; set; } = new List<ServiceFeedback>();
 
-    public virtual User User { get; set; } = null!;
+    public virtual User? User { get; set; }
 }

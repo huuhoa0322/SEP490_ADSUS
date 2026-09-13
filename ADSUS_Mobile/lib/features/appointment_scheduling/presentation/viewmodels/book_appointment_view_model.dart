@@ -6,6 +6,7 @@ import '../../../../shared/providers/app_providers.dart';
 import '../../data/dtos/symptom_dtos.dart';
 import '../../domain/entities/schedule_slot.dart' show ScheduleSlot, DoctorStatus, DoctorGender;
 import '../../domain/entities/symptom.dart' show SymptomCategory;
+import '../../../patient_relationship/domain/entities/patient_relationship.dart';
 
 /// Một block triệu chứng trong UI (tương ứng với 1 category)
 class SymptomBlock {
@@ -80,6 +81,11 @@ class BookAppointmentState {
     this.symptomBlocks = const [],
     this.isLoadingSymptoms = false,
     this.isSymptomSectionExpanded = false,
+    // Issue #4: Relative booking state
+    this.isBookingForSelf = true,
+    this.savedRelatives = const [],
+    this.selectedRelative,
+    this.isLoadingRelatives = false,
   });
 
   /// Toàn bộ slot Open server trả về (sau khi lọc theo status=OPEN).
@@ -121,6 +127,12 @@ class BookAppointmentState {
   final bool isLoadingSymptoms;
   final bool isSymptomSectionExpanded;
 
+  // --- Issue #4: Relative booking state ---
+  final bool isBookingForSelf;
+  final List<PatientRelationship> savedRelatives;
+  final PatientRelationship? selectedRelative;
+  final bool isLoadingRelatives;
+
   BookAppointmentState copyWith({
     List<ScheduleSlot>? slots,
     List<DoctorOption>? doctorOptions,
@@ -139,6 +151,11 @@ class BookAppointmentState {
     List<SymptomBlock>? symptomBlocks,
     bool? isLoadingSymptoms,
     bool? isSymptomSectionExpanded,
+    // Issue #4: Relative booking state
+    bool? isBookingForSelf,
+    List<PatientRelationship>? savedRelatives,
+    PatientRelationship? selectedRelative,
+    bool? isLoadingRelatives,
     bool clearError = false,
     bool clearSelection = false,
     bool clearBookingSuccess = false,
@@ -146,6 +163,7 @@ class BookAppointmentState {
     bool clearDoctor = false,
     bool clearSlot = false,
     bool clearDate = false,
+    bool clearSelectedRelative = false,
   }) {
     return BookAppointmentState(
       slots: slots ?? this.slots,
@@ -171,6 +189,11 @@ class BookAppointmentState {
       symptomBlocks: symptomBlocks ?? this.symptomBlocks,
       isLoadingSymptoms: isLoadingSymptoms ?? this.isLoadingSymptoms,
       isSymptomSectionExpanded: isSymptomSectionExpanded ?? this.isSymptomSectionExpanded,
+      // Issue #4: Relative booking state
+      isBookingForSelf: isBookingForSelf ?? this.isBookingForSelf,
+      savedRelatives: savedRelatives ?? this.savedRelatives,
+      selectedRelative: clearSelectedRelative ? null : (selectedRelative ?? this.selectedRelative),
+      isLoadingRelatives: isLoadingRelatives ?? this.isLoadingRelatives,
     );
   }
 
@@ -389,6 +412,7 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       slots: state.slots,
       availableDates: state.availableDates,
       doctorOptions: state.doctorOptions,
+      symptomCategories: state.symptomCategories,
       selectedWeekIndex: 0,
       // Clear mọi selection và success state
       bookingSuccess: null,
@@ -397,9 +421,6 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       selectedDoctorId: null,
       reason: '',
       selectedDoctorGender: null, // 2026-01
-      symptomCategories: state.symptomCategories,
-      symptomBlocks: const [],
-      isSymptomSectionExpanded: false,
     );
   }
 
@@ -409,6 +430,7 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       slots: state.slots,
       availableDates: state.availableDates,
       doctorOptions: state.doctorOptions,
+      symptomCategories: state.symptomCategories,
       selectedWeekIndex: 0,
       // Clear mọi selection và success state
       bookingSuccess: null,
@@ -417,9 +439,6 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       selectedDoctorId: null,
       reason: '',
       selectedDoctorGender: null, // 2026-01
-      symptomCategories: state.symptomCategories,
-      symptomBlocks: const [],
-      isSymptomSectionExpanded: false,
     );
     _successShown = false;
   }
@@ -427,6 +446,48 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
   /// Xóa bookingSuccess để ngăn hiển thị lại khi quay lại màn hình.
   void clearBookingSuccess() {
     state = state.copyWith(clearBookingSuccess: true);
+  }
+
+  // ============ Issue #4: Relative Booking Methods ============
+
+  void setIsBookingForSelf(bool value) {
+    state = state.copyWith(
+      isBookingForSelf: value,
+      // Clear selected relative when switching to self-booking
+      clearSelectedRelative: value,
+    );
+    if (!value && state.savedRelatives.isEmpty) {
+      loadSavedRelatives();
+    }
+  }
+
+  Future<void> loadSavedRelatives() async {
+    state = state.copyWith(isLoadingRelatives: true);
+    try {
+      final relatives = await ref
+          .read(patientRelationshipRepositoryProvider)
+          .getRelatives();
+      state = state.copyWith(
+        savedRelatives: relatives,
+        isLoadingRelatives: false,
+      );
+    } catch (e, st) {
+      debugPrint('[DEBUG] loadSavedRelatives error: $e\n$st');
+      state = state.copyWith(isLoadingRelatives: false);
+    }
+  }
+
+  void selectRelative(String? relationshipId) {
+    if (relationshipId == null) {
+      state = state.copyWith(clearSelectedRelative: true);
+      return;
+    }
+    final relative = state.savedRelatives
+        .where((r) => r.relationshipId == relationshipId)
+        .firstOrNull;
+    if (relative != null) {
+      state = state.copyWith(selectedRelative: relative);
+    }
   }
 
   /// Track xem đã show success snackbar chưa (instance-level).
@@ -538,15 +599,30 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
   Future<void> book({String? reason}) async {
     final slotId = state.selectedSlotId;
     if (slotId == null) return;
+
+    // Chặn silent self-booking: nếu chọn đặt hộ mà chưa chọn người thân
+    if (!state.isBookingForSelf && state.selectedRelative == null) {
+      state = state.copyWith(
+        errorMessage: 'Vui lòng chọn người thân trước khi xác nhận đặt lịch.',
+      );
+      return;
+    }
+
     state = state.copyWith(isBooking: true, clearError: true);
     try {
       // Thu thập symptoms từ các blocks
       final symptoms = getAllSymptomInputs();
 
+      // Issue #4: Pass relationshipId when booking for a relative
+      final relationshipId = state.isBookingForSelf
+          ? null
+          : state.selectedRelative?.relationshipId;
+
       final appointment = await ref
           .read(appointmentRepositoryProvider)
           .bookAppointment(
             scheduleSlotId: slotId,
+            relationshipId: relationshipId,
             reason: reason,
             symptoms: symptoms.isNotEmpty ? symptoms : null,
           );

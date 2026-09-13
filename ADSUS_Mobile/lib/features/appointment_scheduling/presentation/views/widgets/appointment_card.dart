@@ -75,6 +75,32 @@ class AppointmentCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Issue #6: Badge "Đặt hộ" nếu là đặt cho người thân
+                      if (appointment.isBookedForOthers) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.person_add, size: 14, color: Colors.purple.shade700),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Đặt hộ: ${appointment.relationshipLabel ?? ''}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.purple.shade700,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
                       // Ngày khám
                       Text(
                         'Lịch khám: ${_formatDate(appointment.slotDate)}',
