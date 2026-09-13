@@ -1,6 +1,7 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Services;
 using ADSUS_BE.BLL.AppointmentScheduling.Validators;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using FluentValidation;
@@ -627,6 +628,59 @@ public class ScheduleSlotServiceTests
             () => _sut.EnsureDefaultSlotsAsync(_doctorId, notMonday, TestContext.Current.CancellationToken));
 
         Assert.Contains("weekStart must be a Monday", ex.Message);
+    }
+
+    #endregion
+
+    #region Timezone & Overtime Slots Tests
+
+    [Fact]
+    public async Task CreateOvertimeSlotsAsync_PastVisitDateInVietnamTime_SkipsAllSlots()
+    {
+        // Arrange
+        var pastDateVn = ClinicClock.Today().AddDays(-1);
+        var request = new CreateOvertimeSlotsRequest
+        {
+            VisitDate = pastDateVn,
+        };
+
+        _slotRepo.Setup(r => r.ListByRangeAsync(
+                pastDateVn, pastDateVn, _doctorId, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot>());
+
+        // Act
+        var (successCount, errorCount) = await _sut.CreateOvertimeSlotsAsync(request, _doctorId, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(0, successCount);
+        Assert.Equal(6, errorCount);
+        _slotRepo.Verify(r => r.AddAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateOvertimeSlotsAsync_FutureVisitDateInVietnamTime_CreatesAll6Slots()
+    {
+        // Arrange
+        var futureDateVn = ClinicClock.Today().AddDays(2);
+        var request = new CreateOvertimeSlotsRequest
+        {
+            VisitDate = futureDateVn,
+        };
+
+        _slotRepo.Setup(r => r.ListByRangeAsync(
+                futureDateVn, futureDateVn, _doctorId, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot>());
+
+        _slotRepo.Setup(r => r.AddAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ScheduleSlot s, CancellationToken _) => s);
+
+        // Act
+        var (successCount, errorCount) = await _sut.CreateOvertimeSlotsAsync(request, _doctorId, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(6, successCount);
+        Assert.Equal(0, errorCount);
+        _slotRepo.Verify(r => r.AddAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()), Times.Exactly(6));
     }
 
     #endregion

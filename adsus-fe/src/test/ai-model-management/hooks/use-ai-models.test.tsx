@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { API_BASE_URL } from "@/lib/api-client";
 import { server } from "@/test/mocks/server";
@@ -223,6 +223,32 @@ describe("useActivateAiModel — làm mới danh sách sau khi kích hoạt", ()
 
     await waitFor(() => expect(listCallCount).toBe(2));
   });
+
+  it("kích hoạt thành công — làm mới cả detail, active và dashboard query", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const spy = vi.spyOn(queryClient, "invalidateQueries");
+
+    server.use(
+      http.patch(`${BASE}/model-1`, () =>
+        HttpResponse.json({ code: 200, message: "Kích hoạt thành công.", data: null }),
+      ),
+    );
+
+    function Wrapper({ children }: { children: ReactNode }) {
+      return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    }
+
+    const activate = renderHook(() => useActivateAiModel(), { wrapper: Wrapper });
+    activate.result.current.mutate("model-1");
+    await waitFor(() => expect(activate.result.current.isSuccess).toBe(true));
+
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["ai-models", "list"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["ai-models", "detail"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["ai-models", "active"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["dashboard"] });
+  });
 });
 
 describe("useCalculateMap50 — làm mới danh sách sau khi tính lại mAP50", () => {
@@ -252,5 +278,31 @@ describe("useCalculateMap50 — làm mới danh sách sau khi tính lại mAP50"
     await waitFor(() => expect(calc.result.current.isSuccess).toBe(true));
 
     await waitFor(() => expect(listCallCount).toBe(2));
+  });
+
+  it("tính mAP50 thành công — làm mới cả detail, active và dashboard query", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const spy = vi.spyOn(queryClient, "invalidateQueries");
+
+    server.use(
+      http.post(`${BASE}/model-1/calculate-map50`, () =>
+        HttpResponse.json({ code: 200, message: "Tính toán mAP50 thành công.", data: null }),
+      ),
+    );
+
+    function Wrapper({ children }: { children: ReactNode }) {
+      return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    }
+
+    const calc = renderHook(() => useCalculateMap50(), { wrapper: Wrapper });
+    calc.result.current.mutate("model-1");
+    await waitFor(() => expect(calc.result.current.isSuccess).toBe(true));
+
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["ai-models", "list"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["ai-models", "detail"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["ai-models", "active"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["dashboard"] });
   });
 });

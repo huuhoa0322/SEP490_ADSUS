@@ -142,6 +142,23 @@ vi.mock("@/features/prescription-adherence/hooks/use-invoices", () => ({
   useCaseInvoices: () => ({ data: [], isLoading: false }),
 }));
 
+vi.mock("@/features/clinic-service/queries", () => ({
+  useCaseClinicServices: () => ({
+    data: [
+      {
+        id: "mock-srv-1",
+        caseId: "case-1",
+        clinicServiceId: "cs-us",
+        serviceName: "Khám siêu âm",
+        serviceCode: "ULTRASOUND_EXAM",
+        priceAtTime: 200000,
+        createdAt: "2026-07-22T09:00:00Z",
+      },
+    ],
+    isLoading: false,
+  }),
+}));
+
 function makeCase(
   status: "BOOKED" | "IN_PROGRESS" | "CONFIRMED" | "END" | "CANCELLED",
   draft?: { finalDiagnosis: string; doctorConclusion: string },

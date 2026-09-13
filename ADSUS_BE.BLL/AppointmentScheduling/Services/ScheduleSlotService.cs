@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using FluentValidation;
@@ -66,14 +67,14 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         if (!doctorId.HasValue || doctorId.Value == Guid.Empty)
             throw new InvalidOperationException("doctorId is required.");
 
-        var from = fromDate ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var from = fromDate ?? ClinicClock.Today();
         var to = toDate ?? from.AddDays(21); // 3 tuần = 21 ngày
 
         if (to < from)
             throw new InvalidOperationException("toDate must not be before fromDate.");
 
         // Auto-sinh dựa trên data đã có (1 query duy nhất)
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today();
         var targetEndDate = today.AddDays(20); // 21 ngày (today..today+20)
         var allSlots = await _repo.ListByRangeAsync(today, targetEndDate, doctorId, null, ct);
         await EnsureMissingSlotsAsync(doctorId.Value, today, targetEndDate, allSlots, ct);
@@ -121,6 +122,9 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         }
 
         var now = DateTime.UtcNow;
+        var nowVn = DateTime.UtcNow.Add(ClinicClock.Offset);
+        var todayVn = DateOnly.FromDateTime(nowVn);
+        var currentTimeVn = TimeOnly.FromDateTime(nowVn);
         var newSlots = new List<ScheduleSlot>();
 
         for (var day = fromDate; day <= toDate; day = day.AddDays(1))
@@ -129,8 +133,7 @@ public sealed class ScheduleSlotService : IScheduleSlotService
 
             foreach (var (start, end) in DefaultRanges)
             {
-                var startDateTime = day.ToDateTime(start, DateTimeKind.Utc);
-                if (startDateTime <= now) continue;
+                if (day < todayVn || (day == todayVn && start <= currentTimeVn)) continue;
 
                 // Check overlap in-memory (không cần query DB)
                 var hasOverlap = daySlots.Any(s => s.StartTime < end && start < s.EndTime);
@@ -187,7 +190,7 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         if (doctor is null || doctor.Role != UserRole.Doctor)
             throw new InvalidOperationException($"User '{doctorId}' is not a valid Doctor.");
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today();
         var targetEndDate = today.AddDays(20);
         var existingSlots = await _repo.ListByRangeAsync(today, targetEndDate, doctorId, null, ct);
 
@@ -262,6 +265,9 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         int successCount = 0;
         int errorCount = 0;
         var now = DateTime.UtcNow;
+        var nowVn = DateTime.UtcNow.Add(ClinicClock.Offset);
+        var todayVn = DateOnly.FromDateTime(nowVn);
+        var currentTimeVn = TimeOnly.FromDateTime(nowVn);
         
         var existingSlotsEnum = await _repo.ListByRangeAsync(request.VisitDate, request.VisitDate, doctorId, null, ct);
         var existingSlots = new System.Collections.Generic.List<ScheduleSlot>(existingSlotsEnum);
@@ -272,8 +278,7 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             var start = new TimeOnly(17, 0).AddMinutes(i * 30);
             var end = start.AddMinutes(30);
             
-            var startDateTime = request.VisitDate.ToDateTime(start, DateTimeKind.Utc);
-            if (startDateTime <= now)
+            if (request.VisitDate < todayVn || (request.VisitDate == todayVn && start <= currentTimeVn))
             {
                 errorCount++;
                 continue;
@@ -412,6 +417,9 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             throw new InvalidOperationException($"User '{doctorId}' is not a valid Doctor.");
 
         var now = DateTime.UtcNow;
+        var nowVn = DateTime.UtcNow.Add(ClinicClock.Offset);
+        var todayVn = DateOnly.FromDateTime(nowVn);
+        var currentTimeVn = TimeOnly.FromDateTime(nowVn);
         var newSlots = new List<ScheduleSlot>();
 
         // 14 ngày T2-CN (Thứ 2 đến Chủ nhật, 2 tuần).
@@ -423,8 +431,7 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             foreach (var (start, end) in DefaultRanges)
             {
                 // Skip ca trong quá khứ.
-                var startDateTime = day.ToDateTime(start, DateTimeKind.Utc);
-                if (startDateTime <= now) continue;
+                if (day < todayVn || (day == todayVn && start <= currentTimeVn)) continue;
 
                 var hasOverlap = await _repo.HasOverlapAsync(
                     doctorId, day, start, end,

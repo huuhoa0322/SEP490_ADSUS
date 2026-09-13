@@ -11,6 +11,7 @@ export const NOTIFICATION_ICONS: Record<NotificationType, string> = {
   prescription_created: "💉",
   system_alert: "⚠️",
   inventory_alert: "📦",
+  patient_checked_in: "🏥",
 };
 
 export const NOTIFICATION_COLORS: Record<
@@ -27,6 +28,7 @@ export const NOTIFICATION_COLORS: Record<
   prescription_created: { bg: "bg-indigo-100", text: "text-indigo-600" },
   system_alert: { bg: "bg-yellow-100", text: "text-yellow-600" },
   inventory_alert: { bg: "bg-amber-100", text: "text-amber-600" },
+  patient_checked_in: { bg: "bg-emerald-100", text: "text-emerald-700" },
 };
 
 export function formatRelativeTime(dateString: string): string {

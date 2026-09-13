@@ -4,6 +4,7 @@ import {
   getCheckinQueue,
   checkinAppointment,
   checkinByCaseId,
+  staffBookAppointment,
 } from "../api/checkin.api";
 import type { CheckinQueueResponse } from "../types/checkin.types";
 
@@ -186,6 +187,49 @@ describe("checkin.api", () => {
       await expect(checkinByCaseId("case-789")).rejects.toThrow(
         "Already checked in"
       );
+    });
+  });
+
+  describe("staffBookAppointment", () => {
+    it("should post to book-for-patient endpoint and return data on 201", async () => {
+      const mockResult = {
+        code: 201,
+        message: "Success",
+        data: { appointmentId: "app-123" },
+      };
+      vi.mocked(apiClient.post).mockResolvedValueOnce({
+        data: mockResult,
+      });
+
+      const request = {
+        patientProfileId: "prof-1",
+        scheduleSlotId: "slot-1",
+        reason: "Tái khám",
+      };
+
+      const result = await staffBookAppointment(request);
+      expect(apiClient.post).toHaveBeenCalledWith(
+        "/api/v1/appointments/book-for-patient",
+        request
+      );
+      expect(result).toEqual(mockResult);
+    });
+
+    it("should throw if response code is not 200 or 201", async () => {
+      vi.mocked(apiClient.post).mockResolvedValueOnce({
+        data: {
+          code: 400,
+          message: "Slot đã được đặt",
+          data: null,
+        },
+      });
+
+      await expect(
+        staffBookAppointment({
+          patientProfileId: "prof-1",
+          scheduleSlotId: "slot-1",
+        })
+      ).rejects.toThrow("Slot đã được đặt");
     });
   });
 });

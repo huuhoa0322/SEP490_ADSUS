@@ -97,12 +97,12 @@ class AppointmentDto {
 
   factory AppointmentDto.fromJson(Map<String, dynamic> json) => AppointmentDto(
         appointmentId: json['appointmentId'] as String?,
-        slotId: json['slotId'] as String?,
+        slotId: (json['scheduleSlotId'] ?? json['slotId'])?.toString(),
         patientProfileId: json['patientProfileId'] as String?,
         reason: json['reason'] as String?,
         // Backend trả int (0=BOOKED, 1=CANCELLED), toString() để convert thành string.
         status: json['status']?.toString(),
-        cancelledReason: json['cancelledReason'] as String?,
+        cancelledReason: (json['cancellationReason'] ?? json['cancelledReason'])?.toString(),
         calendarSyncedAt: json['calendarSyncedAt'] as String?,
         createdAt: json['createdAt'] as String?,
         updatedAt: json['updatedAt'] as String?,
@@ -150,12 +150,12 @@ class AppointmentSummaryDto {
     print('[DEBUG DTO] AppointmentSummaryDto.fromJson: statusRaw=$statusRaw (type: ${statusRaw?.runtimeType})');
     return AppointmentSummaryDto(
       appointmentId: json['appointmentId'] as String?,
-      slotId: json['slotId'] as String?,
+      slotId: (json['scheduleSlotId'] ?? json['slotId'])?.toString(),
       patientProfileId: json['patientProfileId'] as String?,
       // Backend trả int (0=BOOKED, 1=CANCELLED), convert sang string.
       status: statusRaw?.toString(),
       reason: json['reason'] as String?,
-      cancelledReason: json['cancelledReason'] as String?,
+      cancelledReason: (json['cancellationReason'] ?? json['cancelledReason'])?.toString(),
       slotDate: json['slotDate'] as String?,
       startTime: json['startTime'] as String?,
       endTime: json['endTime'] as String?,

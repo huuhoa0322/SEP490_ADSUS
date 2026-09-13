@@ -266,7 +266,7 @@ class _BookAppointmentScreenState
         ),
         const SizedBox(height: 12),
         _sectionLabel('BÁC SĨ PHỤ TRÁCH'),
-        DropdownSearch<String>(
+        DropdownSearch<DoctorOption>(
           popupProps: PopupProps.menu(
             showSearchBox: true,
             searchFieldProps: TextFieldProps(
@@ -280,21 +280,13 @@ class _BookAppointmentScreenState
             constraints: const BoxConstraints(maxHeight: 300),
             fit: FlexFit.loose,
           ),
-          // 2026-01: Dùng filteredDoctorOptions thay vì doctorOptions
-          items: state.filteredDoctorOptions.map((d) => d.name).toList(),
-          selectedItem: state.selectedDoctorId != null
-              ? state.filteredDoctorOptions
-                  .firstWhere(
-                    (d) => d.id == state.selectedDoctorId,
-                    orElse: () => state.filteredDoctorOptions.first,
-                  )
-                  .name
-              : null,
-          onChanged: (name) {
-            if (name == null) return;
-            final doctor = state.filteredDoctorOptions.firstWhere((d) => d.name == name);
-            ref.read(bookAppointmentViewModelProvider.notifier).selectDoctor(doctor.id);
-          },
+          items: state.filteredDoctorOptions,
+          itemAsString: (DoctorOption d) => d.name,
+          compareFn: (a, b) => a.id == b.id,
+          selectedItem: state.selectedDoctor,
+          onChanged: (DoctorOption? doctor) => ref
+              .read(bookAppointmentViewModelProvider.notifier)
+              .selectDoctor(doctor?.id),
           dropdownDecoratorProps: DropDownDecoratorProps(
             dropdownSearchDecoration: const InputDecoration(
               prefixIcon: Icon(Icons.person_outline),
@@ -652,22 +644,27 @@ class _BookAppointmentScreenState
                     ),
                   ),
                 ),
-                if (state.symptomBlocks.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.teal,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${state.symptomBlocks.length}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                Builder(
+                  builder: (context) {
+                    final activeCount = state.symptomBlocks.where((b) => b.selectedCategoryId != null).length;
+                    if (activeCount == 0) return const SizedBox.shrink();
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.teal,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ),
-                  ),
+                      child: Text(
+                        '$activeCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),

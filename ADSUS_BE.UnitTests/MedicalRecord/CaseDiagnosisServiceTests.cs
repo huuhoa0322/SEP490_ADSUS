@@ -238,6 +238,8 @@ public class CaseDiagnosisServiceTests : IDisposable
     public async Task ConfirmAnalysisAsync_NoActiveModel_ThrowsBusinessException()
     {
         // Arrange
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AiModelVersion?)null);
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync((AiModelVersion?)null);
 
@@ -251,8 +253,11 @@ public class CaseDiagnosisServiceTests : IDisposable
     public async Task ConfirmAnalysisAsync_InvalidJsonInput_ThrowsJsonException()
     {
         // Arrange
+        var activeModel = new AiModelVersion { ModelVersionId = _activeModelId };
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AiModelVersion { ModelVersionId = _activeModelId });
+            .ReturnsAsync(activeModel);
 
         var request = MakeValidConfirmRequest(aiJson: "invalid-json");
 
@@ -265,6 +270,12 @@ public class CaseDiagnosisServiceTests : IDisposable
     public async Task ConfirmAnalysisAsync_StorageUploadFails_ThrowsExceptionAndNoDbChanges()
     {
         // Arrange
+        var activeModel = new AiModelVersion { ModelVersionId = _activeModelId };
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
+
         _storageMock.Setup(s => s.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("S3 Bucket down"));
 
@@ -279,13 +290,10 @@ public class CaseDiagnosisServiceTests : IDisposable
     [Fact]
     public async Task ConfirmAnalysisAsync_DbFails_RollbacksAndThrows()
     {
-        // Arrange — mô phỏng lỗi ghi DB ở bước cuối (lưu chỉ số AiModelVersion) bằng cách cho
-        // SaveChangesAsync ném lỗi trực tiếp qua Mock. (Trước refactor P11 29/08/2026, test này
-        // dựa vào việc code gọi _db.AiModelVersions.Update(activeModel) trực tiếp để cố ý tạo
-        // tracking-conflict giữa 2 object cùng khoá — dòng Update() dư thừa đó đã bị gỡ, nên kỹ
-        // thuật cũ không còn tái hiện được lỗi; mock throw trực tiếp phản ánh đúng ý định gốc:
-        // "DB lỗi ở bước cuối thì exception phải lan ra ngoài, không bị nuốt".)
+        // Arrange
         var activeModel = new AiModelVersion { ModelVersionId = _activeModelId, LiveTp = 0, LiveFp = 0, LiveFn = 0, VersionCode = "v1", HfRepoId = "repo", HfFilename = "file" };
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeModel);
         _aiModelVersionRepoMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
@@ -304,6 +312,8 @@ public class CaseDiagnosisServiceTests : IDisposable
         _db.AiModelVersions.Add(activeModel);
         await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeModel);
 
@@ -347,6 +357,8 @@ public class CaseDiagnosisServiceTests : IDisposable
         _db.AiModelVersions.Add(activeModel);
         await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeModel);
 
@@ -378,6 +390,8 @@ public class CaseDiagnosisServiceTests : IDisposable
         _db.AiModelVersions.Add(activeModel);
         await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeModel);
 
@@ -403,6 +417,8 @@ public class CaseDiagnosisServiceTests : IDisposable
         _db.AiModelVersions.Add(activeModel);
         await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
         _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeModel);
 
@@ -418,6 +434,134 @@ public class CaseDiagnosisServiceTests : IDisposable
         Assert.Equal(0, activeModel.LiveTp);
         Assert.Equal(0, activeModel.LiveFp);
         Assert.Equal(1, activeModel.LiveFn); // Fn should be 1
+    }
+
+    [Fact]
+    public async Task ConfirmAnalysisAsync_ConfidenceSorting_PriorityForHigherConfidenceMatch()
+    {
+        // Arrange - Box confidence 0.6 comes first in JSON, box 0.9 comes second.
+        // Both target the single Doc box. The 0.9 confidence box must be evaluated first.
+        var activeModel = new AiModelVersion { ModelVersionId = _activeModelId, LiveTp = 0, LiveFp = 0, LiveFn = 0, VersionCode = "v1", HfRepoId = "repo", HfFilename = "file" };
+        _db.AiModelVersions.Add(activeModel);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
+
+        var aiJson = "[{\"xmin\":0,\"ymin\":0,\"xmax\":100,\"ymax\":100,\"confidence\":0.6}, {\"xmin\":0,\"ymin\":0,\"xmax\":100,\"ymax\":100,\"confidence\":0.9}]";
+        var docJson = "[{\"xmin\":0,\"ymin\":0,\"xmax\":100,\"ymax\":100}]";
+        
+        var request = MakeValidConfirmRequest(aiJson, docJson);
+
+        // Act
+        await _sut.ConfirmAnalysisAsync(_caseId, request, TestContext.Current.CancellationToken);
+
+        // Assert
+        // Higher confidence (0.9) takes the doc box as TP; lower confidence (0.6) becomes FP
+        Assert.Equal(1, activeModel.LiveTp);
+        Assert.Equal(1, activeModel.LiveFp);
+        Assert.Equal(0, activeModel.LiveFn);
+    }
+
+    [Fact]
+    public async Task ConfirmAnalysisAsync_GreedyFallback_MatchesSecondaryUnassignedDoctorBox()
+    {
+        // Arrange - Pred 1 has higher confidence and claims GT 1.
+        // Pred 2 overlaps both GT 1 (IoU ~0.6) and GT 2 (IoU ~0.6).
+        // Since GT 1 is already claimed, Pred 2 must fall back to unassigned GT 2, producing 2 TPs, 0 FPs, 0 FNs.
+        var activeModel = new AiModelVersion { ModelVersionId = _activeModelId, LiveTp = 0, LiveFp = 0, LiveFn = 0, VersionCode = "v1", HfRepoId = "repo", HfFilename = "file" };
+        _db.AiModelVersions.Add(activeModel);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
+
+        var aiJson = "[{\"xmin\":0,\"ymin\":0,\"xmax\":100,\"ymax\":100,\"confidence\":0.9}, {\"xmin\":25,\"ymin\":0,\"xmax\":125,\"ymax\":100,\"confidence\":0.8}]";
+        var docJson = "[{\"xmin\":0,\"ymin\":0,\"xmax\":100,\"ymax\":100}, {\"xmin\":50,\"ymin\":0,\"xmax\":150,\"ymax\":100}]";
+        
+        var request = MakeValidConfirmRequest(aiJson, docJson);
+
+        // Act
+        await _sut.ConfirmAnalysisAsync(_caseId, request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(2, activeModel.LiveTp);
+        Assert.Equal(0, activeModel.LiveFp);
+        Assert.Equal(0, activeModel.LiveFn);
+    }
+
+    [Fact]
+    public async Task ConfirmAnalysisAsync_ZeroAiPredictions_InsertsSentinelRecord()
+    {
+        // Arrange
+        var activeModel = new AiModelVersion { ModelVersionId = _activeModelId, LiveTp = 0, LiveFp = 0, LiveFn = 0, VersionCode = "v1", HfRepoId = "repo", HfFilename = "file" };
+        _db.AiModelVersions.Add(activeModel);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
+
+        var aiJson = "[]";
+        var docJson = "[{\"xmin\":0,\"ymin\":0,\"xmax\":100,\"ymax\":100}]";
+        
+        var request = MakeValidConfirmRequest(aiJson, docJson);
+
+        // Act
+        await _sut.ConfirmAnalysisAsync(_caseId, request, TestContext.Current.CancellationToken);
+
+        // Assert
+        var preds = await _db.AiPredictions.ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Single(preds);
+        var sentinel = preds[0];
+        Assert.Equal(0m, sentinel.Confidence);
+        Assert.Equal(0m, sentinel.BboxXmin);
+        Assert.Equal(0m, sentinel.BboxYmin);
+        Assert.Equal(0m, sentinel.BboxXmax);
+        Assert.Equal(0m, sentinel.BboxYmax);
+        Assert.Equal(_activeModelId, sentinel.ModelVersionId);
+    }
+
+    [Fact]
+    public async Task ConfirmAnalysisAsync_CaliperUpdate_IdempotentMetricDeduction()
+    {
+        // Arrange - First confirmation: 1 match -> TP=1, FP=0, FN=0
+        var activeModel = new AiModelVersion { ModelVersionId = _activeModelId, LiveTp = 0, LiveFp = 0, LiveFn = 0, VersionCode = "v1", HfRepoId = "repo", HfFilename = "file" };
+        _db.AiModelVersions.Add(activeModel);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
+        _aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeModel);
+
+        var aiJson = "[{\"xmin\":0,\"ymin\":0,\"xmax\":100,\"ymax\":100,\"confidence\":0.9}]";
+        var docJsonInitial = "[{\"xmin\":0,\"ymin\":0,\"xmax\":100,\"ymax\":100}]";
+        
+        var request1 = MakeValidConfirmRequest(aiJson, docJsonInitial);
+        await _sut.ConfirmAnalysisAsync(_caseId, request1, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, activeModel.LiveTp);
+        Assert.Equal(0, activeModel.LiveFp);
+        Assert.Equal(0, activeModel.LiveFn);
+
+        // Doctor adjusts calipers on the same image (caliper moved to 200..300, no longer matches AI)
+        var docJsonUpdated = "[{\"xmin\":200,\"ymin\":200,\"xmax\":300,\"ymax\":300}]";
+        var request2 = MakeValidConfirmRequest(aiJson, docJsonUpdated);
+
+        // Act - Re-confirm
+        await _sut.ConfirmAnalysisAsync(_caseId, request2, TestContext.Current.CancellationToken);
+
+        // Assert - Old metrics (TP=1, FP=0, FN=0) should be deducted, new metrics (TP=0, FP=1, FN=1) added.
+        // Net result: TP=0, FP=1, FN=1 (NOT compounded into TP=1, FP=1, FN=1)
+        Assert.Equal(0, activeModel.LiveTp);
+        Assert.Equal(1, activeModel.LiveFp);
+        Assert.Equal(1, activeModel.LiveFn);
     }
 
     // =========================================================================
