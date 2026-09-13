@@ -35,6 +35,11 @@ public class FirebasePhoneVerificationService : IFirebasePhoneVerificationServic
     public async Task<string?> VerifyAndGetLocalPhoneNumberAsync(
         string idToken, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(idToken))
+        {
+            return null;
+        }
+
         try
         {
             var decoded = await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(idToken, cancellationToken);
