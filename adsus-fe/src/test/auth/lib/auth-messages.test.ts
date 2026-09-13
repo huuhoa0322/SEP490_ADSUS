@@ -1,8 +1,6 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { describe, expect, it } from "vitest";
 
-import { WebNotAvailableForRoleError } from "@/features/auth/types/auth.types";
-
 import {
   getChangePasswordErrorMessage,
   getSignInErrorMessage,
@@ -51,13 +49,12 @@ describe("getSignInErrorMessage — GB-06", () => {
     expect(cau).not.toContain("mật khẩu không đúng");
   });
 
-  it("bệnh nhân đăng nhập trên Web được chỉ sang ứng dụng di động", () => {
-    // UC-01: SCR-01 (Web) dành cho Admin/Doctor/Nurse, bệnh nhân dùng SCR-02 trên mobile.
-    // Mật khẩu đúng nên KHÔNG dùng câu chung của GB-06.
-    const cau = getSignInErrorMessage(new WebNotAvailableForRoleError());
-
-    expect(cau).toContain("điện thoại");
-    expect(cau).not.toBe("Số điện thoại hoặc mật khẩu không đúng.");
+  it("Patient login trên Web — không còn chặn (override tạm 2026-09-12)", () => {
+    // Trước đây FE throw WebNotAvailableForRoleError với role PATIENT. Sau override
+    // GB-09, Patient được đăng nhập web để đặt lịch. Test chốt: không còn câu đặc biệt
+    // cho patient, lỗi thực (401/...) đi qua mạch bình thường.
+    const cau = getSignInErrorMessage(loiHttp(401));
+    expect(cau).toBe("Số điện thoại hoặc mật khẩu không đúng.");
   });
 });
 

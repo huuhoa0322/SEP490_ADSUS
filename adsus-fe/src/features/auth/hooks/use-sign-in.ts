@@ -7,10 +7,17 @@ import { ACCESS_TOKEN_KEY } from "@/lib/api-client";
 import { getHomePathForRole, useAuthStore } from "@/store/auth-store";
 
 import { login } from "../api/auth.api";
-import {
-  WebNotAvailableForRoleError,
-  type LoginRequest,
-} from "../types/auth.types";
+import type { LoginRequest } from "../types/auth.types";
+
+/**
+ * Lấy ?redirect=/abc từ URL nếu hợp lệ (relative, không phải absolute URL).
+ * - null = không có / không hợp lệ → caller tự quyết định đích.
+ */
+export function getSafeRedirect(searchParams: URLSearchParams): string | null {
+  const value = searchParams.get("redirect");
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
+  return value;
+}
 
 export function useSignIn() {
   const router = useRouter();
@@ -18,16 +25,7 @@ export function useSignIn() {
 
   return useMutation({
     mutationFn: async (payload: LoginRequest) => {
-      const data = await login(payload);
-
-      // UC-01: SCR-01 là màn đăng nhập Web của Admin/Doctor/Nurse. Bệnh nhân đăng nhập
-      // trên ứng dụng di động. Chặn ở đây, TRƯỚC khi lưu token — nếu để lọt thì bệnh nhân
-      // vừa đăng nhập xong lại bị đá về đúng màn đăng nhập mà không hiểu vì sao.
-      if (data.role === "PATIENT") {
-        throw new WebNotAvailableForRoleError();
-      }
-
-      return data;
+      return await login(payload);
     },
 
     onSuccess: (data) => {
@@ -50,7 +48,11 @@ export function useSignIn() {
       }
 
       // UC-01 BR-03: route by role, there is no role picker.
-      router.replace(getHomePathForRole(data.role));
+      // Tôn trọng ?redirect=... nếu user đến /login từ trang khác (vd /dat-lich).
+      const params =
+        typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const safeRedirect = params ? getSafeRedirect(params) : null;
+      router.replace(safeRedirect ?? getHomePathForRole(data.role));
     },
   });
 }

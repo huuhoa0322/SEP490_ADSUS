@@ -57,7 +57,7 @@ export function HeroSection() {
 
           {/* CTA */}
           <div className="flex flex-wrap items-center gap-4">
-            <CTAButton href="/auth/register">Đặt lịch ngay</CTAButton>
+            <CTAButton href="/dat-lich">Đặt lịch ngay</CTAButton>
             <Link
               href="/#dich-vu"
               className="rounded-xl border px-7 py-3.5 text-sm font-semibold transition-colors"

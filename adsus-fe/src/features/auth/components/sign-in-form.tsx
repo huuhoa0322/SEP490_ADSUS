@@ -19,12 +19,13 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { getHomePathForRole, useAuthStore, useHasHydrated } from "@/store/auth-store";
 
+import { getSafeRedirect, useSignIn } from "../hooks/use-sign-in";
 import { useLatestAndroidRelease } from "../hooks/use-latest-android-release";
-import { useSignIn } from "../hooks/use-sign-in";
 import { getSignInErrorMessage } from "../lib/auth-messages";
 
 export function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const hasHydrated = useHasHydrated();
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
@@ -39,7 +40,7 @@ export function SignInForm() {
 
   // Bị đá ra vì token hết hiệu lực (hết hạn, hoặc tài khoản vừa bị Admin khoá). Không nói
   // gì thì người dùng tưởng hệ thống tự đăng xuất vô cớ.
-  const wasExpired = useSearchParams().get("expired") === "1";
+  const wasExpired = searchParams.get("expired") === "1";
 
   // Vào thẳng "/" hoặc gõ tay "/login" khi phiên trong localStorage vẫn còn hợp lệ — trước
   // đây bị kẹt ở form đăng nhập vì AuthGuard (app/(protected)/layout.tsx) không bọc trang
@@ -49,8 +50,10 @@ export function SignInForm() {
 
   useEffect(() => {
     if (!alreadySignedIn || !user) return;
-    router.replace(getHomePathForRole(user.role));
-  }, [alreadySignedIn, user, router]);
+    // Sau khi login xong quay về trang user đang muốn vào (vd /dat-lich) nếu có.
+    const redirectTo = getSafeRedirect(searchParams);
+    router.replace(redirectTo ?? getHomePathForRole(user.role));
+  }, [alreadySignedIn, user, router, searchParams]);
 
   // Chưa hydrate xong thì CHƯA BIẾT có phiên hay không — hiện spinner trong lúc đó thay vì
   // hiện form thật, nếu không người đã đăng nhập vẫn thấy form loé lên rồi mới bị đá đi
@@ -223,6 +226,17 @@ export function SignInForm() {
             className="font-600 text-[var(--success)] transition-colors hover:text-white/80"
           >
             Quên mật khẩu?
+          </Link>
+        </p>
+
+        {/* UC-03 — lối vào trang đăng ký tài khoản Patient (sau khi làm §15). */}
+        <p className="text-center text-sm text-muted-foreground">
+          Chưa có tài khoản?{" "}
+          <Link
+            href="/register"
+            className="font-600 text-[var(--success)] transition-colors hover:text-white/80"
+          >
+            Đăng ký
           </Link>
         </p>
 

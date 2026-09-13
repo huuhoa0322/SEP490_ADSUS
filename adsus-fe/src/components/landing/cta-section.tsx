@@ -27,7 +27,7 @@ export function CTASection() {
           tốt nhất cho mẹ và bé.
         </p>
 
-        <CTAButton href="/auth/register" size="lg" showIcon>
+        <CTAButton href="/dat-lich" size="lg" showIcon>
           Đặt lịch ngay
         </CTAButton>
       </div>
