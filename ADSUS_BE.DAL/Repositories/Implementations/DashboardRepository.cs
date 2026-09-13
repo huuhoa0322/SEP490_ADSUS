@@ -166,25 +166,106 @@ public class DashboardRepository : IDashboardRepository
             .Select(g => new { Date = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);
 
-        var revenueByDay = await _db.Invoices.AsNoTracking()
+        var paidInvoices = await _db.Invoices.AsNoTracking()
             .Where(i => i.Status == InvoiceStatus.PAID && i.PaidAt >= fromInclusive && i.PaidAt < toExclusive)
-            .GroupBy(i => DateOnly.FromDateTime(i.PaidAt!.Value.AddHours(ClinicClock.OffsetHours)))
-            .Select(g => new { Date = g.Key, Total = g.Sum(i => i.TotalAmount) })
+            .Select(i => new
+            {
+                i.Id,
+                i.TotalAmount,
+                Date = DateOnly.FromDateTime(i.PaidAt!.Value.AddHours(ClinicClock.OffsetHours))
+            })
             .ToListAsync(cancellationToken);
+
+        var medicineItems = await (
+            from item in _db.InvoiceItems.AsNoTracking()
+            join inv in _db.Invoices.AsNoTracking() on item.InvoiceId equals inv.Id
+            where inv.Status == InvoiceStatus.PAID
+               && inv.PaidAt >= fromInclusive
+               && inv.PaidAt < toExclusive
+               && item.ItemType == InvoiceItemType.Medicine
+               && item.ReferenceId != null
+            select new
+            {
+                item.InvoiceId,
+                PrescriptionItemId = item.ReferenceId!.Value
+            }
+        ).ToListAsync(cancellationToken);
+
+        var pItemIds = medicineItems.Select(m => m.PrescriptionItemId).Distinct().ToList();
+        var costByPrescriptionItem = new Dictionary<Guid, decimal>();
+
+        if (pItemIds.Count > 0)
+        {
+            var txns = new List<(Guid PrescriptionItemId, InventoryTxnType TxnType, int QuantityBase, decimal ActualImportPrice)>();
+            foreach (var chunk in pItemIds.Chunk(1000))
+            {
+                var chunkTxns = await _db.InventoryTransactions.AsNoTracking()
+                    .Where(t => t.PrescriptionItemId != null && chunk.Contains(t.PrescriptionItemId.Value))
+                    .Select(t => new
+                    {
+                        PrescriptionItemId = t.PrescriptionItemId!.Value,
+                        t.TxnType,
+                        t.QuantityBase,
+                        ActualImportPrice = t.ActualImportPrice ?? 0m
+                    })
+                    .ToListAsync(cancellationToken);
+
+                foreach (var t in chunkTxns)
+                {
+                    txns.Add((t.PrescriptionItemId, t.TxnType, t.QuantityBase, t.ActualImportPrice));
+                }
+            }
+
+            costByPrescriptionItem = txns
+                .GroupBy(t => t.PrescriptionItemId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Sum(t => t.TxnType == InventoryTxnType.Dispense
+                        ? (t.QuantityBase * t.ActualImportPrice)
+                        : (t.TxnType == InventoryTxnType.Adjustment ? -(t.QuantityBase * t.ActualImportPrice) : 0m))
+                );
+        }
+
+        var invoiceToPItems = medicineItems
+            .GroupBy(m => m.InvoiceId)
+            .ToDictionary(g => g.Key, g => g.Select(m => m.PrescriptionItemId).Distinct().ToList());
+
+        var dailyFinances = paidInvoices
+            .GroupBy(i => i.Date)
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    var rev = g.Sum(i => i.TotalAmount);
+                    var cost = g.Sum(i =>
+                    {
+                        if (invoiceToPItems.TryGetValue(i.Id, out var itemIds))
+                        {
+                            return itemIds.Sum(id => costByPrescriptionItem.GetValueOrDefault(id, 0m));
+                        }
+                        return 0m;
+                    });
+                    return new { Revenue = rev, Profit = rev - cost };
+                });
 
         var datesWithData = accountsByDay.Select(x => x.Date)
             .Union(casesByDay.Select(x => x.Date))
             .Union(appointmentsByDay.Select(x => x.Date))
-            .Union(revenueByDay.Select(x => x.Date))
+            .Union(dailyFinances.Keys)
             .OrderBy(d => d);
 
         return datesWithData
-            .Select(date => new DailyActivity(
-                date,
-                accountsByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0,
-                casesByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0,
-                appointmentsByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0,
-                revenueByDay.FirstOrDefault(x => x.Date == date)?.Total ?? 0m))
+            .Select(date =>
+            {
+                dailyFinances.TryGetValue(date, out var fin);
+                return new DailyActivity(
+                    date,
+                    accountsByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0,
+                    casesByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0,
+                    appointmentsByDay.FirstOrDefault(x => x.Date == date)?.Count ?? 0,
+                    fin?.Revenue ?? 0m,
+                    fin?.Profit ?? 0m);
+            })
             .ToList();
     }
 
@@ -209,15 +290,75 @@ public class DashboardRepository : IDashboardRepository
         var cashInvoices = paidInvoices.Where(i => i.PaymentMethod == PaymentMethod.CASH).ToList();
         var bankInvoices = paidInvoices.Where(i => i.PaymentMethod == PaymentMethod.BANK_TRANSFER).ToList();
 
+        // 1. Phân loại doanh thu từ InvoiceItems của các hóa đơn đã thanh toán trong kỳ
+        var paidInvoiceItems = await (
+            from item in _db.InvoiceItems.AsNoTracking()
+            join inv in _db.Invoices.AsNoTracking() on item.InvoiceId equals inv.Id
+            where inv.Status == InvoiceStatus.PAID
+               && inv.PaidAt >= fromInclusive
+               && inv.PaidAt < toExclusive
+            select new
+            {
+                item.ItemType,
+                item.TotalPrice,
+                item.ReferenceId
+            }
+        ).ToListAsync(cancellationToken);
+
+        var serviceRevenue = paidInvoiceItems
+            .Where(i => i.ItemType == InvoiceItemType.Service)
+            .Sum(i => i.TotalPrice);
+
+        var medicineRevenue = paidInvoiceItems
+            .Where(i => i.ItemType == InvoiceItemType.Medicine)
+            .Sum(i => i.TotalPrice);
+
+        // 2. Tính giá vốn thuốc (COGS) từ InventoryTransactions
+        var prescriptionItemIds = paidInvoiceItems
+            .Where(i => i.ItemType == InvoiceItemType.Medicine && i.ReferenceId != null)
+            .Select(i => i.ReferenceId!.Value)
+            .Distinct()
+            .ToList();
+
+        decimal medicineCost = 0m;
+        if (prescriptionItemIds.Count > 0)
+        {
+            foreach (var chunk in prescriptionItemIds.Chunk(1000))
+            {
+                var chunkTxns = await _db.InventoryTransactions.AsNoTracking()
+                    .Where(t => t.PrescriptionItemId != null && chunk.Contains(t.PrescriptionItemId.Value))
+                    .Select(t => new
+                    {
+                        t.TxnType,
+                        t.QuantityBase,
+                        ActualImportPrice = t.ActualImportPrice ?? 0m
+                    })
+                    .ToListAsync(cancellationToken);
+
+                medicineCost += chunkTxns.Sum(t => t.TxnType == InventoryTxnType.Dispense
+                    ? (t.QuantityBase * t.ActualImportPrice)
+                    : (t.TxnType == InventoryTxnType.Adjustment ? -(t.QuantityBase * t.ActualImportPrice) : 0m));
+            }
+        }
+
+        var totalRevenue = paidInvoices.Sum(i => i.TotalAmount);
+        var medicineProfit = medicineRevenue - medicineCost;
+        var totalProfit = totalRevenue - medicineCost;
+
         return new RevenueCounts(
-            TotalRevenue: paidInvoices.Sum(i => i.TotalAmount),
+            TotalRevenue: totalRevenue,
             PaidInvoiceCount: paidInvoices.Count,
             CashRevenue: cashInvoices.Sum(i => i.TotalAmount),
             CashCount: cashInvoices.Count,
             BankTransferRevenue: bankInvoices.Sum(i => i.TotalAmount),
             BankTransferCount: bankInvoices.Count,
             PendingInvoiceCount: pendingInvoices.Count,
-            PendingAmount: pendingInvoices.Sum());
+            PendingAmount: pendingInvoices.Sum(),
+            ServiceRevenue: serviceRevenue,
+            MedicineRevenue: medicineRevenue,
+            MedicineCost: medicineCost,
+            MedicineProfit: medicineProfit,
+            TotalProfit: totalProfit);
     }
 
     public async Task<IReadOnlyList<TopMedicine>> GetTopPrescribedMedicinesAsync(
@@ -231,33 +372,56 @@ public class DashboardRepository : IDashboardRepository
             return Array.Empty<TopMedicine>();
         }
 
-        var grouped = await (
-            from pi in _db.PrescriptionItems.AsNoTracking()
-            join p in _db.Prescriptions.AsNoTracking() on pi.PrescriptionId equals p.PrescriptionId
-            join m in _db.Medicines.AsNoTracking() on pi.MedicineId equals m.MedicineId
-            where p.PrescribedDate >= fromDate
-               && p.PrescribedDate <= toDate
-               && p.Status != PrescriptionStatus.Cancelled
-            group pi by new { m.MedicineId, m.Name } into g
+        var fromInclusive = ClinicClock.StartOfDayUtc(fromDate);
+        var toExclusive = ClinicClock.EndOfDayExclusiveUtc(toDate);
+
+        var paidMedItems = await (
+            from ii in _db.InvoiceItems.AsNoTracking()
+            join inv in _db.Invoices.AsNoTracking() on ii.InvoiceId equals inv.Id
+            join pi in _db.PrescriptionItems.AsNoTracking() on ii.ReferenceId equals pi.PrescriptionItemId
+            join m in _db.Medicines.AsNoTracking().Include(x => x.MedicinePackagings).ThenInclude(p => p.MedicineUnit) on pi.MedicineId equals m.MedicineId
+            where inv.Status == InvoiceStatus.PAID
+               && inv.PaidAt >= fromInclusive
+               && inv.PaidAt < toExclusive
+               && ii.ItemType == InvoiceItemType.Medicine
             select new
             {
-                g.Key.MedicineId,
-                MedicineName = g.Key.Name,
-                PrescriptionCount = g.Count(),
-                TotalQuantityBase = g.Sum(x => x.QuantityBase)
+                ii.Description,
+                ii.Quantity,
+                ii.UnitPrice,
+                Medicine = m,
+                PrescriptionId = pi.PrescriptionId
+            }
+        ).ToListAsync(cancellationToken);
+
+        var grouped = paidMedItems
+            .GroupBy(x => new { x.Medicine.MedicineId, x.Medicine.Name })
+            .Select(g =>
+            {
+                var baseUnit = g.First().Medicine.MedicinePackagings.FirstOrDefault(p => p.IsBaseUnit)?.MedicineUnit?.Name
+                               ?? g.First().Medicine.UsageUnit
+                               ?? "Đơn vị";
+                var totalBaseQty = g.Sum(item =>
+                {
+                    var pack = item.Medicine.MedicinePackagings.FirstOrDefault(p =>
+                        item.Description.EndsWith(" - " + p.MedicineUnit?.Name) || item.UnitPrice == p.SalePrice);
+                    var factor = pack?.ConversionFactor ?? 1;
+                    return item.Quantity * factor;
+                });
+                var prescriptionCount = g.Select(x => x.PrescriptionId).Distinct().Count();
+                return new TopMedicine(
+                    g.Key.MedicineId,
+                    g.Key.Name,
+                    prescriptionCount,
+                    totalBaseQty,
+                    baseUnit);
             })
             .OrderByDescending(x => x.PrescriptionCount)
             .ThenByDescending(x => x.TotalQuantityBase)
             .Take(topN)
-            .ToListAsync(cancellationToken);
-
-        return grouped
-            .Select(x => new TopMedicine(
-                x.MedicineId,
-                x.MedicineName,
-                x.PrescriptionCount,
-                x.TotalQuantityBase))
             .ToList();
+
+        return grouped;
     }
 
     private static ActivityCounts BuildActivityCounts(

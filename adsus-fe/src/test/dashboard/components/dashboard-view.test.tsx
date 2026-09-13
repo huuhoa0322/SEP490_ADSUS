@@ -38,6 +38,12 @@ function buildStatistics(overrides: Partial<DashboardStatistics> = {}): Dashboar
       bankTransferCount: 4,
       pendingInvoiceCount: 2,
       pendingAmount: 800000,
+      serviceRevenue: 3000000,
+      medicineRevenue: 2000000,
+      medicineCost: 800000,
+      medicineProfit: 1200000,
+      totalProfit: 4200000,
+      profitMargin: 84.0,
     },
     topMedicines: [
       { medicineId: "med-1", medicineName: "Paracetamol 500mg", prescriptionCount: 25, totalQuantityBase: 750 },
@@ -129,8 +135,8 @@ describe("DashboardView — hiện số liệu", () => {
     render(<DashboardView />);
 
     expect(screen.getAllByText("Doanh thu")[0]).toBeInTheDocument();
-    // "10 hóa đơn đã thanh toán" ở hint
-    expect(screen.getByText(/10 hóa đơn đã thanh toán/)).toBeInTheDocument();
+    expect(screen.getByText(/10 đã thanh toán/)).toBeInTheDocument();
+    expect(screen.getAllByText("Tiền lãi (Lợi nhuận)")[0]).toBeInTheDocument();
   });
 
   it("hiện bảng top thuốc kê nhiều nhất", () => {

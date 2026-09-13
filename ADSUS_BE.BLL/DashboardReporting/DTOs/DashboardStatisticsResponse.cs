@@ -48,6 +48,12 @@ public class RevenueStatistics
     public int BankTransferCount { get; set; }
     public int PendingInvoiceCount { get; set; }
     public decimal PendingAmount { get; set; }
+    public decimal ServiceRevenue { get; set; }
+    public decimal MedicineRevenue { get; set; }
+    public decimal MedicineCost { get; set; }
+    public decimal MedicineProfit { get; set; }
+    public decimal TotalProfit { get; set; }
+    public double ProfitMargin { get; set; }
 }
 
 public class TopMedicineItem
@@ -56,6 +62,7 @@ public class TopMedicineItem
     public string MedicineName { get; set; } = string.Empty;
     public int PrescriptionCount { get; set; }
     public int TotalQuantityBase { get; set; }
+    public string Unit { get; set; } = string.Empty;
 }
 
 public class AiModelMetrics
@@ -77,6 +84,7 @@ public class DailyPoint
     public int Cases { get; set; }
     public int Appointments { get; set; }
     public decimal Revenue { get; set; }
+    public decimal Profit { get; set; }
 }
 
 /// <summary>Tài khoản — tính trên toàn hệ thống, không lọc theo thời gian.</summary>

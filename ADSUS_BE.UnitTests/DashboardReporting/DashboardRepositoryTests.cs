@@ -313,32 +313,75 @@ public class DashboardRepositoryTests
         await using var db = CreateContext();
         var from = new DateOnly(2026, 7, 1);
         var to = new DateOnly(2026, 7, 31);
+        var paidAt = ClinicClock.StartOfDayUtc(from).AddHours(10);
+
+        var unitVien = new MedicineUnit { MedicineUnitId = Guid.NewGuid(), Name = "Viên" };
+        var unitGoi = new MedicineUnit { MedicineUnitId = Guid.NewGuid(), Name = "Gói" };
+        db.MedicineUnits.AddRange(unitVien, unitGoi);
 
         var med1 = BuildMedicine("Paracetamol 500mg");
-        var med2 = BuildMedicine("Amoxicillin 250mg");
+        med1.MedicinePackagings.Add(new MedicinePackaging
+        {
+            Id = Guid.NewGuid(),
+            MedicineId = med1.MedicineId,
+            MedicineUnitId = unitVien.MedicineUnitId,
+            MedicineUnit = unitVien,
+            ConversionFactor = 1,
+            IsBaseUnit = true,
+            IsSellable = true,
+            SalePrice = 5000m,
+        });
+
+        var med2 = BuildMedicine("Vitamin E 400IU");
+        med2.MedicinePackagings.Add(new MedicinePackaging
+        {
+            Id = Guid.NewGuid(),
+            MedicineId = med2.MedicineId,
+            MedicineUnitId = unitGoi.MedicineUnitId,
+            MedicineUnit = unitGoi,
+            ConversionFactor = 1,
+            IsBaseUnit = true,
+            IsSellable = true,
+            SalePrice = 10000m,
+        });
         db.Medicines.AddRange(med1, med2);
 
-        var rxActive = BuildPrescription(from, PrescriptionStatus.Active);
-        var rxCancelled = BuildPrescription(from, PrescriptionStatus.Cancelled);
-        db.Prescriptions.AddRange(rxActive, rxCancelled);
+        var paidInv = BuildInvoice(InvoiceStatus.PAID, 1_250_000m, PaymentMethod.CASH, paidAt);
+        var cancelledInv = BuildInvoice(InvoiceStatus.CANCELLED, 999_000m, PaymentMethod.CASH, paidAt);
+        db.Invoices.AddRange(paidInv, cancelledInv);
 
-        db.PrescriptionItems.AddRange(
-            BuildPrescriptionItem(rxActive.PrescriptionId, med1.MedicineId, quantityBase: 30),
-            BuildPrescriptionItem(rxActive.PrescriptionId, med1.MedicineId, quantityBase: 20),
-            BuildPrescriptionItem(rxActive.PrescriptionId, med2.MedicineId, quantityBase: 100),
-            BuildPrescriptionItem(rxCancelled.PrescriptionId, med1.MedicineId, quantityBase: 999)); // bỏ qua
+        var rx1 = BuildPrescription(from, PrescriptionStatus.Active);
+        var rx2 = BuildPrescription(from, PrescriptionStatus.Active);
+        db.Prescriptions.AddRange(rx1, rx2);
+
+        var pi1 = BuildPrescriptionItem(rx1.PrescriptionId, med1.MedicineId, quantityBase: 30);
+        var pi2 = BuildPrescriptionItem(rx2.PrescriptionId, med1.MedicineId, quantityBase: 20);
+        var pi3 = BuildPrescriptionItem(rx1.PrescriptionId, med2.MedicineId, quantityBase: 100);
+        var piCancelled = BuildPrescriptionItem(rx1.PrescriptionId, med1.MedicineId, quantityBase: 999);
+        db.PrescriptionItems.AddRange(pi1, pi2, pi3, piCancelled);
+
+        db.InvoiceItems.AddRange(
+            new InvoiceItem { Id = Guid.NewGuid(), InvoiceId = paidInv.Id, Description = "Paracetamol 500mg - Viên", Quantity = 30, UnitPrice = 5000m, TotalPrice = 150000m, ItemType = InvoiceItemType.Medicine, ReferenceId = pi1.PrescriptionItemId },
+            new InvoiceItem { Id = Guid.NewGuid(), InvoiceId = paidInv.Id, Description = "Paracetamol 500mg - Viên", Quantity = 20, UnitPrice = 5000m, TotalPrice = 100000m, ItemType = InvoiceItemType.Medicine, ReferenceId = pi2.PrescriptionItemId },
+            new InvoiceItem { Id = Guid.NewGuid(), InvoiceId = paidInv.Id, Description = "Vitamin E 400IU - Gói", Quantity = 100, UnitPrice = 10000m, TotalPrice = 1000000m, ItemType = InvoiceItemType.Medicine, ReferenceId = pi3.PrescriptionItemId },
+            new InvoiceItem { Id = Guid.NewGuid(), InvoiceId = cancelledInv.Id, Description = "Paracetamol 500mg - Viên", Quantity = 999, UnitPrice = 5000m, TotalPrice = 999000m, ItemType = InvoiceItemType.Medicine, ReferenceId = piCancelled.PrescriptionItemId }
+        );
+
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var sut = new DashboardRepository(db);
         var result = await sut.GetTopPrescribedMedicinesAsync(from, to, 10, CancellationToken.None);
 
         Assert.Equal(2, result.Count);
-        Assert.Equal("Paracetamol 500mg", result[0].MedicineName); // 2 lần kê > 1 lần
+        Assert.Equal("Paracetamol 500mg", result[0].MedicineName); // 2 lần kê > 1 lần kê
         Assert.Equal(2, result[0].PrescriptionCount);
-        Assert.Equal(50, result[0].TotalQuantityBase); // 30 + 20
-        Assert.Equal("Amoxicillin 250mg", result[1].MedicineName);
+        Assert.Equal(50, result[0].TotalQuantityBase);
+        Assert.Equal("Viên", result[0].Unit);
+
+        Assert.Equal("Vitamin E 400IU", result[1].MedicineName);
         Assert.Equal(1, result[1].PrescriptionCount);
         Assert.Equal(100, result[1].TotalQuantityBase);
+        Assert.Equal("Gói", result[1].Unit);
     }
 
     [Fact]
@@ -356,6 +399,69 @@ public class DashboardRepositoryTests
 
         var dayResult = Assert.Single(result);
         Assert.Equal(500_000m, dayResult.Revenue);
+        Assert.Equal(500_000m, dayResult.Profit);
+    }
+
+    [Fact]
+    public async Task GetRevenueAsync_CalculatesServiceAndMedicineRevenue_AndDeductsInventoryCosts()
+    {
+        await using var db = CreateContext();
+        var from = new DateOnly(2026, 7, 10);
+        var to = new DateOnly(2026, 7, 12);
+        var fromUtc = ClinicClock.StartOfDayUtc(from);
+
+        var inv = BuildInvoice(InvoiceStatus.PAID, 500_000m, PaymentMethod.CASH, fromUtc.AddHours(2));
+        db.Invoices.Add(inv);
+
+        var pItemId = Guid.NewGuid();
+        db.InvoiceItems.AddRange(
+            BuildInvoiceItem(inv.Id, InvoiceItemType.Service, 200_000m),
+            BuildInvoiceItem(inv.Id, InvoiceItemType.Medicine, 300_000m, pItemId));
+
+        // 10 dispensed @ 15_000 = 150_000 cost. 2 refunded @ 15_000 = 30_000. Net cost = 120_000.
+        db.InventoryTransactions.AddRange(
+            BuildInventoryTxn(pItemId, InventoryTxnType.Dispense, 10, 15_000m),
+            BuildInventoryTxn(pItemId, InventoryTxnType.Adjustment, 2, 15_000m));
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var sut = new DashboardRepository(db);
+        var result = await sut.GetRevenueAsync(from, to, CancellationToken.None);
+
+        Assert.Equal(500_000m, result.TotalRevenue);
+        Assert.Equal(200_000m, result.ServiceRevenue);
+        Assert.Equal(300_000m, result.MedicineRevenue);
+        Assert.Equal(120_000m, result.MedicineCost);
+        Assert.Equal(180_000m, result.MedicineProfit);
+        Assert.Equal(380_000m, result.TotalProfit);
+    }
+
+    [Fact]
+    public async Task GetDailyActivityAsync_CalculatesDailyProfit_WithMedicineCosts()
+    {
+        await using var db = CreateContext();
+        var day1 = new DateOnly(2026, 7, 10);
+        var fromUtc = ClinicClock.StartOfDayUtc(day1);
+
+        var inv = BuildInvoice(InvoiceStatus.PAID, 600_000m, PaymentMethod.CASH, fromUtc.AddHours(9));
+        db.Invoices.Add(inv);
+
+        var pItemId = Guid.NewGuid();
+        db.InvoiceItems.AddRange(
+            BuildInvoiceItem(inv.Id, InvoiceItemType.Service, 200_000m),
+            BuildInvoiceItem(inv.Id, InvoiceItemType.Medicine, 400_000m, pItemId));
+
+        // Dispense cost = 150_000m
+        db.InventoryTransactions.Add(BuildInventoryTxn(pItemId, InventoryTxnType.Dispense, 10, 15_000m));
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var sut = new DashboardRepository(db);
+        var result = await sut.GetDailyActivityAsync(day1, day1, CancellationToken.None);
+
+        var dayResult = Assert.Single(result);
+        Assert.Equal(600_000m, dayResult.Revenue);
+        Assert.Equal(450_000m, dayResult.Profit); // 600_000 - 150_000 = 450_000
     }
 
     // ---------- helpers ----------
@@ -472,5 +578,30 @@ public class DashboardRepositoryTests
         DurationDays = 7,
         StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
         QuantityBase = quantityBase,
+    };
+
+    private static InvoiceItem BuildInvoiceItem(Guid invoiceId, InvoiceItemType type, decimal totalPrice, Guid? referenceId = null) => new()
+    {
+        Id = Guid.NewGuid(),
+        InvoiceId = invoiceId,
+        Description = "Test item",
+        Quantity = 1,
+        UnitPrice = totalPrice,
+        TotalPrice = totalPrice,
+        ItemType = type,
+        ReferenceId = referenceId,
+    };
+
+    private static InventoryTransaction BuildInventoryTxn(Guid prescriptionItemId, InventoryTxnType txnType, int qtyBase, decimal actualImportPrice) => new()
+    {
+        Id = Guid.NewGuid(),
+        BatchId = Guid.NewGuid(),
+        MedicinePackagingId = Guid.NewGuid(),
+        TxnDate = DateTime.UtcNow,
+        PrescriptionItemId = prescriptionItemId,
+        TxnType = txnType,
+        QuantityBase = qtyBase,
+        QuantityInUnit = qtyBase,
+        ActualImportPrice = actualImportPrice,
     };
 }

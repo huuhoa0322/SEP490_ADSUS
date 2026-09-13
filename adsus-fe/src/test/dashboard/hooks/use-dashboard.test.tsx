@@ -29,6 +29,12 @@ const SAMPLE_STATISTICS: DashboardStatistics = {
     bankTransferCount: 4,
     pendingInvoiceCount: 2,
     pendingAmount: 800000,
+    serviceRevenue: 3000000,
+    medicineRevenue: 2000000,
+    medicineCost: 800000,
+    medicineProfit: 1200000,
+    totalProfit: 4200000,
+    profitMargin: 84.0,
   },
   topMedicines: [
     { medicineId: "med-1", medicineName: "Paracetamol 500mg", prescriptionCount: 25, totalQuantityBase: 750 },
