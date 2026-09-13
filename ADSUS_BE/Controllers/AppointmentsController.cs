@@ -100,6 +100,7 @@ public sealed class AppointmentsController : ControllerBase
     /// POST /api/v1/appointments — Đặt lịch hẹn mới (UC-13).
     /// BR-01: Slot phải tồn tại và có status = OPEN.
     /// BR-02: Patient không được đặt trùng slot đã có BOOKED appointment.
+    /// Support đặt hộ cho người thân qua relationshipId.
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "PATIENT")]
@@ -111,8 +112,10 @@ public sealed class AppointmentsController : ControllerBase
     {
         try
         {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new InvalidOperationException("Missing NameIdentifier claim."));
             var patientProfileId = await GetPatientProfileIdAsync(ct);
-            var appointment = await _appointmentService.BookAppointmentAsync(patientProfileId, request, ct);
+            var appointment = await _appointmentService.BookAppointmentAsync(userId, patientProfileId, request, ct);
             return StatusCode(StatusCodes.Status201Created, ApiResponse<AppointmentResponse>.Ok(appointment, code: 201));
         }
         catch (InvalidOperationException ex)
@@ -169,8 +172,11 @@ public sealed class AppointmentsController : ControllerBase
     {
         try
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new InvalidOperationException("Missing NameIdentifier claim.");
+            var userGuid = Guid.Parse(userId);
             var patientProfileId = await GetPatientProfileIdAsync(ct);
-            var appointment = await _appointmentService.CancelAppointmentAsync(id, patientProfileId, request, ct);
+            var appointment = await _appointmentService.CancelAppointmentAsync(id, userGuid, patientProfileId, request, ct);
             return Ok(ApiResponse<AppointmentResponse>.Ok(appointment));
         }
         catch (InvalidOperationException ex)

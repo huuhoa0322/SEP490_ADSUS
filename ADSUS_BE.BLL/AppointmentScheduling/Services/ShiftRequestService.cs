@@ -229,11 +229,11 @@ public class ShiftRequestService : IShiftRequestService
                         .Select(p => p.UserId)
                         .FirstOrDefaultAsync(ct);
 
-                    if (patientUserId != Guid.Empty)
+                    if (patientUserId.HasValue && patientUserId.Value != Guid.Empty)
                     {
                         var notification = new SendNotificationRequest
                         {
-                            UserId = patientUserId,
+                            UserId = patientUserId.Value,
                             Type = "appointment_cancellation",
                             Title = "Lịch khám đã bị hủy",
                             Body = $"Lịch khám lúc {slot.StartTime:hh\\:mm} ngày {slot.SlotDate:dd/MM/yyyy} đã bị hủy do bác sĩ có việc đột xuất. Xin lỗi vì sự bất tiện này.",

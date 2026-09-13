@@ -17,6 +17,15 @@ public interface IAuthService
     Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// UC-02 — đăng ký tài khoản bệnh nhân (Mobile).
+    /// Hỗ trợ Account Linking: nếu cung cấp GuestPatientProfileId, hệ thống sẽ
+    /// liên kết tài khoản mới với PatientProfile đã tồn tại và xóa các trường guest.
+    /// </summary>
+    Task<(RegisterResult Result, RegisterResponse? Response)> RegisterAsync(
+        RegisterRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Refresh tokens - exchanges a valid refresh token for new access + refresh tokens.
     /// Supports SignalR persistent connections without re-login.
     /// </summary>

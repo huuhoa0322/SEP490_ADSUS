@@ -17,6 +17,9 @@ class AppointmentSummary {
     this.endTime,
     this.doctorId,
     this.doctorName,
+    // Issue #3: isBookedForOthers, relationshipLabel
+    this.isBookedForOthers = false,
+    this.relationshipLabel,
   });
 
   final String id;
@@ -35,6 +38,10 @@ class AppointmentSummary {
   final String? endTime;
   final String? doctorId;
   final String? doctorName;
+
+  // Issue #3: isBookedForOthers, relationshipLabel
+  final bool isBookedForOthers;
+  final String? relationshipLabel;
 
   bool get isBooked => status == AppointmentStatus.booked;
   bool get isCancelled => status == AppointmentStatus.cancelled;
