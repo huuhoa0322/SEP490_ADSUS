@@ -109,6 +109,9 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
       _isOpen = true;
     });
 
+    // Tự động đánh dấu tất cả đã đọc khi mở dropdown
+    ref.read(notificationsProvider.notifier).markAllAsRead();
+
     // Only fetch if no notifications cached
     final currentState = ref.read(notificationsProvider);
     if (currentState.notifications.isEmpty) {
@@ -241,7 +244,7 @@ class _NotificationDropdownContent extends ConsumerWidget {
                     ),
         ),
 
-        // Footer with "View all" and "Mark all as read" (only show if there are notifications)
+        // Footer with "View all" (only show if there are notifications)
         if (notifications.isNotEmpty)
           Container(
             padding: const EdgeInsets.all(12),
@@ -250,39 +253,19 @@ class _NotificationDropdownContent extends ConsumerWidget {
                 top: BorderSide(color: AppColors.border),
               ),
             ),
-            child: Column(
-              children: [
-                // Mark all as read button
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton.icon(
-                    onPressed: () {
-                      ref.read(notificationsProvider.notifier).markAllAsRead();
-                    },
-                    icon: const Icon(Icons.done_all, size: 18),
-                    label: const Text('Đánh dấu tất cả đã đọc'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.teal,
+            child: SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () {
+                  onClose();
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const NotificationHistoryScreen(),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // View all button
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () {
-                      onClose();
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const NotificationHistoryScreen(),
-                        ),
-                      );
-                    },
-                    child: const Text('Xem tất cả thông báo'),
-                  ),
-                ),
-              ],
+                  );
+                },
+                child: const Text('Xem tất cả thông báo'),
+              ),
             ),
           ),
       ],
