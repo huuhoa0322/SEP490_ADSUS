@@ -23,13 +23,14 @@ public class FirebasePhoneVerificationService : IFirebasePhoneVerificationServic
     private const string VietnamCountryCodePrefix = "+84";
     private const string PhoneNumberClaim = "phone_number";
 
+    private readonly IConfiguration _configuration;
     private readonly ILogger<FirebasePhoneVerificationService> _logger;
 
     public FirebasePhoneVerificationService(
         IConfiguration configuration, ILogger<FirebasePhoneVerificationService> logger)
     {
+        _configuration = configuration;
         _logger = logger;
-        EnsureFirebaseAppInitialized(configuration);
     }
 
     public async Task<string?> VerifyAndGetLocalPhoneNumberAsync(
@@ -39,6 +40,8 @@ public class FirebasePhoneVerificationService : IFirebasePhoneVerificationServic
         {
             return null;
         }
+
+        EnsureFirebaseAppInitialized(_configuration);
 
         try
         {
