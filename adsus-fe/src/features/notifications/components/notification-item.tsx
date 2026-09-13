@@ -36,9 +36,14 @@ export function NotificationItem({ notification }: NotificationItemProps) {
     }
     if (notification.deepLink) {
       let targetLink = notification.deepLink;
-      // Nếu là Bác sĩ và link trỏ vào /appointments (không tồn tại cho Bác sĩ) thì chuyển sang /schedule/patients
-      if (currentUser?.role === "DOCTOR" && (targetLink === "/appointments" || targetLink.startsWith("/appointments/"))) {
-        targetLink = "/schedule/patients";
+      // Nếu là Bác sĩ: nếu có caseId trong metadata thì luôn dẫn thẳng vào ca khám
+      if (currentUser?.role === "DOCTOR") {
+        const metaCaseId = (notification.metadata as Record<string, unknown> | null)?.caseId;
+        if (typeof metaCaseId === "string" && metaCaseId) {
+          targetLink = `/cases/${metaCaseId}`;
+        } else if (targetLink === "/appointments" || targetLink.startsWith("/appointments/")) {
+          targetLink = "/schedule/patients";
+        }
       }
       router.push(targetLink);
     }

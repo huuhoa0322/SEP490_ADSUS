@@ -652,10 +652,12 @@ public sealed class AppointmentService : IAppointmentService
             "Appointment {AppointmentId} checked in by nurse. Status: {Status}",
             appointmentId, appointment.Status);
 
+        var patientProfile = await _profileRepo.GetByIdAsync(appointment.PatientProfileId, ct);
+        var patientName = patientProfile?.User?.FullName ?? "Bệnh nhân";
+
         // Gửi notification cho patient khi checkin thành công
         try
         {
-            var patientProfile = await _profileRepo.GetByIdAsync(appointment.PatientProfileId, ct);
             if (patientProfile != null)
             {
                 await _notificationService.SendAsync(new SendNotificationRequest
@@ -677,19 +679,24 @@ public sealed class AppointmentService : IAppointmentService
             _logger.LogWarning(ex, "Failed to send checkin notification to patient for appointment {AppointmentId}", appointmentId);
         }
 
-        // Gửi notification cho doctor khi patient checkin
+        // Gửi notification cho doctor khi patient checkin (dẫn thẳng vào ca khám)
         try
         {
+            var doctorDeepLink = appointment.CaseId.HasValue
+                ? $"/cases/{appointment.CaseId.Value}"
+                : $"/appointments/{appointment.AppointmentId}";
+
             await _notificationService.SendAsync(new SendNotificationRequest
             {
                 UserId = appointment.Slot.DoctorId,
                 Type = "patient_checked_in",
-                Title = "Bệnh nhân đã check-in",
-                Body = $"Bệnh nhân đã check-in cho lịch khám ngày {appointment.Slot.SlotDate:dd/MM/yyyy} lúc {appointment.Slot.StartTime}.",
-                DeepLink = $"/appointments/{appointment.AppointmentId}",
+                Title = "Bệnh nhân đã tới khám",
+                Body = $"Bệnh nhân {patientName} đã tới khám cho lịch hẹn ngày {appointment.Slot.SlotDate:dd/MM/yyyy} lúc {appointment.Slot.StartTime}.",
+                DeepLink = doctorDeepLink,
                 Metadata = new Dictionary<string, object>
                 {
-                    ["appointmentId"] = appointment.AppointmentId.ToString()
+                    ["appointmentId"] = appointment.AppointmentId.ToString(),
+                    ["caseId"] = appointment.CaseId?.ToString() ?? string.Empty
                 }
             }, ct);
         }
@@ -763,10 +770,12 @@ public sealed class AppointmentService : IAppointmentService
             "Appointment {AppointmentId} checked in by nurse via CaseId {CaseId}. Status: {Status}",
             appointment.AppointmentId, caseId, appointment.Status);
 
+        var patientProfile = await _profileRepo.GetByIdAsync(appointment.PatientProfileId, ct);
+        var patientName = patientProfile?.User?.FullName ?? "Bệnh nhân";
+
         // Gửi notification cho patient khi checkin thành công
         try
         {
-            var patientProfile = await _profileRepo.GetByIdAsync(appointment.PatientProfileId, ct);
             if (patientProfile != null)
             {
                 await _notificationService.SendAsync(new SendNotificationRequest
@@ -788,19 +797,24 @@ public sealed class AppointmentService : IAppointmentService
             _logger.LogWarning(ex, "Failed to send checkin notification to patient for appointment {AppointmentId}", appointment.AppointmentId);
         }
 
-        // Gửi notification cho doctor khi patient checkin
+        // Gửi notification cho doctor khi patient checkin (dẫn thẳng vào ca khám)
         try
         {
+            var doctorDeepLink = appointment.CaseId.HasValue
+                ? $"/cases/{appointment.CaseId.Value}"
+                : $"/cases/{caseId}";
+
             await _notificationService.SendAsync(new SendNotificationRequest
             {
                 UserId = appointment.Slot.DoctorId,
                 Type = "patient_checked_in",
-                Title = "Bệnh nhân đã check-in",
-                Body = $"Bệnh nhân đã check-in cho lịch khám ngày {appointment.Slot.SlotDate:dd/MM/yyyy} lúc {appointment.Slot.StartTime}.",
-                DeepLink = $"/appointments/{appointment.AppointmentId}",
+                Title = "Bệnh nhân đã tới khám",
+                Body = $"Bệnh nhân {patientName} đã tới khám cho lịch hẹn ngày {appointment.Slot.SlotDate:dd/MM/yyyy} lúc {appointment.Slot.StartTime}.",
+                DeepLink = doctorDeepLink,
                 Metadata = new Dictionary<string, object>
                 {
-                    ["appointmentId"] = appointment.AppointmentId.ToString()
+                    ["appointmentId"] = appointment.AppointmentId.ToString(),
+                    ["caseId"] = (appointment.CaseId ?? caseId).ToString()
                 }
             }, ct);
         }
