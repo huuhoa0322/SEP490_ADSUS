@@ -12,6 +12,7 @@ import {
   MoreVertical,
   Plus,
   Search,
+  Stethoscope,
   UserCheck,
 } from "lucide-react";
 
@@ -268,6 +269,15 @@ export function PatientListView() {
                         <div className="flex items-center justify-end gap-1.5">
                           {patient.patientProfileId ? (
                             <>
+                              {patient.latestCaseId && (
+                                <Link
+                                  href={`/cases/${patient.latestCaseId}`}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700 shadow-2xs transition-all hover:bg-sky-100 hover:border-sky-300 hover:text-sky-800 hover:shadow-xs"
+                                >
+                                  <Stethoscope className="size-3.5" />
+                                  Ca khám mới nhất
+                                </Link>
+                              )}
                               <Link
                                 href={`/patients/${patient.patientProfileId}/cases/new`}
                                 className="inline-flex items-center gap-1.5 rounded-full bg-[#2E37A4] px-3 py-1 text-xs font-medium text-white shadow-2xs transition-all hover:bg-[#2E37A4]/90 hover:shadow-xs"
@@ -296,6 +306,14 @@ export function PatientListView() {
                                   </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
+                                  {patient.latestCaseId && (
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/cases/${patient.latestCaseId}`}>
+                                        <Stethoscope className="size-4 text-foreground" />
+                                        Ca khám mới nhất
+                                      </Link>
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem asChild>
                                     <Link href={`/patients/${patient.patientProfileId}`}>
                                       <Eye className="size-4 text-foreground" />
