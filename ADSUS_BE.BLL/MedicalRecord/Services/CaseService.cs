@@ -604,7 +604,7 @@ public sealed class CaseService : ICaseService
                 UserId = doctorId,
                 Type = "new_case_created",
                 Title = "Có ca khám mới",
-                Body = $"Bệnh nhân {patientName} đã đặt lịch khám với triệu chứng. Ca khám đã được tạo tự động.",
+                Body = $"Bệnh nhân {patientName} đã đặt lịch khám. Ca khám đã được tạo tự động.",
                 DeepLink = $"/cases/{caseId}",
                 Metadata = new Dictionary<string, object>
                 {

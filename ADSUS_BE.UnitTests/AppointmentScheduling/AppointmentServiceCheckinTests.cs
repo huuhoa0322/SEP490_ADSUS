@@ -175,6 +175,35 @@ public class AppointmentServiceCheckinTests : IDisposable
         Assert.Equal(AppointmentStatus.Completed, updatedAppointment!.Status);
     }
 
+    [Fact]
+    public async Task CheckinAppointmentAsync_SendsDoctorNotificationWithDirectCaseDeepLink()
+    {
+        // Arrange
+        var doctor = CreateDoctor();
+        var patient = CreatePatient();
+        var profile = CreatePatientProfile(patient);
+        var slot = CreateSlot(doctor, SlotStatus.Booked);
+        var expectedCaseId = Guid.NewGuid();
+        var appointment = CreateAppointment(slot, profile, AppointmentStatus.Booked);
+        appointment.CaseId = expectedCaseId;
+
+        await SeedAppointmentAsync(appointment);
+
+        // Act
+        await _sut.CheckinAppointmentAsync(_appointmentId, TestContext.Current.CancellationToken);
+
+        // Assert: Notification sent to doctor with Title "Bệnh nhân đã tới khám" and DeepLink "/cases/{caseId}"
+        _notificationService.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r =>
+                r.UserId == doctor.UserId &&
+                r.Type == "patient_checked_in" &&
+                r.Title == "Bệnh nhân đã tới khám" &&
+                r.DeepLink == $"/cases/{expectedCaseId}" &&
+                r.Metadata != null &&
+                r.Metadata["caseId"].ToString() == expectedCaseId.ToString()),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     #endregion
 
     #region TC-002: Already Checked-in Appointment (Completed or Approved - backward compat)

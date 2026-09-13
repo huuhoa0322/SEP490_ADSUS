@@ -191,7 +191,8 @@ public sealed class PatientProfileService : IPatientProfileService
                 FullName: r.FullName,
                 Phone: r.Phone,
                 LatestVisitDate: r.LatestVisitDate,
-                LatestVisitStatus: r.LatestVisitStatus))
+                LatestVisitStatus: r.LatestVisitStatus,
+                LatestCaseId: r.LatestCaseId))
             .ToList();
 
         // Trang 0 buộc giao diện phải xử lý riêng một trường hợp vô nghĩa, nên tối thiểu là 1.

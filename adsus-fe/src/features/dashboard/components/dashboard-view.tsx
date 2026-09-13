@@ -4,9 +4,21 @@ import { AlertCircle, Banknote, CalendarCheck, Loader2, ScanLine, Users } from "
 import { useState } from "react";
 
 import { getApiErrorMessage } from "@/lib/api-client";
+import { formatMetricPercent } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 
 import { useDashboardStatistics } from "../hooks/use-dashboard";
+
+function renderAiMetric(val: string) {
+  if (val === "Chưa có dữ liệu") {
+    return (
+      <span aria-label="Chưa có dữ liệu" className="text-lg text-muted-foreground">
+        Chưa có<br />dữ liệu
+      </span>
+    );
+  }
+  return val;
+}
 
 /** Định dạng số tiền VND không kèm phần thập phân. */
 function formatVND(amount: number): string {
@@ -357,49 +369,31 @@ export function DashboardView() {
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
             <ChartCard
               title="Độ chính xác AI"
-              description={`Phiên bản: ${data.activeAiModel.versionCode || "Không có"}`}
+              description={`Phiên bản: ${data?.activeAiModel?.versionCode || "Không có"}`}
             >
               <div className="mt-4 flex items-center gap-6 text-center justify-around">
                 <div>
                   <div className="text-3xl font-bold font-heading text-foreground tabular-nums">
-                    {data.activeAiModel.precision != null
-                      ? (data.activeAiModel.precision * 100).toFixed(1) + "%"
-                      : (
-                        <span className="text-lg text-muted-foreground">
-                          Chưa có<br />dữ liệu
-                        </span>
-                      )}
+                    {renderAiMetric(formatMetricPercent(data?.activeAiModel?.precision, true))}
                   </div>
                   <div className="mt-1 text-sm font-medium text-muted-foreground">Precision</div>
                 </div>
                 <div className="h-12 w-px bg-[var(--border)]" />
                 <div>
                   <div className="text-3xl font-bold font-heading text-foreground tabular-nums">
-                    {data.activeAiModel.recall != null
-                      ? (data.activeAiModel.recall * 100).toFixed(1) + "%"
-                      : (
-                        <span className="text-lg text-muted-foreground">
-                          Chưa có<br />dữ liệu
-                        </span>
-                      )}
+                    {renderAiMetric(formatMetricPercent(data?.activeAiModel?.recall, true))}
                   </div>
                   <div className="mt-1 text-sm font-medium text-muted-foreground">Recall</div>
                 </div>
                 <div className="h-12 w-px bg-[var(--border)]" />
                 <div>
                   <div className="text-3xl font-bold font-heading text-[var(--cat-teal)] tabular-nums">
-                    {data.activeAiModel.map50 != null
-                      ? data.activeAiModel.map50.toFixed(1) + "%"
-                      : (
-                        <span className="text-lg text-muted-foreground">
-                          Chưa có<br />dữ liệu
-                        </span>
-                      )}
+                    {renderAiMetric(formatMetricPercent(data?.activeAiModel?.map50, false))}
                   </div>
                   <div className="mt-1 text-sm font-medium text-muted-foreground">mAP50</div>
                 </div>
               </div>
-              {data.activeAiModel.lastEvaluatedAt && (
+              {data?.activeAiModel?.lastEvaluatedAt && (
                 <p className="mt-6 border-t border-[var(--border)] pt-4 text-center text-xs text-muted-foreground">
                   mAP50 tính lần cuối: {new Date(data.activeAiModel.lastEvaluatedAt).toLocaleString("vi-VN")}
                 </p>

@@ -1,9 +1,19 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAuthStore } from "@/store/auth-store";
 
 import { PatientListView } from "@/features/medical-record/components/patient-list-view";
+
+vi.mock("@/features/nurse-checkin/components/book-appointment-modal", () => ({
+  BookAppointmentModal: ({
+    patientName,
+    open,
+  }: {
+    patientName: string;
+    open: boolean;
+  }) => (open ? <div data-testid="book-appointment-modal">Modal cho {patientName}</div> : null),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -15,10 +25,10 @@ vi.mock("@/features/medical-record/hooks/use-patients", () => ({
   usePatientList: () => listMock(),
 }));
 
-function signInAs(role: "DOCTOR" | "STAFF") {
+function signInAs(role: "DOCTOR" | "STAFF" | "ADMIN") {
   useAuthStore.getState().signIn("access-token", "refresh-token", {
     userId: "user-1",
-    fullName: role === "STAFF" ? "ĐD. Võ Thị Thu Hà" : "BS. Nguyễn Văn An",
+    fullName: role === "STAFF" ? "ĐD. Võ Thị Thu Hà" : role === "ADMIN" ? "Quản trị viên" : "BS. Nguyễn Văn An",
     email: null,
     role,
     mustChangePassword: false,
@@ -70,13 +80,16 @@ describe("PatientListView", () => {
     expect(screen.queryByRole("link", { name: /xem hồ sơ bệnh án/i })).not.toBeInTheDocument();
   });
 
-  it("dòng đã có hồ sơ nền hiện cả hai nút", () => {
+  it("dòng đã có hồ sơ nền hiện nút Tạo ca khám và link tên bệnh nhân dẫn tới hồ sơ", () => {
     signInAs("DOCTOR");
     mockList([withProfile]);
 
     render(<PatientListView />);
 
-    expect(screen.getByRole("link", { name: /xem hồ sơ bệnh án/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Trần Thị Mai" })).toHaveAttribute(
+      "href",
+      "/patients/profile-1"
+    );
     expect(screen.getByRole("link", { name: /tạo ca khám/i })).toBeInTheDocument();
   });
 
@@ -138,5 +151,58 @@ describe("PatientListView", () => {
 
     // Bệnh nhân đã có hồ sơ hiển thị tên sạch sẽ
     expect(screen.getByRole("link", { name: "Trần Thị Mai" })).toBeInTheDocument();
+  });
+
+  describe("Nút Đặt lịch hẹn (Staff book appointment feature)", () => {
+    it("hiển thị nút Đặt lịch hẹn cho STAFF khi bệnh nhân đã có hồ sơ nền", () => {
+      signInAs("STAFF");
+      mockList([withProfile]);
+
+      render(<PatientListView />);
+
+      const bookBtn = screen.getByRole("button", { name: /đặt lịch hẹn/i });
+      expect(bookBtn).toBeInTheDocument();
+    });
+
+    it("hiển thị nút Đặt lịch hẹn cho ADMIN khi bệnh nhân đã có hồ sơ nền", () => {
+      signInAs("ADMIN");
+      mockList([withProfile]);
+
+      render(<PatientListView />);
+
+      const bookBtn = screen.getByRole("button", { name: /đặt lịch hẹn/i });
+      expect(bookBtn).toBeInTheDocument();
+    });
+
+    it("ẩn nút Đặt lịch hẹn đối với DOCTOR dù bệnh nhân đã có hồ sơ nền", () => {
+      signInAs("DOCTOR");
+      mockList([withProfile]);
+
+      render(<PatientListView />);
+
+      expect(screen.queryByRole("button", { name: /đặt lịch hẹn/i })).not.toBeInTheDocument();
+    });
+
+    it("ẩn nút Đặt lịch hẹn khi bệnh nhân chưa có hồ sơ nền (patientProfileId là null)", () => {
+      signInAs("STAFF");
+      mockList([withoutProfile]);
+
+      render(<PatientListView />);
+
+      expect(screen.queryByRole("button", { name: /đặt lịch hẹn/i })).not.toBeInTheDocument();
+    });
+
+    it("bấm nút Đặt lịch hẹn mở modal BookAppointmentModal với thông tin bệnh nhân", () => {
+      signInAs("STAFF");
+      mockList([withProfile]);
+
+      render(<PatientListView />);
+
+      const bookBtn = screen.getByRole("button", { name: /đặt lịch hẹn/i });
+      fireEvent.click(bookBtn);
+
+      expect(screen.getByTestId("book-appointment-modal")).toBeInTheDocument();
+      expect(screen.getByText("Modal cho Trần Thị Mai")).toBeInTheDocument();
+    });
   });
 });

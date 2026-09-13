@@ -35,6 +35,7 @@ export interface PatientSummary {
   /** DateOnly của .NET serialize thành "2026-07-22". */
   latestVisitDate: string | null;
   latestVisitStatus: CaseStatus | null;
+  latestCaseId?: string | null;
 }
 
 /** Hồ sơ y tế nền (#17 #18 #19, SCR-10). */

@@ -13,4 +13,5 @@ public sealed record PatientListRow(
     string FullName,
     string Phone,
     DateOnly? LatestVisitDate,
-    string? LatestVisitStatus);
+    string? LatestVisitStatus,
+    Guid? LatestCaseId = null);

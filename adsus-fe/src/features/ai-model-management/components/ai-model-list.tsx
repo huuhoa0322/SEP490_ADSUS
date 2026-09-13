@@ -13,11 +13,7 @@ import type { AiModelVersion } from "../types/ai-model.types";
 import { AiModelDetailDialog } from "./ai-model-detail-dialog";
 import { AiModelFormDialog } from "./ai-model-form";
 import { PaginationNumbered } from "@/components/ui/pagination-numbered";
-
-const formatPercent = (val?: number | null) => {
-  if (val === undefined || val === null) return "Chưa có dữ liệu";
-  return (val * 100).toFixed(1) + "%";
-};
+import { formatMetricPercent } from "@/lib/utils";
 
 
 export function AiModelList() {
@@ -166,7 +162,13 @@ export function AiModelList() {
                   {model.hfFilename}
                 </td>
                 <td className="px-5 py-4 text-muted-foreground">
-                  {formatPercent(model.livePrecision)} / {formatPercent(model.liveRecall)}
+                  {model.livePrecision != null || model.liveRecall != null ? (
+                    <span>
+                      {formatMetricPercent(model.livePrecision, true)} / {formatMetricPercent(model.liveRecall, true)}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Chưa có dữ liệu</span>
+                  )}
                 </td>
                 <td className="px-5 py-4 text-muted-foreground">
                   {model.liveMap50 != null ? (
@@ -177,10 +179,10 @@ export function AiModelList() {
                           style={{ width: `${Math.min(100, Math.max(0, model.liveMap50))}%` }}
                         />
                       </div>
-                      <span className="font-mono text-foreground">{formatPercent(model.liveMap50 / 100)}</span>
+                      <span className="font-mono text-foreground">{formatMetricPercent(model.liveMap50, false)}</span>
                     </div>
                   ) : (
-                    formatPercent(null)
+                    formatMetricPercent(null, false)
                   )}
                   {model.lastEvaluatedAt && (
                     <div className="text-[10px] text-muted-foreground/60 mt-1">

@@ -196,7 +196,8 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
                 // Không gọi CaseStatus.ToApiString() (ADSUS_BE.BLL.Common): DAL không — và không
                 // nên — tham chiếu BLL (chiều phụ thuộc đúng là BLL -> DAL). Ba nhãn case_status
                 // ToApiString(CaseStatus) hiện tại (xem chú thích tại EnumExtensions.cs).
-                LatestVisitStatus: x.LatestCase == null ? null : (x.LatestCase.Status == CaseStatus.InProgress ? "IN_PROGRESS" : x.LatestCase.Status.ToString().ToUpperInvariant())))
+                LatestVisitStatus: x.LatestCase == null ? null : (x.LatestCase.Status == CaseStatus.InProgress ? "IN_PROGRESS" : x.LatestCase.Status.ToString().ToUpperInvariant()),
+                LatestCaseId: x.LatestCase?.CaseId))
             .ToList();
 
         return (rows, total);

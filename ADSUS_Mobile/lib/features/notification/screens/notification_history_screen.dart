@@ -44,12 +44,13 @@ class _NotificationHistoryScreenState
   @override
   void initState() {
     super.initState();
-    // Load notifications trong 60 ngày với 20 items đầu tiên
+    // Load notifications trong 60 ngày với 20 items đầu tiên và tự động đánh dấu tất cả đã đọc
     Future.microtask(() {
       ref.read(notificationsProvider.notifier).fetchNotifications(
             fromDate: DateTime.now().subtract(const Duration(days: 60)),
             pageSize: 20,
           );
+      ref.read(notificationsProvider.notifier).markAllAsRead();
     });
 
     // Lắng nghe scroll để load thêm

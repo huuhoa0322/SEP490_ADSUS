@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import type { AiModelVersion } from "../types/ai-model.types";
 import { formatDateTime } from "@/features/user-role-management/lib/user-labels";
+import { formatMetricPercent } from "@/lib/utils";
 
 interface AiModelDetailDialogProps {
   open: boolean;
@@ -20,7 +21,7 @@ export function AiModelDetailDialog({ open, model, onClose }: AiModelDetailDialo
       aria-modal="true"
       aria-labelledby="detail-dialog-title"
     >
-      <div className="w-full max-w-2xl rounded-3xl bg-background p-7 shadow-2xl">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-background p-7 shadow-2xl">
         <div className="flex items-center justify-between border-b border-border pb-4">
           <h2 id="detail-dialog-title" className="font-heading text-xl font-bold text-foreground">
             Chi tiết phiên bản: {model.versionCode}
@@ -85,6 +86,53 @@ export function AiModelDetailDialog({ open, model, onClose }: AiModelDetailDialo
               <div className="rounded-xl border border-border bg-secondary/30 p-2">
                 <div className="text-xs text-muted-foreground">Recall</div>
                 <div className="font-600">{model.metricsRecall ?? "—"}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 border-b border-border pb-4">
+            <div className="col-span-1 text-muted-foreground font-500">
+              Đánh giá trực tiếp (Live Evaluation)
+            </div>
+            <div className="col-span-2 space-y-3">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-xl border border-border bg-secondary/30 p-2">
+                  <div className="text-xs text-muted-foreground">Live Precision</div>
+                  <div className="font-600 font-mono text-sm">
+                    {formatMetricPercent(model.livePrecision, true)}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border bg-secondary/30 p-2">
+                  <div className="text-xs text-muted-foreground">Live mAP50</div>
+                  <div className="font-600 font-mono text-sm">
+                    {formatMetricPercent(model.liveMap50, false)}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border bg-secondary/30 p-2">
+                  <div className="text-xs text-muted-foreground">Live Recall</div>
+                  <div className="font-600 font-mono text-sm">
+                    {formatMetricPercent(model.liveRecall, true)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="rounded-lg border border-border bg-background p-1.5">
+                  <span className="text-muted-foreground">Live TP: </span>
+                  <span className="font-semibold font-mono text-foreground">{model.liveTp ?? 0}</span>
+                </div>
+                <div className="rounded-lg border border-border bg-background p-1.5">
+                  <span className="text-muted-foreground">Live FP: </span>
+                  <span className="font-semibold font-mono text-foreground">{model.liveFp ?? 0}</span>
+                </div>
+                <div className="rounded-lg border border-border bg-background p-1.5">
+                  <span className="text-muted-foreground">Live FN: </span>
+                  <span className="font-semibold font-mono text-foreground">{model.liveFn ?? 0}</span>
+                </div>
+              </div>
+
+              <div className="text-xs text-muted-foreground">
+                Đánh giá lần cuối: {model.lastEvaluatedAt ? formatDateTime(model.lastEvaluatedAt) : "Chưa có dữ liệu"}
               </div>
             </div>
           </div>

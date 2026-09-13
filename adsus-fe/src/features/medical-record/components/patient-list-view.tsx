@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
+  CalendarCheck,
   CalendarPlus,
   Eye,
   FileEdit,
@@ -11,6 +12,7 @@ import {
   MoreVertical,
   Plus,
   Search,
+  Stethoscope,
   UserCheck,
 } from "lucide-react";
 
@@ -24,6 +26,7 @@ import {
 import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 import { getApiErrorMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
+import { BookAppointmentModal } from "@/features/nurse-checkin/components/book-appointment-modal";
 
 import { usePatientList } from "../hooks/use-patients";
 import {
@@ -97,7 +100,11 @@ export function PatientListView() {
   const [page, setPage] = useState(1);
 
   // UC-06 BR-03 — chỉ Điều dưỡng tạo được tài khoản bệnh nhân mới.
-  const isNurse = useAuthStore((state) => state.user?.role) === "STAFF";
+  const userRole = useAuthStore((state) => state.user?.role);
+  const isNurse = userRole === "STAFF";
+  const canBookAppointment = userRole === "STAFF" || userRole === "ADMIN";
+
+  const [bookingPatient, setBookingPatient] = useState<PatientSummary | null>(null);
 
   const { data, isLoading, isError, error } = usePatientList({
     search,
@@ -262,31 +269,51 @@ export function PatientListView() {
                         <div className="flex items-center justify-end gap-1.5">
                           {patient.patientProfileId ? (
                             <>
-                              <Link
-                                href={`/patients/${patient.patientProfileId}`}
-                                className="inline-flex items-center gap-1 rounded border border-[#E7E8EB] bg-white px-2.5 py-1 text-xs font-semibold text-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-primary"
-                              >
-                                <Eye className="size-3.5" />
-                                Xem hồ sơ bệnh án
-                              </Link>
+                              {patient.latestCaseId && (
+                                <Link
+                                  href={`/cases/${patient.latestCaseId}`}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700 shadow-2xs transition-all hover:bg-sky-100 hover:border-sky-300 hover:text-sky-800 hover:shadow-xs"
+                                >
+                                  <Stethoscope className="size-3.5" />
+                                  Ca khám mới nhất
+                                </Link>
+                              )}
                               <Link
                                 href={`/patients/${patient.patientProfileId}/cases/new`}
-                                className="inline-flex items-center gap-1 rounded bg-[#2E37A4] px-2.5 py-1 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-[#2E37A4]/90"
+                                className="inline-flex items-center gap-1.5 rounded-full bg-[#2E37A4] px-3 py-1 text-xs font-medium text-white shadow-2xs transition-all hover:bg-[#2E37A4]/90 hover:shadow-xs"
                               >
                                 <CalendarPlus className="size-3.5" />
                                 Tạo ca khám
                               </Link>
+                              {canBookAppointment && (
+                                <button
+                                  type="button"
+                                  onClick={() => setBookingPatient(patient)}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 shadow-2xs transition-all hover:bg-emerald-100 hover:border-emerald-300 hover:text-emerald-800 hover:shadow-xs"
+                                >
+                                  <CalendarCheck className="size-3.5" />
+                                  Đặt lịch hẹn
+                                </button>
+                              )}
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <button
                                     type="button"
                                     aria-label="Tùy chọn thao tác"
-                                    className="inline-flex size-7 items-center justify-center rounded border border-[#E7E8EB] bg-white text-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-primary"
+                                    className="inline-flex size-7 items-center justify-center rounded-full border border-[#E7E8EB] bg-white text-muted-foreground shadow-2xs transition-all hover:bg-[#F5F6F8] hover:text-foreground hover:border-gray-300"
                                   >
-                                    <MoreVertical className="size-4" />
+                                    <MoreVertical className="size-3.5" />
                                   </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
+                                  {patient.latestCaseId && (
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/cases/${patient.latestCaseId}`}>
+                                        <Stethoscope className="size-4 text-foreground" />
+                                        Ca khám mới nhất
+                                      </Link>
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem asChild>
                                     <Link href={`/patients/${patient.patientProfileId}`}>
                                       <Eye className="size-4 text-foreground" />
@@ -299,6 +326,12 @@ export function PatientListView() {
                                       Tạo ca khám mới
                                     </Link>
                                   </DropdownMenuItem>
+                                  {canBookAppointment && (
+                                    <DropdownMenuItem onClick={() => setBookingPatient(patient)}>
+                                      <CalendarCheck className="size-4 text-foreground" />
+                                      Đặt lịch hẹn
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem asChild>
                                     <Link href={`/patients/${patient.patientProfileId}/profile`}>
                                       <FileEdit className="size-4 text-foreground" />
@@ -312,7 +345,7 @@ export function PatientListView() {
                             <>
                               <Link
                                 href={`/patients/new?patientUserId=${patient.patientUserId}`}
-                                className="inline-flex items-center gap-1 rounded bg-[#2E37A4] px-3 py-1 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-[#2E37A4]/90"
+                                className="inline-flex items-center gap-1.5 rounded-full bg-[#2E37A4] px-3.5 py-1 text-xs font-medium text-white shadow-2xs transition-all hover:bg-[#2E37A4]/90 hover:shadow-xs"
                               >
                                 <FilePlus className="size-3.5" />
                                 Tạo hồ sơ nền
@@ -322,9 +355,9 @@ export function PatientListView() {
                                   <button
                                     type="button"
                                     aria-label="Tùy chọn thao tác"
-                                    className="inline-flex size-7 items-center justify-center rounded border border-[#E7E8EB] bg-white text-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-primary"
+                                    className="inline-flex size-7 items-center justify-center rounded-full border border-[#E7E8EB] bg-white text-muted-foreground shadow-2xs transition-all hover:bg-[#F5F6F8] hover:text-foreground hover:border-gray-300"
                                   >
-                                    <MoreVertical className="size-4" />
+                                    <MoreVertical className="size-3.5" />
                                   </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
@@ -362,6 +395,16 @@ export function PatientListView() {
           />
         </div>
       ) : null}
+
+      {bookingPatient?.patientProfileId && (
+        <BookAppointmentModal
+          patientProfileId={bookingPatient.patientProfileId}
+          patientName={bookingPatient.fullName}
+          patientPhone={bookingPatient.phone}
+          open={!!bookingPatient}
+          onOpenChange={(open) => !open && setBookingPatient(null)}
+        />
+      )}
     </div>
   );
 }

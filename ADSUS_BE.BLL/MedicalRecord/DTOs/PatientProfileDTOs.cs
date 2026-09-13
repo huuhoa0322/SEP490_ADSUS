@@ -55,7 +55,8 @@ public sealed record PatientSummaryResponse(
     string FullName,
     string Phone,
     DateOnly? LatestVisitDate,
-    string? LatestVisitStatus);
+    string? LatestVisitStatus,
+    Guid? LatestCaseId = null);
 
 public sealed record PatientDiseaseInput(Guid DiseaseId, string? Note);
 public sealed record PatientAllergyInput(Guid AllergyTypeId, string? Note);
