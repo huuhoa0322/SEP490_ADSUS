@@ -359,7 +359,6 @@ namespace ADSUS_BE
             // DAL
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-            builder.Services.AddScoped<IPatientRegistrationOtpRepository, PatientRegistrationOtpRepository>();
             builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
             builder.Services.AddScoped<IAiModelVersionRepository, AiModelVersionRepository>();
             builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
@@ -544,35 +543,6 @@ namespace ADSUS_BE
                     "SendGrid is not configured. Environment " +
                     $"'{builder.Environment.EnvironmentName}' requires it — see " +
                     "ADSUS_BE.BLL/Common/SendGridSettings.cs for the required keys.");
-            }
-
-            // ---------- Gửi SMS OTP (bệnh nhân tự đăng ký) ----------
-            // "SMS Gateway for Android" (đổi từ Speedsms.vn/eSMS.vn 13/09/2026 — cả 2 nhà cung
-            // cấp thương mại đều gặp trở ngại thực tế khi thử, xem SmsGateSettings.cs).
-            builder.Services.Configure<SmsGateSettings>(
-                builder.Configuration.GetSection(SmsGateSettings.SectionName));
-
-            var smsGateSettings = builder.Configuration
-                .GetSection(SmsGateSettings.SectionName)
-                .Get<SmsGateSettings>();
-
-            if (smsGateSettings?.IsConfigured == true)
-            {
-                builder.Services.AddHttpClient("SmsGate");
-                builder.Services.AddScoped<IOtpSmsService, SmsGateSmsService>();
-            }
-            else if (builder.Environment.IsDevelopment())
-            {
-                builder.Services.AddScoped<IOtpSmsService, DevConsoleOtpSmsService>();
-            }
-            else
-            {
-                // Dừng ngay tại đây — cùng lý do SendGrid: thiếu thì đăng ký tự đăng ký vỡ ở lần gọi
-                // đầu tiên trong môi trường thật, không phải lúc khởi động.
-                throw new InvalidOperationException(
-                    "SmsGate is not configured. Environment " +
-                    $"'{builder.Environment.EnvironmentName}' requires it — see " +
-                    "ADSUS_BE.BLL/Common/SmsGateSettings.cs for the required keys.");
             }
 
             // BLL — Module 10: Engagement (Blog PUBLIC endpoints)
