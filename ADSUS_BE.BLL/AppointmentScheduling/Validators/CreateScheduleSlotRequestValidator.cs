@@ -1,4 +1,5 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
+using ADSUS_BE.DAL.Data;
 using FluentValidation;
 
 namespace ADSUS_BE.BLL.AppointmentScheduling.Validators;
@@ -32,7 +33,7 @@ public sealed class CreateScheduleSlotRequestValidator : AbstractValidator<Creat
         // BR-01 (revised): VisitDate + StartTime phải > now (UTC). Vd: ngày 5/8 đã 12h
         // thì không thể tạo ca 8h-9h ngày 5/8 nữa.
         RuleFor(x => x)
-            .Must(x => x.VisitDate.ToDateTime(x.StartTime, DateTimeKind.Utc) > DateTime.UtcNow)
+            .Must(x => x.VisitDate != default && ClinicClock.StartOfDayUtc(x.VisitDate).Add(x.StartTime.ToTimeSpan()) > DateTime.UtcNow)
                 .WithMessage("Slot start time must be in the future.");
     }
 }

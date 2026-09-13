@@ -6,6 +6,7 @@ import 'package:adsus_mobile/features/appointment_scheduling/domain/repositories
 import 'package:adsus_mobile/features/appointment_scheduling/domain/repositories/symptom_repository.dart';
 import 'package:adsus_mobile/features/appointment_scheduling/domain/entities/schedule_slot.dart';
 import 'package:adsus_mobile/features/appointment_scheduling/domain/entities/appointment.dart';
+import 'package:adsus_mobile/features/appointment_scheduling/domain/entities/symptom.dart';
 import 'package:adsus_mobile/features/appointment_scheduling/presentation/viewmodels/book_appointment_view_model.dart';
 import 'package:adsus_mobile/shared/providers/app_providers.dart';
 
@@ -246,6 +247,228 @@ void main() {
       final state = container.read(bookAppointmentViewModelProvider);
       expect(state.slots, equals(slotsBefore));
       expect(state.slots.length, 3);
+    });
+  });
+
+  group('DoctorOption', () {
+    test('equality and hashCode are based on id', () {
+      const doc1 = DoctorOption(
+        id: 'doc-1',
+        name: 'Dr. One',
+        status: DoctorStatus.active,
+        gender: DoctorGender.male,
+      );
+      const doc1SameId = DoctorOption(
+        id: 'doc-1',
+        name: 'Dr. One Changed Name',
+        status: DoctorStatus.inactive,
+        gender: DoctorGender.female,
+      );
+      const doc2 = DoctorOption(
+        id: 'doc-2',
+        name: 'Dr. Two',
+        status: DoctorStatus.active,
+        gender: DoctorGender.male,
+      );
+
+      expect(doc1 == doc1SameId, isTrue);
+      expect(doc1.hashCode, equals(doc1SameId.hashCode));
+      expect(doc1 == doc2, isFalse);
+      expect(doc1 == doc1, isTrue);
+      expect(doc1 == Object(), isFalse);
+    });
+
+    test('toString returns name', () {
+      const doc = DoctorOption(
+        id: 'doc-1',
+        name: 'Dr. John Doe',
+        status: DoctorStatus.active,
+      );
+      expect(doc.toString(), equals('Dr. John Doe'));
+    });
+  });
+
+  group('selectDoctor', () {
+    test('selectDoctor clears selectedSlotId', () async {
+      await loadAndWait();
+      final vm = container.read(bookAppointmentViewModelProvider.notifier);
+
+      vm.selectDoctor('doc-m');
+      vm.selectDate(maleDoctor.slotDate);
+      vm.selectSlot('slot-m1');
+      expect(container.read(bookAppointmentViewModelProvider).selectedSlotId, 'slot-m1');
+
+      vm.selectDoctor('doc-m2');
+      final state = container.read(bookAppointmentViewModelProvider);
+      expect(state.selectedDoctorId, 'doc-m2');
+      expect(state.selectedSlotId, isNull, reason: 'Doi bac si phai clear selectedSlotId');
+    });
+
+    test('selectDoctor with same doctorId is a no-op (early return)', () async {
+      await loadAndWait();
+      final vm = container.read(bookAppointmentViewModelProvider.notifier);
+
+      vm.selectDoctor('doc-m');
+      vm.selectDate(maleDoctor.slotDate);
+      vm.selectSlot('slot-m1');
+      expect(container.read(bookAppointmentViewModelProvider).selectedSlotId, 'slot-m1');
+
+      vm.selectDoctor('doc-m'); // same doctor
+      final state = container.read(bookAppointmentViewModelProvider);
+      expect(state.selectedDoctorId, 'doc-m');
+      expect(state.selectedSlotId, 'slot-m1', reason: 'Chon cung bac si khong clear slot');
+    });
+
+    test('selectDoctor with null clears both selectedDoctorId and selectedSlotId', () async {
+      await loadAndWait();
+      final vm = container.read(bookAppointmentViewModelProvider.notifier);
+
+      vm.selectDoctor('doc-m');
+      vm.selectSlot('slot-m1');
+
+      vm.selectDoctor(null);
+      final state = container.read(bookAppointmentViewModelProvider);
+      expect(state.selectedDoctorId, isNull);
+      expect(state.selectedSlotId, isNull);
+    });
+  });
+
+  group('selectDate', () {
+    test('selectDate clears selectedSlotId', () async {
+      await loadAndWait();
+      final vm = container.read(bookAppointmentViewModelProvider.notifier);
+
+      vm.selectDoctor('doc-m');
+      vm.selectDate(maleDoctor.slotDate);
+      vm.selectSlot('slot-m1');
+      expect(container.read(bookAppointmentViewModelProvider).selectedSlotId, 'slot-m1');
+
+      final newDate = maleDoctor.slotDate.add(const Duration(days: 1));
+      vm.selectDate(newDate);
+      final state = container.read(bookAppointmentViewModelProvider);
+      expect(state.selectedDate, equals(newDate));
+      expect(state.selectedSlotId, isNull, reason: 'Doi ngay phai clear selectedSlotId');
+    });
+
+    test('selectDate with same date is a no-op (early return)', () async {
+      await loadAndWait();
+      final vm = container.read(bookAppointmentViewModelProvider.notifier);
+
+      vm.selectDate(maleDoctor.slotDate);
+      vm.selectSlot('slot-m1');
+
+      vm.selectDate(maleDoctor.slotDate); // same date
+      final state = container.read(bookAppointmentViewModelProvider);
+      expect(state.selectedDate, equals(maleDoctor.slotDate));
+      expect(state.selectedSlotId, 'slot-m1', reason: 'Chon cung ngay khong clear slot');
+    });
+
+    test('selectDate with null clears selectedDate and selectedSlotId', () async {
+      await loadAndWait();
+      final vm = container.read(bookAppointmentViewModelProvider.notifier);
+
+      vm.selectDate(maleDoctor.slotDate);
+      vm.selectSlot('slot-m1');
+
+      vm.selectDate(null);
+      final state = container.read(bookAppointmentViewModelProvider);
+      expect(state.selectedDate, isNull);
+      expect(state.selectedSlotId, isNull);
+    });
+  });
+
+  group('selectWeek', () {
+    test('selectWeek clears selectedDate and selectedSlotId', () async {
+      await loadAndWait();
+      final vm = container.read(bookAppointmentViewModelProvider.notifier);
+
+      vm.selectDate(maleDoctor.slotDate);
+      vm.selectSlot('slot-m1');
+      expect(container.read(bookAppointmentViewModelProvider).selectedDate, isNotNull);
+      expect(container.read(bookAppointmentViewModelProvider).selectedSlotId, 'slot-m1');
+
+      vm.selectWeek(1);
+      final state = container.read(bookAppointmentViewModelProvider);
+      expect(state.selectedWeekIndex, 1);
+      expect(state.selectedDate, isNull, reason: 'Doi tuan phai clear selectedDate');
+      expect(state.selectedSlotId, isNull, reason: 'Doi tuan phai clear selectedSlotId');
+    });
+
+    test('selectWeek with same index is a no-op (early return)', () async {
+      await loadAndWait();
+      final vm = container.read(bookAppointmentViewModelProvider.notifier);
+
+      vm.selectWeek(2);
+      vm.selectDate(maleDoctor.slotDate);
+      vm.selectSlot('slot-m1');
+
+      vm.selectWeek(2); // same index
+      final state = container.read(bookAppointmentViewModelProvider);
+      expect(state.selectedWeekIndex, 2);
+      expect(state.selectedDate, equals(maleDoctor.slotDate));
+      expect(state.selectedSlotId, 'slot-m1');
+    });
+  });
+
+  group('resetScreenState and resetForNewBooking retain symptomCategories', () {
+    test('resetScreenState retains symptomCategories and clears blocks and expanded state', () async {
+      const sampleCategories = [
+        SymptomCategory(id: 'cat-1', name: 'Đau đầu'),
+        SymptomCategory(id: 'cat-2', name: 'Sốt'),
+      ];
+      when(() => mockSymptomRepo.getCategories()).thenAnswer((_) async => sampleCategories);
+
+      await loadAndWait();
+      final vm = container.read(bookAppointmentViewModelProvider.notifier);
+
+      await vm.loadSymptomCategories();
+      vm.toggleSymptomSection();
+      vm.addSymptomBlock();
+      vm.selectDoctor('doc-m');
+      vm.selectSlot('slot-m1');
+
+      var state = container.read(bookAppointmentViewModelProvider);
+      expect(state.symptomCategories.length, 2);
+      expect(state.symptomBlocks.length, 1);
+      expect(state.isSymptomSectionExpanded, isTrue);
+      expect(state.selectedDoctorId, 'doc-m');
+      expect(state.selectedSlotId, 'slot-m1');
+
+      vm.resetScreenState();
+
+      state = container.read(bookAppointmentViewModelProvider);
+      expect(state.symptomCategories.length, 2, reason: 'symptomCategories phai duoc giu lai');
+      expect(state.symptomCategories, equals(sampleCategories));
+      expect(state.symptomBlocks, isEmpty, reason: 'symptomBlocks phai duoc reset');
+      expect(state.isSymptomSectionExpanded, isFalse);
+      expect(state.selectedDoctorId, isNull);
+      expect(state.selectedSlotId, isNull);
+    });
+
+    test('resetForNewBooking retains symptomCategories and clears blocks and expanded state', () async {
+      const sampleCategories = [
+        SymptomCategory(id: 'cat-1', name: 'Đau đầu'),
+      ];
+      when(() => mockSymptomRepo.getCategories()).thenAnswer((_) async => sampleCategories);
+
+      await loadAndWait();
+      final vm = container.read(bookAppointmentViewModelProvider.notifier);
+
+      await vm.loadSymptomCategories();
+      vm.toggleSymptomSection();
+      vm.addSymptomBlock();
+      vm.selectDoctor('doc-m');
+      vm.selectSlot('slot-m1');
+
+      vm.resetForNewBooking();
+
+      final state = container.read(bookAppointmentViewModelProvider);
+      expect(state.symptomCategories.length, 1, reason: 'symptomCategories phai duoc giu lai');
+      expect(state.symptomCategories, equals(sampleCategories));
+      expect(state.symptomBlocks, isEmpty, reason: 'symptomBlocks phai duoc reset');
+      expect(state.isSymptomSectionExpanded, isFalse);
+      expect(state.selectedDoctorId, isNull);
+      expect(state.selectedSlotId, isNull);
     });
   });
 
