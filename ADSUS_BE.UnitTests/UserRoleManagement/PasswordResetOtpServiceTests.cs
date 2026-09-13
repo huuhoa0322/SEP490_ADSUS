@@ -101,4 +101,20 @@ public class PasswordResetOtpServiceTests
 
         Assert.Null(result);
     }
+
+    [Fact]
+    public async Task CompleteAsync_PhoneBelongsToDeactivatedPatient_ReturnsNull()
+    {
+        var deactivated = ActivePatient("0987654321");
+        deactivated.Status = UserStatus.Deactivated;
+        _firebase.Setup(f => f.VerifyAndGetLocalPhoneNumberAsync(
+                It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("0987654321");
+        _users.Setup(r => r.GetByPhoneReadOnlyAsync("0987654321", It.IsAny<CancellationToken>()))
+              .ReturnsAsync(deactivated);
+
+        var result = await _sut.CompleteAsync(ValidRequest(), TestContext.Current.CancellationToken);
+
+        Assert.Null(result);
+    }
 }
