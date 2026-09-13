@@ -41,10 +41,10 @@ public class FirebasePhoneVerificationService : IFirebasePhoneVerificationServic
             return null;
         }
 
-        EnsureFirebaseAppInitialized(_configuration);
-
         try
         {
+            EnsureFirebaseAppInitialized(_configuration);
+
             var decoded = await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(idToken, cancellationToken);
 
             if (!decoded.Claims.TryGetValue(PhoneNumberClaim, out var phoneClaim)
@@ -62,6 +62,15 @@ public class FirebasePhoneVerificationService : IFirebasePhoneVerificationServic
             // Sai chữ ký, hết hạn, sai project, token bị thu hồi... — tất cả đều "không hợp lệ",
             // không phân biệt lý do ra ngoài (tầng gọi chỉ cần biết verify thất bại).
             _logger.LogWarning(ex, "Firebase ID Token không hợp lệ khi xác minh số điện thoại.");
+            return null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Thiếu credentials (FIREBASE_CREDENTIALS_JSON/PATH/ServiceAccountPath) — lỗi CẤU HÌNH
+            // server, không phải lỗi của caller. Vẫn phải trả null để giữ đúng hợp đồng "không bao
+            // giờ throw ra ngoài" của interface này, nhưng log ở mức Error (khác Warning ở trên) để
+            // phân biệt được với "token không hợp lệ" khi vận hành/giám sát.
+            _logger.LogError(ex, "Firebase chưa được cấu hình đúng — không thể xác minh ID Token.");
             return null;
         }
     }

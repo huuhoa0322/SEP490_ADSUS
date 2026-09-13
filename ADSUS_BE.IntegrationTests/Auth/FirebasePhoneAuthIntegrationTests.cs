@@ -19,7 +19,7 @@ public class FirebasePhoneAuthIntegrationTests
             fullName = "Nguyễn Thị Lan",
             password = "Password123",
             confirmPassword = "Different123",
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -36,7 +36,7 @@ public class FirebasePhoneAuthIntegrationTests
             fullName = "Nguyễn Thị Lan",
             password = "Password123",
             confirmPassword = "Password123",
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -52,7 +52,7 @@ public class FirebasePhoneAuthIntegrationTests
             firebaseIdToken = "whatever",
             newPassword = "NewPassword123",
             confirmNewPassword = "Different123",
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
