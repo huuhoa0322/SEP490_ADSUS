@@ -7,7 +7,7 @@ namespace ADSUS_BE.BLL.UserRoleManagement.Services;
 /// Bản dự phòng của <see cref="IOtpSmsService"/> cho người chưa khai eSMS — rập khuôn
 /// <see cref="DevConsoleEmailService"/>.
 ///
-/// CHỈ DÙNG KHI PHÁT TRIỂN. Ngoài Development mà chưa khai <see cref="EsmsSettings"/> thì
+/// CHỈ DÙNG KHI PHÁT TRIỂN. Ngoài Development mà chưa khai <see cref="ADSUS_BE.BLL.Common.SpeedsmsSettings"/> thì
 /// ứng dụng dừng ngay lúc khởi động (xem Program.cs) — không ai lỡ đưa lên thật với SMS
 /// không hoạt động.
 ///
