@@ -30,6 +30,12 @@ public sealed class BookAppointmentRequest
     /// Danh sách triệu chứng (tùy chọn). Nếu có, hệ thống sẽ tạo Case với status=BOOKED.
     /// </summary>
     public List<SymptomInput>? Symptoms { get; init; }
+
+    /// <summary>
+    /// Relationship ID nếu đặt cho người thân.
+    /// NULL = đặt cho chính mình.
+    /// </summary>
+    public Guid? RelationshipId { get; init; }
 }
 
 /// <summary>
@@ -97,6 +103,21 @@ public sealed class AppointmentResponse
     /// Case được tạo tự động khi đặt lịch (nếu có triệu chứng).
     /// </summary>
     public Guid? CaseId { get; init; }
+
+    /// <summary>
+    /// Tên user đã đặt lịch. NULL = chính chủ tự đặt.
+    /// </summary>
+    public string? BookedByUserName { get; init; }
+
+    /// <summary>
+    /// Nhãn relationship (VD: "Vợ", "Mẹ").
+    /// </summary>
+    public string? RelationshipLabel { get; init; }
+
+    /// <summary>
+    /// TRUE = đặt hộ cho người thân, FALSE = đặt cho chính mình.
+    /// </summary>
+    public bool IsBookedForOthers { get; init; }
 }
 
 /// <summary>
@@ -116,6 +137,21 @@ public sealed class AppointmentSummaryResponse
     public string? Reason { get; init; }
     public string? CancellationReason { get; init; }
     public Guid? CaseId { get; init; }
+
+    /// <summary>
+    /// TRUE = dat cho nguoi than, FALSE = dat cho chinh minh.
+    /// </summary>
+    public bool IsBookedForOthers { get; init; }
+
+    /// <summary>
+    /// Nhan relationship (VD: "Vo", "Me").
+    /// </summary>
+    public string? RelationshipLabel { get; init; }
+
+    /// <summary>
+    /// Ten nguoi dat lich (NULL = chinh chu tu dat).
+    /// </summary>
+    public string? BookedByUserName { get; init; }
 }
 
 /// <summary>

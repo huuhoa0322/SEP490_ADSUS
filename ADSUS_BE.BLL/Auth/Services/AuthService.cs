@@ -4,8 +4,10 @@ using ADSUS_BE.BLL.Auth.DTOs;
 using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Mappers;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.Auth.Services;
@@ -15,6 +17,7 @@ public class AuthService : IAuthService
     private readonly IUserRepository _users;
     private readonly IRefreshTokenRepository _refreshTokens;
     private readonly IJwtTokenService _tokens;
+    private readonly AppDbContext _db;
     private readonly ILogger<AuthService> _logger;
 
     /// <summary>
@@ -32,11 +35,13 @@ public class AuthService : IAuthService
         IUserRepository users,
         IRefreshTokenRepository refreshTokens,
         IJwtTokenService tokens,
+        AppDbContext db,
         ILogger<AuthService> logger)
     {
         _users = users;
         _refreshTokens = refreshTokens;
         _tokens = tokens;
+        _db = db;
         _logger = logger;
     }
 
@@ -218,5 +223,181 @@ public class AuthService : IAuthService
         _logger.LogInformation("User {UserId} changed their password successfully", user.UserId);
 
         return ChangePasswordResult.Success;
+    }
+
+    /// <summary>
+    /// UC-02 — đăng ký tài khoản bệnh nhân (Mobile).
+    /// Hỗ trợ Account Linking: nếu cung cấp GuestPatientProfileId, hệ thống sẽ
+    /// liên kết tài khoản mới với PatientProfile đã tồn tại và xóa các trường guest.
+    /// </summary>
+    public async Task<(RegisterResult Result, RegisterResponse? Response)> RegisterAsync(
+        RegisterRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        // Validate password confirmation
+        if (request.Password != request.ConfirmPassword)
+        {
+            return (RegisterResult.PasswordMismatch, null);
+        }
+
+        // Check if phone already exists
+        if (await _users.PhoneExistsAsync(request.PhoneNumber.Trim(), cancellationToken))
+        {
+            return (RegisterResult.PhoneAlreadyUsed, null);
+        }
+
+        // Check email if provided
+        var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
+        if (email != null && await _users.IsEmailUsedAsync(email, cancellationToken))
+        {
+            return (RegisterResult.EmailAlreadyUsed, null);
+        }
+
+        var now = DateTime.UtcNow;
+        Guid userId;
+        Guid patientProfileId;
+
+        // Handle Account Linking with pessimistic locking (find by phone, not by GuestPatientProfileId)
+        // This supports the flow where AddRelativeAsync creates a guest profile,
+        // and the same person then registers an account to claim it.
+        if (request.GuestPatientProfileId.HasValue)
+        {
+            // Use transaction with pessimistic locking (FOR UPDATE)
+            // Use BeginTransaction directly - CreateExecutionStrategy is only needed for distributed transactions
+            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                // Lock the guest patient profile for update — find by PHONE (not by ID)
+                // This supports mobile flow: AddRelativeAsync creates guest by phone,
+                // then the same person registers with that phone to link the account.
+                var guestProfile = await _db.PatientProfiles
+                    .FromSqlRaw(
+                        "SELECT * FROM patient_profiles WHERE phone = {0} AND user_id IS NULL FOR UPDATE",
+                        request.PhoneNumber.Trim())
+                    .Include(p => p.User)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (guestProfile == null)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return (RegisterResult.GuestProfileNotFound, null);
+                }
+
+                // Check if profile already has a user
+                if (guestProfile.UserId != Guid.Empty)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return (RegisterResult.InvalidAccount, null);
+                }
+
+                // Create new user
+                var linkedUserId = Guid.NewGuid();
+                var user = new User
+                {
+                    UserId = linkedUserId,
+                    Phone = request.PhoneNumber.Trim(),
+                    FullName = request.FullName.Trim(),
+                    Email = email,
+                    Role = UserRole.Patient,
+                    Status = UserStatus.Active,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                    MustChangePassword = false,
+                    BiometricEnabled = false,
+                    DateOfBirth = ParseDateOrNull(request.DateOfBirth),
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                };
+                _db.Users.Add(user);
+
+                // Link user to patient profile and clear guest fields
+                guestProfile.UserId = linkedUserId;
+                guestProfile.FullName = null;
+                guestProfile.Phone = null;
+                guestProfile.DateOfBirth = null;
+                guestProfile.UpdatedAt = now;
+
+                await _db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                userId = linkedUserId;
+                patientProfileId = request.GuestPatientProfileId.Value;
+            }
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
+        }
+        else
+        {
+            // Create new user without Account Linking
+            var user = new User
+            {
+                UserId = Guid.NewGuid(),
+                Phone = request.PhoneNumber.Trim(),
+                FullName = request.FullName.Trim(),
+                Email = email,
+                Role = UserRole.Patient,
+                Status = UserStatus.Active,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                MustChangePassword = false,
+                BiometricEnabled = false,
+                DateOfBirth = ParseDateOrNull(request.DateOfBirth),
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            await _users.AddAsync(user, cancellationToken);
+            await _users.SaveChangesAsync(cancellationToken);
+            userId = user.UserId;
+
+            // Create patient profile
+            var profile = new PatientProfile
+            {
+                PatientProfileId = Guid.NewGuid(),
+                UserId = userId,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            _db.PatientProfiles.Add(profile);
+            await _db.SaveChangesAsync(cancellationToken);
+            patientProfileId = profile.PatientProfileId;
+        }
+
+        // Get user for token generation
+        var createdUser = await _users.GetByIdReadOnlyAsync(userId, cancellationToken);
+        if (createdUser == null)
+        {
+            return (RegisterResult.InvalidAccount, null);
+        }
+
+        // Generate tokens
+        var accessToken = _tokens.GenerateAccessToken(createdUser);
+        var refreshToken = GenerateSecureToken();
+        await _refreshTokens.CreateAsync(new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            TokenHash = HashToken(refreshToken),
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            CreatedAt = now,
+            DeviceInfo = null
+        }, cancellationToken);
+
+        _logger.LogInformation("User {UserId} registered successfully with role {Role}", userId, createdUser.Role);
+
+        return (RegisterResult.Success, new RegisterResponse
+        {
+            UserId = userId,
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+        });
+    }
+
+    private static DateOnly? ParseDateOrNull(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        if (DateOnly.TryParse(value, out var date)) return date;
+        return null;
     }
 }

@@ -11,5 +11,7 @@ public partial class MedicalAllergyType
 
     public bool IsOther { get; set; }
 
+    public virtual ICollection<CaseAllergy> CaseAllergies { get; set; } = new List<CaseAllergy>();
+
     public virtual ICollection<PatientAllergy> PatientAllergies { get; set; } = new List<PatientAllergy>();
 }

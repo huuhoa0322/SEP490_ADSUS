@@ -78,6 +78,11 @@ class AppointmentDto {
   // Case được tạo từ booking (nếu có triệu chứng)
   final String? caseId;
 
+  // Thông tin đặt hộ cho người thân (Issue #2)
+  final bool? isBookedForOthers;
+  final String? relationshipLabel;
+  final String? bookedByUserName;
+
   AppointmentDto({
     this.appointmentId,
     this.slotId,
@@ -93,6 +98,9 @@ class AppointmentDto {
     this.endTime,
     this.doctorName,
     this.caseId,
+    this.isBookedForOthers,
+    this.relationshipLabel,
+    this.bookedByUserName,
   });
 
   factory AppointmentDto.fromJson(Map<String, dynamic> json) => AppointmentDto(
@@ -111,6 +119,10 @@ class AppointmentDto {
         endTime: json['endTime'] as String?,
         doctorName: json['doctorName'] as String?,
         caseId: json['caseId'] as String?,
+        // Issue #2: isBookedForOthers, relationshipLabel, bookedByUserName
+        isBookedForOthers: json['isBookedForOthers'] as bool?,
+        relationshipLabel: json['relationshipLabel'] as String?,
+        bookedByUserName: json['bookedByUserName'] as String?,
       );
 }
 
@@ -129,6 +141,10 @@ class AppointmentSummaryDto {
   final String? doctorName;
   final String? createdAt;
 
+  // Thông tin đặt hộ cho người thân (Issue #2)
+  final bool? isBookedForOthers;
+  final String? relationshipLabel;
+
   AppointmentSummaryDto({
     this.appointmentId,
     this.slotId,
@@ -142,6 +158,8 @@ class AppointmentSummaryDto {
     this.doctorId,
     this.doctorName,
     this.createdAt,
+    this.isBookedForOthers,
+    this.relationshipLabel,
   });
 
   factory AppointmentSummaryDto.fromJson(Map<String, dynamic> json) {
@@ -162,6 +180,9 @@ class AppointmentSummaryDto {
       doctorId: json['doctorId'] as String?,
       doctorName: json['doctorName'] as String?,
       createdAt: json['createdAt'] as String?,
+      // Issue #2: isBookedForOthers, relationshipLabel
+      isBookedForOthers: json['isBookedForOthers'] as bool?,
+      relationshipLabel: json['relationshipLabel'] as String?,
     );
   }
 }

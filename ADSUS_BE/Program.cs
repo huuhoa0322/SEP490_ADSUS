@@ -29,6 +29,8 @@ using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Services;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.AppointmentScheduling.Services;
+using ADSUS_BE.BLL.PatientRelationship.Interfaces;
+using ADSUS_BE.BLL.PatientRelationship.Services;
 using ADSUS_BE.BLL.HealthMonitoring.Interfaces;
 using ADSUS_BE.BLL.HealthMonitoring.Services;
 using ADSUS_BE.BLL.MedicalRecord.Validators;
@@ -397,6 +399,10 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IProfileService, ProfileService>();
+
+            // BLL — Patient Relationship: đặt lịch cho người thân (UC-15)
+            builder.Services.AddScoped<IPatientRelationshipService, PatientRelationshipService>();
+            builder.Services.AddScoped<IPatientRelationshipRepository, PatientRelationshipRepository>();
 
             // BLL — Module 2: User & Role Management
             builder.Services.AddScoped<IUserAccountService, UserAccountService>();

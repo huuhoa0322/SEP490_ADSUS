@@ -39,8 +39,10 @@ public interface IAppointmentService
     /// Đặt lịch hẹn mới (UC-13).
     /// BR-01: Slot phải tồn tại và có status = OPEN.
     /// BR-02: Kiểm tra không trùng booking.
+    /// Support đặt hộ cho người thân qua relationshipId.
     /// </summary>
     Task<AppointmentResponse> BookAppointmentAsync(
+        Guid userId,
         Guid patientProfileId,
         BookAppointmentRequest request,
         CancellationToken ct = default);
@@ -55,11 +57,12 @@ public interface IAppointmentService
 
     /// <summary>
     /// Hủy lịch hẹn (UC-14).
-    /// BR-01: Chỉ patient sở hữu mới được hủy.
+    /// BR-01: Chỉ patient sở hữu HOẶC người đặt hộ mới được hủy.
     /// BR-02: Lý do hủy bắt buộc.
     /// </summary>
     Task<AppointmentResponse> CancelAppointmentAsync(
         Guid appointmentId,
+        Guid userId,
         Guid patientProfileId,
         CancelAppointmentRequest request,
         CancellationToken ct = default);

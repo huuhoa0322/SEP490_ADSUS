@@ -47,6 +47,8 @@ public partial class User
 
     public virtual ICollection<AiModelVersion> AiModelVersions { get; set; } = new List<AiModelVersion>();
 
+    public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+
     public virtual ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
 
     public virtual ICollection<BlogPost> BlogPosts { get; set; } = new List<BlogPost>();
@@ -58,6 +60,8 @@ public partial class User
     public virtual ICollection<PatientProfile> PatientProfileCreatedByNavigations { get; set; } = new List<PatientProfile>();
 
     public virtual PatientProfile? PatientProfileUser { get; set; }
+
+    public virtual ICollection<PatientRelationship> PatientRelationships { get; set; } = new List<PatientRelationship>();
 
     public virtual ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
 

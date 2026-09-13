@@ -26,8 +26,10 @@ abstract interface class AppointmentRepository {
   /// Trả về Appointment đã tạo (status = booked).
   ///
   /// Thêm [symptoms] parameter để gửi triệu chứng khi đặt lịch.
+  /// Thêm [relationshipId] để đặt hộ cho người thân (Issue #1).
   Future<Appointment> bookAppointment({
     required String scheduleSlotId,
+    String? relationshipId,
     String? reason,
     List<SymptomInput>? symptoms,
   });

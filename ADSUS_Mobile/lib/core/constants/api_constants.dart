@@ -68,4 +68,10 @@ class ApiConstants {
   static const String notifications = '/api/v1/notifications';
   static const String notificationUnreadCount = '/api/v1/notifications/unread-count';
   static const String fcmToken = '/api/v1/fcm-token';
+
+  // Module 08 — Patient Relationship (Đặt lịch cho người thân)
+  static const String patientRelationships = '/api/v1/me/relatives';
+  static String deletePatientRelationship(String id) =>
+      '/api/v1/me/relatives/$id';
+  static const String checkPhoneRegistered = '/api/v1/patients/check-phone';
 }

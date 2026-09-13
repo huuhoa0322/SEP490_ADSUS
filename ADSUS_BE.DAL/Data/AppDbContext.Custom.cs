@@ -127,5 +127,66 @@ public partial class AppDbContext
                 .HasColumnName("status")
                 .HasDefaultValue(ShiftRequestStatus.Pending);
         });
+
+        // ---------- Module: Patient Relationship (Đặt lịch cho người thân) ----------
+        // PatientRelationship DbSet — nằm đây thay vì AppDbContext.cs vì scaffold ghi đè.
+
+        modelBuilder.Entity<PatientRelationship>(entity =>
+        {
+            entity.HasKey(e => e.RelationshipId).HasName("pk_patient_relationships");
+
+            entity.ToTable("patient_relationships");
+
+            entity.HasIndex(e => e.UserId, "idx_patient_relationships_user");
+
+            entity.HasIndex(e => e.PatientProfileId, "idx_patient_relationships_patient");
+
+            entity.HasIndex(e => new { e.UserId, e.PatientProfileId }, "uq_user_patient_relationship")
+                .IsUnique();
+
+            entity.Property(e => e.RelationshipId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("relationship_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
+            entity.Property(e => e.RelationshipName)
+                .HasMaxLength(50)
+                .HasColumnName("relationship_name");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_patient_relationships_user");
+
+            entity.HasOne(d => d.PatientProfile)
+                .WithMany()
+                .HasForeignKey(d => d.PatientProfileId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_patient_relationships_profile");
+        });
+
+        // PatientProfile guest columns
+        modelBuilder.Entity<PatientProfile>(entity =>
+        {
+            // Guest profile columns đã được khai báo trong PatientProfile.Custom.cs
+            // ở mức partial class với [Column] attribute
+        });
+
+        // Appointment: booked_by_user_id cho đặt hộ
+        modelBuilder.Entity<Appointment>(entity =>
+        {
+            // Bổ sung navigation property cho Appointment entity
+            entity.HasOne(d => d.BookedByUser)
+                .WithMany()
+                .HasForeignKey(d => d.BookedByUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_appointments_booked_by");
+
+            // PatientRelationship đã được cấu hình trong AppDbContext.cs
+        });
     }
 }

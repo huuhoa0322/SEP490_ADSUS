@@ -695,6 +695,7 @@ public class AppointmentServiceTests : IDisposable
         var result = await _sut.CancelAppointmentAsync(
             _appointmentId,
             _patientId,
+            _patientId,
             new CancelAppointmentRequest { CancellationReason = "Schedule conflict" },
             TestContext.Current.CancellationToken);
 
@@ -714,6 +715,7 @@ public class AppointmentServiceTests : IDisposable
             () => _sut.CancelAppointmentAsync(
                 _appointmentId,
                 _patientId,
+                _patientId,
                 new CancelAppointmentRequest { CancellationReason = "" },
                 TestContext.Current.CancellationToken));
 
@@ -730,6 +732,7 @@ public class AppointmentServiceTests : IDisposable
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _sut.CancelAppointmentAsync(
                 _appointmentId,
+                _patientId,
                 _patientId,
                 new CancelAppointmentRequest { CancellationReason = "   " },
                 TestContext.Current.CancellationToken));
@@ -756,6 +759,7 @@ public class AppointmentServiceTests : IDisposable
             () => _sut.CancelAppointmentAsync(
                 Guid.NewGuid(), // Different ID
                 _patientId,
+                _patientId,
                 new CancelAppointmentRequest { CancellationReason = "Test" },
                 TestContext.Current.CancellationToken));
 
@@ -772,7 +776,8 @@ public class AppointmentServiceTests : IDisposable
         var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
             () => _sut.CancelAppointmentAsync(
                 _appointmentId,
-                _otherPatientId, // Different patient
+                _otherPatientId, // Different user trying to cancel
+                _patientId, // Appointment belongs to _patientId
                 new CancelAppointmentRequest { CancellationReason = "Test" },
                 TestContext.Current.CancellationToken));
 
@@ -806,6 +811,7 @@ public class AppointmentServiceTests : IDisposable
             () => _sut.CancelAppointmentAsync(
                 _appointmentId,
                 _patientId,
+                _patientId,
                 new CancelAppointmentRequest { CancellationReason = "Test" },
                 TestContext.Current.CancellationToken));
 
@@ -821,6 +827,7 @@ public class AppointmentServiceTests : IDisposable
         // Act
         await _sut.CancelAppointmentAsync(
             _appointmentId,
+            _patientId,
             _patientId,
             new CancelAppointmentRequest { CancellationReason = "Schedule conflict" },
             TestContext.Current.CancellationToken);

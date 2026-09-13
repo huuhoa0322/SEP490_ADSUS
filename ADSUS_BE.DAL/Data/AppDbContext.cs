@@ -26,7 +26,11 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Case> Cases { get; set; }
 
+    public virtual DbSet<CaseAllergy> CaseAllergies { get; set; }
+
     public virtual DbSet<CaseClinicService> CaseClinicServices { get; set; }
+
+    public virtual DbSet<CaseDisease> CaseDiseases { get; set; }
 
     public virtual DbSet<CaseSymptom> CaseSymptoms { get; set; }
 
@@ -63,6 +67,10 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<PatientDisease> PatientDiseases { get; set; }
 
     public virtual DbSet<PatientProfile> PatientProfiles { get; set; }
+
+    public virtual DbSet<PatientRegistrationOtp> PatientRegistrationOtps { get; set; }
+
+    public virtual DbSet<PatientRelationship> PatientRelationships { get; set; }
 
     public virtual DbSet<PatientReminderPreference> PatientReminderPreferences { get; set; }
 
@@ -273,6 +281,9 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.AppointmentId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("appointment_id");
+            entity.Property(e => e.BookedByUserId)
+                .HasComment("User đặt lịch. NULL = chính chủ tự đặt")
+                .HasColumnName("booked_by_user_id");
             entity.Property(e => e.CalendarSyncedAt)
                 .HasComment("Mốc đã đẩy sự kiện sang Calendar thiết bị (FT-34, one-way sync) — sự kiện nằm NGOÀI hệ thống, chỉ giữ timestamp.")
                 .HasColumnName("calendar_synced_at");
@@ -283,10 +294,17 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("created_at");
             entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
             entity.Property(e => e.Reason).HasColumnName("reason");
+            entity.Property(e => e.RelationshipId)
+                .HasComment("NULL = tự đặt, NOT NULL = đặt hộ qua relationship")
+                .HasColumnName("relationship_id");
             entity.Property(e => e.SlotId).HasColumnName("slot_id");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.BookedByUser).WithMany(p => p.Appointments)
+                .HasForeignKey(d => d.BookedByUserId)
+                .HasConstraintName("fk_appointments_booked_by");
 
             entity.HasOne(d => d.Case).WithMany(p => p.Appointments)
                 .HasForeignKey(d => d.CaseId)
@@ -296,6 +314,10 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.PatientProfileId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_appointments_patient");
+
+            entity.HasOne(d => d.PatientRelationship).WithMany(p => p.Appointments)
+                .HasForeignKey(d => d.RelationshipId)
+                .HasConstraintName("fk_appointments_relationship");
 
             entity.HasOne(d => d.Slot).WithMany(p => p.Appointments)
                 .HasForeignKey(d => d.SlotId)
@@ -402,6 +424,45 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("fk_cases_patient_profile");
         });
 
+        modelBuilder.Entity<CaseAllergy>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("case_allergies_pkey");
+
+            entity.ToTable("case_allergies", tb => tb.HasComment("Snapshot dị ứng của bệnh nhân tại thời điểm diễn ra ca khám. Sửa tại ca khám chỉ lưu trên ca đó, không ảnh hưởng hồ sơ nền gốc."));
+
+            entity.HasIndex(e => e.AllergyTypeId, "idx_case_allergies_allergy_type_id");
+
+            entity.HasIndex(e => e.CaseId, "idx_case_allergies_case_id");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasComment("Khóa chính bản ghi snapshot dị ứng ca khám")
+                .HasColumnName("id");
+            entity.Property(e => e.AllergyTypeId)
+                .HasComment("Khóa ngoại trỏ về danh mục loại dị ứng (medical_allergy_types)")
+                .HasColumnName("allergy_type_id");
+            entity.Property(e => e.CaseId)
+                .HasComment("Khóa ngoại trỏ về ca khám tương ứng")
+                .HasColumnName("case_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasComment("Thời điểm ghi nhận snapshot")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Note)
+                .HasMaxLength(500)
+                .HasComment("Ghi chú lâm sàng cụ thể cho dị ứng tại ca khám (tối đa 500 ký tự)")
+                .HasColumnName("note");
+
+            entity.HasOne(d => d.AllergyType).WithMany(p => p.CaseAllergies)
+                .HasForeignKey(d => d.AllergyTypeId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("case_allergies_allergy_type_id_fkey");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.CaseAllergies)
+                .HasForeignKey(d => d.CaseId)
+                .HasConstraintName("case_allergies_case_id_fkey");
+        });
+
         modelBuilder.Entity<CaseClinicService>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("case_clinic_services_pkey");
@@ -430,6 +491,45 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.ClinicServiceId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("case_clinic_services_clinic_service_id_fkey");
+        });
+
+        modelBuilder.Entity<CaseDisease>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("case_diseases_pkey");
+
+            entity.ToTable("case_diseases", tb => tb.HasComment("Snapshot tiền sử bệnh của bệnh nhân tại thời điểm diễn ra ca khám. Sửa tại ca khám chỉ lưu trên ca đó, không ảnh hưởng hồ sơ nền gốc."));
+
+            entity.HasIndex(e => e.CaseId, "idx_case_diseases_case_id");
+
+            entity.HasIndex(e => e.DiseaseId, "idx_case_diseases_disease_id");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasComment("Khóa chính bản ghi snapshot tiền sử ca khám")
+                .HasColumnName("id");
+            entity.Property(e => e.CaseId)
+                .HasComment("Khóa ngoại trỏ về ca khám tương ứng")
+                .HasColumnName("case_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasComment("Thời điểm ghi nhận snapshot")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DiseaseId)
+                .HasComment("Khóa ngoại trỏ về danh mục bệnh lý (medical_diseases)")
+                .HasColumnName("disease_id");
+            entity.Property(e => e.Note)
+                .HasMaxLength(500)
+                .HasComment("Ghi chú lâm sàng cụ thể cho bệnh lý tại ca khám (tối đa 500 ký tự)")
+                .HasColumnName("note");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.CaseDiseases)
+                .HasForeignKey(d => d.CaseId)
+                .HasConstraintName("case_diseases_case_id_fkey");
+
+            entity.HasOne(d => d.Disease).WithMany(p => p.CaseDiseases)
+                .HasForeignKey(d => d.DiseaseId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("case_diseases_disease_id_fkey");
         });
 
         modelBuilder.Entity<CaseSymptom>(entity =>
@@ -938,7 +1038,13 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("patient_profiles", tb => tb.HasComment("Hồ sơ y tế nền của bệnh nhân (1–1 với users). Tách khỏi users để thực thi quy tắc lõi: Admin quản tài khoản nhưng KHÔNG truy cập dữ liệu y tế (§3.2) — ngoại lệ duy nhất là date_of_birth, đã chuyển lên users vì dùng chung cho cả 3 vai trò. user_id phải có role = PATIENT, created_by phải có role = DOCTOR — enforce ở tầng ứng dụng (FK không kiểm tra được role)."));
 
+            entity.HasIndex(e => e.Phone, "idx_patient_profiles_phone").HasFilter("(phone IS NOT NULL)");
+
             entity.HasIndex(e => e.UserId, "uq_patient_profiles_user").IsUnique();
+
+            entity.HasIndex(e => e.UserId, "uq_patient_profiles_user_id")
+                .IsUnique()
+                .HasFilter("(user_id IS NOT NULL)");
 
             entity.Property(e => e.PatientProfileId)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -949,10 +1055,23 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.CreatedBy)
                 .HasComment("Bác sĩ lập hồ sơ (UC-06). Bệnh nhân không tự đăng ký.")
                 .HasColumnName("created_by");
+            entity.Property(e => e.DateOfBirth)
+                .HasComment("Chỉ dùng khi user_id IS NULL")
+                .HasColumnName("date_of_birth");
+            entity.Property(e => e.FullName)
+                .HasMaxLength(100)
+                .HasComment("Chỉ dùng khi user_id IS NULL")
+                .HasColumnName("full_name");
+            entity.Property(e => e.Phone)
+                .HasMaxLength(20)
+                .HasComment("Chỉ dùng khi user_id IS NULL")
+                .HasColumnName("phone");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.UserId)
+                .HasComment("NULL = guest (người thân chưa có tài khoản)")
+                .HasColumnName("user_id");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.PatientProfileCreatedByNavigations)
                 .HasForeignKey(d => d.CreatedBy)
@@ -963,6 +1082,73 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey<PatientProfile>(d => d.UserId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_patient_profiles_user");
+        });
+
+        modelBuilder.Entity<PatientRegistrationOtp>(entity =>
+        {
+            entity.HasKey(e => e.OtpId).HasName("pk_patient_registration_otps");
+
+            entity.ToTable("patient_registration_otps", tb => tb.HasComment("Mã OTP xác thực số điện thoại khi bệnh nhân tự đăng ký (không qua Admin/Điều dưỡng). Không liên quan tới đăng nhập — users.password_hash vẫn là cơ chế đăng nhập duy nhất."));
+
+            entity.HasIndex(e => e.Phone, "idx_patient_registration_otps_phone");
+
+            entity.Property(e => e.OtpId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("otp_id");
+            entity.Property(e => e.AttemptCount)
+                .HasDefaultValue(0)
+                .HasColumnName("attempt_count");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.OtpHash)
+                .HasMaxLength(255)
+                .HasComment("SHA-256 hash của mã 6 số, không lưu plaintext. Không salt — mã có hiệu lực 5 phút và tối đa 5 lần thử sai, đủ giảm rủi ro dò offline nếu DB bị lộ.")
+                .HasColumnName("otp_hash");
+            entity.Property(e => e.Phone)
+                .HasMaxLength(15)
+                .HasColumnName("phone");
+            entity.Property(e => e.VerificationTokenExpiresAt).HasColumnName("verification_token_expires_at");
+            entity.Property(e => e.VerificationTokenHash)
+                .HasMaxLength(255)
+                .HasComment("SHA-256 hash của registration token cấp sau khi verify-otp thành công — cầu nối sang bước complete, hiệu lực 10 phút, dùng một lần.")
+                .HasColumnName("verification_token_hash");
+            entity.Property(e => e.VerifiedAt).HasColumnName("verified_at");
+        });
+
+        modelBuilder.Entity<PatientRelationship>(entity =>
+        {
+            entity.HasKey(e => e.RelationshipId).HasName("pk_patient_relationships");
+
+            entity.ToTable("patient_relationships", tb => tb.HasComment("Danh bạ người thân của user"));
+
+            entity.HasIndex(e => e.PatientProfileId, "idx_patient_relationships_patient");
+
+            entity.HasIndex(e => e.UserId, "idx_patient_relationships_user");
+
+            entity.HasIndex(e => new { e.UserId, e.PatientProfileId }, "uq_user_patient_relationship").IsUnique();
+
+            entity.Property(e => e.RelationshipId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("relationship_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
+            entity.Property(e => e.RelationshipName)
+                .HasMaxLength(50)
+                .HasComment("Nhãn tùy chỉnh: Vợ, Mẹ, Con gái...")
+                .HasColumnName("relationship_name");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.PatientProfile).WithMany(p => p.PatientRelationships)
+                .HasForeignKey(d => d.PatientProfileId)
+                .HasConstraintName("fk_patient_relationships_profile");
+
+            entity.HasOne(d => d.User).WithMany(p => p.PatientRelationships)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("fk_patient_relationships_user");
         });
 
         modelBuilder.Entity<PatientReminderPreference>(entity =>

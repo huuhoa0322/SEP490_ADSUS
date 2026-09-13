@@ -79,7 +79,7 @@ public sealed class MedicationReminderJob : IJob
 
                 await notificationService.SendAsync(new SendNotificationRequest
                 {
-                    UserId = patientProfile.UserId,
+                    UserId = patientProfile.UserId ?? Guid.Empty,
                     Type = "medication_reminder",
                     Title = "Nhắc nhở uống thuốc",
                     Body = $"Đã đến giờ uống {medicineName} lúc {scheduledTimeLocal:HH:mm}.",

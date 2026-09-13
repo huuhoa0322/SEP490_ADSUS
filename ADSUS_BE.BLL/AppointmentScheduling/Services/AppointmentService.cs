@@ -12,9 +12,14 @@ namespace ADSUS_BE.BLL.AppointmentScheduling.Services;
 
 /// <summary>
 /// Implementation của IAppointmentService (Module 8 — UC-13, UC-14).
+/// Hỗ trợ đặt hộ cho người thân qua RelationshipId.
 /// </summary>
 public sealed class AppointmentService : IAppointmentService
 {
+    // Giới hạn đặt hộ: tối đa 5 appointment đang active đặt hộ
+    private const int MaxActiveBookedForOthers = 5;
+    // Giới hạn đặt cho bản thân: tối đa 3 appointment đang active
+    private const int MaxActiveSelfBookings = 3;
     private readonly IAppointmentRepository _appointmentRepo;
     private readonly IScheduleSlotRepository _slotRepo;
     private readonly IPatientProfileRepository _profileRepo;
@@ -119,14 +124,23 @@ public sealed class AppointmentService : IAppointmentService
         AppointmentStatus? statusFilter = null,
         CancellationToken ct = default)
     {
-        var appointments = await _appointmentRepo.ListByPatientAsync(patientProfileId, ct);
+        var query = _db.Appointments
+            .AsNoTracking()
+            .Include(a => a.Slot)
+                .ThenInclude(s => s.Doctor)
+            .Include(a => a.BookedByUser)
+            .Include(a => a.PatientRelationship)
+            .Where(a => a.PatientProfileId == patientProfileId);
 
         if (statusFilter.HasValue)
         {
-            appointments = appointments
-                .Where(a => a.Status == statusFilter.Value)
-                .ToList();
+            query = query.Where(a => a.Status == statusFilter.Value);
         }
+
+        var appointments = await query
+            .OrderByDescending(a => a.Slot.SlotDate)
+            .ThenByDescending(a => a.Slot.StartTime)
+            .ToListAsync(ct);
 
         return appointments.Select(a => new AppointmentSummaryResponse
         {
@@ -142,6 +156,9 @@ public sealed class AppointmentService : IAppointmentService
             Reason = a.Reason,
             CancellationReason = a.CancelledReason,
             CaseId = a.CaseId,
+            IsBookedForOthers = a.BookedByUserId != null,
+            RelationshipLabel = a.PatientRelationship?.RelationshipName,
+            BookedByUserName = a.BookedByUser?.FullName,
         }).ToList();
     }
 
@@ -156,6 +173,7 @@ public sealed class AppointmentService : IAppointmentService
     }
 
     public async Task<AppointmentResponse> BookAppointmentAsync(
+        Guid userId,
         Guid patientProfileId,
         BookAppointmentRequest request,
         CancellationToken ct = default)
@@ -192,12 +210,12 @@ public sealed class AppointmentService : IAppointmentService
 
         var now = DateTime.UtcNow;
 
-        // Rule 1: Max 3 active appointments (BOOKED)
+        // Rule 1: Max 3 active appointments (BOOKED) cho bệnh nhân
         var activeAppointments = await _db.Appointments
             .Where(a => a.PatientProfileId == patientProfileId
                 && a.Status == AppointmentStatus.Booked)
             .CountAsync(ct);
-        if (activeAppointments >= 3)
+        if (activeAppointments >= MaxActiveSelfBookings)
         {
             throw new InvalidOperationException(
                 "Bạn đã có 3 lịch hẹn đang chờ. Vui lòng hoàn thành hoặc hủy lịch cũ trước khi đặt mới.");
@@ -226,7 +244,7 @@ public sealed class AppointmentService : IAppointmentService
                 "Mỗi ngày chỉ được đặt tối đa 1 lịch. Vui lòng hủy lịch cũ trước khi đặt lịch mới.");
         }
 
-        // Rule 2: Giới hạn đặt trong phạm vi 3 ngày
+        // Rule 3: Giới hạn đặt trong phạm vi 3 ngày
         var next3Days = DateOnly.FromDateTime(now.AddDays(3));
         var hasAppointmentWithin3Days = await _db.Appointments
             .Include(a => a.Slot)
@@ -242,16 +260,60 @@ public sealed class AppointmentService : IAppointmentService
                 "Bạn đã có lịch hẹn trong vòng 3 ngày tới. Vui lòng đặt lịch sau khi đã hoàn thành lịch hiện tại.");
         }
 
-        // Rule 5: Max 2 appointments/day cho cùng ngày (bao gồm slot đang đặt)
-        var todayAppointments = await _db.Appointments
-            .Where(a => a.PatientProfileId == patientProfileId
-                && a.Slot.SlotDate == slot.SlotDate
-                && a.Status == AppointmentStatus.Booked)
-            .CountAsync(ct);
-        if (todayAppointments >= 2)
+        // =====================================================
+        // VALIDATION FOR BOOKING-FOR-OTHERS
+        // =====================================================
+
+        // Determine if booking for someone else (RelationshipId provided)
+        var isBookingForOthers = request.RelationshipId.HasValue;
+        Guid? bookedByUserId = null;
+        Guid? relationshipId = null;
+
+        if (isBookingForOthers)
         {
-            throw new InvalidOperationException(
-                $"Ngày {slot.SlotDate:dd/MM/yyyy} đã có 2 lịch hẹn. Vui lòng chọn ngày khác.");
+            relationshipId = request.RelationshipId;
+
+            // Validate relationship exists and belongs to user
+            var relationship = await _db.PatientRelationships
+                .Include(r => r.PatientProfile)
+                .FirstOrDefaultAsync(r => r.RelationshipId == relationshipId && r.UserId == userId, ct);
+
+            if (relationship == null)
+            {
+                throw new InvalidOperationException("Không tìm thấy mối quan hệ này trong danh bạ của bạn.");
+            }
+
+            // Validate the relationship's patient matches the appointment's patient
+            if (relationship.PatientProfileId != patientProfileId)
+            {
+                throw new InvalidOperationException("Patient profile không khớp với mối quan hệ đã chọn.");
+            }
+
+            // Rule 5: Max 5 active appointments booked-for-others by same user
+            var bookedForOthersCount = await _db.Appointments
+                .Where(a => a.BookedByUserId == userId
+                    && a.Status == AppointmentStatus.Booked)
+                .CountAsync(ct);
+            if (bookedForOthersCount >= MaxActiveBookedForOthers)
+            {
+                throw new InvalidOperationException(
+                    $"Bạn đã đặt tối đa {MaxActiveBookedForOthers} lịch hộ người thân đang chờ. Vui lòng hoàn thành hoặc hủy lịch cũ trước.");
+            }
+
+            // Rule 6: 1 user - 1 day - tối đa 1 appointment (kể cả đặt cho người khác)
+            var hasSameDayBookedByUser = await _db.Appointments
+                .AnyAsync(a =>
+                    a.BookedByUserId == userId
+                    && a.Slot.SlotDate == slot.SlotDate
+                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Completed),
+                    ct);
+            if (hasSameDayBookedByUser)
+            {
+                throw new InvalidOperationException(
+                    $"Bạn đã có lịch hẹn vào ngày {slot.SlotDate:dd/MM/yyyy}. Mỗi ngày chỉ được đặt tối đa 1 lịch.");
+            }
+
+            bookedByUserId = userId;
         }
 
         // =====================================================
@@ -268,6 +330,8 @@ public sealed class AppointmentService : IAppointmentService
             Status = AppointmentStatus.Booked,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
+            BookedByUserId = bookedByUserId,
+            RelationshipId = relationshipId,
         };
 
         // Tạo Case nếu có symptoms (từ Mobile booking)
@@ -293,8 +357,23 @@ public sealed class AppointmentService : IAppointmentService
 
         await _appointmentRepo.CreateAsync(appointment, ct);
         await _slotRepo.UpdateAsync(slot, ct);
+
         // Load navigation properties for response
         appointment.Slot = slot;
+
+        // Load BookedByUser and Relationship for response (if booking for others)
+        if (bookedByUserId.HasValue || relationshipId.HasValue)
+        {
+            var loadedAppointment = await _db.Appointments
+                .Include(a => a.BookedByUser)
+                .Include(a => a.PatientRelationship)
+                .FirstOrDefaultAsync(a => a.AppointmentId == appointment.AppointmentId, ct);
+            if (loadedAppointment != null)
+            {
+                appointment.BookedByUser = loadedAppointment.BookedByUser;
+                appointment.PatientRelationship = loadedAppointment.PatientRelationship;
+            }
+        }
 
         var patientProfile = await _profileRepo.GetByIdAsync(patientProfileId, ct);
 
@@ -309,7 +388,7 @@ public sealed class AppointmentService : IAppointmentService
 
                 await _notificationService.SendAsync(new SendNotificationRequest
                 {
-                    UserId = patientProfile.UserId,
+                    UserId = patientProfile.UserId ?? Guid.Empty,
                     Type = "appointment_booking",
                     Title = "Xác nhận đặt lịch khám",
                     Body = $"Bạn đã đặt lịch khám với BS. {slot.Doctor.FullName} vào ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
@@ -342,8 +421,8 @@ public sealed class AppointmentService : IAppointmentService
         // Gửi notification cho doctor phụ trách
         try
         {
-            var userId = patientProfile?.UserId ?? Guid.Empty;
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId, ct);
+            var patientUserId = patientProfile?.UserId ?? Guid.Empty;
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == patientUserId, ct);
             var patientName = user?.FullName ?? "Bệnh nhân";
             await _notificationService.SendAsync(new SendNotificationRequest
             {
@@ -473,7 +552,7 @@ public sealed class AppointmentService : IAppointmentService
         {
             await _notificationService.SendAsync(new SendNotificationRequest
             {
-                UserId = patientProfile.UserId,
+                UserId = patientProfile.UserId ?? Guid.Empty,
                 Type = "appointment_booking",
                 Title = "Lịch hẹn tái khám",
                 Body = $"Bác sĩ {slot.Doctor.FullName} đã hẹn tái khám cho bạn vào ngày {slot.SlotDate:dd/MM/yyyy} lúc {slot.StartTime}.",
@@ -517,6 +596,7 @@ public sealed class AppointmentService : IAppointmentService
 
     public async Task<AppointmentResponse> CancelAppointmentAsync(
         Guid appointmentId,
+        Guid userId,
         Guid patientProfileId,
         CancelAppointmentRequest request,
         CancellationToken ct = default)
@@ -534,8 +614,8 @@ public sealed class AppointmentService : IAppointmentService
             .FirstOrDefaultAsync(a => a.AppointmentId == appointmentId, ct)
             ?? throw new InvalidOperationException($"Appointment '{appointmentId}' not found.");
 
-        // BR-01: Chỉ patient sở hữu mới được hủy
-        if (appointment.PatientProfileId != patientProfileId)
+        // BR-01: Chỉ patient sở hữu HOẶC người đặt hộ mới được hủy
+        if (appointment.PatientProfileId != patientProfileId && appointment.BookedByUserId != userId)
         {
             throw new UnauthorizedAccessException("Bạn không có quyền hủy lịch hẹn này.");
         }
@@ -579,7 +659,7 @@ public sealed class AppointmentService : IAppointmentService
             {
                 await _notificationService.SendAsync(new SendNotificationRequest
                 {
-                    UserId = patientProfile.UserId,
+                    UserId = patientProfile.UserId ?? Guid.Empty,
                     Type = "appointment_cancellation",
                     Title = "Lịch khám đã bị hủy",
                     Body = $"Lịch khám với BS. {slot.Doctor.FullName} vào ngày {slot.SlotDate:dd/MM/yyyy} đã bị hủy.",
@@ -678,7 +758,7 @@ public sealed class AppointmentService : IAppointmentService
             {
                 await _notificationService.SendAsync(new SendNotificationRequest
                 {
-                    UserId = patientProfile.UserId,
+                    UserId = patientProfile.UserId ?? Guid.Empty,
                     Type = "appointment_checkin",
                     Title = "Đã check-in thành công",
                     Body = $"Bạn đã được check-in cho lịch khám ngày {appointment.Slot.SlotDate:dd/MM/yyyy} lúc {appointment.Slot.StartTime} với BS. {appointment.Slot.Doctor.FullName}.",
@@ -789,7 +869,7 @@ public sealed class AppointmentService : IAppointmentService
             {
                 await _notificationService.SendAsync(new SendNotificationRequest
                 {
-                    UserId = patientProfile.UserId,
+                    UserId = patientProfile.UserId ?? Guid.Empty,
                     Type = "appointment_checkin",
                     Title = "Đã check-in thành công",
                     Body = $"Bạn đã được check-in cho lịch khám ngày {appointment.Slot.SlotDate:dd/MM/yyyy} lúc {appointment.Slot.StartTime} với BS. {appointment.Slot.Doctor.FullName}.",
@@ -1071,6 +1151,8 @@ public sealed class AppointmentService : IAppointmentService
             Status = newAppointmentStatus,
             Reason = !string.IsNullOrWhiteSpace(request.NewReason) ? request.NewReason : oldAppointment.Reason,
             CaseId = oldAppointment.CaseId,
+            BookedByUserId = oldAppointment.BookedByUserId,
+            RelationshipId = oldAppointment.RelationshipId,
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -1170,6 +1252,8 @@ public sealed class AppointmentService : IAppointmentService
         newAppointment.Slot = newSlot;
         newAppointment.Case = oldAppointment.Case;
         newAppointment.PatientProfile = oldAppointment.PatientProfile;
+        newAppointment.BookedByUser = oldAppointment.BookedByUser;
+        newAppointment.PatientRelationship = oldAppointment.PatientRelationship;
 
         // Post-commit notifications (inside try-catch, best effort)
         // 1. Patient notification
@@ -1270,6 +1354,9 @@ public sealed class AppointmentService : IAppointmentService
             CalendarSyncedAt = a.CalendarSyncedAt,
             CreatedAt = a.CreatedAt,
             CaseId = caseId ?? a.CaseId,
+            BookedByUserName = a.BookedByUser?.FullName,
+            RelationshipLabel = a.PatientRelationship?.RelationshipName,
+            IsBookedForOthers = a.BookedByUserId != null,
         };
     }
 }
