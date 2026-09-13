@@ -19,10 +19,10 @@ function formatFullDate(dateStr: string): string {
 }
 
 /** Đại lượng nào của một ngày sẽ được vẽ. */
-export type Measure = "newAccounts" | "cases" | "appointments" | "revenue";
+export type Measure = "newAccounts" | "cases" | "appointments" | "revenue" | "profit";
 
 function formatValue(val: number, measure: Measure): string {
-  if (measure === "revenue") {
+  if (measure === "revenue" || measure === "profit") {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
@@ -94,6 +94,8 @@ export function TrendChart({
 
   const gradientId = `trend-fill-${measure}`;
   const hovered = hoverIndex === null ? null : points[hoverIndex];
+  const isProfit = measure === "profit";
+  const themeColor = isProfit ? "#10b981" : "var(--cat-teal)";
 
   function handleMove(event: React.MouseEvent<SVGSVGElement>) {
     const box = event.currentTarget.getBoundingClientRect();
@@ -124,8 +126,8 @@ export function TrendChart({
         >
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--cat-teal)" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="var(--cat-teal)" stopOpacity="0" />
+              <stop offset="0%" stopColor={themeColor} stopOpacity="0.22" />
+              <stop offset="100%" stopColor={themeColor} stopOpacity="0" />
             </linearGradient>
           </defs>
 
@@ -142,7 +144,7 @@ export function TrendChart({
           <path
             d={linePath}
             fill="none"
-            stroke="var(--cat-teal)"
+            stroke={themeColor}
             strokeWidth="2"
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -163,7 +165,7 @@ export function TrendChart({
                 cy={yAt(hovered[measure] ?? 0)}
                 r="5"
                 fill="var(--background)"
-                stroke="var(--cat-teal)"
+                stroke={themeColor}
                 strokeWidth="2"
               />
             </g>
@@ -202,6 +204,11 @@ export const APPOINTMENT_SERIES: Series[] = [
   { label: "Tài khoản mới", color: "var(--cat-navy)", key: "newAccounts" },
   { label: "Ca khám", color: "var(--cat-rose)", key: "cases" },
   { label: "Lượt hẹn", color: "var(--cat-teal)", key: "appointments" },
+];
+
+export const FINANCIAL_SERIES: Series[] = [
+  { label: "Doanh thu", color: "var(--cat-teal)", key: "revenue" },
+  { label: "Tiền lãi", color: "#10b981", key: "profit" },
 ];
 
 export interface GroupedBarProps {
@@ -294,13 +301,21 @@ export function GroupedBarChart({ points, series, title }: GroupedBarProps) {
           <div className="flex flex-col gap-1 pt-0.5">
             {series.map((s) => {
               const val = (hoveredPoint[s.key] as number) ?? 0;
+              const isMoney = s.key === "revenue" || s.key === "profit";
+              const formattedVal = isMoney
+                ? new Intl.NumberFormat("vi-VN", {
+                    style: "currency",
+                    currency: "VND",
+                    maximumFractionDigits: 0,
+                  }).format(val)
+                : String(val);
               return (
                 <div key={s.label} className="flex items-center justify-between gap-4">
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                     {s.label}
                   </span>
-                  <span className="font-semibold tabular-nums text-foreground">{val}</span>
+                  <span className="font-semibold tabular-nums text-foreground">{formattedVal}</span>
                 </div>
               );
             })}
