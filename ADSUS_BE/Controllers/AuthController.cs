@@ -18,14 +18,12 @@ public class AuthController : ControllerBase
     private readonly IAuthService _auth;
     private readonly IPasswordResetService _passwordReset;
     private readonly IPatientSelfRegistrationService _selfRegistration;
+    private readonly IPasswordResetOtpService _passwordResetOtp;
     private readonly IValidator<LoginRequest> _loginValidator;
     private readonly IValidator<ChangePasswordRequest> _changePasswordValidator;
     private readonly IValidator<ForgotPasswordRequest> _forgotPasswordValidator;
     private readonly IValidator<CompleteRegistrationRequest> _completeRegistrationValidator;
-    private readonly IPasswordResetOtpService _passwordResetOtp;
-    private readonly IValidator<RequestPasswordResetOtpRequest> _requestPasswordResetOtpValidator;
-    private readonly IValidator<VerifyPasswordResetOtpRequest> _verifyPasswordResetOtpValidator;
-    private readonly IValidator<CompletePasswordResetWithOtpRequest> _completePasswordResetWithOtpValidator;
+    private readonly IValidator<CompletePasswordResetWithFirebaseRequest> _completePasswordResetWithFirebaseValidator;
 
     public AuthController(
         IAuthService auth,
@@ -36,9 +34,7 @@ public class AuthController : ControllerBase
         IValidator<ChangePasswordRequest> changePasswordValidator,
         IValidator<ForgotPasswordRequest> forgotPasswordValidator,
         IValidator<CompleteRegistrationRequest> completeRegistrationValidator,
-        IValidator<RequestPasswordResetOtpRequest> requestPasswordResetOtpValidator,
-        IValidator<VerifyPasswordResetOtpRequest> verifyPasswordResetOtpValidator,
-        IValidator<CompletePasswordResetWithOtpRequest> completePasswordResetWithOtpValidator)
+        IValidator<CompletePasswordResetWithFirebaseRequest> completePasswordResetWithFirebaseValidator)
     {
         _auth = auth;
         _passwordReset = passwordReset;
@@ -48,9 +44,7 @@ public class AuthController : ControllerBase
         _changePasswordValidator = changePasswordValidator;
         _forgotPasswordValidator = forgotPasswordValidator;
         _completeRegistrationValidator = completeRegistrationValidator;
-        _requestPasswordResetOtpValidator = requestPasswordResetOtpValidator;
-        _verifyPasswordResetOtpValidator = verifyPasswordResetOtpValidator;
-        _completePasswordResetWithOtpValidator = completePasswordResetWithOtpValidator;
+        _completePasswordResetWithFirebaseValidator = completePasswordResetWithFirebaseValidator;
     }
 
     /// <summary>
@@ -247,96 +241,33 @@ public class AuthController : ControllerBase
         return Ok(ApiResponse<LoginResponse>.Ok(result, "Registration successful."));
     }
 
-    /// <summary>UC-03 — quên mật khẩu qua SMS OTP, bước 1. CHỈ Patient (Global Constraints):
-    /// số không thuộc Patient Active bị coi như "không tìm thấy", báo RÕ 404.</summary>
-    [HttpPost("forgot-password/request-otp")]
-    [AllowAnonymous]
-    [EnableRateLimiting(RateLimitPolicies.Auth)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status429TooManyRequests)]
-    public async Task<IActionResult> RequestPasswordResetOtp(
-        [FromBody] RequestPasswordResetOtpRequest request,
-        CancellationToken cancellationToken)
-    {
-        var validation = await _requestPasswordResetOtpValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
-            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
-        }
-
-        var result = await _passwordResetOtp.RequestOtpAsync(request, cancellationToken);
-
-        return result switch
-        {
-            PasswordResetOtpResult.Success => Ok(ApiResponse<object>.Ok(null!, "Verification code sent.")),
-
-            PasswordResetOtpResult.TooSoon => BadRequest(ApiResponse<object>.Fail(
-                StatusCodes.Status400BadRequest,
-                "Please wait at least 60 seconds before requesting another code.")),
-
-            // Báo RÕ — quyết định có chủ đích (Global Constraints). 404, không phải 409 như
-            // đăng ký, vì hướng ngược lại: không tìm thấy, không phải xung đột.
-            PasswordResetOtpResult.PhoneNotFound => NotFound(ApiResponse<object>.Fail(
-                StatusCodes.Status404NotFound, "This phone number is not registered.")),
-
-            _ => throw new InvalidOperationException($"Unhandled {nameof(PasswordResetOtpResult)}: {result}."),
-        };
-    }
-
-    /// <summary>UC-03 — quên mật khẩu qua SMS OTP, bước 2.</summary>
-    [HttpPost("forgot-password/verify-otp")]
-    [AllowAnonymous]
-    [EnableRateLimiting(RateLimitPolicies.Auth)]
-    [ProducesResponseType(typeof(ApiResponse<VerifyPasswordResetOtpResponse>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<VerifyPasswordResetOtpResponse>), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> VerifyPasswordResetOtp(
-        [FromBody] VerifyPasswordResetOtpRequest request,
-        CancellationToken cancellationToken)
-    {
-        var validation = await _verifyPasswordResetOtpValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
-            return BadRequest(ApiResponse<VerifyPasswordResetOtpResponse>.Fail(
-                StatusCodes.Status400BadRequest, message));
-        }
-
-        var result = await _passwordResetOtp.VerifyOtpAsync(request, cancellationToken);
-
-        if (!result.Success)
-        {
-            return BadRequest(ApiResponse<VerifyPasswordResetOtpResponse>.Fail(
-                StatusCodes.Status400BadRequest, "The verification code is incorrect or has expired."));
-        }
-
-        return Ok(ApiResponse<VerifyPasswordResetOtpResponse>.Ok(
-            new VerifyPasswordResetOtpResponse(result.ResetToken!), "Verification successful."));
-    }
-
-    /// <summary>UC-03 — quên mật khẩu qua SMS OTP, bước 3 (cuối). Tự động đăng nhập sau khi đổi.</summary>
-    [HttpPost("forgot-password/complete")]
+    /// <summary>UC-03 — quên mật khẩu qua Firebase Phone Auth (chỉ Patient, SDK chạy trên
+    /// Mobile). Backend chỉ verify Firebase ID Token, đổi mật khẩu và tự động đăng nhập.
+    /// Báo RÕ 404 nếu số chưa có tài khoản Patient Active (xem Global Constraints).</summary>
+    [HttpPost("forgot-password/complete-with-firebase")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitPolicies.Auth)]
     [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CompletePasswordResetWithOtp(
-        [FromBody] CompletePasswordResetWithOtpRequest request,
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> CompletePasswordResetWithFirebase(
+        [FromBody] CompletePasswordResetWithFirebaseRequest request,
         CancellationToken cancellationToken)
     {
-        var validation = await _completePasswordResetWithOtpValidator.ValidateAsync(request, cancellationToken);
+        var validation = await _completePasswordResetWithFirebaseValidator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
         {
             var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
             return BadRequest(ApiResponse<LoginResponse>.Fail(StatusCodes.Status400BadRequest, message));
         }
 
-        // BusinessException (token sai/hết hạn, tài khoản không còn hợp lệ) được
-        // GlobalExceptionHandler dịch sang 400/422 — không try/catch ở đây.
         var result = await _passwordResetOtp.CompleteAsync(request, cancellationToken);
 
-        return Ok(ApiResponse<LoginResponse>.Ok(result, "Password reset successful."));
+        // Báo RÕ 404 — quyết định có chủ đích (xem Global Constraints trong plan gốc), tương tự
+        // bản OTP cũ nhưng giờ nằm ở bước duy nhất.
+        return result is null
+            ? NotFound(ApiResponse<LoginResponse>.Fail(StatusCodes.Status404NotFound, "This phone number is not registered."))
+            : Ok(ApiResponse<LoginResponse>.Ok(result, "Password reset successful."));
     }
 }

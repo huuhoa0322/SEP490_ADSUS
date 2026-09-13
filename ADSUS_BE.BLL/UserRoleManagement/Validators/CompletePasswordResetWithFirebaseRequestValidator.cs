@@ -3,15 +3,16 @@ using FluentValidation;
 
 namespace ADSUS_BE.BLL.UserRoleManagement.Validators;
 
-public class CompletePasswordResetWithOtpRequestValidator : AbstractValidator<CompletePasswordResetWithOtpRequest>
+public class CompletePasswordResetWithFirebaseRequestValidator
+    : AbstractValidator<CompletePasswordResetWithFirebaseRequest>
 {
     private const int MinLength = 8;
     private const int MaxLength = 72;
 
-    public CompletePasswordResetWithOtpRequestValidator()
+    public CompletePasswordResetWithFirebaseRequestValidator()
     {
-        RuleFor(x => x.ResetToken)
-            .NotEmpty().WithMessage("Reset token is required.");
+        RuleFor(x => x.FirebaseIdToken)
+            .NotEmpty().WithMessage("Firebase ID token is required.");
 
         RuleFor(x => x.NewPassword)
             .NotEmpty().WithMessage("New password is required.")
