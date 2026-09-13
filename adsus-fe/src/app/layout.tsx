@@ -32,6 +32,23 @@ const geistMono = Geist_Mono({
   weight: "variable",
 });
 
+// Landing Page v2 fonts — loaded only here, referenced via --lp-font-serif / --lp-font-sans /
+// --lp-font-mono in globals.css so components can use them without importing.
+import { Fraunces, JetBrains_Mono } from "next/font/google";
+
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  style: ["normal", "italic"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+});
+
 export const metadata: Metadata = {
   title: "ADSUS",
   description:
@@ -43,7 +60,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const htmlClassName = [inter.variable, geistMono.variable, "h-full", "antialiased"]
+  const htmlClassName = [
+    inter.variable,
+    geistMono.variable,
+    fraunces.variable,
+    jetbrainsMono.variable,
+    "h-full",
+    "antialiased",
+  ]
     .filter(Boolean)
     .join(" ");
 
