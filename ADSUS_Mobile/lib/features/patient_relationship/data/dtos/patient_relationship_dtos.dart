@@ -22,13 +22,17 @@ class PatientRelationshipDTO {
 
   factory PatientRelationshipDTO.fromJson(Map<String, dynamic> json) {
     return PatientRelationshipDTO(
-      relationshipId: json['relationshipId'] as String,
-      patientProfileId: json['patientProfileId'] as String,
-      fullName: json['fullName'] as String,
-      phone: json['phone'] as String?,
+      relationshipId:
+          (json['relationshipId'] ?? json['id'] ?? '').toString(),
+      patientProfileId:
+          (json['patientProfileId'] ?? json['patientId'] ?? '').toString(),
+      fullName:
+          (json['fullName'] ?? json['patientName'] ?? '') as String,
+      phone: (json['phone'] ?? json['patientPhone']) as String?,
       dateOfBirth: json['dateOfBirth'] as String?,
       relationshipName: json['relationshipName'] as String?,
-      createdAt: json['createdAt'] as String,
+      createdAt: json['createdAt']?.toString() ??
+          DateTime.now().toIso8601String(),
     );
   }
 
@@ -51,9 +55,9 @@ class PatientRelationshipDTO {
       fullName: fullName,
       phone: phone,
       dateOfBirth:
-          dateOfBirth != null ? DateTime.parse(dateOfBirth!) : null,
+          dateOfBirth != null ? DateTime.tryParse(dateOfBirth!) : null,
       relationshipName: relationshipName,
-      createdAt: DateTime.parse(createdAt),
+      createdAt: DateTime.tryParse(createdAt) ?? DateTime.now(),
     );
   }
 }
@@ -62,20 +66,20 @@ class PatientRelationshipDTO {
 class AddRelativeRequest {
   const AddRelativeRequest({
     required this.fullName,
-    required this.phone,
+    this.phone,
     this.dateOfBirth,
     this.relationshipName,
   });
 
   final String fullName;
-  final String phone;
+  final String? phone;
   final String? dateOfBirth;
   final String? relationshipName;
 
   Map<String, dynamic> toJson() {
     return {
       'fullName': fullName,
-      'phone': phone,
+      if (phone != null && phone!.trim().isNotEmpty) 'phone': phone!.trim(),
       if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
       if (relationshipName != null && relationshipName!.isNotEmpty)
         'relationshipName': relationshipName,

@@ -530,9 +530,22 @@ class _BookAppointmentScreenState
     final enabled = state.selectedSlotId != null && !state.isBooking;
     return ElevatedButton(
       onPressed: enabled
-          ? () => ref.read(bookAppointmentViewModelProvider.notifier).book(
-                reason: _reasonController.text.trim(),
-              )
+          ? () {
+              if (!state.isBookingForSelf && state.selectedRelative == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        'Vui lòng chọn người thân trước khi xác nhận đặt lịch.'),
+                    backgroundColor: AppColors.danger,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+              ref.read(bookAppointmentViewModelProvider.notifier).book(
+                    reason: _reasonController.text.trim(),
+                  );
+            }
           : null,
       child: state.isBooking
           ? const SizedBox(
@@ -632,27 +645,27 @@ class _BookAppointmentScreenState
                 title: const Text('Người thân', style: TextStyle(fontSize: 14)),
                 value: false,
                 groupValue: state.isBookingForSelf,
-                onChanged: (v) => notifier.setIsBookingForSelf(v ?? false),
+                onChanged: (v) {
+                  final forSelf = v ?? false;
+                  notifier.setIsBookingForSelf(forSelf);
+                  if (!forSelf) {
+                    notifier.loadSavedRelatives();
+                  }
+                },
               ),
             ),
           ],
         ),
-        // Nếu chọn người thân, hiện dropdown
+        // Nếu chọn người thân, hiện dropdown hoặc loading
         if (!state.isBookingForSelf) ...[
           const SizedBox(height: 8),
-          // Load relatives on demand
-          if (state.savedRelatives.isEmpty && !state.isLoadingRelatives)
-            FutureBuilder(
-              future: notifier.loadSavedRelatives(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                return _relativeDropdown(state, notifier);
-              },
+          if (state.isLoadingRelatives)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(),
+              ),
             )
-          else if (state.isLoadingRelatives)
-            const Center(child: CircularProgressIndicator())
           else
             _relativeDropdown(state, notifier),
         ],
@@ -660,7 +673,8 @@ class _BookAppointmentScreenState
     );
   }
 
-  Widget _relativeDropdown(BookAppointmentState state, BookAppointmentViewModel notifier) {
+  Widget _relativeDropdown(
+      BookAppointmentState state, BookAppointmentViewModel notifier) {
     if (state.savedRelatives.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -669,14 +683,41 @@ class _BookAppointmentScreenState
           border: Border.all(color: const Color(0xFFFFB300)),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.info_outline, color: Color(0xFFE65100), size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Chưa có người thân nào. Hãy thêm người thân để đặt lịch hộ.',
-                style: const TextStyle(color: Color(0xFFE65100), fontSize: 13),
+            const Row(
+              children: [
+                Icon(Icons.info_outline, color: Color(0xFFE65100), size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Chưa có người thân nào. Hãy thêm người thân để đặt lịch hộ.',
+                    style: TextStyle(color: Color(0xFFE65100), fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const AddRelativeScreen()),
+                  );
+                  if (result == true) {
+                    notifier.loadSavedRelatives();
+                  }
+                },
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('+ THÊM NGƯỜI THÂN NGAY'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE65100),
+                  foregroundColor: Colors.white,
+                ),
               ),
             ),
           ],
@@ -705,7 +746,7 @@ class _BookAppointmentScreenState
         // Nút thêm người thân mới
         TextButton.icon(
           onPressed: () async {
-            final result = await Navigator.push(
+            final result = await Navigator.push<bool>(
               context,
               MaterialPageRoute(builder: (_) => const AddRelativeScreen()),
             );

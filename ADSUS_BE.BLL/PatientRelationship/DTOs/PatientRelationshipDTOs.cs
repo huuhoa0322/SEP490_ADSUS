@@ -7,7 +7,7 @@ namespace ADSUS_BE.BLL.PatientRelationship.DTOs;
 /// </summary>
 public record AddRelativeRequest(
     string FullName,
-    string Phone,
+    string? Phone,
     DateOnly? DateOfBirth,
     string? RelationshipName
 );

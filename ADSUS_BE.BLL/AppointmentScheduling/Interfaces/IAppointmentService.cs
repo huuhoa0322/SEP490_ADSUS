@@ -48,6 +48,14 @@ public interface IAppointmentService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Đặt lịch hẹn mới cho chính mình (overload tiện ích).
+    /// </summary>
+    Task<AppointmentResponse> BookAppointmentAsync(
+        Guid patientProfileId,
+        BookAppointmentRequest request,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Bác sĩ hẹn tái khám cho bệnh nhân (UC-15 mở rộng).
     /// </summary>
     Task<AppointmentResponse> CreateFollowUpAppointmentAsync(

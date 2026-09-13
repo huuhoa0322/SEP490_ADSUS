@@ -16,10 +16,12 @@ namespace ADSUS_BE.BLL.AppointmentScheduling.Services;
 /// </summary>
 public sealed class AppointmentService : IAppointmentService
 {
-    // Giới hạn đặt hộ: tối đa 5 appointment đang active đặt hộ
-    private const int MaxActiveBookedForOthers = 5;
+    // Giới hạn đặt hộ: tối đa 3 appointment đang active đặt hộ
+    private const int MaxActiveBookedForOthers = 3;
     // Giới hạn đặt cho bản thân: tối đa 3 appointment đang active
     private const int MaxActiveSelfBookings = 3;
+    // Giới hạn cho mỗi hồ sơ bệnh nhân: tối đa 3 appointment đang active trên toàn hệ thống
+    private const int MaxActivePerPatientProfile = 3;
     private readonly IAppointmentRepository _appointmentRepo;
     private readonly IScheduleSlotRepository _slotRepo;
     private readonly IPatientProfileRepository _profileRepo;
@@ -172,6 +174,12 @@ public sealed class AppointmentService : IAppointmentService
         return ToAppointmentResponse(appointment);
     }
 
+    public Task<AppointmentResponse> BookAppointmentAsync(
+        Guid patientProfileId,
+        BookAppointmentRequest request,
+        CancellationToken ct = default)
+        => BookAppointmentAsync(patientProfileId, patientProfileId, request, ct);
+
     public async Task<AppointmentResponse> BookAppointmentAsync(
         Guid userId,
         Guid patientProfileId,
@@ -189,7 +197,7 @@ public sealed class AppointmentService : IAppointmentService
         }
 
         // BR-02: Kiểm tra không trùng booking
-        var hasBooked = slot.Appointments.Any(a => a.Status == AppointmentStatus.Booked);
+        var hasBooked = slot.Appointments.Any(a => a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.CheckedIn);
         if (hasBooked)
         {
             throw new InvalidOperationException("Slot này đã có người đặt.");
@@ -205,73 +213,19 @@ public sealed class AppointmentService : IAppointmentService
         }
 
         // =====================================================
-        // VALIDATION RULES - Chống spam đặt lịch
+        // XÁC ĐỊNH ĐỐI TƯỢNG VÀ QUAN HỆ ĐẶT LỊCH
         // =====================================================
-
-        // Rule 1: Max 3 active appointments (BOOKED) cho bệnh nhân
-        var activeAppointments = await _db.Appointments
-            .Where(a => a.PatientProfileId == patientProfileId
-                && a.Status == AppointmentStatus.Booked)
-            .CountAsync(ct);
-        if (activeAppointments >= MaxActiveSelfBookings)
-        {
-            throw new InvalidOperationException(
-                "Bạn đã có 3 lịch hẹn đang chờ. Vui lòng hoàn thành hoặc hủy lịch cũ trước khi đặt mới.");
-        }
-
-        // Rule 2: 1 bệnh nhân - 1 ngày - tối đa 1 lịch (KHÔNG phân biệt bác sĩ)
-        var hasSameDayAppointment = await _db.Appointments
-            .Include(a => a.Slot).ThenInclude(s => s.Doctor)
-            .AnyAsync(a =>
-                a.PatientProfileId == patientProfileId
-                && a.Slot.SlotDate == slot.SlotDate
-                && a.Status == AppointmentStatus.Booked,
-                ct);
-        if (hasSameDayAppointment)
-        {
-            var existingAppointment = await _db.Appointments
-                .Include(a => a.Slot).ThenInclude(s => s.Doctor)
-                .FirstOrDefaultAsync(a =>
-                    a.PatientProfileId == patientProfileId
-                    && a.Slot.SlotDate == slot.SlotDate
-                    && a.Status == AppointmentStatus.Booked,
-                    ct);
-            var doctorName = existingAppointment?.Slot?.Doctor?.FullName ?? "bác sĩ";
-            throw new InvalidOperationException(
-                $"Bạn đã có lịch khám với {doctorName} vào ngày {slot.SlotDate:dd/MM/yyyy}. " +
-                "Mỗi ngày chỉ được đặt tối đa 1 lịch. Vui lòng hủy lịch cũ trước khi đặt lịch mới.");
-        }
-
-        // Rule 3: Giới hạn đặt trong phạm vi 3 ngày
-        var next3Days = DateOnly.FromDateTime(now.AddDays(3));
-        var hasAppointmentWithin3Days = await _db.Appointments
-            .Include(a => a.Slot)
-            .AnyAsync(a =>
-                a.PatientProfileId == patientProfileId
-                && a.Slot.SlotDate > slot.SlotDate
-                && a.Slot.SlotDate <= next3Days
-                && a.Status == AppointmentStatus.Booked,
-                ct);
-        if (hasAppointmentWithin3Days)
-        {
-            throw new InvalidOperationException(
-                "Bạn đã có lịch hẹn trong vòng 3 ngày tới. Vui lòng đặt lịch sau khi đã hoàn thành lịch hiện tại.");
-        }
-
-        // =====================================================
-        // VALIDATION FOR BOOKING-FOR-OTHERS
-        // =====================================================
-
-        // Determine if booking for someone else (RelationshipId provided)
         var isBookingForOthers = request.RelationshipId.HasValue;
+        Guid targetPatientProfileId;
         Guid? bookedByUserId = null;
         Guid? relationshipId = null;
 
         if (isBookingForOthers)
         {
-            relationshipId = request.RelationshipId;
+            relationshipId = request.RelationshipId!.Value;
+            bookedByUserId = userId;
 
-            // Validate relationship exists and belongs to user
+            // Xác thực relationship tồn tại và thuộc về user gọi API
             var relationship = await _db.PatientRelationships
                 .Include(r => r.PatientProfile)
                 .FirstOrDefaultAsync(r => r.RelationshipId == relationshipId && r.UserId == userId, ct);
@@ -281,49 +235,96 @@ public sealed class AppointmentService : IAppointmentService
                 throw new InvalidOperationException("Không tìm thấy mối quan hệ này trong danh bạ của bạn.");
             }
 
-            // Validate the relationship's patient matches the appointment's patient
-            if (relationship.PatientProfileId != patientProfileId)
-            {
-                throw new InvalidOperationException("Patient profile không khớp với mối quan hệ đã chọn.");
-            }
+            // Bệnh nhân thực sự được đặt khám
+            targetPatientProfileId = relationship.PatientProfileId;
 
-            // Rule 5: Max 5 active appointments booked-for-others by same user
-            var bookedForOthersCount = await _db.Appointments
-                .Where(a => a.BookedByUserId == userId
-                    && a.Status == AppointmentStatus.Booked)
-                .CountAsync(ct);
-            if (bookedForOthersCount >= MaxActiveBookedForOthers)
-            {
-                throw new InvalidOperationException(
-                    $"Bạn đã đặt tối đa {MaxActiveBookedForOthers} lịch hộ người thân đang chờ. Vui lòng hoàn thành hoặc hủy lịch cũ trước.");
-            }
+            // TRUSTED RELATIONSHIP:
+            // Nếu relationship đã được tạo từ trước (đã tin cậy), thì CHO PHÉP đặt hộ
+            // kể cả khi người thân đó sau này đã đăng ký tài khoản (relationship.PatientProfile.UserId != null).
 
-            // Rule 6: 1 user - 1 day - tối đa 1 appointment (kể cả đặt cho người khác)
-            var hasSameDayBookedByUser = await _db.Appointments
-                .AnyAsync(a =>
-                    a.BookedByUserId == userId
-                    && a.Slot.SlotDate == slot.SlotDate
-                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.Completed),
-                    ct);
-            if (hasSameDayBookedByUser)
+            // Pool 2: User đặt hộ tối đa 3 lịch active (BOOKED hoặc CHECKED_IN)
+            var bookedForOthersActiveCount = await _db.Appointments
+                .CountAsync(a => a.BookedByUserId == userId
+                    && a.RelationshipId != null
+                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.CheckedIn), ct);
+
+            if (bookedForOthersActiveCount >= MaxActiveBookedForOthers)
             {
                 throw new InvalidOperationException(
-                    $"Bạn đã có lịch hẹn vào ngày {slot.SlotDate:dd/MM/yyyy}. Mỗi ngày chỉ được đặt tối đa 1 lịch.");
+                    $"Bạn đã đặt tối đa {MaxActiveBookedForOthers} lịch hộ người thân đang chờ khám. Vui lòng hoàn thành hoặc hủy lịch cũ trước.");
             }
+        }
+        else
+        {
+            // Tự đặt cho bản thân
+            targetPatientProfileId = patientProfileId;
 
-            bookedByUserId = userId;
+            // Pool 1: User tự đặt cho bản thân tối đa 3 lịch active (BOOKED hoặc CHECKED_IN)
+            var selfActiveCount = await _db.Appointments
+                .CountAsync(a => a.PatientProfileId == targetPatientProfileId
+                    && a.BookedByUserId == null
+                    && a.RelationshipId == null
+                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.CheckedIn), ct);
+
+            if (selfActiveCount >= MaxActiveSelfBookings)
+            {
+                throw new InvalidOperationException(
+                    $"Bạn đã có {MaxActiveSelfBookings} lịch hẹn đang chờ. Vui lòng hoàn thành hoặc hủy lịch cũ trước khi đặt mới.");
+            }
         }
 
         // =====================================================
-        // END VALIDATION RULES
+        // POOL 3: QUY TẮC CỐT LÕI CHO PATIENT PROFILE (Tối đa 3 lịch active)
+        // Bất kể ai đặt (chính bệnh nhân hay bất kỳ người thân nào đặt hộ),
+        // 1 PatientProfile không bao giờ được có quá 3 lịch khám active cùng lúc!
         // =====================================================
+        var patientTotalActiveCount = await _db.Appointments
+            .CountAsync(a => a.PatientProfileId == targetPatientProfileId
+                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.CheckedIn), ct);
 
-        // Tạo appointment
+        if (patientTotalActiveCount >= MaxActivePerPatientProfile)
+        {
+            throw new InvalidOperationException(
+                $"Bệnh nhân này đã có tối đa {MaxActivePerPatientProfile} lịch hẹn đang chờ khám trên hệ thống. Vui lòng hoàn thành hoặc hủy lịch cũ trước khi đặt mới.");
+        }
+
+        // =====================================================
+        // QUY TẮC TRONG NGÀY: 1 Bệnh nhân chỉ có tối đa 1 lịch active trong cùng 1 ngày khám
+        // Áp dụng theo targetPatientProfileId, KHÔNG CHẶN user đặt cho nhiều người thân khác nhau!
+        // =====================================================
+        var hasSameDayAppointment = await _db.Appointments
+            .Include(a => a.Slot).ThenInclude(s => s.Doctor)
+            .AnyAsync(a =>
+                a.PatientProfileId == targetPatientProfileId
+                && a.Slot.SlotDate == slot.SlotDate
+                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.CheckedIn),
+                ct);
+
+        if (hasSameDayAppointment)
+        {
+            var existingAppointment = await _db.Appointments
+                .Include(a => a.Slot).ThenInclude(s => s.Doctor)
+                .FirstOrDefaultAsync(a =>
+                    a.PatientProfileId == targetPatientProfileId
+                    && a.Slot.SlotDate == slot.SlotDate
+                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.CheckedIn),
+                    ct);
+            var doctorName = existingAppointment?.Slot?.Doctor?.FullName ?? "bác sĩ";
+            throw new InvalidOperationException(
+                $"Bạn đã có lịch khám với {doctorName} vào ngày {slot.SlotDate:dd/MM/yyyy}. " +
+                "Mỗi ngày chỉ được đặt tối đa 1 lịch. Vui lòng hủy lịch cũ trước khi đặt lịch mới.");
+        }
+
+
+
+        // =====================================================
+        // TẠO APPOINTMENT
+        // =====================================================
         var appointment = new Appointment
         {
             AppointmentId = Guid.NewGuid(),
             SlotId = request.ScheduleSlotId,
-            PatientProfileId = patientProfileId,
+            PatientProfileId = targetPatientProfileId,
             Reason = request.Reason,
             Status = AppointmentStatus.Booked,
             CreatedAt = DateTime.UtcNow,
@@ -332,10 +333,10 @@ public sealed class AppointmentService : IAppointmentService
             RelationshipId = relationshipId,
         };
 
-        // Luôn tạo Case khi đặt lịch — bác sĩ có thể thay đổi triệu chứng khi khám
+        // Luôn tạo Case khi đặt lịch cho đúng targetPatientProfileId
         var symptoms = request.Symptoms ?? new List<SymptomInput>();
         var caseId = await _caseService.CreateFromBookingAsync(
-            patientProfileId,
+            targetPatientProfileId,
             slot.DoctorId,
             slot.SlotDate,
             symptoms,
@@ -371,7 +372,7 @@ public sealed class AppointmentService : IAppointmentService
             }
         }
 
-        var patientProfile = await _profileRepo.GetByIdAsync(patientProfileId, ct);
+        var patientProfile = await _profileRepo.GetByIdAsync(targetPatientProfileId, ct);
 
         // Send notification to patient (best effort - don't fail the booking if notification fails)
         try

@@ -157,13 +157,13 @@ public partial class AppDbContext
             entity.Property(e => e.UserId).HasColumnName("user_id");
 
             entity.HasOne(d => d.User)
-                .WithMany()
+                .WithMany(p => p.PatientRelationships)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_patient_relationships_user");
 
             entity.HasOne(d => d.PatientProfile)
-                .WithMany()
+                .WithMany(p => p.PatientRelationships)
                 .HasForeignKey(d => d.PatientProfileId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_patient_relationships_profile");
@@ -181,12 +181,17 @@ public partial class AppDbContext
         {
             // Bổ sung navigation property cho Appointment entity
             entity.HasOne(d => d.BookedByUser)
-                .WithMany()
+                .WithMany(p => p.Appointments)
                 .HasForeignKey(d => d.BookedByUserId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("fk_appointments_booked_by");
 
-            // PatientRelationship đã được cấu hình trong AppDbContext.cs
+            // PatientRelationship navigation và foreign key
+            entity.HasOne(d => d.PatientRelationship)
+                .WithMany(p => p.Appointments)
+                .HasForeignKey(d => d.RelationshipId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_appointments_relationship");
         });
     }
 }

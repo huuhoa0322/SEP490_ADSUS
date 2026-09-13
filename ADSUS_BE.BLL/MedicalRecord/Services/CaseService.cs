@@ -596,7 +596,7 @@ public sealed class CaseService : ICaseService
         // Gửi notification cho doctor về case mới được tạo từ booking
         try
         {
-            var patientProfile = await _profiles.GetByIdAsync(patientProfileId, ct);
+            patientProfile ??= await _profiles.GetByIdAsync(patientProfileId, ct);
             var user = patientProfile?.UserId != null ? await _users.GetByIdAsync(patientProfile.UserId.Value, ct) : null;
             var patientName = user?.FullName ?? "Bệnh nhân";
 

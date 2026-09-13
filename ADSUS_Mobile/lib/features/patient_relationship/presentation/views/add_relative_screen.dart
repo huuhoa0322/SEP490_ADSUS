@@ -55,7 +55,7 @@ class _AddRelativeScreenState extends ConsumerState<AddRelativeScreen> {
             backgroundColor: AppColors.teal,
           ),
         );
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(true);
       }
 
       // Show error snackbar
@@ -104,7 +104,7 @@ class _AddRelativeScreenState extends ConsumerState<AddRelativeScreen> {
                 const SizedBox(height: 20),
 
                 // Phone Number
-                _buildSectionLabel('SỐ ĐIỆN THOẠI *'),
+                _buildSectionLabel('SỐ ĐIỆN THOẠI (TÙY CHỌN CHO NGƯỜI CAO TUỔI)'),
                 TextFormField(
                   controller: _phoneController,
                   decoration: InputDecoration(
@@ -136,7 +136,7 @@ class _AddRelativeScreenState extends ConsumerState<AddRelativeScreen> {
                       .updatePhone(value),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Vui lòng nhập số điện thoại';
+                      return null;
                     }
                     if (!PhoneNumberRule.isValid(value.trim())) {
                       return 'Số điện thoại không hợp lệ';

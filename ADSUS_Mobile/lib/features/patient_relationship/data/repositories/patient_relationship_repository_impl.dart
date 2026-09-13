@@ -25,22 +25,30 @@ class PatientRelationshipRepositoryImpl implements PatientRelationshipRepository
         throw const ApiException('Không tải được danh sách người thân.');
       }
 
-      final envelope = _parseEnvelope(res.data!);
-      if (envelope.code != 200) {
+      final body = res.data!;
+      final envelope = _parseEnvelope(body);
+      if (body.containsKey('code') && envelope.code != 200 && envelope.code != 0) {
         throw ApiException(envelope.message);
       }
 
-      if (envelope.data == null) {
-        return [];
-      }
-
-      List<dynamic> dataList;
-      if (envelope.data is List) {
-        dataList = envelope.data as List;
+      dynamic rawList;
+      if (body['relatives'] is List) {
+        rawList = body['relatives'];
+      } else if (body['data'] is Map<String, dynamic> &&
+          (body['data'] as Map<String, dynamic>)['relatives'] is List) {
+        rawList = (body['data'] as Map<String, dynamic>)['relatives'];
+      } else if (body['data'] is List) {
+        rawList = body['data'];
+      } else if (envelope.data is List) {
+        rawList = envelope.data;
+      } else if (envelope.data is Map<String, dynamic> &&
+          (envelope.data as Map<String, dynamic>)['relatives'] is List) {
+        rawList = (envelope.data as Map<String, dynamic>)['relatives'];
       } else {
         throw const ApiException('Dữ liệu không đúng định dạng.');
       }
 
+      final dataList = (rawList as List?) ?? [];
       return dataList
           .whereType<Map<String, dynamic>>()
           .map((e) => PatientRelationshipDTO.fromJson(e).toEntity())
@@ -59,9 +67,10 @@ class PatientRelationshipRepositoryImpl implements PatientRelationshipRepository
     String? relationshipName,
   }) async {
     try {
+      final trimmedPhone = phone.trim();
       final body = AddRelativeRequest(
-        fullName: fullName,
-        phone: phone,
+        fullName: fullName.trim(),
+        phone: trimmedPhone.isNotEmpty ? trimmedPhone : null,
         dateOfBirth: dateOfBirth != null ? _formatDateTime(dateOfBirth) : null,
         relationshipName: relationshipName,
       );
@@ -75,14 +84,24 @@ class PatientRelationshipRepositoryImpl implements PatientRelationshipRepository
         throw const ApiException('Thêm người thân thất bại.');
       }
 
-      final envelope = _parseEnvelope(res.data!);
-      if (envelope.data == null) {
+      final resMap = res.data!;
+      Map<String, dynamic>? dataMap;
+      if (resMap['relationshipId'] != null) {
+        dataMap = resMap;
+      } else if (resMap['data'] is Map<String, dynamic>) {
+        dataMap = resMap['data'] as Map<String, dynamic>;
+      } else {
+        final envelope = _parseEnvelope(resMap);
+        if (envelope.data is Map<String, dynamic>) {
+          dataMap = envelope.data as Map<String, dynamic>;
+        }
+      }
+
+      if (dataMap == null) {
         throw const ApiException('Thêm người thân thất bại.');
       }
 
-      return PatientRelationshipDTO.fromJson(
-        envelope.data as Map<String, dynamic>,
-      ).toEntity();
+      return PatientRelationshipDTO.fromJson(dataMap).toEntity();
     } on DioException catch (e) {
       throw ApiErrorMapper.general(e, fallback: 'Thêm người thân thất bại.');
     }
@@ -97,9 +116,10 @@ class PatientRelationshipRepositoryImpl implements PatientRelationshipRepository
     String? relationshipName,
   }) async {
     try {
+      final trimmedPhone = phone?.trim();
       final body = UpdateRelativeRequest(
-        fullName: fullName,
-        phone: phone,
+        fullName: fullName?.trim(),
+        phone: (trimmedPhone != null && trimmedPhone.isNotEmpty) ? trimmedPhone : null,
         dateOfBirth: dateOfBirth != null ? _formatDateTime(dateOfBirth) : null,
         relationshipName: relationshipName,
       );
@@ -113,14 +133,24 @@ class PatientRelationshipRepositoryImpl implements PatientRelationshipRepository
         throw const ApiException('Cập nhật người thân thất bại.');
       }
 
-      final envelope = _parseEnvelope(res.data!);
-      if (envelope.data == null) {
+      final resMap = res.data!;
+      Map<String, dynamic>? dataMap;
+      if (resMap['relationshipId'] != null) {
+        dataMap = resMap;
+      } else if (resMap['data'] is Map<String, dynamic>) {
+        dataMap = resMap['data'] as Map<String, dynamic>;
+      } else {
+        final envelope = _parseEnvelope(resMap);
+        if (envelope.data is Map<String, dynamic>) {
+          dataMap = envelope.data as Map<String, dynamic>;
+        }
+      }
+
+      if (dataMap == null) {
         throw const ApiException('Cập nhật người thân thất bại.');
       }
 
-      return PatientRelationshipDTO.fromJson(
-        envelope.data as Map<String, dynamic>,
-      ).toEntity();
+      return PatientRelationshipDTO.fromJson(dataMap).toEntity();
     } on DioException catch (e) {
       throw ApiErrorMapper.general(e, fallback: 'Cập nhật người thân thất bại.');
     }
@@ -133,13 +163,11 @@ class PatientRelationshipRepositoryImpl implements PatientRelationshipRepository
         '${ApiConstants.patientRelationships}/$id',
       );
 
-      if (res.data == null) {
-        throw const ApiException('Xóa người thân thất bại.');
-      }
-
-      final envelope = _parseEnvelope(res.data!);
-      if (envelope.code != 200) {
-        throw ApiException(envelope.message);
+      if (res.data != null) {
+        final envelope = _parseEnvelope(res.data!);
+        if (envelope.code != 200 && envelope.code != 0 && envelope.code != 204) {
+          throw ApiException(envelope.message);
+        }
       }
     } on DioException catch (e) {
       throw ApiErrorMapper.general(e, fallback: 'Xóa người thân thất bại.');
@@ -158,8 +186,21 @@ class PatientRelationshipRepositoryImpl implements PatientRelationshipRepository
         return false;
       }
 
-      final envelope = _parseEnvelope(res.data!);
-      // Backend trả {code, message, data: true/false}
+      final body = res.data!;
+      if (body['isRegistered'] is bool) {
+        return body['isRegistered'] as bool;
+      }
+
+      if (body['data'] is bool) {
+        return body['data'] as bool;
+      }
+
+      if (body['data'] is Map<String, dynamic> &&
+          (body['data'] as Map<String, dynamic>)['isRegistered'] is bool) {
+        return (body['data'] as Map<String, dynamic>)['isRegistered'] as bool;
+      }
+
+      final envelope = _parseEnvelope(body);
       return envelope.data == true;
     } on DioException catch (e) {
       // 404 = chưa có tài khoản → trả về false

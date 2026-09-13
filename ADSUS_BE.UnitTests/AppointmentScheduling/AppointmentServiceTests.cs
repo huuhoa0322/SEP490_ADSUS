@@ -894,7 +894,7 @@ public class AppointmentServiceTests : IDisposable
             () => _sut.CancelAppointmentAsync(
                 _appointmentId,
                 _otherPatientId, // Different user trying to cancel
-                _patientId, // Appointment belongs to _patientId
+                _otherPatientId, // Different user's patient profile
                 new CancelAppointmentRequest { CancellationReason = "Test" },
                 TestContext.Current.CancellationToken));
 

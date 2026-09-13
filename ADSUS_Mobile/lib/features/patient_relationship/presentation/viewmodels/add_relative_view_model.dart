@@ -77,12 +77,14 @@ class AddRelativeState {
 
   /// Kiểm tra form có hợp lệ để enable nút Lưu không.
   bool get isValid {
-    return fullName.trim().isNotEmpty && phone.trim().isNotEmpty;
+    return fullName.trim().isNotEmpty;
   }
 
   /// Kiểm tra SĐT có bị trùng với tài khoản đã đăng ký không.
   bool get canSave {
-    return isValid && isPhoneChecked && !isPhoneRegistered;
+    if (!isValid) return false;
+    if (phone.trim().isEmpty) return true;
+    return isPhoneChecked && !isPhoneRegistered;
   }
 }
 
@@ -175,9 +177,22 @@ class AddRelativeViewModel extends Notifier<AddRelativeState> {
       return false;
     }
 
-    // Kiểm tra SĐT nếu chưa kiểm tra
-    if (!state.isPhoneChecked) {
-      await checkPhone();
+    // Bỏ qua kiểm tra SĐT nếu SĐT rỗng (hỗ trợ người cao tuổi)
+    final trimmedPhone = state.phone.trim();
+    if (trimmedPhone.isNotEmpty) {
+      // Kiểm tra SĐT nếu chưa kiểm tra
+      if (!state.isPhoneChecked) {
+        await checkPhone();
+        if (state.isPhoneRegistered) {
+          state = state.copyWith(
+            errorMessage: 'Số điện thoại này đã được đăng ký tài khoản. '
+                'Người đó có thể tự đặt lịch khám.',
+          );
+          return false;
+        }
+      }
+
+      // Kiểm tra lại sau checkPhone
       if (state.isPhoneRegistered) {
         state = state.copyWith(
           errorMessage: 'Số điện thoại này đã được đăng ký tài khoản. '
@@ -185,15 +200,6 @@ class AddRelativeViewModel extends Notifier<AddRelativeState> {
         );
         return false;
       }
-    }
-
-    // Kiểm tra lại sau checkPhone
-    if (state.isPhoneRegistered) {
-      state = state.copyWith(
-        errorMessage: 'Số điện thoại này đã được đăng ký tài khoản. '
-            'Người đó có thể tự đặt lịch khám.',
-      );
-      return false;
     }
 
     state = state.copyWith(isSaving: true, clearError: true);

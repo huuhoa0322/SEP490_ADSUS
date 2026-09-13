@@ -83,9 +83,12 @@ public sealed class AppointmentReminderJob : IJob
                         appointmentTime,
                         TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"));
 
+                    var targetUserId = ap.BookedByUserId ?? row.PatientUserId;
+                    if (targetUserId == Guid.Empty) continue;
+
                     await notificationService.SendAsync(new SendNotificationRequest
                     {
-                        UserId = row.PatientUserId,
+                        UserId = targetUserId,
                         Type = "appointment_reminder",
                         Title = "Nhắc lịch khám",
                         Body = $"Ngày mai bạn có lịch khám với {doctorName} lúc {slotTimeLocal:HH:mm}.",
@@ -100,7 +103,7 @@ public sealed class AppointmentReminderJob : IJob
                     sentCount++;
                     _logger.LogInformation(
                         "[JOB-03] Sent reminder for appointment {AppointmentId} to user {UserId} ({Hours}h before)",
-                        ap.AppointmentId, row.PatientUserId, (int)hoursUntil);
+                        ap.AppointmentId, targetUserId, (int)hoursUntil);
                 }
             }
             catch (Exception ex)

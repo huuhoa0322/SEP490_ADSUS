@@ -52,69 +52,92 @@ public sealed class PatientRelationshipService : IPatientRelationshipService
         Guid userId,
         CancellationToken ct = default)
     {
-        // Issue 2: Check phone chua co account
-        var phoneExists = await _repository.IsPhoneRegisteredAsync(request.Phone, ct);
-        if (phoneExists)
+        var hasPhone = !string.IsNullOrWhiteSpace(request.Phone);
+        var normalizedPhone = hasPhone ? request.Phone!.Trim() : null;
+
+        if (hasPhone)
         {
-            throw new InvalidOperationException(
-                "So dien thoai nay da co tai khoan. Vui long su dung chuc nang Dang nhap thay vi them vao danh ba.");
+            // Kiểm tra SĐT đã có tài khoản User chưa
+            var phoneExists = await _repository.IsPhoneRegisteredAsync(normalizedPhone!, ct);
+            if (phoneExists)
+            {
+                throw new InvalidOperationException(
+                    "Số điện thoại này đã có tài khoản trong hệ thống. Người thân vui lòng đăng nhập bằng tài khoản riêng để đặt lịch.");
+            }
         }
 
-        // Tao guest profile + relationship trong transaction
-        var strategy = _context.Database.CreateExecutionStrategy();
-        return await strategy.ExecuteAsync(async () =>
+        async Task<RelativeResponse> ExecuteCreationAsync()
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
-            try
+            PatientProfile? profile = null;
+
+            if (hasPhone)
             {
-                // Tim hoac tao patient_profile theo phone
-                var profile = await _context.PatientProfiles
-                    .FirstOrDefaultAsync(p => p.Phone == request.Phone && p.UserId == Guid.Empty, ct);
+                // Tìm guest profile đã tồn tại theo phone (guest profile có UserId == null)
+                profile = await _context.PatientProfiles
+                    .FirstOrDefaultAsync(p => p.Phone == normalizedPhone && p.UserId == null, ct);
+            }
 
-                if (profile == null)
+            if (profile == null)
+            {
+                profile = new PatientProfile
                 {
-                    profile = new PatientProfile
-                    {
-                        PatientProfileId = Guid.NewGuid(),
-                        FullName = request.FullName,
-                        Phone = request.Phone,
-                        DateOfBirth = request.DateOfBirth,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow,
-                    };
-                    _context.PatientProfiles.Add(profile);
-                }
-
-                // Kiem tra relationship chua ton tai
-                var exists = await _context.PatientRelationships
-                    .AnyAsync(r => r.UserId == userId && r.PatientProfileId == profile.PatientProfileId, ct);
-                if (exists)
-                {
-                    throw new InvalidOperationException("Nguoi nay da co trong danh ba cua ban.");
-                }
-
-                // Tao relationship
-                var relationship = new PatientRelEntity
-                {
-                    RelationshipId = Guid.NewGuid(),
-                    UserId = userId,
-                    PatientProfileId = profile.PatientProfileId,
-                    RelationshipName = request.RelationshipName,
+                    PatientProfileId = Guid.NewGuid(),
+                    FullName = request.FullName,
+                    Phone = normalizedPhone,
+                    DateOfBirth = request.DateOfBirth,
+                    CreatedBy = userId,
                     CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
                 };
-                _context.PatientRelationships.Add(relationship);
-
-                await _context.SaveChangesAsync(ct);
-                await transaction.CommitAsync(ct);
-
-                return MapToResponse(relationship, profile);
+                _context.PatientProfiles.Add(profile);
             }
-            catch
+
+            // Kiem tra relationship chua ton tai
+            var exists = await _context.PatientRelationships
+                .AnyAsync(r => r.UserId == userId && r.PatientProfileId == profile.PatientProfileId, ct);
+            if (exists)
             {
-                await transaction.RollbackAsync(ct);
-                throw;
+                throw new InvalidOperationException("Người thân này đã có trong danh bạ của bạn.");
             }
-        });
+
+            // Tao relationship
+            var relationship = new PatientRelEntity
+            {
+                RelationshipId = Guid.NewGuid(),
+                UserId = userId,
+                PatientProfileId = profile.PatientProfileId,
+                RelationshipName = request.RelationshipName,
+                CreatedAt = DateTime.UtcNow,
+            };
+            _context.PatientRelationships.Add(relationship);
+
+            await _context.SaveChangesAsync(ct);
+            return MapToResponse(relationship, profile);
+        }
+
+        if (_context.Database.IsRelational())
+        {
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+                try
+                {
+                    var result = await ExecuteCreationAsync();
+                    await transaction.CommitAsync(ct);
+                    return result;
+                }
+                catch
+                {
+                    await transaction.RollbackAsync(ct);
+                    throw;
+                }
+            });
+        }
+        else
+        {
+            return await ExecuteCreationAsync();
+        }
     }
 
     public async Task<RelativeResponse> UpdateRelativeAsync(

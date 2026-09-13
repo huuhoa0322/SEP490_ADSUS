@@ -45,6 +45,15 @@ public class AuthService : IAuthService
         _logger = logger;
     }
 
+    public AuthService(
+        IUserRepository users,
+        IRefreshTokenRepository refreshTokens,
+        IJwtTokenService tokens,
+        ILogger<AuthService> logger)
+        : this(users, refreshTokens, tokens, null!, logger)
+    {
+    }
+
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         // Chỉ đọc để so mật khẩu và phát token, không sửa/lưu gì ở đây — dùng bản AsNoTracking
@@ -257,84 +266,48 @@ public class AuthService : IAuthService
         Guid userId;
         Guid patientProfileId;
 
-        // Handle Account Linking with pessimistic locking (find by phone, not by GuestPatientProfileId)
-        // This supports the flow where AddRelativeAsync creates a guest profile,
-        // and the same person then registers an account to claim it.
-        if (request.GuestPatientProfileId.HasValue)
+        // Account Linking: tự động liên kết guest profile chưa có user_id nếu SĐT trùng khớp.
+        // Dùng pessimistic locking (FOR UPDATE) để bảo đảm an toàn dữ liệu và tránh race condition.
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+        try
         {
-            // Use transaction with pessimistic locking (FOR UPDATE)
-            // Use BeginTransaction directly - CreateExecutionStrategy is only needed for distributed transactions
-            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
-            try
+            var trimmedPhone = request.PhoneNumber.Trim();
+            PatientProfile? guestProfile = null;
+            if (_db.Database.IsRelational())
             {
-                // Lock the guest patient profile for update — find by PHONE (not by ID)
-                // This supports mobile flow: AddRelativeAsync creates guest by phone,
-                // then the same person registers with that phone to link the account.
-                var guestProfile = await _db.PatientProfiles
+                guestProfile = await _db.PatientProfiles
                     .FromSqlRaw(
                         "SELECT * FROM patient_profiles WHERE phone = {0} AND user_id IS NULL FOR UPDATE",
-                        request.PhoneNumber.Trim())
+                        trimmedPhone)
                     .Include(p => p.User)
                     .FirstOrDefaultAsync(cancellationToken);
-
-                if (guestProfile == null)
-                {
-                    await transaction.RollbackAsync(cancellationToken);
-                    return (RegisterResult.GuestProfileNotFound, null);
-                }
-
-                // Check if profile already has a user
-                if (guestProfile.UserId != Guid.Empty)
-                {
-                    await transaction.RollbackAsync(cancellationToken);
-                    return (RegisterResult.InvalidAccount, null);
-                }
-
-                // Create new user
-                var linkedUserId = Guid.NewGuid();
-                var user = new User
-                {
-                    UserId = linkedUserId,
-                    Phone = request.PhoneNumber.Trim(),
-                    FullName = request.FullName.Trim(),
-                    Email = email,
-                    Role = UserRole.Patient,
-                    Status = UserStatus.Active,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                    MustChangePassword = false,
-                    BiometricEnabled = false,
-                    DateOfBirth = ParseDateOrNull(request.DateOfBirth),
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                };
-                _db.Users.Add(user);
-
-                // Link user to patient profile and clear guest fields
-                guestProfile.UserId = linkedUserId;
-                guestProfile.FullName = null;
-                guestProfile.Phone = null;
-                guestProfile.DateOfBirth = null;
-                guestProfile.UpdatedAt = now;
-
-                await _db.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
-
-                userId = linkedUserId;
-                patientProfileId = request.GuestPatientProfileId.Value;
             }
-            catch
+            else
+            {
+                guestProfile = await _db.PatientProfiles
+                    .Include(p => p.User)
+                    .FirstOrDefaultAsync(p => p.Phone == trimmedPhone && p.UserId == null, cancellationToken);
+            }
+
+            if (request.GuestPatientProfileId.HasValue && guestProfile == null)
             {
                 await transaction.RollbackAsync(cancellationToken);
-                throw;
+                return (RegisterResult.GuestProfileNotFound, null);
             }
-        }
-        else
-        {
-            // Create new user without Account Linking
+
+            // Check if profile already has a user
+            if (guestProfile != null && guestProfile.UserId.HasValue && guestProfile.UserId.Value != Guid.Empty)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return (RegisterResult.InvalidAccount, null);
+            }
+
+            // Create new user
+            var newUserId = Guid.NewGuid();
             var user = new User
             {
-                UserId = Guid.NewGuid(),
-                Phone = request.PhoneNumber.Trim(),
+                UserId = newUserId,
+                Phone = trimmedPhone,
                 FullName = request.FullName.Trim(),
                 Email = email,
                 Role = UserRole.Patient,
@@ -346,21 +319,43 @@ public class AuthService : IAuthService
                 CreatedAt = now,
                 UpdatedAt = now,
             };
-            await _users.AddAsync(user, cancellationToken);
-            await _users.SaveChangesAsync(cancellationToken);
-            userId = user.UserId;
+            _db.Users.Add(user);
 
-            // Create patient profile
-            var profile = new PatientProfile
+            if (guestProfile != null)
             {
-                PatientProfileId = Guid.NewGuid(),
-                UserId = userId,
-                CreatedAt = now,
-                UpdatedAt = now,
-            };
-            _db.PatientProfiles.Add(profile);
+                // Link user to patient profile and clear guest fields
+                guestProfile.UserId = newUserId;
+                guestProfile.FullName = null;
+                guestProfile.Phone = null;
+                guestProfile.DateOfBirth = null;
+                guestProfile.UpdatedAt = now;
+
+                patientProfileId = guestProfile.PatientProfileId;
+            }
+            else
+            {
+                // Create new patient profile
+                var profile = new PatientProfile
+                {
+                    PatientProfileId = Guid.NewGuid(),
+                    UserId = newUserId,
+                    CreatedBy = newUserId,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                };
+                _db.PatientProfiles.Add(profile);
+                patientProfileId = profile.PatientProfileId;
+            }
+
             await _db.SaveChangesAsync(cancellationToken);
-            patientProfileId = profile.PatientProfileId;
+            await transaction.CommitAsync(cancellationToken);
+
+            userId = newUserId;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
         }
 
         // Get user for token generation

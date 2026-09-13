@@ -454,6 +454,9 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       // Clear selected relative when switching to self-booking
       clearSelectedRelative: value,
     );
+    if (!value && state.savedRelatives.isEmpty) {
+      loadSavedRelatives();
+    }
   }
 
   Future<void> loadSavedRelatives() async {
@@ -477,11 +480,12 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
       state = state.copyWith(clearSelectedRelative: true);
       return;
     }
-    final relative = state.savedRelatives.firstWhere(
-      (r) => r.relationshipId == relationshipId,
-      orElse: () => throw Exception('Not found'),
-    );
-    state = state.copyWith(selectedRelative: relative);
+    final relative = state.savedRelatives
+        .where((r) => r.relationshipId == relationshipId)
+        .firstOrNull;
+    if (relative != null) {
+      state = state.copyWith(selectedRelative: relative);
+    }
   }
 
   /// Track xem đã show success snackbar chưa (instance-level).
@@ -593,6 +597,15 @@ class BookAppointmentViewModel extends Notifier<BookAppointmentState> {
   Future<void> book({String? reason}) async {
     final slotId = state.selectedSlotId;
     if (slotId == null) return;
+
+    // Chặn silent self-booking: nếu chọn đặt hộ mà chưa chọn người thân
+    if (!state.isBookingForSelf && state.selectedRelative == null) {
+      state = state.copyWith(
+        errorMessage: 'Vui lòng chọn người thân trước khi xác nhận đặt lịch.',
+      );
+      return;
+    }
+
     state = state.copyWith(isBooking: true, clearError: true);
     try {
       // Thu thập symptoms từ các blocks

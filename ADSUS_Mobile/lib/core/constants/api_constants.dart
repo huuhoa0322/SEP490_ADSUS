@@ -70,8 +70,8 @@ class ApiConstants {
   static const String fcmToken = '/api/v1/fcm-token';
 
   // Module 08 — Patient Relationship (Đặt lịch cho người thân)
-  static const String patientRelationships = '/api/v1/me/relatives';
+  static const String patientRelationships = '/api/v1/relatives';
   static String deletePatientRelationship(String id) =>
-      '/api/v1/me/relatives/$id';
-  static const String checkPhoneRegistered = '/api/v1/patients/check-phone';
+      '/api/v1/relatives/$id';
+  static const String checkPhoneRegistered = '/api/v1/relatives/check-phone';
 }
