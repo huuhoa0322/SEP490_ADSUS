@@ -415,7 +415,7 @@ coveragereport-unit/
 .superpowers/
 
 #docs
-docs/superpowers/
+docs/
 
 #codex
 .codex/
