@@ -48,7 +48,7 @@ export interface PatientProfile {
   phone: string;
   /** Chỉ đọc — xem fullName. */
   dateOfBirth: string | null;
-  gender: Gender;
+  gender: Gender | null;
   diseases: PatientDiseaseResponse[];
   allergies: PatientAllergyResponse[];
   createdBy: string;

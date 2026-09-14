@@ -85,7 +85,13 @@ export function AuthGuard({ children }: { children: ReactNode }) {
       // Đã điều hướng vì phiên hỏng ở nhánh trên rồi (signOut() vừa đưa accessToken về null
       // NGAY TRONG lần chạy effect này) — đừng gọi replace("/login") đè mất "?expired=1".
       if (invalidSessionHandled.current) return;
-      router.replace("/login");
+      // Lưu lại trang đang đứng để sau khi đăng nhập xong quay lại (vd Guest vào /dat-lich
+      // bị guard chặn → login xong → về /dat-lich). Không preserve cho /login (vòng lặp).
+      const back =
+        pathname && pathname !== "/login" && !pathname.startsWith("/login?")
+          ? `?redirect=${encodeURIComponent(pathname)}`
+          : "";
+      router.replace(`/login${back}`);
       return;
     }
 

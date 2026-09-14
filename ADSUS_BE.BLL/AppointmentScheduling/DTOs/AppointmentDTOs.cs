@@ -117,6 +117,11 @@ public sealed class AppointmentResponse
     /// </summary>
     public Guid? CaseId { get; init; }
 
+    public string PatientFullName { get; init; } = string.Empty;
+    public string? PatientPhone { get; init; }
+    public Guid PatientProfileId { get; init; }
+    public List<AppointmentSymptomResponse> Symptoms { get; init; } = new();
+
     /// <summary>
     /// Tên user đã đặt lịch. NULL = chính chủ tự đặt.
     /// </summary>
@@ -131,6 +136,29 @@ public sealed class AppointmentResponse
     /// TRUE = đặt hộ cho người thân, FALSE = đặt cho chính mình.
     /// </summary>
     public bool IsBookedForOthers { get; init; }
+}
+
+public sealed class AppointmentSymptomResponse
+{
+    public Guid CategoryId { get; init; }
+    public string CategoryName { get; init; } = string.Empty;
+    public Guid? SymptomId { get; init; }
+    public string? SymptomName { get; init; }
+    public string? OtherNote { get; init; }
+}
+
+public sealed class UpdateAppointmentClinicalInfoRequest
+{
+    public string? Reason { get; init; }
+    public List<SymptomInput>? Symptoms { get; init; }
+}
+
+public sealed class CancellationStatusTodayResponse
+{
+    public int CancellationsToday { get; init; }
+    public int MaxCancellations { get; init; } = 3;
+    public bool CanBookOnline { get; init; }
+    public bool IsNextCancellationFinal => CancellationsToday == 2;
 }
 
 /// <summary>
@@ -150,6 +178,9 @@ public sealed class AppointmentSummaryResponse
     public string? Reason { get; init; }
     public string? CancellationReason { get; init; }
     public Guid? CaseId { get; init; }
+    public string PatientFullName { get; init; } = string.Empty;
+    public string? PatientPhone { get; init; }
+    public Guid PatientProfileId { get; init; }
 
     /// <summary>
     /// TRUE = dat cho nguoi than, FALSE = dat cho chinh minh.

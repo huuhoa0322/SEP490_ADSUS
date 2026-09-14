@@ -1111,16 +1111,38 @@ public class AppointmentServiceTests : IDisposable
         var slot = CreateScheduleSlot(SlotStatus.Open, doctor);
         slot.SlotId = _slotId;
 
+        var patientUser = new User
+        {
+            UserId = Guid.NewGuid(),
+            FullName = "Test Patient",
+            Email = "patient@test.com",
+            Phone = "0987654321",
+            PasswordHash = "hash",
+            Role = UserRole.Patient,
+            Status = UserStatus.Active,
+            CreatedAt = DateTime.UtcNow,
+        };
+        var patientProfile = new PatientProfile
+        {
+            PatientProfileId = _patientId,
+            UserId = patientUser.UserId,
+            User = patientUser,
+            CreatedAt = DateTime.UtcNow,
+        };
+
         var appointment = new Appointment
         {
             AppointmentId = _appointmentId,
             SlotId = _slotId,
             PatientProfileId = _patientId,
+            PatientProfile = patientProfile,
             Status = AppointmentStatus.Booked,
             CreatedAt = DateTime.UtcNow,
             Slot = slot,
         };
 
+        _db.Users.Add(patientUser);
+        _db.PatientProfiles.Add(patientProfile);
         _db.ScheduleSlots.Add(slot);
         _db.Appointments.Add(appointment);
         _db.SaveChanges();

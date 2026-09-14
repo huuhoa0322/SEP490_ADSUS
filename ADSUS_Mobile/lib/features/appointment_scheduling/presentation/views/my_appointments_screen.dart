@@ -10,12 +10,12 @@ import '../viewmodels/my_appointments_view_model.dart';
 import 'book_appointment_screen.dart';
 import 'widgets/appointment_card.dart';
 import 'widgets/cancel_reason_sheet.dart';
+import 'widgets/edit_clinical_info_sheet.dart';
 
 /// SCR-22 — Màn Lịch khám của tôi (UC-14).
 ///
-/// Mỗi thẻ Booked có hai nút:
-///   - "Đổi lịch" → hủy bản ghi cũ với lý do "Reschedule", chuyển sang Đặt lịch (UC-13).
-///   - "Hủy lịch"  → mở bottom sheet chọn lý do (BR-02 bắt buộc), rồi gọi API hủy.
+/// Phân tách 2 tab: "Lịch của tôi" và "Lịch người thân" kèm số lượng.
+/// Cảnh báo trước khi thực hiện lần hủy thứ 3 trong ngày.
 class MyAppointmentsScreen extends ConsumerStatefulWidget {
   const MyAppointmentsScreen({
     super.key,
@@ -54,7 +54,7 @@ class _MyAppointmentsScreenState
     if (widget.highlightAppointmentId == null) return;
 
     final state = ref.read(myAppointmentsViewModelProvider);
-    final index = state.appointments.indexWhere(
+    final index = state.filteredAppointments.indexWhere(
       (a) => a.id == widget.highlightAppointmentId,
     );
 
@@ -136,7 +136,7 @@ class _MyAppointmentsScreenState
     }
 
     // Hiện lỗi nếu có
-    if (state.errorMessage != null) {
+    if (state.errorMessage != null && state.appointments.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -162,81 +162,175 @@ class _MyAppointmentsScreenState
       );
     }
 
-    if (state.appointments.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.event_busy, size: 64, color: AppColors.muted),
-              const SizedBox(height: 16),
-              const Text(
-                'Bạn chưa có lịch khám nào.',
-                style: TextStyle(fontSize: 15, color: AppColors.muted),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () => _goBook(context),
-                icon: const Icon(Icons.add),
-                label: const Text('ĐẶT LỊCH NGAY'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+    final filteredList = state.filteredAppointments;
 
-    debugPrint('[DEBUG] MyAppointmentsScreen: building ListView with ${state.appointments.length} items');
     return Column(
       children: [
-        // Header
+        // Tab SegmentedButton: [Lịch của tôi (X)] [Lịch người thân (Y)]
         Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            'Bạn có ${state.appointments.length} lịch khám',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.navy),
-          ),
-        ),
-        // List
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () => ref.read(myAppointmentsViewModelProvider.notifier).load(),
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-              itemCount: state.appointments.length,
-              itemBuilder: (context, i) {
-                final ap = state.appointments[i];
-                // Highlight nếu đây là appointment được tap từ notification
-                final isHighlighted = ap.id == widget.highlightAppointmentId;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: isHighlighted
-                      ? BoxDecoration(
-                          border: Border.all(color: AppColors.teal, width: 2),
-                          borderRadius: BorderRadius.circular(12),
-                        )
-                      : null,
-                  child: AppointmentCard(
-                    appointment: ap,
-                    busy: state.isMutating,
-                    onCancel: () => _onCancel(context, ap),
-                    onReschedule: () => _onReschedule(context, ap),
-                    onSyncCalendar: () => _onSyncCalendar(context, ap),
-                    syncedToCalendar: state.syncedIds.contains(ap.id),
-                  ),
-                );
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<String>(
+              segments: [
+                ButtonSegment<String>(
+                  value: 'SELF',
+                  label: Text('Lịch của tôi (${state.selfCount})'),
+                  icon: const Icon(Icons.person, size: 16),
+                ),
+                ButtonSegment<String>(
+                  value: 'RELATIVE',
+                  label: Text('Lịch người thân (${state.relativeCount})'),
+                  icon: const Icon(Icons.people, size: 16),
+                ),
+              ],
+              selected: {state.filterScope},
+              onSelectionChanged: (newSelection) {
+                ref
+                    .read(myAppointmentsViewModelProvider.notifier)
+                    .setFilterScope(newSelection.first);
               },
             ),
           ),
+        ),
+
+        // List or Empty state
+        Expanded(
+          child: filteredList.isEmpty
+              ? _buildEmptyState(state.filterScope)
+              : RefreshIndicator(
+                  onRefresh: () =>
+                      ref.read(myAppointmentsViewModelProvider.notifier).load(),
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                    itemCount: filteredList.length,
+                    itemBuilder: (context, i) {
+                      final ap = filteredList[i];
+                      // Highlight nếu đây là appointment được tap từ notification
+                      final isHighlighted = ap.id == widget.highlightAppointmentId;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 500),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: isHighlighted
+                            ? BoxDecoration(
+                                border: Border.all(color: AppColors.teal, width: 2),
+                                borderRadius: BorderRadius.circular(12),
+                              )
+                            : null,
+                        child: AppointmentCard(
+                          appointment: ap,
+                          busy: state.isMutating,
+                          onCancel: () => _onCancel(ap),
+                          onReschedule: () => _onReschedule(ap),
+                          onEditClinicalInfo: () => _onEditClinicalInfo(ap),
+                          onSyncCalendar: () => _onSyncCalendar(ap),
+                          syncedToCalendar: state.syncedIds.contains(ap.id),
+                        ),
+                      );
+                    },
+                  ),
+                ),
         ),
       ],
     );
   }
 
-  Future<void> _onCancel(BuildContext context, Appointment ap) async {
+  Widget _buildEmptyState(String filterScope) {
+    final isSelf = filterScope == 'SELF';
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelf ? Icons.event_busy : Icons.people_outline,
+              size: 64,
+              color: AppColors.muted,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isSelf
+                  ? 'Bạn chưa có lịch khám nào cho bản thân.'
+                  : 'Bạn chưa có lịch khám nào đặt cho người thân.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 15, color: AppColors.muted),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => _goBook(context),
+              icon: const Icon(Icons.add),
+              label: Text(isSelf ? 'ĐẶT LỊCH NGAY' : 'ĐẶT LỊCH CHO NGƯỜI THÂN'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.teal,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _onEditClinicalInfo(Appointment ap) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => EditClinicalInfoSheet(
+        appointment: ap,
+        onUpdated: (updated) {
+          ref.read(myAppointmentsViewModelProvider.notifier).load();
+        },
+      ),
+    );
+  }
+
+  Future<void> _onCancel(Appointment ap) async {
+    // Kiểm tra số lần hủy hôm nay
+    final status = await ref
+        .read(myAppointmentsViewModelProvider.notifier)
+        .checkCancellationStatus();
+
+    if (!mounted) return;
+
+    if (status != null && status.isNextCancellationFinal) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+          title: const Text(
+            'Cảnh báo lượt hủy cuối',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+          ),
+          content: const Text(
+            'Bạn đã hủy 2 lần trong ngày hôm nay.\n\n'
+            'Nếu bạn hủy lần này (lần thứ 3), quyền tự đặt lịch trực tuyến của bạn sẽ bị tạm khóa đến hết ngày hôm nay. Để đặt lịch sau đó, bạn sẽ phải liên hệ hotline của phòng khám.\n\n'
+            'Bạn có chắc chắn muốn tiếp tục hủy không?',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Quay lại'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade700,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Tiếp tục hủy'),
+            ),
+          ],
+        ),
+      );
+
+      if (proceed != true || !mounted) return;
+    }
+
     final reason = await showCancelReasonSheet(context);
     if (reason == null || reason.isEmpty) return;
     if (!mounted) return;
@@ -245,11 +339,11 @@ class _MyAppointmentsScreenState
         .cancel(id: ap.id, reason: reason);
   }
 
-  Future<void> _onReschedule(BuildContext context, Appointment ap) async {
-    await _showRescheduleDialog(context, ap);
+  Future<void> _onReschedule(Appointment ap) async {
+    await _showRescheduleDialog(ap);
   }
 
-  Future<void> _showRescheduleDialog(BuildContext context, Appointment ap) async {
+  Future<void> _showRescheduleDialog(Appointment ap) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -291,12 +385,12 @@ class _MyAppointmentsScreenState
       ),
     );
 
-    if (confirmed != true || !context.mounted) return;
+    if (confirmed != true || !mounted) return;
 
     final ok = await ref
         .read(myAppointmentsViewModelProvider.notifier)
         .reschedule(ap);
-    if (!ok || !context.mounted) return;
+    if (!ok || !mounted) return;
 
     _goBook(context);
   }
@@ -307,13 +401,13 @@ class _MyAppointmentsScreenState
   /// dialog), nếu thành công thì đánh dấu state.syncedIds để UI đổi icon ngay. Nếu
   /// thiếu dữ liệu slotDate/startTime/endTime (rất hiếm — summary list đã gọi
   /// getMyAppointment fill đủ), báo snackbar yêu cầu mở chi tiết trước.
-  Future<void> _onSyncCalendar(BuildContext context, Appointment ap) async {
+  Future<void> _onSyncCalendar(Appointment ap) async {
     CalendarSyncService service;
     try {
       service =
           await ref.read(calendarSyncServiceProvider.future);
     } on Object catch (e) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Không khởi tạo được dịch vụ lịch: $e'),
@@ -325,7 +419,7 @@ class _MyAppointmentsScreenState
 
     try {
       final ok = await service.addAppointmentToCalendar(ap);
-      if (!context.mounted) return;
+      if (!mounted) return;
       if (ok) {
         ref
             .read(myAppointmentsViewModelProvider.notifier)
@@ -347,7 +441,7 @@ class _MyAppointmentsScreenState
         );
       }
     } on CalendarSyncException catch (e) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.message),

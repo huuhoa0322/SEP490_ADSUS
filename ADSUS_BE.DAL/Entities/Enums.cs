@@ -52,7 +52,6 @@ public enum AppointmentStatus
     [PgName("CANCELLED")] Cancelled,
     [PgName("COMPLETED")] Completed,   // Nurse check-in thì appointment chuyển sang COMPLETED
     [PgName("NO_SHOW")] NoShow,        // Tự động hủy khi bệnh nhân không check-in trong grace time
-    [PgName("CHECKED_IN")] CheckedIn,  // Đã check-in chờ vào khám
 }
 
 /// <summary>

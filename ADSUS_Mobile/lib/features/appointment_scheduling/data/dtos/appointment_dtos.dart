@@ -57,11 +57,71 @@ class ScheduleSlotDto {
       );
 }
 
+/// DTO số lần hủy hẹn hôm nay và kiểm tra anti-abuse
+class CancellationStatusTodayDto {
+  final int cancellationsToday;
+  final int maxCancellations;
+  final bool canBookOnline;
+  final bool isNextCancellationFinal;
+
+  CancellationStatusTodayDto({
+    required this.cancellationsToday,
+    required this.maxCancellations,
+    required this.canBookOnline,
+    required this.isNextCancellationFinal,
+  });
+
+  factory CancellationStatusTodayDto.fromJson(Map<String, dynamic> json) =>
+      CancellationStatusTodayDto(
+        cancellationsToday: json['cancellationsToday'] as int? ?? 0,
+        maxCancellations: json['maxCancellations'] as int? ?? 3,
+        canBookOnline: json['canBookOnline'] as bool? ?? true,
+        isNextCancellationFinal: json['isNextCancellationFinal'] as bool? ??
+            ((json['cancellationsToday'] as int? ?? 0) == 2),
+      );
+}
+
+/// DTO triệu chứng trong AppointmentResponse
+class AppointmentSymptomDto {
+  final String categoryId;
+  final String categoryName;
+  final String? symptomId;
+  final String? symptomName;
+  final String? otherNote;
+
+  AppointmentSymptomDto({
+    required this.categoryId,
+    required this.categoryName,
+    this.symptomId,
+    this.symptomName,
+    this.otherNote,
+  });
+
+  factory AppointmentSymptomDto.fromJson(Map<String, dynamic> json) =>
+      AppointmentSymptomDto(
+        categoryId: json['categoryId']?.toString() ?? '',
+        categoryName: json['categoryName'] as String? ?? '',
+        symptomId: json['symptomId']?.toString(),
+        symptomName: json['symptomName'] as String?,
+        otherNote: json['otherNote'] as String?,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'categoryId': categoryId,
+        'categoryName': categoryName,
+        'symptomId': symptomId,
+        'symptomName': symptomName,
+        'otherNote': otherNote,
+      };
+}
+
 /// DTO khớp với `AppointmentResponse` (#50, #51, #52).
 class AppointmentDto {
   final String? appointmentId;
   final String? slotId;
   final String? patientProfileId;
+  final String? patientFullName;
+  final String? patientPhone;
   final String? reason;
   final String? status;
   final String? cancelledReason;
@@ -77,6 +137,7 @@ class AppointmentDto {
 
   // Case được tạo từ booking (nếu có triệu chứng)
   final String? caseId;
+  final List<AppointmentSymptomDto>? symptoms;
 
   // Thông tin đặt hộ cho người thân (Issue #2)
   final bool? isBookedForOthers;
@@ -87,6 +148,8 @@ class AppointmentDto {
     this.appointmentId,
     this.slotId,
     this.patientProfileId,
+    this.patientFullName,
+    this.patientPhone,
     this.reason,
     this.status,
     this.cancelledReason,
@@ -98,6 +161,7 @@ class AppointmentDto {
     this.endTime,
     this.doctorName,
     this.caseId,
+    this.symptoms,
     this.isBookedForOthers,
     this.relationshipLabel,
     this.bookedByUserName,
@@ -107,6 +171,8 @@ class AppointmentDto {
         appointmentId: json['appointmentId'] as String?,
         slotId: (json['scheduleSlotId'] ?? json['slotId'])?.toString(),
         patientProfileId: json['patientProfileId'] as String?,
+        patientFullName: json['patientFullName'] as String?,
+        patientPhone: json['patientPhone'] as String?,
         reason: json['reason'] as String?,
         // Backend trả int (0=BOOKED, 1=CANCELLED), toString() để convert thành string.
         status: json['status']?.toString(),
@@ -119,6 +185,9 @@ class AppointmentDto {
         endTime: json['endTime'] as String?,
         doctorName: json['doctorName'] as String?,
         caseId: json['caseId'] as String?,
+        symptoms: (json['symptoms'] as List?)
+            ?.map((e) => AppointmentSymptomDto.fromJson(e as Map<String, dynamic>))
+            .toList(),
         // Issue #2: isBookedForOthers, relationshipLabel, bookedByUserName
         isBookedForOthers: json['isBookedForOthers'] as bool?,
         relationshipLabel: json['relationshipLabel'] as String?,
@@ -131,6 +200,8 @@ class AppointmentSummaryDto {
   final String? appointmentId;
   final String? slotId;
   final String? patientProfileId;
+  final String? patientFullName;
+  final String? patientPhone;
   final String? status;
   final String? reason;
   final String? cancelledReason;
@@ -140,15 +211,19 @@ class AppointmentSummaryDto {
   final String? doctorId;
   final String? doctorName;
   final String? createdAt;
+  final String? caseId;
 
   // Thông tin đặt hộ cho người thân (Issue #2)
   final bool? isBookedForOthers;
   final String? relationshipLabel;
+  final String? bookedByUserName;
 
   AppointmentSummaryDto({
     this.appointmentId,
     this.slotId,
     this.patientProfileId,
+    this.patientFullName,
+    this.patientPhone,
     this.status,
     this.reason,
     this.cancelledReason,
@@ -158,8 +233,10 @@ class AppointmentSummaryDto {
     this.doctorId,
     this.doctorName,
     this.createdAt,
+    this.caseId,
     this.isBookedForOthers,
     this.relationshipLabel,
+    this.bookedByUserName,
   });
 
   factory AppointmentSummaryDto.fromJson(Map<String, dynamic> json) {
@@ -170,6 +247,8 @@ class AppointmentSummaryDto {
       appointmentId: json['appointmentId'] as String?,
       slotId: (json['scheduleSlotId'] ?? json['slotId'])?.toString(),
       patientProfileId: json['patientProfileId'] as String?,
+      patientFullName: json['patientFullName'] as String?,
+      patientPhone: json['patientPhone'] as String?,
       // Backend trả int (0=BOOKED, 1=CANCELLED), convert sang string.
       status: statusRaw?.toString(),
       reason: json['reason'] as String?,
@@ -180,9 +259,11 @@ class AppointmentSummaryDto {
       doctorId: json['doctorId'] as String?,
       doctorName: json['doctorName'] as String?,
       createdAt: json['createdAt'] as String?,
-      // Issue #2: isBookedForOthers, relationshipLabel
+      caseId: json['caseId'] as String?,
+      // Issue #2: isBookedForOthers, relationshipLabel, bookedByUserName
       isBookedForOthers: json['isBookedForOthers'] as bool?,
       relationshipLabel: json['relationshipLabel'] as String?,
+      bookedByUserName: json['bookedByUserName'] as String?,
     );
   }
 }

@@ -107,4 +107,36 @@ describe("PatientRecordView", () => {
 
     expect(screen.getByText(/chưa có lần khám nào/i)).toBeInTheDocument();
   });
+
+  it("hiển thị badge 'Hồ sơ người thân' khi patientUserId là EMPTY_GUID", () => {
+    profileMock.mockReturnValue({
+      data: {
+        ...profile,
+        patientUserId: "00000000-0000-0000-0000-000000000000",
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
+
+    render(<PatientRecordView profileId="profile-1" />);
+
+    expect(screen.getByText("Hồ sơ người thân")).toBeInTheDocument();
+  });
+
+  it("không hiển thị badge 'Hồ sơ người thân' khi patientUserId là tài khoản người dùng thật", () => {
+    profileMock.mockReturnValue({
+      data: {
+        ...profile,
+        patientUserId: "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
+
+    render(<PatientRecordView profileId="profile-1" />);
+
+    expect(screen.queryByText("Hồ sơ người thân")).not.toBeInTheDocument();
+  });
 });

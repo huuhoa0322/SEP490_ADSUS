@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
+import '../../data/dtos/appointment_dtos.dart';
 import '../../domain/entities/appointment.dart';
 import '../../domain/services/calendar_sync_service.dart';
 
@@ -15,6 +16,7 @@ import '../../domain/services/calendar_sync_service.dart';
 class MyAppointmentsState {
   const MyAppointmentsState({
     this.appointments = const [],
+    this.filterScope = 'SELF',
     this.isLoading = false,
     this.isMutating = false,
     this.errorMessage,
@@ -23,6 +25,7 @@ class MyAppointmentsState {
   });
 
   final List<Appointment> appointments;
+  final String filterScope; // 'SELF' | 'RELATIVE'
   final bool isLoading;
 
   /// Đang hủy hoặc đổi lịch — khoá cả 2 nút trên card.
@@ -38,8 +41,22 @@ class MyAppointmentsState {
   /// Không đảm bảo event còn trong Calendar của user (spec nói rõ one-way, no read-back).
   final Set<String> syncedIds;
 
+  List<Appointment> get filteredAppointments {
+    switch (filterScope) {
+      case 'RELATIVE':
+        return appointments.where((a) => a.isBookedForOthers).toList();
+      case 'SELF':
+      default:
+        return appointments.where((a) => !a.isBookedForOthers).toList();
+    }
+  }
+
+  int get selfCount => appointments.where((a) => !a.isBookedForOthers).length;
+  int get relativeCount => appointments.where((a) => a.isBookedForOthers).length;
+
   MyAppointmentsState copyWith({
     List<Appointment>? appointments,
+    String? filterScope,
     bool? isLoading,
     bool? isMutating,
     String? errorMessage,
@@ -50,6 +67,7 @@ class MyAppointmentsState {
   }) {
     return MyAppointmentsState(
       appointments: appointments ?? this.appointments,
+      filterScope: filterScope ?? this.filterScope,
       isLoading: isLoading ?? this.isLoading,
       isMutating: isMutating ?? this.isMutating,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
@@ -75,6 +93,22 @@ class MyAppointmentsViewModel extends Notifier<MyAppointmentsState> {
     return const MyAppointmentsState(isLoading: true);
   }
 
+  void setFilterScope(String scope) {
+    if (state.filterScope != scope) {
+      state = state.copyWith(filterScope: scope);
+    }
+  }
+
+  Future<CancellationStatusTodayDto?> checkCancellationStatus() async {
+    try {
+      final repo = ref.read(appointmentRepositoryProvider);
+      return await repo.getCancellationStatusToday();
+    } catch (e) {
+      debugPrint('[WARN] checkCancellationStatus failed: $e');
+      return null;
+    }
+  }
+
   Future<void> load() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
@@ -87,7 +121,9 @@ class MyAppointmentsViewModel extends Notifier<MyAppointmentsState> {
           .map((s) => Appointment(
                 id: s.id,
                 slotId: s.slotId,
-                patientProfileId: '',
+                patientProfileId: s.patientProfileId ?? '',
+                patientFullName: s.patientFullName,
+                patientPhone: s.patientPhone,
                 status: s.status,
                 reason: s.reason,
                 cancelledReason: s.cancelledReason,
@@ -97,6 +133,10 @@ class MyAppointmentsViewModel extends Notifier<MyAppointmentsState> {
                 startTime: s.startTime,
                 endTime: s.endTime,
                 doctorName: s.doctorName,
+                caseId: s.caseId,
+                isBookedForOthers: s.isBookedForOthers,
+                relationshipLabel: s.relationshipLabel,
+                bookedByUserName: s.bookedByUserName,
               ))
           .toList();
 
@@ -185,6 +225,8 @@ class MyAppointmentsViewModel extends Notifier<MyAppointmentsState> {
                   id: a.id,
                   slotId: a.slotId,
                   patientProfileId: a.patientProfileId,
+                  patientFullName: a.patientFullName,
+                  patientPhone: a.patientPhone,
                   status: AppointmentStatus.cancelled,
                   cancelledReason: 'Reschedule',
                   reason: a.reason,
@@ -194,6 +236,11 @@ class MyAppointmentsViewModel extends Notifier<MyAppointmentsState> {
                   startTime: a.startTime,
                   endTime: a.endTime,
                   doctorName: a.doctorName,
+                  caseId: a.caseId,
+                  symptoms: a.symptoms,
+                  isBookedForOthers: a.isBookedForOthers,
+                  relationshipLabel: a.relationshipLabel,
+                  bookedByUserName: a.bookedByUserName,
                 )
               : a)
           .toList(growable: false);

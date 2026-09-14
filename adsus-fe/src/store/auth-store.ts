@@ -190,9 +190,9 @@ export function getHomePathForRole(role: Role): string {
       // Nurse có quyền giống hệt Doctor (UCS), nên cũng vào danh sách bệnh nhân.
       return "/patients";
     case "PATIENT":
-      // Bệnh nhân dùng ứng dụng di động, không có giao diện web. Trường hợp này đã bị chặn
-      // ngay từ lúc đăng nhập, nên thực tế không đi tới đây.
-      return "/login";
+      // Bệnh nhân đăng nhập web → về Landing Page.
+      // Đây cũng là entry point để đặt lịch (/dat-lich).
+      return "/";
     case "PHARMACIST":
       return "/medicines";
     default:
@@ -225,6 +225,10 @@ const ROUTE_ROLES: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
   // UC-18: Doctor kê đơn thuốc (Module 7 Task 8 / SCR-17). Nurse có thể xem danh sách
   // tuân thủ nhưng không được kê đơn — kê đơn là hành vi y khoa chỉ Doctor được phép.
   { prefix: "/prescriptions", roles: ["DOCTOR"] },
+  // UC-13: Patient đặt lịch khám trên web.
+  { prefix: "/dat-lich", roles: ["PATIENT"] },
+  // UC-14: Patient xem lịch hẹn đã đặt trên web.
+  { prefix: "/lich-hen-cua-toi", roles: ["PATIENT"] },
   // SCR mới (28/08/2026) — "Lịch bệnh nhân": Doctor xem lịch bệnh nhân đã đặt, chỉ đọc. Phải
   // đứng TRƯỚC "/schedule" bên dưới vì isRoleAllowedOnPath dùng .find() (khớp luật đầu tiên) —
   // nếu để sau, cả hai luật đều cho DOCTOR nên không lộ bug, nhưng thứ tự đúng ngăn một luật

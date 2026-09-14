@@ -114,7 +114,7 @@ public sealed class PatientProfileService : IPatientProfileService
         var now = DateTime.UtcNow;
 
         // Set Gender vào User (2026-01 - đã chuyển từ PatientProfile)
-        if (request.Gender != null)
+        if (request.Gender != null && profile.User != null)
         {
             profile.User.Gender = EnumExtensions.ParseGenderType(request.Gender);
             profile.User.UpdatedAt = now;

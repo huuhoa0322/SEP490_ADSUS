@@ -14,9 +14,9 @@ public static class PatientProfileMapper
     public static PatientProfileResponse ToResponse(PatientProfile profile) => new(
         PatientProfileId: profile.PatientProfileId,
         PatientUserId: profile.UserId ?? Guid.Empty,
-        FullName: profile.User?.FullName ?? string.Empty,
-        Phone: profile.User?.Phone ?? string.Empty,
-        DateOfBirth: profile.User?.DateOfBirth,
+        FullName: profile.User?.FullName ?? profile.FullName ?? string.Empty,
+        Phone: profile.User?.Phone ?? profile.Phone ?? string.Empty,
+        DateOfBirth: profile.User?.DateOfBirth ?? profile.DateOfBirth,
         Gender: profile.User?.Gender?.ToApiString(), // Lấy từ User (2026-01)
         Diseases: profile.PatientDiseases?.Select(d => new PatientDiseaseResponse(
             DiseaseId: d.DiseaseId,

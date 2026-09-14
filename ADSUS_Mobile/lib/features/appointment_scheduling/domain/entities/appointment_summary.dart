@@ -17,6 +17,11 @@ class AppointmentSummary {
     this.endTime,
     this.doctorId,
     this.doctorName,
+    this.patientProfileId,
+    this.patientFullName,
+    this.patientPhone,
+    this.bookedByUserName,
+    this.caseId,
     // Issue #3: isBookedForOthers, relationshipLabel
     this.isBookedForOthers = false,
     this.relationshipLabel,
@@ -38,6 +43,12 @@ class AppointmentSummary {
   final String? endTime;
   final String? doctorId;
   final String? doctorName;
+
+  final String? patientProfileId;
+  final String? patientFullName;
+  final String? patientPhone;
+  final String? bookedByUserName;
+  final String? caseId;
 
   // Issue #3: isBookedForOthers, relationshipLabel
   final bool isBookedForOthers;

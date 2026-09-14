@@ -48,6 +48,15 @@ public sealed class AppointmentsController : ControllerBase
         return profile.PatientProfileId;
     }
 
+    /// <summary>Lấy PatientProfileId tùy chọn từ JWT (không throw exception nếu user chưa có profile).</summary>
+    private async Task<Guid?> GetOptionalPatientProfileIdAsync(CancellationToken ct)
+    {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdStr, out var userGuid)) return null;
+        var profile = await _patientProfileRepo.GetByUserIdAsync(userGuid, ct);
+        return profile?.PatientProfileId;
+    }
+
     /// <summary>
     /// GET /api/v1/appointments/slots — Danh sách slot còn trống (UC-13).
     /// BR-02: Chỉ trả về slot OPEN.
@@ -77,7 +86,9 @@ public sealed class AppointmentsController : ControllerBase
         CancellationToken ct = default)
     {
         var patientProfileId = await GetPatientProfileIdAsync(ct);
-        var appointments = await _appointmentService.ListMyAppointmentsAsync(patientProfileId, status, ct);
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? userId = Guid.TryParse(userIdStr, out var parsedId) ? parsedId : null;
+        var appointments = await _appointmentService.ListMyAppointmentsAsync(patientProfileId, userId, status, ct);
         return Ok(ApiResponse<IReadOnlyList<AppointmentSummaryResponse>>.Ok(appointments));
     }
 
@@ -115,7 +126,7 @@ public sealed class AppointmentsController : ControllerBase
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
                 ?? throw new InvalidOperationException("Missing NameIdentifier claim."));
             var patientProfileId = await GetPatientProfileIdAsync(ct);
-            var appointment = await _appointmentService.BookAppointmentAsync(userId, patientProfileId, request, ct);
+            var appointment = await _appointmentService.BookAppointmentAsync(userId, patientProfileId, request, isStaffOverride: false, ct);
             return StatusCode(StatusCodes.Status201Created, ApiResponse<AppointmentResponse>.Ok(appointment, code: 201));
         }
         catch (InvalidOperationException ex)
@@ -175,9 +186,57 @@ public sealed class AppointmentsController : ControllerBase
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
                 ?? throw new InvalidOperationException("Missing NameIdentifier claim.");
             var userGuid = Guid.Parse(userId);
-            var patientProfileId = await GetPatientProfileIdAsync(ct);
-            var appointment = await _appointmentService.CancelAppointmentAsync(id, userGuid, patientProfileId, request, ct);
+            var patientProfileId = await GetOptionalPatientProfileIdAsync(ct);
+            var appointment = await _appointmentService.CancelAppointmentAsync(id, userGuid, patientProfileId ?? Guid.Empty, request, ct);
             return Ok(ApiResponse<AppointmentResponse>.Ok(appointment));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ApiResponse<object>.Fail(403, ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// GET /api/v1/appointments/cancellation-status-today — Kiểm tra số lần hủy trong ngày (Anti-abuse).
+    /// </summary>
+    [HttpGet("cancellation-status-today")]
+    [Authorize(Roles = "PATIENT")]
+    [ProducesResponseType(typeof(ApiResponse<CancellationStatusTodayResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCancellationStatusToday(CancellationToken ct = default)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _appointmentService.GetCancellationStatusTodayAsync(userId, ct);
+        return Ok(ApiResponse<CancellationStatusTodayResponse>.Ok(result));
+    }
+
+    /// <summary>
+    /// PUT /api/v1/appointments/{id}/clinical-info — Chỉnh sửa lý do và triệu chứng khám.
+    /// </summary>
+    [HttpPut("{id:guid}/clinical-info")]
+    [Authorize(Roles = "PATIENT")]
+    [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateClinicalInfo(
+        Guid id,
+        [FromBody] UpdateAppointmentClinicalInfoRequest request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var profileId = await GetOptionalPatientProfileIdAsync(ct);
+            var result = await _appointmentService.UpdateClinicalInfoAsync(id, userId, profileId, request, ct);
+            return Ok(ApiResponse<AppointmentResponse>.Ok(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(404, ex.Message));
         }
         catch (InvalidOperationException ex)
         {

@@ -78,7 +78,7 @@ describe("useSignIn", () => {
     expect(replaceMock).not.toHaveBeenCalledWith("/dashboard");
   });
 
-  it("UC-01: role PATIENT — chặn TRƯỚC khi lưu token, không lưu session, không điều hướng", async () => {
+  it("UC-01: role PATIENT — cho phép đăng nhập web để đặt lịch, điều hướng về / (landing page)", async () => {
     server.use(
       http.post(`${API_BASE_URL}/api/v1/auth/login`, () =>
         HttpResponse.json({ code: 200, message: "OK", data: loginResponse({ role: "PATIENT" }) }),
@@ -88,11 +88,11 @@ describe("useSignIn", () => {
     const { result } = renderHook(() => useSignIn(), { wrapper: Wrapper });
     result.current.mutate({ phoneNumber: "0900000002", password: "Password1" });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(window.localStorage.getItem(ACCESS_TOKEN_KEY)).toBeNull();
-    expect(useAuthStore.getState().accessToken).toBeNull();
-    expect(replaceMock).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem(ACCESS_TOKEN_KEY)).toBe("access-token-abc");
+    expect(useAuthStore.getState().accessToken).toBe("access-token-abc");
+    expect(replaceMock).toHaveBeenCalledWith("/");
   });
 
   it("sai số điện thoại/mật khẩu (401) — không lưu token, không điều hướng", async () => {

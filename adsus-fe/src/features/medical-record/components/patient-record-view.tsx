@@ -115,6 +115,8 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
   const profile = profileQuery.data;
   const cases = caseListQuery.data;
   const ageStr = calculateAge(profile.dateOfBirth);
+  const EMPTY_GUID = "00000000-0000-0000-0000-000000000000";
+  const isRelative = !profile.patientUserId || profile.patientUserId === EMPTY_GUID;
 
   return (
     <div className="mx-auto w-[90%] max-w-[90%] py-8">
@@ -137,6 +139,11 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
               <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
                 {profile.fullName}
               </h1>
+              {isRelative && (
+                <Badge variant="secondary" className="font-medium text-xs">
+                  Hồ sơ người thân
+                </Badge>
+              )}
             </div>
 
             {/* Thông tin nhanh nhân khẩu học */}

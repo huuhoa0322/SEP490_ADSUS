@@ -15,6 +15,7 @@ class AppointmentCard extends StatelessWidget {
     required this.busy,
     this.onCancel,
     this.onReschedule,
+    this.onEditClinicalInfo,
     this.onSyncCalendar,
     this.syncedToCalendar = false,
   });
@@ -23,6 +24,7 @@ class AppointmentCard extends StatelessWidget {
   final bool busy;
   final VoidCallback? onCancel;
   final VoidCallback? onReschedule;
+  final VoidCallback? onEditClinicalInfo;
 
   /// Callback khi user bấm icon "Thêm vào lịch".
   final VoidCallback? onSyncCalendar;
@@ -80,26 +82,44 @@ class AppointmentCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.purple.shade100,
+                            color: Colors.purple.shade50,
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.purple.shade200),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.person_add, size: 14, color: Colors.purple.shade700),
+                              Icon(Icons.people_alt_outlined, size: 13, color: Colors.purple.shade700),
                               const SizedBox(width: 4),
-                              Text(
-                                'Đặt hộ: ${appointment.relationshipLabel ?? ''}',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.purple.shade700,
-                                  fontWeight: FontWeight.w600,
+                              Flexible(
+                                child: Text(
+                                  'Đặt hộ: ${appointment.relationshipLabel ?? 'Người thân'}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.purple.shade700,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        if (appointment.patientFullName != null && appointment.patientFullName!.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            appointment.patientFullName!,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.navy,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        const SizedBox(height: 6),
                       ],
                       // Ngày khám
                       Text(
@@ -171,6 +191,7 @@ class AppointmentCard extends StatelessWidget {
         appointment: appointment,
         onCancel: onCancel,
         onReschedule: onReschedule,
+        onEditClinicalInfo: onEditClinicalInfo,
       ),
     );
   }

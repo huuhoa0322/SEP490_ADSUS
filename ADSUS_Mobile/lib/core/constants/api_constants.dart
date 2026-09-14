@@ -45,6 +45,8 @@ class ApiConstants {
   static const String appointmentSlots = '/api/v1/appointments/slots';
   static const String appointments = '/api/v1/appointments';
   static String cancelAppointment(String id) => '/api/v1/appointments/$id/cancel';
+  static const String cancellationStatusToday = '/api/v1/appointments/cancellation-status-today';
+  static String updateAppointmentClinicalInfo(String id) => '/api/v1/appointments/$id/clinical-info';
 
   // Module 04 — Medical Record (UC-08)
   static const String myCases = '/api/v1/cases/me';
@@ -54,10 +56,9 @@ class ApiConstants {
   static const String symptomCategories = '/api/v1/symptoms/categories';
 
   /// Quá thời gian này coi như không kết nối được.
-  /// Mặc định 15s — nhưng request tới AI Chatbot cần 60s vì Gemini free tier
-  /// cold-start mỗi call từ 6-15s (đo 2026-08-27), cộng thêm thời gian BE
-  /// build system prompt + query DB. Endpoint chat truyền timeout riêng 60s.
-  static const Duration timeout = Duration(seconds: 15);
+  /// Tăng lên 30s để chịu được lúc Render free-tier thức dậy từ trạng thái ngủ đông (cold-start).
+  /// Request tới AI Chatbot cần 60s riêng.
+  static const Duration timeout = Duration(seconds: 30);
   static const Duration chatTimeout = Duration(seconds: 60);
 
   // Module 10 — AI Chatbot (FT-39)

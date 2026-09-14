@@ -20,7 +20,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // 1. Khởi tạo Firebase — bắt buộc phải trước khi dùng bất kỳ Firebase service nào.
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('[Firebase] Warning: Firebase.initializeApp failed: $e');
+  }
 
   // 2. Hive: đăng ký adapters trước khi mở box bất kỳ.
   Hive.registerAdapter(HiveChatRoleAdapter());
@@ -29,7 +33,11 @@ void main() async {
 
   // 3. Khởi tạo NotificationService — setup FCM listeners.
   // Phải gọi SAU Firebase.initializeApp() vì service dùng FirebaseMessaging.
-  await notificationService.initialize();
+  try {
+    await notificationService.initialize();
+  } catch (e) {
+    debugPrint('[NotificationService] Warning: notificationService.initialize failed: $e');
+  }
 
   // 3. Warm-up SharedPreferences — UC-16 cần instance này để lưu cờ "đã sync vào lịch".
   // Gọi ở main() thay vì trong FutureProvider để lần đầu mở app không phải đợi disk I/O
@@ -38,10 +46,18 @@ void main() async {
 
   // ADSUS Medication Widget (T-3.1): Khởi tạo WorkManager background periodic sync.
   // isInDebugMode=true để WorkManager chạy được trong debug build.
-  await Workmanager().initialize(adsusCallbackDispatcher);
+  try {
+    await Workmanager().initialize(adsusCallbackDispatcher);
+  } catch (e) {
+    debugPrint('[Workmanager] Warning: Workmanager.initialize failed: $e');
+  }
 
   // ADSUS Medication Widget (T-3.1): Đăng ký periodic task — 15 phút.
-  await HomeWidget.initiallyLaunchedFromHomeWidget();
+  try {
+    await HomeWidget.initiallyLaunchedFromHomeWidget();
+  } catch (e) {
+    debugPrint('[HomeWidget] Warning: HomeWidget.initiallyLaunchedFromHomeWidget failed: $e');
+  }
 
   // ProviderScope là gốc của Riverpod, phải bọc toàn bộ ứng dụng.
   runApp(const ProviderScope(child: AdsusApp()));
