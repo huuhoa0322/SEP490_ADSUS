@@ -11,12 +11,20 @@ vi.mock('next/link', () => ({
 }));
 
 // Mock hooks
+const { mockReadyNextMutate } = vi.hoisted(() => ({
+  mockReadyNextMutate: vi.fn(),
+}));
+
 vi.mock('@/features/appointment-scheduling/hooks/use-doctor-appointments', () => ({
   useDoctorAppointments: vi.fn(() => ({
     data: [],
     isLoading: false,
     isError: false,
-  }))
+  })),
+  useDoctorReadyNext: vi.fn(() => ({
+    mutate: mockReadyNextMutate,
+    isPending: false,
+  })),
 }));
 
 const mockSummary = {
@@ -105,5 +113,25 @@ describe('DayShiftDetail', () => {
 
     fireEvent.click(overtimeButton);
     expect(mockOnRequestClick).toHaveBeenCalledWith('OVERTIME', futureDate);
+  });
+
+  it('renders "Sẵn sàng tiếp nhận bệnh nhân" button and calls mutate on click', () => {
+    const testDate = new Date('2023-10-15T00:00:00Z');
+
+    render(
+      <DayShiftDetail
+        open={true}
+        onOpenChange={mockOnOpenChange}
+        date={testDate}
+        summary={mockSummary}
+        onRequestClick={mockOnRequestClick}
+      />
+    );
+
+    const readyButton = screen.getByRole('button', { name: /Sẵn sàng tiếp nhận bệnh nhân/i });
+    expect(readyButton).toBeInTheDocument();
+
+    fireEvent.click(readyButton);
+    expect(mockReadyNextMutate).toHaveBeenCalledTimes(1);
   });
 });

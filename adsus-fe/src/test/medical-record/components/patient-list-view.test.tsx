@@ -80,7 +80,7 @@ describe("PatientListView", () => {
     expect(screen.queryByRole("link", { name: /xem hồ sơ bệnh án/i })).not.toBeInTheDocument();
   });
 
-  it("dòng đã có hồ sơ nền hiện nút Tạo ca khám và link tên bệnh nhân dẫn tới hồ sơ", () => {
+  it("dòng đã có hồ sơ nền không còn nút Tạo ca khám và link tên bệnh nhân dẫn tới hồ sơ", () => {
     signInAs("DOCTOR");
     mockList([withProfile]);
 
@@ -90,7 +90,7 @@ describe("PatientListView", () => {
       "href",
       "/patients/profile-1"
     );
-    expect(screen.getByRole("link", { name: /tạo ca khám/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /tạo ca khám/i })).not.toBeInTheDocument();
   });
 
   it("ẩn nút Thêm bệnh nhân mới khỏi Bác sĩ", () => {

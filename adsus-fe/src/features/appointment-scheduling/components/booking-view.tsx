@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/lib/api-client";
@@ -81,12 +85,57 @@ export function BookingView({
 }: BookingViewProps = {}) {
   const router = useRouter();
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
+  const [pendingChange, setPendingChange] = useState<(() => void) | null>(null);
 
   const form = useBookingForm();
   const bookMutation = useBookAppointment();
   const { data: relatives = [], isLoading: isLoadingRelatives } = useRelatives(
     !form.isBookingForSelf
   );
+
+  const hasEnteredData = Boolean(form.reason.trim()) || form.symptoms.length > 0;
+
+  const handleChangeIsBookingForSelf = (forSelf: boolean) => {
+    if (forSelf === form.isBookingForSelf) return;
+
+    if (hasEnteredData) {
+      setPendingChange(() => () => {
+        form.setIsBookingForSelf(forSelf);
+      });
+      setIsConfirmResetOpen(true);
+    } else {
+      form.setIsBookingForSelf(forSelf);
+    }
+  };
+
+  const handleSelectRelative = (relativeId: string | null) => {
+    if (relativeId === form.selectedRelativeId) return;
+
+    if (hasEnteredData) {
+      setPendingChange(() => () => {
+        form.setSelectedRelativeId(relativeId);
+      });
+      setIsConfirmResetOpen(true);
+    } else {
+      form.setSelectedRelativeId(relativeId);
+    }
+  };
+
+  const handleConfirmReset = () => {
+    form.setReason("");
+    form.setSymptoms([]);
+    if (pendingChange) {
+      pendingChange();
+      setPendingChange(null);
+    }
+    setIsConfirmResetOpen(false);
+  };
+
+  const handleCancelReset = () => {
+    setPendingChange(null);
+    setIsConfirmResetOpen(false);
+  };
 
   const handleSubmit = async () => {
     if (!form.selectedSlotId) return;
@@ -154,7 +203,18 @@ export function BookingView({
         </p>
       </div>
 
-      {/* 2. Doctor Filter Section */}
+      {/* 2. Relative Booking Section (Bước 1: Chọn người khám) */}
+      <RelativeSection
+        isBookingForSelf={form.isBookingForSelf}
+        onChangeIsBookingForSelf={handleChangeIsBookingForSelf}
+        relatives={relatives}
+        isLoadingRelatives={isLoadingRelatives}
+        selectedRelativeId={form.selectedRelativeId}
+        onSelectRelative={handleSelectRelative}
+        onSwitchToAddRelative={() => onSwitchToAddRelative?.()}
+      />
+
+      {/* 3. Doctor Filter Section */}
       <DoctorFilterSection
         selectedGender={form.selectedDoctorGender}
         onSelectGender={form.selectDoctorGender}
@@ -163,13 +223,13 @@ export function BookingView({
         onSelectDoctor={form.selectDoctor}
       />
 
-      {/* 3. Week Selector */}
+      {/* 4. Week Selector */}
       <WeekSelector
         selectedWeekIndex={form.selectedWeekIndex}
         onSelectWeek={form.selectWeek}
       />
 
-      {/* 4. Date Selector */}
+      {/* 5. Date Selector */}
       <DateSelector
         displayDates={form.displayDates}
         selectedDate={form.selectedDate}
@@ -177,7 +237,7 @@ export function BookingView({
         selectedWeekIndex={form.selectedWeekIndex}
       />
 
-      {/* 5. Slot Grid */}
+      {/* 6. Slot Grid */}
       <SlotGrid
         selectedDoctorId={form.selectedDoctorId}
         selectedDate={form.selectedDate}
@@ -187,7 +247,7 @@ export function BookingView({
         isLoading={form.isLoadingSlots}
       />
 
-      {/* 6. Reason Section */}
+      {/* 7. Reason Section */}
       <div className="space-y-2">
         <label
           htmlFor="booking-reason"
@@ -205,23 +265,12 @@ export function BookingView({
         />
       </div>
 
-      {/* 7. Symptom Section */}
+      {/* 8. Symptom Section */}
       <SymptomSection
         symptoms={form.symptoms}
         onChange={form.setSymptoms}
         isExpanded={form.isSymptomSectionExpanded}
         onToggle={() => form.setIsSymptomSectionExpanded((prev) => !prev)}
-      />
-
-      {/* 8. Relative Booking Section */}
-      <RelativeSection
-        isBookingForSelf={form.isBookingForSelf}
-        onChangeIsBookingForSelf={form.setIsBookingForSelf}
-        relatives={relatives}
-        isLoadingRelatives={isLoadingRelatives}
-        selectedRelativeId={form.selectedRelativeId}
-        onSelectRelative={form.setSelectedRelativeId}
-        onSwitchToAddRelative={() => onSwitchToAddRelative?.()}
       />
 
       {/* 9. Confirm Button */}
@@ -242,6 +291,40 @@ export function BookingView({
           )}
         </Button>
       </div>
+
+      {/* Dialog xác nhận đổi người khám */}
+      <Dialog
+        open={isConfirmResetOpen}
+        onOpenChange={(open) => {
+          if (!open) handleCancelReset();
+          else setIsConfirmResetOpen(true);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Xác nhận thay đổi người khám</DialogTitle>
+            <DialogDescription className="pt-2 text-sm text-muted-foreground">
+              Thay đổi người khám sẽ làm mới lý do khám và triệu chứng để đảm bảo hồ sơ y tế chính xác. Bạn có muốn tiếp tục?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancelReset}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              onClick={handleConfirmReset}
+            >
+              Đồng ý
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog thông báo thành công */}
       <BookingSuccessDialog

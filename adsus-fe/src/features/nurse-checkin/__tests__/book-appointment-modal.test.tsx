@@ -15,6 +15,13 @@ vi.mock("../hooks/use-staff-book-appointment", () => ({
   useStaffBookAppointment: vi.fn(),
 }));
 
+vi.mock("@/features/appointment-scheduling/hooks/use-relatives", () => ({
+  useRelativesForGuardian: vi.fn(() => ({
+    data: [],
+    isLoading: false,
+  })),
+}));
+
 // Mock DatePicker to simple input for predictable testing in jsdom
 vi.mock("@/components/ui/date-picker", () => ({
   DatePicker: ({
@@ -281,5 +288,52 @@ describe("BookAppointmentModal", () => {
     fireEvent.click(cancelBtn);
 
     expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("cho phép Staff chọn đặt lịch cho người thân của bệnh nhân", async () => {
+    const { useRelativesForGuardian } = await import("@/features/appointment-scheduling/hooks/use-relatives");
+    vi.mocked(useRelativesForGuardian).mockReturnValue({
+      data: [
+        {
+          relationshipId: "rel-10",
+          patientProfileId: "prof-child",
+          patientName: "Bé Con",
+          relationshipName: "Con",
+          patientPhone: "0912345678",
+          dateOfBirth: "2020-01-01",
+          gender: "FEMALE",
+          isRegisteredAccount: false,
+          createdAt: "2026-01-01T00:00:00Z",
+        },
+      ],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useRelativesForGuardian>);
+
+    render(<BookAppointmentModal {...defaultProps} patientUserId="user-mother" />);
+
+    expect(screen.getByText(/Người thân \(1\)/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText(/Người thân \(1\)/i));
+
+    const doctorSelect = document.querySelector("#book-doctor") as HTMLSelectElement;
+    fireEvent.change(doctorSelect, { target: { value: "doc-1" } });
+
+    const datePicker = screen.getByTestId("book-date");
+    fireEvent.change(datePicker, { target: { value: "2026-10-15" } });
+
+    const slotSelect = document.querySelector("#book-slot") as HTMLSelectElement;
+    fireEvent.change(slotSelect, { target: { value: "slot-2" } });
+
+    const submitBtn = screen.getByRole("button", { name: "Xác nhận đặt lịch" });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        patientProfileId: "prof-child",
+        scheduleSlotId: "slot-2",
+        reason: undefined,
+        relationshipId: "rel-10",
+      });
+    });
   });
 });

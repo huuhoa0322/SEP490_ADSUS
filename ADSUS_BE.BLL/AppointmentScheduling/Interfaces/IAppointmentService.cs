@@ -153,4 +153,14 @@ public interface IAppointmentService
         Guid oldAppointmentId,
         RescheduleAppointmentRequest request,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Bác sĩ thông báo sẵn sàng tiếp nhận bệnh nhân tiếp theo (gửi notification SignalR tới Staff/Lễ tân và tái chế slot).
+    /// </summary>
+    Task ReadyForNextPatientAsync(Guid doctorId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Quét và tái chế các slot kết thúc sớm của bác sĩ trong ngày sang OPEN nếu không còn active appointment/case.
+    /// </summary>
+    Task RecycleCompletedEarlySlotsAsync(Guid doctorId, CancellationToken ct = default);
 }

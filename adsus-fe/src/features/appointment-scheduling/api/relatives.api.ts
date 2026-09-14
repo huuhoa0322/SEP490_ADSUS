@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api-client";
+import type { ApiResponse } from "@/types/api.types";
 import type {
   RelativeResponse,
   RelativesListResponse,
@@ -10,6 +11,18 @@ import type {
 export async function getRelatives(): Promise<RelativeResponse[]> {
   const { data } = await apiClient.get<RelativesListResponse>("/api/v1/relatives");
   return data.relatives ?? [];
+}
+
+/** GET /api/v1/relatives/guardian/{guardianUserId} — Staff lấy danh sách người thân của bệnh nhân */
+export async function getRelativesForGuardian(guardianUserId: string): Promise<RelativeResponse[]> {
+  try {
+    const { data } = await apiClient.get<ApiResponse<RelativeResponse[]>>(
+      `/api/v1/relatives/guardian/${guardianUserId}`
+    );
+    return data.data ?? [];
+  } catch {
+    return [];
+  }
 }
 
 /** POST /api/v1/relatives — Thêm người thân mới */

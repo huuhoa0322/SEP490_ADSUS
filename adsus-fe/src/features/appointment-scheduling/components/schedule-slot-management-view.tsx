@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Coffee } from "lucide-react";
+import { Plus, Coffee, BellRing, Loader2 } from "lucide-react";
 import { addMonths } from "date-fns";
 import { Button } from "@/components/ui/button";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { useMonthSummary } from "../hooks/use-shift-request";
+import { useDoctorReadyNext } from "../hooks/use-doctor-appointments";
 import { MonthCalendar } from "./month-calendar";
 import { DayShiftDetail } from "./day-shift-detail";
 import { ShiftRequestForm } from "./shift-request-form";
@@ -28,6 +29,7 @@ export function ScheduleSlotManagementView() {
   const month = currentDate.getMonth() + 1; // 1-12
 
   const { data: summaries, isLoading } = useMonthSummary(year, month);
+  const readyNextMutation = useDoctorReadyNext();
 
   const handlePrevMonth = () => setCurrentDate(addMonths(currentDate, -1));
   const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
@@ -41,7 +43,20 @@ export function ScheduleSlotManagementView() {
             Quản lý ca làm việc, đăng ký nghỉ phép và tăng ca.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="default"
+            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+            onClick={() => readyNextMutation.mutate()}
+            disabled={readyNextMutation.isPending}
+          >
+            {readyNextMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <BellRing className="h-4 w-4" />
+            )}
+            Sẵn sàng tiếp nhận bệnh nhân
+          </Button>
           <Button
             variant="outline"
             className="gap-2"

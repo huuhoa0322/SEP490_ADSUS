@@ -31,6 +31,7 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
         return await _db.ScheduleSlots
             .Include(s => s.Doctor)
             .Include(s => s.Appointments)
+                .ThenInclude(a => a.Case)
             .FirstOrDefaultAsync(s => s.SlotId == id, ct);
     }
 
@@ -66,6 +67,8 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
         IQueryable<ScheduleSlot> query = _db.ScheduleSlots
             .AsNoTracking()
             .Include(s => s.Doctor)
+            .Include(s => s.Appointments)
+                .ThenInclude(a => a.Case)
             .Include(s => s.Appointments)
                 .ThenInclude(a => a.PatientProfile)
                     .ThenInclude(p => p.User)

@@ -6,7 +6,6 @@ import {
   Activity,
   ArrowLeft,
   Calendar,
-  CalendarPlus,
   Clock,
   Edit,
   Eye,
@@ -166,13 +165,6 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
           {/* Primary Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5">
             <Link
-              href={`/patients/${profileId}/cases/new`}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#2E37A4] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-[#2E37A4]/90"
-            >
-              <CalendarPlus className="size-4" />
-              Tạo ca khám mới
-            </Link>
-            <Link
               href={`/patients/${profileId}/profile`}
               className="inline-flex items-center gap-1.5 rounded-md border border-[#E7E8EB] bg-white px-3.5 py-2 text-sm font-semibold text-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-[#2E37A4]"
             >
@@ -227,17 +219,8 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
                 <Calendar className="mx-auto size-10 text-foreground/30" />
                 <p className="mt-3 font-semibold text-foreground">Chưa có lần khám nào</p>
                 <p className="mt-1 text-sm font-medium text-foreground">
-                  Bấm &ldquo;Tạo ca khám mới&rdquo; để bắt đầu lần khám đầu tiên.
+                  Bệnh nhân chưa có lịch sử ca khám nào.
                 </p>
-                <div className="mt-4">
-                  <Link
-                    href={`/patients/${profileId}/cases/new`}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-[#2E37A4] px-4 py-2 text-xs font-semibold text-white hover:bg-[#2E37A4]/90"
-                  >
-                    <CalendarPlus className="size-3.5" />
-                    Tạo ca khám mới
-                  </Link>
-                </div>
               </div>
             ) : null}
 

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getRelatives,
+  getRelativesForGuardian,
   addRelative,
   checkPhoneRegistered,
 } from "../api/relatives.api";
@@ -14,6 +15,15 @@ export function useRelatives(enabled = true) {
     queryKey: ["relatives"],
     queryFn: getRelatives,
     enabled,
+  });
+}
+
+/** Staff lấy danh sách người thân của bệnh nhân theo guardianUserId */
+export function useRelativesForGuardian(guardianUserId?: string) {
+  return useQuery({
+    queryKey: ["relatives", "guardian", guardianUserId],
+    queryFn: () => getRelativesForGuardian(guardianUserId!),
+    enabled: Boolean(guardianUserId),
   });
 }
 

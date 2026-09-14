@@ -422,7 +422,8 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
     {
         // 1. HtmlHelper.StripTags unit checks
         Assert.Equal("U tuyến xơ vú phải", HtmlHelper.StripTags("<p><strong>U tuyến xơ</strong> vú phải</p>"));
-        Assert.Equal("alert('x') Bình thường", HtmlHelper.StripTags("<script>alert('x')</script> Bình thường"));
+        Assert.Equal("Bình thường", HtmlHelper.StripTags("<script>alert('x')</script> Bình thường"));
+        Assert.Equal("Bạch cầu < 4.0 và SpO2 > 95%", HtmlHelper.StripTags("Bạch cầu < 4.0 và SpO2 > 95%"));
         Assert.Equal("A & B", HtmlHelper.StripTags("A &amp; B"));
         Assert.Equal("", HtmlHelper.StripTags(null));
         Assert.Equal("", HtmlHelper.StripTags("   "));
