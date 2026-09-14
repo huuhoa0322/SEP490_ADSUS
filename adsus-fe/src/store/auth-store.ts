@@ -227,6 +227,8 @@ const ROUTE_ROLES: ReadonlyArray<{ prefix: string; roles: readonly Role[] }> = [
   { prefix: "/prescriptions", roles: ["DOCTOR"] },
   // UC-13: Patient đặt lịch khám trên web.
   { prefix: "/dat-lich", roles: ["PATIENT"] },
+  // UC-14: Patient xem lịch hẹn đã đặt trên web.
+  { prefix: "/lich-hen-cua-toi", roles: ["PATIENT"] },
   // SCR mới (28/08/2026) — "Lịch bệnh nhân": Doctor xem lịch bệnh nhân đã đặt, chỉ đọc. Phải
   // đứng TRƯỚC "/schedule" bên dưới vì isRoleAllowedOnPath dùng .find() (khớp luật đầu tiên) —
   // nếu để sau, cả hai luật đều cho DOCTOR nên không lộ bug, nhưng thứ tự đúng ngăn một luật
