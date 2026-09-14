@@ -416,3 +416,6 @@ coveragereport-unit/
 
 #docs
 docs/superpowers/
+
+#codex
+.codex/
