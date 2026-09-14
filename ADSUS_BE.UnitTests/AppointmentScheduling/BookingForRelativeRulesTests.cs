@@ -32,7 +32,7 @@ namespace ADSUS_BE.UnitTests.AppointmentScheduling;
 /// Bộ kiểm thử hoàn chỉnh cho các quy tắc đặt lịch cho người thân (Module 8 & Patient Relationship).
 /// Bao gồm 7 nhóm Test Case theo kiến trúc và nghiệp vụ:
 /// - TC-RULE1: Cấm thêm SĐT đã có tài khoản vào danh bạ, nhưng cho phép nếu SĐT chưa đăng ký.
-/// - TC-USER-SELF-3: User tự đặt cho bản thân tối đa 3 lịch active (BOOKED/CHECKED_IN).
+/// - TC-USER-SELF-3: User tự đặt cho bản thân tối đa 3 lịch active (BOOKED).
 /// - TC-USER-OTHERS-3: User đặt hộ người thân tối đa 3 lịch active.
 /// - TC-PATIENT-TOTAL-3: 1 Bệnh nhân (PatientProfile) tối đa 3 lịch active trên toàn hệ thống (bất kể ai đặt).
 /// - TC-PATIENT-SAME-DAY-1: 1 Bệnh nhân chỉ có tối đa 1 lịch active trong cùng 1 ngày khám.
@@ -241,7 +241,7 @@ public class BookingForRelativeRulesTests : IDisposable
     [Fact]
     public async Task TC_USER_SELF_3_UserSelfBooking_ReachesLimitOf3Active_FourthBookingThrows()
     {
-        // Arrange: Tạo sẵn 3 lịch active (2 BOOKED, 1 CHECKED_IN) cho chính User
+        // Arrange: Tạo sẵn 3 lịch active (3 BOOKED) cho chính User
         var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
         for (int i = 0; i < 3; i++)
         {
@@ -254,7 +254,7 @@ public class BookingForRelativeRulesTests : IDisposable
                 PatientProfileId = _userProfileId,
                 BookedByUserId = null,
                 RelationshipId = null,
-                Status = i == 2 ? AppointmentStatus.CheckedIn : AppointmentStatus.Booked,
+                Status = AppointmentStatus.Booked,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
@@ -313,7 +313,7 @@ public class BookingForRelativeRulesTests : IDisposable
                 PatientProfileId = relProfile.PatientProfileId,
                 BookedByUserId = _userId,
                 RelationshipId = rel.RelationshipId,
-                Status = i == 1 ? AppointmentStatus.CheckedIn : AppointmentStatus.Booked,
+                Status = AppointmentStatus.Booked,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
@@ -363,7 +363,7 @@ public class BookingForRelativeRulesTests : IDisposable
     {
         // Arrange: Bệnh nhân Vợ đã có 3 lịch active:
         // - 1 lịch do Vợ tự đặt (Booked)
-        // - 1 lịch do Chồng đặt hộ (CheckedIn)
+        // - 1 lịch do Chồng đặt hộ (Booked)
         // - 1 lịch do Con gái đặt hộ (Booked)
         var wifeProfileId = Guid.NewGuid();
         var wifeProfile = new PatientProfile
@@ -410,7 +410,7 @@ public class BookingForRelativeRulesTests : IDisposable
             PatientProfileId = wifeProfileId,
             BookedByUserId = _userId,
             RelationshipId = husbandRel.RelationshipId,
-            Status = AppointmentStatus.CheckedIn,
+            Status = AppointmentStatus.Booked,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         });

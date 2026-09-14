@@ -42,10 +42,6 @@ export function LandingNavbar() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [dropdownOpen]);
 
-  // Close mobile menu on route change
-  useEffect(() => {
-    setOpen(false);
-  }, []);
 
   function handleSignOut() {
     void signOut();

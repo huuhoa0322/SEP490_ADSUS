@@ -123,6 +123,7 @@ public sealed class AppointmentService : IAppointmentService
 
     public async Task<IReadOnlyList<AppointmentSummaryResponse>> ListMyAppointmentsAsync(
         Guid patientProfileId,
+        Guid? userId = null,
         AppointmentStatus? statusFilter = null,
         CancellationToken ct = default)
     {
@@ -132,7 +133,7 @@ public sealed class AppointmentService : IAppointmentService
                 .ThenInclude(s => s.Doctor)
             .Include(a => a.BookedByUser)
             .Include(a => a.PatientRelationship)
-            .Where(a => a.PatientProfileId == patientProfileId);
+            .Where(a => a.PatientProfileId == patientProfileId || (userId != null && a.BookedByUserId == userId));
 
         if (statusFilter.HasValue)
         {
@@ -197,7 +198,7 @@ public sealed class AppointmentService : IAppointmentService
         }
 
         // BR-02: Kiểm tra không trùng booking
-        var hasBooked = slot.Appointments.Any(a => a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.CheckedIn);
+        var hasBooked = slot.Appointments.Any(a => a.Status == AppointmentStatus.Booked);
         if (hasBooked)
         {
             throw new InvalidOperationException("Slot này đã có người đặt.");
@@ -242,11 +243,11 @@ public sealed class AppointmentService : IAppointmentService
             // Nếu relationship đã được tạo từ trước (đã tin cậy), thì CHO PHÉP đặt hộ
             // kể cả khi người thân đó sau này đã đăng ký tài khoản (relationship.PatientProfile.UserId != null).
 
-            // Pool 2: User đặt hộ tối đa 3 lịch active (BOOKED hoặc CHECKED_IN)
+            // Pool 2: User đặt hộ tối đa 3 lịch active (BOOKED)
             var bookedForOthersActiveCount = await _db.Appointments
                 .CountAsync(a => a.BookedByUserId == userId
                     && a.RelationshipId != null
-                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.CheckedIn), ct);
+                    && a.Status == AppointmentStatus.Booked, ct);
 
             if (bookedForOthersActiveCount >= MaxActiveBookedForOthers)
             {
@@ -259,12 +260,12 @@ public sealed class AppointmentService : IAppointmentService
             // Tự đặt cho bản thân
             targetPatientProfileId = patientProfileId;
 
-            // Pool 1: User tự đặt cho bản thân tối đa 3 lịch active (BOOKED hoặc CHECKED_IN)
+            // Pool 1: User tự đặt cho bản thân tối đa 3 lịch active (BOOKED)
             var selfActiveCount = await _db.Appointments
                 .CountAsync(a => a.PatientProfileId == targetPatientProfileId
                     && a.BookedByUserId == null
                     && a.RelationshipId == null
-                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.CheckedIn), ct);
+                    && a.Status == AppointmentStatus.Booked, ct);
 
             if (selfActiveCount >= MaxActiveSelfBookings)
             {
@@ -280,7 +281,7 @@ public sealed class AppointmentService : IAppointmentService
         // =====================================================
         var patientTotalActiveCount = await _db.Appointments
             .CountAsync(a => a.PatientProfileId == targetPatientProfileId
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.CheckedIn), ct);
+                && a.Status == AppointmentStatus.Booked, ct);
 
         if (patientTotalActiveCount >= MaxActivePerPatientProfile)
         {
@@ -297,7 +298,7 @@ public sealed class AppointmentService : IAppointmentService
             .AnyAsync(a =>
                 a.PatientProfileId == targetPatientProfileId
                 && a.Slot.SlotDate == slot.SlotDate
-                && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.CheckedIn),
+                && a.Status == AppointmentStatus.Booked,
                 ct);
 
         if (hasSameDayAppointment)
@@ -307,7 +308,7 @@ public sealed class AppointmentService : IAppointmentService
                 .FirstOrDefaultAsync(a =>
                     a.PatientProfileId == targetPatientProfileId
                     && a.Slot.SlotDate == slot.SlotDate
-                    && (a.Status == AppointmentStatus.Booked || a.Status == AppointmentStatus.CheckedIn),
+                    && a.Status == AppointmentStatus.Booked,
                     ct);
             var doctorName = existingAppointment?.Slot?.Doctor?.FullName ?? "bác sĩ";
             throw new InvalidOperationException(

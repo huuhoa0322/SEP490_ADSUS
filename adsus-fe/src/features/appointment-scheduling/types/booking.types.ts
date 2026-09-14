@@ -25,7 +25,17 @@ export interface OpenSlotResponse {
 export interface BookAppointmentRequest {
   scheduleSlotId: string;
   reason?: string;
+  symptoms?: SymptomInput[];
+  relationshipId?: string;
 }
+
+export interface SymptomInput {
+  categoryId: string;
+  symptomId?: string | null;
+  otherNote?: string | null;
+}
+
+export const MAX_BOOKING_DAYS = 30; // Đồng bộ Mobile & Backend
 
 /** Chi tiết lịch hẹn sau khi đặt thành công */
 export interface AppointmentResponse {

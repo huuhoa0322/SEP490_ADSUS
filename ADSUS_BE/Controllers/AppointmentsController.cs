@@ -77,7 +77,9 @@ public sealed class AppointmentsController : ControllerBase
         CancellationToken ct = default)
     {
         var patientProfileId = await GetPatientProfileIdAsync(ct);
-        var appointments = await _appointmentService.ListMyAppointmentsAsync(patientProfileId, status, ct);
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? userId = Guid.TryParse(userIdStr, out var parsedId) ? parsedId : null;
+        var appointments = await _appointmentService.ListMyAppointmentsAsync(patientProfileId, userId, status, ct);
         return Ok(ApiResponse<IReadOnlyList<AppointmentSummaryResponse>>.Ok(appointments));
     }
 

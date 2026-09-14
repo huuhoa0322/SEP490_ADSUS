@@ -32,27 +32,31 @@ class NotificationService {
     // Initialize local notifications first
     await _initializeLocalNotifications();
 
-    // Request permission for iOS (no-op on Android)
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    try {
+      // Request permission for iOS (no-op on Android)
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
 
-    debugPrint('[NotificationService] Permission status: ${settings.authorizationStatus}');
+      debugPrint('[NotificationService] Permission status: ${settings.authorizationStatus}');
 
-    // Get FCM token
-    _fcmToken = await _messaging.getToken();
-    debugPrint('[NotificationService] FCM Token: $_fcmToken');
+      // Get FCM token
+      _fcmToken = await _messaging.getToken();
+      debugPrint('[NotificationService] FCM Token: $_fcmToken');
 
-    // Listen for token refresh
-    _messaging.onTokenRefresh.listen(_handleTokenRefresh);
+      // Listen for token refresh
+      _messaging.onTokenRefresh.listen(_handleTokenRefresh);
 
-    // Handle foreground messages
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+      // Handle foreground messages
+      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
-    // Handle background messages (when app is opened from notification)
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
+      // Handle background messages (when app is opened from notification)
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
+    } catch (e) {
+      debugPrint('[NotificationService] FCM unavailable or initialization skipped: $e');
+    }
   }
 
   Future<void> _initializeLocalNotifications() async {
@@ -131,6 +135,16 @@ class NotificationService {
   /// Call this after user successfully logs in.
   /// Requires access token to be stored in secure storage.
   Future<void> registerTokenWithBackend(String accessToken) async {
+    // Nếu lúc mở app chưa kịp lấy token, thử lấy lại lúc đăng nhập
+    if (_fcmToken == null || _fcmToken!.isEmpty) {
+      try {
+        _fcmToken = await _messaging.getToken();
+        debugPrint('[NotificationService] FCM Token fetched on login: $_fcmToken');
+      } catch (e) {
+        debugPrint('[NotificationService] Unable to get FCM token on login: $e');
+      }
+    }
+
     final token = _fcmToken;
     if (token == null || token.isEmpty) {
       debugPrint('[NotificationService] No FCM token to register');

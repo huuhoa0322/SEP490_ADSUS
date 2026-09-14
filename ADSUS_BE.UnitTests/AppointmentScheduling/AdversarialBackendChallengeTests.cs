@@ -249,9 +249,9 @@ public class AdversarialBackendChallengeTests : IDisposable
     #region ADV-POOL: 3 Limit Pools Stress-Testing & Bypass Resistance
 
     [Fact]
-    public async Task ADV_POOL_01_Pool1_ActiveBookingsCount_BothBookedAndCheckedInCountTowardsSelfLimit()
+    public async Task ADV_POOL_01_Pool1_ActiveBookingsCount_BookedCountsTowardsSelfLimit()
     {
-        // 2 Booked + 1 CheckedIn for self = 3 active
+        // 3 Booked for self = 3 active
         var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
         for (int i = 0; i < 3; i++)
         {
@@ -264,7 +264,7 @@ public class AdversarialBackendChallengeTests : IDisposable
                 PatientProfileId = _userProfileId,
                 BookedByUserId = null,
                 RelationshipId = null,
-                Status = i == 2 ? AppointmentStatus.CheckedIn : AppointmentStatus.Booked,
+                Status = AppointmentStatus.Booked,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
@@ -393,7 +393,7 @@ public class AdversarialBackendChallengeTests : IDisposable
             PatientProfileId = patientProfileId,
             BookedByUserId = siblingUserId,
             RelationshipId = Guid.NewGuid(),
-            Status = AppointmentStatus.CheckedIn,
+            Status = AppointmentStatus.Booked,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         });

@@ -6,16 +6,15 @@ namespace ADSUS_BE.DAL.Entities;
 public partial class Appointment
 {
     /// <summary>
-    /// Các trạng thái lịch hẹn được tính là active (đang chờ khám hoặc đã check-in chờ vào phòng).
+    /// Các trạng thái lịch hẹn được tính là active (đang chờ khám).
     /// </summary>
     public static readonly AppointmentStatus[] ActiveStatuses =
     [
-        AppointmentStatus.Booked,
-        AppointmentStatus.CheckedIn
+        AppointmentStatus.Booked
     ];
 
     /// <summary>
     /// Kiểm tra cuộc hẹn có đang ở trạng thái active hay không.
     /// </summary>
-    public bool IsActive => Status == AppointmentStatus.Booked || Status == AppointmentStatus.CheckedIn;
+    public bool IsActive => Status == AppointmentStatus.Booked;
 }

@@ -25,6 +25,7 @@ public interface IAppointmentService
     /// </summary>
     Task<IReadOnlyList<AppointmentSummaryResponse>> ListMyAppointmentsAsync(
         Guid patientProfileId,
+        Guid? userId = null,
         AppointmentStatus? statusFilter = null,
         CancellationToken ct = default);
 
