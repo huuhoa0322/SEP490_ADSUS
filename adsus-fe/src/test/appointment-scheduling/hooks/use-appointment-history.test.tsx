@@ -147,12 +147,11 @@ describe("useCancelMyAppointment", () => {
     useAuthStore.setState({
       accessToken: "patient-token",
       user: {
-        id: "user-1",
+        userId: "user-1",
         email: "patient@example.com",
         fullName: "Nguyễn Văn Bệnh",
         role: "PATIENT",
-        status: "ACTIVE",
-        profileId: "profile-1",
+        mustChangePassword: false,
       },
     });
   });

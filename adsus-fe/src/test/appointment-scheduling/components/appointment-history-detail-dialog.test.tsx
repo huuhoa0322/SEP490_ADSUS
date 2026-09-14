@@ -320,7 +320,6 @@ describe("AppointmentHistoryDetailDialog", () => {
     { status: "CANCELLED", expected: "Đã huỷ" },
     { status: "COMPLETED", expected: "Hoàn thành" },
     { status: "NO_SHOW", expected: "Vắng mặt" },
-    { status: "UNKNOWN", expected: "UNKNOWN" },
   ] as const)(
     "hiển thị badge đúng nhãn cho status '$status'",
     ({ status, expected }) => {

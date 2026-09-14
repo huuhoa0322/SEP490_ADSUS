@@ -85,7 +85,7 @@ function makeAppt(overrides: Partial<AppointmentSummaryResponse> = {}): Appointm
     isBookedForOthers: false,
     relationshipLabel: null,
     bookedByUserName: null,
-    patientFullName: null,
+    patientFullName: undefined,
     ...overrides,
   };
 }
