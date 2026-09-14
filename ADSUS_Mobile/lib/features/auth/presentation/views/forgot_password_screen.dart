@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/phone_number_rule.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../viewmodels/forgot_password_view_model.dart';
+import 'forgot_password_otp_phone_screen.dart';
 import 'widgets/message_banner.dart';
 
 /// UC-03 FT-06 — người dùng tự yêu cầu cấp lại mật khẩu, mở từ SCR-02.
@@ -131,6 +132,17 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           'Không nhớ email đã đăng ký? Liên hệ phòng khám để được cấp lại.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 13, color: AppColors.muted),
+        ),
+        const SizedBox(height: 14),
+        TextButton(
+          onPressed: state.isSending
+              ? null
+              : () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const ForgotPasswordOtpPhoneScreen(),
+                    ),
+                  ),
+          child: const Text('Không nhớ email? Dùng mã OTP qua SMS'),
         ),
       ],
     );

@@ -405,8 +405,11 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IPatientRelationshipRepository, PatientRelationshipRepository>();
 
             // BLL — Module 2: User & Role Management
+            builder.Services.AddScoped<IFirebasePhoneVerificationService, FirebasePhoneVerificationService>();
             builder.Services.AddScoped<IUserAccountService, UserAccountService>();
+            builder.Services.AddScoped<IPatientSelfRegistrationService, PatientSelfRegistrationService>();
             builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
+            builder.Services.AddScoped<IPasswordResetOtpService, PasswordResetOtpService>();
             // Ghi và đọc nhật ký thao tác quản trị tài khoản (UC-04).
             builder.Services.AddScoped<AccountAuditTrail>();
             builder.Services.AddScoped<IAuditLogService, AuditLogService>();

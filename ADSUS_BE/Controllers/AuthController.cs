@@ -17,22 +17,34 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _auth;
     private readonly IPasswordResetService _passwordReset;
+    private readonly IPatientSelfRegistrationService _selfRegistration;
+    private readonly IPasswordResetOtpService _passwordResetOtp;
     private readonly IValidator<LoginRequest> _loginValidator;
     private readonly IValidator<ChangePasswordRequest> _changePasswordValidator;
     private readonly IValidator<ForgotPasswordRequest> _forgotPasswordValidator;
+    private readonly IValidator<CompleteRegistrationRequest> _completeRegistrationValidator;
+    private readonly IValidator<CompletePasswordResetWithFirebaseRequest> _completePasswordResetWithFirebaseValidator;
 
     public AuthController(
         IAuthService auth,
         IPasswordResetService passwordReset,
+        IPatientSelfRegistrationService selfRegistration,
+        IPasswordResetOtpService passwordResetOtp,
         IValidator<LoginRequest> loginValidator,
         IValidator<ChangePasswordRequest> changePasswordValidator,
-        IValidator<ForgotPasswordRequest> forgotPasswordValidator)
+        IValidator<ForgotPasswordRequest> forgotPasswordValidator,
+        IValidator<CompleteRegistrationRequest> completeRegistrationValidator,
+        IValidator<CompletePasswordResetWithFirebaseRequest> completePasswordResetWithFirebaseValidator)
     {
         _auth = auth;
         _passwordReset = passwordReset;
+        _selfRegistration = selfRegistration;
+        _passwordResetOtp = passwordResetOtp;
         _loginValidator = loginValidator;
         _changePasswordValidator = changePasswordValidator;
         _forgotPasswordValidator = forgotPasswordValidator;
+        _completeRegistrationValidator = completeRegistrationValidator;
+        _completePasswordResetWithFirebaseValidator = completePasswordResetWithFirebaseValidator;
     }
 
     /// <summary>
@@ -242,5 +254,64 @@ public class AuthController : ControllerBase
             _ => BadRequest(ApiResponse<object>.Fail(
                 StatusCodes.Status400BadRequest, "Registration failed.")),
         };
+    }
+
+    /// <summary>Bệnh nhân tự đăng ký — xác thực số điện thoại qua Firebase Phone Auth (SDK
+    /// chạy trên Mobile), backend chỉ verify token rồi tạo tài khoản Patient và tự động
+    /// đăng nhập.</summary>
+    [HttpPost("register/complete")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> CompleteRegistration(
+        [FromBody] CompleteRegistrationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validation = await _completeRegistrationValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<LoginResponse>.Fail(StatusCodes.Status400BadRequest, message));
+        }
+
+        // BusinessException (token sai/hết hạn) và ConflictException (số vừa bị đăng ký) được
+        // GlobalExceptionHandler dịch sang 422/409 tương ứng (xem GlobalExceptionHandler.cs) —
+        // không try/catch ở đây. 400 ở trên chỉ dành cho lỗi hình dạng dữ liệu (FluentValidation).
+        var result = await _selfRegistration.CompleteRegistrationAsync(request, cancellationToken);
+
+        return Ok(ApiResponse<LoginResponse>.Ok(result, "Registration successful."));
+    }
+
+    /// <summary>UC-03 — quên mật khẩu qua Firebase Phone Auth (chỉ Patient, SDK chạy trên
+    /// Mobile). Backend chỉ verify Firebase ID Token, đổi mật khẩu và tự động đăng nhập.
+    /// Báo RÕ 404 nếu số chưa có tài khoản Patient Active (xem Global Constraints).</summary>
+    [HttpPost("forgot-password/complete-with-firebase")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> CompletePasswordResetWithFirebase(
+        [FromBody] CompletePasswordResetWithFirebaseRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validation = await _completePasswordResetWithFirebaseValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(ApiResponse<LoginResponse>.Fail(StatusCodes.Status400BadRequest, message));
+        }
+
+        var result = await _passwordResetOtp.CompleteAsync(request, cancellationToken);
+
+        // Báo RÕ 404 — quyết định có chủ đích (xem Global Constraints trong plan gốc), tương tự
+        // bản OTP cũ nhưng giờ nằm ở bước duy nhất.
+        return result is null
+            ? NotFound(ApiResponse<LoginResponse>.Fail(StatusCodes.Status404NotFound, "This phone number is not registered."))
+            : Ok(ApiResponse<LoginResponse>.Ok(result, "Password reset successful."));
     }
 }
