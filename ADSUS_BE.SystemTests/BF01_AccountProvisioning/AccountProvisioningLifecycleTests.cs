@@ -28,7 +28,7 @@ namespace ADSUS_BE.SystemTests.BF01_AccountProvisioning;
 public class AccountProvisioningLifecycleTests
 {
     private const string SeedAdminPhone = "0900000001";
-    private const string SeedAdminPassword = "Test123456@";
+    private const string SeedAdminPassword = "Aa123456@";
 
     // ---- Scenario A — Admin provisions & manages account ----
 
@@ -223,12 +223,13 @@ public class AccountProvisioningLifecycleTests
         // được bước "đăng nhập bằng mật khẩu mới" bằng HTTP thuần.
         using var app = CreateApp();
         var admin = await LoginAsAdminAsync(app);
-        var created = await CreateAccountAsync(admin, "STC009 Patient", "PATIENT", email: "stc009@adsus.test");
+        var testEmail = $"stc009_{Random.Shared.Next(100000, 999999)}@adsus.test";
+        var created = await CreateAccountAsync(admin, "STC009 Patient", "PATIENT", email: testEmail);
 
         var response = await app.CreateClient().PostAsJsonAsync("/api/v1/auth/forgot-password", new
         {
             phoneNumber = created.Account.PhoneNumber,
-            email = "stc009@adsus.test",
+            email = testEmail,
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
