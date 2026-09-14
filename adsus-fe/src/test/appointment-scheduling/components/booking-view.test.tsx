@@ -412,8 +412,7 @@ describe("BookingView", () => {
     });
 
     // Mở dropdown chọn người thân
-    const comboboxes = screen.getAllByRole("combobox");
-    const relativeTrigger = comboboxes[1];
+    const relativeTrigger = screen.getByText("-- Chọn người thân --");
     fireEvent.click(relativeTrigger);
 
     const relativeItem = await screen.findByText(/Nguyễn Thị Mẹ/i);
@@ -592,5 +591,42 @@ describe("BookingView", () => {
     fireEvent.click(confirmBtn);
 
     expect(onGuestAttemptMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("hiển thị mục Đặt lịch cho ở Bước 1 và mở dialog xác nhận reset khi chuyển người khám nếu đã nhập lý do", async () => {
+    render(<BookingView />, { wrapper: createWrapper() });
+
+    await waitFor(() => expect(screen.getByText("Tất cả")).toBeInTheDocument());
+
+    // 1. Kiểm tra RelativeSection ở Bước 1
+    const relativeLabel = screen.getByText("Đặt lịch cho");
+    expect(relativeLabel).toBeInTheDocument();
+
+    // 2. Nhập lý do khám
+    const reasonInput = screen.getByPlaceholderText(/Ví dụ: Đau hạ vị 2 ngày nay/i);
+    fireEvent.change(reasonInput, { target: { value: "Đau bụng dưới dữ dội" } });
+
+    // 3. Bấm đổi sang Người thân -> phải hiện Dialog xác nhận
+    const relativeBtn = screen.getByRole("button", { name: /Người thân/i });
+    fireEvent.click(relativeBtn);
+
+    expect(
+      await screen.findByText("Xác nhận thay đổi người khám")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Thay đổi người khám sẽ làm mới lý do khám và triệu chứng để đảm bảo hồ sơ y tế chính xác. Bạn có muốn tiếp tục?"
+      )
+    ).toBeInTheDocument();
+
+    // 4. Bấm "Đồng ý" -> lý do khám phải bị reset về rỗng
+    const confirmDialogBtn = screen.getByRole("button", { name: "Đồng ý" });
+    fireEvent.click(confirmDialogBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Xác nhận thay đổi người khám")).not.toBeInTheDocument();
+    });
+
+    expect((reasonInput as HTMLTextAreaElement).value).toBe("");
   });
 });

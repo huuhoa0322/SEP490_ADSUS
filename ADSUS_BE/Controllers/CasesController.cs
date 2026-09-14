@@ -192,53 +192,17 @@ public sealed class CasesController : ControllerBase
     /// <summary>
     /// Tạo lần khám mới (UC-07), request multipart. Ảnh siêu âm tùy chọn (quyết định ghi đè
     /// 07/08/2026) — bỏ trống được, bổ sung sau qua AddImages (`#21`, vẫn bắt buộc ≥1 ảnh).
+    /// <summary>
+    /// POST /api/v1/cases — Khóa endpoint tạo ca khám trực tiếp. Bắt buộc đặt qua Appointment.
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "DOCTOR,STAFF")]
-    [Consumes("multipart/form-data")]
-    [RequestSizeLimit(120L * 1024 * 1024)]
-    [ProducesResponseType(typeof(ApiResponse<CaseResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> Create(
-        [FromForm] Guid patientProfileId,
-        [FromForm] Guid responsibleDoctorId,
-        [FromForm] string? clinicalInfo,
-        [FromForm] string? symptomsJson,
-        [FromForm] List<IFormFile> images,
-        CancellationToken ct)
+    public IActionResult Create()
     {
-        IReadOnlyList<CreateCaseSymptomRequest>? symptoms = null;
-        if (!string.IsNullOrWhiteSpace(symptomsJson))
-        {
-            try
-            {
-                symptoms = System.Text.Json.JsonSerializer.Deserialize<List<CreateCaseSymptomRequest>>(
-                    symptomsJson, SymptomsJsonOptions);
-            }
-            catch
-            {
-                return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, "Invalid symptoms JSON format."));
-            }
-        }
-
-        var request = new CreateCaseRequest(
-            patientProfileId, responsibleDoctorId, clinicalInfo, symptoms, ToUploadedFiles(images));
-
-        var validation = await _createValidator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            var message = string.Join(" ", validation.Errors.Select(e => e.ErrorMessage));
-            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, message));
-        }
-
-        var result = await _cases.CreateAsync(request, ct);
-
-        return CreatedAtAction(
-            nameof(GetById),
-            new { id = result.CaseId },
-            ApiResponse<CaseResponse>.Ok(result, "Case created successfully"));
+        return BadRequest(ApiResponse<object>.Fail(
+            StatusCodes.Status400BadRequest,
+            "Không hỗ trợ tạo ca khám trực tiếp. Vui lòng đặt lịch hẹn (Appointment) trước, sau đó check-in để tự động tạo ca khám."));
     }
 
     /// <summary>

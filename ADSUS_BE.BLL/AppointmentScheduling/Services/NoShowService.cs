@@ -84,6 +84,13 @@ public sealed class NoShowService
             }
         }
 
+        // [VÁ QA2-002]: Giải phóng slot để không bị kẹt ở trạng thái Booked vĩnh viễn
+        if (appointment.Slot != null)
+        {
+            appointment.Slot.Status = SlotStatus.Open;
+            appointment.Slot.UpdatedAt = now;
+        }
+
         await _db.SaveChangesAsync(ct);
 
         // Gửi notification cho patient khi bị No-Show

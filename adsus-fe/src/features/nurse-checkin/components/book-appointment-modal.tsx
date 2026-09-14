@@ -6,6 +6,7 @@ import {
   Calendar,
   Clock,
   User,
+  Users,
   Stethoscope,
   FileText,
   Phone,
@@ -33,11 +34,13 @@ import {
   useAvailableSlots,
 } from "../hooks/use-reschedule";
 import { useStaffBookAppointment } from "../hooks/use-staff-book-appointment";
+import { useRelativesForGuardian } from "@/features/appointment-scheduling/hooks/use-relatives";
 
 export interface BookAppointmentModalProps {
   patientProfileId: string;
   patientName: string;
   patientPhone: string | null;
+  patientUserId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -46,10 +49,13 @@ export function BookAppointmentModal({
   patientProfileId,
   patientName,
   patientPhone,
+  patientUserId,
   open,
   onOpenChange,
 }: BookAppointmentModalProps) {
   // Form state
+  const [targetType, setTargetType] = useState<"SELF" | "RELATIVE">("SELF");
+  const [selectedRelativeId, setSelectedRelativeId] = useState<string>("");
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedSlotId, setSelectedSlotId] = useState<string>("");
@@ -57,6 +63,7 @@ export function BookAppointmentModal({
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // Queries and mutations
+  const { data: relatives = [] } = useRelativesForGuardian(patientUserId);
   const { data: doctors = [], isLoading: isLoadingDoctors } = useDoctorList();
   const bookMutation = useStaffBookAppointment();
 
@@ -146,11 +153,17 @@ export function BookAppointmentModal({
     setSelectedDate("");
     setSelectedSlotId("");
     setReason("");
+    setTargetType("SELF");
+    setSelectedRelativeId("");
     setValidationError(null);
     onOpenChange(false);
   };
 
   const handleSubmit = async () => {
+    if (targetType === "RELATIVE" && !selectedRelativeId) {
+      setValidationError("Vui lòng chọn người thân cần đặt lịch.");
+      return;
+    }
     if (!selectedDoctorId) {
       setValidationError("Vui lòng chọn bác sĩ.");
       return;
@@ -166,11 +179,17 @@ export function BookAppointmentModal({
 
     setValidationError(null);
 
+    const selectedRelative =
+      targetType === "RELATIVE"
+        ? relatives.find((r) => r.relationshipId === selectedRelativeId)
+        : null;
+
     try {
       await bookMutation.mutateAsync({
-        patientProfileId,
+        patientProfileId: selectedRelative?.patientProfileId || patientProfileId,
         scheduleSlotId: effectiveSelectedSlotId,
         reason: reason.trim() || undefined,
+        relationshipId: targetType === "RELATIVE" ? selectedRelativeId : undefined,
       });
       handleResetAndClose();
     } catch {
@@ -206,10 +225,86 @@ export function BookAppointmentModal({
                 {patientPhone}
               </span>
             )}
+            {targetType === "RELATIVE" && selectedRelativeId && (
+              <span className="flex items-center gap-1 font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-xs dark:bg-emerald-950/40 dark:text-emerald-300">
+                Đặt cho: {relatives.find((r) => r.relationshipId === selectedRelativeId)?.patientName}
+              </span>
+            )}
           </div>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* 0. Chọn đối tượng khám (nếu bệnh nhân có người thân) */}
+          {relatives.length > 0 && (
+            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Đặt lịch cho
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTargetType("SELF");
+                    setSelectedRelativeId("");
+                    setValidationError(null);
+                  }}
+                  className={`flex items-center justify-center gap-1.5 rounded-md border p-2 text-xs font-medium transition-colors ${
+                    targetType === "SELF"
+                      ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                      : "border-border bg-background text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <User className="size-3.5" />
+                  <span className="truncate">{patientName} (Bản thân)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTargetType("RELATIVE");
+                    if (relatives.length === 1) {
+                      setSelectedRelativeId(relatives[0].relationshipId);
+                    }
+                    setValidationError(null);
+                  }}
+                  className={`flex items-center justify-center gap-1.5 rounded-md border p-2 text-xs font-medium transition-colors ${
+                    targetType === "RELATIVE"
+                      ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                      : "border-border bg-background text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <Users className="size-3.5" />
+                  <span>Người thân ({relatives.length})</span>
+                </button>
+              </div>
+
+              {targetType === "RELATIVE" && (
+                <div className="pt-1.5 space-y-1">
+                  <Label htmlFor="book-relative" className="text-xs text-muted-foreground">
+                    Chọn người thân <span className="text-destructive">*</span>
+                  </Label>
+                  <select
+                    id="book-relative"
+                    value={selectedRelativeId}
+                    onChange={(e) => {
+                      setSelectedRelativeId(e.target.value);
+                      setValidationError(null);
+                    }}
+                    disabled={bookMutation.isPending}
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">-- Chọn người thân --</option>
+                    {relatives.map((rel) => (
+                      <option key={rel.relationshipId} value={rel.relationshipId}>
+                        {rel.patientName} ({rel.relationshipName})
+                        {rel.dateOfBirth ? ` - Sinh: ${rel.dateOfBirth}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 1. Bác sĩ */}
           <div className="space-y-1.5">
             <Label htmlFor="book-doctor" className="flex items-center gap-1">
@@ -343,6 +438,7 @@ export function BookAppointmentModal({
             type="button"
             onClick={handleSubmit}
             disabled={
+              (targetType === "RELATIVE" && !selectedRelativeId) ||
               !selectedDoctorId ||
               !selectedDate ||
               !effectiveSelectedSlotId ||

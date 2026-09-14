@@ -447,125 +447,64 @@ public class CasesControllerIntegrationTests
     // ---------- #20 POST /cases ----------
 
     [Fact]
-    public async Task PostCases_ValidMultipartRequest_Returns201Created()
+    public async Task PostCases_DirectCreationBlocked_Returns400BadRequest()
     {
         // Arrange
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
 
-        _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(profile);
-
-        _users.Setup(r => r.GetByIdAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(_doctor);
-
-        _users.Setup(r => r.GetByIdReadOnlyAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(_doctor);
-        _users.Setup(r => r.GetByIdReadOnlyAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(_doctor);
-        _storage.Setup(s => s.UploadAsync(
-                    It.IsAny<Stream>(), It.IsAny<string>(), "image/png", It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Stream _, string path, string _, CancellationToken _) => path);
-
-        Case? createdCase = null;
-        _cases.Setup(r => r.CreateWithImagesAsync(
-                  It.IsAny<Case>(), It.IsAny<IReadOnlyList<UltrasoundImage>>(), It.IsAny<CancellationToken>()))
-              .Callback<Case, IReadOnlyList<UltrasoundImage>, CancellationToken>((c, imgs, _) =>
-              {
-                  c.PatientProfile = profile;
-                  c.Doctor = _doctor;
-                  c.UltrasoundImages = imgs.ToList();
-                  createdCase = c;
-              })
-              .ReturnsAsync((Case c, IReadOnlyList<UltrasoundImage> _, CancellationToken _) => c);
-        _cases.Setup(r => r.GetDetailAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(() => createdCase);
-
         using var form = MakeCreateCaseForm(profile.PatientProfileId, _doctor.UserId, "Đau vú trái", ValidPngBytes);
 
         // Act
         var response = await client.PostAsync("/api/v1/cases", form, TestContext.Current.CancellationToken);
 
-        // Assert
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
-        Assert.Equal("IN_PROGRESS", body!.Data!.Status);
+        // Assert - Direct case creation is blocked; appointments must be booked first
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
+        Assert.NotNull(body);
+        Assert.Contains("Không hỗ trợ tạo ca khám trực tiếp", body!.Message);
     }
 
     [Fact]
-    public async Task PostCases_NoImageAttached_Returns201Created()
+    public async Task PostCases_NoImageAttached_Returns400BadRequest()
     {
-        // Arrange — quyết định ghi đè 07/08/2026: #20 không còn bắt buộc ảnh nữa (#21 —
-        // AddUltrasoundImagesAsync — vẫn bắt buộc, xem PostUltrasoundImages_NoImageAttached_Returns400BadRequest).
+        // Arrange
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
-        _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(profile);
-        _users.Setup(r => r.GetByIdAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(_doctor);
-
-        _users.Setup(r => r.GetByIdReadOnlyAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(_doctor);
-        _users.Setup(r => r.GetByIdReadOnlyAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(_doctor);
-
-        Case? createdCase = null;
-        _cases.Setup(r => r.CreateWithImagesAsync(
-                  It.IsAny<Case>(), It.IsAny<IReadOnlyList<UltrasoundImage>>(), It.IsAny<CancellationToken>()))
-              .Callback<Case, IReadOnlyList<UltrasoundImage>, CancellationToken>((c, imgs, _) =>
-              {
-                  createdCase = c;
-                  c.UltrasoundImages = imgs.ToList();
-                  c.PatientProfile = profile;
-                  c.Doctor = _doctor;
-              })
-              .ReturnsAsync((Case c, IReadOnlyList<UltrasoundImage> _, CancellationToken _) => c);
-        _cases.Setup(r => r.GetDetailAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(() => createdCase);
 
         using var form = MakeCreateCaseForm(profile.PatientProfileId, _doctor.UserId, null, imageBytes: null);
 
         // Act
         var response = await client.PostAsync("/api/v1/cases", form, TestContext.Current.CancellationToken);
 
-        // Assert
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
-        Assert.Empty(body!.Data!.UltrasoundImages);
+        // Assert - Direct case creation is blocked; appointments must be booked first
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
+        Assert.NotNull(body);
+        Assert.Contains("Không hỗ trợ tạo ca khám trực tiếp", body!.Message);
     }
 
     [Fact]
-    public async Task PostCases_ResponsibleDoctorIsNurseAccount_Returns422UnprocessableEntity()
+    public async Task PostCases_ResponsibleDoctorIsNurseAccount_Returns400BadRequest()
     {
-        // Arrange — GB-04.
+        // Arrange
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var profile = MakePatientProfile();
-        var nurse = new User
-        {
-            UserId = Guid.NewGuid(), FullName = "ĐD. Võ Thị Thu Hà", Phone = "0915678901",
-            PasswordHash = "x", Role = UserRole.Staff, Status = UserStatus.Active,
-            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
-        };
-        _profiles.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(profile);
-        _users.Setup(r => r.GetByIdAsync(nurse.UserId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(nurse);
+        var nurseId = Guid.NewGuid();
 
-        _users.Setup(r => r.GetByIdReadOnlyAsync(nurse.UserId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(nurse);
-        _users.Setup(r => r.GetByIdReadOnlyAsync(nurse.UserId, It.IsAny<CancellationToken>()))
-              .ReturnsAsync(nurse);
-
-        using var form = MakeCreateCaseForm(profile.PatientProfileId, nurse.UserId, null, ValidPngBytes);
+        using var form = MakeCreateCaseForm(profile.PatientProfileId, nurseId, null, ValidPngBytes);
 
         // Act
         var response = await client.PostAsync("/api/v1/cases", form, TestContext.Current.CancellationToken);
 
-        // Assert
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        // Assert - Direct case creation is blocked; appointments must be booked first
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(TestContext.Current.CancellationToken);
+        Assert.NotNull(body);
+        Assert.Contains("Không hỗ trợ tạo ca khám trực tiếp", body!.Message);
     }
 
     [Fact]

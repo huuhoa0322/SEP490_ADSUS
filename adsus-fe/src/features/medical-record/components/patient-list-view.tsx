@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   CalendarCheck,
-  CalendarPlus,
   Eye,
   FileEdit,
   FilePlus,
@@ -278,13 +277,6 @@ export function PatientListView() {
                                   Ca khám mới nhất
                                 </Link>
                               )}
-                              <Link
-                                href={`/patients/${patient.patientProfileId}/cases/new`}
-                                className="inline-flex items-center gap-1.5 rounded-full bg-[#2E37A4] px-3 py-1 text-xs font-medium text-white shadow-2xs transition-all hover:bg-[#2E37A4]/90 hover:shadow-xs"
-                              >
-                                <CalendarPlus className="size-3.5" />
-                                Tạo ca khám
-                              </Link>
                               {canBookAppointment && (
                                 <button
                                   type="button"
@@ -318,12 +310,6 @@ export function PatientListView() {
                                     <Link href={`/patients/${patient.patientProfileId}`}>
                                       <Eye className="size-4 text-foreground" />
                                       Xem hồ sơ bệnh án
-                                    </Link>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem asChild>
-                                    <Link href={`/patients/${patient.patientProfileId}/cases/new`}>
-                                      <CalendarPlus className="size-4 text-foreground" />
-                                      Tạo ca khám mới
                                     </Link>
                                   </DropdownMenuItem>
                                   {canBookAppointment && (
@@ -401,6 +387,7 @@ export function PatientListView() {
           patientProfileId={bookingPatient.patientProfileId}
           patientName={bookingPatient.fullName}
           patientPhone={bookingPatient.phone}
+          patientUserId={bookingPatient.patientUserId}
           open={!!bookingPatient}
           onOpenChange={(open) => !open && setBookingPatient(null)}
         />

@@ -452,7 +452,7 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
 
       // Profile header is intact
       expect(screen.getByText("Nguyễn Văn Test")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: /tạo ca khám mới/i })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /tạo ca khám mới/i })).not.toBeInTheDocument();
 
       // Case list loading message in Tab 1
       expect(screen.getByText("Đang tải danh sách lần khám...")).toBeInTheDocument();
@@ -507,7 +507,7 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
       // Friendly empty state message & CTA
       expect(screen.getByText("Chưa có lần khám nào")).toBeInTheDocument();
       expect(
-        screen.getByText(/Bấm “Tạo ca khám mới” để bắt đầu lần khám đầu tiên./),
+        screen.getByText(/Bệnh nhân chưa có lịch sử ca khám nào/),
       ).toBeInTheDocument();
     });
 

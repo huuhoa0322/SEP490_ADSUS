@@ -148,6 +148,7 @@ export async function staffBookAppointment(request: {
   patientProfileId: string;
   scheduleSlotId: string;
   reason?: string;
+  relationshipId?: string;
 }): Promise<ApiResponse<unknown>> {
   const { data } = await apiClient.post<ApiResponse<unknown>>(
     `${BASE}/book-for-patient`,

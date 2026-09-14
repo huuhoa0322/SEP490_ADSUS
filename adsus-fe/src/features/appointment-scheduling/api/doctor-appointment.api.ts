@@ -37,3 +37,13 @@ export async function createFollowUpAppointment(
     throw new Error(data.message || "Không thể tạo lịch tái khám.");
   }
 }
+
+/** Bác sĩ thông báo sẵn sàng tiếp nhận bệnh nhân tiếp theo (POST /api/v1/appointments/doctor/ready-next). */
+export async function doctorReadyNext(): Promise<void> {
+  const { data } = await apiClient.post<ApiResponse<unknown>>(
+    "/api/v1/appointments/doctor/ready-next"
+  );
+  if (data.code !== 200 && data.code !== 201) {
+    throw new Error(data.message || "Không thể gửi thông báo tiếp nhận.");
+  }
+}

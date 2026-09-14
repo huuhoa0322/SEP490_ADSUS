@@ -529,11 +529,13 @@ public sealed class CaseService : ICaseService
         Guid patientProfileId,
         Guid doctorId,
         DateOnly visitDate,
-        IReadOnlyList<SymptomInput> symptoms,
+        IReadOnlyList<SymptomInput>? symptoms,
         CancellationToken ct = default)
     {
         var caseId = Guid.NewGuid();
         var now = DateTime.UtcNow;
+
+        var safeSymptoms = symptoms ?? Array.Empty<SymptomInput>();
 
         var patientProfile = await _profiles.GetByIdAsync(patientProfileId, ct);
 
@@ -547,7 +549,7 @@ public sealed class CaseService : ICaseService
             Status = CaseStatus.Booked,
             CreatedAt = now,
             UpdatedAt = now,
-            CaseSymptoms = symptoms.Select(s => new CaseSymptom
+            CaseSymptoms = safeSymptoms.Select(s => new CaseSymptom
             {
                 Id = Guid.NewGuid(),
                 CaseId = caseId,
@@ -578,7 +580,7 @@ public sealed class CaseService : ICaseService
 
         _logger.LogInformation(
             "Case {CaseId} created from appointment booking for patient profile {PatientProfileId} with {SymptomCount} symptoms",
-            caseId, patientProfileId, symptoms.Count);
+            caseId, patientProfileId, safeSymptoms.Count);
 
         // Auto-add GENERAL_EXAM (Khám thường) service
         if (_caseClinicServiceService != null)
