@@ -136,7 +136,7 @@ export function LandingNavbar() {
                   </div>
                   <div className="py-1">
                     <Link
-                      href="/dat-lich"
+                      href="/lich-hen-cua-toi"
                       className="flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors hover:bg-[var(--lp-canvas)]"
                       style={{ color: "var(--lp-text)" }}
                       onClick={() => setDropdownOpen(false)}
@@ -218,7 +218,7 @@ export function LandingNavbar() {
                     {user.fullName}
                   </p>
                   <Link
-                    href="/dat-lich"
+                    href="/lich-hen-cua-toi"
                     className="flex items-center gap-2 text-sm font-medium"
                     style={{ color: "var(--lp-teal)" }}
                     onClick={() => setOpen(false)}

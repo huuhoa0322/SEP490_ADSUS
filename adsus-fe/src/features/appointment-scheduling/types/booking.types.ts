@@ -94,4 +94,7 @@ export interface AppointmentSummaryResponse {
   patientFullName?: string;
   patientPhone?: string | null;
   patientProfileId?: string;
+  isBookedForOthers?: boolean;
+  relationshipLabel?: string | null;
+  bookedByUserName?: string | null;
 }

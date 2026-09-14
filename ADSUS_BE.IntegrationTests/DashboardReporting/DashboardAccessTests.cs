@@ -119,7 +119,7 @@ public class DashboardAccessTests
         var medId = Guid.NewGuid();
         _dashboard.Setup(r => r.GetTopPrescribedMedicinesAsync(
                       It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                  .ReturnsAsync(new List<TopMedicine> { new(medId, "Paracetamol", 10, 300) });
+                  .ReturnsAsync(new List<TopMedicine> { new(medId, "Paracetamol", 10, 300, "viên") });
 
         var response = await client.GetAsync(StatisticsPath, TestContext.Current.CancellationToken);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<DashboardStatisticsResponse>>(TestContext.Current.CancellationToken);

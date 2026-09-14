@@ -5,6 +5,7 @@ import type {
   AppointmentResponse,
   AppointmentSummaryResponse,
   BookAppointmentRequest,
+  CancellationStatusTodayResponse,
   OpenSlotResponse,
 } from "../types/booking.types";
 
@@ -56,5 +57,14 @@ export async function cancelAppointment(
     { cancellationReason },
   );
   if (!data.data) throw new Error(data.message || "Không thể hủy lịch hẹn.");
+  return data.data;
+}
+
+/** GET /api/v1/appointments/cancellation-status-today */
+export async function getCancellationStatusToday(): Promise<CancellationStatusTodayResponse> {
+  const { data } = await apiClient.get<ApiResponse<CancellationStatusTodayResponse>>(
+    "/api/v1/appointments/cancellation-status-today",
+  );
+  if (!data.data) throw new Error(data.message || "Không tải được trạng thái hủy lịch.");
   return data.data;
 }

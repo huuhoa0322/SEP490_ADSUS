@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:adsus_mobile/features/appointment_scheduling/data/dtos/appointment_dtos.dart';
-import 'package:adsus_mobile/features/appointment_scheduling/data/dtos/symptom_dtos.dart';
 import 'package:adsus_mobile/features/appointment_scheduling/domain/entities/appointment.dart';
 import 'package:adsus_mobile/features/appointment_scheduling/domain/entities/appointment_summary.dart';
 import 'package:adsus_mobile/features/appointment_scheduling/domain/entities/symptom.dart';
