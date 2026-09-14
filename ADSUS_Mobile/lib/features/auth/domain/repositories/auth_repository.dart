@@ -57,4 +57,25 @@ abstract interface class AuthRepository {
 
   /// Số điện thoại đã ghép đôi, hoặc null nếu chưa đăng nhập lần nào.
   Future<String?> readPairedPhone();
+
+  /// Tự đăng ký — bước duy nhất còn lại sau khi Mobile đã xác thực số điện thoại qua Firebase
+  /// (xem FirebasePhoneAuthService). Nhận `firebaseIdToken` thay vì registrationToken tự sinh.
+  Future<AuthSession> completeRegistration({
+    required String firebaseIdToken,
+    required String fullName,
+    required String password,
+    required String confirmPassword,
+    required String phoneNumber,
+    String? email,
+    String? dateOfBirth,
+  });
+
+  /// Quên mật khẩu qua Firebase — bước duy nhất. Ném ApiException(statusCode: 404) nếu số
+  /// chưa có tài khoản Patient Active.
+  Future<AuthSession> completePasswordResetWithFirebase({
+    required String firebaseIdToken,
+    required String newPassword,
+    required String confirmNewPassword,
+    required String phoneNumber,
+  });
 }

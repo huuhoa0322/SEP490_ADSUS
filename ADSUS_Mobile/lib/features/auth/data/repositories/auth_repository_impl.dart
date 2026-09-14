@@ -224,4 +224,82 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<String?> readPairedPhone() =>
       _storage.read(key: StorageKeys.pairedPhone);
+
+  @override
+  Future<AuthSession> completeRegistration({
+    required String firebaseIdToken,
+    required String fullName,
+    required String password,
+    required String confirmPassword,
+    required String phoneNumber,
+    String? email,
+    String? dateOfBirth,
+  }) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        ApiConstants.registerComplete,
+        data: {
+          'firebaseIdToken': firebaseIdToken,
+          'fullName': fullName,
+          'password': password,
+          'confirmPassword': confirmPassword,
+          'email': email,
+          'dateOfBirth': dateOfBirth,
+        },
+      );
+
+      final envelope = ApiEnvelope.fromJson(res.data ?? const {});
+      if (envelope.data == null) {
+        throw const ApiException('Đăng ký thất bại.');
+      }
+
+      final session = AuthMapper.sessionFromJson(envelope.data!);
+
+      await _storage.write(key: StorageKeys.accessToken, value: session.accessToken);
+      await _storage.write(key: StorageKeys.pairedPhone, value: phoneNumber);
+
+      return session;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) {
+        throw const ApiException('Số điện thoại này đã tồn tại.', statusCode: 409);
+      }
+      throw ApiErrorMapper.general(e, fallback: 'Đăng ký thất bại.');
+    }
+  }
+
+  @override
+  Future<AuthSession> completePasswordResetWithFirebase({
+    required String firebaseIdToken,
+    required String newPassword,
+    required String confirmNewPassword,
+    required String phoneNumber,
+  }) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        ApiConstants.forgotPasswordCompleteWithFirebase,
+        data: {
+          'firebaseIdToken': firebaseIdToken,
+          'newPassword': newPassword,
+          'confirmNewPassword': confirmNewPassword,
+        },
+      );
+
+      final envelope = ApiEnvelope.fromJson(res.data ?? const {});
+      if (envelope.data == null) {
+        throw const ApiException('Đặt lại mật khẩu thất bại.');
+      }
+
+      final session = AuthMapper.sessionFromJson(envelope.data!);
+
+      await _storage.write(key: StorageKeys.accessToken, value: session.accessToken);
+      await _storage.write(key: StorageKeys.pairedPhone, value: phoneNumber);
+
+      return session;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        throw const ApiException('Số điện thoại này chưa có tài khoản.', statusCode: 404);
+      }
+      throw ApiErrorMapper.general(e, fallback: 'Đặt lại mật khẩu thất bại.');
+    }
+  }
 }

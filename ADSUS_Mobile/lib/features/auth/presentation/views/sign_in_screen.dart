@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../viewmodels/auth_view_model.dart';
 import 'forgot_password_screen.dart';
+import 'register_phone_screen.dart';
 import 'widgets/message_banner.dart';
 
 /// SCR-02 — màn hình đăng nhập trên Mobile (UC-01, và UC-02 nếu đã bật sinh trắc học).
@@ -152,6 +153,17 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                           ),
                         ),
                 child: const Text('Quên mật khẩu?'),
+              ),
+              const SizedBox(height: 4),
+              TextButton(
+                onPressed: state.isLoading
+                    ? null
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const RegisterPhoneScreen(),
+                          ),
+                        ),
+                child: const Text('Chưa có tài khoản? Đăng ký ngay'),
               ),
             ],
           ),
