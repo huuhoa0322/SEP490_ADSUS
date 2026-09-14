@@ -68,6 +68,9 @@ public class PatientSelfRegistrationService : IPatientSelfRegistrationService
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             MustChangePassword = false,
             BiometricEnabled = false,
+            // Luồng tự đăng ký qua Mobile không có màn chọn giới tính — mặc định Nữ theo yêu
+            // cầu nghiệp vụ (khác luồng Admin/Điều dưỡng tạo hộ, nơi có form nhập đầy đủ).
+            Gender = GenderType.Female,
             DateOfBirth = ParseDateOrNull(request.DateOfBirth),
             CreatedAt = now,
             UpdatedAt = now,

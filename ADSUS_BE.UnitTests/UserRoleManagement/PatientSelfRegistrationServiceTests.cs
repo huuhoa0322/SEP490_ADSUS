@@ -62,6 +62,7 @@ public class PatientSelfRegistrationServiceTests
         Assert.Equal(UserStatus.Active, saved.Status);
         Assert.False(saved.MustChangePassword);
         Assert.Equal("0987654321", saved.Phone);
+        Assert.Equal(GenderType.Female, saved.Gender);
     }
 
     [Fact]
