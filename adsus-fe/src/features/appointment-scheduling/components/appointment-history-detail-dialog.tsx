@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { AppointmentSummaryResponse } from "../types/booking.types";
-import { isExpired } from "./appointment-history-card";
+import { isExpired, normalizeAppointmentStatus } from "./appointment-history-card";
 
 interface AppointmentHistoryDetailDialogProps {
   appointment: AppointmentSummaryResponse | null;
@@ -33,7 +33,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 function getStatusBadgeVariant(
   status: string
 ): "default" | "secondary" | "destructive" | "outline" | "soft-warning" | "soft-primary" {
-  switch (status) {
+  switch (normalizeAppointmentStatus(status)) {
     case "BOOKED":
       return "default";
     case "APPROVED":
@@ -49,7 +49,7 @@ function getStatusBadgeVariant(
 }
 
 function getStatusLabel(status: string): string {
-  switch (status) {
+  switch (normalizeAppointmentStatus(status)) {
     case "BOOKED":
       return "Đã đặt";
     case "APPROVED":
@@ -74,8 +74,9 @@ export function AppointmentHistoryDetailDialog({
   if (!appointment) return null;
 
   const { status, slotDate, endTime } = appointment;
+  const normalizedStatus = normalizeAppointmentStatus(status);
   const expired = isExpired(slotDate, endTime);
-  const canAct = (status === "BOOKED" || status === "APPROVED") && !expired;
+  const canAct = (normalizedStatus === "BOOKED" || normalizedStatus === "APPROVED") && !expired;
 
   // Format date/time for display
   let dateDisplay = slotDate;
@@ -126,7 +127,7 @@ export function AppointmentHistoryDetailDialog({
             <InfoRow label="Lý do khám" value={appointment.reason} />
           )}
 
-          {status === "CANCELLED" && appointment.cancellationReason && (
+          {normalizedStatus === "CANCELLED" && appointment.cancellationReason && (
             <div className="flex justify-between py-2 border-b border-muted">
               <span className="text-sm text-muted-foreground">Lý do hủy</span>
               <span className="text-sm font-medium text-destructive">

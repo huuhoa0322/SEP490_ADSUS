@@ -152,13 +152,87 @@ describe("AppointmentHistoryCard", () => {
     expect(screen.getByTestId("accent-bar")).toHaveClass("bg-gray-400");
   });
 
-  // Case 6: Status badge đúng màu
-  it("status badge có màu đúng theo trạng thái", () => {
+  // Case 6: Status badge dùng inline style với design tokens
+  it("CANCELLED badge dùng inline style với danger token", () => {
     const onClick = vi.fn();
-    // CANCELLED → red
     const appt = makeAppointment({ status: "CANCELLED" });
     render(<AppointmentHistoryCard appointment={appt} onClick={onClick} />);
-    expect(screen.getByTestId("status-badge")).toHaveClass("bg-red-100", "text-red-800");
+    const badge = screen.getByTestId("status-badge");
+    // CANCELLED: nền hex được browser parse → rgb(), text var(--danger)
+    expect(badge.style.color).toBe("var(--danger)");
+    // Kiểm tra có background-color set (không cần exact format)
+    expect(badge.style.backgroundColor).not.toBe("");
+  });
+
+  // Case 7: BOOKED badge dùng inline style với teal token
+  it("BOOKED badge dùng inline style với teal token", () => {
+    const onClick = vi.fn();
+    const appt = makeAppointment({ status: "BOOKED" });
+    render(<AppointmentHistoryCard appointment={appt} onClick={onClick} />);
+    const badge = screen.getByTestId("status-badge");
+    expect(badge.getAttribute("style")).toMatch(/background-color.*var\(--lp-teal-tint\)/);
+    expect(badge.style.color).toBe("var(--lp-teal)");
+  });
+
+  // Case 8: APPROVED badge dùng inline style với success token
+  it("APPROVED badge dùng inline style với success token", () => {
+    const onClick = vi.fn();
+    const appt = makeAppointment({ status: "APPROVED" });
+    render(<AppointmentHistoryCard appointment={appt} onClick={onClick} />);
+    const badge = screen.getByTestId("status-badge");
+    expect(badge.style.color).toBe("var(--success)");
+  });
+
+  // Case 9: NO_SHOW badge dùng inline style với amber-warn token
+  it("NO_SHOW badge dùng inline style với amber-warn token", () => {
+    const onClick = vi.fn();
+    const appt = makeAppointment({ status: "NO_SHOW" });
+    render(<AppointmentHistoryCard appointment={appt} onClick={onClick} />);
+    const badge = screen.getByTestId("status-badge");
+    expect(badge.style.color).toBe("var(--amber-warn)");
+  });
+
+  // Case 10: PascalCase status từ BE (defensive: "Booked", "NoShow", v.v.) vẫn map đúng màu
+  // Lý do: BE thực tế trả PascalCase ("Booked", "NoShow", "Completed", "Cancelled") dù type
+  // khai báo UPPERCASE. Mapping switch case cần normalize trước khi lookup.
+  describe("normalize PascalCase status (BE trả 'Booked' / 'NoShow' / 'Completed' / 'Cancelled')", () => {
+    it("'Booked' → BOOKED teal", () => {
+      const onClick = vi.fn();
+      // Type assertion: BE runtime có thể trả bất kỳ string nào, type chỉ là hint.
+      const appt = makeAppointment({ status: "Booked" as AppointmentSummaryResponse["status"] });
+      render(<AppointmentHistoryCard appointment={appt} onClick={onClick} />);
+      const badge = screen.getByTestId("status-badge");
+      expect(badge.style.color).toBe("var(--lp-teal)");
+      expect(badge).toHaveTextContent("Đã đặt");
+    });
+
+    it("'NoShow' → NO_SHOW amber-warn", () => {
+      const onClick = vi.fn();
+      const appt = makeAppointment({ status: "NoShow" as AppointmentSummaryResponse["status"] });
+      render(<AppointmentHistoryCard appointment={appt} onClick={onClick} />);
+      const badge = screen.getByTestId("status-badge");
+      expect(badge.style.color).toBe("var(--amber-warn)");
+      expect(badge).toHaveTextContent("Vắng mặt");
+    });
+
+    it("'Completed' → COMPLETED gray (label 'Hoàn thành')", () => {
+      const onClick = vi.fn();
+      const appt = makeAppointment({ status: "Completed" as AppointmentSummaryResponse["status"] });
+      render(<AppointmentHistoryCard appointment={appt} onClick={onClick} />);
+      const badge = screen.getByTestId("status-badge");
+      // jsdom parse hex '#374151' thành rgb() khi đọc style.color — chỉ cần assert non-empty.
+      expect(badge.style.color).not.toBe("");
+      expect(badge).toHaveTextContent("Hoàn thành");
+    });
+
+    it("'Cancelled' → CANCELLED danger", () => {
+      const onClick = vi.fn();
+      const appt = makeAppointment({ status: "Cancelled" as AppointmentSummaryResponse["status"] });
+      render(<AppointmentHistoryCard appointment={appt} onClick={onClick} />);
+      const badge = screen.getByTestId("status-badge");
+      expect(badge.style.color).toBe("var(--danger)");
+      expect(badge).toHaveTextContent("Đã huỷ");
+    });
   });
 
   // Case 7: onClick được gọi khi click card
