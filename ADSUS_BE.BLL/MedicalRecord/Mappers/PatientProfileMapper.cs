@@ -13,7 +13,7 @@ public static class PatientProfileMapper
 {
     public static PatientProfileResponse ToResponse(PatientProfile profile) => new(
         PatientProfileId: profile.PatientProfileId,
-        PatientUserId: profile.UserId,
+        PatientUserId: profile.UserId ?? Guid.Empty,
         FullName: profile.User?.FullName ?? string.Empty,
         Phone: profile.User?.Phone ?? string.Empty,
         DateOfBirth: profile.User?.DateOfBirth,

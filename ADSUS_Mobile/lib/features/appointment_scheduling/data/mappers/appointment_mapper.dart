@@ -153,6 +153,10 @@ class AppointmentMapper {
         endTime: parseHm(dto.endTime),
         doctorName: dto.doctorName,
         caseId: dto.caseId,
+        // Issue #3: isBookedForOthers, relationshipLabel, bookedByUserName
+        isBookedForOthers: dto.isBookedForOthers ?? false,
+        relationshipLabel: dto.relationshipLabel,
+        bookedByUserName: dto.bookedByUserName,
       );
 
   static AppointmentSummary summaryFromDto(AppointmentSummaryDto dto) =>
@@ -168,5 +172,8 @@ class AppointmentMapper {
         endTime: parseHm(dto.endTime),
         doctorId: dto.doctorId,
         doctorName: dto.doctorName,
+        // Issue #3: isBookedForOthers, relationshipLabel
+        isBookedForOthers: dto.isBookedForOthers ?? false,
+        relationshipLabel: dto.relationshipLabel,
       );
 }

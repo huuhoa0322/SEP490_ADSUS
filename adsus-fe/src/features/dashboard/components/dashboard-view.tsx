@@ -31,7 +31,7 @@ function formatVND(amount: number): string {
 
 import { AuditLogPanel } from "./audit-log-panel";
 import { BarList, ChartCard, DonutChart, RateMeter, StatTile, StatusBreakdown } from "./chart-primitives";
-import { APPOINTMENT_SERIES, GroupedBarChart, TrendChart } from "./trend-chart";
+import { APPOINTMENT_SERIES, FINANCIAL_SERIES, GroupedBarChart, TrendChart } from "./trend-chart";
 
 /** Các mốc thời gian bấm nhanh, tính lùi từ hôm nay. */
 const PRESETS = [
@@ -83,6 +83,12 @@ export function DashboardView() {
     bankTransferCount: 0,
     pendingInvoiceCount: 0,
     pendingAmount: 0,
+    serviceRevenue: 0,
+    medicineRevenue: 0,
+    medicineCost: 0,
+    medicineProfit: 0,
+    totalProfit: 0,
+    profitMargin: 0,
   };
   const topMedicines = data?.topMedicines ?? [];
 
@@ -181,17 +187,20 @@ export function DashboardView() {
             <StatTile
               label="Ca khám"
               value={data.clinical.caseCount}
-              hint={`${data.clinical.aiRunCount} lượt chạy AI`}
+              hint={<span className="text-[11px] min-[1500px]:text-xs whitespace-nowrap">{data.clinical.aiRunCount} ca khám có ảnh siêu âm</span>}
               icon={<ScanLine className="size-5" />}
               cat="teal"
-              trend={`${data.clinical.aiRunCount} lượt AI`}
+              trend={`${data.clinical.aiRunCount} có ảnh siêu âm`}
             />
             <StatTile
               label="Doanh thu"
               value={formatVND(revenue.totalRevenue)}
-              hint={`${revenue.paidInvoiceCount} hóa đơn đã thanh toán${
-                revenue.pendingInvoiceCount > 0 ? ` · ${revenue.pendingInvoiceCount} chờ thanh toán` : ""
-              }`}
+              hint={
+                <div className="space-y-0.5 text-xs text-muted-foreground">
+                  <div className="whitespace-nowrap">Dịch vụ: <span className="font-medium text-foreground">{formatVND(revenue.serviceRevenue)}</span></div>
+                  <div className="whitespace-nowrap">Thuốc: <span className="font-medium text-foreground">{formatVND(revenue.medicineRevenue)}</span></div>
+                </div>
+              }
               icon={<Banknote className="size-5" />}
               cat="green"
               trend={`${revenue.paidInvoiceCount} đã thanh toán`}
@@ -214,9 +223,16 @@ export function DashboardView() {
             />
           </div>
 
-          {/* ── Row 2: Appointment Statistics (full-width grouped bar) ── */}
-          <div className="mt-5">
-            <ChartCard title="Appointment Statistics" description="Biểu đồ lượt hẹn theo ngày">
+          {/* ── Row 2: Biểu đồ xu hướng (Doanh thu & Lịch hẹn theo ngày) ── */}
+          <div className="mt-5 grid gap-5 lg:grid-cols-2">
+            <ChartCard title="Doanh thu & Tiền lãi theo ngày" description="So sánh doanh thu và tiền lãi gộp thực tế">
+              <GroupedBarChart
+                points={data.trend}
+                series={FINANCIAL_SERIES}
+                title=""
+              />
+            </ChartCard>
+            <ChartCard title="Lượt khám & Lịch hẹn theo ngày" description="Biến động tài khoản mới, ca khám và lượt hẹn">
               <GroupedBarChart
                 points={data.trend}
                 series={APPOINTMENT_SERIES}
@@ -290,8 +306,65 @@ export function DashboardView() {
             </ChartCard>
           </div>
 
-          {/* ── Doanh thu theo phương thức & Top 10 thuốc kê nhiều nhất ──── */}
+          {/* ── Phân tích tài chính & Doanh thu ──── */}
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
+            <ChartCard
+              title="Cơ cấu Doanh thu & Chi phí vốn"
+              description="Tỷ trọng nguồn thu Dịch vụ, Dược phẩm, Giá vốn thuốc và Tiền lãi thực tế."
+            >
+              <StatusBreakdown
+                segments={[
+                  { label: "Dịch vụ khám", value: revenue.serviceRevenue, tone: "good" },
+                  { label: "Tiền bán thuốc", value: revenue.medicineRevenue, tone: "warning" },
+                ]}
+              />
+
+              <div className="mt-5 grid grid-cols-2 gap-3 border-t border-[var(--border)] pt-4 text-xs">
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--secondary)]/30 p-3">
+                  <span className="font-medium text-muted-foreground">Dịch vụ khám</span>
+                  <p className="mt-1 font-heading text-base font-bold text-foreground tabular-nums">
+                    {formatVND(revenue.serviceRevenue)}
+                  </p>
+                  <span className="text-muted-foreground">Doanh thu thuần dịch vụ</span>
+                </div>
+
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--secondary)]/30 p-3">
+                  <span className="font-medium text-muted-foreground">Thuốc (Dược phẩm)</span>
+                  <p className="mt-1 font-heading text-base font-bold text-foreground tabular-nums">
+                    {formatVND(revenue.medicineRevenue)}
+                  </p>
+                  <span className="text-muted-foreground">Tổng tiền bán thuốc</span>
+                </div>
+
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--secondary)]/30 p-3">
+                  <span className="font-medium text-muted-foreground">Giá vốn thuốc (COGS)</span>
+                  <p className="mt-1 font-heading text-base font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                    - {formatVND(revenue.medicineCost)}
+                  </p>
+                  <span className="text-muted-foreground">Chi phí nhập kho xuất cấp</span>
+                </div>
+
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--secondary)]/30 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-muted-foreground">Lãi từ thuốc</span>
+                  </div>
+                  <p className="mt-1 font-heading text-base font-bold text-foreground tabular-nums">
+                    {formatVND(revenue.medicineProfit)}
+                  </p>
+                  <span className="text-muted-foreground">Thuốc trừ giá vốn</span>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3">
+                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                  Tổng tiền lãi thực tế (Lợi nhuận gộp):
+                </span>
+                <p className="font-heading text-lg font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  {formatVND(revenue.totalProfit)}
+                </p>
+              </div>
+            </ChartCard>
+
             <ChartCard
               title="Doanh thu theo phương thức thanh toán"
               description="Phân bổ doanh thu giữa tiền mặt và chuyển khoản ngân hàng."
@@ -319,7 +392,10 @@ export function DashboardView() {
                 </div>
               </div>
             </ChartCard>
+          </div>
 
+          {/* ── Top 10 thuốc kê nhiều nhất ──── */}
+          <div className="mt-5">
             <ChartCard
               title="Top 10 thuốc kê nhiều nhất"
               description="Thuốc được kê nhiều nhất trong các đơn thuốc hợp lệ."
@@ -331,7 +407,7 @@ export function DashboardView() {
                       <th className="pb-3 pr-4">#</th>
                       <th className="pb-3 pr-4">Tên thuốc</th>
                       <th className="pb-3 pr-4 text-right">Số lần kê</th>
-                      <th className="pb-3 text-right">Tổng số lượng kê (đơn vị gốc)</th>
+                      <th className="pb-3 text-right">Số lượng</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border)]">
@@ -354,7 +430,7 @@ export function DashboardView() {
                             {med.prescriptionCount}
                           </td>
                           <td className="py-2.5 text-right font-semibold tabular-nums text-muted-foreground">
-                            {med.totalQuantityBase.toLocaleString("vi-VN")}
+                            {med.totalQuantityBase.toLocaleString("vi-VN")}{med.unit ? ` ${med.unit}` : ""}
                           </td>
                         </tr>
                       ))
@@ -430,12 +506,13 @@ export function DashboardView() {
             </ChartCard>
           </div>
 
-          {/* ── 4 trend mini-charts ─────────────────────────────────── */}
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* ── 5 trend mini-charts ─────────────────────────────────── */}
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <TrendChart points={data.trend} measure="newAccounts" label="Tài khoản mới" />
             <TrendChart points={data.trend} measure="cases" label="Ca khám" />
             <TrendChart points={data.trend} measure="appointments" label="Lượt hẹn" />
             <TrendChart points={data.trend} measure="revenue" label="Doanh thu" />
+            <TrendChart points={data.trend} measure="profit" label="Tiền lãi (Lợi nhuận)" />
           </div>
 
           {/* ── Audit Log Panel ─────────────────────────────────────── */}

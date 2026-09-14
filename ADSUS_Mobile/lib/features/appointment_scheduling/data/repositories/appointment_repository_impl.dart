@@ -92,6 +92,7 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
   @override
   Future<Appointment> bookAppointment({
     required String scheduleSlotId,
+    String? relationshipId,
     String? reason,
     List<SymptomInput>? symptoms,
   }) async {
@@ -99,6 +100,10 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
       final body = <String, dynamic>{
         'scheduleSlotId': scheduleSlotId,
       };
+      // Issue #1: relationshipId cho đặt hộ người thân
+      if (relationshipId != null && relationshipId.isNotEmpty) {
+        body['relationshipId'] = relationshipId;
+      }
       // BR-03: reason là optional, chỉ gửi khi người dùng nhập — không gửi chuỗi rỗng.
       if (reason != null && reason.trim().isNotEmpty) {
         body['reason'] = reason.trim();

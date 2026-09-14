@@ -54,7 +54,7 @@ public interface IDashboardRepository
 }
 
 /// <summary>Số phát sinh của đúng một ngày.</summary>
-public record DailyActivity(DateOnly Date, int NewAccounts, int Cases, int Appointments, decimal Revenue);
+public record DailyActivity(DateOnly Date, int NewAccounts, int Cases, int Appointments, decimal Revenue, decimal Profit = 0);
 
 /// <summary>Tổng hợp doanh thu từ hóa đơn đã thanh toán và hóa đơn chờ.</summary>
 public record RevenueCounts(
@@ -65,14 +65,20 @@ public record RevenueCounts(
     decimal BankTransferRevenue,
     int BankTransferCount,
     int PendingInvoiceCount,
-    decimal PendingAmount);
+    decimal PendingAmount,
+    decimal ServiceRevenue = 0,
+    decimal MedicineRevenue = 0,
+    decimal MedicineCost = 0,
+    decimal MedicineProfit = 0,
+    decimal TotalProfit = 0);
 
 /// <summary>Thông tin thuốc được kê đơn nhiều nhất.</summary>
 public record TopMedicine(
     Guid MedicineId,
     string MedicineName,
     int PrescriptionCount,
-    int TotalQuantityBase);
+    int TotalQuantityBase,
+    string Unit);
 
 /// <summary>Số đếm tài khoản. Bản ghi thuần số, không kèm dữ liệu cá nhân nào.</summary>
 public record AccountCounts(

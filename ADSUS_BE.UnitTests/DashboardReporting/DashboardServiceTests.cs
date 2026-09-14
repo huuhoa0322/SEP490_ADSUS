@@ -297,7 +297,12 @@ public class DashboardServiceTests
                  PaidInvoiceCount: 10,
                  CashRevenue: 3_000_000m, CashCount: 6,
                  BankTransferRevenue: 2_000_000m, BankTransferCount: 4,
-                 PendingInvoiceCount: 3, PendingAmount: 800_000m));
+                 PendingInvoiceCount: 3, PendingAmount: 800_000m,
+                 ServiceRevenue: 3_000_000m,
+                 MedicineRevenue: 2_000_000m,
+                 MedicineCost: 800_000m,
+                 MedicineProfit: 1_200_000m,
+                 TotalProfit: 4_200_000m));
 
         var result = await _sut.GetStatisticsAsync(null, null, TestContext.Current.CancellationToken);
 
@@ -309,6 +314,12 @@ public class DashboardServiceTests
         Assert.Equal(4, result.Revenue.BankTransferCount);
         Assert.Equal(3, result.Revenue.PendingInvoiceCount);
         Assert.Equal(800_000m, result.Revenue.PendingAmount);
+        Assert.Equal(3_000_000m, result.Revenue.ServiceRevenue);
+        Assert.Equal(2_000_000m, result.Revenue.MedicineRevenue);
+        Assert.Equal(800_000m, result.Revenue.MedicineCost);
+        Assert.Equal(1_200_000m, result.Revenue.MedicineProfit);
+        Assert.Equal(4_200_000m, result.Revenue.TotalProfit);
+        Assert.Equal(84.0, result.Revenue.ProfitMargin); // 4_200_000 / 5_000_000 = 84%
     }
 
     [Fact]
@@ -319,7 +330,7 @@ public class DashboardServiceTests
                  It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(new List<TopMedicine>
              {
-                 new(medId, "Paracetamol 500mg", 25, 750),
+                 new(medId, "Paracetamol 500mg", 25, 750, "Viên"),
              });
 
         var result = await _sut.GetStatisticsAsync(null, null, TestContext.Current.CancellationToken);
@@ -329,6 +340,7 @@ public class DashboardServiceTests
         Assert.Equal("Paracetamol 500mg", result.TopMedicines[0].MedicineName);
         Assert.Equal(25, result.TopMedicines[0].PrescriptionCount);
         Assert.Equal(750, result.TopMedicines[0].TotalQuantityBase);
+        Assert.Equal("Viên", result.TopMedicines[0].Unit);
     }
 
     [Fact]
@@ -338,15 +350,18 @@ public class DashboardServiceTests
                  It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(new List<DailyActivity>
              {
-                 new(new DateOnly(2026, 7, 2), 0, 0, 0, 500_000m),
+                 new(new DateOnly(2026, 7, 2), 0, 0, 0, 500_000m, 380_000m),
              });
 
         var result = await _sut.GetStatisticsAsync("2026-07-01", "2026-07-03", TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result.Trend.Count);
         Assert.Equal(0m, result.Trend[0].Revenue);
+        Assert.Equal(0m, result.Trend[0].Profit);
         Assert.Equal(500_000m, result.Trend[1].Revenue);
+        Assert.Equal(380_000m, result.Trend[1].Profit);
         Assert.Equal(0m, result.Trend[2].Revenue);
+        Assert.Equal(0m, result.Trend[2].Profit);
     }
 
     // ---------- helpers ----------

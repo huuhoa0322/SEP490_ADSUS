@@ -7,6 +7,7 @@ import '../../domain/entities/schedule_slot.dart' show DoctorGender;
 import '../viewmodels/book_appointment_view_model.dart';
 import '../viewmodels/my_appointments_view_model.dart';
 import '../widgets/symptom_selector.dart';
+import '../../../patient_relationship/presentation/views/add_relative_screen.dart';
 import 'my_appointments_screen.dart';
 import 'widgets/slot_pill.dart';
 
@@ -162,6 +163,8 @@ class _BookAppointmentScreenState
               _reasonSection(),
               const SizedBox(height: 20),
               _symptomSection(state),
+              const SizedBox(height: 20),
+              _relativeSection(state),
               const SizedBox(height: 24),
               _confirmButton(state),
             ],
@@ -527,9 +530,22 @@ class _BookAppointmentScreenState
     final enabled = state.selectedSlotId != null && !state.isBooking;
     return ElevatedButton(
       onPressed: enabled
-          ? () => ref.read(bookAppointmentViewModelProvider.notifier).book(
-                reason: _reasonController.text.trim(),
-              )
+          ? () {
+              if (!state.isBookingForSelf && state.selectedRelative == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        'Vui lòng chọn người thân trước khi xác nhận đặt lịch.'),
+                    backgroundColor: AppColors.danger,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+              ref.read(bookAppointmentViewModelProvider.notifier).book(
+                    reason: _reasonController.text.trim(),
+                  );
+            }
           : null,
       child: state.isBooking
           ? const SizedBox(
@@ -598,6 +614,156 @@ class _BookAppointmentScreenState
 
     return '${weekMonday.day.toString().padLeft(2, '0')}/${weekMonday.month.toString().padLeft(2, '0')} - '
         '${weekSunday.day.toString().padLeft(2, '0')}/${weekSunday.month.toString().padLeft(2, '0')}';
+  }
+
+  // ============ Issue #5: Relative Booking Section ============
+
+  Widget _relativeSection(BookAppointmentState state) {
+    final notifier = ref.read(bookAppointmentViewModelProvider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('ĐẶT LỊCH CHO'),
+        // Radio buttons: Đặt cho tôi / Người thân
+        Row(
+          children: [
+            Expanded(
+              child: RadioListTile<bool>(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Tôi', style: TextStyle(fontSize: 14)),
+                value: true,
+                // ignore: deprecated_member_use
+                groupValue: state.isBookingForSelf,
+                // ignore: deprecated_member_use
+                onChanged: (v) => notifier.setIsBookingForSelf(v ?? true),
+              ),
+            ),
+            Expanded(
+              child: RadioListTile<bool>(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Người thân', style: TextStyle(fontSize: 14)),
+                value: false,
+                // ignore: deprecated_member_use
+                groupValue: state.isBookingForSelf,
+                // ignore: deprecated_member_use
+                onChanged: (v) {
+                  final forSelf = v ?? false;
+                  notifier.setIsBookingForSelf(forSelf);
+                  if (!forSelf) {
+                    notifier.loadSavedRelatives();
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+        // Nếu chọn người thân, hiện dropdown hoặc loading
+        if (!state.isBookingForSelf) ...[
+          const SizedBox(height: 8),
+          if (state.isLoadingRelatives)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else
+            _relativeDropdown(state, notifier),
+        ],
+      ],
+    );
+  }
+
+  Widget _relativeDropdown(
+      BookAppointmentState state, BookAppointmentViewModel notifier) {
+    if (state.savedRelatives.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF8E1),
+          border: Border.all(color: const Color(0xFFFFB300)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.info_outline, color: Color(0xFFE65100), size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Chưa có người thân nào. Hãy thêm người thân để đặt lịch hộ.',
+                    style: TextStyle(color: Color(0xFFE65100), fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const AddRelativeScreen()),
+                  );
+                  if (result == true) {
+                    notifier.loadSavedRelatives();
+                  }
+                },
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('+ THÊM NGƯỜI THÂN NGAY'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE65100),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          // ignore: deprecated_member_use
+          value: state.selectedRelative?.relationshipId,
+          decoration: const InputDecoration(
+            labelText: 'Chọn người thân',
+            prefixIcon: Icon(Icons.people_outline),
+          ),
+          items: state.savedRelatives.map((r) {
+            return DropdownMenuItem(
+              value: r.relationshipId,
+              child: Text('${r.relationshipName ?? ''} ${r.fullName}'.trim()),
+            );
+          }).toList(),
+          onChanged: (id) => notifier.selectRelative(id),
+        ),
+        const SizedBox(height: 8),
+        // Nút thêm người thân mới
+        TextButton.icon(
+          onPressed: () async {
+            final result = await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(builder: (_) => const AddRelativeScreen()),
+            );
+            if (result == true) {
+              notifier.loadSavedRelatives();
+            }
+          },
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Thêm người thân mới'),
+        ),
+      ],
+    );
   }
 
   Widget _symptomSection(BookAppointmentState state) {

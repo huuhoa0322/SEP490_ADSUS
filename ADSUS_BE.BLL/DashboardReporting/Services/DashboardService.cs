@@ -108,6 +108,12 @@ public class DashboardService : IDashboardService
                 BankTransferCount = revenue.BankTransferCount,
                 PendingInvoiceCount = revenue.PendingInvoiceCount,
                 PendingAmount = revenue.PendingAmount,
+                ServiceRevenue = revenue.ServiceRevenue,
+                MedicineRevenue = revenue.MedicineRevenue,
+                MedicineCost = revenue.MedicineCost,
+                MedicineProfit = revenue.MedicineProfit,
+                TotalProfit = revenue.TotalProfit,
+                ProfitMargin = Percent(revenue.TotalProfit, revenue.TotalRevenue),
             },
 
             TopMedicines = topMedicines.Select(m => new TopMedicineItem
@@ -116,6 +122,7 @@ public class DashboardService : IDashboardService
                 MedicineName = m.MedicineName,
                 PrescriptionCount = m.PrescriptionCount,
                 TotalQuantityBase = m.TotalQuantityBase,
+                Unit = m.Unit,
             }).ToList(),
 
             ActiveAiModel = activeModel == null ? new AiModelMetrics() : new AiModelMetrics
@@ -159,6 +166,7 @@ public class DashboardService : IDashboardService
                 Cases = d?.Cases ?? 0,
                 Appointments = d?.Appointments ?? 0,
                 Revenue = d?.Revenue ?? 0m,
+                Profit = d?.Profit ?? 0m,
             });
         }
 
@@ -200,4 +208,7 @@ public class DashboardService : IDashboardService
     /// <summary>Phần trăm, làm tròn 1 chữ số. Mẫu số 0 thì trả 0 — AF-01, không chia cho 0.</summary>
     private static double Percent(int part, int total) =>
         total == 0 ? 0 : Math.Round(part * 100.0 / total, 1);
+
+    private static double Percent(decimal part, decimal total) =>
+        total == 0m ? 0 : (double)Math.Round(part * 100m / total, 1);
 }

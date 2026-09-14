@@ -27,6 +27,12 @@ export interface RevenueStatistics {
   bankTransferCount: number;
   pendingInvoiceCount: number;
   pendingAmount: number;
+  serviceRevenue: number;
+  medicineRevenue: number;
+  medicineCost: number;
+  medicineProfit: number;
+  totalProfit: number;
+  profitMargin: number;
 }
 
 export interface TopMedicineItem {
@@ -34,6 +40,7 @@ export interface TopMedicineItem {
   medicineName: string;
   prescriptionCount: number;
   totalQuantityBase: number;
+  unit?: string;
 }
 
 export interface AiModelMetrics {
@@ -51,6 +58,7 @@ export interface DailyPoint {
   cases: number;
   appointments: number;
   revenue: number;
+  profit: number;
 }
 
 export interface AccountStatistics {

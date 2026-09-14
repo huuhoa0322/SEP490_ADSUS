@@ -27,6 +27,8 @@ import '../../features/medical_record/data/repositories/medical_record_repositor
 import '../../features/medical_record/domain/repositories/medical_record_repository.dart';
 import '../../features/engagement/data/repositories/blog_repository_impl.dart';
 import '../../features/engagement/domain/repositories/blog_repository.dart';
+import '../../features/patient_relationship/data/repositories/patient_relationship_repository_impl.dart';
+import '../../features/patient_relationship/domain/repositories/patient_relationship_repository.dart';
 /// Kho lưu trữ được hệ điều hành mã hoá (Keystore/Keychain).
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
   // Mặc định thư viện đã dùng Keystore của Android và Keychain của iOS.
@@ -124,4 +126,9 @@ final medicalRecordRepositoryProvider = Provider<MedicalRecordRepository>((ref) 
 /// Module 10 — Blog Sức khỏe (UC-23, BR-02: Patient đã đăng nhập).
 final blogRepositoryProvider = Provider<BlogRepository>((ref) {
   return BlogRepositoryImpl(ref.watch(dioProvider));
+});
+
+/// Module 08 — Patient Relationship (Đặt lịch cho người thân)
+final patientRelationshipRepositoryProvider = Provider<PatientRelationshipRepository>((ref) {
+  return PatientRelationshipRepositoryImpl(ref.watch(dioProvider));
 });

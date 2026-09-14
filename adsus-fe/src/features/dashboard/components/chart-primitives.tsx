@@ -37,14 +37,14 @@ export function StatTile({
 }: {
   label: string;
   value: string | number;
-  hint?: string;
+  hint?: ReactNode;
   icon?: ReactNode;
   cat?: CatKey;
   trend?: string;
 }) {
   const bgVar = cat ? `var(--cat-${cat})` : "var(--cat-blue)";
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-[var(--border)] bg-background p-4 min-[1600px]:p-5 transition-shadow hover:shadow-md">
+    <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[var(--border)] bg-background p-4 min-[1600px]:p-5 transition-shadow hover:shadow-md h-full">
       {/* Left accent bar */}
       <div
         className="absolute left-0 top-0 h-full w-1 rounded-l-2xl transition-all group-hover:w-1.5"
@@ -59,7 +59,7 @@ export function StatTile({
             {value}
           </p>
           {hint && (
-            <p className="text-xs text-muted-foreground line-clamp-2">{hint}</p>
+            <div className="text-xs text-muted-foreground">{hint}</div>
           )}
         </div>
         {icon && (

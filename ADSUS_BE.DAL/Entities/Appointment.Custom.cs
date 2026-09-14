@@ -1,15 +1,21 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-
 namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
-/// Bổ sung cột <c>status</c> mà scaffold không sinh được (enum PostgreSQL).
-///
-/// Bảng appointments thuộc Module 8. Ở đây chỉ THÊM thuộc tính để Dashboard (UC-05) đếm
-/// được tỉ lệ Booked/Cancelled, không đổi gì khác.
+/// Bổ sung logic nghiệp vụ và computed properties cho Appointment.
 /// </summary>
 public partial class Appointment
 {
-    [Column("status")]
-    public AppointmentStatus Status { get; set; }
+    /// <summary>
+    /// Các trạng thái lịch hẹn được tính là active (đang chờ khám hoặc đã check-in chờ vào phòng).
+    /// </summary>
+    public static readonly AppointmentStatus[] ActiveStatuses =
+    [
+        AppointmentStatus.Booked,
+        AppointmentStatus.CheckedIn
+    ];
+
+    /// <summary>
+    /// Kiểm tra cuộc hẹn có đang ở trạng thái active hay không.
+    /// </summary>
+    public bool IsActive => Status == AppointmentStatus.Booked || Status == AppointmentStatus.CheckedIn;
 }
