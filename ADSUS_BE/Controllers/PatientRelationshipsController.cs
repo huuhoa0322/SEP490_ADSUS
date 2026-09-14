@@ -1,8 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.PatientRelationship.DTOs;
 using ADSUS_BE.BLL.PatientRelationship.Interfaces;
+using ADSUS_BE.DAL.Data;
+using ADSUS_BE.DAL.Entities;
 
 namespace ADSUS_BE.Controllers;
 
@@ -12,10 +16,14 @@ namespace ADSUS_BE.Controllers;
 public sealed class PatientRelationshipsController : ControllerBase
 {
     private readonly IPatientRelationshipService _service;
+    private readonly AppDbContext _db;
 
-    public PatientRelationshipsController(IPatientRelationshipService service)
+    public PatientRelationshipsController(
+        IPatientRelationshipService service,
+        AppDbContext db)
     {
         _service = service;
+        _db = db;
     }
 
     private Guid GetCurrentUserId()
@@ -110,5 +118,37 @@ public sealed class PatientRelationshipsController : ControllerBase
     {
         var exists = await _service.IsPhoneRegisteredAsync(phone, ct);
         return Ok(new { phone, isRegistered = exists });
+    }
+
+    /// <summary>
+    /// POST /api/v1/relatives/guardian/{guardianUserId} — Staff tạo người thân cho mẹ
+    /// </summary>
+    [HttpPost("guardian/{guardianUserId:guid}")]
+    [Authorize(Roles = "STAFF,ADMIN,RECEPTIONIST")]
+    public async Task<IActionResult> AddRelativeForGuardian(
+        Guid guardianUserId,
+        [FromBody] AddRelativeRequest request,
+        CancellationToken ct = default)
+    {
+        var guardian = await _db.Users.FirstOrDefaultAsync(
+            u => u.UserId == guardianUserId && u.Role == UserRole.Patient, ct);
+        if (guardian == null)
+            return NotFound(ApiResponse<object>.Fail(404, "Không tìm thấy tài khoản bệnh nhân."));
+
+        var result = await _service.AddRelativeAsync(request, guardianUserId, ct);
+        return Ok(ApiResponse<RelativeResponse>.Ok(result));
+    }
+
+    /// <summary>
+    /// GET /api/v1/relatives/guardian/{guardianUserId} — Staff lấy danh sách người thân của mẹ
+    /// </summary>
+    [HttpGet("guardian/{guardianUserId:guid}")]
+    [Authorize(Roles = "STAFF,ADMIN,RECEPTIONIST")]
+    public async Task<IActionResult> GetRelativesForGuardian(
+        Guid guardianUserId,
+        CancellationToken ct = default)
+    {
+        var relatives = await _service.GetRelativesAsync(guardianUserId, ct);
+        return Ok(ApiResponse<RelativesListResponse>.Ok(relatives));
     }
 }

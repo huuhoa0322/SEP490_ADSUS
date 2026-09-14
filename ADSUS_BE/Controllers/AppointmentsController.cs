@@ -269,6 +269,29 @@ public sealed class AppointmentsController : ControllerBase
     }
 
     /// <summary>
+    /// POST /api/v1/appointments/doctor/ready-next — Bác sĩ thông báo sẵn sàng tiếp nhận ca tiếp theo.
+    /// </summary>
+    [HttpPost("doctor/ready-next")]
+    [Authorize(Roles = "DOCTOR")]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DoctorReadyNext(CancellationToken ct = default)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? throw new InvalidOperationException("Missing NameIdentifier claim.");
+        var doctorId = Guid.Parse(userId);
+        try
+        {
+            await _appointmentService.ReadyForNextPatientAsync(doctorId, ct);
+            return Ok(ApiResponse<string>.Ok("Đã thông báo sẵn sàng tiếp nhận bệnh nhân tiếp theo."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
+    }
+
+    /// <summary>
     /// GET /api/v1/appointments/checkin-queue — Danh sách lịch hẹn chờ check-in cho Nurse / Lễ tân / Admin.
     /// Hỗ trợ lọc theo khoảng thời gian (fromDate, toDate), trạng thái (status), tìm kiếm (search) và phân trang (page, pageSize).
     /// Duy trì tương thích ngược khi chỉ truyền date.
@@ -327,6 +350,7 @@ public sealed class AppointmentsController : ControllerBase
             {
                 ScheduleSlotId = request.ScheduleSlotId,
                 Reason = request.Reason,
+                RelationshipId = request.RelationshipId,
             };
             var appointment = await _appointmentService.BookAppointmentAsync(
                 request.PatientProfileId, bookRequest, ct);

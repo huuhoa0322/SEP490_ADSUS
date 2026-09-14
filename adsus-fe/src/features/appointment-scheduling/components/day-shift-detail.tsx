@@ -8,9 +8,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { DayShiftSummary, ShiftInfo } from '../types/shift-request.types';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Users, Ban, Loader2, AlertCircle } from 'lucide-react';
+import { Clock, Users, Ban, Loader2, AlertCircle, BellRing } from 'lucide-react';
 import Link from 'next/link';
-import { useDoctorAppointments } from '../hooks/use-doctor-appointments';
+import { useDoctorAppointments, useDoctorReadyNext } from '../hooks/use-doctor-appointments';
 import { toIsoDate } from '../lib/group-appointments-by-week';
 
 interface DayShiftDetailProps {
@@ -145,6 +145,8 @@ const DayPatientList = ({ date }: { date: Date }) => {
 };
 
 export function DayShiftDetail({ open, onOpenChange, date, summary, onRequestClick }: DayShiftDetailProps) {
+  const readyNextMutation = useDoctorReadyNext();
+
   if (!date) return null;
 
   const minDate = startOfDay(addDays(new Date(), 2));
@@ -194,8 +196,26 @@ export function DayShiftDetail({ open, onOpenChange, date, summary, onRequestCli
           </div>
           
           <div className="space-y-4 border-l pl-6">
-             <h3 className="font-semibold text-muted-foreground uppercase text-xs tracking-wider">Danh sách bệnh nhân đặt lịch</h3>
-             <DayPatientList date={date} />
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-semibold text-muted-foreground uppercase text-xs tracking-wider">
+                Danh sách bệnh nhân đặt lịch
+              </h3>
+              <Button
+                size="sm"
+                variant="default"
+                className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-xs h-8"
+                onClick={() => readyNextMutation.mutate()}
+                disabled={readyNextMutation.isPending}
+              >
+                {readyNextMutation.isPending ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <BellRing className="size-3.5" />
+                )}
+                Sẵn sàng tiếp nhận bệnh nhân
+              </Button>
+            </div>
+            <DayPatientList date={date} />
           </div>
         </div>
       </DialogContent>

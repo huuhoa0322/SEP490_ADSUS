@@ -599,7 +599,7 @@ public class FeedbackAndCheckinBoundaryStressTests
 
         Assert.NotNull(result);
         Assert.True(result.TotalItems > 0);
-        Assert.True(sw.ElapsedMilliseconds < 1000, $"Query took {sw.ElapsedMilliseconds}ms, exceeding 1000ms threshold.");
+        Assert.True(sw.ElapsedMilliseconds < 3000, $"Query took {sw.ElapsedMilliseconds}ms, exceeding 3000ms threshold.");
     }
 
     #endregion

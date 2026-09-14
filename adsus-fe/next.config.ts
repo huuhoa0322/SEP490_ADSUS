@@ -11,6 +11,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: '/booking',
+        destination: '/dat-lich',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

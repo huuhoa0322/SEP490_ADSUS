@@ -91,6 +91,8 @@ public sealed class StaffBookAppointmentRequest
     public Guid ScheduleSlotId { get; init; }
     /// <summary>Lý do khám (tùy chọn).</summary>
     public string? Reason { get; init; }
+    /// <summary>ID quan hệ người thân (tùy chọn, khi đặt cho người thân qua tài khoản mẹ/giám hộ).</summary>
+    public Guid? RelationshipId { get; init; }
 }
 
 // ─── Responses ─────────────────────────────────────────────────────────────────

@@ -39,6 +39,11 @@ public partial class AppDbContext
 
         modelBuilder.Entity<Appointment>(entity =>
         {
+            // Chống 2 booking cùng ở trạng thái BOOKED trên 1 slot (chặn double-booking ở tầng DB)
+            entity.HasIndex(e => e.SlotId, "uq_appointments_single_booked_slot")
+                .HasFilter("status = 'BOOKED'")
+                .IsUnique();
+
             entity.Property(e => e.Status)
                 .HasColumnName("status")
                 .HasDefaultValue(AppointmentStatus.Booked);

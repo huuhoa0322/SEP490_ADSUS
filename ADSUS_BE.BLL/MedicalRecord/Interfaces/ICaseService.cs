@@ -68,7 +68,7 @@ public interface ICaseService
         Guid patientProfileId,
         Guid doctorId,
         DateOnly visitDate,
-        IReadOnlyList<SymptomInput> symptoms,
+        IReadOnlyList<SymptomInput>? symptoms,
         CancellationToken ct = default);
 
     Task<CaseResponse> UpdateSymptomsAsync(
