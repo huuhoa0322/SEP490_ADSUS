@@ -12,11 +12,13 @@ class AppointmentDetailSheet extends StatelessWidget {
     required this.appointment,
     this.onCancel,
     this.onReschedule,
+    this.onEditClinicalInfo,
   });
 
   final Appointment appointment;
   final VoidCallback? onCancel;
   final VoidCallback? onReschedule;
+  final VoidCallback? onEditClinicalInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +61,22 @@ class AppointmentDetailSheet extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
+
+          // Thông tin người khám (nếu đặt hộ)
+          if (appointment.isBookedForOthers) ...[
+            _InfoRow(
+              icon: Icons.person_outline,
+              label: 'Người khám',
+              value: appointment.patientFullName ?? 'Người thân',
+            ),
+            const SizedBox(height: 12),
+            _InfoRow(
+              icon: Icons.people_alt_outlined,
+              label: 'Quan hệ',
+              value: appointment.relationshipLabel ?? 'Người thân',
+            ),
+            const SizedBox(height: 12),
+          ],
 
           // Thông tin lịch khám
           _InfoRow(
@@ -110,6 +128,22 @@ class AppointmentDetailSheet extends StatelessWidget {
 
           // Actions - chỉ hiện nếu appointment còn BOOKED và chưa hết hạn
           if (appointment.isBooked && !appointment.isExpired) ...[
+            if (onEditClinicalInfo != null) ...[
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  onEditClinicalInfo?.call();
+                },
+                icon: const Icon(Icons.edit_note),
+                label: const Text('Sửa thông tin khám'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.teal,
+                  side: const BorderSide(color: AppColors.teal),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             Row(
               children: [
                 Expanded(

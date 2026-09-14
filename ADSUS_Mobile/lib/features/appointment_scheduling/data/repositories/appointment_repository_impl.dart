@@ -226,6 +226,54 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
     }
   }
 
+  @override
+  Future<CancellationStatusTodayDto> getCancellationStatusToday() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiConstants.cancellationStatusToday,
+      );
+      final envelope = ApiEnvelope.fromJson(res.data ?? const {});
+      if (envelope.data == null) {
+        throw const ApiException('Không lấy được thông tin trạng thái hủy lịch.');
+      }
+      return CancellationStatusTodayDto.fromJson(envelope.data!);
+    } on DioException catch (e) {
+      throw ApiErrorMapper.general(e, fallback: 'Không lấy được thông tin trạng thái hủy lịch.');
+    }
+  }
+
+  @override
+  Future<Appointment> updateClinicalInfo(
+    String appointmentId, {
+    String? reason,
+    List<SymptomInput>? symptoms,
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      if (reason != null) {
+        body['reason'] = reason.trim();
+      }
+      if (symptoms != null) {
+        body['symptoms'] = symptoms.map((s) => s.toJson()).toList();
+      }
+
+      final res = await _dio.put<Map<String, dynamic>>(
+        ApiConstants.updateAppointmentClinicalInfo(appointmentId),
+        data: body,
+      );
+
+      final envelope = ApiEnvelope.fromJson(res.data ?? const {});
+      if (envelope.data == null) {
+        throw const ApiException('Cập nhật thông tin khám thất bại.');
+      }
+      return AppointmentMapper.appointmentFromDto(
+        AppointmentDto.fromJson(envelope.data!),
+      );
+    } on DioException catch (e) {
+      throw ApiErrorMapper.general(e, fallback: 'Cập nhật thông tin khám thất bại.');
+    }
+  }
+
   static String _formatDate(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'

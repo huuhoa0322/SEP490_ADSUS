@@ -24,8 +24,9 @@ export function caseStatusLabel(status: CaseStatus): string {
   return CASE_STATUS_LABELS[status];
 }
 
-export function genderLabel(gender: Gender): string {
-  return GENDER_LABELS[gender];
+export function genderLabel(gender: Gender | null | undefined): string {
+  if (!gender) return EMPTY_VALUE;
+  return GENDER_LABELS[gender] ?? EMPTY_VALUE;
 }
 
 export function visitStatusLabel(filter: VisitStatusFilter): string {

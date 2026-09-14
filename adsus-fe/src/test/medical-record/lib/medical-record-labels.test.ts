@@ -20,6 +20,11 @@ describe("genderLabel", () => {
     expect(genderLabel("MALE")).toBe("Nam");
     expect(genderLabel("OTHER")).toBe("Khác");
   });
+
+  it("trả dấu gạch khi giá trị là null hoặc undefined", () => {
+    expect(genderLabel(null)).toBe("—");
+    expect(genderLabel(undefined)).toBe("—");
+  });
 });
 
 describe("formatIsoDate", () => {

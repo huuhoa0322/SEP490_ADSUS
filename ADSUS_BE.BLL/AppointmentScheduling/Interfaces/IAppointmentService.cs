@@ -46,6 +46,7 @@ public interface IAppointmentService
         Guid userId,
         Guid patientProfileId,
         BookAppointmentRequest request,
+        bool isStaffOverride = false,
         CancellationToken ct = default);
 
     /// <summary>
@@ -54,6 +55,23 @@ public interface IAppointmentService
     Task<AppointmentResponse> BookAppointmentAsync(
         Guid patientProfileId,
         BookAppointmentRequest request,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Lấy số lần hủy hẹn hôm nay của bệnh nhân và trạng thái cho phép đặt lịch online.
+    /// </summary>
+    Task<CancellationStatusTodayResponse> GetCancellationStatusTodayAsync(
+        Guid userId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Bệnh nhân chỉnh sửa lý do khám và triệu chứng trước giờ khám (UC-14 mở rộng).
+    /// </summary>
+    Task<AppointmentResponse> UpdateClinicalInfoAsync(
+        Guid appointmentId,
+        Guid userId,
+        Guid? callerPatientProfileId,
+        UpdateAppointmentClinicalInfoRequest request,
         CancellationToken ct = default);
 
     /// <summary>

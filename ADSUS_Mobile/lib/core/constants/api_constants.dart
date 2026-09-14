@@ -42,6 +42,8 @@ class ApiConstants {
   static const String appointmentSlots = '/api/v1/appointments/slots';
   static const String appointments = '/api/v1/appointments';
   static String cancelAppointment(String id) => '/api/v1/appointments/$id/cancel';
+  static const String cancellationStatusToday = '/api/v1/appointments/cancellation-status-today';
+  static String updateAppointmentClinicalInfo(String id) => '/api/v1/appointments/$id/clinical-info';
 
   // Module 04 — Medical Record (UC-08)
   static const String myCases = '/api/v1/cases/me';

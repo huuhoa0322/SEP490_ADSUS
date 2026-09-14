@@ -1,3 +1,5 @@
+import '../../data/dtos/appointment_dtos.dart';
+
 /// Trạng thái của một cuộc hẹn.
 ///
 /// Theo UCS BR-03, Appointment KHÔNG có trạng thái "Completed" — chỉ Booked hoặc
@@ -24,6 +26,9 @@ class Appointment {
     this.endTime,
     this.doctorName,
     this.caseId,
+    this.patientFullName,
+    this.patientPhone,
+    this.symptoms,
     // Issue #3: isBookedForOthers, relationshipLabel, bookedByUserName
     this.isBookedForOthers = false,
     this.relationshipLabel,
@@ -33,6 +38,8 @@ class Appointment {
   final String id;
   final String slotId;
   final String patientProfileId;
+  final String? patientFullName;
+  final String? patientPhone;
   final AppointmentStatus status;
 
   /// Lý do khám khi đặt (UC-13, optional).
@@ -53,6 +60,7 @@ class Appointment {
 
   // Case được tạo từ booking (nếu có triệu chứng)
   final String? caseId;
+  final List<AppointmentSymptomDto>? symptoms;
 
   // Issue #3: isBookedForOthers, relationshipLabel, bookedByUserName
   final bool isBookedForOthers;

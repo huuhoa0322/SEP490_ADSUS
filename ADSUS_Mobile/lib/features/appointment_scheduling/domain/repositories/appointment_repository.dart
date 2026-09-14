@@ -1,6 +1,7 @@
 import '../entities/appointment.dart';
 import '../entities/appointment_summary.dart';
 import '../entities/schedule_slot.dart';
+import '../../data/dtos/appointment_dtos.dart';
 import '../../data/dtos/symptom_dtos.dart';
 
 /// Hợp đồng cho tầng dữ liệu của module Đặt lịch (UC-13, UC-14).
@@ -52,5 +53,15 @@ abstract interface class AppointmentRepository {
   Future<Appointment> cancelMyAppointment({
     required String id,
     required String cancellationReason,
+  });
+
+  /// Kiểm tra số lần hủy trong ngày hôm nay của bệnh nhân (Anti-abuse).
+  Future<CancellationStatusTodayDto> getCancellationStatusToday();
+
+  /// Sửa lý do khám và triệu chứng trước giờ khám.
+  Future<Appointment> updateClinicalInfo(
+    String appointmentId, {
+    String? reason,
+    List<SymptomInput>? symptoms,
   });
 }

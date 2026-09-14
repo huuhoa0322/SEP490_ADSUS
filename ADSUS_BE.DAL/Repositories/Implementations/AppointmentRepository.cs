@@ -56,6 +56,14 @@ public sealed class AppointmentRepository : IAppointmentRepository
                 .ThenInclude(s => s.Doctor)
             .Include(a => a.PatientProfile)
                 .ThenInclude(p => p.User)
+            .Include(a => a.BookedByUser)
+            .Include(a => a.PatientRelationship)
+            .Include(a => a.Case)
+                .ThenInclude(c => c.CaseSymptoms)
+                    .ThenInclude(cs => cs.Category)
+            .Include(a => a.Case)
+                .ThenInclude(c => c.CaseSymptoms)
+                    .ThenInclude(cs => cs.Symptom)
             .FirstOrDefaultAsync(a => a.AppointmentId == appointmentId, ct);
     }
 

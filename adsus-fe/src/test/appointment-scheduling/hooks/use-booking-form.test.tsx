@@ -272,4 +272,90 @@ describe("useBookingForm", () => {
     expect(result.current.isBookingForSelf).toBe(true);
     expect(result.current.selectedRelativeId).toBeNull();
   });
+
+  it("giới hạn 30 ngày: query slots với fromDate là hôm nay và toDate là hôm nay + 30 ngày", async () => {
+    let requestedFromDate: string | null = null;
+    let requestedToDate: string | null = null;
+
+    server.use(
+      http.get(`${API_BASE_URL}/api/v1/appointments/slots`, ({ request }) => {
+        const url = new URL(request.url);
+        requestedFromDate = url.searchParams.get("fromDate");
+        requestedToDate = url.searchParams.get("toDate");
+        return HttpResponse.json({
+          code: 200,
+          message: "OK",
+          data: [],
+        });
+      }),
+    );
+
+    renderHook(() => useBookingForm(), {
+      wrapper: createWrapper(),
+    });
+
+    const expectedFrom = format(today, "yyyy-MM-dd");
+    const expectedTo = format(addDays(today, 30), "yyyy-MM-dd");
+
+    await waitFor(() => {
+      expect(requestedFromDate).toBe(expectedFrom);
+      expect(requestedToDate).toBe(expectedTo);
+    });
+  });
+
+  it("giới hạn 30 ngày: availableDates loại bỏ các ngày quá khứ hoặc vượt quá 30 ngày", async () => {
+    const pastDateStr = format(addDays(today, -2), "yyyy-MM-dd");
+    const validDateStr = format(addDays(today, 15), "yyyy-MM-dd");
+    const futureBeyond30Str = format(addDays(today, 35), "yyyy-MM-dd");
+
+    server.use(
+      http.get(`${API_BASE_URL}/api/v1/appointments/slots`, () =>
+        HttpResponse.json({
+          code: 200,
+          message: "OK",
+          data: [
+            {
+              slotId: "slot-past",
+              doctorId: "doc-1",
+              doctorName: "Bác sĩ",
+              slotDate: pastDateStr,
+              startTime: "09:00:00",
+              endTime: "09:30:00",
+            },
+            {
+              slotId: "slot-valid",
+              doctorId: "doc-1",
+              doctorName: "Bác sĩ",
+              slotDate: validDateStr,
+              startTime: "10:00:00",
+              endTime: "10:30:00",
+            },
+            {
+              slotId: "slot-too-far",
+              doctorId: "doc-1",
+              doctorName: "Bác sĩ",
+              slotDate: futureBeyond30Str,
+              startTime: "11:00:00",
+              endTime: "11:30:00",
+            },
+          ],
+        }),
+      ),
+    );
+
+    const { result } = renderHook(() => useBookingForm(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.allSlots).toHaveLength(3));
+
+    // availableDates chỉ chứa validDate, không chứa pastDate hay futureBeyond30
+    const availableDatesFormatted = result.current.availableDates.map((d) =>
+      format(d, "yyyy-MM-dd"),
+    );
+    expect(availableDatesFormatted).toContain(validDateStr);
+    expect(availableDatesFormatted).not.toContain(pastDateStr);
+    expect(availableDatesFormatted).not.toContain(futureBeyond30Str);
+  });
 });
+

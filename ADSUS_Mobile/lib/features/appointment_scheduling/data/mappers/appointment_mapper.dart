@@ -143,6 +143,8 @@ class AppointmentMapper {
         id: dto.appointmentId ?? '',
         slotId: dto.slotId ?? '',
         patientProfileId: dto.patientProfileId ?? '',
+        patientFullName: dto.patientFullName,
+        patientPhone: dto.patientPhone,
         reason: dto.reason,
         status: parseAppointmentStatus(dto.status),
         cancelledReason: dto.cancelledReason,
@@ -153,6 +155,7 @@ class AppointmentMapper {
         endTime: parseHm(dto.endTime),
         doctorName: dto.doctorName,
         caseId: dto.caseId,
+        symptoms: dto.symptoms,
         // Issue #3: isBookedForOthers, relationshipLabel, bookedByUserName
         isBookedForOthers: dto.isBookedForOthers ?? false,
         relationshipLabel: dto.relationshipLabel,
@@ -163,6 +166,9 @@ class AppointmentMapper {
       AppointmentSummary(
         id: dto.appointmentId ?? '',
         slotId: dto.slotId ?? '',
+        patientProfileId: dto.patientProfileId,
+        patientFullName: dto.patientFullName,
+        patientPhone: dto.patientPhone,
         status: parseAppointmentStatus(dto.status),
         reason: dto.reason,
         cancelledReason: dto.cancelledReason,
@@ -172,6 +178,8 @@ class AppointmentMapper {
         endTime: parseHm(dto.endTime),
         doctorId: dto.doctorId,
         doctorName: dto.doctorName,
+        caseId: dto.caseId,
+        bookedByUserName: dto.bookedByUserName,
         // Issue #3: isBookedForOthers, relationshipLabel
         isBookedForOthers: dto.isBookedForOthers ?? false,
         relationshipLabel: dto.relationshipLabel,

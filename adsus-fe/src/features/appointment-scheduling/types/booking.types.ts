@@ -35,6 +35,26 @@ export interface SymptomInput {
   otherNote?: string | null;
 }
 
+export interface AppointmentSymptomResponse {
+  categoryId: string;
+  categoryName: string;
+  symptomId?: string | null;
+  symptomName?: string | null;
+  otherNote?: string | null;
+}
+
+export interface UpdateAppointmentClinicalInfoRequest {
+  reason?: string;
+  symptoms?: SymptomInput[];
+}
+
+export interface CancellationStatusTodayResponse {
+  cancellationsToday: number;
+  maxCancellations: number;
+  canBookOnline: boolean;
+  isNextCancellationFinal: boolean;
+}
+
 export const MAX_BOOKING_DAYS = 30; // Đồng bộ Mobile & Backend
 
 /** Chi tiết lịch hẹn sau khi đặt thành công */
@@ -51,6 +71,10 @@ export interface AppointmentResponse {
   calendarSyncedAt: string | null;
   createdAt: string;
   caseId: string | null;
+  patientFullName?: string;
+  patientPhone?: string | null;
+  patientProfileId?: string;
+  symptoms?: AppointmentSymptomResponse[];
 }
 
 /** Tóm tắt lịch hẹn — dùng cho danh sách "Lịch hẹn của tôi" */
@@ -67,4 +91,7 @@ export interface AppointmentSummaryResponse {
   reason: string | null;
   cancellationReason: string | null;
   caseId: string | null;
+  patientFullName?: string;
+  patientPhone?: string | null;
+  patientProfileId?: string;
 }

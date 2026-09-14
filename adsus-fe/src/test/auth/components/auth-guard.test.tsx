@@ -59,7 +59,7 @@ describe("AuthGuard", () => {
     expect(replaceMock).not.toHaveBeenCalled();
   });
 
-  it("không có accessToken — điều hướng về /login", async () => {
+  it("không có accessToken — điều hướng về /login kèm tham số redirect", async () => {
     useAuthStore.setState({ accessToken: null, user: null });
 
     render(
@@ -68,7 +68,7 @@ describe("AuthGuard", () => {
       </AuthGuard>,
     );
 
-    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/login"));
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/login?redirect=%2Fpatients"));
   });
 
   it("UC-25: mustChangePassword=true, chưa ở /change-password — điều hướng tới đó", async () => {
