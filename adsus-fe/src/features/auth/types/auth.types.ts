@@ -56,3 +56,27 @@ export const PASSWORD_POLICY = {
     { label: "Có ít nhất 1 chữ số", test: (v: string) => /[0-9]/.test(v) },
   ],
 } as const;
+
+export interface CompleteRegistrationRequest {
+  firebaseIdToken: string;
+  fullName: string;
+  password: string;
+  confirmPassword: string;
+  email?: string | null;
+  dateOfBirth?: string | null;
+  gender?: "MALE" | "FEMALE" | "OTHER" | null;
+}
+
+export type RegisterStep = "phone" | "otp" | "profile";
+
+export interface CompleteRegistrationResponseData extends LoginResponse {
+  user: {
+    userId: string;
+    fullName: string;
+    email: string | null;
+    role: Role;
+    mustChangePassword: boolean;
+  };
+}
+
+
