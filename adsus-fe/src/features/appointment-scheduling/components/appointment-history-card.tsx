@@ -4,7 +4,7 @@ import { format, parseISO } from "date-fns";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
-import type { AppointmentSummaryResponse } from "../types/booking.types";
+import type { AppointmentStatus, AppointmentSummaryResponse } from "../types/booking.types";
 
 /** Format "YYYY-MM-DD" → "dd/MM/yyyy" */
 export function formatSlotDate(slotDate: string): string {
@@ -25,9 +25,31 @@ export function isExpired(slotDate: string, endTime: string): boolean {
   }
 }
 
+/**
+ * BE đôi khi trả PascalCase ("Booked", "NoShow", "Completed", "Cancelled") dù type
+ * khai báo UPPERCASE. Chuẩn hoá về UPPERCASE trước khi lookup để mapping switch case
+ * không rơi vào default. Đặc biệt "NoShow" → "NO_SHOW" (chèn underscore).
+ * Trả `null` nếu không match enum nào.
+ */
+export function normalizeAppointmentStatus(raw: string): AppointmentStatus | null {
+  const upper = raw.toUpperCase();
+  // "NOSHOW" không có underscore — handle riêng.
+  if (upper === "NOSHOW") return "NO_SHOW";
+  switch (upper) {
+    case "BOOKED":
+    case "APPROVED":
+    case "CANCELLED":
+    case "COMPLETED":
+    case "NO_SHOW":
+      return upper;
+    default:
+      return null;
+  }
+}
+
 /** Trả về Tailwind color class cho accent bar. */
 export function getAccentColor(appointment: AppointmentSummaryResponse): string {
-  const status = appointment.status;
+  const status = normalizeAppointmentStatus(appointment.status);
   if (status === "CANCELLED" || status === "COMPLETED" || status === "NO_SHOW") {
     return "bg-gray-400";
   }
@@ -38,26 +60,26 @@ export function getAccentColor(appointment: AppointmentSummaryResponse): string 
   return "bg-teal-600";
 }
 
-/** Trả về class cho status Badge. */
-function getStatusBadgeClass(status: string): string {
-  switch (status) {
+/** Trả về inline style object cho status Badge dùng design tokens. */
+export function getStatusBadgeStyle(status: string): React.CSSProperties {
+  switch (normalizeAppointmentStatus(status)) {
     case "BOOKED":
-      return "bg-emerald-100 text-emerald-800";
+      return { backgroundColor: "var(--lp-teal-tint)", color: "var(--lp-teal)" };
     case "APPROVED":
-      return "bg-amber-100 text-amber-800";
+      return { backgroundColor: "var(--success-light)", color: "var(--success)" };
     case "CANCELLED":
-      return "bg-red-100 text-red-800";
+      return { backgroundColor: "#FDECEA", color: "var(--danger)" };
     case "COMPLETED":
-      return "bg-gray-100 text-gray-600";
+      return { backgroundColor: "#E5E7EB", color: "#374151" };
     case "NO_SHOW":
-      return "bg-gray-100 text-gray-600";
+      return { backgroundColor: "#FEF3E2", color: "var(--amber-warn)" };
     default:
-      return "bg-gray-100 text-gray-600";
+      return { backgroundColor: "#E5E7EB", color: "#374151" };
   }
 }
 
-function getStatusLabel(status: string): string {
-  switch (status) {
+export function getStatusLabel(status: string): string {
+  switch (normalizeAppointmentStatus(status)) {
     case "BOOKED":
       return "Đã đặt";
     case "APPROVED":
@@ -83,7 +105,7 @@ export function AppointmentHistoryCard({
   onClick,
 }: AppointmentHistoryCardProps) {
   const accentColor = getAccentColor(appointment);
-  const statusBadgeClass = getStatusBadgeClass(appointment.status);
+  const statusBadgeStyle = getStatusBadgeStyle(appointment.status);
   const statusLabel = getStatusLabel(appointment.status);
 
   // Format time range: "HH:mm - HH:mm"
@@ -146,10 +168,8 @@ export function AppointmentHistoryCard({
       {/* Right side */}
       <div className="flex flex-col items-center gap-2 px-4 py-3">
         <span
-          className={cn(
-            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
-            statusBadgeClass
-          )}
+          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+          style={statusBadgeStyle}
           data-testid="status-badge"
         >
           {statusLabel}

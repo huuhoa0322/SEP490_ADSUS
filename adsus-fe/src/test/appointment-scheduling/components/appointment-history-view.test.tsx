@@ -336,4 +336,87 @@ describe("AppointmentHistoryView", () => {
       expect(screen.getByText("Hủy lịch khám")).toBeInTheDocument();
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // 10. Pagination — hiển thị tối đa 10 cards mỗi trang
+  // ---------------------------------------------------------------------------
+  it("chỉ hiển thị tối đa 10 card đầu tiên khi SELF list > 10", async () => {
+    const manySelf = Array.from({ length: 15 }, (_, i) =>
+      makeAppt({ appointmentId: `self-pg-${i}`, slotDate: "2036-09-20" }),
+    );
+    setupDefaultHooks({ data: manySelf });
+
+    render(<AppointmentHistoryView />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("appointment-history-card").length).toBe(10);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 11. Pagination — hiển thị controls (Trang trước/sau + label)
+  // ---------------------------------------------------------------------------
+  it("hiển thị controls phân trang khi có > 10 lịch", async () => {
+    const manySelf = Array.from({ length: 12 }, (_, i) =>
+      makeAppt({ appointmentId: `self-pg-${i}`, slotDate: "2036-09-20" }),
+    );
+    setupDefaultHooks({ data: manySelf });
+
+    render(<AppointmentHistoryView />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /trang sau/i })).toBeInTheDocument();
+    });
+    expect(screen.getByText(/trang 1/i)).toBeInTheDocument();
+  });
+
+  // ---------------------------------------------------------------------------
+  // 12. Pagination — click 'Trang sau' → sang trang 2
+  // ---------------------------------------------------------------------------
+  it("click 'Trang sau' → hiển thị 2 card còn lại và label 'Trang 2/2'", async () => {
+    const manySelf = Array.from({ length: 12 }, (_, i) =>
+      makeAppt({ appointmentId: `self-pg-${i}`, slotDate: "2036-09-20" }),
+    );
+    setupDefaultHooks({ data: manySelf });
+
+    render(<AppointmentHistoryView />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /trang sau/i })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /trang sau/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("appointment-history-card").length).toBe(2);
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/trang 2 \/ 2/i)).toBeInTheDocument();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 13. Pagination — disabled state đúng (Trang 1 disable nút Trang trước)
+  // ---------------------------------------------------------------------------
+  it("nút 'Trang trước' disabled ở trang đầu, 'Trang sau' disabled ở trang cuối", async () => {
+    const manySelf = Array.from({ length: 12 }, (_, i) =>
+      makeAppt({ appointmentId: `self-pg-${i}`, slotDate: "2036-09-20" }),
+    );
+    setupDefaultHooks({ data: manySelf });
+
+    render(<AppointmentHistoryView />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /trang sau/i })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: /trang trước/i })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("button", { name: /trang sau/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/trang 2 \/ 2/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: /trang sau/i })).toBeDisabled();
+  });
 });

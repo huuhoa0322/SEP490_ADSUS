@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { Menu, X, User, LogOut, CalendarCheck } from "lucide-react";
 
@@ -18,6 +18,7 @@ export function LandingNavbar() {
   const [open, setOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const hasHydrated = useHasHydrated();
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
@@ -25,11 +26,10 @@ export function LandingNavbar() {
 
   const isPatient = hasHydrated && accessToken && user?.role === "PATIENT";
   const pathname = usePathname();
-  // Guest bấm "Đăng nhập" từ /dat-lich → sau login phải quay lại /dat-lich.
   const loginHref =
     pathname === "/dat-lich" ? "/login?redirect=/dat-lich" : "/login";
 
-  // Close dropdown when clicking outside
+  // Close account dropdown khi click ra ngoài
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -42,10 +42,10 @@ export function LandingNavbar() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [dropdownOpen]);
 
-
-  function handleSignOut() {
-    void signOut();
+  async function handleSignOut() {
+    await signOut();
     setDropdownOpen(false);
+    void router.push("/");
   }
 
   return (
@@ -99,7 +99,6 @@ export function LandingNavbar() {
         {/* Desktop auth area */}
         <div className="hidden items-center gap-3 md:flex">
           {isPatient ? (
-            /* Patient logged in — show account dropdown */
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen((o) => !o)}
@@ -117,7 +116,7 @@ export function LandingNavbar() {
 
               {dropdownOpen && (
                 <div
-                  className="absolute right-0 top-full mt-2 w-48 rounded-xl border shadow-sm"
+                  className="absolute right-0 top-full mt-2 w-56 rounded-xl border shadow-sm"
                   style={{
                     backgroundColor: "var(--lp-surface)",
                     borderColor: "var(--lp-border)",
@@ -127,10 +126,26 @@ export function LandingNavbar() {
                     className="border-b px-4 py-2.5"
                     style={{ borderColor: "var(--lp-border)" }}
                   >
-                    <p className="text-xs font-medium" style={{ color: "var(--lp-muted)" }}>
+                    <p
+                      className="text-sm font-medium"
+                      style={{ color: "var(--lp-text)" }}
+                      data-testid="dropdown-user-name"
+                    >
                       {user.fullName}
                     </p>
-                    <p className="text-xs" style={{ color: "var(--lp-muted)" }}>
+                    {user.email ? (
+                      <p
+                        className="text-xs"
+                        style={{ color: "var(--lp-muted)" }}
+                        data-testid="dropdown-user-email"
+                      >
+                        {user.email}
+                      </p>
+                    ) : null}
+                    <p
+                      className="mt-0.5 text-xs"
+                      style={{ color: "var(--lp-muted)" }}
+                    >
                       Bệnh nhân
                     </p>
                   </div>
@@ -141,15 +156,18 @@ export function LandingNavbar() {
                       style={{ color: "var(--lp-text)" }}
                       onClick={() => setDropdownOpen(false)}
                     >
-                      <CalendarCheck className="size-4" style={{ color: "var(--lp-teal)" }} />
+                      <CalendarCheck
+                        className="size-4"
+                        style={{ color: "var(--lp-teal)" }}
+                      />
                       Lịch hẹn của tôi
                     </Link>
                     <button
-                      onClick={handleSignOut}
+                      onClick={() => void handleSignOut()}
                       className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--lp-canvas)]"
                       style={{ color: "var(--lp-text)" }}
                     >
-                      <LogOut className="size-4 text-destructive" />
+                      <LogOut className="size-4" style={{ color: "var(--danger)" }} />
                       Đăng xuất
                     </button>
                   </div>
@@ -213,10 +231,7 @@ export function LandingNavbar() {
 
             {isPatient ? (
               <>
-                <li className="border-t pt-4" style={{ borderColor: "var(--lp-border)" }}>
-                  <p className="mb-1 text-xs" style={{ color: "var(--lp-muted)" }}>
-                    {user.fullName}
-                  </p>
+                <li>
                   <Link
                     href="/lich-hen-cua-toi"
                     className="flex items-center gap-2 text-sm font-medium"
@@ -230,10 +245,11 @@ export function LandingNavbar() {
                 <li>
                   <button
                     onClick={() => {
-                      void signOut();
+                      void handleSignOut();
                       setOpen(false);
                     }}
-                    className="flex items-center gap-2 text-sm font-medium text-destructive"
+                    className="flex items-center gap-2 text-sm font-medium"
+                    style={{ color: "var(--danger)" }}
                   >
                     <LogOut className="size-4" />
                     Đăng xuất
