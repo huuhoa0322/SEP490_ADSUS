@@ -4,9 +4,15 @@ using Ganss.Xss;
 
 namespace ADSUS_BE.BLL.Common;
 
-public static class HtmlHelper
+public static partial class HtmlHelper
 {
     private static readonly HtmlSanitizer _sanitizer = new();
+
+    [GeneratedRegex("<[^>]+>")]
+    private static partial Regex HtmlTagRegex();
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex WhitespaceRegex();
 
     public static string StripToPlainText(string? input)
     {
@@ -16,13 +22,13 @@ public static class HtmlHelper
         var sanitized = _sanitizer.Sanitize(input);
 
         // 2. Bóc các tag HTML an toàn còn lại sang khoảng trắng
-        var noTags = Regex.Replace(sanitized, "<[^>]+>", " ");
+        var noTags = HtmlTagRegex().Replace(sanitized, " ");
 
         // 3. HtmlDecode để giữ nguyên vẹn ký hiệu y khoa (< 4.0, > 38.5) và entity HTML
         var decoded = WebUtility.HtmlDecode(noTags);
 
         // 4. Chuẩn hóa khoảng trắng
-        return Regex.Replace(decoded, @"\s+", " ").Trim();
+        return WhitespaceRegex().Replace(decoded, " ").Trim();
     }
 
     public static string StripTags(string? html) => StripToPlainText(html);

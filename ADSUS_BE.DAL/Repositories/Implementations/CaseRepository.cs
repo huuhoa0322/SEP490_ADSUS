@@ -43,6 +43,9 @@ public sealed class CaseRepository : ICaseRepository
 
     public Task<Case?> GetForUpdateWithCollectionsAsync(Guid caseId, CancellationToken ct = default) =>
         _db.Cases
+            // AsSplitQuery: 3 nhánh collection trong 1 câu SQL sẽ nhân chéo số dòng, giống lý do
+            // đã áp dụng ở GetDetailAsync phía trên.
+            .AsSplitQuery()
             .Include(c => c.CaseSymptoms)
             .Include(c => c.CaseDiseases)
             .Include(c => c.CaseAllergies)

@@ -517,8 +517,7 @@ public class CaseDiagnosisServiceTests : IDisposable
 
         // Assert
         var preds = await _db.AiPredictions.ToListAsync(TestContext.Current.CancellationToken);
-        Assert.Single(preds);
-        var sentinel = preds[0];
+        var sentinel = Assert.Single(preds);
         Assert.Equal(0m, sentinel.Confidence);
         Assert.Equal(0m, sentinel.BboxXmin);
         Assert.Equal(0m, sentinel.BboxYmin);

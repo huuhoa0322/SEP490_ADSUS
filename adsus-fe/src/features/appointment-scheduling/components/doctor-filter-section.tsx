@@ -33,9 +33,9 @@ export function DoctorFilterSection({
     <div className="space-y-4">
       {/* 1. Gender Filter Chips */}
       <div>
-        <label className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+        <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
           Giới tính bác sĩ (tùy chọn)
-        </label>
+        </span>
         <div className="mt-2 grid grid-cols-3 gap-2 sm:gap-3">
           <button
             type="button"
@@ -75,9 +75,9 @@ export function DoctorFilterSection({
 
       {/* 2. Doctor Dropdown */}
       <div>
-        <label className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+        <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
           Bác sĩ phụ trách
-        </label>
+        </span>
         <div className="mt-2">
           <Select
             value={selectedDoctorId ?? "none"}

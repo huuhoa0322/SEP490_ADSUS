@@ -19,7 +19,7 @@ namespace ADSUS_BE.BLL.UserRoleManagement.Services;
 /// IPushNotificationClient đang dùng FakePushNotificationClient (Development, không khởi tạo
 /// FirebaseApp) — verify phone vẫn cần Firebase thật dù push notification không cần.
 /// </summary>
-public class FirebasePhoneVerificationService : IFirebasePhoneVerificationService
+public partial class FirebasePhoneVerificationService : IFirebasePhoneVerificationService
 {
     private const string VietnamCountryCodePrefix = "+84";
     private const string PhoneNumberClaim = "phone_number";
@@ -30,7 +30,8 @@ public class FirebasePhoneVerificationService : IFirebasePhoneVerificationServic
     // thực số điện thoại thay vì tin cậy hạn dùng mặc định của token (xem review cuối plan).
     private static readonly TimeSpan MaxPhoneVerificationAge = TimeSpan.FromMinutes(10);
 
-    private static readonly Regex VietnamE164Pattern = new(@"^\+84\d{9}$", RegexOptions.Compiled);
+    [GeneratedRegex(@"^\+84\d{9}$")]
+    private static partial Regex VietnamE164Regex();
 
     private static readonly object FirebaseAppInitLock = new();
 
@@ -115,7 +116,7 @@ public class FirebasePhoneVerificationService : IFirebasePhoneVerificationServic
     /// không có đường nào để một số không phải Việt Nam lọt qua dưới dạng chuỗi gốc.
     /// </summary>
     private static string? ToLocalPhoneNumber(string e164Phone) =>
-        VietnamE164Pattern.IsMatch(e164Phone)
+        VietnamE164Regex().IsMatch(e164Phone)
             ? "0" + e164Phone[VietnamCountryCodePrefix.Length..]
             : null;
 
@@ -143,7 +144,7 @@ public class FirebasePhoneVerificationService : IFirebasePhoneVerificationServic
     /// tinh thần đã áp dụng cho PatientSelfRegistrationService/PasswordResetOtpService ở plan
     /// OTP trước đó, để 2 lớp độc lập hoàn toàn với nhau.
     /// </summary>
-    private void EnsureFirebaseAppInitialized(IConfiguration configuration)
+    private static void EnsureFirebaseAppInitialized(IConfiguration configuration)
     {
         if (FirebaseApp.DefaultInstance != null) return;
 
