@@ -55,4 +55,77 @@ public class CompleteRegistrationRequestValidatorTests
         var result = _sut.Validate(request);
         Assert.False(result.IsValid);
     }
+
+    [Theory]
+    [InlineData("FEMALE")]
+    [InlineData("MALE")]
+    [InlineData("OTHER")]
+    [InlineData("female")]
+    [InlineData("male")]
+    [InlineData("other")]
+    [InlineData("Female")]
+    public void Validate_ValidGender_Passes(string gender)
+    {
+        var request = ValidRequest() with { Gender = gender };
+        var result = _sut.Validate(request);
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Validate_NullOrEmptyGender_Passes(string? gender)
+    {
+        var request = ValidRequest() with { Gender = gender };
+        var result = _sut.Validate(request);
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData("INVALID")]
+    [InlineData("UNKNOWN")]
+    [InlineData("123")]
+    public void Validate_InvalidGender_Fails(string gender)
+    {
+        var request = ValidRequest() with { Gender = gender };
+        var result = _sut.Validate(request);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == "Gender" && e.ErrorMessage == "Gender must be FEMALE, MALE or OTHER.");
+    }
+
+    [Fact]
+    public void Validate_PasswordMissingUppercase_Fails()
+    {
+        var request = ValidRequest() with { Password = "password123", ConfirmPassword = "password123" };
+        var result = _sut.Validate(request);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.ErrorMessage.Contains("uppercase"));
+    }
+
+    [Fact]
+    public void Validate_PasswordTooShort_Fails()
+    {
+        var request = ValidRequest() with { Password = "Pass1", ConfirmPassword = "Pass1" };
+        var result = _sut.Validate(request);
+        Assert.False(result.IsValid);
+    }
+
+    [Fact]
+    public void Validate_InvalidEmail_Fails()
+    {
+        var request = ValidRequest() with { Email = "not-an-email" };
+        var result = _sut.Validate(request);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == "Email");
+    }
+
+    [Fact]
+    public void Validate_DateOfBirthInvalidFormat_Fails()
+    {
+        var request = ValidRequest() with { DateOfBirth = "15/05/1990" };
+        var result = _sut.Validate(request);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == "DateOfBirth");
+    }
 }

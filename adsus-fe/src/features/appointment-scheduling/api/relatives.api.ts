@@ -16,19 +16,31 @@ export async function getRelatives(): Promise<RelativeResponse[]> {
 /** GET /api/v1/relatives/guardian/{guardianUserId} — Staff lấy danh sách người thân của bệnh nhân */
 export async function getRelativesForGuardian(guardianUserId: string): Promise<RelativeResponse[]> {
   try {
-    const { data } = await apiClient.get<ApiResponse<RelativeResponse[]>>(
+    const { data } = await apiClient.get<ApiResponse<RelativesListResponse>>(
       `/api/v1/relatives/guardian/${guardianUserId}`
     );
-    return data.data ?? [];
+    return data.data?.relatives ?? [];
   } catch {
     return [];
   }
 }
 
-/** POST /api/v1/relatives — Thêm người thân mới */
+/** POST /api/v1/relatives — Thêm người thân mới (Bệnh nhân tự tạo) */
 export async function addRelative(request: AddRelativeRequest): Promise<RelativeResponse> {
   const { data } = await apiClient.post<RelativeResponse>("/api/v1/relatives", request);
   return data;
+}
+
+/** POST /api/v1/relatives/guardian/{guardianUserId} — Staff tạo người thân cho bệnh nhân */
+export async function addRelativeForGuardian(
+  guardianUserId: string,
+  request: AddRelativeRequest
+): Promise<RelativeResponse> {
+  const { data } = await apiClient.post<ApiResponse<RelativeResponse>>(
+    `/api/v1/relatives/guardian/${guardianUserId}`,
+    request
+  );
+  return data.data!;
 }
 
 /** GET /api/v1/relatives/check-phone?phone={phone} — Kiểm tra số điện thoại đã đăng ký tài khoản chưa */

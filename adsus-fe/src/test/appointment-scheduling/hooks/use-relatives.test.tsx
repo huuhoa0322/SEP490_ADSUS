@@ -8,9 +8,12 @@ import { API_BASE_URL } from "@/lib/api-client";
 import { server } from "@/test/mocks/server";
 import {
   useRelatives,
+  useRelativesForGuardian,
   useAddRelative,
+  useAddRelativeForGuardian,
   useCheckPhone,
 } from "@/features/appointment-scheduling/hooks/use-relatives";
+import type { AddRelativeRequest } from "@/features/appointment-scheduling/types/relatives.types";
 
 function createWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -114,5 +117,85 @@ describe("useRelatives", () => {
 
     const res2 = await result.current.mutateAsync("0911111111");
     expect(res2.isRegistered).toBe(false);
+  });
+
+  it("Staff lấy danh sách người thân theo guardianUserId qua useRelativesForGuardian", async () => {
+    server.use(
+      http.get(`${API_BASE_URL}/api/v1/relatives/guardian/guardian-123`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            relatives: [
+              {
+                relationshipId: "rel-guard-1",
+                patientProfileId: "prof-guard-1",
+                patientName: "Bé Con",
+                patientPhone: null,
+                dateOfBirth: "2022-01-01",
+                gender: "MALE",
+                relationshipName: "Con",
+                isRegisteredAccount: false,
+                createdAt: "2026-09-15T00:00:00Z",
+              },
+            ],
+          },
+        })
+      )
+    );
+
+    const { result } = renderHook(() => useRelativesForGuardian("guardian-123"), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toHaveLength(1);
+    expect(result.current.data?.[0].patientName).toBe("Bé Con");
+    expect(result.current.data?.[0].relationshipName).toBe("Con");
+  });
+
+  it("Staff thêm người thân mới cho bệnh nhân qua useAddRelativeForGuardian", async () => {
+    let capturedUrl = "";
+    let capturedBody: AddRelativeRequest | null = null;
+
+    server.use(
+      http.post(`${API_BASE_URL}/api/v1/relatives/guardian/:guardianUserId`, async ({ request }) => {
+        capturedUrl = request.url;
+        const reqBody = (await request.json()) as AddRelativeRequest;
+        capturedBody = reqBody;
+        return HttpResponse.json({
+          success: true,
+          data: {
+            relationshipId: "rel-guard-new",
+            patientProfileId: "prof-child-new",
+            patientName: reqBody.fullName,
+            patientPhone: reqBody.phone ?? null,
+            dateOfBirth: reqBody.dateOfBirth ?? null,
+            gender: null,
+            relationshipName: reqBody.relationshipName ?? null,
+            isRegisteredAccount: false,
+            createdAt: "2026-09-15T00:00:00Z",
+          },
+        });
+      })
+    );
+
+    const { result } = renderHook(() => useAddRelativeForGuardian("guardian-123"), {
+      wrapper: createWrapper(),
+    });
+
+    const added = await result.current.mutateAsync({
+      fullName: "Bé Gái",
+      dateOfBirth: "2023-05-10",
+      relationshipName: "Con gái",
+    });
+
+    expect(capturedUrl).toContain("/api/v1/relatives/guardian/guardian-123");
+    expect(capturedBody).toEqual({
+      fullName: "Bé Gái",
+      dateOfBirth: "2023-05-10",
+      relationshipName: "Con gái",
+    });
+    expect(added.relationshipId).toBe("rel-guard-new");
+    expect(added.patientName).toBe("Bé Gái");
   });
 });

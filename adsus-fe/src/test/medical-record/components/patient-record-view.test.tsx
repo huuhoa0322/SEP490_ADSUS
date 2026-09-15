@@ -14,6 +14,11 @@ vi.mock("@/features/medical-record/hooks/use-patient-profile", () => ({
 vi.mock("@/features/medical-record/hooks/use-cases", () => ({
   useCaseList: () => caseListMock(),
 }));
+vi.mock("@/features/appointment-scheduling/hooks/use-relatives", () => ({
+  useRelativesForGuardian: vi.fn(() => ({ data: [], isLoading: false })),
+  useAddRelativeForGuardian: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+  useCheckPhone: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+}));
 
 const profile = {
   patientProfileId: "profile-1",

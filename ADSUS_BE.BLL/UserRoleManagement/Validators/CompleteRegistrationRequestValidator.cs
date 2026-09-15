@@ -1,4 +1,5 @@
 using System.Globalization;
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using FluentValidation;
 
@@ -40,6 +41,11 @@ public class CompleteRegistrationRequestValidator : AbstractValidator<CompleteRe
             .EmailAddress().WithMessage("Email is not a valid address.")
             .MaximumLength(255).WithMessage("Email must not exceed 255 characters.")
             .When(x => !string.IsNullOrWhiteSpace(x.Email));
+
+        RuleFor(x => x.Gender)
+            .Must(value => EnumExtensions.ParseGenderType(value) is not null)
+            .When(x => !string.IsNullOrWhiteSpace(x.Gender))
+            .WithMessage("Gender must be FEMALE, MALE or OTHER.");
 
         RuleFor(x => x.DateOfBirth)
             .Must(BeAParsableDate).WithMessage("Date of birth must be in yyyy-MM-dd format.")
