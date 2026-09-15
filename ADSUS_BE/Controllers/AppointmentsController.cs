@@ -297,7 +297,7 @@ public sealed class AppointmentsController : ControllerBase
     /// Duy trì tương thích ngược khi chỉ truyền date.
     /// </summary>
     [HttpGet("checkin-queue")]
-    [Authorize(Roles = "STAFF,ADMIN,RECEPTIONIST")]
+    [Authorize(Roles = "STAFF,ADMIN")]
     [ProducesResponseType(typeof(ApiResponse<CheckinQueueResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCheckinQueue(
         [FromQuery] DateOnly? fromDate = null,
@@ -322,7 +322,7 @@ public sealed class AppointmentsController : ControllerBase
     /// Reuse logic BookAppointmentAsync, PatientProfileId từ body thay vì JWT.
     /// </summary>
     [HttpPost("book-for-patient")]
-    [Authorize(Roles = "STAFF,ADMIN,RECEPTIONIST")]
+    [Authorize(Roles = "STAFF,ADMIN")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -367,7 +367,7 @@ public sealed class AppointmentsController : ControllerBase
     /// POST /api/v1/appointments/{id}/reschedule — Đổi lịch hoặc tái đặt lịch hẹn cho Nurse / Lễ tân / Admin (Milestone 1).
     /// </summary>
     [HttpPost("{id:guid}/reschedule")]
-    [Authorize(Roles = "STAFF,ADMIN,RECEPTIONIST")]
+    [Authorize(Roles = "STAFF,ADMIN")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -399,7 +399,7 @@ public sealed class AppointmentsController : ControllerBase
     /// GET /api/v1/appointments/available-slots — Lấy danh sách slot còn trống cho Nurse / Lễ tân / Admin đổi lịch (Milestone 1).
     /// </summary>
     [HttpGet("available-slots")]
-    [Authorize(Roles = "STAFF,ADMIN,RECEPTIONIST")]
+    [Authorize(Roles = "STAFF,ADMIN")]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<OpenSlotResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAvailableSlots(
         [FromQuery] string? doctorId = null,

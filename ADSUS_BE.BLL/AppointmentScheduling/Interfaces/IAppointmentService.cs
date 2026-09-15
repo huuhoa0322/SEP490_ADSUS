@@ -146,7 +146,7 @@ public interface IAppointmentService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Đổi lịch hoặc tái đặt lịch hẹn bởi Nurse/Admin/Receptionist (Milestone 1).
+    /// Đổi lịch hoặc tái đặt lịch hẹn bởi Nurse/Admin/Staff (Milestone 1).
     /// Hỗ trợ 3 kịch bản: Booked (đổi lịch), Completed/Approved (tái đặt lịch), Cancelled/NoShow (khôi phục).
     /// </summary>
     Task<AppointmentResponse> RescheduleAppointmentAsync(
