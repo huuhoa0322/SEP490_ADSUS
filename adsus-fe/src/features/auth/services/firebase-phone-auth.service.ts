@@ -4,7 +4,7 @@ import {
   signInWithPhoneNumber,
 } from "firebase/auth";
 
-import { auth } from "@/lib/firebase";
+import { auth, isFirebaseConfigured } from "@/lib/firebase";
 
 let recaptchaVerifier: RecaptchaVerifier | null = null;
 
@@ -34,6 +34,10 @@ export function getRecaptchaVerifier(
 ): RecaptchaVerifier {
   if (typeof window === "undefined") {
     throw new Error("RecaptchaVerifier can only be initialized in browser environment.");
+  }
+
+  if (!isFirebaseConfigured()) {
+    throw new Error("Dịch vụ xác thực SMS chưa được cấu hình khóa API.");
   }
 
   if (!recaptchaVerifier) {
