@@ -1,12 +1,12 @@
 import { DoctorAvatar } from "./doctor-avatar";
 
 const DOCTOR = {
-  name: "BS. Nguyễn Văn Minh",
-  title: "Bác sĩ Chuyên khoa I — Siêu âm Sản khoa",
-  experience: "15 năm kinh nghiệm",
+  name: "BS.N.T.THUÝ",
+  title: "Bác sĩ Chuyên khoa — Sản phụ khoa",
+  experience: "Nhiều năm kinh nghiệm",
   intro:
-    "Hơn 15 năm kinh nghiệm trong lĩnh vực siêu âm sản khoa, chuyên khám thai, phát hiện dị tật thai nhi và theo dõi sức khỏe mẹ và bé.",
-  clinic: "Phòng khám Siêu âm ADSUS",
+    "Bác sĩ chuyên khoa Sản phụ khoa với nhiều năm kinh nghiệm trong khám thai, siêu âm thai, siêu âm tử cung phần phụ, khám phụ khoa và điều trị các bệnh lý cổ tử cung.",
+  clinic: "Phòng khám siêu âm C.A",
 };
 
 export function DoctorProfileSection() {

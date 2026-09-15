@@ -2,7 +2,7 @@ import Link from "next/link";
 
 const CLINIC_INFO = {
   name: "Phòng khám Siêu âm ADSUS",
-  address: "123 Nguyễn Trãi, Quận 1, TP. Hồ Chí Minh",
+  address: "QL2C-Đạo Tú-Tam Dương-Vĩnh Phúc",
   phone: "0901 234 567",
   hours: "Thứ 2 – Thứ 7: 7:00 – 17:00",
 };
