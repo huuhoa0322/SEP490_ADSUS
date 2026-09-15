@@ -20,6 +20,14 @@ vi.mock("@/features/appointment-scheduling/hooks/use-relatives", () => ({
     data: [],
     isLoading: false,
   })),
+  useAddRelativeForGuardian: vi.fn(() => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  })),
+  useCheckPhone: vi.fn(() => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  })),
 }));
 
 // Mock DatePicker to simple input for predictable testing in jsdom
@@ -335,5 +343,25 @@ describe("BookAppointmentModal", () => {
         relationshipId: "rel-10",
       });
     });
+  });
+
+  it("cho phép Staff mở modal Thêm người thân ngay khi danh sách người thân đang rỗng", async () => {
+    const { useRelativesForGuardian } = await import("@/features/appointment-scheduling/hooks/use-relatives");
+    vi.mocked(useRelativesForGuardian).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useRelativesForGuardian>);
+
+    render(<BookAppointmentModal {...defaultProps} patientUserId="user-mother" />);
+
+    expect(screen.getByText(/Người thân \(0\)/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByText(/Người thân \(0\)/i));
+
+    expect(screen.getByText(/Bệnh nhân chưa có hồ sơ người thân nào/i)).toBeInTheDocument();
+    const addBtn = screen.getByRole("button", { name: /Thêm ngay/i });
+    expect(addBtn).toBeInTheDocument();
+
+    fireEvent.click(addBtn);
+    expect(screen.getByText("Thêm người thân cho bệnh nhân")).toBeInTheDocument();
   });
 });

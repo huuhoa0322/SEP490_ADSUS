@@ -5,6 +5,7 @@ import {
   getRelatives,
   getRelativesForGuardian,
   addRelative,
+  addRelativeForGuardian,
   checkPhoneRegistered,
 } from "../api/relatives.api";
 import type { AddRelativeRequest } from "../types/relatives.types";
@@ -33,6 +34,27 @@ export function useAddRelative() {
   return useMutation({
     mutationFn: (request: AddRelativeRequest) => addRelative(request),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["relatives"] });
+    },
+  });
+}
+
+/** Staff tạo người thân cho bệnh nhân theo guardianUserId */
+export function useAddRelativeForGuardian(guardianUserId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: AddRelativeRequest) => {
+      if (!guardianUserId) {
+        throw new Error("Không có ID tài khoản bệnh nhân chính.");
+      }
+      return addRelativeForGuardian(guardianUserId, request);
+    },
+    onSuccess: () => {
+      if (guardianUserId) {
+        void queryClient.invalidateQueries({
+          queryKey: ["relatives", "guardian", guardianUserId],
+        });
+      }
       void queryClient.invalidateQueries({ queryKey: ["relatives"] });
     },
   });

@@ -3,6 +3,8 @@ import type { ApiResponse } from "@/types/api.types";
 
 import type {
   ChangePasswordRequest,
+  CompleteRegistrationRequest,
+  CompleteRegistrationResponseData,
   ForgotPasswordRequest,
   LoginRequest,
   LoginResponse,
@@ -23,6 +25,35 @@ export async function login(payload: LoginRequest): Promise<LoginResponse> {
   return data.data;
 }
 
+export async function completeRegistration(
+  payload: CompleteRegistrationRequest,
+): Promise<ApiResponse<CompleteRegistrationResponseData>> {
+  const { data } = await apiClient.post<ApiResponse<LoginResponse>>(
+    "/api/v1/auth/register/complete",
+    payload,
+  );
+
+  if (!data.data) {
+    throw new Error(data.message || "Đăng ký thất bại.");
+  }
+
+  const user = {
+    userId: data.data.userId,
+    fullName: data.data.fullName,
+    email: data.data.email,
+    role: data.data.role,
+    mustChangePassword: data.data.mustChangePassword,
+  };
+
+  return {
+    ...data,
+    data: {
+      ...data.data,
+      user,
+    },
+  };
+}
+
 /**
  * UC-03 FT-06 — yêu cầu cấp lại mật khẩu.
  *
@@ -37,3 +68,4 @@ export async function changePassword(payload: ChangePasswordRequest): Promise<vo
   // Requires authentication; the token is attached by the apiClient interceptor.
   await apiClient.post<ApiResponse<null>>("/api/v1/auth/change-password", payload);
 }
+

@@ -13,6 +13,7 @@ import {
   Info,
   Loader2,
   CalendarCheck,
+  Plus,
 } from "lucide-react";
 import {
   Dialog,
@@ -35,6 +36,7 @@ import {
 } from "../hooks/use-reschedule";
 import { useStaffBookAppointment } from "../hooks/use-staff-book-appointment";
 import { useRelativesForGuardian } from "@/features/appointment-scheduling/hooks/use-relatives";
+import { AddRelativeModal } from "@/features/appointment-scheduling/components/add-relative-modal";
 
 export interface BookAppointmentModalProps {
   patientProfileId: string;
@@ -56,6 +58,7 @@ export function BookAppointmentModal({
   // Form state
   const [targetType, setTargetType] = useState<"SELF" | "RELATIVE">("SELF");
   const [selectedRelativeId, setSelectedRelativeId] = useState<string>("");
+  const [isAddRelativeOpen, setIsAddRelativeOpen] = useState(false);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedSlotId, setSelectedSlotId] = useState<string>("");
@@ -155,6 +158,7 @@ export function BookAppointmentModal({
     setReason("");
     setTargetType("SELF");
     setSelectedRelativeId("");
+    setIsAddRelativeOpen(false);
     setValidationError(null);
     onOpenChange(false);
   };
@@ -198,9 +202,10 @@ export function BookAppointmentModal({
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
         if (!nextOpen) {
           handleResetAndClose();
         } else {
@@ -234,12 +239,26 @@ export function BookAppointmentModal({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* 0. Chọn đối tượng khám (nếu bệnh nhân có người thân) */}
-          {relatives.length > 0 && (
+          {/* 0. Chọn đối tượng khám (nếu bệnh nhân có tài khoản) */}
+          {Boolean(patientUserId) && (
             <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Đặt lịch cho
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Đặt lịch cho
+                </Label>
+                {targetType === "RELATIVE" && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsAddRelativeOpen(true)}
+                    className="h-6 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                  >
+                    <Plus className="size-3 mr-1" />
+                    Thêm người thân
+                  </Button>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -278,28 +297,60 @@ export function BookAppointmentModal({
               </div>
 
               {targetType === "RELATIVE" && (
-                <div className="pt-1.5 space-y-1">
-                  <Label htmlFor="book-relative" className="text-xs text-muted-foreground">
-                    Chọn người thân <span className="text-destructive">*</span>
-                  </Label>
-                  <select
-                    id="book-relative"
-                    value={selectedRelativeId}
-                    onChange={(e) => {
-                      setSelectedRelativeId(e.target.value);
-                      setValidationError(null);
-                    }}
-                    disabled={bookMutation.isPending}
-                    className="h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="">-- Chọn người thân --</option>
-                    {relatives.map((rel) => (
-                      <option key={rel.relationshipId} value={rel.relationshipId}>
-                        {rel.patientName} ({rel.relationshipName})
-                        {rel.dateOfBirth ? ` - Sinh: ${rel.dateOfBirth}` : ""}
-                      </option>
-                    ))}
-                  </select>
+                <div className="pt-1.5 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="book-relative" className="text-xs text-muted-foreground">
+                      Chọn người thân <span className="text-destructive">*</span>
+                    </Label>
+                  </div>
+
+                  {relatives.length === 0 ? (
+                    <div className="flex items-center justify-between rounded-md border border-dashed border-amber-300 bg-amber-50/50 p-2 text-xs text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-300">
+                      <span>Bệnh nhân chưa có hồ sơ người thân nào.</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsAddRelativeOpen(true)}
+                        className="h-7 text-xs border-amber-300 bg-white hover:bg-amber-50"
+                      >
+                        <Plus className="size-3 mr-1" />
+                        Thêm ngay
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <select
+                        id="book-relative"
+                        value={selectedRelativeId}
+                        onChange={(e) => {
+                          setSelectedRelativeId(e.target.value);
+                          setValidationError(null);
+                        }}
+                        disabled={bookMutation.isPending}
+                        className="h-9 flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <option value="">-- Chọn người thân --</option>
+                        {relatives.map((rel) => (
+                          <option key={rel.relationshipId} value={rel.relationshipId}>
+                            {rel.patientName} ({rel.relationshipName || "Người thân"})
+                            {rel.dateOfBirth ? ` - Sinh: ${rel.dateOfBirth}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsAddRelativeOpen(true)}
+                        className="h-9 shrink-0 text-xs px-2.5"
+                        title="Thêm người thân mới"
+                      >
+                        <Plus className="size-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:ml-1">Thêm</span>
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -457,5 +508,19 @@ export function BookAppointmentModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+
+    {isAddRelativeOpen && (
+      <AddRelativeModal
+        guardianUserId={patientUserId}
+        guardianName={patientName}
+        open={isAddRelativeOpen}
+        onOpenChange={setIsAddRelativeOpen}
+        onSuccess={(created) => {
+          setSelectedRelativeId(created.relationshipId);
+          setValidationError(null);
+        }}
+      />
+    )}
+  </>
+);
 }

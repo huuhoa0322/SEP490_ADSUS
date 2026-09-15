@@ -2,13 +2,13 @@ import { Activity, ScanLine, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { RegisterForm } from "@/features/auth/components/register-form";
 import { ServerStatusBadge } from "@/features/auth/components/server-status-badge";
-import { SignInForm } from "@/features/auth/components/sign-in-form";
 import { LOGIN_PALETTE_OVERRIDE } from "@/features/auth/constants/theme";
 
 export const metadata: Metadata = {
-  title: "Đăng nhập | ADSUS",
-  description: "Đăng nhập hệ thống ADSUS bằng số điện thoại và mật khẩu.",
+  title: "Đăng ký tài khoản bệnh nhân | ADSUS",
+  description: "Đăng ký tài khoản bệnh nhân trực tuyến trên hệ thống chẩn đoán ADSUS.",
 };
 
 const highlights = [
@@ -29,27 +29,18 @@ const highlights = [
   },
 ];
 
-// SCR-01 — web sign-in screen, used by Admin and Doctor.
-// Patients sign in through the mobile app (SCR-02) and never see this page.
-// Trang login giữ lại bảng màu navy/teal gốc (#223a66 / #1cba9f) của bản trước, không
-// theo bảng Indigo/Teal Preclinic (#2E37A4 / #00D3C7) áp cho phần còn lại của app —
-// ghi đè cục bộ 2 biến CSS ngay tại gốc cây DOM này, mọi utility bg-primary/text-accent...
-// bên trong (kể cả SignInForm, ServerStatusBadge) tự động đọc theo giá trị ghi đè.
-
-
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <main
       style={LOGIN_PALETTE_OVERRIDE}
       className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]"
     >
-      {/* Ping /api/health nền để đánh thức Backend Render sớm, và báo trạng thái ở góc
-          phải màn hình — tránh lần đăng nhập đầu chậm bất thường không rõ lý do. */}
+      {/* Ping /api/health to awaken backend early */}
       <ServerStatusBadge />
 
-      {/* Marketing column — hidden below 1024px so the form gets the full width */}
+      {/* Marketing column — hidden below 1024px so the form gets full width */}
       <section className="relative hidden overflow-hidden bg-gradient-to-br from-primary via-primary to-[#152744] px-14 py-16 text-primary-foreground lg:flex lg:flex-col lg:justify-center">
-        {/* Blurred blobs in the two accent colours, for depth */}
+        {/* Blurred blobs in the two accent colours */}
         <div
           aria-hidden
           className="pointer-events-none absolute -left-32 -top-32 size-[28rem] rounded-full bg-[var(--success)]/15 blur-3xl"
@@ -64,9 +55,7 @@ export default function LoginPage() {
             <span className="flex size-12 items-center justify-center rounded-full bg-[var(--success)]">
               <ScanLine className="size-6 text-white" />
             </span>
-            <span className="text-2xl font-bold tracking-[-0.02em]">
-              ADSUS
-            </span>
+            <span className="text-2xl font-bold tracking-[-0.02em]">ADSUS</span>
           </div>
 
           <h2 className="mt-14 text-[40px] font-bold leading-[1.15] tracking-[-0.02em]">
@@ -75,7 +64,6 @@ export default function LoginPage() {
             trên ảnh siêu âm
           </h2>
 
-          {/* Short accent rule under the heading — a recurring motif in the template */}
           <span
             aria-hidden
             className="mt-6 block h-1 w-16 rounded-full bg-[var(--success)]"
@@ -84,7 +72,7 @@ export default function LoginPage() {
           <p className="mt-6 text-[15px] leading-relaxed text-primary-foreground/65">
             Kết hợp trí tuệ nhân tạo với thông tin lâm sàng để rút ngắn thời gian đọc ảnh
             <br />
-            cho bác sĩ.
+            cho bác sĩ và hỗ trợ bệnh nhân theo dõi sức khỏe.
           </p>
 
           <ul className="mt-14 flex flex-col gap-7">
@@ -108,7 +96,7 @@ export default function LoginPage() {
       {/* Form column */}
       <section className="flex items-center justify-center bg-background px-6 py-14 sm:px-10">
         <div className="w-full max-w-md">
-          {/* Logo only on small screens, where the marketing column is hidden */}
+          {/* Logo only on small screens */}
           <div className="mb-10 flex items-center gap-3 lg:hidden">
             <span className="flex size-11 items-center justify-center rounded-full bg-primary">
               <ScanLine className="size-5 text-primary-foreground" />
@@ -118,10 +106,8 @@ export default function LoginPage() {
             </span>
           </div>
 
-          {/* SignInForm đọc query string (?expired=1) nên phải bọc Suspense — Next.js yêu
-              cầu vậy với trang dựng tĩnh. */}
           <Suspense fallback={<div className="min-h-96" />}>
-            <SignInForm />
+            <RegisterForm />
           </Suspense>
         </div>
       </section>

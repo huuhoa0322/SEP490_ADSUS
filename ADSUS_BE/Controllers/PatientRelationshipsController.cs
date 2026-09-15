@@ -12,7 +12,7 @@ namespace ADSUS_BE.Controllers;
 
 [ApiController]
 [Route("api/v1/relatives")]
-[Authorize(Roles = "PATIENT")]
+[Authorize]
 public sealed class PatientRelationshipsController : ControllerBase
 {
     private readonly IPatientRelationshipService _service;
@@ -36,6 +36,7 @@ public sealed class PatientRelationshipsController : ControllerBase
     /// Lấy danh sách người thân đã lưu.
     /// </summary>
     [HttpGet]
+    [Authorize(Roles = "PATIENT")]
     public async Task<ActionResult<RelativesListResponse>> GetRelatives(CancellationToken ct)
     {
         var result = await _service.GetRelativesAsync(GetCurrentUserId(), ct);
@@ -46,6 +47,7 @@ public sealed class PatientRelationshipsController : ControllerBase
     /// Lấy chi tiết một người thân.
     /// </summary>
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = "PATIENT")]
     public async Task<ActionResult<RelativeResponse>> GetRelative(Guid id, CancellationToken ct)
     {
         var result = await _service.GetRelativeByIdAsync(id, GetCurrentUserId(), ct);
@@ -57,6 +59,7 @@ public sealed class PatientRelationshipsController : ControllerBase
     /// Thêm người thân mới.
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "PATIENT")]
     public async Task<ActionResult<RelativeResponse>> AddRelative(
         [FromBody] AddRelativeRequest request,
         CancellationToken ct)
@@ -76,6 +79,7 @@ public sealed class PatientRelationshipsController : ControllerBase
     /// Cập nhật người thân.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "PATIENT")]
     public async Task<ActionResult<RelativeResponse>> UpdateRelative(
         Guid id,
         [FromBody] UpdateRelativeRequest request,
@@ -96,6 +100,7 @@ public sealed class PatientRelationshipsController : ControllerBase
     /// Xóa người thân.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "PATIENT")]
     public async Task<ActionResult> DeleteRelative(Guid id, CancellationToken ct)
     {
         try
@@ -124,26 +129,33 @@ public sealed class PatientRelationshipsController : ControllerBase
     /// POST /api/v1/relatives/guardian/{guardianUserId} — Staff tạo người thân cho mẹ
     /// </summary>
     [HttpPost("guardian/{guardianUserId:guid}")]
-    [Authorize(Roles = "STAFF,ADMIN,RECEPTIONIST")]
+    [Authorize(Roles = "STAFF,ADMIN")]
     public async Task<IActionResult> AddRelativeForGuardian(
         Guid guardianUserId,
         [FromBody] AddRelativeRequest request,
         CancellationToken ct = default)
     {
-        var guardian = await _db.Users.FirstOrDefaultAsync(
-            u => u.UserId == guardianUserId && u.Role == UserRole.Patient, ct);
-        if (guardian == null)
-            return NotFound(ApiResponse<object>.Fail(404, "Không tìm thấy tài khoản bệnh nhân."));
+        try
+        {
+            var guardian = await _db.Users.FirstOrDefaultAsync(
+                u => u.UserId == guardianUserId && u.Role == UserRole.Patient, ct);
+            if (guardian == null)
+                return NotFound(ApiResponse<object>.Fail(404, "Không tìm thấy tài khoản bệnh nhân."));
 
-        var result = await _service.AddRelativeAsync(request, guardianUserId, ct);
-        return Ok(ApiResponse<RelativeResponse>.Ok(result));
+            var result = await _service.AddRelativeAsync(request, guardianUserId, ct);
+            return Ok(ApiResponse<RelativeResponse>.Ok(result));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
+        }
     }
 
     /// <summary>
     /// GET /api/v1/relatives/guardian/{guardianUserId} — Staff lấy danh sách người thân của mẹ
     /// </summary>
     [HttpGet("guardian/{guardianUserId:guid}")]
-    [Authorize(Roles = "STAFF,ADMIN,RECEPTIONIST")]
+    [Authorize(Roles = "STAFF,ADMIN")]
     public async Task<IActionResult> GetRelativesForGuardian(
         Guid guardianUserId,
         CancellationToken ct = default)

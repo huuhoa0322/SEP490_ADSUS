@@ -29,6 +29,12 @@ vi.mock("@/features/medical-record/hooks/use-cases", () => ({
   useCaseList: (args: unknown) => caseListMock(args),
 }));
 
+vi.mock("@/features/appointment-scheduling/hooks/use-relatives", () => ({
+  useRelativesForGuardian: vi.fn(() => ({ data: [], isLoading: false })),
+  useAddRelativeForGuardian: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+  useCheckPhone: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+}));
+
 function signInAsDoctor() {
   useAuthStore.getState().signIn("access-token", "refresh-token", {
     userId: "doctor-1",

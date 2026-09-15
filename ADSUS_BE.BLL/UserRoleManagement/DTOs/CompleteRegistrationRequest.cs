@@ -9,4 +9,5 @@ public record CompleteRegistrationRequest(
     string Password,
     string ConfirmPassword,
     string? Email,
-    string? DateOfBirth);
+    string? DateOfBirth,
+    string? Gender = null);

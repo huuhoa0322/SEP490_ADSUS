@@ -6,22 +6,30 @@ import {
   Activity,
   ArrowLeft,
   Calendar,
+  CalendarCheck,
   Clock,
   Edit,
   Eye,
   FileText,
   Phone,
+  Plus,
   ShieldAlert,
   User,
+  UserPlus,
+  Users,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getApiErrorMessage } from "@/lib/api-client";
 
 import { useCaseList } from "../hooks/use-cases";
 import { usePatientProfile } from "../hooks/use-patient-profile";
+import { useRelativesForGuardian } from "@/features/appointment-scheduling/hooks/use-relatives";
+import { AddRelativeModal } from "@/features/appointment-scheduling/components/add-relative-modal";
+import { BookAppointmentModal } from "@/features/nurse-checkin/components/book-appointment-modal";
 import {
   EMPTY_VALUE,
   caseStatusLabel,
@@ -87,9 +95,21 @@ function renderStatusBadge(status: CaseStatus) {
  */
 export function PatientRecordView({ profileId }: { profileId: string }) {
   const [page, setPage] = useState(1);
+  const [isAddRelativeOpen, setIsAddRelativeOpen] = useState(false);
+  const [bookingPatient, setBookingPatient] = useState<{
+    profileId: string;
+    name: string;
+    phone: string | null;
+    userId?: string;
+  } | null>(null);
 
   const profileQuery = usePatientProfile(profileId);
   const caseListQuery = useCaseList({ patientProfileId: profileId, page, pageSize: 20 });
+
+  const EMPTY_GUID = "00000000-0000-0000-0000-000000000000";
+  const isRelative = !profileQuery.data?.patientUserId || profileQuery.data.patientUserId === EMPTY_GUID;
+  const relativesQuery = useRelativesForGuardian(!isRelative ? profileQuery.data?.patientUserId : undefined);
+  const relatives = relativesQuery.data ?? [];
 
   if (profileQuery.isLoading) {
     return (
@@ -114,8 +134,6 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
   const profile = profileQuery.data;
   const cases = caseListQuery.data;
   const ageStr = calculateAge(profile.dateOfBirth);
-  const EMPTY_GUID = "00000000-0000-0000-0000-000000000000";
-  const isRelative = !profile.patientUserId || profile.patientUserId === EMPTY_GUID;
 
   return (
     <div className="mx-auto w-[90%] max-w-[90%] py-8">
@@ -164,6 +182,30 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
 
           {/* Primary Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5">
+            <Button
+              onClick={() =>
+                setBookingPatient({
+                  profileId,
+                  name: profile.fullName,
+                  phone: profile.phone,
+                  userId: profile.patientUserId,
+                })
+              }
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#2E37A4] px-3.5 py-2 text-sm font-semibold text-white shadow-2xs hover:bg-[#252c85]"
+            >
+              <CalendarCheck className="size-4" />
+              Đặt lịch khám
+            </Button>
+            {!isRelative && (
+              <Button
+                variant="outline"
+                onClick={() => setIsAddRelativeOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#E7E8EB] bg-white px-3.5 py-2 text-sm font-semibold text-foreground shadow-2xs hover:bg-[#F5F6F8] hover:text-[#2E37A4]"
+              >
+                <UserPlus className="size-4" />
+                Thêm người thân
+              </Button>
+            )}
             <Link
               href={`/patients/${profileId}/profile`}
               className="inline-flex items-center gap-1.5 rounded-md border border-[#E7E8EB] bg-white px-3.5 py-2 text-sm font-semibold text-foreground shadow-2xs transition-colors hover:bg-[#F5F6F8] hover:text-[#2E37A4]"
@@ -198,6 +240,20 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
               <FileText className="size-4" />
               Hồ sơ Tiền sử & Lâm sàng
             </TabsTrigger>
+            {!isRelative && (
+              <TabsTrigger
+                value="relatives"
+                className="relative flex items-center gap-2 rounded-none border-b-2 border-transparent px-5 py-3 text-sm font-bold text-foreground/70 transition-all hover:text-foreground data-[state=active]:border-[#2E37A4] data-[state=active]:bg-transparent data-[state=active]:text-[#2E37A4] data-[state=active]:shadow-none"
+              >
+                <Users className="size-4" />
+                Người thân
+                {relatives.length > 0 ? (
+                  <Badge variant="soft-teal" className="ml-1 text-[11px] px-1.5 py-0.2">
+                    {relatives.length}
+                  </Badge>
+                ) : null}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* TAB 1: Lịch sử Ca khám */}
@@ -357,8 +413,149 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
               </span>
             </div>
           </TabsContent>
+
+          {/* TAB 3: Người thân liên kết */}
+          {!isRelative && (
+            <TabsContent value="relatives" className="space-y-4 outline-none">
+              <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 shadow-xs">
+                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-[#E7E8EB] pb-3">
+                  <div className="flex items-center gap-2">
+                    <Users className="size-5 text-[#2E37A4]" />
+                    <h3 className="font-heading text-base font-bold text-foreground">
+                      Danh sách người thân liên kết ({relatives.length})
+                    </h3>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => setIsAddRelativeOpen(true)}
+                    className="inline-flex items-center gap-1.5 bg-[#2E37A4] text-white hover:bg-[#252c85]"
+                  >
+                    <Plus className="size-4" />
+                    Thêm người thân
+                  </Button>
+                </div>
+
+                {relativesQuery.isLoading ? (
+                  <div className="p-8 text-center text-sm font-semibold text-foreground">
+                    Đang tải danh sách người thân...
+                  </div>
+                ) : relatives.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-[#E7E8EB] p-10 text-center">
+                    <Users className="mx-auto size-10 text-foreground/30" />
+                    <p className="mt-3 font-semibold text-foreground">Chưa có người thân nào</p>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                      Bệnh nhân chưa liên kết thông tin người thân để đặt lịch hoặc quản lý hồ sơ.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => setIsAddRelativeOpen(true)}
+                      className="mt-4 inline-flex items-center gap-1.5 bg-[#2E37A4] text-white hover:bg-[#252c85]"
+                    >
+                      <Plus className="size-4" />
+                      Thêm người thân ngay
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="border-b border-[#E7E8EB] bg-[#F9FAFB] text-xs font-bold text-foreground uppercase tracking-wider">
+                        <tr>
+                          <th className="px-4 py-3">Họ và tên</th>
+                          <th className="px-4 py-3">Quan hệ</th>
+                          <th className="px-4 py-3">Ngày sinh</th>
+                          <th className="px-4 py-3">Số điện thoại</th>
+                          <th className="px-4 py-3">Tài khoản riêng</th>
+                          <th className="px-4 py-3 text-right">Thao tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#E7E8EB]">
+                        {relatives.map((rel) => (
+                          <tr key={rel.relationshipId} className="hover:bg-[#F9FAFB] transition-colors">
+                            <td className="px-4 py-3.5 font-bold text-foreground">
+                              {rel.patientName}
+                            </td>
+                            <td className="px-4 py-3.5 text-foreground">
+                              <Badge variant="soft-primary" className="text-xs font-semibold">
+                                {rel.relationshipName || "Người thân"}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3.5 text-foreground/80 font-medium">
+                              {formatIsoDate(rel.dateOfBirth)}
+                            </td>
+                            <td className="px-4 py-3.5 font-mono text-xs text-foreground/80">
+                              {rel.patientPhone || EMPTY_VALUE}
+                            </td>
+                            <td className="px-4 py-3.5">
+                              {rel.isRegisteredAccount ? (
+                                <Badge variant="soft-success" className="text-xs">
+                                  Đã đăng ký
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-xs text-muted-foreground">
+                                  Chưa có tài khoản
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 text-right">
+                              <div className="inline-flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    setBookingPatient({
+                                      profileId: rel.patientProfileId,
+                                      name: rel.patientName,
+                                      phone: rel.patientPhone,
+                                      userId: profile.patientUserId,
+                                    })
+                                  }
+                                  className="h-8 gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 border-emerald-300 hover:bg-emerald-50"
+                                >
+                                  <CalendarCheck className="size-3.5" />
+                                  Đặt lịch
+                                </Button>
+                                <Link
+                                  href={`/patients/${rel.patientProfileId}`}
+                                  className="inline-flex h-8 items-center gap-1 rounded-md border border-[#E7E8EB] bg-white px-2.5 text-xs font-semibold text-foreground hover:bg-[#F5F6F8] hover:text-[#2E37A4]"
+                                >
+                                  <Eye className="size-3.5" />
+                                  Xem hồ sơ
+                                </Link>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
+
+      {/* Modal Thêm người thân */}
+      {isAddRelativeOpen && (
+        <AddRelativeModal
+          guardianUserId={profile.patientUserId}
+          guardianName={profile.fullName}
+          open={isAddRelativeOpen}
+          onOpenChange={setIsAddRelativeOpen}
+        />
+      )}
+
+      {/* Modal Đặt lịch khám */}
+      {bookingPatient && (
+        <BookAppointmentModal
+          patientProfileId={bookingPatient.profileId}
+          patientName={bookingPatient.name}
+          patientPhone={bookingPatient.phone}
+          patientUserId={bookingPatient.userId}
+          open={!!bookingPatient}
+          onOpenChange={(open) => !open && setBookingPatient(null)}
+        />
+      )}
     </div>
   );
 }
