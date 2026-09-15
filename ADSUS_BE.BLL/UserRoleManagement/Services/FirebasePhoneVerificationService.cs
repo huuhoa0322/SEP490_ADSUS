@@ -30,7 +30,7 @@ public partial class FirebasePhoneVerificationService : IFirebasePhoneVerificati
     // thực số điện thoại thay vì tin cậy hạn dùng mặc định của token (xem review cuối plan).
     private static readonly TimeSpan MaxPhoneVerificationAge = TimeSpan.FromMinutes(10);
 
-    [GeneratedRegex(@"^\+84\d{9}$")]
+    [GeneratedRegex(@"^\+84\d{9}$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex VietnamE164Regex();
 
     private static readonly object FirebaseAppInitLock = new();

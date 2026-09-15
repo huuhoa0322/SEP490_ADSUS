@@ -8,10 +8,10 @@ public static partial class HtmlHelper
 {
     private static readonly HtmlSanitizer _sanitizer = new();
 
-    [GeneratedRegex("<[^>]+>")]
+    [GeneratedRegex("<[^>]+>", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex HtmlTagRegex();
 
-    [GeneratedRegex(@"\s+")]
+    [GeneratedRegex(@"\s+", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex WhitespaceRegex();
 
     public static string StripToPlainText(string? input)
