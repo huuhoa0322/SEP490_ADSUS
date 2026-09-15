@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 
-const INITIALS = "NVM";
+const INITIALS = "NTT";
 
 interface DoctorAvatarProps {
   src: string;

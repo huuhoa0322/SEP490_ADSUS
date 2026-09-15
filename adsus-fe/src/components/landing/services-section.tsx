@@ -2,42 +2,94 @@ const SERVICES = [
   {
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-7">
-        <path d="M12 2a10 10 0 1 0 10 10" />
-        <path d="M12 6v6l4 2" />
-        <path d="M17 2v4h4" />
+        <circle cx="12" cy="12" r="9" />
+        <circle cx="12" cy="12" r="4" />
+        <circle cx="12" cy="12" r="1" fill="currentColor" />
       </svg>
     ),
-    title: "Siêu âm thai",
-    description: "Theo dõi sự phát triển của thai nhi qua từng giai đoạn, phát hiện sớm dị tật bẩm sinh.",
+    title: "Siêu âm thai (2D, 3D, 4D)",
+    description:
+      "Khám thai, theo dõi sự phát triển của thai nhi qua từng giai đoạn với hình ảnh 2D, 3D và 4D.",
   },
   {
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-7">
-        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+        <ellipse cx="12" cy="12" rx="9" ry="6" />
+        <path d="M3 12h18" />
       </svg>
     ),
-    title: "Siêu âm tim mạch",
-    description: "Đánh giá chức năng và cấu trúc tim, phát hiện bệnh lý tim bẩm sinh và mắc phải.",
+    title: "Siêu âm tử cung phần phụ",
+    description:
+      "Đánh giá tử cung, buồng trứng và các khối u phần phụ, phát hiện sớm bệnh lý phụ khoa.",
   },
   {
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-7">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M8 12h8M12 8v8" />
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.5-3.5" />
       </svg>
     ),
-    title: "Siêu âm bụng tổng quát",
-    description: "Khảo sát gan, thận, túi mật, tụy và các cơ quan bụng khác.",
+    title: "Soi cổ tử cung",
+    description:
+      "Quan sát trực tiếp cổ tử cung qua máy soi, phát hiện sớm các tổn thương và bất thường.",
   },
   {
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-7">
-        <path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-        <path d="M12 4v1M17.66 6.34l-.71.71M20 12h-1M17.66 17.66l-.71-.71M12 19v1M6.34 17.66l.71-.71M4 12h1M6.34 6.34l.71.71" />
+        <path d="M12 21s-7-4.5-7-11a7 7 0 0 1 14 0c0 6.5-7 11-7 11Z" />
+        <circle cx="12" cy="10" r="2.5" />
       </svg>
     ),
-    title: "Siêu âm 4D",
-    description: "Hình ảnh thai nhi 4 chiều trực quan, giúp phát hiện dị tật chính xác hơn.",
+    title: "Khám phụ khoa",
+    description:
+      "Khám, tư vấn và điều trị các bệnh lý phụ khoa thường gặp ở nữ giới.",
+  },
+  {
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-7">
+        <path d="M12 2v20" />
+        <path d="M5 8c0 3 3 5 7 5s7-2 7-5" />
+        <path d="M5 16c0 3 3 5 7 5s7-2 7-5" />
+      </svg>
+    ),
+    title: "Khám thai",
+    description:
+      "Theo dõi thai kỳ định kỳ, tư vấn dinh dưỡng và sức khỏe cho mẹ bầu trong suốt thai kỳ.",
+  },
+  {
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-7">
+        <path d="M13 2 4 14h7l-1 8 9-12h-7z" />
+      </svg>
+    ),
+    title: "Điều trị tổn thương cổ tử cung bằng đốt điện, nhiệt",
+    description:
+      "Đốt điện, đốt nhiệt các tổn thương cổ tử cung — phương pháp hiệu quả, an toàn.",
+  },
+  {
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-7">
+        <path d="M12 2v6" />
+        <path d="m6 8 6-6 6 6" />
+        <path d="M5 14h14l-2 8H7z" />
+      </svg>
+    ),
+    title: "Đốt, cắt sùi mào gà âm hộ, âm đạo, tầng sinh môn",
+    description:
+      "Đốt và cắt sùi mào gà vùng âm hộ, âm đạo, tầng sinh môn — đảm bảo thẩm mỹ, hạn chế tái phát.",
+  },
+  {
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-7">
+        <rect x="4" y="3" width="16" height="18" rx="2" />
+        <path d="M9 8h6" />
+        <path d="M9 12h6" />
+        <path d="M9 16h4" />
+      </svg>
+    ),
+    title: "Làm thuốc âm đạo",
+    description:
+      "Đặt thuốc âm đạo điều trị viêm nhiễm phụ khoa theo chỉ định của bác sĩ.",
   },
 ];
 
@@ -65,14 +117,14 @@ export function ServicesSection() {
               color: "var(--lp-navy)",
             }}
           >
-            Dịch vụ siêu âm chuyên sâu
+            Dịch vụ siêu âm & phụ khoa
           </h2>
           <p
             className="mx-auto mt-3 max-w-xl text-sm"
             style={{ color: "var(--lp-muted)" }}
           >
-            Phòng khám cung cấp đầy đủ các loại hình siêu âm chẩn đoán hình ảnh phổ biến
-            với máy móc hiện đại và đội ngũ bác sĩ giàu kinh nghiệm.
+            Phòng khám cung cấp đầy đủ các dịch vụ siêu âm, khám và điều trị
+            phụ khoa với máy móc hiện đại và đội ngũ bác sĩ chuyên môn.
           </p>
         </div>
 
