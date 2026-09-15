@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarX, RefreshCw } from "lucide-react";
+import { CalendarX, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tabs,
@@ -17,9 +17,13 @@ import { CancelAppointmentDialog } from "./cancel-appointment-dialog";
 import { useAppointmentHistory, useCancelMyAppointment } from "../hooks/use-appointment-history";
 import type { AppointmentSummaryResponse } from "../types/booking.types";
 
+const PAGE_SIZE = 10;
+
 export function AppointmentHistoryView() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"SELF" | "RELATIVE">("SELF");
+  const [selfPage, setSelfPage] = useState(1);
+  const [relativePage, setRelativePage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
 
@@ -30,7 +34,16 @@ export function AppointmentHistoryView() {
   const selfList = allAppointments.filter((a) => !a.isBookedForOthers);
   const relativeList = allAppointments.filter((a) => !!a.isBookedForOthers);
 
-  const currentList = activeTab === "SELF" ? selfList : relativeList;
+  // Pagination: slice theo PAGE_SIZE cho mỗi tab, độc lập state.
+  const selfTotalPages = Math.max(1, Math.ceil(selfList.length / PAGE_SIZE));
+  const relativeTotalPages = Math.max(1, Math.ceil(relativeList.length / PAGE_SIZE));
+  const currentPage = activeTab === "SELF" ? selfPage : relativePage;
+  const currentList = useMemo(() => {
+    const fullList = activeTab === "SELF" ? selfList : relativeList;
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return fullList.slice(start, start + PAGE_SIZE);
+  }, [activeTab, selfList, relativeList, currentPage]);
+
   const selectedAppointment = detailId
     ? allAppointments.find((a) => a.appointmentId === detailId) ?? null
     : null;
@@ -67,6 +80,22 @@ export function AppointmentHistoryView() {
     void router.push("/dat-lich");
   }
 
+  function handlePrevPage() {
+    if (activeTab === "SELF") {
+      setSelfPage((p) => Math.max(1, p - 1));
+    } else {
+      setRelativePage((p) => Math.max(1, p - 1));
+    }
+  }
+
+  function handleNextPage() {
+    if (activeTab === "SELF") {
+      setSelfPage((p) => Math.min(selfTotalPages, p + 1));
+    } else {
+      setRelativePage((p) => Math.min(relativeTotalPages, p + 1));
+    }
+  }
+
   return (
     <div className="mx-auto w-full max-w-screen-md px-4 py-8">
       <h1
@@ -80,7 +109,7 @@ export function AppointmentHistoryView() {
         value={activeTab}
         onValueChange={(v) => setActiveTab(v as "SELF" | "RELATIVE")}
       >
-        <TabsList className="mb-4 grid w-full grid-cols-2">
+        <TabsList className="mb-4 grid w-full grid-cols-2 rounded-xl p-1 [&>[data-state=active]]:bg-white [&>[data-state=active]]:text-[var(--lp-teal)] [&>[data-state=active]]:shadow-sm">
           <TabsTrigger value="SELF">
             Lịch của tôi ({selfList.length})
           </TabsTrigger>
@@ -107,15 +136,23 @@ export function AppointmentHistoryView() {
           ) : selfList.length === 0 ? (
             <EmptyState onNavigate={navigateToBooking} dataTestId="self-empty-state" />
           ) : (
-            <div className="flex flex-col gap-3">
-              {selfList.map((appt) => (
-                <AppointmentHistoryCard
-                  key={appt.appointmentId}
-                  appointment={appt}
-                  onClick={handleCardClick}
-                />
-              ))}
-            </div>
+            <>
+              <div className="flex flex-col gap-3">
+                {currentList.map((appt) => (
+                  <AppointmentHistoryCard
+                    key={appt.appointmentId}
+                    appointment={appt}
+                    onClick={handleCardClick}
+                  />
+                ))}
+              </div>
+              <Pagination
+                currentPage={selfPage}
+                totalPages={selfTotalPages}
+                onPrev={handlePrevPage}
+                onNext={handleNextPage}
+              />
+            </>
           )}
         </TabsContent>
 
@@ -137,15 +174,23 @@ export function AppointmentHistoryView() {
           ) : relativeList.length === 0 ? (
             <EmptyState onNavigate={navigateToBooking} dataTestId="relative-empty-state" />
           ) : (
-            <div className="flex flex-col gap-3">
-              {relativeList.map((appt) => (
-                <AppointmentHistoryCard
-                  key={appt.appointmentId}
-                  appointment={appt}
-                  onClick={handleCardClick}
-                />
-              ))}
-            </div>
+            <>
+              <div className="flex flex-col gap-3">
+                {currentList.map((appt) => (
+                  <AppointmentHistoryCard
+                    key={appt.appointmentId}
+                    appointment={appt}
+                    onClick={handleCardClick}
+                  />
+                ))}
+              </div>
+              <Pagination
+                currentPage={relativePage}
+                totalPages={relativeTotalPages}
+                onPrev={handlePrevPage}
+                onNext={handleNextPage}
+              />
+            </>
           )}
         </TabsContent>
       </Tabs>
@@ -204,6 +249,58 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
       >
         <RefreshCw className="size-4" />
         Thử lại
+      </Button>
+    </div>
+  );
+}
+
+function Pagination({
+  currentPage,
+  totalPages,
+  onPrev,
+  onNext,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div
+      className="mt-4 flex items-center justify-center gap-3"
+      data-testid="pagination"
+    >
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onPrev}
+        disabled={currentPage <= 1}
+        className="gap-1"
+        aria-label="Trang trước"
+      >
+        <ChevronLeft className="size-4" />
+        Trang trước
+      </Button>
+      <span
+        className="text-sm font-medium tabular-nums"
+        style={{ color: "var(--ink-navy)" }}
+        data-testid="pagination-label"
+      >
+        Trang {currentPage} / {totalPages}
+      </span>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onNext}
+        disabled={currentPage >= totalPages}
+        className="gap-1"
+        aria-label="Trang sau"
+      >
+        Trang sau
+        <ChevronRight className="size-4" />
       </Button>
     </div>
   );

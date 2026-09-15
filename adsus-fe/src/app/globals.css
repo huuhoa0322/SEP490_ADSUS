@@ -143,6 +143,12 @@
   --cat-text:    oklch(0.145 0 0);
   --cat-muted:   oklch(0.45 0 0);
 
+  /* Status tokens used by status badges across the app
+     (e.g. appointment-history-card status badges). Mapping từ docs/architecture.md /
+     .claude/rules/frontend.md. Đã có sẵn: --success / --success-light. Bổ sung: */
+  --danger:    #D8453B;
+  --amber-warn: #E8963C;
+
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
