@@ -165,30 +165,7 @@ describe("RegisterForm", () => {
         "/login",
       );
     });
-
-    it("shows Dev Hint banner with test phone 0981111005 and OTP 123456 in development mode", () => {
-      vi.stubEnv("NODE_ENV", "development");
-      renderRegisterForm();
-
-      expect(screen.getByRole("note")).toBeInTheDocument();
-      expect(screen.getByText(/chế độ phát triển \(dev hint\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/0981111005 \(\+84981111005\)/i)).toBeInTheDocument();
-      expect(screen.getByText("123456")).toBeInTheDocument();
-    });
-
-    it("clicking Dev Hint test phone fills the phone input field", () => {
-      vi.stubEnv("NODE_ENV", "development");
-      renderRegisterForm();
-
-      const devHintBtn = screen.getByRole("button", { name: /0981111005 \(\+84981111005\)/i });
-      fireEvent.click(devHintBtn);
-
-      const phoneInput = screen.getByLabelText(/số điện thoại/i) as HTMLInputElement;
-      expect(phoneInput.value).toBe("0981111005");
-    });
-
-    it("hides Dev Hint banner when NODE_ENV is production", () => {
-      vi.stubEnv("NODE_ENV", "production");
+    it("renders clean production UI without dev hint banners", () => {
       renderRegisterForm();
 
       expect(screen.queryByRole("note")).not.toBeInTheDocument();

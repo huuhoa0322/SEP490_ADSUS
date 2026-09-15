@@ -40,9 +40,6 @@ export default function RegisterPage() {
 
       {/* Marketing column — hidden below 1024px so the form gets full width */}
       <section className="relative hidden overflow-hidden bg-gradient-to-br from-primary via-primary to-[#152744] px-14 py-16 text-primary-foreground lg:flex lg:flex-col lg:justify-center">
-        {/* Faint oscilloscope-style grid */}
-        <div aria-hidden className="login-scan-grid pointer-events-none absolute inset-0" />
-
         {/* Blurred blobs in the two accent colours */}
         <div
           aria-hidden
@@ -52,9 +49,6 @@ export default function RegisterPage() {
           aria-hidden
           className="pointer-events-none absolute -bottom-40 -right-24 size-[26rem] rounded-full bg-chart-3/20 blur-3xl"
         />
-
-        {/* Probe scan beam */}
-        <div aria-hidden className="login-scan-beam pointer-events-none absolute inset-x-0 h-28" />
 
         <div className="relative max-w-2xl motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-left-4 motion-safe:duration-700">
           <div className="flex items-center gap-3.5">

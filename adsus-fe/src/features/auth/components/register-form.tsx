@@ -7,7 +7,6 @@ import {
   Check,
   Eye,
   EyeOff,
-  Info,
   KeyRound,
   Loader2,
   Lock,
@@ -33,6 +32,29 @@ import { PASSWORD_POLICY, type RegisterStep } from "../types/auth.types";
 const inputClass =
   "h-14 rounded-full border-border bg-white pl-12 pr-4 text-[15px] shadow-none " +
   "focus-visible:border-[var(--success)] focus-visible:ring-[var(--success)]/25";
+
+function mapFirebasePhoneAuthError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err || "");
+  if (msg.includes("billing-not-enabled")) {
+    return "Dịch vụ gửi mã xác thực SMS tạm thời không khả dụng. Vui lòng thử lại sau hoặc liên hệ bộ phận hỗ trợ.";
+  }
+  if (msg.includes("too-many-requests")) {
+    return "Bạn đã gửi quá nhiều yêu cầu xác thực. Vui lòng đợi vài phút rồi thử lại.";
+  }
+  if (msg.includes("invalid-phone-number")) {
+    return "Số điện thoại không hợp lệ.";
+  }
+  if (msg.includes("quota-exceeded")) {
+    return "Đã vượt quá hạn ngạch SMS trong ngày của Firebase. Vui lòng thử lại sau.";
+  }
+  if (msg.includes("invalid-verification-code")) {
+    return "Mã xác thực không chính xác.";
+  }
+  if (msg.includes("code-expired") || msg.includes("session-expired")) {
+    return "Mã xác thực đã hết hạn. Vui lòng gửi lại mã.";
+  }
+  return msg || "Không thể gửi mã xác thực SMS. Vui lòng kiểm tra lại số điện thoại.";
+}
 
 export function RegisterForm() {
   const [step, setStep] = useState<RegisterStep>("phone");
@@ -101,11 +123,7 @@ export function RegisterForm() {
       setCountdown(60);
       setStep("otp");
     } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Không thể gửi mã xác thực SMS. Vui lòng kiểm tra lại số điện thoại.";
-      setStepError(msg);
+      setStepError(mapFirebasePhoneAuthError(err));
     } finally {
       setIsSendingCode(false);
     }
@@ -133,11 +151,7 @@ export function RegisterForm() {
       setFirebaseIdToken(token);
       setStep("profile");
     } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Mã xác thực không chính xác hoặc đã hết hạn. Vui lòng thử lại.";
-      setStepError(msg);
+      setStepError(mapFirebasePhoneAuthError(err));
     } finally {
       setIsVerifyingOtp(false);
     }
@@ -153,11 +167,7 @@ export function RegisterForm() {
       setConfirmationResult(result);
       setCountdown(60);
     } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Không thể gửi lại mã xác thực. Vui lòng thử lại.";
-      setStepError(msg);
+      setStepError(mapFirebasePhoneAuthError(err));
     } finally {
       setIsSendingCode(false);
     }
@@ -322,32 +332,6 @@ export function RegisterForm() {
       {/* STEP 1: PHONE NUMBER */}
       {activeStep === "phone" && (
         <form onSubmit={handleSendOtp} noValidate className="flex flex-col gap-5">
-          {/* Dev Hint banner in development mode */}
-          {process.env.NODE_ENV === "development" && (
-            <div
-              className="rounded-2xl border border-dashed border-[var(--accent)]/40 bg-[var(--accent)]/10 p-4 text-xs text-foreground"
-              role="note"
-            >
-              <div className="flex items-center gap-1.5 font-bold text-[var(--accent)]">
-                <Info className="size-4 shrink-0" />
-                <span>Chế độ phát triển (Dev Hint)</span>
-              </div>
-              <p className="mt-1.5 text-muted-foreground leading-relaxed">
-                Số điện thoại test Firebase:{" "}
-                <button
-                  type="button"
-                  onClick={() => setPhoneNumber("0981111005")}
-                  className="font-mono font-bold text-foreground underline hover:text-[var(--success)]"
-                  title="Nhấn để điền số test"
-                >
-                  0981111005 (+84981111005)
-                </button>
-                <br />
-                Mã OTP thử nghiệm: <strong className="font-mono text-foreground">123456</strong>
-              </p>
-            </div>
-          )}
-
           <div className="flex flex-col gap-2.5">
             <Label
               htmlFor="phoneNumber"
