@@ -34,7 +34,10 @@ const inputClass =
   "focus-visible:border-[var(--success)] focus-visible:ring-[var(--success)]/25";
 
 function mapFirebasePhoneAuthError(err: unknown): string {
-  const msg = err instanceof Error ? err.message : String(err || "");
+  if (!(err instanceof Error)) {
+    return "Không thể gửi mã xác thực SMS. Vui lòng kiểm tra lại số điện thoại.";
+  }
+  const msg = err.message || "";
   if (msg.includes("billing-not-enabled")) {
     return "Dịch vụ gửi mã xác thực SMS tạm thời không khả dụng. Vui lòng thử lại sau hoặc liên hệ bộ phận hỗ trợ.";
   }
