@@ -24,9 +24,9 @@ export function SlotGrid({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+        <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
           Khung giờ khả dụng
-        </label>
+        </span>
         {selectedDoctorId && selectedDate && slots.length > 0 && (
           <span className="text-xs text-muted-foreground">
             {slots.length} khung giờ trống

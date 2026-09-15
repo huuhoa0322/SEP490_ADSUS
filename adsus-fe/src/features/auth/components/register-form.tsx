@@ -199,7 +199,7 @@ export function RegisterForm() {
       return;
     }
 
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    if (email.trim() && !/^[^\s@]{1,64}@[^\s@]{1,253}\.[^\s@]{1,63}$/.test(email.trim())) {
       setStepError("Địa chỉ email không hợp lệ.");
       return;
     }

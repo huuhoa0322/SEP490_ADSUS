@@ -312,10 +312,10 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         _db.SaveChanges();
 
         // Act: Doctor or system triggers RecycleCompletedEarlySlotsAsync
-        await _appointmentService.RecycleCompletedEarlySlotsAsync(_doctorId);
+        await _appointmentService.RecycleCompletedEarlySlotsAsync(_doctorId, TestContext.Current.CancellationToken);
 
         // Assert: Slot status transitioned to Open
-        var updatedSlot = await _db.ScheduleSlots.FindAsync(slot.SlotId);
+        var updatedSlot = await _db.ScheduleSlots.FindAsync(new object[] { slot.SlotId }, TestContext.Current.CancellationToken);
         Assert.NotNull(updatedSlot);
         Assert.Equal(SlotStatus.Open, updatedSlot.Status);
     }
@@ -341,10 +341,10 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         _db.SaveChanges();
 
         // Act: Doctor presses "Ready for next patient"
-        await _appointmentService.ReadyForNextPatientAsync(_doctorId);
+        await _appointmentService.ReadyForNextPatientAsync(_doctorId, TestContext.Current.CancellationToken);
 
         // Assert: Slot recycled to Open
-        var updatedSlot = await _db.ScheduleSlots.FindAsync(slot.SlotId);
+        var updatedSlot = await _db.ScheduleSlots.FindAsync(new object[] { slot.SlotId }, TestContext.Current.CancellationToken);
         Assert.NotNull(updatedSlot);
         Assert.Equal(SlotStatus.Open, updatedSlot.Status);
 
@@ -401,11 +401,11 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         _db.SaveChanges();
 
         // Act
-        await _appointmentService.RecycleCompletedEarlySlotsAsync(_doctorId);
+        await _appointmentService.RecycleCompletedEarlySlotsAsync(_doctorId, TestContext.Current.CancellationToken);
 
         // Assert: Neither slot is recycled to Open
-        var updatedSlot1 = await _db.ScheduleSlots.FindAsync(slot1.SlotId);
-        var updatedSlot2 = await _db.ScheduleSlots.FindAsync(slot2.SlotId);
+        var updatedSlot1 = await _db.ScheduleSlots.FindAsync(new object[] { slot1.SlotId }, TestContext.Current.CancellationToken);
+        var updatedSlot2 = await _db.ScheduleSlots.FindAsync(new object[] { slot2.SlotId }, TestContext.Current.CancellationToken);
         Assert.Equal(SlotStatus.Booked, updatedSlot1!.Status);
         Assert.Equal(SlotStatus.Booked, updatedSlot2!.Status);
     }
@@ -450,14 +450,14 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
             Reason = "Khám lại sau khi slot mở"
         };
 
-        var response = await _appointmentService.BookAppointmentAsync(_patientUserId, _patientProfileId, request);
+        var response = await _appointmentService.BookAppointmentAsync(_patientUserId, _patientProfileId, request, ct: TestContext.Current.CancellationToken);
 
         // Assert: Booking succeeds 100%, status is Booked, slot status updated to Booked
         Assert.NotNull(response);
         Assert.Equal(AppointmentStatus.Booked, response.Status);
         Assert.Equal(slot.SlotId, response.ScheduleSlotId);
 
-        var updatedSlot = await _db.ScheduleSlots.FindAsync(slot.SlotId);
+        var updatedSlot = await _db.ScheduleSlots.FindAsync(new object[] { slot.SlotId }, TestContext.Current.CancellationToken);
         Assert.Equal(SlotStatus.Booked, updatedSlot!.Status);
     }
 
@@ -498,7 +498,8 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         var openSlots = await _appointmentService.ListOpenSlotsAsync(
             doctorId: _doctorId.ToString(),
             fromDate: todayVn,
-            toDate: todayVn);
+            toDate: todayVn,
+            ct: TestContext.Current.CancellationToken);
 
         // Assert: The slot is NOT in the open slots list because Case is InProgress
         Assert.DoesNotContain(openSlots, s => s.SlotId == slot.SlotId);
@@ -537,7 +538,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.BookAppointmentAsync(_patientUserId, _patientProfileId, request));
+            () => _appointmentService.BookAppointmentAsync(_patientUserId, _patientProfileId, request, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("Slot này đã có người đặt hoặc đang có ca khám.", ex.Message);
     }
@@ -576,7 +577,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.CreateFollowUpAppointmentAsync(_doctorId, request));
+            () => _appointmentService.CreateFollowUpAppointmentAsync(_doctorId, request, TestContext.Current.CancellationToken));
 
         Assert.Contains("Khung giờ này hiện không khả dụng để đặt tái khám.", ex.Message);
     }
@@ -629,7 +630,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.RescheduleAppointmentAsync(oldAppt.AppointmentId, request));
+            () => _appointmentService.RescheduleAppointmentAsync(oldAppt.AppointmentId, request, TestContext.Current.CancellationToken));
 
         Assert.Contains("Khung giờ mới này đã có người đặt hoặc đang có ca khám.", ex.Message);
     }
@@ -654,7 +655,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
 
         // Act: Staff books with isStaffOverride = true
         var response = await _appointmentService.BookAppointmentAsync(
-            _staffUserId, _patientProfileId, request, isStaffOverride: true);
+            _staffUserId, _patientProfileId, request, isStaffOverride: true, ct: TestContext.Current.CancellationToken);
 
         // Assert: Booking succeeds
         Assert.NotNull(response);
@@ -678,7 +679,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         // Act & Assert: Staff books past 5 minutes -> Throws exception
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _appointmentService.BookAppointmentAsync(
-                _staffUserId, _patientProfileId, request, isStaffOverride: true));
+                _staffUserId, _patientProfileId, request, isStaffOverride: true, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("Đã quá 5 phút kể từ đầu ca. Vui lòng đặt vào slot tiếp theo rồi đẩy khám sớm.", ex.Message);
     }
@@ -722,7 +723,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _appointmentService.BookAppointmentAsync(
-                _staffUserId, _patientProfileId, request, isStaffOverride: true));
+                _staffUserId, _patientProfileId, request, isStaffOverride: true, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("Slot này đã có người đặt hoặc đang có ca khám.", ex.Message);
     }
@@ -743,7 +744,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         // Act & Assert: isStaffOverride = false -> Throws
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _appointmentService.BookAppointmentAsync(
-                _patientUserId, _patientProfileId, request, isStaffOverride: false));
+                _patientUserId, _patientProfileId, request, isStaffOverride: false, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("Không thể đặt lịch vào khung giờ đã qua.", ex.Message);
     }
@@ -781,16 +782,16 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         // Verify patient herself would be blocked by Pool 1 & Pool 3 limits
         var patientReq4 = new BookAppointmentRequest { ScheduleSlotId = slot4.SlotId, Reason = "Bệnh nhân tự đặt lần 4" };
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.BookAppointmentAsync(_patientUserId, _patientProfileId, patientReq4, isStaffOverride: false));
+            () => _appointmentService.BookAppointmentAsync(_patientUserId, _patientProfileId, patientReq4, isStaffOverride: false, ct: TestContext.Current.CancellationToken));
         Assert.Contains("lịch hẹn đang chờ", ex.Message);
 
         // Act: Staff books the 4th appointment
         var staffReq4 = new BookAppointmentRequest { ScheduleSlotId = slot4.SlotId, Reason = "Staff hỗ trợ đặt lần 4" };
-        var res4 = await _appointmentService.BookAppointmentAsync(_staffUserId, _patientProfileId, staffReq4, isStaffOverride: true);
+        var res4 = await _appointmentService.BookAppointmentAsync(_staffUserId, _patientProfileId, staffReq4, isStaffOverride: true, ct: TestContext.Current.CancellationToken);
 
         // Act: Staff books the 5th appointment
         var staffReq5 = new BookAppointmentRequest { ScheduleSlotId = slot5.SlotId, Reason = "Staff hỗ trợ đặt lần 5" };
-        var res5 = await _appointmentService.BookAppointmentAsync(_staffUserId, _patientProfileId, staffReq5, isStaffOverride: true);
+        var res5 = await _appointmentService.BookAppointmentAsync(_staffUserId, _patientProfileId, staffReq5, isStaffOverride: true, ct: TestContext.Current.CancellationToken);
 
         // Assert: Both 4th and 5th bookings succeed!
         Assert.NotNull(res4);
@@ -824,13 +825,13 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         // 1. Verify patient herself is blocked by Same-Day limit
         var patientReq = new BookAppointmentRequest { ScheduleSlotId = afternoonSlot.SlotId, Reason = "Tự đặt ca chiều" };
         var patientEx = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.BookAppointmentAsync(_patientUserId, _patientProfileId, patientReq, isStaffOverride: false));
+            () => _appointmentService.BookAppointmentAsync(_patientUserId, _patientProfileId, patientReq, isStaffOverride: false, ct: TestContext.Current.CancellationToken));
         Assert.Contains("Mỗi ngày chỉ được đặt tối đa 1 lịch", patientEx.Message);
 
         // 2. Verify Staff is ALSO blocked by Same-Day limit (1 patient can only have 1 Booked appointment per day)
         var staffReq = new BookAppointmentRequest { ScheduleSlotId = afternoonSlot.SlotId, Reason = "Staff đặt thêm ca chiều" };
         var staffEx = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.BookAppointmentAsync(_staffUserId, _patientProfileId, staffReq, isStaffOverride: true));
+            () => _appointmentService.BookAppointmentAsync(_staffUserId, _patientProfileId, staffReq, isStaffOverride: true, ct: TestContext.Current.CancellationToken));
         Assert.Contains("Mỗi ngày chỉ được đặt tối đa 1 lịch", staffEx.Message);
     }
 
@@ -904,14 +905,14 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         };
 
         var response = await _appointmentService.BookAppointmentAsync(
-            _staffUserId, _staffProfileId, request, isStaffOverride: true);
+            _staffUserId, _staffProfileId, request, isStaffOverride: true, ct: TestContext.Current.CancellationToken);
 
         // Assert:
         Assert.NotNull(response);
         Assert.Equal(AppointmentStatus.Booked, response.Status);
 
         // Verify stored appointment in database
-        var createdAppt = await _db.Appointments.FirstOrDefaultAsync(a => a.AppointmentId == response.AppointmentId);
+        var createdAppt = await _db.Appointments.FirstOrDefaultAsync(a => a.AppointmentId == response.AppointmentId, TestContext.Current.CancellationToken);
         Assert.NotNull(createdAppt);
         Assert.Equal(daughterProfileId, createdAppt.PatientProfileId);
         Assert.Equal(motherUserId, createdAppt.BookedByUserId); // Assigned to MotherUserId, NOT StaffUserId!
@@ -942,7 +943,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => _appointmentService.BookAppointmentAsync(
-                _staffUserId, _staffProfileId, request, isStaffOverride: true));
+                _staffUserId, _staffProfileId, request, isStaffOverride: true, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("Không tìm thấy mối quan hệ này trong danh bạ.", ex.Message);
     }
@@ -988,7 +989,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         _db.SaveChanges();
 
         // Act: Process No-Show
-        var result = await _noShowService.ProcessNoShowAsync(appt);
+        var result = await _noShowService.ProcessNoShowAsync(appt, TestContext.Current.CancellationToken);
 
         // Assert:
         Assert.True(result.WasProcessed);
@@ -1022,7 +1023,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         _db.SaveChanges();
 
         // Act: Process No-Show
-        var result = await _noShowService.ProcessNoShowAsync(appt);
+        var result = await _noShowService.ProcessNoShowAsync(appt, TestContext.Current.CancellationToken);
 
         // Assert: Not processed, remains Booked
         Assert.False(result.WasProcessed);
@@ -1117,7 +1118,8 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
             _patientProfileId,
             _doctorId,
             visitDate,
-            symptoms: null);
+            symptoms: null,
+            ct: TestContext.Current.CancellationToken);
 
         // Assert: No exception thrown, case created with Booked status and empty CaseSymptoms
         Assert.NotEqual(Guid.Empty, caseId);
@@ -1167,7 +1169,8 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
             _patientProfileId,
             _doctorId,
             visitDate,
-            symptoms);
+            symptoms,
+            TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(createdCase);

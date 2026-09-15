@@ -35,9 +35,9 @@ export function WeekSelector({
 
   return (
     <div className="space-y-2">
-      <label className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+      <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
         Chọn tuần khám
-      </label>
+      </span>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         {weeks.map((w) => {
           const isSelected = selectedWeekIndex === w.index;

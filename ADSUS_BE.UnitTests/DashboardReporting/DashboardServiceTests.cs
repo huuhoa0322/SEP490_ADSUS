@@ -335,12 +335,12 @@ public class DashboardServiceTests
 
         var result = await _sut.GetStatisticsAsync(null, null, TestContext.Current.CancellationToken);
 
-        Assert.Single(result.TopMedicines);
-        Assert.Equal(medId, result.TopMedicines[0].MedicineId);
-        Assert.Equal("Paracetamol 500mg", result.TopMedicines[0].MedicineName);
-        Assert.Equal(25, result.TopMedicines[0].PrescriptionCount);
-        Assert.Equal(750, result.TopMedicines[0].TotalQuantityBase);
-        Assert.Equal("Viên", result.TopMedicines[0].Unit);
+        var topMedicine = Assert.Single(result.TopMedicines);
+        Assert.Equal(medId, topMedicine.MedicineId);
+        Assert.Equal("Paracetamol 500mg", topMedicine.MedicineName);
+        Assert.Equal(25, topMedicine.PrescriptionCount);
+        Assert.Equal(750, topMedicine.TotalQuantityBase);
+        Assert.Equal("Viên", topMedicine.Unit);
     }
 
     [Fact]

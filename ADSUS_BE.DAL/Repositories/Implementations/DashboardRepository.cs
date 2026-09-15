@@ -230,6 +230,9 @@ public class DashboardRepository : IDashboardRepository
             .GroupBy(m => m.InvoiceId)
             .ToDictionary(g => g.Key, g => g.Select(m => m.PrescriptionItemId).Distinct().ToList());
 
+        static decimal SumItemCosts(List<Guid> itemIds, Dictionary<Guid, decimal> costMap) =>
+            itemIds.Sum(id => costMap.GetValueOrDefault(id, 0m));
+
         var dailyFinances = paidInvoices
             .GroupBy(i => i.Date)
             .ToDictionary(
@@ -238,13 +241,9 @@ public class DashboardRepository : IDashboardRepository
                 {
                     var rev = g.Sum(i => i.TotalAmount);
                     var cost = g.Sum(i =>
-                    {
-                        if (invoiceToPItems.TryGetValue(i.Id, out var itemIds))
-                        {
-                            return itemIds.Sum(id => costByPrescriptionItem.GetValueOrDefault(id, 0m));
-                        }
-                        return 0m;
-                    });
+                        invoiceToPItems.TryGetValue(i.Id, out var itemIds)
+                            ? SumItemCosts(itemIds, costByPrescriptionItem)
+                            : 0m);
                     return new { Revenue = rev, Profit = rev - cost };
                 });
 
