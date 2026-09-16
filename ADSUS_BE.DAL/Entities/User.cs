@@ -34,11 +34,6 @@ public partial class User
     /// </summary>
     public bool MustChangePassword { get; set; }
 
-    /// <summary>
-    /// Cờ bật đăng nhập sinh trắc học (FT-03). Mẫu vân tay/khuôn mặt nằm trong secure enclave của OS — KHÔNG BAO GIỜ lưu trong DB.
-    /// </summary>
-    public bool BiometricEnabled { get; set; }
-
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

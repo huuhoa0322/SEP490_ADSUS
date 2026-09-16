@@ -121,7 +121,6 @@ public class UserAccountService : IUserAccountService
             Status = UserStatus.Active,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(temporaryPassword),
             MustChangePassword = true,
-            BiometricEnabled = false,
             // BR-01 — vai trò PATIENT thì bỏ qua ngày sinh dù client có gửi lên.
             DateOfBirth = role.Value == UserRole.Patient ? null : ParseDateOrNull(request.DateOfBirth),
             CreatedAt = now,

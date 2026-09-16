@@ -46,14 +46,4 @@ void main() {
     final sauKhiBam = tester.widget<TextField>(find.byType(TextField).at(1));
     expect(sauKhiBam.obscureText, isFalse);
   });
-
-  testWidgets('Nut dang nhap van tay KHONG hien khi chua ghep doi thiet bi',
-      (tester) async {
-    // UC-02 BR-01: chưa từng đăng nhập bằng mật khẩu trên máy này thì không được
-    // phép dùng sinh trắc học.
-    await tester.pumpWidget(dungManDangNhap());
-    await tester.pump();
-
-    expect(find.text('ĐĂNG NHẬP BẰNG VÂN TAY'), findsNothing);
-  });
 }

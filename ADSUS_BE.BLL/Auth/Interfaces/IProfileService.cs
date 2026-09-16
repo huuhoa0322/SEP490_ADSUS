@@ -20,19 +20,4 @@ public interface IProfileService
         Guid userId,
         UpdateProfileRequest request,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// UC-02 — bật hoặc tắt đăng nhập sinh trắc học cho tài khoản.
-    ///
-    /// BR-01 được thoả mãn về mặt thiết kế: endpoint này cần [Authorize], nghĩa là người
-    /// gọi đã đăng nhập bằng mật khẩu thành công ít nhất một lần rồi. Không thể bật sinh
-    /// trắc học mà chưa từng đăng nhập.
-    ///
-    /// Mẫu vân tay/khuôn mặt KHÔNG BAO GIỜ gửi lên hay lưu ở server — nó nằm trong secure
-    /// enclave của điện thoại. Server chỉ giữ đúng một cờ bật/tắt.
-    /// </summary>
-    Task<ProfileOperationResult> SetBiometricEnabledAsync(
-        Guid userId,
-        bool enabled,
-        CancellationToken cancellationToken = default);
 }

@@ -1,5 +1,4 @@
 import 'package:adsus_mobile/core/network/api_exception.dart';
-import 'package:adsus_mobile/features/auth/data/repositories/biometric_service.dart';
 import 'package:adsus_mobile/features/auth/domain/entities/auth_session.dart';
 import 'package:adsus_mobile/features/auth/domain/repositories/auth_repository.dart';
 import 'package:adsus_mobile/features/auth/presentation/viewmodels/auth_view_model.dart';
@@ -12,8 +11,6 @@ import 'package:mocktail/mocktail.dart';
 
 class _MockAuthRepository extends Mock implements AuthRepository {}
 
-class _MockBiometricService extends Mock implements BiometricService {}
-
 class _MockMedicalRecordRepository extends Mock implements MedicalRecordRepository {}
 
 void main() {
@@ -22,13 +19,8 @@ void main() {
 
   setUp(() {
     authRepo = _MockAuthRepository();
-    final biometricService = _MockBiometricService();
     final medicalRepo = _MockMedicalRecordRepository();
 
-    // AuthViewModel's constructor calls _loadBiometricStatus() — needed because
-    // clearMustChangePassword() (called on submit success) reads authViewModelProvider.
-    when(() => biometricService.isAvailable()).thenAnswer((_) async => false);
-    when(() => authRepo.isBiometricPaired()).thenAnswer((_) async => false);
     // AuthViewModel.signIn() invalidates medicalRecordListViewModelProvider, which rebuilds
     // and calls getMyRecords() — must be stubbed or mocktail returns null for an unstubbed
     // Future<List<...>>, crashing the rebuild (same stub as auth_view_model_test.dart).
@@ -37,7 +29,6 @@ void main() {
     container = ProviderContainer(
       overrides: [
         authRepositoryProvider.overrideWithValue(authRepo),
-        biometricServiceProvider.overrideWithValue(biometricService),
         medicalRecordRepositoryProvider.overrideWithValue(medicalRepo),
       ],
     );

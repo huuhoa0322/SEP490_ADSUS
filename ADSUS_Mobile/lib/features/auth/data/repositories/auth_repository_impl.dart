@@ -53,17 +53,10 @@ class AuthRepositoryImpl implements AuthRepository {
         );
       }
 
-      // Đổi sang tài khoản khác thì phải xoá trạng thái sinh trắc học của người trước.
-      // Không có bước này, người sau sẽ thừa hưởng nút vân tay mà chính họ chưa hề bật.
-      final pairedPhoneOnDevice = await _storage.read(key: StorageKeys.pairedPhone);
-      if (pairedPhoneOnDevice != null && pairedPhoneOnDevice != phoneNumber) {
-        await _storage.delete(key: StorageKeys.biometricEnabled);
-      }
-
       await _storage.write(key: StorageKeys.accessToken, value: session.accessToken);
 
-      // UC-02 BR-01: ghi lại rằng máy này đã đăng nhập bằng mật khẩu thành công.
-      // Đây chính là bước "ghép đôi thiết bị" mà sinh trắc học yêu cầu.
+      // Ghi lại số điện thoại đang đăng nhập trên máy này — dùng để phân biệt cache
+      // reminder preferences giữa các tài khoản (xem reminder_preference_store.dart).
       await _storage.write(key: StorageKeys.pairedPhone, value: phoneNumber);
 
       // Register FCM token to backend for push notifications.
@@ -153,40 +146,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> setBiometricEnabled(bool enabled) async {
-    try {
-      await _dio.put<Map<String, dynamic>>(
-        ApiConstants.myBiometric,
-        data: {'enabled': enabled},
-      );
-      await _storage.write(
-        key: StorageKeys.biometricEnabled,
-        value: enabled.toString(),
-      );
-    } on DioException catch (e) {
-      throw ApiErrorMapper.general(e, fallback: 'Không đổi được cài đặt sinh trắc học.');
-    }
-  }
-
-  @override
   Future<void> signOut() async {
-    // Xoá SẠCH cả ba khoá.
-    //
-    // Trước đây chỉ xoá token và cố ý giữ lại ghép đôi sinh trắc học, với ý định cho người
-    // dùng đăng nhập lại bằng vân tay. Nhưng đăng nhập bằng vân tay lại cần chính token
-    // vừa bị xoá, nên nút vân tay vẫn hiện mà bấm vào chỉ báo "phiên đã hết hạn".
-    //
-    // Giữ lại còn nguy hiểm hơn: máy dùng chung, người sau đăng nhập sẽ thấy nút vân tay
-    // bật sẵn dù chưa từng bật.
-    //
-    // Sinh trắc học vì vậy chỉ phục vụ trường hợp thật sự cần: thoát app rồi mở lại mà
-    // KHÔNG đăng xuất — token vẫn còn nên vân tay mở khoá được ngay. Đăng xuất là chủ động
-    // kết thúc phiên, muốn dùng vân tay tiếp thì ghép đôi lại bằng mật khẩu.
-    //
-    // LỆCH TÀI LIỆU — cần nhóm chốt: UC-02 ngụ ý vân tay dùng được lâu dài sau một lần
-    // đăng nhập mật khẩu. Muốn đúng như vậy thì backend phải có refresh token (hoặc token
-    // thiết bị dài hạn) để vân tay đổi lấy phiên mới. Hiện backend chưa có.
-
     // Unregister FCM token before deleting the access token.
     final token = await _storage.read(key: StorageKeys.accessToken);
     if (token != null) {
@@ -199,26 +159,6 @@ class AuthRepositoryImpl implements AuthRepository {
 
     await _storage.delete(key: StorageKeys.accessToken);
     await _storage.delete(key: StorageKeys.pairedPhone);
-    await _storage.delete(key: StorageKeys.biometricEnabled);
-  }
-
-  @override
-  Future<String?> readStoredToken() => _storage.read(key: StorageKeys.accessToken);
-
-  @override
-  Future<bool> isBiometricPaired() async {
-    final paired = await _storage.read(key: StorageKeys.pairedPhone);
-    final enabled = await _storage.read(key: StorageKeys.biometricEnabled);
-    final token = await _storage.read(key: StorageKeys.accessToken);
-
-    // Phải thoả CẢ BA: đã đăng nhập bằng mật khẩu trên máy này (BR-01), người dùng đã chủ
-    // động bật tính năng, VÀ còn token để mở khoá. Thiếu token mà vẫn hiện nút thì bấm vào
-    // chỉ nhận được thông báo lỗi — thà đừng hiện.
-    return paired != null &&
-        paired.isNotEmpty &&
-        enabled == 'true' &&
-        token != null &&
-        token.isNotEmpty;
   }
 
   @override

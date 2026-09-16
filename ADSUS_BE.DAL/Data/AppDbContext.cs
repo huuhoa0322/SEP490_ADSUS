@@ -1509,10 +1509,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UserId)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("user_id");
-            entity.Property(e => e.BiometricEnabled)
-                .HasDefaultValue(false)
-                .HasComment("Cờ bật đăng nhập sinh trắc học (FT-03). Mẫu vân tay/khuôn mặt nằm trong secure enclave của OS — KHÔNG BAO GIỜ lưu trong DB.")
-                .HasColumnName("biometric_enabled");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");

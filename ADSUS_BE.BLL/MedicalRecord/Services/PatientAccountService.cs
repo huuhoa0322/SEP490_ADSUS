@@ -63,7 +63,6 @@ public sealed class PatientAccountService : IPatientAccountService
             Status = UserStatus.Active,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(temporaryPassword),
             MustChangePassword = true,
-            BiometricEnabled = false,
             // KHÁC UC-04: ở đó ngày sinh của PATIENT bị vứt bỏ vì Admin không được thấy
             // (BR-01). Ở đây người thao tác là Điều dưỡng, và ngày sinh là dữ liệu lâm sàng
             // họ cần — nó hiển thị chỉ-đọc suốt UC-06/07/08.
