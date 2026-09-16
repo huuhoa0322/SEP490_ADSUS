@@ -200,7 +200,7 @@ public class BookingForRelativeRulesTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _relationshipService.AddRelativeAsync(request, _userId));
+            () => _relationshipService.AddRelativeAsync(request, _userId, TestContext.Current.CancellationToken));
 
         Assert.Contains("Số điện thoại này đã có tài khoản", ex.Message);
     }
@@ -220,7 +220,7 @@ public class BookingForRelativeRulesTests : IDisposable
             RelationshipName: "Vợ");
 
         // Act
-        var result = await _relationshipService.AddRelativeAsync(request, _userId);
+        var result = await _relationshipService.AddRelativeAsync(request, _userId, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -228,7 +228,7 @@ public class BookingForRelativeRulesTests : IDisposable
         Assert.Equal("Vợ", result.RelationshipName);
 
         // Verify guest profile created with UserId == null
-        var createdProfile = await _db.PatientProfiles.FindAsync(result.PatientProfileId);
+        var createdProfile = await _db.PatientProfiles.FindAsync(new object[] { result.PatientProfileId }, TestContext.Current.CancellationToken);
         Assert.NotNull(createdProfile);
         Assert.Null(createdProfile.UserId);
         Assert.Equal(newPhone, createdProfile.Phone);
@@ -271,7 +271,7 @@ public class BookingForRelativeRulesTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request));
+            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("3 lịch hẹn đang chờ", ex.Message);
     }
@@ -349,7 +349,7 @@ public class BookingForRelativeRulesTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request));
+            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("hộ người thân", ex.Message);
     }
@@ -450,7 +450,7 @@ public class BookingForRelativeRulesTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request));
+            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("Bệnh nhân này đã có tối đa 3 lịch hẹn", ex.Message);
     }
@@ -509,7 +509,7 @@ public class BookingForRelativeRulesTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request));
+            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("Mỗi ngày chỉ được đặt tối đa 1 lịch", ex.Message);
     }
@@ -568,7 +568,8 @@ public class BookingForRelativeRulesTests : IDisposable
             {
                 ScheduleSlotId = slotWife.SlotId,
                 RelationshipId = wifeRel.RelationshipId
-            });
+            },
+            ct: TestContext.Current.CancellationToken);
 
         Assert.NotNull(resWife);
         Assert.Equal(AppointmentStatus.Booked, resWife.Status);
@@ -581,7 +582,8 @@ public class BookingForRelativeRulesTests : IDisposable
             {
                 ScheduleSlotId = slotChild.SlotId,
                 RelationshipId = childRel.RelationshipId
-            });
+            },
+            ct: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(resChild);
@@ -639,7 +641,7 @@ public class BookingForRelativeRulesTests : IDisposable
         };
 
         // Act: Đặt lịch cho người thân đã có tài khoản
-        var result = await _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request);
+        var result = await _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, ct: TestContext.Current.CancellationToken);
 
         // Assert: Thành công, không bị throw "Người thân này đã có tài khoản"
         Assert.NotNull(result);
@@ -662,7 +664,7 @@ public class BookingForRelativeRulesTests : IDisposable
             RelationshipName: "Bà Ngoại");
 
         // Act
-        var result = await _relationshipService.AddRelativeAsync(request, _userId);
+        var result = await _relationshipService.AddRelativeAsync(request, _userId, TestContext.Current.CancellationToken);
 
         // Assert: Trả về kết quả hợp lệ, PatientPhone là null
         Assert.NotNull(result);
@@ -670,7 +672,7 @@ public class BookingForRelativeRulesTests : IDisposable
         Assert.Null(result.PatientPhone);
 
         // Hồ sơ được tạo độc lập với CreatedBy = userId, Phone = null, UserId = null
-        var profile = await _db.PatientProfiles.FindAsync(result.PatientProfileId);
+        var profile = await _db.PatientProfiles.FindAsync(new object[] { result.PatientProfileId }, TestContext.Current.CancellationToken);
         Assert.NotNull(profile);
         Assert.Null(profile.UserId);
         Assert.Null(profile.Phone);
@@ -678,7 +680,7 @@ public class BookingForRelativeRulesTests : IDisposable
 
         // Mối quan hệ được lưu đúng
         var rel = await _db.PatientRelationships.FirstOrDefaultAsync(
-            r => r.UserId == _userId && r.PatientProfileId == result.PatientProfileId);
+            r => r.UserId == _userId && r.PatientProfileId == result.PatientProfileId, TestContext.Current.CancellationToken);
         Assert.NotNull(rel);
         Assert.Equal("Bà Ngoại", rel.RelationshipName);
     }
@@ -704,16 +706,16 @@ public class BookingForRelativeRulesTests : IDisposable
             RelationshipName: "Ông Ngoại");
 
         // Act
-        var result1 = await _relationshipService.AddRelativeAsync(request1, _userId);
-        var result2 = await _relationshipService.AddRelativeAsync(request2, _userId);
+        var result1 = await _relationshipService.AddRelativeAsync(request1, _userId, TestContext.Current.CancellationToken);
+        var result2 = await _relationshipService.AddRelativeAsync(request2, _userId, TestContext.Current.CancellationToken);
 
         // Assert: Phải tạo ra 2 PatientProfile ID hoàn toàn khác nhau (không được merge profile null phone)
         Assert.NotNull(result1);
         Assert.NotNull(result2);
         Assert.NotEqual(result1.PatientProfileId, result2.PatientProfileId);
 
-        var profile1 = await _db.PatientProfiles.FindAsync(result1.PatientProfileId);
-        var profile2 = await _db.PatientProfiles.FindAsync(result2.PatientProfileId);
+        var profile1 = await _db.PatientProfiles.FindAsync(new object[] { result1.PatientProfileId }, TestContext.Current.CancellationToken);
+        var profile2 = await _db.PatientProfiles.FindAsync(new object[] { result2.PatientProfileId }, TestContext.Current.CancellationToken);
 
         Assert.NotNull(profile1);
         Assert.NotNull(profile2);
@@ -778,13 +780,13 @@ public class BookingForRelativeRulesTests : IDisposable
         };
 
         // Act: Người thân dùng đúng SĐT đó đăng ký tài khoản
-        var (result, response) = await authService.RegisterAsync(registerRequest);
+        var (result, response) = await authService.RegisterAsync(registerRequest, TestContext.Current.CancellationToken);
 
         // Assert: Đăng ký thành công và tự động liên kết guest profile
         Assert.Equal(RegisterResult.Success, result);
         Assert.NotNull(response);
 
-        var linkedProfile = await _db.PatientProfiles.FindAsync(guestProfile.PatientProfileId);
+        var linkedProfile = await _db.PatientProfiles.FindAsync(new object[] { guestProfile.PatientProfileId }, TestContext.Current.CancellationToken);
         Assert.NotNull(linkedProfile);
         Assert.Equal(response.UserId, linkedProfile.UserId);
         Assert.Null(linkedProfile.Phone); // Guest phone cleared

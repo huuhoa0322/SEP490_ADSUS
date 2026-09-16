@@ -78,6 +78,7 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
     {
         _context.Database.EnsureDeleted();
         _context.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private Case CreateTrackedCase(CaseStatus status = CaseStatus.InProgress)

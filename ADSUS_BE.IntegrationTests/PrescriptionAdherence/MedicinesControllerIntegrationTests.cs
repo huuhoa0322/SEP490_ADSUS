@@ -138,8 +138,8 @@ public partial class MedicinesControllerIntegrationTests
         var body = await response.Content.ReadFromJsonAsync<PagedResult<MedicineResponse>>(TestContext.Current.CancellationToken);
         Assert.NotNull(body);
         Assert.Equal(1, body.TotalItems);
-        Assert.Single(body.Items);
-        Assert.Equal("Paracetamol", body.Items[0].Name);
+        var medicine = Assert.Single(body.Items);
+        Assert.Equal("Paracetamol", medicine.Name);
 
         _medicineService.Verify(s => s.GetPagedAsync(1, 10, "para", true, "ACTIVE", It.IsAny<CancellationToken>()), Times.Once);
     }

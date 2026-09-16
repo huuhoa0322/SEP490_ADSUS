@@ -39,7 +39,7 @@ export function formatMetricPercent(
     isRatio = Boolean(isRatioOrOptions);
   }
 
-  if (value === null || value === undefined || typeof value !== "number" || isNaN(value) || !isFinite(value)) {
+  if (value === null || value === undefined || typeof value !== "number" || Number.isNaN(value) || !Number.isFinite(value)) {
     return fallback;
   }
 

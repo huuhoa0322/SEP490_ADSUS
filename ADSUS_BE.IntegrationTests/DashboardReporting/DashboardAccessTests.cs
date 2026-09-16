@@ -127,8 +127,8 @@ public class DashboardAccessTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(1_500_000m, body!.Data!.Revenue.TotalRevenue);
         Assert.Equal(5, body.Data.Revenue.PaidInvoiceCount);
-        Assert.Single(body.Data.TopMedicines);
-        Assert.Equal("Paracetamol", body.Data.TopMedicines[0].MedicineName);
+        var topMedicine = Assert.Single(body.Data.TopMedicines);
+        Assert.Equal("Paracetamol", topMedicine.MedicineName);
     }
 
     [Fact]

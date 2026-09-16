@@ -279,7 +279,7 @@ public class AdversarialBackendChallengeTests : IDisposable
         };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request));
+            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("3 lịch hẹn đang chờ", ex.Message);
     }
@@ -333,7 +333,7 @@ public class AdversarialBackendChallengeTests : IDisposable
             RelationshipId = rel.RelationshipId
         };
 
-        var response = await _appointmentService.BookAppointmentAsync(_userId, _userProfileId, relRequest);
+        var response = await _appointmentService.BookAppointmentAsync(_userId, _userProfileId, relRequest, ct: TestContext.Current.CancellationToken);
         Assert.NotNull(response);
         Assert.Equal(AppointmentStatus.Booked, response.Status);
         Assert.True(response.IsBookedForOthers);
@@ -420,7 +420,7 @@ public class AdversarialBackendChallengeTests : IDisposable
 
         // Act & Assert: Pool 3 must block this!
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request));
+            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("Bệnh nhân này đã có tối đa 3 lịch hẹn", ex.Message);
     }
@@ -474,7 +474,7 @@ public class AdversarialBackendChallengeTests : IDisposable
             RelationshipId = null
         };
 
-        var response = await _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request);
+        var response = await _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, ct: TestContext.Current.CancellationToken);
         Assert.NotNull(response);
         Assert.Equal(AppointmentStatus.Booked, response.Status);
     }
@@ -511,7 +511,7 @@ public class AdversarialBackendChallengeTests : IDisposable
         };
 
         // Must succeed because the earlier appointment was CANCELLED
-        var response = await _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request);
+        var response = await _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, ct: TestContext.Current.CancellationToken);
         Assert.NotNull(response);
         Assert.Equal(AppointmentStatus.Booked, response.Status);
     }
@@ -564,7 +564,7 @@ public class AdversarialBackendChallengeTests : IDisposable
         };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request));
+            () => _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("Mỗi ngày chỉ được đặt tối đa 1 lịch", ex.Message);
     }
@@ -592,15 +592,15 @@ public class AdversarialBackendChallengeTests : IDisposable
             DateOfBirth: new DateOnly(1928, 5, 5),
             RelationshipName: "Ông Cố");
 
-        var res1 = await _relationshipService.AddRelativeAsync(request1, _userId);
-        var res2 = await _relationshipService.AddRelativeAsync(request2, _userId);
+        var res1 = await _relationshipService.AddRelativeAsync(request1, _userId, TestContext.Current.CancellationToken);
+        var res2 = await _relationshipService.AddRelativeAsync(request2, _userId, TestContext.Current.CancellationToken);
 
         Assert.NotNull(res1);
         Assert.NotNull(res2);
         Assert.NotEqual(res1.PatientProfileId, res2.PatientProfileId);
 
-        var p1 = await _db.PatientProfiles.FindAsync(res1.PatientProfileId);
-        var p2 = await _db.PatientProfiles.FindAsync(res2.PatientProfileId);
+        var p1 = await _db.PatientProfiles.FindAsync(new object[] { res1.PatientProfileId }, TestContext.Current.CancellationToken);
+        var p2 = await _db.PatientProfiles.FindAsync(new object[] { res2.PatientProfileId }, TestContext.Current.CancellationToken);
 
         Assert.NotNull(p1);
         Assert.NotNull(p2);
@@ -633,13 +633,13 @@ public class AdversarialBackendChallengeTests : IDisposable
         var req1 = new AddRelativeRequest("Bà A", null, null, "Bà");
         var req2 = new AddRelativeRequest("Bà A", null, null, "Bà");
 
-        var res1 = await _relationshipService.AddRelativeAsync(req1, _userId);
-        var res2 = await _relationshipService.AddRelativeAsync(req2, user2Id);
+        var res1 = await _relationshipService.AddRelativeAsync(req1, _userId, TestContext.Current.CancellationToken);
+        var res2 = await _relationshipService.AddRelativeAsync(req2, user2Id, TestContext.Current.CancellationToken);
 
         Assert.NotEqual(res1.PatientProfileId, res2.PatientProfileId);
 
-        var p1 = await _db.PatientProfiles.FindAsync(res1.PatientProfileId);
-        var p2 = await _db.PatientProfiles.FindAsync(res2.PatientProfileId);
+        var p1 = await _db.PatientProfiles.FindAsync(new object[] { res1.PatientProfileId }, TestContext.Current.CancellationToken);
+        var p2 = await _db.PatientProfiles.FindAsync(new object[] { res2.PatientProfileId }, TestContext.Current.CancellationToken);
 
         Assert.NotNull(p1);
         Assert.NotNull(p2);
