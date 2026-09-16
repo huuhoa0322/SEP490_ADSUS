@@ -7,7 +7,7 @@ import 'forgot_password_screen.dart';
 import 'register_phone_screen.dart';
 import 'widgets/message_banner.dart';
 
-/// SCR-02 — màn hình đăng nhập trên Mobile (UC-01, và UC-02 nếu đã bật sinh trắc học).
+/// SCR-02 — màn hình đăng nhập trên Mobile (UC-01).
 ///
 /// Bệnh nhân dùng màn này. Admin và Bác sĩ đăng nhập trên web (SCR-01).
 class SignInScreen extends ConsumerStatefulWidget {
@@ -126,21 +126,6 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       )
                     : const Text('ĐĂNG NHẬP'),
               ),
-
-              // UC-02: chỉ hiện khi máy có cảm biến VÀ đã đăng nhập bằng mật khẩu
-              // ít nhất một lần trên máy này (BR-01).
-              if (state.canUseBiometric) ...[
-                const SizedBox(height: 14),
-                OutlinedButton.icon(
-                  onPressed: state.isLoading
-                      ? null
-                      : () => ref
-                          .read(authViewModelProvider.notifier)
-                          .signInWithBiometric(),
-                  icon: const Icon(Icons.fingerprint, size: 22),
-                  label: const Text('ĐĂNG NHẬP BẰNG VÂN TAY'),
-                ),
-              ],
 
               // UC-03 Main Flow bước 1 — lối vào chức năng tự cấp lại mật khẩu.
               const SizedBox(height: 18),

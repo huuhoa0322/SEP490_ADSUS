@@ -36,7 +36,6 @@ class ApiConstants {
   static const String forgotPasswordCompleteWithFirebase =
       '/api/v1/auth/forgot-password/complete-with-firebase';
   static const String myProfile = '/api/v1/users/me';
-  static const String myBiometric = '/api/v1/users/me/biometric';
   static const String reminderPreference = '/api/v1/me/reminder-preference';
 
   // Module 08 — Appointment Scheduling (UC-13, UC-14)

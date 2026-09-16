@@ -314,7 +314,6 @@ public class AuthService : IAuthService
                 Status = UserStatus.Active,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 MustChangePassword = false,
-                BiometricEnabled = false,
                 DateOfBirth = ParseDateOrNull(request.DateOfBirth),
                 CreatedAt = now,
                 UpdatedAt = now,

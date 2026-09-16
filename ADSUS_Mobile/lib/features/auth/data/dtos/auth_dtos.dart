@@ -35,7 +35,6 @@ class AuthMapper {
         email: json['email'] as String?,
         dateOfBirth: json['dateOfBirth'] as String?,
         role: userRoleFromApi(json['role'] as String?),
-        biometricEnabled: json['biometricEnabled'] as bool? ?? false,
         mustChangePassword: json['mustChangePassword'] as bool? ?? false,
       );
 }

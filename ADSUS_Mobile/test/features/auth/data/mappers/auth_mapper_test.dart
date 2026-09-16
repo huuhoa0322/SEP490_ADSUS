@@ -59,7 +59,6 @@ void main() {
         'email': 'a@example.com',
         'dateOfBirth': '1990-05-20',
         'role': 'PATIENT',
-        'biometricEnabled': true,
         'mustChangePassword': true,
       });
 
@@ -68,7 +67,6 @@ void main() {
       expect(profile.email, 'a@example.com');
       expect(profile.dateOfBirth, '1990-05-20');
       expect(profile.role, UserRole.patient);
-      expect(profile.biometricEnabled, isTrue);
       expect(profile.mustChangePassword, isTrue);
     });
 
@@ -80,7 +78,6 @@ void main() {
       expect(profile.email, isNull);
       expect(profile.dateOfBirth, isNull);
       expect(profile.role, UserRole.unknown);
-      expect(profile.biometricEnabled, isFalse);
     });
   });
 

@@ -61,7 +61,6 @@ public class UserMapperTests
         // Arrange
         var user = BuildUser();
         user.DateOfBirth = new DateOnly(1990, 5, 20);
-        user.BiometricEnabled = true;
         user.MustChangePassword = true;
 
         // Act
@@ -73,7 +72,6 @@ public class UserMapperTests
         Assert.Equal(user.Email, result.Email);
         Assert.Equal("1990-05-20", result.DateOfBirth);
         Assert.Equal("DOCTOR", result.Role);
-        Assert.True(result.BiometricEnabled);
         Assert.True(result.MustChangePassword);
     }
 
@@ -99,7 +97,6 @@ public class UserMapperTests
         PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test@123"),
         Status = UserStatus.Active,
         Role = UserRole.Doctor,
-        BiometricEnabled = false,
         MustChangePassword = false,
     };
 }

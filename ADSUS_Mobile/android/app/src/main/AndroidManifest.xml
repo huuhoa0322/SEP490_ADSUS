@@ -6,10 +6,6 @@
          manifest chính, áp dụng cho mọi kiểu build. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
-    <!-- UC-02 — đăng nhập bằng vân tay/khuôn mặt. Gói local_auth yêu cầu quyền này; thiếu
-         nó thì hệ điều hành không bật được hộp thoại quét sinh trắc học. -->
-    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
-
     <!-- UC-16 — đồng bộ lịch hẹn vào Calendar hệ thống. Quyền giúp intent hoạt động
          ổn định hơn trên một số thiết bị. Với Android 6.0+, OS sẽ yêu cầu quyền runtime
          nếu cần — plugin dùng Intent.ACTION_INSERT nên hầu hết trường hợp không cần. -->

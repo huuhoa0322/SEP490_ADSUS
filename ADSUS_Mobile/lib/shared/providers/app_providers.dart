@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/dio_client.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
-import '../../features/auth/data/repositories/biometric_service.dart';
 import '../../features/auth/data/services/firebase_phone_auth_service.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/presentation/viewmodels/auth_view_model.dart';
@@ -51,10 +50,6 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
     ref.watch(dioProvider),
     ref.watch(secureStorageProvider),
   );
-});
-
-final biometricServiceProvider = Provider<BiometricService>((ref) {
-  return BiometricService();
 });
 
 final firebasePhoneAuthServiceProvider = Provider<FirebasePhoneAuthService>((ref) {

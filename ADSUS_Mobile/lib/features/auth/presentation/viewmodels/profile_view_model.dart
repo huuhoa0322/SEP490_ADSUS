@@ -37,7 +37,7 @@ class ProfileState {
   }
 }
 
-/// UC-10 — hồ sơ cá nhân, và UC-02 bật/tắt sinh trắc học.
+/// UC-10 — hồ sơ cá nhân.
 class ProfileViewModel extends StateNotifier<ProfileState> {
   ProfileViewModel(this._ref) : super(const ProfileState());
 
@@ -75,26 +75,6 @@ class ProfileViewModel extends StateNotifier<ProfileState> {
         profile: fresh,
         isSaving: false,
         successMessage: 'Đã lưu thay đổi.',
-      );
-      return true;
-    } on ApiException catch (e) {
-      state = state.copyWith(isSaving: false, errorMessage: e.message);
-      return false;
-    }
-  }
-
-  /// UC-02 — bật/tắt sinh trắc học.
-  Future<bool> setBiometric(bool enabled) async {
-    state = state.copyWith(isSaving: true, clearMessages: true);
-    try {
-      await _ref.read(authRepositoryProvider).setBiometricEnabled(enabled);
-      final current = state.profile;
-      state = state.copyWith(
-        isSaving: false,
-        profile: current?.copyWith(biometricEnabled: enabled),
-        successMessage: enabled
-            ? 'Đã bật đăng nhập bằng vân tay.'
-            : 'Đã tắt đăng nhập bằng vân tay.',
       );
       return true;
     } on ApiException catch (e) {

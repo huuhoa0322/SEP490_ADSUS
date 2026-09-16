@@ -7,7 +7,7 @@ import '../viewmodels/profile_view_model.dart';
 import 'change_password_screen.dart';
 import 'widgets/message_banner.dart';
 
-/// SCR-03 — hồ sơ cá nhân trên Mobile (UC-10), kèm bật/tắt sinh trắc học (UC-02).
+/// SCR-03 — hồ sơ cá nhân trên Mobile (UC-10).
 ///
 /// Chỉ sửa được họ tên, email, ngày sinh. Số điện thoại hiển thị nhưng KHÔNG sửa được
 /// (BR-02) — nó là định danh đăng nhập. Không có trường dữ liệu y tế nào ở đây (BR-03).
@@ -214,60 +214,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
               ),
-
-              const Divider(),
-              const SizedBox(height: 12),
-              _buildBiometricSection(state),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  /// UC-02 — bật/tắt đăng nhập sinh trắc học.
-  Widget _buildBiometricSection(ProfileState state) {
-    final auth = ref.watch(authViewModelProvider);
-    final enabled = state.profile?.biometricEnabled ?? false;
-
-    if (!auth.biometricAvailable) {
-      return const Row(
-        children: [
-          Icon(Icons.fingerprint, color: AppColors.muted),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Máy này chưa đăng ký vân tay hoặc khuôn mặt nào, '
-              'nên chưa bật được đăng nhập sinh trắc học.',
-              style: TextStyle(fontSize: 13, color: AppColors.muted, height: 1.4),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return SwitchListTile.adaptive(
-      contentPadding: EdgeInsets.zero,
-      secondary: const Icon(Icons.fingerprint, color: AppColors.navy),
-      title: const Text(
-        'Đăng nhập bằng vân tay',
-        style: TextStyle(fontWeight: FontWeight.w600),
-      ),
-      subtitle: const Text(
-        'Mẫu vân tay được điện thoại giữ, hệ thống không bao giờ lưu.',
-        style: TextStyle(fontSize: 12, height: 1.4),
-      ),
-      value: enabled,
-      onChanged: state.isSaving
-          ? null
-          : (value) async {
-              final ok = await ref
-                  .read(profileViewModelProvider.notifier)
-                  .setBiometric(value);
-              if (ok) {
-                await ref.read(authViewModelProvider.notifier).refreshBiometricStatus();
-              }
-            },
     );
   }
 

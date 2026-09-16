@@ -33,7 +33,6 @@ public static class UserMapper
         Email = user.Email,
         DateOfBirth = user.DateOfBirth?.ToString(DateFormat, CultureInfo.InvariantCulture),
         Role = user.Role.ToApiString(),
-        BiometricEnabled = user.BiometricEnabled,
         MustChangePassword = user.MustChangePassword,
     };
 }

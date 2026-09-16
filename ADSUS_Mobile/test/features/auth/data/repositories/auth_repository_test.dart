@@ -12,10 +12,9 @@ class _MockStorage extends Mock implements FlutterSecureStorage {}
 
 /// Kiểm thử tầng dữ liệu của phần xác thực.
 ///
-/// Ba luật được khẳng định ở đây đều là những chỗ đã từng sai:
+/// Hai luật được khẳng định ở đây đều là những chỗ đã từng sai:
 ///   - Chỉ bệnh nhân dùng được ứng dụng di động (UC-01).
-///   - Đăng xuất phải xoá sạch, không để lại trạng thái vân tay treo lơ lửng.
-///   - Đổi tài khoản trên cùng một máy không được kế thừa trạng thái của người trước.
+///   - Đăng xuất phải xoá sạch mọi dấu vết phiên trên máy.
 void main() {
   late _MockDio dio;
   late _MockStorage storage;
@@ -88,79 +87,17 @@ void main() {
 
       verify(() => storage.write(key: StorageKeys.accessToken, value: 'token-gia'))
           .called(1);
-      // UC-02 BR-01 — ghép đôi thiết bị.
       verify(() => storage.write(key: StorageKeys.pairedPhone, value: '0900000003'))
           .called(1);
     });
   });
 
-  group('Doi tai khoan tren cung mot may', () {
-    test('Nguoi moi KHONG ke thua trang thai van tay cua nguoi cu', () async {
-      // Máy đang ghép đôi với 0900000003 và đã bật vân tay.
-      when(() => storage.read(key: StorageKeys.pairedPhone))
-          .thenAnswer((_) async => '0900000003');
-      gaDangNhapTraVe('PATIENT');
-
-      // Người khác đăng nhập.
-      await repo.signIn(phoneNumber: '0900000009', password: 'Aa123456@');
-
-      verify(() => storage.delete(key: StorageKeys.biometricEnabled)).called(1);
-    });
-
-    test('Cung mot nguoi dang nhap lai thi giu nguyen cai dat van tay', () async {
-      when(() => storage.read(key: StorageKeys.pairedPhone))
-          .thenAnswer((_) async => '0900000003');
-      gaDangNhapTraVe('PATIENT');
-
-      await repo.signIn(phoneNumber: '0900000003', password: 'Aa123456@');
-
-      verifyNever(() => storage.delete(key: StorageKeys.biometricEnabled));
-    });
-  });
-
   group('Dang xuat', () {
-    test('Xoa sach ca ba khoa', () async {
+    test('Xoa sach ca hai khoa', () async {
       await repo.signOut();
 
       verify(() => storage.delete(key: StorageKeys.accessToken)).called(1);
       verify(() => storage.delete(key: StorageKeys.pairedPhone)).called(1);
-      verify(() => storage.delete(key: StorageKeys.biometricEnabled)).called(1);
-    });
-  });
-
-  group('Dieu kien hien nut van tay', () {
-    test('Khong con token thi KHONG coi la da ghep doi', () async {
-      // Đây chính là lỗi cũ: nút vân tay vẫn hiện nhưng bấm vào chỉ báo hết phiên.
-      when(() => storage.read(key: StorageKeys.pairedPhone))
-          .thenAnswer((_) async => '0900000003');
-      when(() => storage.read(key: StorageKeys.biometricEnabled))
-          .thenAnswer((_) async => 'true');
-      when(() => storage.read(key: StorageKeys.accessToken))
-          .thenAnswer((_) async => null);
-
-      expect(await repo.isBiometricPaired(), isFalse);
-    });
-
-    test('Da ghep doi, da bat, con token thi moi hien', () async {
-      when(() => storage.read(key: StorageKeys.pairedPhone))
-          .thenAnswer((_) async => '0900000003');
-      when(() => storage.read(key: StorageKeys.biometricEnabled))
-          .thenAnswer((_) async => 'true');
-      when(() => storage.read(key: StorageKeys.accessToken))
-          .thenAnswer((_) async => 'token-gia');
-
-      expect(await repo.isBiometricPaired(), isTrue);
-    });
-
-    test('Chua bat tinh nang thi khong hien du con token', () async {
-      when(() => storage.read(key: StorageKeys.pairedPhone))
-          .thenAnswer((_) async => '0900000003');
-      when(() => storage.read(key: StorageKeys.biometricEnabled))
-          .thenAnswer((_) async => null);
-      when(() => storage.read(key: StorageKeys.accessToken))
-          .thenAnswer((_) async => 'token-gia');
-
-      expect(await repo.isBiometricPaired(), isFalse);
     });
   });
 }

@@ -9,7 +9,7 @@ using Xunit;
 namespace ADSUS_BE.UnitTests.Auth;
 
 /// <summary>
-/// UC-10 cập nhật hồ sơ cá nhân, và UC-02 bật/tắt sinh trắc học.
+/// UC-10 cập nhật hồ sơ cá nhân.
 ///
 /// Hai luật quan trọng nhất được khẳng định ở đây:
 /// BR-02 — số điện thoại KHÔNG BAO GIỜ bị đổi qua đường này.
@@ -54,9 +54,7 @@ public class ProfileServiceTests
     [Fact]
     public async Task GetOwnProfileAsync_ReturnsMustChangePasswordFlag()
     {
-        // UC-25: đăng nhập bằng vân tay không đi qua /auth/login nên không nhận được cờ này
-        // từ LoginResponse — nó phải có trong hồ sơ. Thiếu thì Admin cấp lại mật khẩu cho
-        // tài khoản đã bật vân tay, người dùng quét vân tay là vào thẳng, bỏ qua màn đổi.
+        // UC-25: hồ sơ cá nhân phải phản ánh đúng cờ buộc đổi mật khẩu hiện tại của tài khoản.
         var user = BuildUser();
         user.MustChangePassword = true;
         SetupUser(user);
@@ -70,8 +68,7 @@ public class ProfileServiceTests
     [InlineData(UserStatus.Deactivated)]
     public async Task GetOwnProfileAsync_AccountNotActive_ReturnsNull(UserStatus status)
     {
-        // UC-02 AF-02: quét vân tay đúng nhưng tài khoản đã bị Admin khoá thì vẫn không vào
-        // được. Ứng dụng di động dựa vào chính lời gọi GET /users/me này để kiểm tra.
+        // Tài khoản đã bị Admin khoá thì không lấy được hồ sơ nữa, dù JWT vẫn còn hạn.
         //
         // Trả null y hệt trường hợp không tìm thấy tài khoản (GB-06) — controller vì thế
         // trả về đúng một câu 401 cho cả hai.
@@ -194,42 +191,13 @@ public class ProfileServiceTests
         _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task SetBiometricEnabledAsync_TogglesCorrectly(bool enabled)
-    {
-        var user = BuildUser();
-        user.BiometricEnabled = !enabled;
-        SetupUser(user);
-
-        var result = await _sut.SetBiometricEnabledAsync(user.UserId, enabled, TestContext.Current.CancellationToken);
-
-        Assert.Equal(ProfileOperationResult.Success, result);
-        Assert.Equal(enabled, user.BiometricEnabled);
-    }
-
-    [Theory]
-    [InlineData(UserStatus.Deactivated)]
-    public async Task SetBiometricEnabledAsync_AccountNotActive_Rejected(UserStatus status)
-    {
-        // UC-02 AF-02: tài khoản bị khoá thì không bật được sinh trắc học.
-        var user = BuildUser();
-        user.Status = status;
-        SetupUser(user);
-
-        var result = await _sut.SetBiometricEnabledAsync(user.UserId, true, TestContext.Current.CancellationToken);
-
-        Assert.Equal(ProfileOperationResult.AccountNotActive, result);
-    }
-
     // ---- helpers ----
 
     private void SetupUser(User? user)
     {
-        // GetOwnProfileAsync đọc qua GetByIdReadOnlyAsync; UpdateOwnProfileAsync/
-        // SetBiometricEnabledAsync sửa-rồi-lưu qua GetForUpdateAsync — set cả hai để test
-        // không cần biết SUT gọi method nào (P11 review Module 1, 12/08/2026).
+        // GetOwnProfileAsync đọc qua GetByIdReadOnlyAsync; UpdateOwnProfileAsync sửa-rồi-lưu
+        // qua GetForUpdateAsync — set cả hai để test không cần biết SUT gọi method nào (P11
+        // review Module 1, 12/08/2026).
         _users.Setup(r => r.GetByIdReadOnlyAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(user);
         _users.Setup(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -250,6 +218,5 @@ public class ProfileServiceTests
         PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test@123"),
         Status = UserStatus.Active,
         Role = UserRole.Patient,
-        BiometricEnabled = false,
     };
 }

@@ -18,7 +18,6 @@ void main() {
     fullName: 'Nguyen Van A',
     phoneNumber: '0900000000',
     role: UserRole.patient,
-    biometricEnabled: false,
   );
 
   setUp(() {
@@ -88,30 +87,5 @@ void main() {
     expect(result, isFalse);
     expect(container.read(profileViewModelProvider).errorMessage,
         'Email này đã có tài khoản khác dùng.');
-  });
-
-  test('setBiometric_Success_UpdatesProfileBiometricFlagLocally', () async {
-    // setBiometric() sửa current?.copyWith(...) chứ không load lại — seed state.profile
-    // trước để có "current" mà sửa.
-    when(() => authRepo.getMyProfile()).thenAnswer((_) async => profile);
-    await container.read(profileViewModelProvider.notifier).load();
-
-    when(() => authRepo.setBiometricEnabled(any())).thenAnswer((_) async {});
-
-    final result = await container.read(profileViewModelProvider.notifier).setBiometric(true);
-
-    expect(result, isTrue);
-    expect(container.read(profileViewModelProvider).profile?.biometricEnabled, isTrue);
-  });
-
-  test('setBiometric_RepositoryThrows_ReturnsFalseAndSetsErrorMessage', () async {
-    when(() => authRepo.setBiometricEnabled(any()))
-        .thenThrow(const ApiException('Không đổi được cài đặt sinh trắc học.'));
-
-    final result = await container.read(profileViewModelProvider.notifier).setBiometric(true);
-
-    expect(result, isFalse);
-    expect(container.read(profileViewModelProvider).errorMessage,
-        'Không đổi được cài đặt sinh trắc học.');
   });
 }

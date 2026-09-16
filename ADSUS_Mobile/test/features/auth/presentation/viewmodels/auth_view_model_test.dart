@@ -1,4 +1,3 @@
-import 'package:adsus_mobile/features/auth/data/repositories/biometric_service.dart';
 import 'package:adsus_mobile/features/auth/domain/entities/auth_session.dart';
 import 'package:adsus_mobile/features/auth/domain/repositories/auth_repository.dart';
 import 'package:adsus_mobile/features/auth/presentation/viewmodels/auth_view_model.dart';
@@ -11,30 +10,22 @@ import 'package:mocktail/mocktail.dart';
 
 class _MockAuthRepository extends Mock implements AuthRepository {}
 
-class _MockBiometricService extends Mock implements BiometricService {}
-
 class _MockMedicalRecordRepository extends Mock implements MedicalRecordRepository {}
 
 void main() {
   late _MockAuthRepository authRepo;
-  late _MockBiometricService biometricService;
   late _MockMedicalRecordRepository medicalRepo;
   late ProviderContainer container;
 
   setUp(() {
     authRepo = _MockAuthRepository();
-    biometricService = _MockBiometricService();
     medicalRepo = _MockMedicalRecordRepository();
 
-    // Đủ để constructor AuthViewModel chạy _loadBiometricStatus() không nem loi.
-    when(() => biometricService.isAvailable()).thenAnswer((_) async => false);
-    when(() => authRepo.isBiometricPaired()).thenAnswer((_) async => false);
     when(() => medicalRepo.getMyRecords()).thenAnswer((_) async => []);
 
     container = ProviderContainer(
       overrides: [
         authRepositoryProvider.overrideWithValue(authRepo),
-        biometricServiceProvider.overrideWithValue(biometricService),
         medicalRecordRepositoryProvider.overrideWithValue(medicalRepo),
       ],
     );
@@ -46,8 +37,8 @@ void main() {
     'signIn invalidates medicalRecordListViewModelProvider so patient B khong thay du lieu cu cua A',
     () async {
       // Khoa lai bug tim thay qua smoke test 14/08/2026: truoc do chi signOut()/
-      // handleSessionExpired() invalidate 2 provider Module 04, con signIn()/
-      // signInWithBiometric() thi khong - du da co san pattern nay cho profileViewModelProvider.
+      // handleSessionExpired() invalidate 2 provider Module 04, con signIn() thi khong -
+      // du da co san pattern nay cho profileViewModelProvider.
       when(() => authRepo.signIn(
             phoneNumber: any(named: 'phoneNumber'),
             password: any(named: 'password'),

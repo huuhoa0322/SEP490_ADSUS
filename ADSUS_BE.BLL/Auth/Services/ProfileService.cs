@@ -77,27 +77,6 @@ public class ProfileService : IProfileService
         return ProfileOperationResult.Success;
     }
 
-    public async Task<ProfileOperationResult> SetBiometricEnabledAsync(
-        Guid userId,
-        bool enabled,
-        CancellationToken cancellationToken = default)
-    {
-        var user = await _users.GetForUpdateAsync(userId, cancellationToken);
-        if (user is null) return ProfileOperationResult.UserNotFound;
-
-        if (user.Status != UserStatus.Active) return ProfileOperationResult.AccountNotActive;
-
-        user.BiometricEnabled = enabled;
-        user.UpdatedAt = DateTime.UtcNow;
-
-        await _users.SaveChangesAsync(cancellationToken);
-
-        _logger.LogInformation(
-            "User {UserId} set biometric sign-in to {Enabled}", userId, enabled);
-
-        return ProfileOperationResult.Success;
-    }
-
     private static DateOnly? ParseDateOrNull(string? value) =>
         DateOnly.TryParseExact(value, DateFormat, CultureInfo.InvariantCulture,
             DateTimeStyles.None, out var date)
