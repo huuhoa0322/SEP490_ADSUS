@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PatientRecordView } from "@/features/medical-record/components/patient-record-view";
+import { useAuthStore } from "@/store/auth-store";
 
 const { profileMock, caseListMock } = vi.hoisted(() => ({
   profileMock: vi.fn(),
@@ -143,5 +144,41 @@ describe("PatientRecordView", () => {
     render(<PatientRecordView profileId="profile-1" />);
 
     expect(screen.queryByText("Hồ sơ người thân")).not.toBeInTheDocument();
+  });
+
+  it("ẩn nút 'Đặt lịch khám' và 'Thêm người thân' khi người dùng là Bác sĩ (DOCTOR)", () => {
+    useAuthStore.setState({
+      user: {
+        userId: "doc-1",
+        fullName: "BS. Nguyễn Văn Tiến",
+        email: "tien@clinic.vn",
+        role: "DOCTOR",
+        mustChangePassword: false,
+      },
+    });
+
+    render(<PatientRecordView profileId="profile-1" />);
+
+    expect(screen.queryByRole("button", { name: /đặt lịch khám/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /thêm người thân/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /sửa hồ sơ nền/i })).toBeInTheDocument();
+  });
+
+  it("hiển thị nút 'Đặt lịch khám' và 'Thêm người thân' khi người dùng là Điều dưỡng (STAFF)", () => {
+    useAuthStore.setState({
+      user: {
+        userId: "nurse-1",
+        fullName: "Điều dưỡng Lan",
+        email: "lan@clinic.vn",
+        role: "STAFF",
+        mustChangePassword: false,
+      },
+    });
+
+    render(<PatientRecordView profileId="profile-1" />);
+
+    expect(screen.getByRole("button", { name: /đặt lịch khám/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /thêm người thân/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /sửa hồ sơ nền/i })).toBeInTheDocument();
   });
 });
