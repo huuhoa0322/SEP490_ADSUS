@@ -164,6 +164,8 @@ describe("CancelAppointmentDialog", () => {
 
     fireEvent.click(screen.getByTestId("back-from-warning-button"));
 
+    // Bug fix: warning dialog phải đóng thật sự, không chỉ form reason hiện lại
+    expect(screen.queryByText("Cảnh báo")).not.toBeInTheDocument();
     expect(screen.getByText("Hủy lịch khám")).toBeInTheDocument();
     expect(screen.getByText("Bận đột xuất")).toBeInTheDocument();
   });
