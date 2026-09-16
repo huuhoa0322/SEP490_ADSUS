@@ -6,6 +6,7 @@ import '../viewmodels/auth_view_model.dart';
 import '../viewmodels/profile_view_model.dart';
 import 'change_password_screen.dart';
 import 'widgets/message_banner.dart';
+import '../../../patient_relationship/presentation/views/my_relatives_screen.dart';
 
 /// SCR-03 — hồ sơ cá nhân trên Mobile (UC-10), kèm bật/tắt sinh trắc học (UC-02).
 ///
@@ -211,6 +212,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => const ChangePasswordScreen(),
+                  ),
+                ),
+              ),
+
+              const Divider(),
+
+              // Quản lý người thân: điều hướng sang MyRelativesScreen
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.people_outline, color: AppColors.navy),
+                title: const Text(
+                  'Quản lý người thân',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const MyRelativesScreen(),
                   ),
                 ),
               ),

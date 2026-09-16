@@ -129,6 +129,52 @@ public class BookAppointmentRequestValidatorTests
         result.ShouldNotHaveAnyValidationErrors();
     }
 
+    [Theory]
+    [InlineData("<html>")]
+    [InlineData("<b>Đau bụng</b>")]
+    [InlineData("<script>alert(1)</script>")]
+    [InlineData("<img src=x onerror=alert(1)>")]
+    [InlineData("</div>")]
+    [InlineData("<iframe src='evil.com'></iframe>")]
+    public void Validate_HtmlInReason_Fails(string htmlReason)
+    {
+        // Arrange
+        var request = new BookAppointmentRequest
+        {
+            ScheduleSlotId = Guid.NewGuid(),
+            Reason = htmlReason
+        };
+
+        // Act
+        var result = _validator.TestValidate(request);
+
+        // Assert
+        result.ShouldHaveValidationErrorFor(x => x.Reason)
+            .WithErrorMessage("Reason cannot contain HTML tags.");
+    }
+
+    [Theory]
+    [InlineData("Đau bụng nhẹ")]
+    [InlineData("Nhiệt độ < 38°C")]
+    [InlineData("Bạch cầu < 4.0 và SpO2 > 95%")]
+    [InlineData("HA > 140/90 mmHg")]
+    [InlineData("Thân nhiệt <38°C")]
+    public void Validate_MedicalInequalityAndPlainTextReason_Passes(string validReason)
+    {
+        // Arrange
+        var request = new BookAppointmentRequest
+        {
+            ScheduleSlotId = Guid.NewGuid(),
+            Reason = validReason
+        };
+
+        // Act
+        var result = _validator.TestValidate(request);
+
+        // Assert
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
     #endregion
 
     #region Combined Validation

@@ -13,9 +13,13 @@ public record AddRelativeRequest(
 );
 
 /// <summary>
-/// Cập nhật thông tin người thân
+/// Cập nhật thông tin người thân (Họ tên, SĐT, Ngày sinh, Quan hệ).
+/// FullName/Phone/DateOfBirth chỉ cập nhật khi PatientProfile.UserId IS NULL (guest).
 /// </summary>
 public record UpdateRelativeRequest(
+    string? FullName,
+    string? Phone,
+    DateOnly? DateOfBirth,
     string? RelationshipName
 );
 

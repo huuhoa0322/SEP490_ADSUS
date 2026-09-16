@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/html_sanitizer.dart';
 import '../../../../core/utils/phone_number_rule.dart';
 import '../viewmodels/add_relative_view_model.dart';
 
@@ -97,6 +98,9 @@ class _AddRelativeScreenState extends ConsumerState<AddRelativeScreen> {
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Vui lòng nhập họ tên';
+                    }
+                    if (HtmlSanitizer.containsHtml(value)) {
+                      return 'Họ tên không được chứa thẻ HTML';
                     }
                     return null;
                   },
@@ -239,6 +243,14 @@ class _AddRelativeScreenState extends ConsumerState<AddRelativeScreen> {
                   onChanged: (value) => ref
                       .read(addRelativeViewModelProvider.notifier)
                       .updateRelationshipName(value),
+                  validator: (value) {
+                    if (value != null &&
+                        value.trim().isNotEmpty &&
+                        HtmlSanitizer.containsHtml(value)) {
+                      return 'Nhãn quan hệ không được chứa thẻ HTML';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 8),
                 const Text(

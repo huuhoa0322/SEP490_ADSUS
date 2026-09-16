@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/app_providers.dart';
@@ -300,29 +301,71 @@ class _MyAppointmentsScreenState
       final proceed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
-          title: const Text(
+          title: Text(
             'Cảnh báo lượt hủy cuối',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.orange.shade800,
+            ),
           ),
-          content: const Text(
+          content: Text(
             'Bạn đã hủy 2 lần trong ngày hôm nay.\n\n'
             'Nếu bạn hủy lần này (lần thứ 3), quyền tự đặt lịch trực tuyến của bạn sẽ bị tạm khóa đến hết ngày hôm nay. Để đặt lịch sau đó, bạn sẽ phải liên hệ hotline của phòng khám.\n\n'
             'Bạn có chắc chắn muốn tiếp tục hủy không?',
-            style: TextStyle(fontSize: 14),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Quay lại'),
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: AppColors.navy,
+              height: 1.4,
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange.shade700,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Tiếp tục hủy'),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actionsPadding: const EdgeInsets.only(bottom: 20, left: 16, right: 16, top: 8),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.navy,
+                      minimumSize: const Size(0, 48),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      textStyle: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    child: const Text('Quay lại'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade700,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(0, 48),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      textStyle: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    child: const Text('Tiếp tục hủy'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

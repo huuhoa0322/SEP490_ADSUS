@@ -146,7 +146,13 @@ public sealed class PatientRelationshipService : IPatientRelationshipService
         Guid userId,
         CancellationToken ct = default)
     {
-        var relationship = await _repository.GetByIdAndUserAsync(relationshipId, userId, ct);
+        // Query trực tiếp từ context WITH TRACKING (không dùng AsNoTracking)
+        // để EF Core detect changes khi cập nhật PatientProfile
+        var relationship = await _context.Set<PatientRelEntity>()
+            .Include(r => r.PatientProfile)
+                .ThenInclude(p => p!.User)
+            .Include(r => r.User)
+            .FirstOrDefaultAsync(r => r.RelationshipId == relationshipId && r.UserId == userId, ct);
 
         if (relationship == null)
         {
@@ -159,15 +165,50 @@ public sealed class PatientRelationshipService : IPatientRelationshipService
             await using var transaction = await _context.Database.BeginTransactionAsync(ct);
             try
             {
+                // 1. Cập nhật RelationshipName trên entity PatientRelationship
                 if (request.RelationshipName != null)
                 {
                     relationship.RelationshipName = request.RelationshipName;
                 }
 
+                // 2. Cập nhật FullName/Phone/DateOfBirth trên PatientProfile
+                //    (chỉ khi profile là guest — UserId IS NULL)
+                var profile = relationship.PatientProfile;
+                if (profile != null && profile.UserId == null)
+                {
+                    if (request.FullName != null)
+                    {
+                        profile.FullName = request.FullName.Trim();
+                    }
+
+                    if (request.Phone != null)
+                    {
+                        var normalizedPhone = request.Phone.Trim();
+                        if (!string.IsNullOrEmpty(normalizedPhone) && normalizedPhone != profile.Phone)
+                        {
+                            // Kiểm tra SĐT mới có trùng tài khoản đã đăng ký không
+                            var phoneExists = await _repository.IsPhoneRegisteredAsync(normalizedPhone, ct);
+                            if (phoneExists)
+                            {
+                                throw new InvalidOperationException(
+                                    "Số điện thoại này đã có tài khoản trong hệ thống. Người thân vui lòng đăng nhập bằng tài khoản riêng để đặt lịch.");
+                            }
+                        }
+                        profile.Phone = string.IsNullOrEmpty(normalizedPhone) ? null : normalizedPhone;
+                    }
+
+                    if (request.DateOfBirth != null)
+                    {
+                        profile.DateOfBirth = request.DateOfBirth;
+                    }
+
+                    profile.UpdatedAt = DateTime.UtcNow;
+                }
+
                 await _context.SaveChangesAsync(ct);
                 await transaction.CommitAsync(ct);
 
-                // Load lai de map response
+                // Load lại để map response
                 var loaded = await _repository.GetByIdAsync(relationshipId, ct);
                 return MapToResponse(loaded!);
             }

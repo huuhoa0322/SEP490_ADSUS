@@ -173,6 +173,37 @@ class AppTheme {
           minimumSize: const Size.fromHeight(56),
           side: const BorderSide(color: AppColors.border),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          textStyle: TextStyle(
+            fontFamily: GoogleFonts.inter().fontFamily,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.8,
+          ),
+        ),
+      ),
+
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.teal,
+          textStyle: TextStyle(
+            fontFamily: GoogleFonts.inter().fontFamily,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        titleTextStyle: GoogleFonts.inter(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: AppColors.navy,
+        ),
+        contentTextStyle: GoogleFonts.inter(
+          fontSize: 14,
+          color: AppColors.navy,
+          height: 1.4,
         ),
       ),
     );

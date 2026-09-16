@@ -1,5 +1,6 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
+using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.DAL.Data;
@@ -401,7 +402,7 @@ public sealed class AppointmentService : IAppointmentService
             AppointmentId = Guid.NewGuid(),
             SlotId = request.ScheduleSlotId,
             PatientProfileId = targetPatientProfileId,
-            Reason = request.Reason,
+            Reason = request.Reason != null ? HtmlHelper.StripToPlainText(request.Reason) : null,
             Status = AppointmentStatus.Booked,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
@@ -1536,7 +1537,7 @@ public sealed class AppointmentService : IAppointmentService
 
         if (request.Reason != null)
         {
-            appointment.Reason = request.Reason;
+            appointment.Reason = HtmlHelper.StripToPlainText(request.Reason);
         }
 
         var validSymptoms = request.Symptoms?

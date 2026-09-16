@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../../core/theme/app_theme.dart';
+import '../../../../../../core/utils/html_sanitizer.dart';
 import '../../../domain/entities/appointment.dart';
 
 /// Bottom sheet hiển thị chi tiết lịch khám.
@@ -105,7 +106,7 @@ class AppointmentDetailSheet extends StatelessWidget {
             _InfoRow(
               icon: Icons.note,
               label: 'Lý do khám',
-              value: appointment.reason!,
+              value: HtmlSanitizer.sanitize(appointment.reason),
             ),
           ],
 

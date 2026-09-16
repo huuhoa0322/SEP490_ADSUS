@@ -48,3 +48,13 @@ export function formatMetricPercent(
   return `${clamped.toFixed(dec)}%`;
 }
 
+/**
+ * Checks whether a given string contains HTML tags.
+ * Matches HTML open, close, and self-closing tags (e.g. <html>, <script>, <div>, </b>, <br/>, <img ...>).
+ * Safely allows valid medical notations such as "< 3 ngày", "<38.5°C", "SpO2 > 95%".
+ */
+export function containsHtmlTags(input?: string | null): boolean {
+  if (!input) return false;
+  return /<[a-zA-Z\/][^>]*>/.test(input);
+}
+
