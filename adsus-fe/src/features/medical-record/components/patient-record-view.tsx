@@ -510,24 +510,6 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
                             </td>
                             <td className="px-4 py-3.5 text-right">
                               <div className="inline-flex items-center gap-2">
-                                {canBookAppointment && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() =>
-                                      setBookingPatient({
-                                        profileId: rel.patientProfileId,
-                                        name: rel.patientName,
-                                        phone: rel.patientPhone,
-                                        userId: profile.patientUserId,
-                                      })
-                                    }
-                                    className="h-8 gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 border-emerald-300 hover:bg-emerald-50"
-                                  >
-                                    <CalendarCheck className="size-3.5" />
-                                    Đặt lịch
-                                  </Button>
-                                )}
                                 <Link
                                   href={`/patients/${rel.patientProfileId}`}
                                   className="inline-flex h-8 items-center gap-1 rounded-md border border-[#E7E8EB] bg-white px-2.5 text-xs font-semibold text-foreground hover:bg-[#F5F6F8] hover:text-[#2E37A4]"

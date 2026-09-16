@@ -1,12 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PatientRecordView } from "@/features/medical-record/components/patient-record-view";
 import { useAuthStore } from "@/store/auth-store";
 
-const { profileMock, caseListMock } = vi.hoisted(() => ({
+const { profileMock, caseListMock, relativesMock } = vi.hoisted(() => ({
   profileMock: vi.fn(),
   caseListMock: vi.fn(),
+  relativesMock: vi.fn(),
 }));
 
 vi.mock("@/features/medical-record/hooks/use-patient-profile", () => ({
@@ -16,7 +17,7 @@ vi.mock("@/features/medical-record/hooks/use-cases", () => ({
   useCaseList: () => caseListMock(),
 }));
 vi.mock("@/features/appointment-scheduling/hooks/use-relatives", () => ({
-  useRelativesForGuardian: vi.fn(() => ({ data: [], isLoading: false })),
+  useRelativesForGuardian: () => relativesMock(),
   useAddRelativeForGuardian: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
   useCheckPhone: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
 }));
@@ -58,6 +59,7 @@ describe("PatientRecordView", () => {
       isError: false,
       error: null,
     });
+    relativesMock.mockReturnValue({ data: [], isLoading: false });
   });
 
   it("mỗi lần khám có liên kết sang màn chi tiết ca", () => {
@@ -182,5 +184,43 @@ describe("PatientRecordView", () => {
     expect(screen.getByRole("button", { name: /thêm người thân/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /người thân/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /sửa hồ sơ nền/i })).toBeInTheDocument();
+  });
+
+  it("không hiển thị nút 'Đặt lịch' trong danh sách người thân đối với vai trò Điều dưỡng (STAFF)", () => {
+    useAuthStore.setState({
+      user: {
+        userId: "nurse-1",
+        fullName: "Điều dưỡng Lan",
+        email: "lan@clinic.vn",
+        role: "STAFF",
+        mustChangePassword: false,
+      },
+    });
+
+    relativesMock.mockReturnValue({
+      data: [
+        {
+          relationshipId: "rel-1",
+          patientProfileId: "profile-2",
+          patientName: "Nguyễn Thị Con",
+          relationshipName: "Con",
+          dateOfBirth: "2020-01-01",
+          patientPhone: null,
+          isRegisteredAccount: false,
+        },
+      ],
+      isLoading: false,
+    });
+
+    render(<PatientRecordView profileId="profile-1" />);
+
+    // Chuyển sang tab Người thân bằng phím Enter
+    const relativesTab = screen.getByRole("tab", { name: /người thân/i });
+    fireEvent.keyDown(relativesTab, { key: "Enter" });
+
+    // Trong bảng người thân KHÔNG có nút 'Đặt lịch'
+    expect(screen.queryByRole("button", { name: /^đặt lịch$/i })).not.toBeInTheDocument();
+    // Vẫn có link 'Xem hồ sơ' sang hồ sơ người thân
+    expect(screen.getByRole("link", { name: /xem hồ sơ/i })).toBeInTheDocument();
   });
 });
