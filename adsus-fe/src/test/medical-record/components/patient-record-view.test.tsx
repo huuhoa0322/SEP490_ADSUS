@@ -146,7 +146,7 @@ describe("PatientRecordView", () => {
     expect(screen.queryByText("Hồ sơ người thân")).not.toBeInTheDocument();
   });
 
-  it("ẩn nút 'Đặt lịch khám' và 'Thêm người thân' khi người dùng là Bác sĩ (DOCTOR)", () => {
+  it("ẩn nút 'Đặt lịch khám', 'Thêm người thân' và tab 'Người thân' khi người dùng là Bác sĩ (DOCTOR)", () => {
     useAuthStore.setState({
       user: {
         userId: "doc-1",
@@ -161,10 +161,11 @@ describe("PatientRecordView", () => {
 
     expect(screen.queryByRole("button", { name: /đặt lịch khám/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /thêm người thân/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /người thân/i })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /sửa hồ sơ nền/i })).toBeInTheDocument();
   });
 
-  it("hiển thị nút 'Đặt lịch khám' và 'Thêm người thân' khi người dùng là Điều dưỡng (STAFF)", () => {
+  it("hiển thị nút 'Đặt lịch khám', 'Thêm người thân' và tab 'Người thân' khi người dùng là Điều dưỡng (STAFF)", () => {
     useAuthStore.setState({
       user: {
         userId: "nurse-1",
@@ -179,6 +180,7 @@ describe("PatientRecordView", () => {
 
     expect(screen.getByRole("button", { name: /đặt lịch khám/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /thêm người thân/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /người thân/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /sửa hồ sơ nền/i })).toBeInTheDocument();
   });
 });
