@@ -42,20 +42,11 @@ abstract interface class AuthRepository {
     String? dateOfBirth,
   });
 
-  /// UC-02 — bật/tắt đăng nhập sinh trắc học ở phía máy chủ.
-  Future<void> setBiometricEnabled(bool enabled);
-
   /// Kết thúc phiên: xoá token và mọi dấu vết phiên trên máy.
   Future<void> signOut();
 
-  /// Token đã lưu, hoặc null nếu chưa đăng nhập lần nào.
-  Future<String?> readStoredToken();
-
-  /// UC-02 BR-01 — máy này đã từng đăng nhập bằng mật khẩu thành công chưa,
-  /// và người dùng có bật sinh trắc học không.
-  Future<bool> isBiometricPaired();
-
-  /// Số điện thoại đã ghép đôi, hoặc null nếu chưa đăng nhập lần nào.
+  /// Số điện thoại đang đăng nhập trên máy này, hoặc null nếu chưa đăng nhập lần nào —
+  /// dùng để phân biệt cache dữ liệu cục bộ (ví dụ reminder preferences) giữa các tài khoản.
   Future<String?> readPairedPhone();
 
   /// Tự đăng ký — bước duy nhất còn lại sau khi Mobile đã xác thực số điện thoại qua Firebase

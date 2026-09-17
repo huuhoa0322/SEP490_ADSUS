@@ -186,7 +186,7 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, isStaffOverride: false));
+            _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, isStaffOverride: false, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("Bạn đã hủy lịch 3 lần trong ngày hôm nay", ex.Message);
     }
@@ -247,7 +247,7 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
 
         // Act & Assert: _userId chưa hủy lần nào nhưng profile con đã có 3 lần hủy -> bị chặn
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, isStaffOverride: false));
+            _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, isStaffOverride: false, ct: TestContext.Current.CancellationToken));
 
         Assert.Contains("Hồ sơ bệnh nhân này đã có 3 lần hủy lịch trong ngày hôm nay", ex.Message);
     }
@@ -283,7 +283,7 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
         };
 
         // Act
-        var result = await _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, isStaffOverride: false);
+        var result = await _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, isStaffOverride: false, ct: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -325,7 +325,7 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
         };
 
         // Act: Gọi qua overload của Staff (isStaffOverride = true)
-        var result = await _appointmentService.BookAppointmentAsync(_userProfileId, request);
+        var result = await _appointmentService.BookAppointmentAsync(_userProfileId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(result);
@@ -389,7 +389,7 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
         _db.SaveChanges();
 
         // Act: Kiểm tra trạng thái hủy hôm nay
-        var statusResponse = await _appointmentService.GetCancellationStatusTodayAsync(_userId);
+        var statusResponse = await _appointmentService.GetCancellationStatusTodayAsync(_userId, TestContext.Current.CancellationToken);
 
         // Assert: Chỉ tính 2 lần, không bị khóa
         Assert.Equal(2, statusResponse.CancellationsToday);
@@ -403,7 +403,7 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
             ScheduleSlotId = targetSlot.SlotId,
             Reason = "Khám kiểm tra"
         };
-        var bookResult = await _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, isStaffOverride: false);
+        var bookResult = await _appointmentService.BookAppointmentAsync(_userId, _userProfileId, request, isStaffOverride: false, ct: TestContext.Current.CancellationToken);
         Assert.NotNull(bookResult);
     }
 
@@ -472,22 +472,22 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
 
         // Act
         var response = await _appointmentService.UpdateClinicalInfoAsync(
-            appt.AppointmentId, _userId, _userProfileId, updateRequest);
+            appt.AppointmentId, _userId, _userProfileId, updateRequest, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal("Lý do cập nhật: đau bụng dữ dội", response.Reason);
-        Assert.Single(response.Symptoms);
-        Assert.Equal(category.CategoryId, response.Symptoms[0].CategoryId);
-        Assert.Equal("Tiêu hóa", response.Symptoms[0].CategoryName);
-        Assert.Equal("Đau bụng", response.Symptoms[0].SymptomName);
-        Assert.Equal("Đau sau khi ăn", response.Symptoms[0].OtherNote);
+        var symptomResponse = Assert.Single(response.Symptoms);
+        Assert.Equal(category.CategoryId, symptomResponse.CategoryId);
+        Assert.Equal("Tiêu hóa", symptomResponse.CategoryName);
+        Assert.Equal("Đau bụng", symptomResponse.SymptomName);
+        Assert.Equal("Đau sau khi ăn", symptomResponse.OtherNote);
 
         // DB Assert
-        var updatedInDb = await _db.Appointments.FindAsync(appt.AppointmentId);
+        var updatedInDb = await _db.Appointments.FindAsync(new object[] { appt.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal("Lý do cập nhật: đau bụng dữ dội", updatedInDb!.Reason);
-        var symptomsInDb = await _db.CaseSymptoms.Where(cs => cs.CaseId == medicalCase.CaseId).ToListAsync();
-        Assert.Single(symptomsInDb);
-        Assert.Equal(symptom.SymptomId, symptomsInDb[0].SymptomId);
+        var symptomsInDb = await _db.CaseSymptoms.Where(cs => cs.CaseId == medicalCase.CaseId).ToListAsync(TestContext.Current.CancellationToken);
+        var symptomInDb = Assert.Single(symptomsInDb);
+        Assert.Equal(symptom.SymptomId, symptomInDb.SymptomId);
     }
 
     [Fact]
@@ -531,11 +531,11 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
 
         // Act
         var response = await _appointmentService.UpdateClinicalInfoAsync(
-            appt.AppointmentId, _userId, _userProfileId, updateRequest);
+            appt.AppointmentId, _userId, _userProfileId, updateRequest, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(generatedCaseId, response.CaseId);
-        var dbAppt = await _db.Appointments.FindAsync(appt.AppointmentId);
+        var dbAppt = await _db.Appointments.FindAsync(new object[] { appt.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal(generatedCaseId, dbAppt!.CaseId);
         _caseService.Verify(c => c.CreateFromBookingAsync(
             _userProfileId, _doctorId, slot.SlotDate, It.IsAny<IReadOnlyList<SymptomInput>>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -563,7 +563,7 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _appointmentService.UpdateClinicalInfoAsync(appt.AppointmentId, _userId, _userProfileId, request));
+            _appointmentService.UpdateClinicalInfoAsync(appt.AppointmentId, _userId, _userProfileId, request, TestContext.Current.CancellationToken));
 
         Assert.Contains("Không thể chỉnh sửa thông tin cho lịch hẹn trong quá khứ hoặc đã đến giờ khám", ex.Message);
     }
@@ -591,7 +591,7 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _appointmentService.UpdateClinicalInfoAsync(appt.AppointmentId, _userId, _userProfileId, request));
+            _appointmentService.UpdateClinicalInfoAsync(appt.AppointmentId, _userId, _userProfileId, request, TestContext.Current.CancellationToken));
 
         Assert.Contains("Chỉ có thể chỉnh sửa thông tin cho lịch hẹn đang ở trạng thái ĐÃ ĐẶT", ex.Message);
     }
@@ -651,7 +651,7 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
 
         // Act: callerPatientProfileId = null
         var response = await _appointmentService.UpdateClinicalInfoAsync(
-            appt.AppointmentId, bookerUserId, callerPatientProfileId: null, request);
+            appt.AppointmentId, bookerUserId, callerPatientProfileId: null, request, TestContext.Current.CancellationToken);
 
         // Assert: Thành công
         Assert.NotNull(response);
@@ -684,6 +684,6 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             _appointmentService.UpdateClinicalInfoAsync(
-                appt.AppointmentId, hackerUserId, hackerProfileId, request));
+                appt.AppointmentId, hackerUserId, hackerProfileId, request, TestContext.Current.CancellationToken));
     }
 }

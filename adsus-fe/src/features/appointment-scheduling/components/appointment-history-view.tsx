@@ -3,7 +3,15 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarX, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Tabs,
   TabsContent,
@@ -26,6 +34,7 @@ export function AppointmentHistoryView() {
   const [relativePage, setRelativePage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
+  const [rescheduleConfirmTarget, setRescheduleConfirmTarget] = useState<string | null>(null);
 
   const { data, isLoading, error, refetch } = useAppointmentHistory();
   const cancelMutation = useCancelMyAppointment();
@@ -57,15 +66,28 @@ export function AppointmentHistoryView() {
   }
 
   function handleRescheduleRequest(appointmentId: string) {
-    setDetailId(null);
+    setRescheduleConfirmTarget(appointmentId);
+  }
+
+  function _handleRescheduleConfirm() {
+    const apptId = rescheduleConfirmTarget;
+    if (!apptId) return;
     void cancelMutation.mutate(
-      { appointmentId, reason: "Đặt lại lịch" },
+      { appointmentId: apptId, reason: "Đặt lại lịch" },
       {
         onSuccess: () => {
+          toast.success(
+            "Đã hủy lịch cũ thành công, bạn được chuyển đến màn Đặt lịch để thực hiện đặt lịch hẹn mới"
+          );
           void router.push("/dat-lich");
         },
       }
     );
+    setRescheduleConfirmTarget(null);
+  }
+
+  function _handleRescheduleCancel() {
+    setRescheduleConfirmTarget(null);
   }
 
   function handleCancelClose() {
@@ -208,6 +230,37 @@ export function AppointmentHistoryView() {
         appointmentId={cancelTarget}
         onClose={handleCancelClose}
       />
+
+      {/* Reschedule Confirm Dialog */}
+      <Dialog open={rescheduleConfirmTarget !== null} onOpenChange={(open) => { if (!open) _handleRescheduleCancel(); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Đặt lịch mới</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Bạn có muốn đặt lịch mới không?<br />
+            Lịch khám hiện tại sẽ bị hủy.
+          </p>
+          <DialogFooter className="gap-2 sm:gap-2 sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={_handleRescheduleCancel}
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              type="button"
+              className="flex-1"
+              style={{ backgroundColor: "#128C82", color: "#fff" }}
+              onClick={_handleRescheduleConfirm}
+            >
+              Xác nhận
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

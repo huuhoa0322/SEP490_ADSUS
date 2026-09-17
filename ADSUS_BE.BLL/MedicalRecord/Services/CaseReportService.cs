@@ -48,7 +48,7 @@ public sealed class CaseReportService : ICaseReportService
             "ADSUS_BE.BLL.Resources.Fonts.NotoSans-VariableFont_wdth_wght.ttf")
             ?? throw new InvalidOperationException(
                 "Embedded Vietnamese font resource not found — check Resources/Fonts/ and the .csproj EmbeddedResource entry.");
-        FontManager.RegisterFont(fontStream);
+        FontManager.RegisterFontFromStream(fontStream);
     }
 
     public CaseReportService(ICaseRepository cases, IFileStorageService storage, IHttpClientFactory httpClientFactory, ILogger<CaseReportService> logger)

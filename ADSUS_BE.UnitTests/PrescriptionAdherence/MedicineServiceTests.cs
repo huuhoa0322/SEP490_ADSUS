@@ -143,10 +143,10 @@ public partial class MedicineServiceTests
         Assert.NotNull(result);
         Assert.Equal(1, result.TotalItems);
         Assert.Equal(1, result.TotalPages);
-        Assert.Single(result.Items);
-        Assert.Equal("Med A", result.Items[0].Name);
-        Assert.Equal("ACTIVE", result.Items[0].Status);
-        Assert.Equal(50, result.Items[0].TotalInventoryBase);
+        var medicine = Assert.Single(result.Items);
+        Assert.Equal("Med A", medicine.Name);
+        Assert.Equal("ACTIVE", medicine.Status);
+        Assert.Equal(50, medicine.TotalInventoryBase);
 
         _medicineRepoMock.Verify(repo => repo.GetPagedAsync(1, 10, "med", true, "ACTIVE", It.IsAny<CancellationToken>()), Times.Once);
     }

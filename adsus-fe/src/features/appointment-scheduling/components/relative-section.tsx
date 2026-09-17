@@ -33,9 +33,9 @@ export function RelativeSection({
 }: RelativeSectionProps) {
   return (
     <div className="space-y-3">
-      <label className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+      <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
         Đặt lịch cho
-      </label>
+      </span>
 
       {/* Radio Cho tôi / Người thân */}
       <div className="grid grid-cols-2 gap-3">

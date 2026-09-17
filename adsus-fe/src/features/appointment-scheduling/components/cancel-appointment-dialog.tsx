@@ -31,19 +31,31 @@ export function CancelAppointmentDialog({
 }: CancelAppointmentDialogProps) {
   const [selectedPreset, setSelectedPreset] = useState<string>("");
   const [customReason, setCustomReason] = useState("");
-  const [showWarning, setShowWarning] = useState(false);
+  /**
+   * Step machine:
+   *  null       — dialog closed
+   *  "reason"   — showing reason form
+   *  "warning"  — showing warning dialog
+   */
+  const [step, setStep] = useState<"reason" | "warning" | null>(null);
 
   const isOpen = appointmentId !== null;
 
   const { data: statusData, isLoading: statusLoading } = useCancellationStatusToday(
-    isOpen && !showWarning
+    isOpen && step !== "warning"
   );
   const cancelMutation = useCancelMyAppointment();
 
   const isNextCancellationFinal = statusData?.isNextCancellationFinal === true;
 
-  /** Show warning immediately when we learn the next cancellation is final. */
-  const showWarningOnMount = isNextCancellationFinal && isOpen;
+  /**
+   * Derived step — if next cancellation is final, jump straight to warning
+   * when the dialog first opens (appointmentId goes null → non-null).
+   * Once the user is in the flow, we stay in whatever step they are.
+   */
+  const effectiveStep: "reason" | "warning" | null = isOpen
+    ? step ?? (isNextCancellationFinal ? "warning" : "reason")
+    : null;
 
   /** Resolve the effective reason string. */
   function resolveReason(): string {
@@ -56,8 +68,8 @@ export function CancelAppointmentDialog({
   function handleConfirm() {
     if (!canSubmit) return;
 
-    if (showWarningOnMount && !showWarning) {
-      setShowWarning(true);
+    if (effectiveStep === "reason" && isNextCancellationFinal) {
+      setStep("warning");
       return;
     }
 
@@ -84,13 +96,13 @@ export function CancelAppointmentDialog({
   }
 
   function handleBackFromWarning() {
-    setShowWarning(false);
+    setStep("reason");
   }
 
   function reset() {
     setSelectedPreset("");
     setCustomReason("");
-    setShowWarning(false);
+    setStep(null);
   }
 
   function handleOpenChange(open: boolean) {
@@ -103,7 +115,7 @@ export function CancelAppointmentDialog({
   return (
     <>
       {/* Step 1 — Reason form */}
-      <Dialog open={isOpen && !showWarning} onOpenChange={handleOpenChange}>
+      <Dialog open={effectiveStep === "reason"} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Hủy lịch khám</DialogTitle>
@@ -166,7 +178,7 @@ export function CancelAppointmentDialog({
 
       {/* Step 2 — Warning dialog */}
       <Dialog
-        open={isOpen && (showWarningOnMount || showWarning)}
+        open={effectiveStep === "warning"}
         onOpenChange={(open) => {
           if (!open) {
             handleBackFromWarning();

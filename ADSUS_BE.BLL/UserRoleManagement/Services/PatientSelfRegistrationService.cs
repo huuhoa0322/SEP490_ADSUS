@@ -87,7 +87,6 @@ public class PatientSelfRegistrationService : IPatientSelfRegistrationService
             Status = UserStatus.Active,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             MustChangePassword = false,
-            BiometricEnabled = false,
             Gender = EnumExtensions.ParseGenderType(request.Gender) ?? GenderType.Female,
             DateOfBirth = ParseDateOrNull(request.DateOfBirth),
             CreatedAt = now,

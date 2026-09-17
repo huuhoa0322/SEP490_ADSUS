@@ -88,33 +88,6 @@ public class UsersController : ControllerBase
         return MapResult(result, "Profile updated successfully.");
     }
 
-    /// <summary>
-    /// UC-02 — bật hoặc tắt đăng nhập sinh trắc học.
-    ///
-    /// BR-01 (phải đăng nhập bằng mật khẩu thành công ít nhất một lần trước) được thoả mãn
-    /// nhờ chính [Authorize]: không có token thì không gọi được endpoint này, mà muốn có
-    /// token thì phải đăng nhập bằng mật khẩu.
-    /// </summary>
-    [HttpPut("me/biometric")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> SetBiometric(
-        [FromBody] UpdateBiometricRequest request,
-        CancellationToken cancellationToken)
-    {
-        if (!TryGetUserId(out var userId))
-        {
-            return Unauthorized(ApiResponse<object>.Fail(
-                StatusCodes.Status401Unauthorized, "Invalid access token."));
-        }
-
-        var result = await _profile.SetBiometricEnabledAsync(userId, request.Enabled, cancellationToken);
-        return MapResult(
-            result,
-            request.Enabled ? "Biometric sign-in enabled." : "Biometric sign-in disabled.");
-    }
-
     // ---- helpers ----
 
     private bool TryGetUserId(out Guid userId) =>

@@ -396,6 +396,123 @@ describe("AppointmentHistoryView", () => {
   });
 
   // ---------------------------------------------------------------------------
+  // 14. Reschedule confirm — click "Đặt lại lịch" → confirm dialog mở, detail dialog giữ nguyên
+  // ---------------------------------------------------------------------------
+  it("click 'Đặt lại lịch' → confirm dialog mở và detail dialog vẫn hiển thị", async () => {
+    setupDefaultHooks({ data: [SELF_APPT_1] });
+
+    render(<AppointmentHistoryView />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("appointment-history-card").length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getAllByTestId("appointment-history-card")[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText("Chi tiết lịch khám")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Đặt lại lịch" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Đặt lịch mới")).toBeInTheDocument();
+      expect(
+        screen.getByText(/bạn có muốn đặt lịch mới không\?/i)
+      ).toBeInTheDocument();
+    });
+
+    // Detail dialog vẫn hiển thị
+    expect(screen.getByText("Chi tiết lịch khám")).toBeInTheDocument();
+  });
+
+  // ---------------------------------------------------------------------------
+  // 15. Reschedule confirm — click "Hủy bỏ" → confirm đóng, detail dialog giữ nguyên, router.push chưa gọi
+  // ---------------------------------------------------------------------------
+  it("click 'Hủy bỏ' trong confirm → confirm đóng, detail dialog giữ nguyên, router.push chưa gọi", async () => {
+    setupDefaultHooks({ data: [SELF_APPT_1] });
+
+    render(<AppointmentHistoryView />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("appointment-history-card").length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getAllByTestId("appointment-history-card")[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText("Chi tiết lịch khám")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Đặt lại lịch" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Đặt lịch mới")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Hủy bỏ" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Đặt lịch mới")).not.toBeInTheDocument();
+    });
+
+    // Detail dialog vẫn hiển thị
+    expect(screen.getByText("Chi tiết lịch khám")).toBeInTheDocument();
+    // router.push chưa gọi
+    expect(routerPushMock).not.toHaveBeenCalled();
+  });
+
+  // ---------------------------------------------------------------------------
+  // 16. Reschedule confirm — click "Xác nhận" → cancel mutation + router.push
+  // ---------------------------------------------------------------------------
+  it("click 'Xác nhận' trong confirm → cancel mutation gọi với reason 'Đặt lại lịch' và router.push('/dat-lich')", async () => {
+    const cancelMutateMock = vi.fn().mockImplementation(
+      (_vars: unknown, opts?: { onSuccess?: () => void }) => {
+        opts?.onSuccess?.();
+      }
+    );
+    // setupDefaultHooks must be called FIRST (resets all mocks),
+    // then override the specific mock we need.
+    setupDefaultHooks({ data: [SELF_APPT_1] });
+    _mockUseCancelMyAppointment.mockReturnValue({
+      mutate: cancelMutateMock,
+      isPending: false,
+    });
+
+    render(<AppointmentHistoryView />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("appointment-history-card").length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getAllByTestId("appointment-history-card")[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText("Chi tiết lịch khám")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Đặt lại lịch" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Đặt lịch mới")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận" }));
+
+    // Cancel mutation được gọi với reason "Đặt lịch"
+    await waitFor(() => {
+      expect(cancelMutateMock).toHaveBeenCalledTimes(1);
+    });
+    const [vars] = cancelMutateMock.mock.calls[0] as [unknown];
+    expect(vars).toMatchObject({
+      appointmentId: "self-1",
+      reason: "Đặt lại lịch",
+    });
+    // router.push được gọi
+    expect(routerPushMock).toHaveBeenCalledWith("/dat-lich");
+  });
+
+  // ---------------------------------------------------------------------------
   // 13. Pagination — disabled state đúng (Trang 1 disable nút Trang trước)
   // ---------------------------------------------------------------------------
   it("nút 'Trang trước' disabled ở trang đầu, 'Trang sau' disabled ở trang cuối", async () => {

@@ -23,19 +23,6 @@ public class UserProfileResponse
 
     public string Role { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Cờ đăng nhập sinh trắc học (UC-02). Ứng dụng di động dùng để biết có hiện nút
-    /// đăng nhập bằng vân tay hay không.
-    /// </summary>
-    public bool BiometricEnabled { get; set; }
-
-    /// <summary>
-    /// UC-25 — tài khoản đang bị buộc đổi mật khẩu.
-    ///
-    /// Có mặt ở đây vì đăng nhập bằng vân tay KHÔNG đi qua /auth/login, nên không nhận được
-    /// cờ này từ LoginResponse. Thiếu nó thì kịch bản sau lọt lưới: Admin cấp lại mật khẩu
-    /// cho một tài khoản đã bật sẵn vân tay, người dùng quét vân tay và vào thẳng ứng dụng,
-    /// bỏ qua hoàn toàn màn ép đổi mật khẩu.
-    /// </summary>
+    /// <summary>UC-25 — tài khoản đang bị buộc đổi mật khẩu.</summary>
     public bool MustChangePassword { get; set; }
 }
