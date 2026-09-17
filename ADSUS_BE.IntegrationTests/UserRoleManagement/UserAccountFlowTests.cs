@@ -56,6 +56,27 @@ public class UserAccountFlowTests
     }
 
     [Fact]
+    public async Task CreateAccount_PharmacistRole_SucceedsEndToEnd()
+    {
+        using var app = CreateApp();
+        var client = CreateAdminClient(app);
+
+        var response = await client.PostAsJsonAsync("/api/v1/admin/users", new
+        {
+            phoneNumber = "0944444444",
+            fullName = "Dược Sĩ Nguyễn",
+            role = "PHARMACIST",
+        }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content
+            .ReadFromJsonAsync<ApiResponse<CreatedUserAccountResponse>>(TestContext.Current.CancellationToken);
+        Assert.NotNull(created!.Data);
+        Assert.Equal("PHARMACIST", created.Data!.Account.Role);
+        Assert.False(string.IsNullOrEmpty(created.Data.TemporaryPassword));
+    }
+
+    [Fact]
     public async Task CreateAccount_DuplicatePhoneNumber_Returns400()
     {
         using var app = CreateApp();

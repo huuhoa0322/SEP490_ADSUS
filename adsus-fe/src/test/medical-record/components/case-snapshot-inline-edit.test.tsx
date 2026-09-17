@@ -565,7 +565,7 @@ describe("Case Snapshot & Inline Edit Frontend Test Suite (F1-F10)", () => {
   // =========================================================================
   // F10: Case CONFIRMED -> all edit buttons hidden
   // =========================================================================
-  it("F10: Ca ở trạng thái CONFIRMED -> toàn bộ các nút sửa (Triệu chứng, Tiền sử, Kết luận) bị ẩn", () => {
+  it("F10: Ca ở trạng thái CONFIRMED -> toàn bộ các nút sửa (Triệu chứng, Tiền sử, Kết luận, Chẩn đoán) bị ẩn", () => {
     const confirmedCase = makeMockCase({ status: "CONFIRMED" });
     detailMock.mockReturnValue(confirmedCase);
 
@@ -574,8 +574,34 @@ describe("Case Snapshot & Inline Edit Frontend Test Suite (F1-F10)", () => {
     // Các nút chỉnh sửa lâm sàng bị ẩn
     expect(screen.queryByRole("button", { name: /sửa triệu chứng/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /sửa tiền sử & dị ứng/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /sửa chẩn đoán/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^lưu kết luận$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /xác nhận kết luận/i })).not.toBeInTheDocument();
     expect(screen.queryByTestId("rich-text-editor")).not.toBeInTheDocument();
+  });
+
+  // =========================================================================
+  // F11: Case BOOKED -> Sửa chẩn đoán button hidden (bác sĩ không được sửa chẩn đoán khi chưa check-in)
+  // =========================================================================
+  it("F11: Ca ở trạng thái BOOKED -> nút 'Sửa chẩn đoán' bị ẩn, hiển thị hướng dẫn chờ check-in", () => {
+    const bookedCase = makeMockCase({ status: "BOOKED", caseDiagnoses: [] });
+    detailMock.mockReturnValue(bookedCase);
+
+    render(<CaseDetailView caseId="case-100" />);
+
+    expect(screen.queryByRole("button", { name: /sửa chẩn đoán/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/chưa có chẩn đoán bệnh\. bác sĩ có thể nhập chẩn đoán sau khi bệnh nhân check-in/i)).toBeInTheDocument();
+  });
+
+  // =========================================================================
+  // F12: Case IN_PROGRESS -> Sửa chẩn đoán button visible for DOCTOR
+  // =========================================================================
+  it("F12: Ca ở trạng thái IN_PROGRESS -> nút 'Sửa chẩn đoán' hiển thị cho bác sĩ", () => {
+    const inProgressCase = makeMockCase({ status: "IN_PROGRESS" });
+    detailMock.mockReturnValue(inProgressCase);
+
+    render(<CaseDetailView caseId="case-100" />);
+
+    expect(screen.getByRole("button", { name: /sửa chẩn đoán/i })).toBeInTheDocument();
   });
 });

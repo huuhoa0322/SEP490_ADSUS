@@ -1115,5 +1115,21 @@ public class CaseServiceTests
         await Assert.ThrowsAsync<BusinessException>(
             () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, request, TestContext.Current.CancellationToken));
     }
+
+    [Fact]
+    public async Task UpdateDiagnosesAsync_CaseBooked_ThrowsBusinessException()
+    {
+        // Arrange
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Booked);
+        _cases.Setup(r => r.GetForUpdateWithCollectionsAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        var request = new UpdateCaseDiagnosesRequest(new List<CaseDiagnosisInput>());
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, request, TestContext.Current.CancellationToken));
+        Assert.Contains("not been checked in", ex.Message);
+    }
 }
 

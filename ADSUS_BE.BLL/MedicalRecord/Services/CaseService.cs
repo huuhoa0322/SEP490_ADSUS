@@ -529,6 +529,12 @@ public sealed class CaseService : ICaseService
     {
         var medicalCase = await LoadForClinicalUpdateAsync(caseId, ct);
 
+        if (medicalCase.Status == CaseStatus.Booked)
+        {
+            throw new BusinessException(
+                "This case has not been checked in yet. Please wait for the nurse to check in the patient first.");
+        }
+
         if (_context != null)
         {
             _context.CaseDiagnoses.RemoveRange(medicalCase.CaseDiagnoses.ToList());

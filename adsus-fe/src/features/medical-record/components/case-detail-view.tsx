@@ -221,6 +221,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
     currentUser?.role === "DOCTOR" &&
     !isConfirmedOrEnd &&
     !isCancelled &&
+    !isBooked &&
     !isLocked;
 
   // Đổ kết luận đã lưu trước đó (nếu có, từ lần "Lưu kết luận" trước) vào form ngay trong lúc
@@ -460,7 +461,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         )}
       </div>
 
-      {isEditingDiagnoses ? (
+      {canEditDiagnoses && isEditingDiagnoses ? (
         <div className="space-y-4">
           <DiagnosisSelector
             value={editableDiagnoses}
@@ -499,6 +500,10 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
                 </span>
               ))}
             </div>
+          ) : isBooked ? (
+            <p className="text-sm font-medium italic text-foreground/70">
+              Chưa có chẩn đoán bệnh. Bác sĩ có thể nhập chẩn đoán sau khi bệnh nhân check-in.
+            </p>
           ) : (
             <p className="text-sm font-medium italic text-foreground/70">
               Chưa có chẩn đoán bệnh.

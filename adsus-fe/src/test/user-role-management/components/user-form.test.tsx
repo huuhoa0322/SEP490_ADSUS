@@ -52,6 +52,31 @@ describe("UserForm date of birth", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Người dùng phải đủ 18 tuổi.");
     expect(createMutateMock).not.toHaveBeenCalled();
   });
+
+  it("cho phép chọn vai trò Dược sĩ (PHARMACIST) và gửi yêu cầu tạo tài khoản thành công", () => {
+    render(<UserForm />);
+
+    fireEvent.change(screen.getByLabelText("Số điện thoại"), {
+      target: { value: "0900000088" },
+    });
+    fireEvent.change(screen.getByLabelText("Họ và tên"), {
+      target: { value: "Dược Sĩ Minh" },
+    });
+    fireEvent.change(screen.getByLabelText("Vai trò"), {
+      target: { value: "PHARMACIST" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Tạo tài khoản" }));
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(createMutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phoneNumber: "0900000088",
+        fullName: "Dược Sĩ Minh",
+        role: "PHARMACIST",
+      }),
+      expect.anything(),
+    );
+  });
 });
 
 function localDateFormat(date: Date): string {
