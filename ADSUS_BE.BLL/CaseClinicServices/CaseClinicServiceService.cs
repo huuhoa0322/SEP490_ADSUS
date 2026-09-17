@@ -177,6 +177,7 @@ public class CaseClinicServiceService : ICaseClinicServiceService
     {
         var record = await _context.CaseClinicServices
             .Include(cs => cs.Case)
+            .Include(cs => cs.ClinicService)
             .FirstOrDefaultAsync(cs => cs.Id == caseClinicServiceId, ct);
 
         if (record == null || record.CaseId != caseId)
@@ -197,6 +198,28 @@ public class CaseClinicServiceService : ICaseClinicServiceService
         if (record.Case?.Status == CaseStatus.End || record.Case?.Status == CaseStatus.Cancelled)
         {
             throw new BusinessException("Không thể xóa dịch vụ khỏi ca khám đã hoàn thành hoặc bị hủy.");
+        }
+
+        var serviceCode = record.ClinicService?.Code?.Trim();
+        if (string.IsNullOrWhiteSpace(serviceCode))
+        {
+            throw new InvalidOperationException("ClinicService not loaded or missing code for CaseClinicService.");
+        }
+
+        if (string.Equals(serviceCode, "GENERAL_EXAM", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new BusinessException("Không thể xóa dịch vụ khám thường.");
+        }
+
+        if (string.Equals(serviceCode, "ULTRASOUND_EXAM", StringComparison.OrdinalIgnoreCase))
+        {
+            var hasUltrasoundImages = await _context.UltrasoundImages
+                .AnyAsync(img => img.CaseId == caseId, ct);
+
+            if (hasUltrasoundImages)
+            {
+                throw new BusinessException("Không thể xóa dịch vụ siêu âm khi ca khám đã có ảnh siêu âm.");
+            }
         }
 
         var invoices = await _context.Invoices

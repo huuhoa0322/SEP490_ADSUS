@@ -250,7 +250,7 @@ public class AdminUsersController : ControllerBase
 
         AccountOperationResult.InvalidRole =>
             BadRequest(ApiResponse<T>.Fail(
-                StatusCodes.Status400BadRequest, "Role must be one of DOCTOR, STAFF or PATIENT.")),
+                StatusCodes.Status400BadRequest, "Role must be one of DOCTOR, STAFF, PATIENT or PHARMACIST.")),
 
         AccountOperationResult.CannotTargetSelf =>
             BadRequest(ApiResponse<T>.Fail(

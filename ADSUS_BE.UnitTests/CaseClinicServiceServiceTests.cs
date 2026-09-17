@@ -35,8 +35,8 @@ public class CaseClinicServiceServiceTests
         CaseStatus caseStatus = CaseStatus.InProgress,
         bool serviceActive = true,
         decimal servicePrice = 100000,
-        string serviceCode = "GENERAL_EXAM",
-        string serviceName = "Khám thường")
+        string serviceCode = "TEST_SERVICE",
+        string serviceName = "Dịch vụ test")
     {
         var medicalCase = new Case
         {
@@ -856,6 +856,297 @@ public class CaseClinicServiceServiceTests
         Assert.Equal(100000, updatedInvoice.TotalAmount);
         var remainingItem = Assert.Single(updatedInvoice.InvoiceItems);
         Assert.Equal(medicineItem.Id, remainingItem.Id);
+    }
+
+    [Fact]
+    public async Task TC_RemoveService_GeneralExam_ThrowsBusinessException()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context, serviceCode: "GENERAL_EXAM", serviceName: "Khám thường");
+        var junction = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            ClinicServiceId = s.Id,
+            PriceAtTime = s.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.Add(junction);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(() =>
+            service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, TestContext.Current.CancellationToken));
+        Assert.Equal("Không thể xóa dịch vụ khám thường.", ex.Message);
+    }
+
+    [Fact]
+    public async Task TC_RemoveService_UltrasoundExam_WithImages_ThrowsBusinessException()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context, serviceCode: "ULTRASOUND_EXAM", serviceName: "Khám siêu âm");
+        var junction = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            ClinicServiceId = s.Id,
+            PriceAtTime = s.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        var ultrasoundImage = new UltrasoundImage
+        {
+            ImageId = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            FileRef = "cases/img1.jpg",
+            UploadedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.Add(junction);
+        context.UltrasoundImages.Add(ultrasoundImage);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(() =>
+            service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, TestContext.Current.CancellationToken));
+        Assert.Equal("Không thể xóa dịch vụ siêu âm khi ca khám đã có ảnh siêu âm.", ex.Message);
+    }
+
+    [Fact]
+    public async Task TC_RemoveService_UltrasoundExam_WithoutImages_Succeeds()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context, serviceCode: "ULTRASOUND_EXAM", serviceName: "Khám siêu âm");
+        var junction = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            ClinicServiceId = s.Id,
+            PriceAtTime = s.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.Add(junction);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        await service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, TestContext.Current.CancellationToken);
+
+        // Assert
+        var exists = await context.CaseClinicServices.AnyAsync(cs => cs.Id == junction.Id, TestContext.Current.CancellationToken);
+        Assert.False(exists);
+    }
+
+    [Fact]
+    public async Task TC_RemoveService_ClinicServiceMissingCode_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context);
+        s.Code = null!;
+        var junction = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            ClinicServiceId = s.Id,
+            PriceAtTime = s.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.Add(junction);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task TC_RemoveService_ClinicServiceEmptyOrWhitespaceCode_ThrowsInvalidOperationException(string emptyCode)
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context);
+        s.Code = emptyCode;
+        var junction = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            ClinicServiceId = s.Id,
+            PriceAtTime = s.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.Add(junction);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [InlineData("general_exam")]
+    [InlineData("  GENERAL_EXAM  ")]
+    public async Task TC_RemoveService_GeneralExam_CaseInsensitiveAndWhitespace_ThrowsBusinessException(string code)
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context, serviceCode: code, serviceName: "Khám thường");
+        var junction = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            ClinicServiceId = s.Id,
+            PriceAtTime = s.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.Add(junction);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(() =>
+            service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, TestContext.Current.CancellationToken));
+        Assert.Equal("Không thể xóa dịch vụ khám thường.", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("ultrasound_exam")]
+    [InlineData("  ULTRASOUND_EXAM  ")]
+    public async Task TC_RemoveService_UltrasoundExam_CaseInsensitiveAndWhitespace_WithImages_ThrowsBusinessException(string code)
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context, serviceCode: code, serviceName: "Khám siêu âm");
+        var junction = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            ClinicServiceId = s.Id,
+            PriceAtTime = s.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        var ultrasoundImage = new UltrasoundImage
+        {
+            ImageId = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            FileRef = "cases/img1.jpg",
+            UploadedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.Add(junction);
+        context.UltrasoundImages.Add(ultrasoundImage);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<BusinessException>(() =>
+            service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, TestContext.Current.CancellationToken));
+        Assert.Equal("Không thể xóa dịch vụ siêu âm khi ca khám đã có ảnh siêu âm.", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("ultrasound_exam")]
+    [InlineData("  ULTRASOUND_EXAM  ")]
+    public async Task TC_RemoveService_UltrasoundExam_CaseInsensitiveAndWhitespace_WithoutImages_Succeeds(string code)
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, s) = SeedCaseAndService(context, serviceCode: code, serviceName: "Khám siêu âm");
+        var junction = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            ClinicServiceId = s.Id,
+            PriceAtTime = s.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.Add(junction);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        await service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, TestContext.Current.CancellationToken);
+
+        // Assert
+        var exists = await context.CaseClinicServices.AnyAsync(cs => cs.Id == junction.Id, TestContext.Current.CancellationToken);
+        Assert.False(exists);
+    }
+
+    [Fact]
+    public async Task TC_RemoveService_UltrasoundExam_ImagesBelongToOtherCase_Succeeds()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (caseA, serviceUs) = SeedCaseAndService(context, serviceCode: "ULTRASOUND_EXAM", serviceName: "Khám siêu âm");
+        var junctionA = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = caseA.CaseId,
+            ClinicServiceId = serviceUs.Id,
+            PriceAtTime = serviceUs.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.Add(junctionA);
+
+        // Image belongs to caseB, not caseA
+        var otherCaseId = Guid.NewGuid();
+        var otherCaseImage = new UltrasoundImage
+        {
+            ImageId = Guid.NewGuid(),
+            CaseId = otherCaseId,
+            FileRef = "cases/other.jpg",
+            UploadedAt = DateTime.UtcNow
+        };
+        context.UltrasoundImages.Add(otherCaseImage);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act - Remove from Case A (which has no images of its own)
+        await service.RemoveServiceFromCaseAsync(caseA.CaseId, junctionA.Id, TestContext.Current.CancellationToken);
+
+        // Assert
+        var exists = await context.CaseClinicServices.AnyAsync(cs => cs.Id == junctionA.Id, TestContext.Current.CancellationToken);
+        Assert.False(exists);
+    }
+
+    [Fact]
+    public async Task TC_RemoveService_OtherService_WhenCaseHasUltrasoundImages_Succeeds()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var service = CreateService(context);
+        var (c, bloodTest) = SeedCaseAndService(context, serviceCode: "BLOOD_TEST", serviceName: "Xét nghiệm máu");
+        var junction = new CaseClinicService
+        {
+            Id = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            ClinicServiceId = bloodTest.Id,
+            PriceAtTime = bloodTest.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+        var ultrasoundImage = new UltrasoundImage
+        {
+            ImageId = Guid.NewGuid(),
+            CaseId = c.CaseId,
+            FileRef = "cases/img1.jpg",
+            UploadedAt = DateTime.UtcNow
+        };
+        context.CaseClinicServices.Add(junction);
+        context.UltrasoundImages.Add(ultrasoundImage);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act - Deleting BLOOD_TEST should succeed even though the case has ultrasound images
+        await service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, TestContext.Current.CancellationToken);
+
+        // Assert
+        var exists = await context.CaseClinicServices.AnyAsync(cs => cs.Id == junction.Id, TestContext.Current.CancellationToken);
+        Assert.False(exists);
     }
 
     #endregion

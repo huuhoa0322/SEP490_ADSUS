@@ -1007,46 +1007,52 @@ describe("AppointmentDetailModal", () => {
     });
 
     it("filters out past slots when appointment date is today", () => {
-      const todayStr = format(new Date(), "yyyy-MM-dd");
-      const slotsToday: AvailableSlot[] = [
-        {
-          slotId: "slot-past",
-          doctorId: "doc-1",
-          doctorName: "BS. Trần Văn Minh",
-          slotDate: todayStr,
-          startTime: "00:01:00",
-          endTime: "00:30:00",
-        },
-        {
-          slotId: "slot-future",
-          doctorId: "doc-1",
-          doctorName: "BS. Trần Văn Minh",
-          slotDate: todayStr,
-          startTime: "23:30:00",
-          endTime: "23:59:00",
-        },
-      ];
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-09-17T12:00:00Z"));
+      try {
+        const todayStr = format(new Date(), "yyyy-MM-dd");
+        const slotsToday: AvailableSlot[] = [
+          {
+            slotId: "slot-past",
+            doctorId: "doc-1",
+            doctorName: "BS. Trần Văn Minh",
+            slotDate: todayStr,
+            startTime: "00:01:00",
+            endTime: "00:30:00",
+          },
+          {
+            slotId: "slot-future",
+            doctorId: "doc-1",
+            doctorName: "BS. Trần Văn Minh",
+            slotDate: todayStr,
+            startTime: "23:30:00",
+            endTime: "23:59:00",
+          },
+        ];
 
-      vi.mocked(useAvailableSlots).mockReturnValue({
-        data: slotsToday,
-        isLoading: false,
-      } as unknown as ReturnType<typeof useAvailableSlots>);
+        vi.mocked(useAvailableSlots).mockReturnValue({
+          data: slotsToday,
+          isLoading: false,
+        } as unknown as ReturnType<typeof useAvailableSlots>);
 
-      render(
-        <AppointmentDetailModal
-          isOpen={true}
-          item={{ ...baseItem, slotTime: `${todayStr}T10:00:00Z` }}
-          onClose={mockClose}
-        />
-      );
+        render(
+          <AppointmentDetailModal
+            isOpen={true}
+            item={{ ...baseItem, slotTime: `${todayStr}T10:00:00Z` }}
+            onClose={mockClose}
+          />
+        );
 
-      fireEvent.click(screen.getByRole("button", { name: /Đổi lịch/i }));
+        fireEvent.click(screen.getByRole("button", { name: /Đổi lịch/i }));
 
-      const slotSelect = document.querySelector("#reschedule-slot") as HTMLSelectElement;
-      const options = Array.from(slotSelect.querySelectorAll("option"));
+        const slotSelect = document.querySelector("#reschedule-slot") as HTMLSelectElement;
+        const options = Array.from(slotSelect.querySelectorAll("option"));
 
-      expect(options.some((o) => o.value === "slot-past")).toBe(false);
-      expect(options.some((o) => o.value === "slot-future")).toBe(true);
+        expect(options.some((o) => o.value === "slot-past")).toBe(false);
+        expect(options.some((o) => o.value === "slot-future")).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

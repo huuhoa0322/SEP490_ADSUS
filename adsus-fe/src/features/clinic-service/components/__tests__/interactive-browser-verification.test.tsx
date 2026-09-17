@@ -368,10 +368,40 @@ describe("Interactive Browser Verification: Clinic Service Workflows", () => {
       expect(mockAddCaseClinicServiceMutate).toHaveBeenCalledWith("cs-002");
     });
 
-    it("interactively opens Delete Service confirm dialog and submits removal", async () => {
+    it("blocks deletion of GENERAL_EXAM with disabled button and tooltip", () => {
       renderWithClient(<CaseClinicServicesPanel caseId="case-999" caseStatus="IN_PROGRESS" />);
 
-      const deleteBtn = screen.getByTitle("Xóa dịch vụ này khỏi ca khám");
+      const deleteBtn = screen.getByTitle("Không thể xóa dịch vụ khám thường.");
+      expect(deleteBtn).toBeDisabled();
+      expect(mockRemoveCaseClinicServiceMutate).not.toHaveBeenCalled();
+    });
+
+    it("interactively opens Delete Service confirm dialog and submits removal for allowed service", async () => {
+      mockUseCaseClinicServices.mockReturnValue({
+        data: [
+          ...mockCaseServices,
+          {
+            id: "ccs-002",
+            caseId: "case-999",
+            clinicServiceId: "cs-002",
+            serviceName: "Khám siêu âm",
+            serviceCode: "ULTRASOUND_EXAM",
+            priceAtTime: 200000,
+            createdAt: "2026-09-11T08:30:00Z",
+          },
+        ],
+        isLoading: false,
+      });
+
+      renderWithClient(
+        <CaseClinicServicesPanel
+          caseId="case-999"
+          caseStatus="IN_PROGRESS"
+          hasUltrasoundImages={false}
+        />,
+      );
+
+      const deleteBtn = screen.getByRole("button", { name: "Xóa dịch vụ Khám siêu âm" });
       fireEvent.click(deleteBtn);
 
       await waitFor(() => {
@@ -384,7 +414,7 @@ describe("Interactive Browser Verification: Clinic Service Workflows", () => {
       const confirmDeleteBtn = screen.getByRole("button", { name: "Xóa dịch vụ" });
       fireEvent.click(confirmDeleteBtn);
 
-      expect(mockRemoveCaseClinicServiceMutate).toHaveBeenCalledWith("ccs-001");
+      expect(mockRemoveCaseClinicServiceMutate).toHaveBeenCalledWith("ccs-002");
     });
 
     it("enforces PAID invoice guard: displays alert banner and disables trash button", () => {

@@ -46,6 +46,27 @@ export interface CaseClinicServicesPanelProps {
   caseStatus: string;
   variant?: "card" | "compact";
   isResponsibleDoctor?: boolean;
+  hasUltrasoundImages?: boolean;
+}
+
+export function getServiceDeletionGuard(
+  service: CaseClinicService | null | undefined,
+  hasUltrasoundImages: boolean,
+): { blocked: boolean; reason: string } {
+  if (!service) {
+    return { blocked: false, reason: "" };
+  }
+  const code = (service.serviceCode ?? "").trim().toUpperCase();
+  if (code === "GENERAL_EXAM") {
+    return { blocked: true, reason: "Không thể xóa dịch vụ khám thường." };
+  }
+  if (code === "ULTRASOUND_EXAM" && hasUltrasoundImages) {
+    return {
+      blocked: true,
+      reason: "Không thể xóa dịch vụ siêu âm khi ca khám đã có ảnh siêu âm.",
+    };
+  }
+  return { blocked: false, reason: "" };
 }
 
 function CaseClinicServicesPanelContent({
@@ -53,6 +74,7 @@ function CaseClinicServicesPanelContent({
   caseStatus,
   variant = "card",
   isResponsibleDoctor = true,
+  hasUltrasoundImages = false,
 }: CaseClinicServicesPanelProps) {
   const { data: caseServices, isLoading: isLoadingServices } =
     useCaseClinicServices(caseId);
@@ -108,6 +130,13 @@ function CaseClinicServicesPanelContent({
 
   const handleConfirmDelete = () => {
     if (!serviceToDelete) return;
+
+    // Defense-in-depth: chặn lần cuối trước khi gọi API
+    const guard = getServiceDeletionGuard(serviceToDelete, Boolean(hasUltrasoundImages));
+    if (guard.blocked) {
+      setServiceToDelete(null);
+      return;
+    }
 
     removeMutation.mutate(serviceToDelete.id, {
       onSuccess: () => {
@@ -263,17 +292,22 @@ function CaseClinicServicesPanelContent({
         ) : (
           <div className="flex flex-wrap items-center gap-1.5">
             {caseServices.map((service) => {
-              const deleteDisabled = !canDelete;
+              const deletionGuard = getServiceDeletionGuard(
+                service,
+                Boolean(hasUltrasoundImages),
+              );
+              const showDeleteButton = canDelete && !deletionGuard.blocked;
+
               return (
                 <span
                   key={service.id}
                   className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 px-3 py-1 text-xs font-semibold text-blue-900 dark:text-blue-200"
                 >
                   <span>{service.serviceName}</span>
-                  {canDelete && (
+                  {showDeleteButton && (
                     <button
                       type="button"
-                      disabled={deleteDisabled || removeMutation.isPending}
+                      disabled={removeMutation.isPending}
                       onClick={() => setServiceToDelete(service)}
                       title="Xóa dịch vụ này khỏi ca khám"
                       className="ml-0.5 rounded-full p-0.5 text-blue-400 hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40"
@@ -416,14 +450,22 @@ function CaseClinicServicesPanelContent({
               ) : (
                 <>
                   {caseServices.map((service) => {
-                    const deleteDisabled = !canDelete;
-                    const tooltipText = hasPaidInvoice
-                      ? "Không thể xóa dịch vụ vì hóa đơn đã được thanh toán."
-                      : isBooked
-                        ? "Không thể xóa dịch vụ khi ca khám đang chờ check-in."
-                        : isCaseClosed
-                          ? "Không thể xóa dịch vụ khi ca khám đã kết thúc hoặc đã hủy."
-                          : "Xóa dịch vụ này khỏi ca khám";
+                    const deletionGuard = getServiceDeletionGuard(
+                      service,
+                      Boolean(hasUltrasoundImages),
+                    );
+                    const deleteDisabled = !canDelete || deletionGuard.blocked;
+                    const tooltipText = !canDelete
+                      ? hasPaidInvoice
+                        ? "Không thể xóa dịch vụ vì hóa đơn đã được thanh toán."
+                        : isBooked
+                          ? "Không thể xóa dịch vụ khi ca khám đang chờ check-in."
+                          : isCaseClosed
+                            ? "Không thể xóa dịch vụ khi ca khám đã kết thúc hoặc đã hủy."
+                            : "Chỉ bác sĩ phụ trách ca khám mới có quyền xóa dịch vụ."
+                      : deletionGuard.blocked
+                        ? deletionGuard.reason
+                        : "Xóa dịch vụ này khỏi ca khám";
 
                     return (
                       <TableRow key={service.id} className="hover:bg-muted/20">
@@ -447,6 +489,7 @@ function CaseClinicServicesPanelContent({
                             size="icon"
                             disabled={deleteDisabled || removeMutation.isPending}
                             title={tooltipText}
+                            aria-label={deleteDisabled ? tooltipText : `Xóa dịch vụ ${service.serviceName}`}
                             onClick={() => setServiceToDelete(service)}
                             className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
                           >

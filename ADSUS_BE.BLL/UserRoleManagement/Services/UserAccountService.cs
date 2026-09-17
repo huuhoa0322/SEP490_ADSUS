@@ -27,7 +27,7 @@ public class UserAccountService : IUserAccountService
     /// UC-04: tài khoản Admin cấp lúc dựng hệ thống, không tạo ở đây.
     /// </summary>
     private static readonly UserRole[] AssignableRoles =
-        { UserRole.Doctor, UserRole.Staff, UserRole.Patient };
+        { UserRole.Doctor, UserRole.Staff, UserRole.Patient, UserRole.Pharmacist };
 
     private readonly IUserRepository _users;
     private readonly AccountAuditTrail _audit;

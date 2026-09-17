@@ -69,6 +69,21 @@ public class UserAccountServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_ValidPharmacistRequest_CreatesActiveAccountAndForcesPasswordChange()
+    {
+        var (result, account, _) = await _sut.CreateAsync(BuildCreateRequest("PHARMACIST"), _adminId, TestContext.Current.CancellationToken);
+
+        Assert.Equal(AccountOperationResult.Success, result);
+        Assert.Equal("ACTIVE", account!.Status);
+        Assert.Equal("PHARMACIST", account.Role);
+
+        var user = Assert.Single(_saved);
+        Assert.True(user.MustChangePassword);
+        Assert.Equal(UserRole.Pharmacist, user.Role);
+        Assert.Equal(UserStatus.Active, user.Status);
+    }
+
+    [Fact]
     public async Task CreateAsync_TemporaryPassword_IsHashedReturnedOnceAndNeverInResponse()
     {
         // Sửa 12/08/2026 — thống nhất với UC-03 AF-02/UC-06 AF-01/AF-03: mật khẩu tạm không
@@ -448,6 +463,22 @@ public class UserAccountServiceTests
 
         Assert.Equal(AccountOperationResult.Success, result);
         Assert.Equal(UserRole.Staff, user.Role);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ChangeRoleToPharmacist_Succeeds()
+    {
+        var user = BuildDbUser(UserRole.Doctor);
+        SetupGetById(user);
+
+        var result = await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
+        {
+            FullName = "Dược sĩ Trần Mai",
+            Role = "PHARMACIST",
+        }, _adminId, TestContext.Current.CancellationToken);
+
+        Assert.Equal(AccountOperationResult.Success, result);
+        Assert.Equal(UserRole.Pharmacist, user.Role);
     }
 
     [Fact]
