@@ -25,6 +25,7 @@ import { PaginationNumbered } from "@/components/ui/pagination-numbered";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getApiErrorMessage } from "@/lib/api-client";
 
+import { useAuthStore } from "@/store/auth-store";
 import { useCaseList } from "../hooks/use-cases";
 import { usePatientProfile } from "../hooks/use-patient-profile";
 import { useRelativesForGuardian } from "@/features/appointment-scheduling/hooks/use-relatives";
@@ -94,6 +95,11 @@ function renderStatusBadge(status: CaseStatus) {
  *   - Tab 2: "Hồ sơ Tiền sử & Lâm sàng" (Dị ứng với soft-danger badges, bệnh mãn tính với soft-warning badges, metadata thời điểm tạo/cập nhật).
  */
 export function PatientRecordView({ profileId }: { profileId: string }) {
+  const userRole = useAuthStore((state) => state.user?.role);
+  const isDoctor = userRole === "DOCTOR";
+  const canBookAppointment = !isDoctor && (userRole === "STAFF" || userRole === "ADMIN");
+  const canManageRelatives = !isDoctor && (userRole === "STAFF" || userRole === "ADMIN");
+
   const [page, setPage] = useState(1);
   const [isAddRelativeOpen, setIsAddRelativeOpen] = useState(false);
   const [bookingPatient, setBookingPatient] = useState<{
@@ -108,7 +114,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
 
   const EMPTY_GUID = "00000000-0000-0000-0000-000000000000";
   const isRelative = !profileQuery.data?.patientUserId || profileQuery.data.patientUserId === EMPTY_GUID;
-  const relativesQuery = useRelativesForGuardian(!isRelative ? profileQuery.data?.patientUserId : undefined);
+  const relativesQuery = useRelativesForGuardian(!isRelative && !isDoctor ? profileQuery.data?.patientUserId : undefined);
   const relatives = relativesQuery.data ?? [];
 
   if (profileQuery.isLoading) {
@@ -182,21 +188,23 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
 
           {/* Primary Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              onClick={() =>
-                setBookingPatient({
-                  profileId,
-                  name: profile.fullName,
-                  phone: profile.phone,
-                  userId: profile.patientUserId,
-                })
-              }
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#2E37A4] px-3.5 py-2 text-sm font-semibold text-white shadow-2xs hover:bg-[#252c85]"
-            >
-              <CalendarCheck className="size-4" />
-              Đặt lịch khám
-            </Button>
-            {!isRelative && (
+            {canBookAppointment && (
+              <Button
+                onClick={() =>
+                  setBookingPatient({
+                    profileId,
+                    name: profile.fullName,
+                    phone: profile.phone,
+                    userId: profile.patientUserId,
+                  })
+                }
+                className="inline-flex items-center gap-1.5 rounded-md bg-[#2E37A4] px-3.5 py-2 text-sm font-semibold text-white shadow-2xs hover:bg-[#252c85]"
+              >
+                <CalendarCheck className="size-4" />
+                Đặt lịch khám
+              </Button>
+            )}
+            {!isRelative && canManageRelatives && (
               <Button
                 variant="outline"
                 onClick={() => setIsAddRelativeOpen(true)}
@@ -240,7 +248,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
               <FileText className="size-4" />
               Hồ sơ Tiền sử & Lâm sàng
             </TabsTrigger>
-            {!isRelative && (
+            {!isRelative && !isDoctor && (
               <TabsTrigger
                 value="relatives"
                 className="relative flex items-center gap-2 rounded-none border-b-2 border-transparent px-5 py-3 text-sm font-bold text-foreground/70 transition-all hover:text-foreground data-[state=active]:border-[#2E37A4] data-[state=active]:bg-transparent data-[state=active]:text-[#2E37A4] data-[state=active]:shadow-none"
@@ -415,7 +423,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
           </TabsContent>
 
           {/* TAB 3: Người thân liên kết */}
-          {!isRelative && (
+          {!isRelative && !isDoctor && (
             <TabsContent value="relatives" className="space-y-4 outline-none">
               <div className="rounded-lg border border-[#E7E8EB] bg-white p-5 shadow-xs">
                 <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-[#E7E8EB] pb-3">
@@ -425,14 +433,16 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
                       Danh sách người thân liên kết ({relatives.length})
                     </h3>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setIsAddRelativeOpen(true)}
-                    className="inline-flex items-center gap-1.5 bg-[#2E37A4] text-white hover:bg-[#252c85]"
-                  >
-                    <Plus className="size-4" />
-                    Thêm người thân
-                  </Button>
+                  {canManageRelatives && (
+                    <Button
+                      size="sm"
+                      onClick={() => setIsAddRelativeOpen(true)}
+                      className="inline-flex items-center gap-1.5 bg-[#2E37A4] text-white hover:bg-[#252c85]"
+                    >
+                      <Plus className="size-4" />
+                      Thêm người thân
+                    </Button>
+                  )}
                 </div>
 
                 {relativesQuery.isLoading ? (
@@ -446,14 +456,16 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
                     <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
                       Bệnh nhân chưa liên kết thông tin người thân để đặt lịch hoặc quản lý hồ sơ.
                     </p>
-                    <Button
-                      size="sm"
-                      onClick={() => setIsAddRelativeOpen(true)}
-                      className="mt-4 inline-flex items-center gap-1.5 bg-[#2E37A4] text-white hover:bg-[#252c85]"
-                    >
-                      <Plus className="size-4" />
-                      Thêm người thân ngay
-                    </Button>
+                    {canManageRelatives && (
+                      <Button
+                        size="sm"
+                        onClick={() => setIsAddRelativeOpen(true)}
+                        className="mt-4 inline-flex items-center gap-1.5 bg-[#2E37A4] text-white hover:bg-[#252c85]"
+                      >
+                        <Plus className="size-4" />
+                        Thêm người thân ngay
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -498,22 +510,6 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
                             </td>
                             <td className="px-4 py-3.5 text-right">
                               <div className="inline-flex items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    setBookingPatient({
-                                      profileId: rel.patientProfileId,
-                                      name: rel.patientName,
-                                      phone: rel.patientPhone,
-                                      userId: profile.patientUserId,
-                                    })
-                                  }
-                                  className="h-8 gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 border-emerald-300 hover:bg-emerald-50"
-                                >
-                                  <CalendarCheck className="size-3.5" />
-                                  Đặt lịch
-                                </Button>
                                 <Link
                                   href={`/patients/${rel.patientProfileId}`}
                                   className="inline-flex h-8 items-center gap-1 rounded-md border border-[#E7E8EB] bg-white px-2.5 text-xs font-semibold text-foreground hover:bg-[#F5F6F8] hover:text-[#2E37A4]"
@@ -536,7 +532,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
       </div>
 
       {/* Modal Thêm người thân */}
-      {isAddRelativeOpen && (
+      {isAddRelativeOpen && canManageRelatives && (
         <AddRelativeModal
           guardianUserId={profile.patientUserId}
           guardianName={profile.fullName}
@@ -546,7 +542,7 @@ export function PatientRecordView({ profileId }: { profileId: string }) {
       )}
 
       {/* Modal Đặt lịch khám */}
-      {bookingPatient && (
+      {bookingPatient && canBookAppointment && (
         <BookAppointmentModal
           patientProfileId={bookingPatient.profileId}
           patientName={bookingPatient.name}

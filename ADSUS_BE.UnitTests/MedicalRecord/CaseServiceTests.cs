@@ -1,5 +1,6 @@
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.Common.Interfaces;
+using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Services;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
@@ -610,7 +611,7 @@ public class CaseServiceTests
     // ---------- ConfirmAsync (thêm 07/08/2026) ----------
 
     private static ADSUS_BE.BLL.MedicalRecord.DTOs.CaseConclusionRequest MakeConfirmRequest() => new(
-        FinalDiagnosis: "Nhân xơ tử cung", DoctorConclusion: "Theo dõi định kỳ sau 6 tháng");
+        DoctorConclusion: "Theo dõi định kỳ sau 6 tháng");
 
     [Fact]
     public async Task ConfirmAsync_ValidRequestByResponsibleDoctor_SetsConfirmedStatusAndFields()
@@ -631,7 +632,6 @@ public class CaseServiceTests
         // Assert
         Assert.Equal("CONFIRMED", response.Status);
         Assert.Equal(CaseStatus.Confirmed, medicalCase.Status);
-        Assert.Equal("Nhân xơ tử cung", medicalCase.FinalDiagnosis);
         Assert.Equal("Theo dõi định kỳ sau 6 tháng", medicalCase.DoctorConclusion);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -739,7 +739,6 @@ public class CaseServiceTests
         // Assert
         Assert.Equal("IN_PROGRESS", response.Status);
         Assert.Equal(CaseStatus.InProgress, medicalCase.Status);
-        Assert.Equal("Nhân xơ tử cung", medicalCase.FinalDiagnosis);
         Assert.Equal("Theo dõi định kỳ sau 6 tháng", medicalCase.DoctorConclusion);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -979,6 +978,142 @@ public class CaseServiceTests
         var result = await _sut.CreateFromBookingAsync(patientProfileId, doctorId, visitDate,
             Array.Empty<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>(), TestContext.Current.CancellationToken);
         Assert.NotEqual(Guid.Empty, result);
+    }
+
+    // ---------- UpdateDiagnosesAsync ----------
+
+    [Fact]
+    public async Task UpdateDiagnosesAsync_ValidRequest_ReplacesExistingDiagnoses()
+    {
+        // Arrange
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.InProgress);
+        medicalCase.CaseDiagnoses.Add(new CaseDiagnosis
+        {
+            Id = Guid.NewGuid(),
+            CaseId = medicalCase.CaseId,
+            DiagnosisItemId = Guid.NewGuid(),
+            Note = "Cũ",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        _cases.Setup(r => r.GetForUpdateWithCollectionsAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        var d1 = Guid.NewGuid();
+        var d2 = Guid.NewGuid();
+        var request = new UpdateCaseDiagnosesRequest(new List<CaseDiagnosisInput>
+        {
+            new(d1, "Ghi chú 1"),
+            new(d2, null)
+        });
+
+        // Act
+        var response = await _sut.UpdateDiagnosesAsync(medicalCase.CaseId, request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(response);
+        Assert.Equal(2, medicalCase.CaseDiagnoses.Count);
+        Assert.Contains(medicalCase.CaseDiagnoses, cd => cd.DiagnosisItemId == d1 && cd.Note == "Ghi chú 1");
+        Assert.Contains(medicalCase.CaseDiagnoses, cd => cd.DiagnosisItemId == d2 && cd.Note == null);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateDiagnosesAsync_EmptyList_ClearsAllDiagnoses()
+    {
+        // Arrange
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.InProgress);
+        medicalCase.CaseDiagnoses.Add(new CaseDiagnosis
+        {
+            Id = Guid.NewGuid(),
+            CaseId = medicalCase.CaseId,
+            DiagnosisItemId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow
+        });
+        medicalCase.CaseDiagnoses.Add(new CaseDiagnosis
+        {
+            Id = Guid.NewGuid(),
+            CaseId = medicalCase.CaseId,
+            DiagnosisItemId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow
+        });
+
+        _cases.Setup(r => r.GetForUpdateWithCollectionsAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        var request = new UpdateCaseDiagnosesRequest(new List<CaseDiagnosisInput>());
+
+        // Act
+        var response = await _sut.UpdateDiagnosesAsync(medicalCase.CaseId, request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(response);
+        Assert.Empty(medicalCase.CaseDiagnoses);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateDiagnosesAsync_CaseNotFound_ThrowsResourceNotFoundException()
+    {
+        // Arrange
+        var missingCaseId = Guid.NewGuid();
+        _cases.Setup(r => r.GetForUpdateWithCollectionsAsync(missingCaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync((Case?)null);
+
+        var request = new UpdateCaseDiagnosesRequest(new List<CaseDiagnosisInput>());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ResourceNotFoundException>(
+            () => _sut.UpdateDiagnosesAsync(missingCaseId, request, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task UpdateDiagnosesAsync_CaseAlreadyConfirmed_ThrowsBusinessException()
+    {
+        // Arrange
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Confirmed);
+        _cases.Setup(r => r.GetForUpdateWithCollectionsAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        var request = new UpdateCaseDiagnosesRequest(new List<CaseDiagnosisInput>());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, request, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task UpdateDiagnosesAsync_CaseAlreadyEnded_ThrowsBusinessException()
+    {
+        // Arrange
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.End);
+        _cases.Setup(r => r.GetForUpdateWithCollectionsAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        var request = new UpdateCaseDiagnosesRequest(new List<CaseDiagnosisInput>());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, request, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task UpdateDiagnosesAsync_CaseCancelled_ThrowsBusinessException()
+    {
+        // Arrange
+        var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.Cancelled);
+        _cases.Setup(r => r.GetForUpdateWithCollectionsAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        var request = new UpdateCaseDiagnosesRequest(new List<CaseDiagnosisInput>());
+
+        // Act & Assert
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, request, TestContext.Current.CancellationToken));
     }
 }
 

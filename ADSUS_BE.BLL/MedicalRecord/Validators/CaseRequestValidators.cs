@@ -34,10 +34,6 @@ public sealed class CaseConclusionRequestValidator : AbstractValidator<CaseConcl
 {
     public CaseConclusionRequestValidator()
     {
-        RuleFor(x => x.FinalDiagnosis)
-            .NotEmpty().WithMessage("Final diagnosis is required.")
-            .MaximumLength(5000).WithMessage("Final diagnosis must be 5000 characters or fewer.");
-
         RuleFor(x => x.DoctorConclusion)
             .MaximumLength(5000).WithMessage("Doctor conclusion must be 5000 characters or fewer.");
     }

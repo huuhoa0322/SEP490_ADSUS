@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/utils/html_sanitizer.dart';
 import '../../../../../shared/providers/app_providers.dart';
 import '../../../data/dtos/symptom_dtos.dart';
 import '../../../domain/entities/appointment.dart';
@@ -167,6 +168,14 @@ class _EditClinicalInfoSheetState extends ConsumerState<EditClinicalInfoSheet> {
   }
 
   Future<void> _saveChanges() async {
+    final reasonText = _reasonController.text.trim();
+    if (HtmlSanitizer.containsHtml(reasonText)) {
+      setState(() {
+        _errorMessage = 'Lý do khám không được chứa thẻ HTML.';
+      });
+      return;
+    }
+
     setState(() {
       _isSaving = true;
       _errorMessage = null;
@@ -183,7 +192,7 @@ class _EditClinicalInfoSheetState extends ConsumerState<EditClinicalInfoSheet> {
 
       final updated = await repo.updateClinicalInfo(
         widget.appointment.id,
-        reason: _reasonController.text.trim(),
+        reason: reasonText,
         symptoms: symptomInputs,
       );
 

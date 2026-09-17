@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/lib/api-client";
+import { containsHtmlTags } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import { useBookAppointment } from "../hooks/use-booking";
 import { useBookingForm } from "../hooks/use-booking-form";
@@ -154,6 +155,11 @@ export function BookingView({
 
     if (!form.isBookingForSelf && !form.selectedRelativeId) {
       toast.error("Vui lòng chọn người thân trước khi xác nhận đặt lịch.");
+      return;
+    }
+
+    if (form.reason && containsHtmlTags(form.reason)) {
+      toast.error("Lý do khám không được chứa thẻ HTML.");
       return;
     }
 

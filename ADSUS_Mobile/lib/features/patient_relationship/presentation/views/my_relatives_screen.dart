@@ -51,7 +51,7 @@ class MyRelativesScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: 'Thêm người thân',
-            onPressed: () => _navigateToAddRelative(context),
+            onPressed: () => _navigateToAddRelative(context, ref),
           ),
         ],
       ),
@@ -59,7 +59,7 @@ class MyRelativesScreen extends ConsumerWidget {
         child: _buildBody(context, ref, state),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _navigateToAddRelative(context),
+        onPressed: () => _navigateToAddRelative(context, ref),
         icon: const Icon(Icons.person_add),
         label: const Text('Thêm người thân'),
         backgroundColor: AppColors.teal,
@@ -179,11 +179,14 @@ class MyRelativesScreen extends ConsumerWidget {
     }
   }
 
-  void _navigateToAddRelative(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
+  Future<void> _navigateToAddRelative(BuildContext context, WidgetRef ref) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
         builder: (_) => const AddRelativeScreen(),
       ),
     );
+    if (result == true) {
+      ref.read(myRelativesViewModelProvider.notifier).loadRelatives();
+    }
   }
 }

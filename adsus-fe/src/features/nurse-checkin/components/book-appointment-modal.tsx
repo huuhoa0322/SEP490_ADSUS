@@ -37,6 +37,7 @@ import {
 import { useStaffBookAppointment } from "../hooks/use-staff-book-appointment";
 import { useRelativesForGuardian } from "@/features/appointment-scheduling/hooks/use-relatives";
 import { AddRelativeModal } from "@/features/appointment-scheduling/components/add-relative-modal";
+import { containsHtmlTags } from "@/lib/utils";
 
 export interface BookAppointmentModalProps {
   patientProfileId: string;
@@ -178,6 +179,11 @@ export function BookAppointmentModal({
     }
     if (!effectiveSelectedSlotId) {
       setValidationError("Vui lòng chọn khung giờ khám.");
+      return;
+    }
+
+    if (reason && containsHtmlTags(reason)) {
+      setValidationError("Lý do khám không được chứa thẻ HTML.");
       return;
     }
 

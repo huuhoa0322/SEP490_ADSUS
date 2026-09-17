@@ -38,6 +38,7 @@ import {
   useAvailableSlots,
   useRescheduleAppointment,
 } from "../hooks/use-reschedule";
+import { containsHtmlTags } from "@/lib/utils";
 
 export interface AppointmentDetailModalProps {
   isOpen: boolean;
@@ -239,6 +240,16 @@ function AppointmentDetailModalInner({
 
     if (!rescheduleReason.trim()) {
       setValidationError("Vui lòng nhập lý do đổi lịch.");
+      return;
+    }
+
+    if (containsHtmlTags(rescheduleReason)) {
+      setValidationError("Lý do đổi lịch không được chứa thẻ HTML.");
+      return;
+    }
+
+    if (newReason && containsHtmlTags(newReason)) {
+      setValidationError("Lý do khám mới không được chứa thẻ HTML.");
       return;
     }
 

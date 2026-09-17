@@ -5,7 +5,12 @@ import DOMPurify from "isomorphic-dompurify";
 
 import { useAuthStore } from "@/store/auth-store";
 import { CaseDetailView } from "@/features/medical-record/components/case-detail-view";
-import type { CaseDetail } from "@/features/medical-record/types/medical-record.types";
+import type {
+  CaseDetail,
+  CaseDiseaseInput,
+  CaseAllergyInput,
+  CreateCaseSymptomInput,
+} from "@/features/medical-record/types/medical-record.types";
 
 const {
   detailMock,
@@ -17,6 +22,7 @@ const {
   endMutate,
   exportReportMock,
   pushMock,
+  updateDiagnosesMutate,
 } = vi.hoisted(() => ({
   detailMock: vi.fn(),
   updateSymptomsMutate: vi.fn(),
@@ -27,6 +33,7 @@ const {
   endMutate: vi.fn(),
   exportReportMock: vi.fn(),
   pushMock: vi.fn(),
+  updateDiagnosesMutate: vi.fn(),
 }));
 
 let isUpdateDiseasesPending = false;
@@ -80,6 +87,19 @@ vi.mock("@/features/medical-record/hooks/use-cases", () => ({
   }),
 }));
 
+vi.mock("@/features/medical-record/hooks/use-diagnosis", () => ({
+  useDiagnosisItems: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+  }),
+  useUpdateCaseDiagnoses: () => ({
+    mutate: updateDiagnosesMutate,
+    mutateAsync: updateDiagnosesMutate,
+    isPending: false,
+  }),
+}));
+
 vi.mock("@/features/medical-record/hooks/use-case-report", () => ({
   useExportCaseReport: () => ({
     exportReport: exportReportMock,
@@ -130,8 +150,8 @@ vi.mock("@/components/ui/rich-text-editor", () => ({
     className?: string;
   }) => (
     <textarea
-      id="finalDiagnosis"
-      aria-label="Chẩn đoán & Kết luận *"
+      id="doctorConclusion"
+      aria-label="Kết luận của bác sĩ"
       data-testid="rich-text-editor"
       className={className ?? "border border-gray-300"}
       value={value}
@@ -144,22 +164,24 @@ vi.mock("@/components/ui/rich-text-editor", () => ({
 
 vi.mock("@/features/medical-record/components/medical-history-selector", () => ({
   MedicalHistorySelector: ({
-    value,
+    value = [],
     onChange,
+    disabled,
   }: {
-    value: Array<{ diseaseId: string; note: string | null }>;
-    onChange: (v: Array<{ diseaseId: string; note: string | null }>) => void;
+    value?: CaseDiseaseInput[];
+    onChange?: (d: CaseDiseaseInput[]) => void;
+    disabled?: boolean;
   }) => (
     <div data-testid="medical-history-selector">
-      {value?.map((d) => (
-        <span key={d.diseaseId} data-testid={`pre-disease-${d.diseaseId}`}>
-          {d.note ?? "no-note"}
-        </span>
+      {value.map((d) => (
+        <div key={d.diseaseId} data-testid={`pre-disease-${d.diseaseId}`}>
+          {d.note}
+        </div>
       ))}
       <button
-        type="button"
         data-testid="add-disease-btn"
-        onClick={() => onChange([...(value ?? []), { diseaseId: "d-added", note: "Ghi chú mới" }])}
+        disabled={disabled}
+        onClick={() => onChange?.([...value, { diseaseId: "dis-new", note: null }])}
       >
         Thêm bệnh
       </button>
@@ -169,40 +191,56 @@ vi.mock("@/features/medical-record/components/medical-history-selector", () => (
 
 vi.mock("@/features/medical-record/components/allergy-selector", () => ({
   AllergySelector: ({
-    value,
+    value = [],
+    onChange,
+    disabled,
   }: {
-    value: Array<{ allergyTypeId: string; note: string | null }>;
-    onChange?: unknown;
+    value?: CaseAllergyInput[];
+    onChange?: (a: CaseAllergyInput[]) => void;
+    disabled?: boolean;
   }) => (
     <div data-testid="allergy-selector">
-      {value?.map((a) => (
-        <span key={a.allergyTypeId} data-testid={`pre-allergy-${a.allergyTypeId}`}>
-          {a.note ?? "no-note"}
-        </span>
+      {value.map((a) => (
+        <div key={a.allergyTypeId} data-testid={`pre-allergy-${a.allergyTypeId}`}>
+          {a.note}
+        </div>
       ))}
+      <button
+        data-testid="add-allergy-btn"
+        disabled={disabled}
+        onClick={() => onChange?.([...value, { allergyTypeId: "alg-new", note: null }])}
+      >
+        Thêm dị ứng
+      </button>
     </div>
   ),
 }));
 
 vi.mock("@/features/medical-record/components/symptom-selector", () => ({
   SymptomSelector: ({
-    value,
+    value = [],
     onChange,
+    disabled,
   }: {
-    value: Array<{ categoryId: string; symptomId: string | null; otherNote: string | null }>;
-    onChange: (v: Array<{ categoryId: string; symptomId: string | null; otherNote: string | null }>) => void;
+    value?: CreateCaseSymptomInput[];
+    onChange?: (s: CreateCaseSymptomInput[]) => void;
+    disabled?: boolean;
   }) => (
     <div data-testid="symptom-selector">
-      {value?.map((s, idx) => (
-        <span key={idx} data-testid={`symptom-item-${s.categoryId}`}>
-          {s.symptomId ?? s.otherNote}
-        </span>
+      {value.map((item) => (
+        <div key={item.categoryId} data-testid={`symptom-item-${item.categoryId}`}>
+          {item.symptomId ?? ""}
+          {item.otherNote ? item.otherNote : ""}
+        </div>
       ))}
       <button
-        type="button"
         data-testid="add-symptom-btn"
+        disabled={disabled}
         onClick={() =>
-          onChange([...(value ?? []), { categoryId: "cat-new", symptomId: null, otherNote: "Khác: sốt nhẹ" }])
+          onChange?.([
+            ...value,
+            { categoryId: "cat-new", symptomId: "sym-new", otherNote: null },
+          ])
         }
       >
         Thêm triệu chứng
@@ -211,7 +249,7 @@ vi.mock("@/features/medical-record/components/symptom-selector", () => ({
   ),
 }));
 
-function makeMockCase(overrides: Partial<CaseDetail> = {}): {
+function makeMockCase(overrides?: Partial<CaseDetail>): {
   data: CaseDetail;
   isLoading: boolean;
   isError: boolean;
@@ -225,7 +263,9 @@ function makeMockCase(overrides: Partial<CaseDetail> = {}): {
     visitDate: "2026-09-12",
     clinicalInfo: "Khám định kỳ",
     status: "IN_PROGRESS",
-    finalDiagnosis: "<p>Chẩn đoán <strong>u tuyến xơ</strong></p>",
+    caseDiagnoses: [
+      { diagnosisItemId: "d1", diagnosisName: "u tuyến xơ", isOther: false, note: null },
+    ],
     doctorConclusion: "",
     patientProfile: {
       patientProfileId: "profile-100",
@@ -373,11 +413,11 @@ describe("Case Snapshot & Inline Edit Frontend Test Suite (F1-F10)", () => {
   // =========================================================================
   // F4: Rich text formatting -> rendered with prose class
   // =========================================================================
-  it("F4: Khi ca CONFIRMED -> chẩn đoán rich text được render với class 'prose'", () => {
-    const richTextDiagnosis = "<p>Bệnh nhân bị <strong>u xơ tử cung</strong>:</p><ul><li>Kích thước 3cm</li></ul>";
+  it("F4: Khi ca CONFIRMED -> kết luận rich text được render với class 'prose'", () => {
+    const richTextConclusion = "<p>Bệnh nhân bị <strong>u xơ tử cung</strong>:</p><ul><li>Kích thước 3cm</li></ul>";
     const mockCase = makeMockCase({
       status: "CONFIRMED",
-      finalDiagnosis: richTextDiagnosis,
+      doctorConclusion: richTextConclusion,
     });
     detailMock.mockReturnValue(mockCase);
 
@@ -393,16 +433,16 @@ describe("Case Snapshot & Inline Edit Frontend Test Suite (F1-F10)", () => {
   // F5: XSS sanitization -> script tags sanitized by DOMPurify
   // =========================================================================
   it("F5: Ngăn chặn mã độc XSS -> script và thẻ độc hại được DOMPurify thanh lọc an toàn", () => {
-    const dangerousHtml = "<p>Chẩn đoán</p><script>alert('XSS_ATTACK')</script><img src=x onerror=alert('x') />";
+    const dangerousHtml = "<p>Kết luận</p><script>alert('XSS_ATTACK')</script><img src=x onerror=alert('x') />";
     const sanitized = DOMPurify.sanitize(dangerousHtml);
 
     expect(sanitized).not.toContain("<script>");
     expect(sanitized).not.toContain("onerror");
-    expect(sanitized).toContain("<p>Chẩn đoán</p>");
+    expect(sanitized).toContain("<p>Kết luận</p>");
 
     const mockCase = makeMockCase({
       status: "CONFIRMED",
-      finalDiagnosis: dangerousHtml,
+      doctorConclusion: dangerousHtml,
     });
     detailMock.mockReturnValue(mockCase);
 
@@ -446,12 +486,12 @@ describe("Case Snapshot & Inline Edit Frontend Test Suite (F1-F10)", () => {
   it("F7: Đồng bộ trạng thái khi case thay đổi (syncedCaseId) -> reset edit mode và cập nhật dữ liệu mới", () => {
     const caseA = makeMockCase({
       caseId: "case-A",
-      finalDiagnosis: "Chẩn đoán ca A",
+      caseDiagnoses: [{ diagnosisItemId: "dA", diagnosisName: "Chẩn đoán ca A", isOther: false, note: null }],
       caseDiseases: [{ diseaseId: "dA", diseaseName: "Bệnh A", isOther: false, note: null }],
     });
     const caseB = makeMockCase({
       caseId: "case-B",
-      finalDiagnosis: "Chẩn đoán ca B",
+      caseDiagnoses: [{ diagnosisItemId: "dB", diagnosisName: "Chẩn đoán ca B", isOther: false, note: null }],
       caseDiseases: [{ diseaseId: "dB", diseaseName: "Bệnh B", isOther: false, note: null }],
     });
 

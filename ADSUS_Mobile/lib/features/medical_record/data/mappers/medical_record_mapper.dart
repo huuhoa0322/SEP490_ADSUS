@@ -22,7 +22,14 @@ class MedicalRecordMapper {
         status: CaseStatus.values.byName(dto.status.toLowerCase()),
         doctorId: dto.doctorId,
         doctorName: dto.doctorName,
-        finalDiagnosis: dto.finalDiagnosis,
+        caseDiagnoses: dto.caseDiagnoses
+            .map((d) => CaseDiagnosisEntity(
+                  diagnosisItemId: d.diagnosisItemId,
+                  diagnosisName: d.diagnosisName,
+                  isOther: d.isOther,
+                  note: d.note,
+                ))
+            .toList(),
         doctorConclusion: dto.doctorConclusion,
         prescription: dto.prescription == null ? null : _prescriptionFromDto(dto.prescription!),
         images: dto.ultrasoundImages.map(_imageFromDto).toList(),

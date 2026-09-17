@@ -96,7 +96,14 @@ void main() {
                 'status': 'END',
                 'doctorId': 'doctor-1',
                 'doctorName': 'BS. Le Minh Hoang',
-                'finalDiagnosis': 'U tuyen xo vu phai',
+                'caseDiagnoses': [
+                  {
+                    'diagnosisItemId': 'd-1',
+                    'diagnosisName': 'U tuyen xo vu phai',
+                    'isOther': false,
+                    'note': null,
+                  },
+                ],
                 'doctorConclusion': 'Nhan xo tu cung',
                 'prescription': {
                   'prescriptionId': 'rx-1',
@@ -116,7 +123,9 @@ void main() {
       final detail = await repo.getRecordDetail('case-1');
 
       expect(detail.doctorConclusion, 'Nhan xo tu cung');
-      expect(detail.finalDiagnosis, 'U tuyen xo vu phai');
+      expect(detail.caseDiagnoses, hasLength(1));
+      expect(detail.caseDiagnoses.first.diagnosisItemId, 'd-1');
+      expect(detail.caseDiagnoses.first.diagnosisName, 'U tuyen xo vu phai');
       expect(detail.doctorName, 'BS. Le Minh Hoang');
       expect(detail.prescription?.prescriptionId, 'rx-1');
       expect(detail.images, hasLength(1));

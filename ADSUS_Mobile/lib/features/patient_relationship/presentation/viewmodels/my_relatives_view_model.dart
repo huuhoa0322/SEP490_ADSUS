@@ -115,6 +115,18 @@ class MyRelativesViewModel extends Notifier<MyRelativesState> {
     state = state.copyWith(clearDeleted: true);
   }
 
+  /// Cập nhật thông tin người thân trong danh sách local.
+  void updateRelativeLocally(PatientRelationship updated) {
+    final index = state.relatives.indexWhere(
+      (r) => r.relationshipId == updated.relationshipId,
+    );
+    if (index != -1) {
+      final updatedList = List<PatientRelationship>.from(state.relatives);
+      updatedList[index] = updated;
+      state = state.copyWith(relatives: updatedList);
+    }
+  }
+
   /// Xóa lỗi.
   void clearError() {
     state = state.copyWith(clearError: true);

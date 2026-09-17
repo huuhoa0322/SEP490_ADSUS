@@ -38,14 +38,21 @@ void main() {
   });
 
   group('MedicalRecordMapper.caseFromDto', () {
-    test('map du doctorName, finalDiagnosis, doctorConclusion, prescription voi items', () {
+    test('map du doctorName, caseDiagnoses, doctorConclusion, prescription voi items', () {
       const dto = CaseDto(
         caseId: 'case-1',
         visitDate: '2026-07-22',
         status: 'CONFIRMED',
         doctorId: 'doctor-1',
         doctorName: 'BS. Le Minh Hoang',
-        finalDiagnosis: 'U tuyen xo vu phai',
+        caseDiagnoses: [
+          CaseDiagnosisDto(
+            diagnosisItemId: 'd-1',
+            diagnosisName: 'U tuyen xo vu phai',
+            isOther: false,
+            note: 'Kich thuoc 2cm',
+          ),
+        ],
         doctorConclusion: 'Theo doi dinh ky',
         prescription: PrescriptionSummaryDto(
           prescriptionId: 'rx-1',
@@ -67,7 +74,11 @@ void main() {
       final entity = MedicalRecordMapper.caseFromDto(dto);
 
       expect(entity.doctorName, 'BS. Le Minh Hoang');
-      expect(entity.finalDiagnosis, 'U tuyen xo vu phai');
+      expect(entity.caseDiagnoses, hasLength(1));
+      expect(entity.caseDiagnoses.first.diagnosisItemId, 'd-1');
+      expect(entity.caseDiagnoses.first.diagnosisName, 'U tuyen xo vu phai');
+      expect(entity.caseDiagnoses.first.isOther, isFalse);
+      expect(entity.caseDiagnoses.first.note, 'Kich thuoc 2cm');
       expect(entity.doctorConclusion, 'Theo doi dinh ky');
       expect(entity.prescription?.prescriptionId, 'rx-1');
       expect(entity.prescription?.status, PrescriptionStatus.active);

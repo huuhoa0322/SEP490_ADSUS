@@ -21,6 +21,19 @@ vi.mock("@/features/medical-record/hooks/use-cases", () => ({
   useEndCaseWithoutPrescription: () => ({ mutate: vi.fn(), isPending: false, isSuccess: false, isError: false, error: null }),
 }));
 
+vi.mock("@/features/medical-record/hooks/use-diagnosis", () => ({
+  useDiagnosisItems: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+  }),
+  useUpdateCaseDiagnoses: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}));
+
 vi.mock("@/features/clinic-service/queries", () => ({
   useCaseClinicServices: () => clinicServicesMock(),
 }));
@@ -79,7 +92,7 @@ function makeMockCase(overrides: Partial<CaseDetail> = {}): {
     visitDate: "2026-09-12",
     clinicalInfo: "Khám định kỳ",
     status: "IN_PROGRESS",
-    finalDiagnosis: null,
+    caseDiagnoses: [],
     doctorConclusion: null,
     patientProfile: {
       patientProfileId: "profile-us-100",

@@ -34,4 +34,12 @@ public sealed class MedicalDictionariesController : ControllerBase
         var result = await _medicalDictionaryService.GetAllergyTypesAsync(ct);
         return Ok(ApiResponse<IReadOnlyList<MedicalAllergyTypeResponse>>.Ok(result));
     }
+
+    [HttpGet("diagnosis-items")]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<DiagnosisItemResponse>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDiagnosisItems(CancellationToken ct)
+    {
+        var result = await _medicalDictionaryService.GetDiagnosisItemsAsync(ct);
+        return Ok(ApiResponse<IReadOnlyList<DiagnosisItemResponse>>.Ok(result));
+    }
 }

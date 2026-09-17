@@ -21,11 +21,6 @@ public partial class Case
     /// </summary>
     public string? ClinicalInfo { get; set; }
 
-    /// <summary>
-    /// Kết luận chẩn đoán cuối của bác sĩ SAU khi duyệt kết quả AI — mỗi ca đúng 1 kết luận (attribute, không tách entity).
-    /// </summary>
-    public string? FinalDiagnosis { get; set; }
-
     public string? DoctorConclusion { get; set; }
 
     public DateTime CreatedAt { get; set; }
@@ -39,6 +34,8 @@ public partial class Case
     public virtual ICollection<CaseAllergy> CaseAllergies { get; set; } = new List<CaseAllergy>();
 
     public virtual ICollection<CaseClinicService> CaseClinicServices { get; set; } = new List<CaseClinicService>();
+
+    public virtual ICollection<CaseDiagnosis> CaseDiagnoses { get; set; } = new List<CaseDiagnosis>();
 
     public virtual ICollection<CaseDisease> CaseDiseases { get; set; } = new List<CaseDisease>();
 

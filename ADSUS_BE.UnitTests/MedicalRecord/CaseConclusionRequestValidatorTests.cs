@@ -11,7 +11,6 @@ public class CaseConclusionRequestValidatorTests
     private readonly CaseConclusionRequestValidator _validator = new();
 
     private static CaseConclusionRequest ValidRequest() => new(
-        FinalDiagnosis: "U tuyến xơ vú phải (BI-RADS 3)",
         DoctorConclusion: "Theo dõi định kỳ sau 6 tháng");
 
     [Fact]
@@ -25,34 +24,6 @@ public class CaseConclusionRequestValidatorTests
 
         // Assert
         Assert.True(result.IsValid);
-    }
-
-    [Fact]
-    public void EmptyFinalDiagnosis_Fails()
-    {
-        // Arrange
-        var request = ValidRequest() with { FinalDiagnosis = "" };
-
-        // Act
-        var result = _validator.Validate(request);
-
-        // Assert
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName == nameof(CaseConclusionRequest.FinalDiagnosis));
-    }
-
-    [Fact]
-    public void FinalDiagnosis_5001Chars_Fails()
-    {
-        // Arrange
-        var request = ValidRequest() with { FinalDiagnosis = new string('A', 5001) };
-
-        // Act
-        var result = _validator.Validate(request);
-
-        // Assert
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e => e.PropertyName == nameof(CaseConclusionRequest.FinalDiagnosis));
     }
 
     [Fact]

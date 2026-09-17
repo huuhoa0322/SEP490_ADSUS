@@ -8,6 +8,6 @@ namespace ADSUS_BE.BLL.Engagement.DTOs;
 public sealed record CaseHistoryContextDto(
     Guid CaseId,
     DateOnly VisitDate,
-    string? FinalDiagnosis,
+    IReadOnlyList<string> Diagnoses,
     string? DoctorConclusion,
     string DoctorName);

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/html_sanitizer.dart';
 import '../../domain/entities/schedule_slot.dart' show DoctorGender;
 import '../viewmodels/book_appointment_view_model.dart';
 import '../viewmodels/my_appointments_view_model.dart';
@@ -150,6 +151,9 @@ class _BookAppointmentScreenState
                 ),
               )
             else ...[
+              // Đặt lịch cho ai — hiện đầu tiên
+              _relativeSection(state),
+              const SizedBox(height: 20),
               // Luôn hiện filter bác sĩ
               if (state.doctorOptions.isNotEmpty) _doctorSection(state),
               const SizedBox(height: 20),
@@ -163,8 +167,6 @@ class _BookAppointmentScreenState
               _reasonSection(),
               const SizedBox(height: 20),
               _symptomSection(state),
-              const SizedBox(height: 20),
-              _relativeSection(state),
               const SizedBox(height: 24),
               _confirmButton(state),
             ],
@@ -542,8 +544,19 @@ class _BookAppointmentScreenState
                 );
                 return;
               }
+              final reasonText = _reasonController.text.trim();
+              if (HtmlSanitizer.containsHtml(reasonText)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Lý do khám không được chứa thẻ HTML.'),
+                    backgroundColor: AppColors.danger,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
               ref.read(bookAppointmentViewModelProvider.notifier).book(
-                    reason: _reasonController.text.trim(),
+                    reason: reasonText,
                   );
             }
           : null,

@@ -322,7 +322,6 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
         // Arrange
         var medicalCase = CreateTrackedCase(CaseStatus.InProgress);
         var request = new CaseConclusionRequest(
-            FinalDiagnosis: "Viêm tuyến vú cấp tính",
             DoctorConclusion: null);
 
         // Act
@@ -334,7 +333,6 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
 
         // Assert
         Assert.NotNull(response);
-        Assert.Equal("Viêm tuyến vú cấp tính", medicalCase.FinalDiagnosis);
         Assert.Equal("", medicalCase.DoctorConclusion); // null safely coerced to empty string
     }
 
@@ -431,7 +429,16 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
 
         // 2. CaseReportService PDF export with HTML rich-text and null DoctorConclusion
         var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.End);
-        medicalCase.FinalDiagnosis = "<p>Chẩn đoán <strong>xác định</strong>:</p><ul><li>U tuyến xơ (BI-RADS 3)</li></ul>";
+        medicalCase.CaseDiagnoses = new List<CaseDiagnosis>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                CaseId = medicalCase.CaseId,
+                DiagnosisItemId = Guid.NewGuid(),
+                DiagnosisItem = new DiagnosisItem { Id = Guid.NewGuid(), Name = "U tuyến xơ (BI-RADS 3)" }
+            }
+        };
         medicalCase.DoctorConclusion = null; // Section "HƯỚNG XỬ TRÍ" should be omitted
 
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))

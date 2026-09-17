@@ -1,9 +1,10 @@
 using System;
+using System.Collections.Generic;
 
 namespace ADSUS_BE.DAL.Entities;
 
 /// <summary>
-/// Lịch khám đã đặt (UC-13/14). Đổi lịch = CANCELLED dòng cũ + tạo dòng mới (giữ vết). Job JOB-02 đọc bảng này để nhắc lịch qua push. Chỉ 2 trạng thái BOOKED/CANCELLED — không có COMPLETED: lịch "đã qua" suy ra ở tầng ứng dụng bằng cách so schedule_slots.end_time với NOW(), không lưu trạng thái riêng (tránh job quét/cập nhật hàng loạt).
+/// Lịch khám đã đặt (UC-13/14). Đổi lịch = CANCELLED dòng cũ + tạo dòng mới (giữ vết). Job JOB-02 đọc bảng này để nhắc lịch qua push. Chỉ 2 trạng thái BOOKED/CANCELLED — không có COMPLETED: lịch &quot;đã qua&quot; suy ra ở tầng ứng dụng bằng cách so schedule_slots.end_time với NOW(), không lưu trạng thái riêng (tránh job quét/cập nhật hàng loạt).
 /// </summary>
 public partial class Appointment
 {
@@ -50,6 +51,13 @@ public partial class Appointment
     public virtual PatientProfile PatientProfile { get; set; } = null!;
 
     public virtual PatientRelationship? PatientRelationship { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public virtual PatientRelationship? Relationship
+    {
+        get => PatientRelationship;
+        set => PatientRelationship = value;
+    }
 
     public virtual ScheduleSlot Slot { get; set; } = null!;
 

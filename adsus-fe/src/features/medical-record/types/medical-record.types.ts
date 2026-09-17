@@ -214,14 +214,13 @@ export interface CaseDetail {
   visitDate: string;
   clinicalInfo: string | null;
   status: CaseStatus;
-  /** Spec API v0.1 gộp thành một trường `conclusion`; code thật tách đôi. */
-  finalDiagnosis: string | null;
   doctorConclusion: string | null;
   patientProfile: PatientProfile | null;
   ultrasoundImages: UltrasoundImage[];
   symptoms: CaseSymptomDetail[];
   caseDiseases: CaseDiseaseDetail[];
   caseAllergies: CaseAllergyDetail[];
+  caseDiagnoses: CaseDiagnosisDetail[];
   aiResults: AiResultSummary[];
   prescription: PrescriptionSummary | null;
   createdAt: string;
@@ -302,6 +301,26 @@ export interface CreateCaseInput {
  * "Kết thúc ca khám" (khoá ca) — hai hành động khác nhau, cùng hình dạng dữ liệu gửi lên.
  */
 export interface CaseConclusionInput {
-  finalDiagnosis: string;
   doctorConclusion?: string;
 }
+
+export interface DiagnosisItem {
+  id: string;
+  name: string;
+  requiresNote: boolean;
+  isOther: boolean;
+  displayOrder: number;
+}
+
+export interface CaseDiagnosisDetail {
+  diagnosisItemId: string;
+  diagnosisName: string;
+  isOther: boolean;
+  note: string | null;
+}
+
+export interface CaseDiagnosisInput {
+  diagnosisItemId: string;
+  note: string | null;
+}
+

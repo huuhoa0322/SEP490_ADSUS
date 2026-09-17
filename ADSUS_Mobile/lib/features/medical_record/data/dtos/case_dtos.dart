@@ -97,9 +97,31 @@ class UltrasoundImageDto {
       );
 }
 
+/// DTO cho chẩn đoán bệnh theo danh mục chuẩn (CaseDiagnosisResponse).
+class CaseDiagnosisDto {
+  const CaseDiagnosisDto({
+    required this.diagnosisItemId,
+    required this.diagnosisName,
+    required this.isOther,
+    this.note,
+  });
+
+  final String diagnosisItemId;
+  final String diagnosisName;
+  final bool isOther;
+  final String? note;
+
+  factory CaseDiagnosisDto.fromJson(Map<String, dynamic> json) => CaseDiagnosisDto(
+        diagnosisItemId: json['diagnosisItemId'] as String,
+        diagnosisName: json['diagnosisName'] as String,
+        isOther: json['isOther'] as bool,
+        note: json['note'] as String?,
+      );
+}
+
 /// DTO khớp 1:1 `PatientCaseResponse` (field-set của Patient) — API Spec #23 (GET /cases/{id}).
 ///
-/// Đính chính 15/08/2026: thêm doctorName/finalDiagnosis/ultrasoundImages (backend đã trả sẵn,
+/// Đính chính 15/08/2026: thêm doctorName/caseDiagnoses/ultrasoundImages (backend đã trả sẵn,
 /// Mobile trước đó không đọc); đổi `conclusion` → `doctorConclusion` và SỬA key JSON đọc —
 /// backend trả `doctorConclusion`, không phải `conclusion` (bug Critical, field trước đó luôn
 /// null trong production dù backend có dữ liệu thật).
@@ -110,7 +132,7 @@ class CaseDto {
     required this.status,
     required this.doctorId,
     required this.doctorName,
-    this.finalDiagnosis,
+    this.caseDiagnoses = const [],
     this.doctorConclusion,
     this.prescription,
     this.ultrasoundImages = const [],
@@ -121,7 +143,7 @@ class CaseDto {
   final String status;
   final String doctorId;
   final String doctorName;
-  final String? finalDiagnosis;
+  final List<CaseDiagnosisDto> caseDiagnoses;
   final String? doctorConclusion;
   final PrescriptionSummaryDto? prescription;
   final List<UltrasoundImageDto> ultrasoundImages;
@@ -132,7 +154,9 @@ class CaseDto {
         status: json['status'] as String,
         doctorId: json['doctorId'] as String,
         doctorName: json['doctorName'] as String,
-        finalDiagnosis: json['finalDiagnosis'] as String?,
+        caseDiagnoses: (json['caseDiagnoses'] as List<dynamic>? ?? const [])
+            .map((e) => CaseDiagnosisDto.fromJson(e as Map<String, dynamic>))
+            .toList(),
         doctorConclusion: json['doctorConclusion'] as String?,
         prescription: json['prescription'] == null
             ? null

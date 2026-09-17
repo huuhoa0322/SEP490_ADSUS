@@ -223,16 +223,25 @@ public sealed class ChatDataAggregator : IChatDataAggregator
     private async Task<IReadOnlyList<CaseHistoryContextDto>> BuildRecentCasesAsync(
         Guid patientProfileId, CancellationToken ct)
     {
-        var (cases, _) = await _caseRepo.SearchByPatientAsync(
-            patientProfileId, null, "desc", 1, MaxRecentCases, ct);
+        var cases = await _db.Cases
+            .AsNoTracking()
+            .Include(c => c.Doctor)
+            .Include(c => c.CaseDiagnoses)
+                .ThenInclude(cd => cd.DiagnosisItem)
+            .Where(c => c.PatientProfileId == patientProfileId)
+            .OrderByDescending(c => c.VisitDate)
+            .ThenByDescending(c => c.CreatedAt)
+            .Take(MaxRecentCases)
+            .ToListAsync(ct);
 
         return cases
-            .OrderByDescending(c => c.VisitDate)
-            .Take(MaxRecentCases)
             .Select(c => new CaseHistoryContextDto(
                 c.CaseId,
                 c.VisitDate,
-                c.FinalDiagnosis,
+                c.CaseDiagnoses?
+                    .Select(cd => cd.DiagnosisItem?.Name ?? "")
+                    .Where(n => n.Length > 0)
+                    .ToList() ?? new List<string>(),
                 c.DoctorConclusion,
                 c.Doctor?.FullName ?? string.Empty))
             .ToList();

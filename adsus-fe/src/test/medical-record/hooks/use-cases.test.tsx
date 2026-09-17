@@ -30,7 +30,7 @@ const fakeCase = {
   visitDate: "2026-08-01",
   clinicalInfo: "Đau tức vú trái",
   status: "IN_PROGRESS",
-  finalDiagnosis: null,
+  caseDiagnoses: [],
   doctorConclusion: null,
   patientProfile: null,
   ultrasoundImages: [],
@@ -114,7 +114,7 @@ describe("useSaveCaseConclusion", () => {
       wrapper: makeWrapper(client),
     });
 
-    result.current.mutate({ finalDiagnosis: "U tuyến xơ vú", doctorConclusion: "Theo dõi" });
+    result.current.mutate({ doctorConclusion: "Theo dõi" });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -135,7 +135,7 @@ describe("useConfirmCase", () => {
     const invalidate = vi.spyOn(client, "invalidateQueries");
     const { result } = renderHook(() => useConfirmCase("case-1"), { wrapper: makeWrapper(client) });
 
-    result.current.mutate({ finalDiagnosis: "U tuyến xơ vú", doctorConclusion: "Theo dõi" });
+    result.current.mutate({ doctorConclusion: "Theo dõi" });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 

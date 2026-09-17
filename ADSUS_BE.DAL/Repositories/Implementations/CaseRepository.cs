@@ -30,6 +30,7 @@ public sealed class CaseRepository : ICaseRepository
             .Include(c => c.CaseSymptoms).ThenInclude(cs => cs.Symptom)
             .Include(c => c.CaseDiseases).ThenInclude(cd => cd.Disease)
             .Include(c => c.CaseAllergies).ThenInclude(ca => ca.AllergyType)
+            .Include(c => c.CaseDiagnoses).ThenInclude(cd => cd.DiagnosisItem)
             .Include(c => c.Prescriptions).ThenInclude(p => p.PrescriptionItems).ThenInclude(i => i.Medicine)
             .FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
 
@@ -49,6 +50,7 @@ public sealed class CaseRepository : ICaseRepository
             .Include(c => c.CaseSymptoms)
             .Include(c => c.CaseDiseases)
             .Include(c => c.CaseAllergies)
+            .Include(c => c.CaseDiagnoses)
             .FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
 
     public Task SaveChangesAsync(CancellationToken ct = default) =>

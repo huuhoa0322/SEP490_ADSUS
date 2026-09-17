@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../domain/entities/medical_record_case.dart';
 import '../../domain/entities/medical_record_feedback.dart';
 import '../../domain/entities/medical_record_image.dart';
 import '../../domain/entities/medical_record_prescription.dart';
@@ -115,7 +116,7 @@ class _MedicalRecordDetailScreenState
             ),
           ),
           const SizedBox(height: 12),
-          _InfoCard(title: 'Chẩn đoán', content: record.finalDiagnosis ?? '—'),
+          _DiagnosisChips(diagnoses: record.caseDiagnoses),
           const SizedBox(height: 12),
           _InfoCard(
             title: 'Hướng xử trí',
@@ -233,6 +234,77 @@ class _InfoCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _DiagnosisChips extends StatelessWidget {
+  const _DiagnosisChips({required this.diagnoses});
+
+  final List<CaseDiagnosisEntity> diagnoses;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Chẩn đoán',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.muted,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (diagnoses.isEmpty)
+            const Text('—', style: TextStyle(fontSize: 14, color: AppColors.navy))
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: diagnoses.map((d) {
+                final label = _formatDiagnosis(d);
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.teal.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.teal.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  static String _formatDiagnosis(CaseDiagnosisEntity d) {
+    if (d.isOther) {
+      return (d.note != null && d.note!.trim().isNotEmpty)
+          ? d.note!.trim()
+          : d.diagnosisName;
+    }
+    if (d.note != null && d.note!.trim().isNotEmpty) {
+      return '${d.diagnosisName}: ${d.note!.trim()}';
+    }
+    return d.diagnosisName;
   }
 }
 

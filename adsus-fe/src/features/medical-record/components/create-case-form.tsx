@@ -88,7 +88,7 @@ function PreviousCaseSummary({
 
   const hasContent =
     Boolean(caseDetail.clinicalInfo) ||
-    Boolean(caseDetail.finalDiagnosis) ||
+    (caseDetail.caseDiagnoses?.length ?? 0) > 0 ||
     Boolean(caseDetail.doctorConclusion) ||
     hasSymptoms;
 
@@ -123,12 +123,21 @@ function PreviousCaseSummary({
           </div>
         )}
 
-        {caseDetail.finalDiagnosis && (
+        {(caseDetail.caseDiagnoses?.length ?? 0) > 0 && (
           <div>
             <span className="mb-1 block text-sm font-bold uppercase tracking-wider text-foreground">
               Chẩn đoán:
             </span>
-            <p className="text-base font-medium text-foreground">{caseDetail.finalDiagnosis}</p>
+            <div className="flex flex-wrap gap-2">
+              {caseDetail.caseDiagnoses.map((d) => (
+                <span
+                  key={d.diagnosisItemId}
+                  className="inline-flex items-center rounded-md bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 text-sm font-semibold text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800"
+                >
+                  {d.isOther ? (d.note || d.diagnosisName) : d.note ? `${d.diagnosisName}: ${d.note}` : d.diagnosisName}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 

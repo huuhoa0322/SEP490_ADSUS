@@ -31,4 +31,12 @@ public sealed class MedicalDictionaryRepository : IMedicalDictionaryRepository
             .ThenBy(x => x.Name)
             .ToListAsync(ct);
     }
+
+    public async Task<IReadOnlyList<DiagnosisItem>> ListDiagnosisItemsAsync(CancellationToken ct = default)
+    {
+        return await _db.DiagnosisItems
+            .AsNoTracking()
+            .OrderBy(d => d.DisplayOrder)
+            .ToListAsync(ct);
+    }
 }

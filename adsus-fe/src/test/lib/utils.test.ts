@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCurrency, formatMetricPercent } from "@/lib/utils";
+import { containsHtmlTags, formatCurrency, formatMetricPercent } from "@/lib/utils";
 
 describe("formatCurrency", () => {
   it("formats positive numbers as VND currency", () => {
@@ -83,3 +83,31 @@ describe("formatMetricPercent", () => {
     });
   });
 });
+
+describe("containsHtmlTags", () => {
+  it("detects opening, closing, and self-closing HTML tags", () => {
+    expect(containsHtmlTags("<html>")).toBe(true);
+    expect(containsHtmlTags("<b>bold</b>")).toBe(true);
+    expect(containsHtmlTags("<script>alert(1)</script>")).toBe(true);
+    expect(containsHtmlTags("<img src=x onerror=alert(1)>")).toBe(true);
+    expect(containsHtmlTags("</div>")).toBe(true);
+    expect(containsHtmlTags("<br/>")).toBe(true);
+    expect(containsHtmlTags("<iframe src='evil.com'></iframe>")).toBe(true);
+  });
+
+  it("safely permits medical comparison operators and valid text", () => {
+    expect(containsHtmlTags("Khám tổng quát")).toBe(false);
+    expect(containsHtmlTags("Đau bụng < 3 ngày")).toBe(false);
+    expect(containsHtmlTags("Nhiệt độ > 38.5°C")).toBe(false);
+    expect(containsHtmlTags("Sốt <39°C")).toBe(false);
+    expect(containsHtmlTags("Bạch cầu < 4.0 và SpO2 > 95%")).toBe(false);
+    expect(containsHtmlTags("HA > 140/90 mmHg")).toBe(false);
+  });
+
+  it("returns false for falsy or empty inputs", () => {
+    expect(containsHtmlTags("")).toBe(false);
+    expect(containsHtmlTags(null)).toBe(false);
+    expect(containsHtmlTags(undefined)).toBe(false);
+  });
+});
+
