@@ -7,6 +7,7 @@ import { getSuppliers } from '@/features/medicines/api/suppliers.api';
 import toast from 'react-hot-toast';
 import { Loader2, UploadCloud, FileSpreadsheet } from 'lucide-react';
 import type { ImportInventoryRequest } from '@/features/medicines/api/inventory.api';
+import { parseExcelExpiryDate } from '../utils/excel-date-parser';
 
 interface ExcelImportModalProps {
   isOpen: boolean;
@@ -83,27 +84,7 @@ export function ExcelImportModal({ isOpen, onClose, onConfirm, isPending }: Exce
         const lotNumber = getVal(row, 'Số Lô')?.toString().trim();
         
         const rawExpiry = getVal(row, 'Hạn Sử Dụng');
-        let expiryStr = '';
-        if (rawExpiry instanceof Date) {
-          expiryStr = rawExpiry.toISOString();
-        } else if (rawExpiry) {
-          const str = rawExpiry.toString().trim();
-          const parts = str.split(/[\/-]/);
-          if (parts.length === 3) {
-            const day = Number.parseInt(parts[0], 10);
-            const month = Number.parseInt(parts[1], 10) - 1;
-            const year = Number.parseInt(parts[2], 10);
-            const d = new Date(year, month, day);
-            if (!Number.isNaN(d.getTime())) {
-              expiryStr = d.toISOString();
-            }
-          } else {
-            const d = new Date(str);
-            if (!Number.isNaN(d.getTime())) {
-              expiryStr = d.toISOString();
-            }
-          }
-        }
+        const expiryStr = parseExcelExpiryDate(rawExpiry) ?? '';
 
         const unitName = getVal(row, 'Đơn vị nhập')?.toString().trim();
         const quantity = Number.parseFloat(String(getVal(row, 'Số lượng')));
@@ -197,7 +178,7 @@ export function ExcelImportModal({ isOpen, onClose, onConfirm, isPending }: Exce
         <DialogHeader>
           <DialogTitle>Nhập Kho Từ File Excel/CSV</DialogTitle>
           <DialogDescription>
-            Vui lòng chuẩn bị file với các cột: Tên Thuốc, Nhà Cung Cấp, Số Lô, Hạn Sử Dụng (YYYY-MM-DD), Đơn vị nhập, Số lượng, Giá Nhập
+            Vui lòng chuẩn bị file với các cột: Tên Thuốc, Nhà Cung Cấp, Số Lô, Hạn Sử Dụng (DD/MM/YYYY hoặc YYYY-MM-DD), Đơn vị nhập, Số lượng, Giá Nhập
           </DialogDescription>
         </DialogHeader>
         
