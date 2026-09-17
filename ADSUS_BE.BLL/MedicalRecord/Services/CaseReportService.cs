@@ -160,7 +160,11 @@ public sealed class CaseReportService : ICaseReportService
                     });
 
                     column.Item().PaddingTop(10).Text("CHẨN ĐOÁN").SemiBold().FontSize(13);
-                    column.Item().Text(HtmlHelper.StripTags(medicalCase.FinalDiagnosis) is { Length: > 0 } fd ? fd : "—");
+                    var diagnosisNames = medicalCase.CaseDiagnoses?
+                        .Select(cd => cd.DiagnosisItem?.Name ?? "")
+                        .Where(n => n.Length > 0)
+                        .ToList();
+                    column.Item().Text(diagnosisNames?.Count > 0 ? string.Join(", ", diagnosisNames) : "—");
 
                     if (!string.IsNullOrWhiteSpace(medicalCase.DoctorConclusion))
                     {

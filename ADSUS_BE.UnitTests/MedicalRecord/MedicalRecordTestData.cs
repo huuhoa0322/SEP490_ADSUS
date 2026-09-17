@@ -79,7 +79,6 @@ internal static class MedicalRecordTestData
             VisitDate = DateOnly.FromDateTime(DateTime.UtcNow),
             ClinicalInfo = "Đau tức vú trái",
             Status = status,
-            FinalDiagnosis = status == CaseStatus.Confirmed ? "U tuyến xơ vú phải (BI-RADS 3)" : null,
             DoctorConclusion = status == CaseStatus.Confirmed ? "Theo dõi định kỳ sau 6 tháng" : null,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,

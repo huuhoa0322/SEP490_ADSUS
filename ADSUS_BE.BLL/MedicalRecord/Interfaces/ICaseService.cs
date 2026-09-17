@@ -79,4 +79,7 @@ public interface ICaseService
 
     Task<CaseResponse> UpdateAllergiesAsync(
         Guid caseId, UpdateCaseAllergiesRequest request, CancellationToken ct = default);
+
+    Task<CaseResponse> UpdateDiagnosesAsync(
+        Guid caseId, UpdateCaseDiagnosesRequest request, CancellationToken ct = default);
 }

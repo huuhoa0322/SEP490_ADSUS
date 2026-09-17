@@ -180,23 +180,5 @@ public partial class AppDbContext
             // Guest profile columns đã được khai báo trong PatientProfile.Custom.cs
             // ở mức partial class với [Column] attribute
         });
-
-        // Appointment: booked_by_user_id cho đặt hộ
-        modelBuilder.Entity<Appointment>(entity =>
-        {
-            // Bổ sung navigation property cho Appointment entity
-            entity.HasOne(d => d.BookedByUser)
-                .WithMany(p => p.Appointments)
-                .HasForeignKey(d => d.BookedByUserId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("fk_appointments_booked_by");
-
-            // PatientRelationship navigation và foreign key
-            entity.HasOne(d => d.PatientRelationship)
-                .WithMany(p => p.Appointments)
-                .HasForeignKey(d => d.RelationshipId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("fk_appointments_relationship");
-        });
     }
 }

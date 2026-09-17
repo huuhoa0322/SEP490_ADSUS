@@ -9,12 +9,27 @@ import 'medical_record_prescription.dart';
 /// `end` = đã Confirmed VÀ đã được kê đơn thuốc — coi là "đã hoàn tất lượt khám".
 enum CaseStatus { created, confirmed, end }
 
+/// Entity đại diện cho một chẩn đoán bệnh theo danh mục chuẩn.
+class CaseDiagnosisEntity {
+  const CaseDiagnosisEntity({
+    required this.diagnosisItemId,
+    required this.diagnosisName,
+    required this.isOther,
+    this.note,
+  });
+
+  final String diagnosisItemId;
+  final String diagnosisName;
+  final bool isOther;
+  final String? note;
+}
+
 /// Chi tiết đầy đủ 1 lượt khám mà Patient được xem — UC-08, SCR-14.
 ///
 /// Đính chính 15/08/2026: trước đây chỉ có `conclusion` + đơn thuốc tối thiểu, dựa theo UCS
 /// văn bản (hẹp). Quyết định 01/08/2026 thật sự (comment CasesController.cs's ExportReport,
 /// xem design spec 2026-08-15) là Patient xem được CÙNG NỘI DUNG như PDF export — thêm
-/// `doctorName`, `finalDiagnosis`, `images` (ảnh siêu âm GỐC, không phải ảnh khoanh vùng AI —
+/// `doctorName`, `caseDiagnoses`, `images` (ảnh siêu âm GỐC, không phải ảnh khoanh vùng AI —
 /// tính năng đó chưa tồn tại). Vẫn KHÔNG có `clinicalInfo`, không có AI Result thô (GB-05).
 class MedicalRecordCase {
   const MedicalRecordCase({
@@ -23,7 +38,7 @@ class MedicalRecordCase {
     required this.status,
     required this.doctorId,
     required this.doctorName,
-    this.finalDiagnosis,
+    this.caseDiagnoses = const [],
     this.doctorConclusion,
     this.prescription,
     this.images = const [],
@@ -35,8 +50,8 @@ class MedicalRecordCase {
   final String doctorId;
   final String doctorName;
 
-  /// Chẩn đoán của bác sĩ — "CHẨN ĐOÁN" trong PDF export (`CaseReportService.cs`).
-  final String? finalDiagnosis;
+  /// Danh sách chẩn đoán của bác sĩ.
+  final List<CaseDiagnosisEntity> caseDiagnoses;
 
   /// Hướng xử trí/kết luận của bác sĩ — "HƯỚNG XỬ TRÍ" trong PDF export. Đổi tên từ
   /// `conclusion` (15/08/2026) — khớp đúng tên field backend thật (`DoctorConclusion`),

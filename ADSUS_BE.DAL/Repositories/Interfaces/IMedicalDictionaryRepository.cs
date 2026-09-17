@@ -7,4 +7,6 @@ public interface IMedicalDictionaryRepository
     Task<IReadOnlyList<MedicalDisease>> ListDiseasesAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<MedicalAllergyType>> ListAllergyTypesAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<DiagnosisItem>> ListDiagnosisItemsAsync(CancellationToken ct = default);
 }

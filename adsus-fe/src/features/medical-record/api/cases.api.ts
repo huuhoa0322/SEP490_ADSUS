@@ -98,7 +98,6 @@ export async function saveCaseConclusion(
   input: CaseConclusionInput,
 ): Promise<CaseDetail> {
   const { data } = await apiClient.put<ApiResponse<CaseDetail>>(`${BASE}/${caseId}/conclusion`, {
-    finalDiagnosis: input.finalDiagnosis,
     doctorConclusion: input.doctorConclusion,
   });
 
@@ -113,7 +112,6 @@ export async function saveCaseConclusion(
  */
 export async function confirmCase(caseId: string, input: CaseConclusionInput): Promise<CaseDetail> {
   const { data } = await apiClient.put<ApiResponse<CaseDetail>>(`${BASE}/${caseId}/confirm`, {
-    finalDiagnosis: input.finalDiagnosis,
     doctorConclusion: input.doctorConclusion,
   });
 

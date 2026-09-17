@@ -48,6 +48,17 @@ public sealed record CaseDiseaseResponse(
 public sealed record CaseAllergyResponse(
     Guid AllergyTypeId, string AllergyName, bool IsOther, string? Note);
 
+public sealed record CaseDiagnosisResponse(
+    Guid DiagnosisItemId, string DiagnosisName, bool IsOther, string? Note);
+
+public sealed record CaseDiagnosisInput(Guid DiagnosisItemId, string? Note);
+
+public sealed record UpdateCaseDiagnosesRequest(
+    IReadOnlyList<CaseDiagnosisInput> Diagnoses);
+
+public sealed record DiagnosisItemResponse(
+    Guid Id, string Name, bool RequiresNote, bool IsOther, int DisplayOrder);
+
 /// <summary>
 /// #20, #23 — bản đầy đủ cho Bác sĩ/Điều dưỡng (Web SCR-12).
 /// </summary>
@@ -59,7 +70,7 @@ public sealed record CaseResponse(
     DateOnly VisitDate,
     string? ClinicalInfo,
     string Status,
-    string? FinalDiagnosis,
+    IReadOnlyList<CaseDiagnosisResponse> CaseDiagnoses,
     string? DoctorConclusion,
     PatientProfileResponse? PatientProfile,
     IReadOnlyList<UltrasoundImageResponse> UltrasoundImages,
@@ -91,7 +102,7 @@ public sealed record PatientCaseResponse(
     string DoctorName,
     DateOnly VisitDate,
     string Status,
-    string? FinalDiagnosis,
+    IReadOnlyList<CaseDiagnosisResponse> CaseDiagnoses,
     string? DoctorConclusion,
     PrescriptionSummary? Prescription,
     IReadOnlyList<UltrasoundImageResponse> UltrasoundImages,
@@ -154,5 +165,4 @@ public sealed record CaseAllergyInput(Guid AllergyTypeId, string? Note);
 ///   ConfirmAsync        — lưu VÀ khoá ca (CONFIRMED), không có đường lùi (GB-01/P2).
 /// </summary>
 public sealed record CaseConclusionRequest(
-    string FinalDiagnosis,
     string? DoctorConclusion);

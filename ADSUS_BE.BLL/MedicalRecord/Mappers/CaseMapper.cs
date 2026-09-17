@@ -31,7 +31,11 @@ public static class CaseMapper
         VisitDate: medicalCase.VisitDate,
         ClinicalInfo: medicalCase.ClinicalInfo,
         Status: medicalCase.Status.ToApiString(),
-        FinalDiagnosis: medicalCase.FinalDiagnosis,
+        CaseDiagnoses: medicalCase.CaseDiagnoses?.Select(cd => new CaseDiagnosisResponse(
+            cd.DiagnosisItemId,
+            cd.DiagnosisItem?.Name ?? string.Empty,
+            cd.DiagnosisItem?.IsOther ?? false,
+            cd.Note)).ToList() ?? new List<CaseDiagnosisResponse>(),
         DoctorConclusion: medicalCase.DoctorConclusion,
         PatientProfile: medicalCase.PatientProfile is null
             ? null
@@ -70,7 +74,11 @@ public static class CaseMapper
         DoctorName: medicalCase.Doctor?.FullName ?? string.Empty,
         VisitDate: medicalCase.VisitDate,
         Status: medicalCase.Status.ToApiString(),
-        FinalDiagnosis: HtmlHelper.StripTags(medicalCase.FinalDiagnosis),
+        CaseDiagnoses: medicalCase.CaseDiagnoses?.Select(cd => new CaseDiagnosisResponse(
+            cd.DiagnosisItemId,
+            cd.DiagnosisItem?.Name ?? string.Empty,
+            cd.DiagnosisItem?.IsOther ?? false,
+            cd.Note)).ToList() ?? new List<CaseDiagnosisResponse>(),
         DoctorConclusion: medicalCase.DoctorConclusion,
         Prescription: ToPrescriptionSummary(medicalCase),
         UltrasoundImages: medicalCase.UltrasoundImages

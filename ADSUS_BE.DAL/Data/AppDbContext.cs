@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using ADSUS_BE.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -30,11 +30,15 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<CaseClinicService> CaseClinicServices { get; set; }
 
+    public virtual DbSet<CaseDiagnosis> CaseDiagnoses { get; set; }
+
     public virtual DbSet<CaseDisease> CaseDiseases { get; set; }
 
     public virtual DbSet<CaseSymptom> CaseSymptoms { get; set; }
 
     public virtual DbSet<ClinicService> ClinicServices { get; set; }
+
+    public virtual DbSet<DiagnosisItem> DiagnosisItems { get; set; }
 
     public virtual DbSet<DoctorAnnotation> DoctorAnnotations { get; set; }
 
@@ -68,8 +72,6 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<PatientProfile> PatientProfiles { get; set; }
 
-    public virtual DbSet<PatientRegistrationOtp> PatientRegistrationOtps { get; set; }
-
     public virtual DbSet<PatientRelationship> PatientRelationships { get; set; }
 
     public virtual DbSet<PatientReminderPreference> PatientReminderPreferences { get; set; }
@@ -102,11 +104,11 @@ public partial class AppDbContext : DbContext
     {
         modelBuilder
             .HasPostgresEnum("ai_result_status", new[] { "PENDING_REVIEW", "CONFIRMED", "REJECTED" })
-            .HasPostgresEnum("appointment_status", new[] { "BOOKED", "CANCELLED", "COMPLETED", "NO_SHOW" })
+            .HasPostgresEnum("appointment_status", new[] { "BOOKED", "CANCELLED", "COMPLETED", "NO_SHOW", "CHECKED_IN" })
             .HasPostgresEnum("auth", "aal_level", new[] { "aal1", "aal2", "aal3" })
             .HasPostgresEnum("auth", "code_challenge_method", new[] { "s256", "plain" })
             .HasPostgresEnum("auth", "factor_status", new[] { "unverified", "verified" })
-            .HasPostgresEnum("auth", "factor_type", new[] { "totp", "webauthn", "phone" })
+            .HasPostgresEnum("auth", "factor_type", new[] { "totp", "webauthn", "phone", "recovery_code" })
             .HasPostgresEnum("auth", "oauth_authorization_status", new[] { "pending", "approved", "denied", "expired" })
             .HasPostgresEnum("auth", "oauth_client_type", new[] { "public", "confidential" })
             .HasPostgresEnum("auth", "oauth_registration_type", new[] { "dynamic", "manual" })
@@ -402,9 +404,6 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("created_at");
             entity.Property(e => e.DoctorConclusion).HasColumnName("doctor_conclusion");
             entity.Property(e => e.DoctorId).HasColumnName("doctor_id");
-            entity.Property(e => e.FinalDiagnosis)
-                .HasComment("Kết luận chẩn đoán cuối của bác sĩ SAU khi duyệt kết quả AI — mỗi ca đúng 1 kết luận (attribute, không tách entity).")
-                .HasColumnName("final_diagnosis");
             entity.Property(e => e.PatientProfileId).HasColumnName("patient_profile_id");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
@@ -491,6 +490,38 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.ClinicServiceId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("case_clinic_services_clinic_service_id_fkey");
+        });
+
+        modelBuilder.Entity<CaseDiagnosis>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("case_diagnoses_pkey");
+
+            entity.ToTable("case_diagnoses", tb => tb.HasComment("Chẩn đoán bệnh của bác sĩ cho ca khám — structured selection từ diagnosis_items."));
+
+            entity.HasIndex(e => e.CaseId, "idx_case_diagnoses_case_id");
+
+            entity.HasIndex(e => e.DiagnosisItemId, "idx_case_diagnoses_diagnosis_item_id");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CaseId).HasColumnName("case_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DiagnosisItemId).HasColumnName("diagnosis_item_id");
+            entity.Property(e => e.Note)
+                .HasMaxLength(500)
+                .HasColumnName("note");
+
+            entity.HasOne(d => d.Case).WithMany(p => p.CaseDiagnoses)
+                .HasForeignKey(d => d.CaseId)
+                .HasConstraintName("case_diagnoses_case_id_fkey");
+
+            entity.HasOne(d => d.DiagnosisItem).WithMany(p => p.CaseDiagnoses)
+                .HasForeignKey(d => d.DiagnosisItemId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("case_diagnoses_diagnosis_item_id_fkey");
         });
 
         modelBuilder.Entity<CaseDisease>(entity =>
@@ -593,6 +624,34 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<DiagnosisItem>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("diagnosis_items_pkey");
+
+            entity.ToTable("diagnosis_items", tb => tb.HasComment("Danh mục bệnh chẩn đoán chuyên khoa phụ khoa — curated list cho bác sĩ chọn nhanh khi khám."));
+
+            entity.HasIndex(e => e.DisplayOrder, "idx_diagnosis_items_display_order");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DisplayOrder)
+                .HasDefaultValue(0)
+                .HasColumnName("display_order");
+            entity.Property(e => e.IsOther)
+                .HasDefaultValue(false)
+                .HasColumnName("is_other");
+            entity.Property(e => e.Name)
+                .HasMaxLength(200)
+                .HasColumnName("name");
+            entity.Property(e => e.RequiresNote)
+                .HasDefaultValue(false)
+                .HasColumnName("requires_note");
         });
 
         modelBuilder.Entity<DoctorAnnotation>(entity =>
@@ -1082,39 +1141,6 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey<PatientProfile>(d => d.UserId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_patient_profiles_user");
-        });
-
-        modelBuilder.Entity<PatientRegistrationOtp>(entity =>
-        {
-            entity.HasKey(e => e.OtpId).HasName("pk_patient_registration_otps");
-
-            entity.ToTable("patient_registration_otps", tb => tb.HasComment("Mã OTP xác thực số điện thoại khi bệnh nhân tự đăng ký (không qua Admin/Điều dưỡng). Không liên quan tới đăng nhập — users.password_hash vẫn là cơ chế đăng nhập duy nhất."));
-
-            entity.HasIndex(e => e.Phone, "idx_patient_registration_otps_phone");
-
-            entity.Property(e => e.OtpId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("otp_id");
-            entity.Property(e => e.AttemptCount)
-                .HasDefaultValue(0)
-                .HasColumnName("attempt_count");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnName("created_at");
-            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
-            entity.Property(e => e.OtpHash)
-                .HasMaxLength(255)
-                .HasComment("SHA-256 hash của mã 6 số, không lưu plaintext. Không salt — mã có hiệu lực 5 phút và tối đa 5 lần thử sai, đủ giảm rủi ro dò offline nếu DB bị lộ.")
-                .HasColumnName("otp_hash");
-            entity.Property(e => e.Phone)
-                .HasMaxLength(15)
-                .HasColumnName("phone");
-            entity.Property(e => e.VerificationTokenExpiresAt).HasColumnName("verification_token_expires_at");
-            entity.Property(e => e.VerificationTokenHash)
-                .HasMaxLength(255)
-                .HasComment("SHA-256 hash của registration token cấp sau khi verify-otp thành công — cầu nối sang bước complete, hiệu lực 10 phút, dùng một lần.")
-                .HasColumnName("verification_token_hash");
-            entity.Property(e => e.VerifiedAt).HasColumnName("verified_at");
         });
 
         modelBuilder.Entity<PatientRelationship>(entity =>

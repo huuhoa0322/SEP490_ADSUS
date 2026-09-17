@@ -288,7 +288,6 @@ public sealed class CaseService : ICaseService
     {
         var medicalCase = await LoadForConclusionUpdateAsync(caseId, actingDoctorId, ct);
 
-        medicalCase.FinalDiagnosis = request.FinalDiagnosis.Trim();
         medicalCase.DoctorConclusion = request.DoctorConclusion?.Trim() ?? "";
         medicalCase.UpdatedAt = DateTime.UtcNow;
         // Trạng thái CỐ Ý không đổi — đây là lưu nháp, sửa lại được nhiều lần cho tới khi
@@ -309,7 +308,6 @@ public sealed class CaseService : ICaseService
     {
         var medicalCase = await LoadForConclusionUpdateAsync(caseId, actingDoctorId, ct);
 
-        medicalCase.FinalDiagnosis = request.FinalDiagnosis.Trim();
         medicalCase.DoctorConclusion = request.DoctorConclusion?.Trim() ?? "";
         medicalCase.Status = CaseStatus.Confirmed;
         medicalCase.UpdatedAt = DateTime.UtcNow;
@@ -520,6 +518,55 @@ public sealed class CaseService : ICaseService
         await _cases.SaveChangesAsync(ct);
 
         _logger.LogInformation("Case {CaseId} allergies updated", caseId);
+
+        return await GetForStaffAsync(caseId, ct);
+    }
+
+    public async Task<CaseResponse> UpdateDiagnosesAsync(
+        Guid caseId,
+        UpdateCaseDiagnosesRequest request,
+        CancellationToken ct = default)
+    {
+        var medicalCase = await LoadForClinicalUpdateAsync(caseId, ct);
+
+        if (_context != null)
+        {
+            _context.CaseDiagnoses.RemoveRange(medicalCase.CaseDiagnoses.ToList());
+        }
+        else
+        {
+            medicalCase.CaseDiagnoses.Clear();
+        }
+
+        var now = DateTime.UtcNow;
+        if (request.Diagnoses != null)
+        {
+            foreach (var d in request.Diagnoses)
+            {
+                var newDiagnosis = new CaseDiagnosis
+                {
+                    Id = Guid.NewGuid(),
+                    CaseId = caseId,
+                    DiagnosisItemId = d.DiagnosisItemId,
+                    Note = d.Note,
+                    CreatedAt = now
+                };
+
+                if (_context != null)
+                {
+                    _context.CaseDiagnoses.Add(newDiagnosis);
+                }
+                else
+                {
+                    medicalCase.CaseDiagnoses.Add(newDiagnosis);
+                }
+            }
+        }
+
+        medicalCase.UpdatedAt = now;
+        await _cases.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Case {CaseId} diagnoses updated", caseId);
 
         return await GetForStaffAsync(caseId, ct);
     }

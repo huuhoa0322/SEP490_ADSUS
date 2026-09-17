@@ -232,7 +232,7 @@ describe("CreateCaseForm", () => {
       data: {
         caseId: "case-prev-1",
         visitDate: "2026-08-01T08:00:00Z",
-        finalDiagnosis: "Viêm âm đạo do nấm",
+        caseDiagnoses: [{ diagnosisItemId: "d4", diagnosisName: "Viêm âm đạo", isOther: false, note: "do nấm" }],
         doctorConclusion: "Kê đơn đặt thuốc 7 ngày",
         symptoms: [
           { categoryId: "c1", categoryName: "Khí hư", symptomId: "s1", symptomName: "Ngứa rát", otherNote: null },
@@ -244,7 +244,7 @@ describe("CreateCaseForm", () => {
     render(<CreateCaseForm patientProfileId="profile-1" />);
 
     expect(screen.getByText(/Nội dung lần khám gần nhất/i)).toBeInTheDocument();
-    expect(screen.getByText("Viêm âm đạo do nấm")).toBeInTheDocument();
+    expect(screen.getByText("Viêm âm đạo: do nấm")).toBeInTheDocument();
     expect(screen.getByText("Kê đơn đặt thuốc 7 ngày")).toBeInTheDocument();
     expect(screen.getByText(/Ngứa rát/i)).toBeInTheDocument();
   });
@@ -319,7 +319,7 @@ describe("CreateCaseForm", () => {
       data: {
         caseId: "case-prev-empty",
         visitDate: "2026-08-01",
-        finalDiagnosis: null,
+        caseDiagnoses: [],
         doctorConclusion: null,
         symptoms: [],
       },
@@ -400,7 +400,7 @@ describe("CreateCaseForm", () => {
       data: {
         caseId: "case-prev-dup",
         visitDate: "2026-08-01",
-        finalDiagnosis: "Viêm",
+        caseDiagnoses: [{ diagnosisItemId: "d1", diagnosisName: "Viêm", isOther: false, note: null }],
         doctorConclusion: "Thuốc",
         symptoms: [
           { categoryId: "c1", categoryName: "Khí hư", symptomId: "s1", symptomName: "Ra nhiều", otherNote: null },

@@ -18,15 +18,38 @@ void main() {
     });
   });
 
+  group('CaseDiagnosisDto.fromJson', () {
+    test('parse dung 4 field tu JSON', () {
+      final dto = CaseDiagnosisDto.fromJson({
+        'diagnosisItemId': 'd-1',
+        'diagnosisName': 'U tuyen xo vu phai',
+        'isOther': false,
+        'note': 'Kich thuoc 2cm',
+      });
+
+      expect(dto.diagnosisItemId, 'd-1');
+      expect(dto.diagnosisName, 'U tuyen xo vu phai');
+      expect(dto.isOther, isFalse);
+      expect(dto.note, 'Kich thuoc 2cm');
+    });
+  });
+
   group('CaseDto.fromJson', () {
-    test('parse dung doctorName, finalDiagnosis, doctorConclusion (fix key, khong con conclusion)', () {
+    test('parse dung doctorName, caseDiagnoses, doctorConclusion (fix key, khong con conclusion)', () {
       final dto = CaseDto.fromJson({
         'caseId': 'case-1',
         'visitDate': '2026-07-22',
         'status': 'CONFIRMED',
         'doctorId': 'doctor-1',
         'doctorName': 'BS. Le Minh Hoang',
-        'finalDiagnosis': 'U tuyen xo vu phai',
+        'caseDiagnoses': [
+          {
+            'diagnosisItemId': 'd-1',
+            'diagnosisName': 'U tuyen xo vu phai',
+            'isOther': false,
+            'note': null,
+          }
+        ],
         'doctorConclusion': 'Theo doi dinh ky sau 6 thang',
         'prescription': {
           'prescriptionId': 'rx-1',
@@ -47,7 +70,10 @@ void main() {
       });
 
       expect(dto.doctorName, 'BS. Le Minh Hoang');
-      expect(dto.finalDiagnosis, 'U tuyen xo vu phai');
+      expect(dto.caseDiagnoses, hasLength(1));
+      expect(dto.caseDiagnoses.first.diagnosisItemId, 'd-1');
+      expect(dto.caseDiagnoses.first.diagnosisName, 'U tuyen xo vu phai');
+      expect(dto.caseDiagnoses.first.isOther, isFalse);
       expect(dto.doctorConclusion, 'Theo doi dinh ky sau 6 thang');
       expect(dto.prescription?.prescriptionId, 'rx-1');
       expect(dto.prescription?.prescribedDate, '2026-08-15');

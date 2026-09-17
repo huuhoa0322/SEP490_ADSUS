@@ -30,4 +30,13 @@ public sealed class MedicalDictionaryService : IMedicalDictionaryService
             .Select(a => new MedicalAllergyTypeResponse(a.Id, a.Name, a.IsOther))
             .ToList();
     }
+
+    public async Task<IReadOnlyList<DiagnosisItemResponse>> GetDiagnosisItemsAsync(CancellationToken ct = default)
+    {
+        var items = await _repository.ListDiagnosisItemsAsync(ct);
+
+        return items
+            .Select(d => new DiagnosisItemResponse(d.Id, d.Name, d.RequiresNote, d.IsOther, d.DisplayOrder))
+            .ToList();
+    }
 }

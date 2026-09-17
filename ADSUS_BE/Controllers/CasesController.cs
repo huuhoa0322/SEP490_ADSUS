@@ -299,6 +299,25 @@ public sealed class CasesController : ControllerBase
     }
 
     /// <summary>
+    /// Cập nhật danh sách chẩn đoán bệnh phụ khoa (Structured Diagnosis) của ca khám.
+    /// CHỈ cho phép khi ca chưa hoàn thành/kết thúc (không phải END, CONFIRMED, CANCELLED).
+    /// </summary>
+    [HttpPut("{caseId:guid}/diagnoses")]
+    [Authorize(Roles = "DOCTOR")]
+    [ProducesResponseType(typeof(ApiResponse<CaseResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateDiagnoses(
+        Guid caseId,
+        [FromBody] UpdateCaseDiagnosesRequest request,
+        CancellationToken ct)
+    {
+        var result = await _cases.UpdateDiagnosesAsync(caseId, request, ct);
+        return Ok(ApiResponse<CaseResponse>.Ok(result, "Case diagnoses updated successfully"));
+    }
+
+    /// <summary>
     /// Cập nhật danh sách tiền sử bệnh (snapshot) của ca khám (Module 04).
     /// CHỈ cho phép khi ca đang ở trạng thái BOOKED hoặc IN_PROGRESS.
     /// </summary>

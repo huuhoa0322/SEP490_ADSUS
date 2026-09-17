@@ -58,7 +58,7 @@ public class CaseMapperTests
 
         // Assert
         Assert.Equal(medicalCase.CaseId, response.CaseId);
-        Assert.Equal(medicalCase.FinalDiagnosis, response.FinalDiagnosis);
+        Assert.NotNull(response.CaseDiagnoses);
         Assert.Equal(medicalCase.DoctorConclusion, response.DoctorConclusion);
         Assert.Equal("CONFIRMED", response.Status);
     }

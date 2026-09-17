@@ -60,7 +60,6 @@ public class CasesControllerIntegrationTests
         CaseId = Guid.NewGuid(), PatientProfileId = profile.PatientProfileId, PatientProfile = profile,
         DoctorId = _doctor.UserId, Doctor = _doctor,
         VisitDate = DateOnly.FromDateTime(DateTime.UtcNow), Status = status,
-        FinalDiagnosis = status == CaseStatus.Confirmed ? "U tuyến xơ vú phải (BI-RADS 3)" : null,
         DoctorConclusion = status == CaseStatus.Confirmed ? "Theo dõi định kỳ" : null,
         CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
     };
@@ -621,7 +620,7 @@ public class CasesControllerIntegrationTests
     // ---------- PUT /cases/{id}/conclusion và /confirm (sửa lại 07/08/2026) ----------
 
     private static CaseConclusionRequest ValidConfirmBody() => new(
-        FinalDiagnosis: "Nhân xơ tử cung", DoctorConclusion: "Theo dõi định kỳ sau 6 tháng");
+        DoctorConclusion: "Theo dõi định kỳ sau 6 tháng");
 
     [Fact]
     public async Task PutConfirm_ValidRequestByResponsibleDoctor_Returns200WithConfirmedStatus()
@@ -643,7 +642,7 @@ public class CasesControllerIntegrationTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal("CONFIRMED", body!.Data!.Status);
-        Assert.Equal("Nhân xơ tử cung", body.Data.FinalDiagnosis);
+        Assert.NotNull(body.Data.CaseDiagnoses);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -750,7 +749,7 @@ public class CasesControllerIntegrationTests
         // Arrange — validator chặn trước khi chạm tới service.
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
-        var body = new CaseConclusionRequest(FinalDiagnosis: "", DoctorConclusion: "");
+        var body = new CaseConclusionRequest(DoctorConclusion: new string('A', 5001));
 
         // Act
         var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/confirm", body, TestContext.Current.CancellationToken);
@@ -781,7 +780,7 @@ public class CasesControllerIntegrationTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<CaseResponse>>(TestContext.Current.CancellationToken);
         Assert.Equal("IN_PROGRESS", body!.Data!.Status);
-        Assert.Equal("Nhân xơ tử cung", body.Data.FinalDiagnosis);
+        Assert.NotNull(body.Data.CaseDiagnoses);
         _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -864,7 +863,7 @@ public class CasesControllerIntegrationTests
         // Arrange — validator chặn trước khi chạm tới service.
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
-        var body = new CaseConclusionRequest(FinalDiagnosis: "", DoctorConclusion: "");
+        var body = new CaseConclusionRequest(DoctorConclusion: new string('A', 5001));
 
         // Act
         var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/conclusion", body, TestContext.Current.CancellationToken);
@@ -880,8 +879,7 @@ public class CasesControllerIntegrationTests
         // Arrange — validator chặn (IT_Val_05)
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
-        var longText = new string('A', 5001);
-        var body = new CaseConclusionRequest(FinalDiagnosis: longText, DoctorConclusion: "OK");
+        var body = new CaseConclusionRequest(DoctorConclusion: new string('A', 5001));
 
         // Act
         var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/conclusion", body, TestContext.Current.CancellationToken);
