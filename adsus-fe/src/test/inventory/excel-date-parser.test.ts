@@ -75,7 +75,8 @@ describe('parseExcelExpiryDate', () => {
   it('đọc trực tiếp file DataThat_NhapKho.xlsx và parse đúng hạn sử dụng 2027-09-10 cho toàn bộ các lô', () => {
     const filePath = 'C:/Users/quyka/OneDrive/Máy tính/DataThat_NhapKho.xlsx';
     if (fs.existsSync(filePath)) {
-      const wb = XLSX.readFile(filePath, { cellDates: true });
+      const fileBuffer = fs.readFileSync(filePath);
+      const wb = XLSX.read(fileBuffer, { type: 'buffer', cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws) as Record<string, unknown>[];
       expect(data.length).toBeGreaterThan(0);
