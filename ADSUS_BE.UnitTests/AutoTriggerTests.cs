@@ -599,7 +599,13 @@ public class AutoTriggerTests
         var firstAttached = await context.CaseClinicServices.FirstAsync(cs => cs.CaseId == medicalCase.CaseId, TestContext.Current.CancellationToken);
         Assert.NotNull(firstAttached);
 
-        // Act 2: Doctor deletes the service
+        // Act 2: Doctor deletes the service (must delete ultrasound images first under new business rule)
+        var images = await context.UltrasoundImages
+            .Where(img => img.CaseId == medicalCase.CaseId)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        context.UltrasoundImages.RemoveRange(images);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
         await realCaseClinicService.RemoveServiceFromCaseAsync(medicalCase.CaseId, firstAttached.Id, TestContext.Current.CancellationToken);
         Assert.False(await context.CaseClinicServices.AnyAsync(cs => cs.CaseId == medicalCase.CaseId, TestContext.Current.CancellationToken));
 

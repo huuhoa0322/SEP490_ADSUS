@@ -777,6 +777,9 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
           caseStatus={medicalCase.status}
           variant="compact"
           isResponsibleDoctor={isResponsibleDoctor}
+          hasUltrasoundImages={Boolean(
+            medicalCase.ultrasoundImages && medicalCase.ultrasoundImages.length > 0,
+          )}
         />
       </header>
 
