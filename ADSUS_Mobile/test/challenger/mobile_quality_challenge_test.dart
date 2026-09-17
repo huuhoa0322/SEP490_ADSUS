@@ -20,7 +20,7 @@ class _MockPatientRelationshipRepository extends Mock
     implements PatientRelationshipRepository {}
 class _FakeAuthViewModel extends StateNotifier<AuthState>
     implements AuthViewModel {
-  _FakeAuthViewModel() : super(const AuthState(biometricAvailable: false));
+  _FakeAuthViewModel() : super(const AuthState());
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -349,7 +349,6 @@ void main() {
       phoneNumber: '0912345678',
       email: 'vovanthuong@example.com',
       role: UserRole.patient,
-      biometricEnabled: false,
     );
 
     setUp(() {

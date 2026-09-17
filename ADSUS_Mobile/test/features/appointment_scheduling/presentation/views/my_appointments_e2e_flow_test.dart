@@ -265,7 +265,7 @@ void main() {
       );
 
       // Xác nhận có đầy đủ nút hành động: "Quay lại" và "Tiếp tục hủy"
-      expect(find.widgetWithText(TextButton, 'Quay lại'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Quay lại'), findsOneWidget);
       expect(find.widgetWithText(ElevatedButton, 'Tiếp tục hủy'), findsOneWidget);
 
       // Bấm "Tiếp tục hủy" để tiến hành nhập lý do hủy

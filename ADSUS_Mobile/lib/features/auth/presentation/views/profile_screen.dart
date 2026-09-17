@@ -232,10 +232,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
               ),
-
-              const Divider(),
-              const SizedBox(height: 12),
-              _buildBiometricSection(state),
             ],
           ),
         ),
