@@ -8,7 +8,7 @@ import { getHomePathForRole, useAuthStore } from "@/store/auth-store";
 
 import { completeRegistration } from "../api/auth.api";
 import type { CompleteRegistrationRequest } from "../types/auth.types";
-import { getSafeRedirect } from "./use-sign-in";
+
 
 export function useCompleteRegistration() {
   const router = useRouter();
@@ -31,12 +31,8 @@ export function useCompleteRegistration() {
 
       useAuthStore.getState().signIn(accessToken, refreshToken, user);
 
-      const params =
-        typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search)
-          : null;
-      const safeRedirect = params ? getSafeRedirect(params) : null;
-      router.replace(safeRedirect ?? getHomePathForRole(user.role));
+      // Theo yÃªu cáº§u: luÃ´n vÃ o Ä‘Ãºng default path (dashboard) mÃ  khÃ´ng theo redirect á»Ÿ url.
+      router.replace(getHomePathForRole(user.role));
     },
   });
 }
