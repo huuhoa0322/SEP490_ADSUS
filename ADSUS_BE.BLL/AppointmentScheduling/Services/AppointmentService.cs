@@ -1703,16 +1703,13 @@ public sealed class AppointmentService : IAppointmentService
         var nextAppointment = await _db.Appointments
             .Include(a => a.Slot)
             .Include(a => a.PatientProfile).ThenInclude(p => p.User)
+            .Include(a => a.Case)
             .Where(a => a.Slot.DoctorId == doctorId
                 && a.Slot.SlotDate == todayVn
-                && (a.Status == AppointmentStatus.Completed || a.Status == AppointmentStatus.Booked))
+                && (a.Status == AppointmentStatus.Completed || a.Status == AppointmentStatus.Booked)
+                && (a.Case == null || (a.Case.Status != CaseStatus.End && a.Case.Status != CaseStatus.Confirmed)))
             .OrderBy(a => a.Slot.StartTime)
             .FirstOrDefaultAsync(ct);
-
-        var patientName = nextAppointment?.PatientProfile?.User?.FullName
-            ?? nextAppointment?.PatientProfile?.FullName
-            ?? "bệnh nhân tiếp theo";
-        var slotTime = nextAppointment?.Slot?.StartTime.ToString("HH:mm") ?? "";
 
         // Bắn SignalR notification tới Staff/Lễ tân
         var staffUsers = await _db.Users
@@ -1721,21 +1718,39 @@ public sealed class AppointmentService : IAppointmentService
             .Select(u => u.UserId)
             .ToListAsync(ct);
 
+        string title = "Bác sĩ sẵn sàng tiếp nhận";
+        string body;
+        var metadata = new Dictionary<string, object>
+        {
+            ["doctorId"] = doctorId.ToString(),
+            ["doctorName"] = doctor.FullName,
+        };
+
+        if (nextAppointment != null)
+        {
+            var patientName = nextAppointment.PatientProfile?.User?.FullName
+                ?? nextAppointment.PatientProfile?.FullName
+                ?? "bệnh nhân";
+            var slotTime = nextAppointment.Slot?.StartTime.ToString("HH:mm") ?? "";
+            
+            body = $"BS. {doctor.FullName} đã sẵn sàng tiếp nhận ca tiếp theo: {patientName} ({slotTime}). Mời bệnh nhân vào phòng khám.";
+            metadata["patientName"] = patientName;
+        }
+        else
+        {
+            body = $"BS. {doctor.FullName} đã sẵn sàng tiếp nhận ca tiếp theo.";
+        }
+
         foreach (var staffId in staffUsers)
         {
             await _notificationService.SendAsync(new SendNotificationRequest
             {
                 UserId = staffId,
                 Type = "doctor_ready_next",
-                Title = "Bác sĩ sẵn sàng tiếp nhận",
-                Body = $"BS. {doctor.FullName} đã sẵn sàng tiếp nhận ca tiếp theo: {patientName} ({slotTime}). Mời bệnh nhân vào phòng khám.",
+                Title = title,
+                Body = body,
                 DeepLink = "/checkin",
-                Metadata = new Dictionary<string, object>
-                {
-                    ["doctorId"] = doctorId.ToString(),
-                    ["doctorName"] = doctor.FullName,
-                    ["patientName"] = patientName,
-                }
+                Metadata = metadata
             }, ct);
         }
     }
