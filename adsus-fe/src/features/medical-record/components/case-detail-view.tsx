@@ -39,7 +39,6 @@ import { useUpdateCaseDiagnoses } from "../hooks/use-diagnosis";
 import { FollowUpSection } from "@/features/appointment-scheduling/components/follow-up-section";
 import { useCreateFollowUpAppointment } from "@/features/appointment-scheduling/hooks/use-doctor-appointments";
 import { useExportCaseReport } from "../hooks/use-case-report";
-import { useCaseInvoices } from "@/features/prescription-adherence/hooks/use-invoices";
 import {
   EMPTY_VALUE,
   caseStatusLabel,
@@ -132,10 +131,6 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const confirmMutation = useConfirmCase(caseId);
   const endCaseMutation = useEndCaseWithoutPrescription(caseId);
   const report = useExportCaseReport(caseId);
-
-  // Module 9 — Invoice summary card: chỉ hiện cho Nurse, bất kể status ca.
-  const isNurse = currentUser?.role === "STAFF";
-  const { data: caseInvoices } = useCaseInvoices(isNurse ? caseId : undefined);
 
   // Chỉ hiển thị khung Ảnh siêu âm khi ca đã được gắn dịch vụ ULTRASOUND_EXAM
   const { data: caseClinicServices } = useCaseClinicServices(caseId);
@@ -916,46 +911,6 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         <div className="w-full">
           <PrescriptionSection caseId={caseId} />
         </div>
-      ) : null}
-
-      {/* Module 9 — Invoice summary: chỉ Nurse, bất kể status ca */}
-      {isNurse && caseInvoices && caseInvoices.length > 0 ? (
-        <section className="mt-5 rounded-xl border-2 border-border border-l-4 border-l-primary p-5">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <h3 className="text-base font-bold text-foreground">Hóa đơn</h3>
-              <p className="mt-0.5 text-sm font-bold text-foreground">
-                {caseInvoices.length === 1 ? "1 hóa đơn" : `${caseInvoices.length} hóa đơn`}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {caseInvoices[0] && (
-                <span
-                  className={cn(
-                    "rounded px-2.5 py-1 text-xs font-bold",
-                    caseInvoices[0].status === "PENDING"
-                      ? "bg-amber-50 text-amber-700"
-                      : caseInvoices[0].status === "PAID"
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-red-50 text-red-700",
-                  )}
-                >
-                  {caseInvoices[0].status === "PENDING"
-                    ? "Chờ thanh toán"
-                    : caseInvoices[0].status === "PAID"
-                      ? "Đã thanh toán"
-                      : "Đã hủy"}
-                </span>
-              )}
-              <Link
-                href={`/invoices/${caseInvoices[0].id}`}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90"
-              >
-                Chi tiết hóa đơn
-              </Link>
-            </div>
-          </div>
-        </section>
       ) : null}
 
       {hasUltrasoundService ? (
