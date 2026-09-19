@@ -35,7 +35,7 @@ jobs:
 
             - name: Integration Tests
               if: success() || failure()
-              continue-on-error: true  # Integration tests are often flaky; report still generated
+              # continue-on-error removed: Host stability guaranteed via xunit.runner.json thread limits and fixture standardization
               env:
                   ConnectionStrings__DefaultConnection: ${{ secrets.TEST_DB_CONNECTION_STRING }}
                   # Not a real shared secret — every test mints and validates its own tokens
@@ -361,7 +361,7 @@ jobs:
               run: dotnet test ADSUS_BE.UnitTests/ADSUS_BE.UnitTests.csproj --no-restore --collect:"XPlat Code Coverage;Format=opencover"
 
             - name: Test Backend Integration (with coverage)
-              continue-on-error: true # same flakiness allowance as backend-ci's own Integration Tests step
+              # continue-on-error removed: Stable test execution guaranteed via thread limits
               env:
                   ConnectionStrings__DefaultConnection: ${{ secrets.TEST_DB_CONNECTION_STRING }}
                   JwtSettings__SecretKey: "ci-only-fake-jwt-signing-key-not-used-anywhere-else-1234567890"

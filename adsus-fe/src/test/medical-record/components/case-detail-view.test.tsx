@@ -716,12 +716,12 @@ describe("CaseDetailView", () => {
     expect(errorAlert).toHaveClass("font-bold", "text-destructive");
   });
 
-  it("lưới làm việc chính chia 2 cột responsive (grid lg:grid-cols-[1.7fr_1fr]) theo Phase 4", () => {
+  it("lưới làm việc chính chia 2 cột responsive (grid lg:grid-cols-2) cân đối", () => {
     detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
 
     const { container } = render(<CaseDetailView caseId="case-1" />);
 
-    const workspaceGrid = container.querySelector("div.lg\\:grid-cols-\\[1\\.7fr_1fr\\]");
+    const workspaceGrid = container.querySelector("div.lg\\:grid-cols-2");
     expect(workspaceGrid).toBeInTheDocument();
     expect(workspaceGrid).toHaveClass("grid", "grid-cols-1", "gap-5");
   });

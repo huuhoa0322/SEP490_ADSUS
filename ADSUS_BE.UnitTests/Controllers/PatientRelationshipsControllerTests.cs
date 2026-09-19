@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Claims;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.PatientRelationship.DTOs;
 using ADSUS_BE.BLL.PatientRelationship.Interfaces;
@@ -264,6 +265,46 @@ public class PatientRelationshipsControllerTests : IDisposable
         Assert.Equal(2, response.Data.Relatives.Count);
         Assert.Equal("Bé Một", response.Data.Relatives[0].PatientName);
         Assert.Equal("Bé Hai", response.Data.Relatives[1].PatientName);
+    }
+
+    #endregion
+
+    #region DeleteRelative Tests
+
+    [Fact]
+    public async Task DeleteRelative_Returns400BadRequest_WhenDisallowed()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var relId = Guid.NewGuid();
+        var expectedMessage = "Không được phép xóa người thân để bảo đảm tính toàn vẹn của hồ sơ và lịch sử ca khám bệnh.";
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+                }))
+            }
+        };
+
+        _serviceMock.Setup(s => s.DeleteRelativeAsync(relId, userId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException(expectedMessage));
+
+        // Act
+        var result = await _controller.DeleteRelative(relId, CancellationToken.None);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, badRequestResult.StatusCode);
+
+        var val = badRequestResult.Value!;
+        var messageProp = val.GetType().GetProperty("message");
+        Assert.NotNull(messageProp);
+        var message = messageProp.GetValue(val)?.ToString();
+        Assert.Equal(expectedMessage, message);
     }
 
     #endregion

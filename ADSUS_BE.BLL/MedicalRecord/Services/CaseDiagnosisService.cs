@@ -108,6 +108,11 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
     {
         await EnsureCaseCheckedInAsync(caseId, ct);
 
+        if (imageStream.CanSeek && imageStream.Length > UltrasoundImageContentValidator.MaxFileSizeBytes)
+        {
+            throw new BusinessException("Kích thước ảnh vượt quá giới hạn 20MB.");
+        }
+
         // Ignore the modelVersionId passed from frontend and fetch the true ACTIVE model
         var activeModel = await _aiModelVersionRepo.GetActiveVersionReadOnlyAsync(ct);
         if (activeModel == null) throw new BusinessException("Hệ thống chưa có phiên bản AI nào được kích hoạt. Vui lòng liên hệ Admin.");
@@ -155,6 +160,16 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
     public async Task ConfirmAnalysisAsync(Guid caseId, ConfirmAnalysisRequest request, CancellationToken ct = default)
     {
         await EnsureCaseCheckedInAsync(caseId, ct);
+
+        if (request.OriginalImageStream.CanSeek && request.OriginalImageStream.Length > UltrasoundImageContentValidator.MaxFileSizeBytes)
+        {
+            throw new BusinessException("Kích thước ảnh gốc vượt quá giới hạn 20MB.");
+        }
+
+        if (request.BurntImageStream.CanSeek && request.BurntImageStream.Length > UltrasoundImageContentValidator.MaxFileSizeBytes)
+        {
+            throw new BusinessException("Kích thước ảnh kết quả vượt quá giới hạn 20MB.");
+        }
 
         // Fetch true active ModelVersionId for database tracking (using GetActiveVersionAsync for entity tracking)
         var activeModel = await _aiModelVersionRepo.GetActiveVersionAsync(ct)

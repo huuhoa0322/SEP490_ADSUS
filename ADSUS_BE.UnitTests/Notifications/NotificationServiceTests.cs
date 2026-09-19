@@ -1,4 +1,5 @@
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.Common.DTOs;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.Common.Services;
 using ADSUS_BE.DAL.Entities;
@@ -219,6 +220,154 @@ public class NotificationServiceTests
         _notificationLogRepo.Verify(r => r.CreateAsync(
             It.IsAny<NotificationLog>(),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    #endregion
+
+    #region TC-007: SendAsync - Web DeepLink Conversion to Mobile Scheme
+
+    [Theory]
+    [InlineData("https://adsus.example.com/appointments/1", "adsus://appointments/1")]
+    [InlineData("https://adsus.com/prescriptions/2", "adsus://prescriptions/2")]
+    [InlineData("adsus://custom/route", "adsus://custom/route")]
+    [InlineData("adsus:///appointments/1", "adsus://appointments/1")]
+    [InlineData("adsus:////appointments/1", "adsus://appointments/1")]
+    [InlineData("adsus://reminders?intakeId=123", "adsus://reminders?intakeId=123")]
+    [InlineData("adsus:///reminders?intakeId=123", "adsus://reminders?intakeId=123")]
+    [InlineData("https://staging.adsus.com/appointments/1", "adsus://appointments/1")]
+    [InlineData("https://adsus.com:5000/checkin/123", "adsus://checkin/123")]
+    [InlineData("https://adsus.example.com:8080/checkin/123", "adsus://checkin/123")]
+    [InlineData("https://user:secret@adsus.com/appointments/1", "adsus://appointments/1")]
+    [InlineData("https://adsus.com", "adsus://")]
+    [InlineData("https://adsus.com/", "adsus://")]
+    [InlineData("https://adsus.com//appointments/1", "adsus://appointments/1")]
+    [InlineData("  https://adsus.com/appointments/1  ", "adsus://appointments/1")]
+    [InlineData("  adsus:///appointments/1  ", "adsus://appointments/1")]
+    [InlineData("HTTPS://ADSUS.COM/appointments/1", "adsus://appointments/1")]
+    [InlineData("https://Adsus.Example.Com:8080/checkin/123", "adsus://checkin/123")]
+    [InlineData("https://adsus.com/reminders?intakeId=123&action=view#details", "adsus://reminders?intakeId=123&action=view#details")]
+    [InlineData("https://adsus.example.com/reminders?intakeId=123#frag", "adsus://reminders?intakeId=123#frag")]
+    [InlineData("https://adsus.com:5000/reminders?intakeId=123#frag", "adsus://reminders?intakeId=123#frag")]
+    [InlineData("https://adsus.com/reminders?title=A%20B&val=1%2B2", "adsus://reminders?title=A%20B&val=1%2B2")]
+    [InlineData("https://adsus.com?intakeId=123", "adsus://?intakeId=123")]
+    [InlineData("https://adsus.com/?intakeId=123", "adsus://?intakeId=123")]
+    [InlineData("https://adsus.com#details", "adsus://#details")]
+    [InlineData("https://adsus.com/#details", "adsus://#details")]
+    [InlineData("https://external-service.com/appointments/1", "https://external-service.com/appointments/1")]
+    [InlineData("https://adsus.community/forum", "https://adsus.community/forum")]
+    [InlineData("https://adsus.com.attacker.com/malware", "https://adsus.com.attacker.com/malware")]
+    [InlineData("https://adsus.company.com/test", "https://adsus.company.com/test")]
+    [InlineData("https://adsus.example.community/foo", "https://adsus.example.community/foo")]
+    [InlineData("https://adsus.com@attacker.com/steal", "https://adsus.com@attacker.com/steal")]
+    [InlineData("https://attacker-adsus.com/appointments/1", "https://attacker-adsus.com/appointments/1")]
+    [InlineData("https://eviladsus.com/appointments/1", "https://eviladsus.com/appointments/1")]
+    [InlineData("https://adsus.com.co/appointments/1", "https://adsus.com.co/appointments/1")]
+    [InlineData("https://attacker.com/?https://adsus.com", "https://attacker.com/?https://adsus.com")]
+    [InlineData("https://attacker.com/adsus.com", "https://attacker.com/adsus.com")]
+    [InlineData("ftp://adsus.com/files/1", "ftp://adsus.com/files/1")]
+    [InlineData("mailto:support@adsus.com", "mailto:support@adsus.com")]
+    public async Task SendAsync_WebDeepLink_ConvertsToMobileScheme(string inputDeepLink, string expectedDeepLink)
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var request = new SendNotificationRequest
+        {
+            UserId = userId,
+            Type = "test",
+            Title = "DeepLink Test",
+            DeepLink = inputDeepLink
+        };
+
+        _notificationLogRepo.Setup(r => r.CreateAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((NotificationLog log, CancellationToken _) => log);
+
+        // Act
+        await _sut.SendAsync(request, TestContext.Current.CancellationToken);
+
+        // Assert
+        _pushClient.Verify(s => s.SendToUserAsync(
+            userId,
+            It.Is<PushMessage>(p => p.DeepLink == expectedDeepLink),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        _realTimeService.Verify(s => s.SendToUserAsync(
+            userId,
+            It.Is<NotificationMessage>(m => m.DeepLink == expectedDeepLink)), Times.Once);
+    }
+
+    [Fact]
+    public async Task SendAsync_HttpWebDeepLinks_ConvertsToMobileScheme()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var scheme = "http";
+        var httpExample = $"{scheme}://adsus.example.com/checkin/123";
+        var httpAdsus = $"{scheme}://adsus.com/records/456";
+
+        _notificationLogRepo.Setup(r => r.CreateAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((NotificationLog log, CancellationToken _) => log);
+
+        // Act & Assert 1: adsus.example.com
+        var req1 = new SendNotificationRequest
+        {
+            UserId = userId,
+            Type = "test",
+            Title = "Test 1",
+            DeepLink = httpExample
+        };
+        await _sut.SendAsync(req1, TestContext.Current.CancellationToken);
+        _pushClient.Verify(s => s.SendToUserAsync(
+            userId,
+            It.Is<PushMessage>(p => p.DeepLink == "adsus://checkin/123"),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        // Act & Assert 2: adsus.com
+        var req2 = new SendNotificationRequest
+        {
+            UserId = userId,
+            Type = "test",
+            Title = "Test 2",
+            DeepLink = httpAdsus
+        };
+        await _sut.SendAsync(req2, TestContext.Current.CancellationToken);
+        _pushClient.Verify(s => s.SendToUserAsync(
+            userId,
+            It.Is<PushMessage>(p => p.DeepLink == "adsus://records/456"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task SendAsync_NullOrEmptyDeepLink_GeneratesDefaultNotificationDeepLink(string? inputDeepLink)
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var request = new SendNotificationRequest
+        {
+            UserId = userId,
+            Type = "test",
+            Title = "Test",
+            DeepLink = inputDeepLink
+        };
+
+        _notificationLogRepo.Setup(r => r.CreateAsync(It.IsAny<NotificationLog>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((NotificationLog log, CancellationToken _) => log);
+
+        // Act
+        var logId = await _sut.SendAsync(request, TestContext.Current.CancellationToken);
+
+        // Assert
+        var expectedDeepLink = $"adsus://notifications/{logId}";
+        _pushClient.Verify(s => s.SendToUserAsync(
+            userId,
+            It.Is<PushMessage>(p => p.DeepLink == expectedDeepLink),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        _realTimeService.Verify(s => s.SendToUserAsync(
+            userId,
+            It.Is<NotificationMessage>(m => m.DeepLink == expectedDeepLink)), Times.Once);
     }
 
     #endregion

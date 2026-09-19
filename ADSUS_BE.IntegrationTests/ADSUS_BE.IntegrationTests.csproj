@@ -49,4 +49,8 @@
     <ProjectReference Include="..\ADSUS_BE\ADSUS_BE.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

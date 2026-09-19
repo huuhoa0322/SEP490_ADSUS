@@ -37,6 +37,8 @@ public sealed class CaseDiagnosisController : ControllerBase
         _diagnosisService = diagnosisService;
     }
 
+    private const long MaxFileSizeBytes = 20L * 1024 * 1024; // 20 MB (PRD §6.1)
+
     [HttpPost("{caseId:guid}/analyze")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> AnalyzeImage(
@@ -45,6 +47,10 @@ public sealed class CaseDiagnosisController : ControllerBase
         CancellationToken ct)
     {
         if (request.Image == null) return BadRequest("Image is required");
+        if (request.Image.Length <= 0) return BadRequest("Image file is empty");
+        if (request.Image.Length > MaxFileSizeBytes)
+            return BadRequest("File ảnh vượt quá giới hạn 20MB.");
+
         using var stream = request.Image.OpenReadStream();
         var result = await _diagnosisService.AnalyzeImageAsync(caseId, stream, request.Image.FileName, request.Image.ContentType, ct);
         return Ok(ApiResponse<object>.Ok(result, "Analysis complete"));
@@ -59,6 +65,10 @@ public sealed class CaseDiagnosisController : ControllerBase
     {
         if (request.OriginalImage == null || request.BurntImage == null)
             return BadRequest("Both original and burnt images are required");
+        if (request.OriginalImage.Length <= 0 || request.BurntImage.Length <= 0)
+            return BadRequest("Image file is empty");
+        if (request.OriginalImage.Length > MaxFileSizeBytes || request.BurntImage.Length > MaxFileSizeBytes)
+            return BadRequest("File ảnh vượt quá giới hạn 20MB.");
 
         using var origStream = request.OriginalImage.OpenReadStream();
         using var burntStream = request.BurntImage.OpenReadStream();
