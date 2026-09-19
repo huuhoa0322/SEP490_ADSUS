@@ -244,6 +244,94 @@ public class AppointmentServiceTests : IDisposable
         Assert.Null(result);
     }
 
+    [Fact]
+    public async Task GetByIdAsync_BR065_AdminCanAccessAnyAppointment()
+    {
+        // Arrange
+        SetupGetByIdRepository();
+        var adminUserId = Guid.NewGuid();
+
+        // Act
+        var result = await _sut.GetByIdAsync(_appointmentId, adminUserId, "ADMIN", null, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(_appointmentId, result!.AppointmentId);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_BR065_AssignedPatientCanAccessOwnAppointment()
+    {
+        // Arrange
+        SetupGetByIdRepository();
+        var patientUserId = Guid.NewGuid();
+
+        // Act
+        var result = await _sut.GetByIdAsync(_appointmentId, patientUserId, "PATIENT", _patientId, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(_appointmentId, result!.AppointmentId);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_BR065_AssignedDoctorCanAccessAppointment()
+    {
+        // Arrange
+        var doctor = CreateDoctor();
+        var slot = CreateScheduleSlot(SlotStatus.Open, doctor);
+        slot.SlotId = Guid.NewGuid();
+
+        var appointment = new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = slot.SlotId,
+            PatientProfileId = _patientId,
+            Status = AppointmentStatus.Booked,
+            CreatedAt = DateTime.UtcNow,
+            Slot = slot,
+        };
+
+        _appointmentRepo.Setup(r => r.GetByIdAsync(appointment.AppointmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(appointment);
+
+        // Act
+        var result = await _sut.GetByIdAsync(appointment.AppointmentId, doctor.UserId, "DOCTOR", null, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(appointment.AppointmentId, result!.AppointmentId);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_BR065_UnassignedPatient_ThrowsUnauthorizedAccessException()
+    {
+        // Arrange
+        SetupGetByIdRepository();
+        var otherPatientUserId = Guid.NewGuid();
+        var otherPatientProfileId = Guid.NewGuid();
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _sut.GetByIdAsync(_appointmentId, otherPatientUserId, "PATIENT", otherPatientProfileId, TestContext.Current.CancellationToken));
+
+        Assert.Contains("không có quyền truy cập", ex.Message);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_BR065_UnassignedDoctor_ThrowsUnauthorizedAccessException()
+    {
+        // Arrange
+        SetupGetByIdRepository();
+        var otherDoctorUserId = Guid.NewGuid();
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _sut.GetByIdAsync(_appointmentId, otherDoctorUserId, "DOCTOR", null, TestContext.Current.CancellationToken));
+
+        Assert.Contains("không có quyền truy cập", ex.Message);
+    }
+
     #endregion
 
     #region BookAppointmentAsync Tests
@@ -951,6 +1039,78 @@ public class AppointmentServiceTests : IDisposable
 
         // Assert
         Assert.Equal(SlotStatus.Open, appointment.Slot!.Status);
+    }
+
+    [Fact]
+    public async Task CancelAppointmentAsync_BR066_PastSlotDate_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var doctor = CreateDoctor("Dr. Past Date", Guid.NewGuid());
+        // Slot is in the past (yesterday)
+        var pastSlot = CreateScheduleSlot(SlotStatus.Booked, doctor, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)));
+        pastSlot.SlotId = Guid.NewGuid();
+
+        var appointment = new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = pastSlot.SlotId,
+            PatientProfileId = _patientId,
+            Status = AppointmentStatus.Booked,
+            CreatedAt = DateTime.UtcNow,
+            Slot = pastSlot,
+        };
+
+        _db.ScheduleSlots.Add(pastSlot);
+        _db.Appointments.Add(appointment);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.CancelAppointmentAsync(
+                appointment.AppointmentId,
+                _patientId,
+                _patientId,
+                new CancelAppointmentRequest { CancellationReason = "Test past cancellation" },
+                TestContext.Current.CancellationToken));
+
+        Assert.Contains("Không thể hủy lịch hẹn đã qua thời gian bắt đầu", ex.Message);
+    }
+
+    [Fact]
+    public async Task CancelAppointmentAsync_BR066_PastSlotTimeToday_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var doctor = CreateDoctor("Dr. Past Time", Guid.NewGuid());
+        // Slot is today but 00:01 AM early morning
+        var slotToday = CreateScheduleSlot(SlotStatus.Booked, doctor, DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7)));
+        slotToday.SlotId = Guid.NewGuid();
+        slotToday.StartTime = new TimeOnly(0, 1);
+        slotToday.EndTime = new TimeOnly(0, 30);
+
+        var appointment = new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = slotToday.SlotId,
+            PatientProfileId = _patientId,
+            Status = AppointmentStatus.Booked,
+            CreatedAt = DateTime.UtcNow,
+            Slot = slotToday,
+        };
+
+        _db.ScheduleSlots.Add(slotToday);
+        _db.Appointments.Add(appointment);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.CancelAppointmentAsync(
+                appointment.AppointmentId,
+                _patientId,
+                _patientId,
+                new CancelAppointmentRequest { CancellationReason = "Test elapsed slot" },
+                TestContext.Current.CancellationToken));
+
+        Assert.Contains("Không thể hủy lịch hẹn đã qua thời gian bắt đầu", ex.Message);
     }
 
     #endregion

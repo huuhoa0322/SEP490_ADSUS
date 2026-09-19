@@ -36,6 +36,8 @@ public sealed class MedicineService : IMedicineService
             .Select(mp => new { mp.MedicineId, mp.MedicineUnit.Name })
             .ToDictionaryAsync(x => x.MedicineId, x => x.Name, ct);
 
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
         return medicines.Select(m => new MedicineResponse
         {
             MedicineId = m.MedicineId,
@@ -45,7 +47,7 @@ public sealed class MedicineService : IMedicineService
             Status = m.Status.ToString().ToUpperInvariant(),
             CreatedAt = m.CreatedAt,
             LowStockThreshold = m.LowStockThreshold,
-            TotalInventoryBase = m.MedicineBatches?.Sum(b => b.QuantityBase) ?? 0
+            TotalInventoryBase = m.MedicineBatches?.Where(b => b.ExpiryDate >= today).Sum(b => b.QuantityBase) ?? 0
         });
     }
 
@@ -61,6 +63,8 @@ public sealed class MedicineService : IMedicineService
             .Select(mp => new { mp.MedicineId, mp.MedicineUnit.Name })
             .ToDictionaryAsync(x => x.MedicineId, x => x.Name, ct);
         
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
         var dtos = items.Select(m => new MedicineResponse
         {
             MedicineId = m.MedicineId,
@@ -71,7 +75,7 @@ public sealed class MedicineService : IMedicineService
             Status = m.Status.ToString().ToUpperInvariant(),
             CreatedAt = m.CreatedAt,
             LowStockThreshold = m.LowStockThreshold,
-            TotalInventoryBase = m.MedicineBatches?.Sum(b => b.QuantityBase) ?? 0
+            TotalInventoryBase = m.MedicineBatches?.Where(b => b.ExpiryDate >= today).Sum(b => b.QuantityBase) ?? 0
         }).ToList();
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
@@ -91,6 +95,8 @@ public sealed class MedicineService : IMedicineService
             .Select(mp => mp.MedicineUnit.Name)
             .FirstOrDefaultAsync(ct);
 
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
         return new MedicineResponse
         {
             MedicineId = m.MedicineId,
@@ -101,7 +107,7 @@ public sealed class MedicineService : IMedicineService
             Status = m.Status.ToString().ToUpperInvariant(),
             CreatedAt = m.CreatedAt,
             LowStockThreshold = m.LowStockThreshold,
-            TotalInventoryBase = m.MedicineBatches?.Sum(b => b.QuantityBase) ?? 0
+            TotalInventoryBase = m.MedicineBatches?.Where(b => b.ExpiryDate >= today).Sum(b => b.QuantityBase) ?? 0
         };
     }
 

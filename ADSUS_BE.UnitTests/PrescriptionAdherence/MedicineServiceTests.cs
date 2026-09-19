@@ -129,7 +129,7 @@ public class MedicineServiceTests
                 LowStockThreshold = 10,
                 MedicineBatches = new List<MedicineBatch>
                 {
-                    new MedicineBatch { Id = Guid.NewGuid(), QuantityBase = 50 }
+                    new MedicineBatch { Id = Guid.NewGuid(), QuantityBase = 50, ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)) }
                 }
             }
         };
@@ -427,5 +427,115 @@ public class MedicineServiceTests
 
         var exception = await Assert.ThrowsAsync<BusinessException>(() => _sut.DeletePackagingAsync(packagingId, TestContext.Current.CancellationToken));
         Assert.Equal("Không thể xóa đơn vị cơ sở của thuốc.", exception.Message);
+    }
+
+    // ==============================================
+    // BR-123: Exclude Expired Batches from TotalInventoryBase Tests
+    // ==============================================
+    [Fact]
+    public async Task GetPagedAsync_BR123_ExcludesExpiredBatchesFromTotalInventoryBase()
+    {
+        // Arrange
+        var medId = Guid.NewGuid();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var medicines = new List<Medicine>
+        {
+            new Medicine
+            {
+                MedicineId = medId,
+                Name = "Paracetamol 500mg",
+                Status = MedicineStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                LowStockThreshold = 10,
+                MedicineBatches = new List<MedicineBatch>
+                {
+                    // Valid batch: 100 units, expires in 60 days
+                    new MedicineBatch { Id = Guid.NewGuid(), QuantityBase = 100, ExpiryDate = today.AddDays(60) },
+                    // Expired batch: 50 units, expired yesterday
+                    new MedicineBatch { Id = Guid.NewGuid(), QuantityBase = 50, ExpiryDate = today.AddDays(-1) },
+                    // Valid batch: 30 units, expires today (boundary check: non-expired)
+                    new MedicineBatch { Id = Guid.NewGuid(), QuantityBase = 30, ExpiryDate = today },
+                    // Severely expired batch: 200 units, expired last year
+                    new MedicineBatch { Id = Guid.NewGuid(), QuantityBase = 200, ExpiryDate = today.AddYears(-1) }
+                }
+            }
+        };
+
+        _medicineRepoMock.Setup(repo => repo.GetPagedAsync(1, 10, null, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((medicines, 1));
+
+        // Act
+        var result = await _sut.GetPagedAsync(1, 10, null, null, null, CancellationToken.None);
+
+        // Assert: TotalInventoryBase must equal 100 + 30 = 130, strictly excluding 50 and 200
+        Assert.NotNull(result);
+        var item = Assert.Single(result.Items);
+        Assert.Equal(130, item.TotalInventoryBase);
+    }
+
+    [Fact]
+    public async Task SearchMedicinesAsync_BR123_ExcludesExpiredBatchesFromTotalInventoryBase()
+    {
+        // Arrange
+        var medId = Guid.NewGuid();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var medicines = new List<Medicine>
+        {
+            new Medicine
+            {
+                MedicineId = medId,
+                Name = "Amoxicillin",
+                Status = MedicineStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                LowStockThreshold = 5,
+                MedicineBatches = new List<MedicineBatch>
+                {
+                    new MedicineBatch { Id = Guid.NewGuid(), QuantityBase = 80, ExpiryDate = today.AddDays(180) },
+                    new MedicineBatch { Id = Guid.NewGuid(), QuantityBase = 40, ExpiryDate = today.AddDays(-10) }
+                }
+            }
+        };
+
+        _medicineRepoMock.Setup(repo => repo.SearchByNameAsync("Amox", 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(medicines);
+
+        // Act
+        var result = await _sut.SearchMedicinesAsync("Amox", 20, CancellationToken.None);
+
+        // Assert: TotalInventoryBase must equal 80, strictly excluding 40
+        Assert.NotNull(result);
+        var item = Assert.Single(result);
+        Assert.Equal(80, item.TotalInventoryBase);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_BR123_ExcludesExpiredBatchesFromTotalInventoryBase()
+    {
+        // Arrange
+        var medId = Guid.NewGuid();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var medicine = new Medicine
+        {
+            MedicineId = medId,
+            Name = "Ibuprofen 400mg",
+            Status = MedicineStatus.Active,
+            CreatedAt = DateTime.UtcNow,
+            LowStockThreshold = 10,
+            MedicineBatches = new List<MedicineBatch>
+            {
+                new MedicineBatch { Id = Guid.NewGuid(), LotNumber = "LOT-1", QuantityBase = 25, ExpiryDate = today.AddMonths(3) },
+                new MedicineBatch { Id = Guid.NewGuid(), LotNumber = "LOT-2", QuantityBase = 75, ExpiryDate = today.AddDays(-5) }
+            }
+        };
+
+        _db.Medicines.Add(medicine);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        var result = await _sut.GetByIdAsync(medId, CancellationToken.None);
+
+        // Assert: TotalInventoryBase must equal 25, strictly excluding 75
+        Assert.NotNull(result);
+        Assert.Equal(25, result.TotalInventoryBase);
     }
 }

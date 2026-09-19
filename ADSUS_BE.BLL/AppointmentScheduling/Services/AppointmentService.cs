@@ -183,6 +183,55 @@ public sealed class AppointmentService : IAppointmentService
         return ToAppointmentResponse(appointment);
     }
 
+    public async Task<AppointmentResponse?> GetByIdAsync(
+        Guid appointmentId,
+        Guid currentUserId,
+        string currentUserRole,
+        Guid? currentPatientProfileId = null,
+        CancellationToken ct = default)
+    {
+        var appointment = await _appointmentRepo.GetByIdAsync(appointmentId, ct);
+        if (appointment == null) return null;
+
+        // BR-065: Quyền xem chi tiết lịch hẹn:
+        // 1. Admin được phép xem tất cả lịch hẹn
+        var isAdmin = string.Equals(currentUserRole, "ADMIN", StringComparison.OrdinalIgnoreCase);
+        if (isAdmin)
+        {
+            return ToAppointmentResponse(appointment);
+        }
+
+        // 2. Bác sĩ phụ trách lịch hẹn (khớp DoctorId của Slot hoặc Doctor User)
+        var isDoctor = string.Equals(currentUserRole, "DOCTOR", StringComparison.OrdinalIgnoreCase);
+        var isAssignedDoctor = appointment.Slot != null &&
+            (appointment.Slot.DoctorId == currentUserId || (appointment.Slot.Doctor != null && appointment.Slot.Doctor.UserId == currentUserId));
+
+        if (isDoctor && isAssignedDoctor)
+        {
+            return ToAppointmentResponse(appointment);
+        }
+
+        // 3. Bệnh nhân của lịch hẹn (chính chủ qua UserId, PatientProfileId, hoặc người thân đặt hộ qua BookedByUserId)
+        var isPatient = string.Equals(currentUserRole, "PATIENT", StringComparison.OrdinalIgnoreCase);
+        var isAssignedPatient =
+            (appointment.PatientProfile != null && appointment.PatientProfile.UserId == currentUserId) ||
+            (appointment.BookedByUserId.HasValue && appointment.BookedByUserId.Value == currentUserId) ||
+            (currentPatientProfileId.HasValue && appointment.PatientProfileId == currentPatientProfileId.Value);
+
+        if (isPatient && isAssignedPatient)
+        {
+            return ToAppointmentResponse(appointment);
+        }
+
+        // Nếu khớp trực tiếp phân quyền bác sĩ hoặc bệnh nhân kể cả khi role không trùng khớp hoàn toàn
+        if (isAssignedDoctor || isAssignedPatient)
+        {
+            return ToAppointmentResponse(appointment);
+        }
+
+        throw new UnauthorizedAccessException("Bạn không có quyền truy cập thông tin lịch hẹn này.");
+    }
+
     public Task<AppointmentResponse> BookAppointmentAsync(
         Guid patientProfileId,
         BookAppointmentRequest request,
@@ -738,6 +787,15 @@ public sealed class AppointmentService : IAppointmentService
         if (appointment.Status != AppointmentStatus.Booked)
         {
             throw new InvalidOperationException("Chỉ lịch hẹn đang đặt mới được hủy.");
+        }
+
+        // BR-066: Không thể hủy lịch hẹn đã qua thời gian bắt đầu
+        var nowVn = GetNowVietnam();
+        var todayVn = DateOnly.FromDateTime(nowVn);
+        var currentTimeVn = TimeOnly.FromDateTime(nowVn);
+        if (appointment.Slot != null && (appointment.Slot.SlotDate < todayVn || (appointment.Slot.SlotDate == todayVn && appointment.Slot.StartTime <= currentTimeVn)))
+        {
+            throw new InvalidOperationException("Không thể hủy lịch hẹn đã qua thời gian bắt đầu.");
         }
 
         // Update appointment

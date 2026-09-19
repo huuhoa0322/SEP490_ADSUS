@@ -341,7 +341,7 @@ public class CrossRoleAuthorizationMatrixTests
     /// is performed.
     /// </summary>
     [Fact]
-    public async Task IDOR_GetAppointmentById_PatientACanAccessPatientBAppointment_DemonstratesVulnerability()
+    public async Task IDOR_GetAppointmentById_PatientACannotAccessPatientBAppointment_ReturnsForbidden()
     {
         using var app = CreateApp();
 
@@ -352,59 +352,51 @@ public class CrossRoleAuthorizationMatrixTests
         // 2. An appointment belongs to Patient B
         var patientBAppointmentId = Guid.NewGuid();
         var patientBProfileId = Guid.NewGuid();
-        var appointmentBData = new AppointmentResponse
+
+        _appointmentService.Setup(s => s.GetByIdAsync(patientBAppointmentId, patientAUserId, "PATIENT", It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new UnauthorizedAccessException("Bạn không có quyền truy cập thông tin lịch hẹn này."));
+
+        // 3. Patient A requests Patient B's appointment
+        var response = await clientA.GetAsync($"/api/v1/appointments/{patientBAppointmentId}", TestContext.Current.CancellationToken);
+
+        // 4. Verification that IDOR is blocked: returns 403 Forbidden
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task IDOR_GetAppointmentById_PatientCanAccessOwnAppointment_ReturnsOk()
+    {
+        using var app = CreateApp();
+
+        // 1. Patient authenticates
+        var patientUserId = Guid.NewGuid();
+        var client = CreateAuthenticatedClient(app, UserRole.Patient, patientUserId);
+
+        // 2. An appointment belongs to this Patient
+        var appointmentId = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+        var appointmentData = new AppointmentResponse
         {
-            AppointmentId = patientBAppointmentId,
+            AppointmentId = appointmentId,
             ScheduleSlotId = Guid.NewGuid(),
             SlotDate = new DateOnly(2026, 9, 20),
             StartTime = new TimeOnly(14, 0),
             EndTime = new TimeOnly(14, 30),
             DoctorName = "BS. Trịnh Bác Sĩ",
             Status = AppointmentStatus.Booked,
-            Reason = "Đau tức ngực và khó thở về đêm",
-            PatientFullName = "Bệnh Nhân B (Nạn nhân IDOR)",
+            Reason = "Tái khám tim mạch",
+            PatientFullName = "Bệnh Nhân Chính Chủ",
             PatientPhone = "0987654321",
-            PatientProfileId = patientBProfileId,
-            BookedByUserName = "Người thân B",
-            RelationshipLabel = "Vợ",
-            IsBookedForOthers = true,
-            CaseId = Guid.NewGuid(),
-            Symptoms = new List<AppointmentSymptomResponse>
-            {
-                new AppointmentSymptomResponse
-                {
-                    CategoryId = Guid.NewGuid(),
-                    CategoryName = "Tim mạch",
-                    SymptomId = Guid.NewGuid(),
-                    SymptomName = "Hồi hộp đánh trống ngực",
-                    OtherNote = "Tiền sử gia đình có người bị nhồi máu cơ tim"
-                }
-            }
+            PatientProfileId = profileId
         };
 
-        _appointmentService.Setup(s => s.GetByIdAsync(patientBAppointmentId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(appointmentBData);
+        _appointmentService.Setup(s => s.GetByIdAsync(appointmentId, patientUserId, "PATIENT", It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(appointmentData);
 
-        // 3. Patient A requests Patient B's appointment
-        var response = await clientA.GetAsync($"/api/v1/appointments/{patientBAppointmentId}", TestContext.Current.CancellationToken);
+        // 3. Patient requests their own appointment
+        var response = await client.GetAsync($"/api/v1/appointments/{appointmentId}", TestContext.Current.CancellationToken);
 
-        // 4. Verification of the vulnerability:
-        // Instead of returning 404/403, the endpoint returns 200 OK and reveals Patient B's private data!
+        // 4. Verification: returns 200 OK
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        using var doc = System.Text.Json.JsonDocument.Parse(content);
-        var root = doc.RootElement;
-        var data = root.GetProperty("data");
-
-        Assert.Equal(patientBAppointmentId.ToString(), data.GetProperty("appointmentId").GetString());
-        Assert.Equal("Bệnh Nhân B (Nạn nhân IDOR)", data.GetProperty("patientFullName").GetString());
-        Assert.Equal("0987654321", data.GetProperty("patientPhone").GetString());
-        Assert.Equal("BS. Trịnh Bác Sĩ", data.GetProperty("doctorName").GetString());
-        Assert.Equal("Đau tức ngực và khó thở về đêm", data.GetProperty("reason").GetString());
-        
-        var symptoms = data.GetProperty("symptoms");
-        Assert.True(symptoms.GetArrayLength() > 0);
-        Assert.Equal("Tiền sử gia đình có người bị nhồi máu cơ tim", symptoms[0].GetProperty("otherNote").GetString());
     }
 }
