@@ -266,7 +266,9 @@ describe("BookingView", () => {
     fireEvent.click(docItem);
 
     // Chọn ngày (tomorrow)
-    const dayBtn = await screen.findByText(new RegExp(format(tomorrow, "dd/MM")));
+    const dayBtn = await screen.findByRole("button", {
+      name: new RegExp(`\\(${format(tomorrow, "dd/MM")}\\)`),
+    });
     fireEvent.click(dayBtn);
 
     // Chọn slot
@@ -326,7 +328,9 @@ describe("BookingView", () => {
     fireEvent.click(docItem);
 
     // Chọn ngày
-    const dayBtn = await screen.findByText(new RegExp(format(tomorrow, "dd/MM")));
+    const dayBtn = await screen.findByRole("button", {
+      name: new RegExp(`\\(${format(tomorrow, "dd/MM")}\\)`),
+    });
     fireEvent.click(dayBtn);
 
     // Chọn slot
@@ -395,7 +399,9 @@ describe("BookingView", () => {
     fireEvent.click(docItem);
 
     // Chọn ngày
-    const dayBtn = await screen.findByText(new RegExp(format(tomorrow, "dd/MM")));
+    const dayBtn = await screen.findByRole("button", {
+      name: new RegExp(`\\(${format(tomorrow, "dd/MM")}\\)`),
+    });
     fireEvent.click(dayBtn);
 
     // Chọn slot
@@ -471,7 +477,9 @@ describe("BookingView", () => {
     fireEvent.click(docItem);
 
     // Chọn ngày
-    const dayBtn = await screen.findByText(new RegExp(format(tomorrow, "dd/MM")));
+    const dayBtn = await screen.findByRole("button", {
+      name: new RegExp(`\\(${format(tomorrow, "dd/MM")}\\)`),
+    });
     fireEvent.click(dayBtn);
 
     // Chọn slot
@@ -550,7 +558,9 @@ describe("BookingView", () => {
     const docItem = await screen.findByText(/BS\. Trần Thị Nữ/i);
     fireEvent.click(docItem);
 
-    const dayBtn = await screen.findByText(new RegExp(format(tomorrow, "dd/MM")));
+    const dayBtn = await screen.findByRole("button", {
+      name: new RegExp(`\\(${format(tomorrow, "dd/MM")}\\)`),
+    });
     fireEvent.click(dayBtn);
 
     const slotBtn = await screen.findByText(/10:00 - 10:30/i);
@@ -581,7 +591,9 @@ describe("BookingView", () => {
     const docItem = await screen.findByText(/BS\. Trần Thị Nữ/i);
     fireEvent.click(docItem);
 
-    const dayBtn = await screen.findByText(new RegExp(format(tomorrow, "dd/MM")));
+    const dayBtn = await screen.findByRole("button", {
+      name: new RegExp(`\\(${format(tomorrow, "dd/MM")}\\)`),
+    });
     fireEvent.click(dayBtn);
 
     const slotBtn = await screen.findByText(/10:00 - 10:30/i);
