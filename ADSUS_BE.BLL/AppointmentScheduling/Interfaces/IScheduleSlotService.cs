@@ -26,22 +26,12 @@ public interface IScheduleSlotService
 
     Task<ScheduleSlotResponse?> GetSlotAsync(Guid slotId, CancellationToken ct = default);
 
-    /// <summary>Tạo slot cho doctor (DoctorId truyền từ controller, lấy từ JWT).</summary>
-    Task<ScheduleSlotResponse> CreateSlotAsync(
-        Guid doctorId,
-        CreateScheduleSlotRequest request,
-        CancellationToken ct = default);
 
     Task<(int SuccessCount, int ErrorCount)> CreateOvertimeSlotsAsync(
         CreateOvertimeSlotsRequest request,
         Guid doctorId,
         CancellationToken ct = default);
 
-    /// <summary>Sửa giờ slot (tách ca 8h-12h thành 8h-10h + 10h-12h).</summary>
-    Task<ScheduleSlotResponse> UpdateSlotAsync(
-        Guid slotId,
-        UpdateScheduleSlotRequest request,
-        CancellationToken ct = default);
 
     /// <summary>Đóng slot. Nếu có booking và forceClose=false, trả CloseSlotImpactResponse.</summary>
     Task<CloseSlotImpactResponse> CloseSlotAsync(

@@ -6,7 +6,6 @@ using ADSUS_BE.BLL.Common;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using FluentValidation;
 
 namespace ADSUS_BE.BLL.AppointmentScheduling.Services;
 
@@ -43,16 +42,13 @@ public sealed class ScheduleSlotService : IScheduleSlotService
 
     private readonly IScheduleSlotRepository _repo;
     private readonly IUserRepository _userRepo;
-    private readonly IValidator<CreateScheduleSlotRequest> _validator;
 
     public ScheduleSlotService(
         IScheduleSlotRepository repo,
-        IUserRepository userRepo,
-        IValidator<CreateScheduleSlotRequest> validator)
+        IUserRepository userRepo)
     {
         _repo = repo;
         _userRepo = userRepo;
-        _validator = validator;
     }
 
     public async Task<(IReadOnlyList<ScheduleSlotResponse> Items, int TotalCount)> ListSlotsAsync(
@@ -203,50 +199,6 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         return slot is null ? null : MapToResponse(slot);
     }
 
-    public async Task<ScheduleSlotResponse> CreateSlotAsync(
-        Guid doctorId,
-        CreateScheduleSlotRequest request,
-        CancellationToken ct = default)
-    {
-        var validation = await _validator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            throw new ValidationException(validation.Errors);
-        }
-
-        // Doctor phải tồn tại và là Doctor.
-        var doctor = await _userRepo.GetByIdAsync(doctorId, ct);
-        if (doctor is null || doctor.Role != UserRole.Doctor)
-        {
-            throw new InvalidOperationException(
-                $"User '{doctorId}' is not a valid Doctor.");
-        }
-
-        var hasOverlap = await _repo.HasOverlapAsync(
-            doctorId, request.VisitDate, request.StartTime, request.EndTime,
-            excludeSlotId: null, ct);
-        if (hasOverlap)
-        {
-            throw new InvalidOperationException(
-                $"Slot overlaps with an existing slot on {request.VisitDate:yyyy-MM-dd}.");
-        }
-
-        var now = DateTime.UtcNow;
-        var slot = new ScheduleSlot
-        {
-            SlotId = Guid.NewGuid(),
-            DoctorId = doctorId,
-            SlotDate = request.VisitDate,
-            StartTime = request.StartTime,
-            EndTime = request.EndTime,
-            Status = SlotStatus.Open,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-
-        await _repo.AddAsync(slot, ct);
-        return MapToResponse(slot);
-    }
 
     public async Task<(int SuccessCount, int ErrorCount)> CreateOvertimeSlotsAsync(
         CreateOvertimeSlotsRequest request,
@@ -312,45 +264,6 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         return (successCount, errorCount);
     }
 
-    public async Task<ScheduleSlotResponse> UpdateSlotAsync(
-        Guid slotId,
-        UpdateScheduleSlotRequest request,
-        CancellationToken ct = default)
-    {
-        var slot = await _repo.GetByIdForUpdateAsync(slotId, ct);
-        if (slot is null)
-            throw new InvalidOperationException($"Slot '{slotId}' not found.");
-
-        // BR-02: Closed là terminal.
-        if (slot.Status == SlotStatus.Closed)
-            throw new InvalidOperationException("Cannot update a closed slot.");
-
-        // Validate BR-01 với StartTime/EndTime mới.
-        var probe = new CreateScheduleSlotRequest
-        {
-            VisitDate = slot.SlotDate,
-            StartTime = request.StartTime,
-            EndTime = request.EndTime,
-        };
-        var validation = await _validator.ValidateAsync(probe, ct);
-        if (!validation.IsValid)
-            throw new ValidationException(validation.Errors);
-
-        // Check overlap với slot khác (loại trừ chính slot đang update).
-        var hasOverlap = await _repo.HasOverlapAsync(
-            slot.DoctorId, slot.SlotDate,
-            request.StartTime, request.EndTime,
-            excludeSlotId: slotId, ct);
-        if (hasOverlap)
-            throw new InvalidOperationException(
-                $"Updated slot overlaps with another slot on {slot.SlotDate:yyyy-MM-dd}.");
-
-        slot.StartTime = request.StartTime;
-        slot.EndTime = request.EndTime;
-        slot.UpdatedAt = DateTime.UtcNow;
-        await _repo.UpdateAsync(slot, ct);
-        return MapToResponse(slot);
-    }
 
     public async Task<CloseSlotImpactResponse> CloseSlotAsync(
         Guid slotId,

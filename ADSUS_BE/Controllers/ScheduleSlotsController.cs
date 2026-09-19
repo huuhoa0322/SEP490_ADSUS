@@ -4,7 +4,6 @@ using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.DAL.Entities;
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -72,75 +71,6 @@ public sealed class ScheduleSlotsController : ControllerBase
         return Ok(ApiResponse<ScheduleSlotResponse>.Ok(slot));
     }
 
-    /// <summary>POST /api/v1/schedule-slots — Tạo slot cho chính mình.</summary>
-    [HttpPost]
-    [Authorize(Roles = "DOCTOR")]
-    [ProducesResponseType(typeof(ApiResponse<ScheduleSlotResponse>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Create(
-        [FromBody] CreateScheduleSlotRequest request,
-        CancellationToken ct = default)
-    {
-        try
-        {
-            var slot = await _slots.CreateSlotAsync(CurrentDoctorId, request, ct);
-            return StatusCode(StatusCodes.Status201Created, ApiResponse<ScheduleSlotResponse>.Ok(slot, code: 201));
-        }
-        catch (ValidationException ex)
-        {
-            var firstError = ex.Errors.FirstOrDefault()?.ErrorMessage ?? "Validation failed.";
-            return BadRequest(ApiResponse<object>.Fail(400, $"Validation failed: {firstError}"));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
-        }
-    }
-
-    /// <summary>PUT /api/v1/schedule-slots/{id} — Sửa giờ slot (tách ca).</summary>
-    [HttpPut("{id:guid}")]
-    [Authorize(Roles = "DOCTOR")]
-    [ProducesResponseType(typeof(ApiResponse<ScheduleSlotResponse>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> Update(
-        Guid id,
-        [FromBody] UpdateScheduleSlotRequest request,
-        CancellationToken ct = default)
-    {
-        try
-        {
-            // Pre-check quyền sở hữu.
-            var existing = await _slots.GetSlotAsync(id, ct);
-            if (existing is null)
-                return NotFound(ApiResponse<object>.Fail(404, $"Slot '{id}' not found."));
-            if (existing.DoctorId != CurrentDoctorId)
-                return StatusCode(403, ApiResponse<object>.Fail(403, "Not your slot."));
-
-            var slot = await _slots.UpdateSlotAsync(id, request, ct);
-            return Ok(ApiResponse<ScheduleSlotResponse>.Ok(slot));
-        }
-        catch (ValidationException ex)
-        {
-            var firstError = ex.Errors.FirstOrDefault()?.ErrorMessage ?? "Validation failed.";
-            return BadRequest(ApiResponse<object>.Fail(400, $"Validation failed: {firstError}"));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.Fail(400, ex.Message));
-        }
-    }
-
-    /// <summary>POST /api/v1/schedule-slots/overtime — (DEPRECATED) Dùng luồng Shift Request thay thế.</summary>
-    [HttpPost("overtime")]
-    [Obsolete("Sử dụng ShiftRequestsController thay thế.")]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    public IActionResult CreateOvertime([FromBody] CreateOvertimeSlotsRequest request, CancellationToken ct = default)
-    {
-        return BadRequest(ApiResponse<object>.Fail(400, "Vui lòng sử dụng tính năng Yêu cầu Tăng ca mới."));
-    }
 
     /// <summary>PUT /api/v1/schedule-slots/{id}/close — Đóng slot (xin nghỉ/bận). Chỉ Admin được dùng.</summary>
     [HttpPut("{id:guid}/close")]
