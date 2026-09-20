@@ -434,22 +434,39 @@ public class InvoiceService : IInvoiceService
                             
                             if (refundQtyBase <= 0) continue;
 
-                            batch.QuantityBase += refundQtyBase;
+                                                        batch.QuantityBase += refundQtyBase;
 
-                            var reverseTxn = new InventoryTransaction
+                            if (invoice.Status == InvoiceStatus.PENDING)
                             {
-                                Id = Guid.NewGuid(),
-                                BatchId = txn.BatchId,
-                                MedicinePackagingId = txn.MedicinePackagingId,
-                                TxnType = InventoryTxnType.Adjustment,
-                                QuantityInUnit = refundQtyBase,
-                                QuantityBase = refundQtyBase,
-                                TxnDate = DateTime.UtcNow,
-                                Reason = "HoÃ n kho tá»± Ä‘á»™ng do há»§y hÃ³a Ä‘Æ¡n",
-                                PrescriptionItemId = txn.PrescriptionItemId
-                            };
-                            
-                            _context.InventoryTransactions.Add(reverseTxn);
+                                // Xóa luôn giao d?ch tr? kho ban d?u d? tránh rác d? li?u (don chua thanh toán)
+                                // N?u refundQtyBase < txn.QuantityBase thì sao? Th?c t? don PENDING thì chua u?ng thu?c nên luôn refund full.
+                                if (refundQtyBase == txn.QuantityBase)
+                                {
+                                    _context.InventoryTransactions.Remove(txn);
+                                }
+                                else 
+                                {
+                                    txn.QuantityBase -= refundQtyBase;
+                                    txn.QuantityInUnit -= refundQtyBase;
+                                }
+                            }
+                            else
+                            {
+                                var reverseTxn = new InventoryTransaction
+                                {
+                                    Id = Guid.NewGuid(),
+                                    BatchId = txn.BatchId,
+                                    MedicinePackagingId = txn.MedicinePackagingId,
+                                    TxnType = InventoryTxnType.Adjustment,
+                                    QuantityInUnit = refundQtyBase,
+                                    QuantityBase = refundQtyBase,
+                                    TxnDate = DateTime.UtcNow,
+                                    Reason = "Hoàn kho t? d?ng do h?y hóa don",
+                                    PrescriptionItemId = txn.PrescriptionItemId
+                                };
+                                
+                                _context.InventoryTransactions.Add(reverseTxn);
+                            }
                         }
                     }
                 }
