@@ -2,6 +2,8 @@ using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using Microsoft.EntityFrameworkCore;
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Moq;
 using Xunit;
@@ -26,9 +28,12 @@ public class ScheduleSlotServiceTests
 
     public ScheduleSlotServiceTests()
     {
+        var options = new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(databaseName: "Schedule_Test").Options;
+        var db = new AppDbContext(options);
+        var notificationMock = new Mock<INotificationService>();
         _sut = new ScheduleSlotService(
             _slotRepo.Object,
-            _userRepo.Object, null!, null!);
+            _userRepo.Object, notificationMock.Object, db);
 
         SetupDoctor();
     }

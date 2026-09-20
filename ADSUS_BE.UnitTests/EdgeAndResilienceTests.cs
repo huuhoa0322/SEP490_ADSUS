@@ -239,11 +239,13 @@ public class EdgeAndResilienceTests
         using var context = CreateContext();
         var (c, doctor, _) = SeedCaseWithPatient(context, CaseStatus.Confirmed);
 
+        var clinicSvc = new ClinicService { Id = Guid.NewGuid(), Code = "EXAM", Name = "Kham", Price = 100000, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        context.ClinicServices.Add(clinicSvc);
         var junction = new CaseClinicService
         {
             Id = Guid.NewGuid(),
             CaseId = c.CaseId,
-            ClinicServiceId = Guid.NewGuid(),
+            ClinicServiceId = clinicSvc.Id,
             PriceAtTime = 100000,
             CreatedAt = DateTime.UtcNow
         };

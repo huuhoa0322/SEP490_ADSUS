@@ -136,7 +136,7 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
         });
 
         // Act
-        var response = await _caseService.UpdateSymptomsAsync(medicalCase.CaseId, Guid.NewGuid(), request, TestContext.Current.CancellationToken);
+        var response = await _caseService.UpdateSymptomsAsync(medicalCase.CaseId, medicalCase.DoctorId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(response);
@@ -177,7 +177,7 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
         var request = new UpdateCaseSymptomsRequest(new List<CreateCaseSymptomRequest>());
 
         // Act
-        var response = await _caseService.UpdateSymptomsAsync(medicalCase.CaseId, Guid.NewGuid(), request, TestContext.Current.CancellationToken);
+        var response = await _caseService.UpdateSymptomsAsync(medicalCase.CaseId, medicalCase.DoctorId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(response);
@@ -213,7 +213,7 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
         });
 
         // Act
-        var response = await _caseService.UpdateDiseasesAsync(medicalCase.CaseId, Guid.NewGuid(), request, TestContext.Current.CancellationToken);
+        var response = await _caseService.UpdateDiseasesAsync(medicalCase.CaseId, medicalCase.DoctorId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(response);
@@ -250,7 +250,7 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
         });
 
         // Act
-        var response = await _caseService.UpdateAllergiesAsync(medicalCase.CaseId, Guid.NewGuid(), request, TestContext.Current.CancellationToken);
+        var response = await _caseService.UpdateAllergiesAsync(medicalCase.CaseId, medicalCase.DoctorId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(response);
@@ -277,15 +277,15 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
 
         // Act & Assert
         var exSymptoms = await Assert.ThrowsAsync<BusinessException>(() =>
-            _caseService.UpdateSymptomsAsync(medicalCase.CaseId, Guid.NewGuid(), symptomsReq, TestContext.Current.CancellationToken));
+            _caseService.UpdateSymptomsAsync(medicalCase.CaseId, medicalCase.DoctorId, symptomsReq, TestContext.Current.CancellationToken));
         Assert.Contains("Cannot modify a locked or cancelled case", exSymptoms.Message);
 
         var exDiseases = await Assert.ThrowsAsync<BusinessException>(() =>
-            _caseService.UpdateDiseasesAsync(medicalCase.CaseId, Guid.NewGuid(), diseasesReq, TestContext.Current.CancellationToken));
+            _caseService.UpdateDiseasesAsync(medicalCase.CaseId, medicalCase.DoctorId, diseasesReq, TestContext.Current.CancellationToken));
         Assert.Contains("Cannot modify a locked or cancelled case", exDiseases.Message);
 
         var exAllergies = await Assert.ThrowsAsync<BusinessException>(() =>
-            _caseService.UpdateAllergiesAsync(medicalCase.CaseId, Guid.NewGuid(), allergiesReq, TestContext.Current.CancellationToken));
+            _caseService.UpdateAllergiesAsync(medicalCase.CaseId, medicalCase.DoctorId, allergiesReq, TestContext.Current.CancellationToken));
         Assert.Contains("Cannot modify a locked or cancelled case", exAllergies.Message);
     }
 

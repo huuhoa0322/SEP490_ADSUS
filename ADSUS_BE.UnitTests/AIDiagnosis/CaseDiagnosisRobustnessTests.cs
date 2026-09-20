@@ -64,7 +64,7 @@ public class CaseDiagnosisRobustnessTests
         _casesMock.Setup(c => c.GetByIdAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Case?)null);
 
-        using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+        using var stream = new MemoryStream(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
 
         await Assert.ThrowsAsync<ResourceNotFoundException>(() =>
             _sut.AnalyzeImageAsync(caseId, stream, "test.png", "image/png", TestContext.Current.CancellationToken));
@@ -83,7 +83,7 @@ public class CaseDiagnosisRobustnessTests
         _casesMock.Setup(c => c.GetByIdAsync(caseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(medicalCase);
 
-        using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+        using var stream = new MemoryStream(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() =>
             _sut.AnalyzeImageAsync(caseId, stream, "test.png", "image/png", TestContext.Current.CancellationToken));
@@ -107,7 +107,7 @@ public class CaseDiagnosisRobustnessTests
         _modelRepoMock.Setup(m => m.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync((AiModelVersion?)null);
 
-        using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+        using var stream = new MemoryStream(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
 
         var ex = await Assert.ThrowsAsync<BusinessException>(() =>
             _sut.AnalyzeImageAsync(caseId, stream, "test.png", "image/png", TestContext.Current.CancellationToken));

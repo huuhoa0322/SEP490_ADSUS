@@ -27,15 +27,15 @@ public class CaseConclusionRequestValidatorTests
     }
 
     [Fact]
-    public void EmptyOrNullDoctorConclusion_PassesValidation()
+    public void EmptyOrNullDoctorConclusion_FailsValidation()
     {
         // Arrange & Act
         var emptyResult = _validator.Validate(ValidRequest() with { DoctorConclusion = "" });
         var nullResult = _validator.Validate(ValidRequest() with { DoctorConclusion = null });
 
         // Assert
-        Assert.True(emptyResult.IsValid);
-        Assert.True(nullResult.IsValid);
+        Assert.False(emptyResult.IsValid);
+        Assert.False(nullResult.IsValid);
     }
 
     [Fact]

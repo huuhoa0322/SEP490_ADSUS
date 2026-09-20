@@ -1010,7 +1010,7 @@ public class CaseServiceTests
         });
 
         // Act
-        var response = await _sut.UpdateDiagnosesAsync(medicalCase.CaseId, Guid.NewGuid(), request, TestContext.Current.CancellationToken);
+        var response = await _sut.UpdateDiagnosesAsync(medicalCase.CaseId, medicalCase.DoctorId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(response);
@@ -1048,7 +1048,7 @@ public class CaseServiceTests
         var request = new UpdateCaseDiagnosesRequest(new List<CaseDiagnosisInput>());
 
         // Act
-        var response = await _sut.UpdateDiagnosesAsync(medicalCase.CaseId, Guid.NewGuid(), request, TestContext.Current.CancellationToken);
+        var response = await _sut.UpdateDiagnosesAsync(medicalCase.CaseId, medicalCase.DoctorId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotNull(response);
@@ -1083,7 +1083,7 @@ public class CaseServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, Guid.NewGuid(), request, TestContext.Current.CancellationToken));
+            () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, medicalCase.DoctorId, request, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -1098,7 +1098,7 @@ public class CaseServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, Guid.NewGuid(), request, TestContext.Current.CancellationToken));
+            () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, medicalCase.DoctorId, request, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -1113,7 +1113,7 @@ public class CaseServiceTests
 
         // Act & Assert
         await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, Guid.NewGuid(), request, TestContext.Current.CancellationToken));
+            () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, medicalCase.DoctorId, request, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -1128,7 +1128,7 @@ public class CaseServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, Guid.NewGuid(), request, TestContext.Current.CancellationToken));
+            () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, medicalCase.DoctorId, request, TestContext.Current.CancellationToken));
         Assert.Contains("not been checked in", ex.Message);
     }
 }

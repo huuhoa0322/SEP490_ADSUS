@@ -94,7 +94,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private static MemoryStream MakeFakeImageStream() => new(new byte[] { 1, 2, 3 });
+    private static MemoryStream MakeFakeImageStream() => new(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
 
     // =========================================================================
     // AnalyzeImageAsync

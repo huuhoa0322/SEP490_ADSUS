@@ -64,9 +64,9 @@ describe("BookingView", () => {
       doctorName: "Nguyễn Văn Nam",
       doctorStatus: "ACTIVE",
       doctorGender: "MALE",
-      slotDate: tomorrowStr,
-      startTime: "09:00:00",
-      endTime: "09:30:00",
+      slotDate: format(today, "yyyy-MM-dd"),
+      startTime: "23:50:00",
+      endTime: "23:59:00",
       createdAt: "2026-09-01T00:00:00Z",
     },
     {
@@ -75,9 +75,9 @@ describe("BookingView", () => {
       doctorName: "Trần Thị Nữ",
       doctorStatus: "ACTIVE",
       doctorGender: "FEMALE",
-      slotDate: tomorrowStr,
-      startTime: "10:00:00",
-      endTime: "10:30:00",
+      slotDate: format(today, "yyyy-MM-dd"),
+      startTime: "23:50:00",
+      endTime: "23:59:00",
       createdAt: "2026-09-01T00:00:00Z",
     },
   ];
@@ -267,12 +267,12 @@ describe("BookingView", () => {
 
     // Chọn ngày (tomorrow)
     const dayBtn = await screen.findByRole("button", {
-      name: new RegExp(`\\(${format(tomorrow, "dd/MM")}\\)`),
+      name: new RegExp(`\\(${format(today, "dd/MM")}\\)`),
     });
     fireEvent.click(dayBtn);
 
     // Chọn slot
-    const slotBtn = await screen.findByText(/10:00 - 10:30/i);
+    const slotBtn = await screen.findByText(/23:50 - 23:59/i);
     fireEvent.click(slotBtn);
 
     // Nút xác nhận đặt lịch đã được enable
@@ -329,12 +329,12 @@ describe("BookingView", () => {
 
     // Chọn ngày
     const dayBtn = await screen.findByRole("button", {
-      name: new RegExp(`\\(${format(tomorrow, "dd/MM")}\\)`),
+      name: new RegExp(`\\(${format(today, "dd/MM")}\\)`),
     });
     fireEvent.click(dayBtn);
 
     // Chọn slot
-    const slotBtn = await screen.findByText(/10:00 - 10:30/i);
+    const slotBtn = await screen.findByText(/23:50 - 23:59/i);
     fireEvent.click(slotBtn);
 
     // Điền lý do khám
@@ -400,12 +400,12 @@ describe("BookingView", () => {
 
     // Chọn ngày
     const dayBtn = await screen.findByRole("button", {
-      name: new RegExp(`\\(${format(tomorrow, "dd/MM")}\\)`),
+      name: new RegExp(`\\(${format(today, "dd/MM")}\\)`),
     });
     fireEvent.click(dayBtn);
 
     // Chọn slot
-    const slotBtn = await screen.findByText(/10:00 - 10:30/i);
+    const slotBtn = await screen.findByText(/23:50 - 23:59/i);
     fireEvent.click(slotBtn);
 
     // Chọn Người thân
@@ -478,12 +478,12 @@ describe("BookingView", () => {
 
     // Chọn ngày
     const dayBtn = await screen.findByRole("button", {
-      name: new RegExp(`\\(${format(tomorrow, "dd/MM")}\\)`),
+      name: new RegExp(`\\(${format(today, "dd/MM")}\\)`),
     });
     fireEvent.click(dayBtn);
 
     // Chọn slot
-    const slotBtn = await screen.findByText(/09:00 - 09:30/i);
+    const slotBtn = await screen.findByText(/23:50 - 23:59/i);
     fireEvent.click(slotBtn);
 
     // Mở phần Triệu chứng
@@ -559,11 +559,11 @@ describe("BookingView", () => {
     fireEvent.click(docItem);
 
     const dayBtn = await screen.findByRole("button", {
-      name: new RegExp(`\\(${format(tomorrow, "dd/MM")}\\)`),
+      name: new RegExp(`\\(${format(today, "dd/MM")}\\)`),
     });
     fireEvent.click(dayBtn);
 
-    const slotBtn = await screen.findByText(/10:00 - 10:30/i);
+    const slotBtn = await screen.findByText(/23:50 - 23:59/i);
     fireEvent.click(slotBtn);
 
     const confirmBtn = screen.getByRole("button", { name: /Xác nhận đặt lịch khám/i });
@@ -592,11 +592,11 @@ describe("BookingView", () => {
     fireEvent.click(docItem);
 
     const dayBtn = await screen.findByRole("button", {
-      name: new RegExp(`\\(${format(tomorrow, "dd/MM")}\\)`),
+      name: new RegExp(`\\(${format(today, "dd/MM")}\\)`),
     });
     fireEvent.click(dayBtn);
 
-    const slotBtn = await screen.findByText(/10:00 - 10:30/i);
+    const slotBtn = await screen.findByText(/23:50 - 23:59/i);
     fireEvent.click(slotBtn);
 
     const confirmBtn = screen.getByRole("button", { name: /Xác nhận đặt lịch khám/i });

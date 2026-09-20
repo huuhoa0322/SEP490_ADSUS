@@ -164,10 +164,10 @@ describe("Case Ultrasound Section Visibility & Responsive Layout (US-01 -> US-08
     expect(screen.queryByRole("button", { name: /bổ sung ảnh siêu âm/i })).not.toBeInTheDocument();
     expect(screen.queryByTestId("ultrasound-gallery")).not.toBeInTheDocument();
 
-    // Responsive grid áp dụng lg:grid-cols-2 cân đối
-    const gridContainer = container.querySelector(".lg\\:grid-cols-2");
+    // Responsive grid áp dụng class mới lg:grid-cols-[1.7fr_1fr]
+    const gridContainer = container.querySelector(".lg\\:grid-cols-\\[1\\.7fr_1fr\\]");
     expect(gridContainer).toBeInTheDocument();
-    expect(container.querySelector(".lg\\:grid-cols-\\[1\\.7fr_1fr\\]")).not.toBeInTheDocument();
+    expect(container.querySelector(".lg\\:grid-cols-2")).not.toBeInTheDocument();
 
     // Đảm bảo 2 cột độc lập trực tiếp của Grid (Cột trái 50%: Lâm sàng, Cột phải 50%: Kết luận)
     expect(gridContainer?.children).toHaveLength(2);
@@ -208,8 +208,8 @@ describe("Case Ultrasound Section Visibility & Responsive Layout (US-01 -> US-08
     expect(screen.getByRole("button", { name: /bổ sung ảnh siêu âm/i })).toBeInTheDocument();
     expect(screen.getByTestId("ultrasound-gallery")).toBeInTheDocument();
 
-    // Layout áp dụng lg:grid-cols-2 cân đối
-    const gridContainer = container.querySelector(".lg\\:grid-cols-2");
+    // Layout áp dụng lg:grid-cols-[1.7fr_1fr]
+    const gridContainer = container.querySelector(".lg\\:grid-cols-\\[1\\.7fr_1fr\\]");
     expect(gridContainer).toBeInTheDocument();
 
     // Cột 1 là space-y-6 chứa lâm sàng ở trên và ảnh siêu âm ở dưới; Cột 2 là kết luận

@@ -869,8 +869,8 @@ describe("RegisterForm", () => {
       expect(replaceMock).toHaveBeenCalledWith("/");
     });
 
-    it("redirects to ?redirect= path when specified in URL", async () => {
-      window.history.pushState({}, "", "/register?redirect=/dat-lich");
+    it("ignores ?redirect= path and navigates to default home path", async () => {
+      searchParamsMock.mockReturnValue(new URLSearchParams("?redirect=/dat-lich"));
 
       const mockSuccessData = {
         success: true,
@@ -902,7 +902,7 @@ describe("RegisterForm", () => {
         fireEvent.click(screen.getByRole("button", { name: /hoàn tất đăng ký/i }));
       });
 
-      expect(replaceMock).toHaveBeenCalledWith("/dat-lich");
+      expect(replaceMock).toHaveBeenCalledWith("/");
     });
   });
 

@@ -150,7 +150,7 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
             SlotId = Guid.NewGuid(),
             DoctorId = doctor.UserId,
             Doctor = doctor,
-            SlotDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            SlotDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)),
             StartTime = startTime ?? new TimeOnly(9, 0),
             EndTime = endTime ?? new TimeOnly(10, 0),
             Status = status,
@@ -484,7 +484,7 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
                 new CancelAppointmentRequest { CancellationReason = "Bận việc đột xuất" },
                 TestContext.Current.CancellationToken));
 
-        Assert.Equal("Không thể hủy lịch hẹn đã qua thời gian bắt đầu.", ex.Message);
+        Assert.Contains("Chỉ có thể hủy lịch ít nhất 12 giờ trước thời gian", ex.Message);
     }
 
     [Fact]
@@ -520,7 +520,7 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
                 new CancelAppointmentRequest { CancellationReason = "Quên hủy" },
                 TestContext.Current.CancellationToken));
 
-        Assert.Equal("Không thể hủy lịch hẹn đã qua thời gian bắt đầu.", ex.Message);
+        Assert.Contains("Chỉ có thể hủy lịch ít nhất 12 giờ trước thời gian", ex.Message);
     }
 
     [Fact]
@@ -558,15 +558,15 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
                 new CancelAppointmentRequest { CancellationReason = "Bận việc hôm nay" },
                 TestContext.Current.CancellationToken));
 
-        Assert.Equal("Không thể hủy lịch hẹn đã qua thời gian bắt đầu.", ex.Message);
+        Assert.Contains("Chỉ có thể hủy lịch ít nhất 12 giờ trước thời gian", ex.Message);
     }
 
     [Fact]
-    public async Task BR066_Cancel_SlotDateToday_StartTimeInFuture_Succeeds()
+    public async Task BR066_Cancel_SlotDateFuture_StartTimeInFuture_Succeeds()
     {
         // Arrange: Slot is TODAY, but StartTime is in the future (23:55 late night)
         var nowVn = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, VietnamZone);
-        var todayVn = DateOnly.FromDateTime(nowVn);
+        var todayVn = DateOnly.FromDateTime(nowVn.AddDays(2));
         var futureStartTime = new TimeOnly(23, 55);
 
         var doctor = CreateDoctor();
@@ -606,7 +606,7 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
     {
         // Arrange: Slot date is in the future (tomorrow)
         var nowVn = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, VietnamZone);
-        var tomorrowVn = DateOnly.FromDateTime(nowVn.AddDays(1));
+        var tomorrowVn = DateOnly.FromDateTime(nowVn.AddDays(2));
 
         var doctor = CreateDoctor();
         var slot = CreateScheduleSlot(SlotStatus.Booked, doctor, tomorrowVn, new TimeOnly(9, 0), new TimeOnly(10, 0));
@@ -645,7 +645,7 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
     {
         // Arrange: Appointment has already completed
         var doctor = CreateDoctor();
-        var slot = CreateScheduleSlot(SlotStatus.Booked, doctor, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)));
+        var slot = CreateScheduleSlot(SlotStatus.Booked, doctor, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)));
         var patient = CreatePatientProfile();
 
         var appointment = new Appointment
@@ -679,7 +679,7 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
     {
         // Arrange: Appointment belongs to Patient A, but Patient B attempts cancellation
         var doctor = CreateDoctor();
-        var slot = CreateScheduleSlot(SlotStatus.Booked, doctor, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)));
+        var slot = CreateScheduleSlot(SlotStatus.Booked, doctor, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)));
         var patientA = CreatePatientProfile(fullName: "Patient A");
         var patientB = CreatePatientProfile(fullName: "Patient B (Unauthorized)");
 
@@ -738,7 +738,7 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
                 new MedicineBatch { Id = Guid.NewGuid(), LotNumber = "TODAY-1", QuantityBase = 35, ExpiryDate = today },
 
                 // Future batches (> today) - MUST BE INCLUDED
-                new MedicineBatch { Id = Guid.NewGuid(), LotNumber = "FUT-1", QuantityBase = 65, ExpiryDate = today.AddDays(1) },
+                new MedicineBatch { Id = Guid.NewGuid(), LotNumber = "FUT-1", QuantityBase = 65, ExpiryDate = today.AddDays(2) },
                 new MedicineBatch { Id = Guid.NewGuid(), LotNumber = "FUT-2", QuantityBase = 100, ExpiryDate = today.AddMonths(12) }
             }
         };

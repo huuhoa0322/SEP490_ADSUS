@@ -17,12 +17,12 @@ function makeAppointment(overrides: Partial<AppointmentSummaryResponse> = {}): A
     appointmentId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     scheduleSlotId: "slot-001",
     doctorId: "doc-001",
-    slotDate: "2026-09-20",
+    slotDate: "2027-09-20",
     startTime: "08:00:00",
     endTime: "08:30:00",
     doctorName: "Nguyễn Văn A",
     status: "BOOKED",
-    createdAt: "2026-09-01T10:00:00Z",
+    createdAt: "2027-09-01T10:00:00Z",
     reason: "Khám định kỳ",
     cancellationReason: null,
     caseId: null,
@@ -107,7 +107,7 @@ describe("AppointmentHistoryCard", () => {
     render(<AppointmentHistoryCard appointment={appt} onClick={onClick} />);
 
     expect(screen.getByTestId("appointment-history-card")).toBeInTheDocument();
-    expect(screen.getByTestId("date-label")).toHaveTextContent("Lịch khám: 20/09/2026");
+    expect(screen.getByTestId("date-label")).toHaveTextContent("Lịch khám: 20/09/2027");
     expect(screen.getByTestId("time-range")).toHaveTextContent("08:00 – 08:30");
     expect(screen.getByTestId("doctor-name")).toHaveTextContent("BS. Nguyễn Văn A");
     expect(screen.getByTestId("status-badge")).toHaveTextContent("Đã đặt");

@@ -389,7 +389,7 @@ public sealed class CaseService : ICaseService
         UpdateCaseSymptomsRequest request,
         CancellationToken ct = default)
     {
-        var medicalCase = await LoadForClinicalUpdateAsync(caseId, Guid.Empty, ct);
+        var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
         if (_context != null)
         {
@@ -440,7 +440,7 @@ public sealed class CaseService : ICaseService
         UpdateCaseDiseasesRequest request,
         CancellationToken ct = default)
     {
-        var medicalCase = await LoadForClinicalUpdateAsync(caseId, Guid.Empty, ct);
+        var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
         if (_context != null)
         {
@@ -490,7 +490,7 @@ public sealed class CaseService : ICaseService
         UpdateCaseAllergiesRequest request,
         CancellationToken ct = default)
     {
-        var medicalCase = await LoadForClinicalUpdateAsync(caseId, Guid.Empty, ct);
+        var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
         if (_context != null)
         {
@@ -540,7 +540,7 @@ public sealed class CaseService : ICaseService
         UpdateCaseDiagnosesRequest request,
         CancellationToken ct = default)
     {
-        var medicalCase = await LoadForClinicalUpdateAsync(caseId, Guid.Empty, ct);
+        var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
         if (medicalCase.Status == CaseStatus.Booked)
         {

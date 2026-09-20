@@ -375,7 +375,7 @@ public class AppointmentServiceTests : IDisposable
         {
             SlotId = _slotId,
             DoctorId = _doctorId,
-            SlotDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            SlotDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)),
             StartTime = new TimeOnly(9, 0),
             EndTime = new TimeOnly(10, 0),
             Status = SlotStatus.Closed, // Not Open
@@ -402,7 +402,7 @@ public class AppointmentServiceTests : IDisposable
         {
             SlotId = _slotId,
             DoctorId = _doctorId,
-            SlotDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            SlotDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)),
             StartTime = new TimeOnly(9, 0),
             EndTime = new TimeOnly(10, 0),
             Status = SlotStatus.Open,
@@ -591,7 +591,7 @@ public class AppointmentServiceTests : IDisposable
         var doctor = CreateDoctor("Dr. Other", Guid.NewGuid());
 
         // Existing BOOKED appointment is 2 days from now (different day, within 3 days)
-        var otherDaySlot = CreateScheduleSlot(SlotStatus.Booked, doctor, slot.SlotDate.AddDays(1));
+        var otherDaySlot = CreateScheduleSlot(SlotStatus.Booked, doctor, slot.SlotDate.AddDays(2));
         _db.ScheduleSlots.Add(otherDaySlot);
         _db.Appointments.Add(new Appointment
         {
@@ -1073,7 +1073,7 @@ public class AppointmentServiceTests : IDisposable
                 new CancelAppointmentRequest { CancellationReason = "Test past cancellation" },
                 TestContext.Current.CancellationToken));
 
-        Assert.Contains("Không thể hủy lịch hẹn đã qua thời gian bắt đầu", ex.Message);
+        Assert.Contains("Chỉ có thể hủy lịch ít nhất 12 giờ trước thời gian", ex.Message);
     }
 
     [Fact]
@@ -1110,7 +1110,7 @@ public class AppointmentServiceTests : IDisposable
                 new CancelAppointmentRequest { CancellationReason = "Test elapsed slot" },
                 TestContext.Current.CancellationToken));
 
-        Assert.Contains("Không thể hủy lịch hẹn đã qua thời gian bắt đầu", ex.Message);
+        Assert.Contains("Chỉ có thể hủy lịch ít nhất 12 giờ trước thời gian", ex.Message);
     }
 
     #endregion
@@ -1255,7 +1255,7 @@ public class AppointmentServiceTests : IDisposable
             SlotId = Guid.NewGuid(),
             DoctorId = doctor.UserId,
             Doctor = doctor,
-            SlotDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            SlotDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)),
             StartTime = new TimeOnly(9, 0),
             EndTime = new TimeOnly(10, 0),
             Status = status,
@@ -1341,7 +1341,7 @@ public class AppointmentServiceTests : IDisposable
         {
             SlotId = _slotId,
             DoctorId = _doctorId,
-            SlotDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            SlotDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)),
             StartTime = new TimeOnly(9, 0),
             EndTime = new TimeOnly(10, 0),
             Status = SlotStatus.Open,

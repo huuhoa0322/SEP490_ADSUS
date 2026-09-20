@@ -401,13 +401,8 @@ public class CaseClinicServiceServiceTests
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
-        var result = await service.AddServiceToCaseAsync(c.CaseId, s.Id, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.NotNull(result);
-        var invoice = await context.Invoices.Include(i => i.InvoiceItems).FirstAsync(i => i.Id == paidInvoice.Id, TestContext.Current.CancellationToken);
-        Assert.Equal(80000, invoice.TotalAmount); // Unmodified
-        Assert.Empty(invoice.InvoiceItems);
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => service.AddServiceToCaseAsync(c.CaseId, s.Id, TestContext.Current.CancellationToken));
+        Assert.Contains("không thể thêm dịch vụ", ex.Message);
     }
 
     [Fact]
