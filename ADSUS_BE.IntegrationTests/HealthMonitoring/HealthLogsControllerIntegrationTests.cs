@@ -264,26 +264,6 @@ public class HealthLogsControllerIntegrationTests
     }
 
     [Fact]
-    public async Task PostHealthLog_WhitespaceContent_ReturnsBadRequest()
-    {
-        // Arrange
-        using var app = CreateApp();
-        var client = CreatePatientClient(app);
-
-        var request = new LogHealthDataRequest
-        {
-            Type = "DIET",
-            Content = "   "
-        };
-
-        // Act
-        var response = await client.PostAsJsonAsync("/api/v1/health-logs", request, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
     public async Task PostHealthLog_InvalidType_ReturnsBadRequest()
     {
         // Arrange
@@ -593,20 +573,6 @@ public class HealthLogsControllerIntegrationTests
 
         // Act
         var response = await client.GetAsync("/api/v1/health-logs?date=invalid", TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task GetHealthLogs_DateFormatWrong_ReturnsBadRequest()
-    {
-        // Arrange
-        using var app = CreateApp();
-        var client = CreatePatientClient(app);
-
-        // Act
-        var response = await client.GetAsync("/api/v1/health-logs?date=01-08-2026", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

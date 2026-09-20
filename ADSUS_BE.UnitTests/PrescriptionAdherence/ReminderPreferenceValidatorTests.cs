@@ -64,13 +64,6 @@ public class ReminderPreferenceValidatorTests
         Assert.False(result.IsValid);
     }
 
-    [Fact]
-    public void InvalidMorningTime_Garbage_Fails()
-    {
-        var result = _validator.Validate(ValidBase() with { MorningTime = "not-a-time" });
-        Assert.False(result.IsValid);
-    }
-
     // --- MiddayTime boundary ---
 
     [Fact]

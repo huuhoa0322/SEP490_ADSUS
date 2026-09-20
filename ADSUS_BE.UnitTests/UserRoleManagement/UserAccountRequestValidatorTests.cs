@@ -93,6 +93,21 @@ public class UserAccountRequestValidatorTests
         Assert.False(result.IsValid);
     }
 
+    [Fact]
+    public void UpdateValidate_DateOfBirthExactlyEighteenYears_IsAccepted()
+    {
+        var request = new UpdateUserAccountRequest
+        {
+            FullName = "Nguyễn Văn A",
+            Role = "DOCTOR",
+            DateOfBirth = ClinicClock.Today().AddYears(-18).ToString("yyyy-MM-dd"),
+        };
+
+        var result = _update.Validate(request);
+
+        Assert.True(result.IsValid);
+    }
+
     // ---------- Định dạng số điện thoại ----------
 
     [Theory]

@@ -744,9 +744,12 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
-    public async Task PutConfirm_EmptyConclusion_Returns400BadRequest()
+    public async Task PutConfirm_Over5000Chars_Returns400BadRequest()
     {
-        // Arrange — validator chặn trước khi chạm tới service.
+        // Arrange — validator chặn trước khi chạm tới service. Tên sửa lại 20/09: input là
+        // chuỗi 5001 ký tự (vượt MaximumLength), KHÔNG phải chuỗi rỗng — CaseConclusionRequestValidator
+        // chỉ có rule MaximumLength(5000), không có NotEmpty (xem CaseRequestValidators.cs),
+        // nên tên cũ "EmptyConclusion" mô tả sai input thực tế đang test.
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var body = new CaseConclusionRequest(DoctorConclusion: new string('A', 5001));
@@ -858,9 +861,12 @@ public class CasesControllerIntegrationTests
     }
 
     [Fact]
-    public async Task PutConclusion_EmptyConclusion_Returns400BadRequest()
+    public async Task PutConclusion_Over5000Chars_Returns400BadRequest()
     {
-        // Arrange — validator chặn trước khi chạm tới service.
+        // Arrange — validator chặn trước khi chạm tới service. Tên sửa lại 20/09 (lý do: xem
+        // PutConfirm_Over5000Chars_Returns400BadRequest ở trên) — đồng thời hàm này thay thế
+        // hàm PutConclusion_Over5000Chars_Returns400BadRequest cũ (IT_Val_05, đã xoá vì trùng
+        // 100% input/endpoint với hàm này, chỉ thiếu assertion GetForUpdateAsync bên dưới).
         using var app = MakeApp();
         var client = MakeClientWithToken(app, _doctor);
         var body = new CaseConclusionRequest(DoctorConclusion: new string('A', 5001));
@@ -873,20 +879,6 @@ public class CasesControllerIntegrationTests
         _cases.Verify(r => r.GetForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    [Fact]
-    public async Task PutConclusion_Over5000Chars_Returns400BadRequest()
-    {
-        // Arrange — validator chặn (IT_Val_05)
-        using var app = MakeApp();
-        var client = MakeClientWithToken(app, _doctor);
-        var body = new CaseConclusionRequest(DoctorConclusion: new string('A', 5001));
-
-        // Act
-        var response = await client.PutAsJsonAsync($"/api/v1/cases/{Guid.NewGuid()}/conclusion", body, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
 
     [Fact]
     public async Task PutConclusion_MissingNameIdentifierClaim_ThrowsUnauthorizedAccessExceptionAndReturns401()

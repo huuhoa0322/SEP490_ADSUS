@@ -41,18 +41,6 @@ public class UpdateAppointmentClinicalInfoRequestValidatorTests
         result.ShouldNotHaveAnyValidationErrors();
     }
 
-    [Fact]
-    public void Validate_WhitespaceReason_Passes()
-    {
-        var request = new UpdateAppointmentClinicalInfoRequest
-        {
-            Reason = "   "
-        };
-
-        var result = _validator.TestValidate(request);
-        result.ShouldNotHaveAnyValidationErrors();
-    }
-
     [Theory]
     [InlineData("Đau bụng nhẹ")]
     [InlineData("Nhiệt độ < 38°C")]

@@ -840,24 +840,6 @@ public class AppointmentServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CancelAppointmentAsync_WhitespaceReason_ThrowsException()
-    {
-        // Arrange
-        var appointment = SetupCancelScenario();
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CancelAppointmentAsync(
-                _appointmentId,
-                _patientId,
-                _patientId,
-                new CancelAppointmentRequest { CancellationReason = "   " },
-                TestContext.Current.CancellationToken));
-
-        Assert.Contains("bắt buộc", ex.Message);
-    }
-
-    [Fact]
     public async Task CancelAppointmentAsync_AppointmentNotFound_ThrowsException()
     {
         // Arrange

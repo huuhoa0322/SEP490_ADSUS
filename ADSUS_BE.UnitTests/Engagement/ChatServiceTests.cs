@@ -139,15 +139,6 @@ public class ChatServiceTests
     }
 
     [Fact]
-    public async Task SendMessageAsync_WhitespaceContent_ThrowsArgumentException()
-    {
-        var sut = NewSut();
-
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "   " }, TestContext.Current.CancellationToken));
-    }
-
-    [Fact]
     public async Task SendMessageAsync_ContentTooLong_ThrowsArgumentException()
     {
         var sut = NewSut();

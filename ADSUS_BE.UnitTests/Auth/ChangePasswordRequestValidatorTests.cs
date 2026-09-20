@@ -37,6 +37,18 @@ public class ChangePasswordRequestValidatorTests
     }
 
     [Fact]
+    public void Valid_PasswordAtExactlyEightCharacters_Passes()
+    {
+        // 8 characters — the valid-side boundary, tested explicitly rather
+        // than relying on the happy-path fixture's password length.
+        var password = "Abcdef1" + "2"; // "Abcdef12", 8 chars, has upper+digit
+
+        var result = _sut.Validate(Request(password));
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
     public void Invalid_PasswordLongerThanSeventyTwoCharacters_Fails()
     {
         // 73 characters — one past BCrypt's limit.
@@ -45,6 +57,17 @@ public class ChangePasswordRequestValidatorTests
         var result = _sut.Validate(Request(password));
 
         Assert.False(result.IsValid);
+    }
+
+    [Fact]
+    public void Valid_PasswordAtExactlySeventyTwoCharacters_Passes()
+    {
+        // 72 characters — the valid-side boundary of BCrypt's limit.
+        var password = new string('A', 70) + "1a";
+
+        var result = _sut.Validate(Request(password));
+
+        Assert.True(result.IsValid);
     }
 
     [Fact]

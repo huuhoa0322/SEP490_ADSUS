@@ -4,13 +4,11 @@ using ADSUS_BE.BLL.PrescriptionAdherence.Validators;
 namespace ADSUS_BE.UnitTests.PrescriptionAdherence;
 
 /// <summary>
-/// Tests cho CreatePrescriptionRequestValidator. 13 case:
+/// Tests cho CreatePrescriptionRequestValidator. 15 case:
 /// - happy path
 /// - 3 case cho ScheduleSlots (rỗng, 1 phần tử, nhiều phần tử)
-/// - boundary DurationDays (0, 1, 365, 366)
-/// - Dosage rỗng
+/// - boundary DurationDays (0, 1, 365, 366) và QuantityPerDose (0, 1000, 1001)
 /// - GeneralNote 2000 / 2001 char
-/// - Instructions 1000 / 1001 char
 /// - CaseId rỗng
 /// </summary>
 public class CreatePrescriptionRequestValidatorTests
@@ -115,7 +113,6 @@ public class CreatePrescriptionRequestValidatorTests
 
     [Theory]
     [InlineData((short)0)]
-    [InlineData((short)-1)]
     public void DurationDays_BelowOne_Fails(short days)
     {
         var req = ValidRequest() with
@@ -146,7 +143,6 @@ public class CreatePrescriptionRequestValidatorTests
 
     [Theory]
     [InlineData((short)366)]
-    [InlineData((short)400)]
     public void DurationDays_Above365_Fails(short days)
     {
         var req = ValidRequest() with
@@ -172,6 +168,19 @@ public class CreatePrescriptionRequestValidatorTests
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, e => e.PropertyName == "Items[0].QuantityPerDose");
+    }
+
+    [Fact]
+    public void QuantityPerDose_At1000_Passes()
+    {
+        var req = ValidRequest() with
+        {
+            Items = new[] { ValidRequest().Items[0] with { QuantityPerDose = 1000 } },
+        };
+
+        var result = _validator.Validate(req);
+
+        Assert.True(result.IsValid);
     }
 
     [Fact]

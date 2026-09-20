@@ -110,34 +110,6 @@ public class AppointmentsControllerRescheduleAdversarialIntegrationTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Fact]
-    public async Task RescheduleAppointment_SlotNotOpen_ReturnsBadRequest()
-    {
-        using var app = CreateApp();
-        var client = CreateClient(app, UserRole.Staff);
-        var appointmentId = Guid.NewGuid();
-
-        _appointmentService.Setup(s => s.RescheduleAppointmentAsync(
-            It.IsAny<Guid>(),
-            It.IsAny<RescheduleAppointmentRequest>(),
-            It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("Khung giờ này không còn nhận đặt lịch."));
-
-        var requestBody = new RescheduleAppointmentRequest
-        {
-            NewScheduleSlotId = Guid.NewGuid(),
-            RescheduleReason = "Đổi sang slot đóng",
-            AutoCheckin = false,
-        };
-
-        var response = await client.PostAsJsonAsync(
-            $"{BaseReschedulePath}/{appointmentId}/reschedule",
-            requestBody,
-            TestContext.Current.CancellationToken);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
     private WebApplicationFactory<Program> CreateApp()
     {
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>

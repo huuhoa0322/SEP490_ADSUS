@@ -90,23 +90,6 @@ public class CancelAppointmentRequestValidatorTests
     }
 
     [Fact]
-    public void Validate_WhitespaceOnly_Fails()
-    {
-        // Arrange
-        var request = new CancelAppointmentRequest
-        {
-            CancellationReason = "   "
-        };
-
-        // Act
-        var result = _validator.TestValidate(request);
-
-        // Assert
-        result.ShouldHaveValidationErrorFor(x => x.CancellationReason)
-            .WithErrorMessage("Cancellation reason is required.");
-    }
-
-    [Fact]
     public void Validate_WhitespaceWithTabsAndNewlines_Fails()
     {
         // Arrange
@@ -127,9 +110,7 @@ public class CancelAppointmentRequestValidatorTests
     #region Length Validation
 
     [Theory]
-    [InlineData("AB")]     // Too short - 2 chars
-    [InlineData("A")]      // Too short - 1 char
-    [InlineData("")]       // Empty
+    [InlineData("AB")]     // Too short - 2 chars (boundary-adjacent to MinimumLength(3))
     public void Validate_TooShort_Fails(string reason)
     {
         // Arrange

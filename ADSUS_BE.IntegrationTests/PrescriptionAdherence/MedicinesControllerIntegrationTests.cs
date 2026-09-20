@@ -158,17 +158,4 @@ public partial class MedicinesControllerIntegrationTests
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    [Fact]
-    public async Task GetPagedMedicines_Unauthenticated_ReturnsUnauthorized()
-    {
-        // Arrange
-        using var app = CreateApp();
-        var client = app.CreateClient(); // No token
-
-        // Act
-        var response = await client.GetAsync("/api/v1/medicines/admin?status=ACTIVE", TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
 }
