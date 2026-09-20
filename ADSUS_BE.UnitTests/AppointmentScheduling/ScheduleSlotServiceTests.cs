@@ -28,7 +28,7 @@ public class ScheduleSlotServiceTests
     {
         _sut = new ScheduleSlotService(
             _slotRepo.Object,
-            _userRepo.Object);
+            _userRepo.Object, null!, null!);
 
         SetupDoctor();
     }

@@ -447,7 +447,7 @@ public class InvoiceServiceClinicServiceTests
 
     #endregion
 
-    #region 3.3 PayAndDispenseAsync (2 test cases)
+    #region 3.3 PayInvoiceAsync (2 test cases)
 
     [Fact]
     public async Task TC_3_3_1_PayAndDispense_ServiceOnly_MarksPaidWithoutInvokingDispenseOrIntakeLogs()
@@ -482,7 +482,7 @@ public class InvoiceServiceClinicServiceTests
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
-        await service.PayAndDispenseAsync(invoice.Id, PaymentMethod.CASH);
+        await service.PayInvoiceAsync(invoice.Id, PaymentMethod.CASH);
 
         // Assert
         var updated = await context.Invoices.FindAsync(new object[] { invoice.Id }, TestContext.Current.CancellationToken);
@@ -508,7 +508,7 @@ public class InvoiceServiceClinicServiceTests
         var invoiceId = await service.GenerateInvoiceForCaseAsync(medicalCase.CaseId);
 
         // Act
-        await service.PayAndDispenseAsync(invoiceId, PaymentMethod.BANK_TRANSFER);
+        await service.PayInvoiceAsync(invoiceId, PaymentMethod.BANK_TRANSFER);
 
         // Assert
         var updated = await context.Invoices.FindAsync(new object[] { invoiceId }, TestContext.Current.CancellationToken);
@@ -561,7 +561,7 @@ public class InvoiceServiceClinicServiceTests
         SeedPrescriptionForCase(context, medicalCase.CaseId);
 
         var invoiceId = await service.GenerateInvoiceForCaseAsync(medicalCase.CaseId);
-        await service.PayAndDispenseAsync(invoiceId, PaymentMethod.CASH);
+        await service.PayInvoiceAsync(invoiceId, PaymentMethod.CASH);
 
         // Act
         await service.CancelInvoiceAsync(invoiceId, new CancelInvoiceRequest { Reason = "Nhầm lẫn thông tin" });
@@ -585,7 +585,7 @@ public class InvoiceServiceClinicServiceTests
         var cs = SeedClinicServiceForCase(context, medicalCase.CaseId, "GENERAL_EXAM", "Khám thường", 100000);
 
         var invoiceId = await service.GenerateInvoiceForCaseAsync(medicalCase.CaseId);
-        await service.PayAndDispenseAsync(invoiceId, PaymentMethod.CASH);
+        await service.PayInvoiceAsync(invoiceId, PaymentMethod.CASH);
 
         // Act - should cancel without throwing NullReferenceException
         await service.CancelInvoiceAsync(invoiceId, new CancelInvoiceRequest { Reason = "Hủy dịch vụ khám" });

@@ -15,7 +15,7 @@ public class CreateOvertimeSlotsAsyncTests
 
     public CreateOvertimeSlotsAsyncTests()
     {
-        _sut = new ScheduleSlotService(_repo.Object, _userRepo.Object);
+        _sut = new ScheduleSlotService(_repo.Object, _userRepo.Object, null!, null!);
     }
 
     [Fact]

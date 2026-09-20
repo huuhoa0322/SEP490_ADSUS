@@ -719,7 +719,7 @@ public class EdgeAndResilienceTests
         Assert.Equal(3, invoice.InvoiceItems.Count);
 
         // 6. Staff pays invoice
-        await invoiceService.PayAndDispenseAsync(invoiceId, PaymentMethod.CASH);
+        await invoiceService.PayInvoiceAsync(invoiceId, PaymentMethod.CASH);
 
         var paidInvoice = await context.Invoices.FindAsync(new object[] { invoiceId }, TestContext.Current.CancellationToken);
         Assert.NotNull(paidInvoice);
@@ -842,7 +842,7 @@ public class EdgeAndResilienceTests
 
         var invoiceService = CreateInvoiceService(context);
         var invoiceId = await invoiceService.GenerateInvoiceForCaseAsync(c.CaseId);
-        await invoiceService.PayAndDispenseAsync(invoiceId, PaymentMethod.CASH);
+        await invoiceService.PayInvoiceAsync(invoiceId, PaymentMethod.CASH);
 
         // Act 1: Cancel paid invoice
         await invoiceService.CancelInvoiceAsync(invoiceId, new CancelInvoiceRequest { Reason = "Khách muốn thanh toán chuyển khoản" });
