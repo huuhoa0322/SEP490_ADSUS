@@ -10,6 +10,7 @@ using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace ADSUS_BE.BLL.Auth.Services;
 
@@ -21,6 +22,7 @@ public class AuthService : IAuthService
     private readonly AppDbContext _db;
     private readonly ILogger<AuthService> _logger;
     private readonly IFcmTokenService _fcmTokenService;
+    private readonly IMemoryCache? _cache;
 
     /// <summary>
     /// Dummy hash compared against when no account matches the phone number.
@@ -39,6 +41,7 @@ public class AuthService : IAuthService
         IJwtTokenService tokens,
         AppDbContext db,
         IFcmTokenService fcmTokenService,
+        IMemoryCache? cache,
         ILogger<AuthService> logger)
     {
         _users = users;
@@ -46,6 +49,7 @@ public class AuthService : IAuthService
         _tokens = tokens;
         _db = db;
         _fcmTokenService = fcmTokenService;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -55,7 +59,7 @@ public class AuthService : IAuthService
         IJwtTokenService tokens,
         AppDbContext db,
         ILogger<AuthService> logger)
-        : this(users, refreshTokens, tokens, db, null!, logger)
+        : this(users, refreshTokens, tokens, db, null!, null, logger)
     {
     }
 
@@ -64,12 +68,26 @@ public class AuthService : IAuthService
         IRefreshTokenRepository refreshTokens,
         IJwtTokenService tokens,
         ILogger<AuthService> logger)
-        : this(users, refreshTokens, tokens, null!, null!, logger)
+        : this(users, refreshTokens, tokens, null!, null!, null, logger)
     {
     }
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
+        var cacheKey = $"FailedLogin_{request.PhoneNumber}";
+        int failedAttempts = 0;
+
+        if (_cache != null)
+        {
+            _cache.TryGetValue(cacheKey, out failedAttempts);
+            if (failedAttempts >= 5)
+            {
+                _logger.LogWarning("User {Phone} is temporarily locked out due to multiple failed login attempts.", request.PhoneNumber);
+                // Bỏ qua rule GB-06 theo yêu cầu thực tế của sếp: Hiển thị rõ thông báo khóa cho người dùng biết
+                throw new UnauthorizedAccessException("Tài khoản của bạn đã bị khóa tạm thời 15 phút do nhập sai mật khẩu quá 5 lần.");
+            }
+        }
+
         // Chỉ đọc để so mật khẩu và phát token, không sửa/lưu gì ở đây — dùng bản AsNoTracking
         // (P11 review Module 1, 14/08/2026).
         var user = await _users.GetByPhoneReadOnlyAsync(request.PhoneNumber, cancellationToken);
@@ -83,20 +101,24 @@ public class AuthService : IAuthService
         // password.
         if (user is null || !passwordMatches || user.Status != UserStatus.Active)
         {
-            // LỆCH TÀI LIỆU — BR-04 chưa làm.
-            //
-            // UCS UC-01 BR-04 ghi: sai liên tiếp N lần thì hệ thống tự chuyển tài khoản sang
-            // Locked, và có hẳn kịch bản kiểm thử cho luật này. Nhóm đã quyết bỏ vì hệ thống
-            // nhỏ. Hệ quả: hiện KHÔNG có gì chặn dò mật khẩu, gọi bao nhiêu lần cũng được.
-            //
-            // Hướng đang bàn (chờ học chốt): sai 5 lần thì khoá 15 phút. Nếu làm thì đừng
-            // đụng vào cột status — "Admin khoá" và "hệ thống tự khoá tạm" là hai việc khác
-            // nhau, chính UCS cũng ghi là distinct. Thêm hai cột riêng: failed_login_count
-            // và locked_until.
-            //
-            // Và dù có khoá tạm thì thông báo trả về vẫn phải giữ nguyên một câu duy nhất
-            // (GB-06) — báo "tài khoản bị khoá 15 phút" là lộ ngay số điện thoại đó có thật.
+            if (_cache != null)
+            {
+                // Increment failed attempts (even if user is null, to prevent probing phone numbers)
+                failedAttempts++;
+                _cache.Set(cacheKey, failedAttempts, TimeSpan.FromMinutes(15));
+                if (failedAttempts >= 5)
+                {
+                    _logger.LogWarning("User {Phone} exceeded 5 failed login attempts. Locked out for 15 minutes.", request.PhoneNumber);
+                    throw new UnauthorizedAccessException("Tài khoản của bạn đã bị khóa tạm thời 15 phút do nhập sai mật khẩu quá 5 lần.");
+                }
+            }
             return null;
+        }
+
+        // Successful login: clear failed attempts
+        if (_cache != null)
+        {
+            _cache.Remove(cacheKey);
         }
 
         _logger.LogInformation(

@@ -747,6 +747,9 @@ namespace ADSUS_BE
             // up automatically.
             builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
             builder.Services.AddFluentValidationAutoValidation();
+            
+            // Add MemoryCache for Lockout mechanism
+            builder.Services.AddMemoryCache();
 
             var app = builder.Build();
 

@@ -789,13 +789,15 @@ public sealed class AppointmentService : IAppointmentService
             throw new InvalidOperationException("Chỉ lịch hẹn đang đặt mới được hủy.");
         }
 
-        // BR-066: Không thể hủy lịch hẹn đã qua thời gian bắt đầu
+        // BR-057: Phải hủy lịch ít nhất trước 12 giờ
         var nowVn = GetNowVietnam();
-        var todayVn = DateOnly.FromDateTime(nowVn);
-        var currentTimeVn = TimeOnly.FromDateTime(nowVn);
-        if (appointment.Slot != null && (appointment.Slot.SlotDate < todayVn || (appointment.Slot.SlotDate == todayVn && appointment.Slot.StartTime <= currentTimeVn)))
+        if (appointment.Slot != null)
         {
-            throw new InvalidOperationException("Không thể hủy lịch hẹn đã qua thời gian bắt đầu.");
+            var startDateTime = appointment.Slot.SlotDate.ToDateTime(appointment.Slot.StartTime);
+            if (nowVn >= startDateTime.AddHours(-12))
+            {
+                throw new InvalidOperationException("Chỉ có thể hủy lịch ít nhất 12 giờ trước thời gian bắt đầu ca khám.");
+            }
         }
 
         // Update appointment
