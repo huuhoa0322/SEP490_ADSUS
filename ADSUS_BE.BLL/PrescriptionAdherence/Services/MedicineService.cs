@@ -365,6 +365,18 @@ public sealed class MedicineService : IMedicineService
             throw new BusinessException("Không thể xóa đơn vị cơ sở của thuốc.");
         }
 
+        // BR-019: Non-Destructive Entity Retirement
+        // Packaging referenced by historical inventory transactions must be retained
+        // to preserve inventory ledger integrity. Only unused packaging may be removed.
+        var hasInventoryHistory = await _db.Set<InventoryTransaction>()
+            .AnyAsync(t => t.MedicinePackagingId == id, ct);
+        if (hasInventoryHistory)
+        {
+            throw new BusinessException(
+                "Không thể xóa quy cách đóng gói này vì đã có giao dịch tồn kho liên quan. " +
+                "Quy cách đã sử dụng trong lịch sử nhập/xuất kho phải được lưu giữ vĩnh viễn.");
+        }
+
         _db.Set<MedicinePackaging>().Remove(packaging);
         await _db.SaveChangesAsync(ct);
     }

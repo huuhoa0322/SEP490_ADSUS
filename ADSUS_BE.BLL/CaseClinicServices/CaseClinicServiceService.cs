@@ -53,6 +53,11 @@ public class CaseClinicServiceService : ICaseClinicServiceService
 
     private async Task<CaseClinicServiceResponse> AddServiceToCaseInternalAsync(Guid caseId, Guid clinicServiceId, bool allowBooked, Guid? actingDoctorId = null, CancellationToken ct = default)
     {
+        var hasPaidInvoice = await _context.Invoices
+            .AnyAsync(i => i.CaseId == caseId && i.Status == ADSUS_BE.DAL.Entities.InvoiceStatus.PAID, ct);
+        if (hasPaidInvoice)
+            throw new BusinessException("Hóa đơn đã thanh toán, không thể thêm dịch vụ vào ca khám.");
+
         var medicalCase = await _context.Cases.FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
         if (medicalCase == null)
         {

@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
+using ADSUS_BE.BLL.AIDiagnosis.Services;
 using ADSUS_BE.BLL.CaseClinicServices;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
@@ -386,6 +387,7 @@ public class AutoTriggerTests
             new CaseRepository(context),
             configMock.Object,
             NullLogger<CaseDiagnosisService>.Instance,
+            new AiDiagnosisStateTracker(),
             clinicServiceService);
 
         return (service, medicalCase, context);

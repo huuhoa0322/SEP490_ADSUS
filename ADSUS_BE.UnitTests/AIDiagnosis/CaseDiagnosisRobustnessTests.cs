@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using ADSUS_BE.BLL.AIDiagnosis.Services;
 using ADSUS_BE.BLL.CaseClinicServices;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.MedicalRecord.Services;
@@ -51,7 +52,8 @@ public class CaseDiagnosisRobustnessTests
             _annotationsMock.Object,
             _casesMock.Object,
             _configMock.Object,
-            _loggerMock.Object
+            _loggerMock.Object,
+            new AiDiagnosisStateTracker()
         );
     }
 

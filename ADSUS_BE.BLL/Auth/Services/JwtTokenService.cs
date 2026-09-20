@@ -39,6 +39,9 @@ public class JwtTokenService : IJwtTokenService
             new(ClaimTypes.Role, user.Role.ToApiString()),
         };
 
+        if (user.MustChangePassword)
+            claims.Add(new Claim("MustChangePassword", "true"));
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 

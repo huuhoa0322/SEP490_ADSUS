@@ -7,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ADSUS_BE.BLL.AIDiagnosis.Services;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.DAL.Data;
@@ -46,6 +47,8 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
     private readonly string _aiBackendUrl;
     private readonly string? _aiBackendToken;
 
+    private readonly IAiDiagnosisStateTracker _tracker;
+
     public CaseDiagnosisService(
         AppDbContext db,
         IFileStorageService storage,
@@ -57,6 +60,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         ICaseRepository cases,
         IConfiguration configuration,
         ILogger<CaseDiagnosisService> logger,
+        IAiDiagnosisStateTracker tracker,
         ICaseClinicServiceService? caseClinicServiceService = null)
     {
         _db = db;
@@ -68,6 +72,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         _annotations = annotations;
         _cases = cases;
         _logger = logger;
+        _tracker = tracker;
         _caseClinicServiceService = caseClinicServiceService;
 
         var configuredUrl = configuration["AiBackend:WebhookUrl"];
@@ -113,6 +118,17 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
             throw new BusinessException("Kích thước ảnh vượt quá giới hạn 20MB.");
         }
 
+        // Tạo UploadedFile wrapper để sử dụng Validator
+        var uploadedFile = new UploadedFile(fileName, contentType, imageStream.CanSeek ? imageStream.Length : 0, imageStream);
+
+        // Validate file signature (magic bytes) trước khi gửi cho AI
+        var resolvedContentType = await UltrasoundImageContentValidator
+            .ValidateAndResolveContentTypeAsync(uploadedFile);
+        if (imageStream.CanSeek) 
+        {
+            imageStream.Seek(0, SeekOrigin.Begin); // Reset stream position sau khi đọc magic bytes
+        }
+
         // Ignore the modelVersionId passed from frontend and fetch the true ACTIVE model
         var activeModel = await _aiModelVersionRepo.GetActiveVersionReadOnlyAsync(ct);
         if (activeModel == null) throw new BusinessException("Hệ thống chưa có phiên bản AI nào được kích hoạt. Vui lòng liên hệ Admin.");
@@ -137,6 +153,8 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
 
         // Send to Python backend which uses its currently loaded model
         HttpResponseMessage response;
+
+        _tracker.BeginDiagnosis();
         try
         {
             response = await client.PostAsync($"{_aiBackendUrl}/api/detect", content, ct);
@@ -144,6 +162,10 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         catch (HttpRequestException)
         {
             throw new BusinessException("Hệ thống AI Backend đang tắt hoặc không thể kết nối. Vui lòng bật AI Backend (hoặc cấu hình Ngrok) trước khi tải ảnh.");
+        }
+        finally
+        {
+            _tracker.EndDiagnosis();
         }
 
         if (!response.IsSuccessStatusCode)

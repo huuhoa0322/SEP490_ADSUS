@@ -451,7 +451,7 @@ public sealed class AppointmentService : IAppointmentService
             AppointmentId = Guid.NewGuid(),
             SlotId = request.ScheduleSlotId,
             PatientProfileId = targetPatientProfileId,
-            Reason = request.Reason != null ? HtmlHelper.StripToPlainText(request.Reason) : null,
+            Reason = request.Reason,
             Status = AppointmentStatus.Booked,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
@@ -1595,7 +1595,7 @@ public sealed class AppointmentService : IAppointmentService
 
         if (request.Reason != null)
         {
-            appointment.Reason = HtmlHelper.StripToPlainText(request.Reason);
+            appointment.Reason = request.Reason;
         }
 
         var validSymptoms = request.Symptoms?

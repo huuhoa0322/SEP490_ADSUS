@@ -161,6 +161,8 @@ public class UserAccountService : IUserAccountService
         Guid actingAdminId,
         CancellationToken cancellationToken = default)
     {
+        if (userId == actingAdminId) return AccountOperationResult.CannotTargetSelf;
+
         var role = EnumExtensions.ParseUserRole(request.Role);
         if (role is null)
         {

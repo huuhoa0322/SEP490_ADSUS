@@ -1,4 +1,5 @@
 using System.Net;
+using ADSUS_BE.BLL.AIDiagnosis.Services;
 using ADSUS_BE.BLL.AIModelManagement.DTOs;
 using ADSUS_BE.BLL.AIModelManagement.Services;
 using ADSUS_BE.BLL.Common;
@@ -32,7 +33,7 @@ public class AiModelServiceTests
         var client = new HttpClient(_httpHandlerMock.Object);
         _httpMock.Setup(f => f.CreateClient("AiBackend")).Returns(client);
 
-        _sut = new AiModelService(_modelRepoMock.Object, _auditMock.Object, _httpMock.Object, optionsMock.Object, _loggerMock.Object);
+        _sut = new AiModelService(_modelRepoMock.Object, _auditMock.Object, _httpMock.Object, optionsMock.Object, _loggerMock.Object, new AiDiagnosisStateTracker());
     }
 
     private void SetupHttpResponse(HttpStatusCode statusCode, string content, Exception? exceptionToThrow = null)

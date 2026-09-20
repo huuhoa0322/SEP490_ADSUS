@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
@@ -42,13 +43,19 @@ public sealed class ScheduleSlotService : IScheduleSlotService
 
     private readonly IScheduleSlotRepository _repo;
     private readonly IUserRepository _userRepo;
+    private readonly INotificationService _notificationService;
+    private readonly AppDbContext _db;
 
     public ScheduleSlotService(
         IScheduleSlotRepository repo,
-        IUserRepository userRepo)
+        IUserRepository userRepo,
+        INotificationService notificationService,
+        AppDbContext db)
     {
         _repo = repo;
         _userRepo = userRepo;
+        _notificationService = notificationService;
+        _db = db;
     }
 
     public async Task<(IReadOnlyList<ScheduleSlotResponse> Items, int TotalCount)> ListSlotsAsync(
@@ -64,14 +71,14 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             throw new InvalidOperationException("doctorId is required.");
 
         var from = fromDate ?? ClinicClock.Today();
-        var to = toDate ?? from.AddDays(21); // 3 tuần = 21 ngày
+        var to = toDate ?? from.AddDays(30); // 1 tháng = 30 ngày
 
         if (to < from)
             throw new InvalidOperationException("toDate must not be before fromDate.");
 
         // Auto-sinh dựa trên data đã có (1 query duy nhất)
         var today = ClinicClock.Today();
-        var targetEndDate = today.AddDays(20); // 21 ngày (today..today+20)
+        var targetEndDate = today.AddDays(29); // 30 ngày (today..today+29)
         var allSlots = await _repo.ListByRangeAsync(today, targetEndDate, doctorId, null, ct);
         await EnsureMissingSlotsAsync(doctorId.Value, today, targetEndDate, allSlots, ct);
 
@@ -187,7 +194,7 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             throw new InvalidOperationException($"User '{doctorId}' is not a valid Doctor.");
 
         var today = ClinicClock.Today();
-        var targetEndDate = today.AddDays(20);
+        var targetEndDate = today.AddDays(29);
         var existingSlots = await _repo.ListByRangeAsync(today, targetEndDate, doctorId, null, ct);
 
         await EnsureMissingSlotsAsync(doctorId, today, targetEndDate, existingSlots, ct);
@@ -290,6 +297,32 @@ public sealed class ScheduleSlotService : IScheduleSlotService
 
         slot.Status = SlotStatus.Closed;
         slot.UpdatedAt = DateTime.UtcNow;
+
+        if (forceClose && activeCount > 0)
+        {
+            foreach (var appointment in slot.Appointments
+                .Where(a => a.Status == AppointmentStatus.Booked))
+            {
+                appointment.Status = AppointmentStatus.Cancelled;
+                appointment.CancelledReason = "Lịch khám bị hủy do bác sĩ/quản trị viên đóng slot.";
+                appointment.UpdatedAt = DateTime.UtcNow;
+
+                var patientProfile = await _db.PatientProfiles.FirstOrDefaultAsync(p => p.PatientProfileId == appointment.PatientProfileId, ct);
+                var recipientUserId = appointment.BookedByUserId ?? patientProfile?.UserId;
+
+                if (recipientUserId.HasValue)
+                {
+                    await _notificationService.SendAsync(new SendNotificationRequest
+                    {
+                        UserId = recipientUserId.Value,
+                        Type = "appointment_cancelled_by_clinic",
+                        Title = "Lịch hẹn đã bị hủy",
+                        Body = $"Lịch hẹn ngày {slot.SlotDate:dd/MM/yyyy} đã bị hủy bởi phòng khám."
+                    }, ct);
+                }
+            }
+        }
+
         await _repo.UpdateAsync(slot, ct);
 
         return new CloseSlotImpactResponse
@@ -335,8 +368,8 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         var currentTimeVn = TimeOnly.FromDateTime(nowVn);
         var newSlots = new List<ScheduleSlot>();
 
-        // 14 ngày T2-CN (Thứ 2 đến Chủ nhật, 2 tuần).
-        for (var d = 0; d < 14; d++)
+        // 30 ngày.
+        for (var d = 0; d < 30; d++)
         {
             var day = weekStart.AddDays(d);
 

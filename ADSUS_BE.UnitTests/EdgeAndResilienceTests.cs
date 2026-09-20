@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
+using ADSUS_BE.BLL.AIDiagnosis.Services;
 using ADSUS_BE.BLL.CaseClinicServices;
 using ADSUS_BE.BLL.ClinicServiceManagement;
 using ADSUS_BE.BLL.ClinicServiceManagement.DTOs;
@@ -443,6 +444,7 @@ public class EdgeAndResilienceTests
             new CaseRepository(context),
             Mock.Of<Microsoft.Extensions.Configuration.IConfiguration>(),
             NullLogger<CaseDiagnosisService>.Instance,
+            new AiDiagnosisStateTracker(),
             mockClinicService.Object);
 
         var request = new ConfirmAnalysisRequest

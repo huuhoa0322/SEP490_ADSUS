@@ -4,6 +4,7 @@ using ADSUS_BE.BLL.Auth.DTOs;
 using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Mappers;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
@@ -19,6 +20,7 @@ public class AuthService : IAuthService
     private readonly IJwtTokenService _tokens;
     private readonly AppDbContext _db;
     private readonly ILogger<AuthService> _logger;
+    private readonly IFcmTokenService _fcmTokenService;
 
     /// <summary>
     /// Dummy hash compared against when no account matches the phone number.
@@ -36,12 +38,14 @@ public class AuthService : IAuthService
         IRefreshTokenRepository refreshTokens,
         IJwtTokenService tokens,
         AppDbContext db,
+        IFcmTokenService fcmTokenService,
         ILogger<AuthService> logger)
     {
         _users = users;
         _refreshTokens = refreshTokens;
         _tokens = tokens;
         _db = db;
+        _fcmTokenService = fcmTokenService;
         _logger = logger;
     }
 
@@ -49,8 +53,18 @@ public class AuthService : IAuthService
         IUserRepository users,
         IRefreshTokenRepository refreshTokens,
         IJwtTokenService tokens,
+        AppDbContext db,
         ILogger<AuthService> logger)
-        : this(users, refreshTokens, tokens, null!, logger)
+        : this(users, refreshTokens, tokens, db, null!, logger)
+    {
+    }
+
+    public AuthService(
+        IUserRepository users,
+        IRefreshTokenRepository refreshTokens,
+        IJwtTokenService tokens,
+        ILogger<AuthService> logger)
+        : this(users, refreshTokens, tokens, null!, null!, logger)
     {
     }
 
@@ -168,7 +182,11 @@ public class AuthService : IAuthService
         CancellationToken cancellationToken = default)
     {
         await _refreshTokens.RevokeAllForUserAsync(userId, cancellationToken);
-        _logger.LogInformation("All refresh tokens revoked for user {UserId}", userId);
+        if (_fcmTokenService != null)
+        {
+            await _fcmTokenService.UnregisterAllTokensAsync(userId, cancellationToken);
+        }
+        _logger.LogInformation("All refresh tokens and FCM tokens revoked for user {UserId}", userId);
     }
 
     private static string GenerateSecureToken()
