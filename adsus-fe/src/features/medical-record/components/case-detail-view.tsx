@@ -919,7 +919,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
       ) : null}
 
       {/* Module 9 — Invoice summary: chỉ Nurse, bất kể status ca */}
-      {isNurse && caseInvoices && caseInvoices.length > 0 ? (
+      {currentUser?.role === "STAFF" && caseInvoices && caseInvoices.length > 0 ? (
         <section className="mt-5 rounded-xl border-2 border-border border-l-4 border-l-primary p-5">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
@@ -958,7 +958,7 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         </section>
       ) : null}
 
-      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.7fr_1fr]">
         <div className="space-y-6">
           {clinicalInfoSection}
 
