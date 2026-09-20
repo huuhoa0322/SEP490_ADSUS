@@ -72,9 +72,25 @@ public class AuthService : IAuthService
     {
     }
 
+
+    private static string ComputeSha256Hash(string rawData)
+    {
+        if (string.IsNullOrEmpty(rawData)) return string.Empty;
+        using var sha256 = SHA256.Create();
+        var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(rawData));
+        return Convert.ToBase64String(bytes);
+    }
+
+    private static string SanitizeForLog(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return string.Empty;
+        return input.Replace(Environment.NewLine, "_").Replace("\n", "_").Replace("\r", "_");
+    }
+
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"FailedLogin_{request.PhoneNumber}";
+        var safePhoneLog = SanitizeForLog(request.PhoneNumber);
+        var cacheKey = $"FailedLogin_{ComputeSha256Hash(request.PhoneNumber)}";
         int failedAttempts = 0;
 
         if (_cache != null)
@@ -82,7 +98,7 @@ public class AuthService : IAuthService
             _cache.TryGetValue(cacheKey, out failedAttempts);
             if (failedAttempts >= 5)
             {
-                _logger.LogWarning("User {Phone} is temporarily locked out due to multiple failed login attempts.", request.PhoneNumber);
+                _logger.LogWarning("User {Phone} is temporarily locked out due to multiple failed login attempts.", safePhoneLog);
                 // Bỏ qua rule GB-06 theo yêu cầu thực tế của sếp: Hiển thị rõ thông báo khóa cho người dùng biết
                 throw new UnauthorizedAccessException("Tài khoản của bạn đã bị khóa tạm thời 15 phút do nhập sai mật khẩu quá 5 lần.");
             }
@@ -108,7 +124,7 @@ public class AuthService : IAuthService
                 _cache.Set(cacheKey, failedAttempts, TimeSpan.FromMinutes(15));
                 if (failedAttempts >= 5)
                 {
-                    _logger.LogWarning("User {Phone} exceeded 5 failed login attempts. Locked out for 15 minutes.", request.PhoneNumber);
+                    _logger.LogWarning("User {Phone} exceeded 5 failed login attempts. Locked out for 15 minutes.", safePhoneLog);
                     throw new UnauthorizedAccessException("Tài khoản của bạn đã bị khóa tạm thời 15 phút do nhập sai mật khẩu quá 5 lần.");
                 }
             }
