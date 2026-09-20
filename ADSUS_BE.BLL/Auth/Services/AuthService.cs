@@ -89,8 +89,9 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
-        var safePhoneLog = SanitizeForLog(request.PhoneNumber);
-        var cacheKey = $"FailedLogin_{ComputeSha256Hash(request.PhoneNumber)}";
+        var phoneHash = ComputeSha256Hash(request.PhoneNumber);
+        var safePhoneLog = phoneHash.Length >= 12 ? phoneHash[..12] : phoneHash;
+        var cacheKey = $"FailedLogin_{phoneHash}";
         int failedAttempts = 0;
 
         if (_cache != null)
