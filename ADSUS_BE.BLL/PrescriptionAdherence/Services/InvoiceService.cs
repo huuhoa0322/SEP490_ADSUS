@@ -172,6 +172,12 @@ public class InvoiceService : IInvoiceService
         
         await _context.SaveChangesAsync();
 
+        if (hasMedicine)
+        {
+            await _inventoryService.DispenseAsync(caseId);
+            await GenerateIntakeLogsForPrescriptionAsync(caseId);
+        }
+
         // Send notification to all nurses
         var nurseIds = await _context.Users
             .Where(u => u.Role == UserRole.Staff)
@@ -289,7 +295,7 @@ public class InvoiceService : IInvoiceService
         };
     }
 
-    public async Task PayAndDispenseAsync(Guid invoiceId, PaymentMethod method)
+    public async Task PayInvoiceAsync(Guid invoiceId, PaymentMethod method)
     {
         var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.Id == invoiceId);
         if (invoice == null) throw new BusinessException("Không tìm thấy hóa đơn.");
@@ -302,15 +308,7 @@ public class InvoiceService : IInvoiceService
         invoice.PaidAt = DateTime.UtcNow;
         invoice.PaymentMethod = method;
 
-        // 2. Dispense items (FEFO, Inventory deduct) and generate intake logs only if prescription exists
-        var hasPrescription = await _context.Prescriptions
-            .AnyAsync(p => p.CaseId == invoice.CaseId && p.Status == PrescriptionStatus.Active && p.PrescriptionItems.Any());
 
-        if (hasPrescription)
-        {
-            await _inventoryService.DispenseAsync(invoice.CaseId);
-            await GenerateIntakeLogsForPrescriptionAsync(invoice.CaseId);
-        }
 
         // Lưu trạng thái hóa đơn (giao dịch Inventory đã được add bên trong DispenseAsync)
         await _context.SaveChangesAsync();
@@ -383,12 +381,7 @@ public class InvoiceService : IInvoiceService
         if (invoice.Status == InvoiceStatus.CANCELLED)
             throw new BusinessException("Hóa đơn này đã bị hủy từ trước.");
 
-        if (invoice.Status == InvoiceStatus.PENDING)
-        {
-            invoice.Status = InvoiceStatus.CANCELLED;
-            invoice.CancelledReason = request.Reason;
-        }
-        else if (invoice.Status == InvoiceStatus.PAID)
+        if (invoice.Status == InvoiceStatus.PENDING || invoice.Status == InvoiceStatus.PAID)
         {
             // Lấy danh sách PrescriptionItems của Case này
             var prescriptionItems = await _context.PrescriptionItems

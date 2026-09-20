@@ -376,11 +376,11 @@ public class InvoiceServiceTests
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // PayAndDispenseAsync — các nhánh lỗi
+    // PayInvoiceAsync — các nhánh lỗi
     // ─────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task PayAndDispenseAsync_InvoiceNotFound_ShouldThrowBusinessException()
+    public async Task PayInvoiceAsync_InvoiceNotFound_ShouldThrowBusinessException()
     {
         var options = GetInMemoryOptions("Invoice_Test_Pay_NotFound");
         using var context = new AppDbContext(options);
@@ -391,12 +391,12 @@ public class InvoiceServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => service.PayAndDispenseAsync(nonExistentId, PaymentMethod.CASH));
+            () => service.PayInvoiceAsync(nonExistentId, PaymentMethod.CASH));
         Assert.Contains("Không tìm thấy hóa đơn", ex.Message);
     }
 
     [Fact]
-    public async Task PayAndDispenseAsync_AlreadyPaid_ShouldThrowBusinessException()
+    public async Task PayInvoiceAsync_AlreadyPaid_ShouldThrowBusinessException()
     {
         var options = GetInMemoryOptions("Invoice_Test_Pay_AlreadyPaid");
         using var context = new AppDbContext(options);
@@ -419,7 +419,7 @@ public class InvoiceServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(
-            () => service.PayAndDispenseAsync(invoiceId, PaymentMethod.CASH));
+            () => service.PayInvoiceAsync(invoiceId, PaymentMethod.CASH));
         Assert.Contains("đã được thanh toán", ex.Message);
 
         // Đảm bảo DispenseAsync KHÔNG được gọi khi đã paid
@@ -561,7 +561,7 @@ public class InvoiceServiceTests
         Assert.Contains("đã bị hủy", ex.Message);
     }
     [Fact]
-    public async Task PayAndDispenseAsync_Success_CreatesIntakeLogs()
+    public async Task PayInvoiceAsync_Success_CreatesIntakeLogs()
     {
         var options = GetInMemoryOptions("Invoice_Test_Pay_CreatesLogs");
         using var context = new AppDbContext(options);
@@ -594,7 +594,7 @@ public class InvoiceServiceTests
         scheduleMock.Setup(s => s.GenerateAsync(It.IsAny<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.PrescriptionItemWithPatient>(), It.IsAny<IReadOnlyList<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(scheduledDoses);
 
-        await service.PayAndDispenseAsync(invoiceId, PaymentMethod.CASH);
+        await service.PayInvoiceAsync(invoiceId, PaymentMethod.CASH);
 
         logRepoMock.Verify(r => r.AddRangeAsync(It.Is<IEnumerable<MedicationIntakeLog>>(logs => logs.Count() == 15 && logs.All(l => l.ConfirmedAt == null)), default), Moq.Times.Once);
         var invoice = await context.Invoices.FindAsync(new object[] { invoiceId }, TestContext.Current.CancellationToken);
@@ -602,7 +602,7 @@ public class InvoiceServiceTests
     }
 
     [Fact]
-    public async Task PayAndDispenseAsync_Success_NoPatientPreference_UsesDefaults()
+    public async Task PayInvoiceAsync_Success_NoPatientPreference_UsesDefaults()
     {
         var options = GetInMemoryOptions("Invoice_Test_Pay_NoPref");
         using var context = new AppDbContext(options);
@@ -630,13 +630,13 @@ public class InvoiceServiceTests
         scheduleMock.Setup(s => s.GenerateAsync(It.IsAny<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.PrescriptionItemWithPatient>(), It.IsAny<IReadOnlyList<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(new List<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.ScheduledDose>());
 
-        await service.PayAndDispenseAsync(invoiceId, PaymentMethod.CASH);
+        await service.PayInvoiceAsync(invoiceId, PaymentMethod.CASH);
 
         scheduleMock.Verify(s => s.GenerateAsync(It.IsAny<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.PrescriptionItemWithPatient>(), It.IsAny<IReadOnlyList<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>>(), new TimeOnly(7, 0), new TimeOnly(12, 0), new TimeOnly(20, 0), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()), Moq.Times.Once);
     }
 
     [Fact]
-    public async Task PayAndDispenseAsync_Success_WithPatientPreference_UsesCustomTimes()
+    public async Task PayInvoiceAsync_Success_WithPatientPreference_UsesCustomTimes()
     {
         var options = GetInMemoryOptions("Invoice_Test_Pay_WithPref");
         using var context = new AppDbContext(options);
@@ -666,7 +666,7 @@ public class InvoiceServiceTests
         scheduleMock.Setup(s => s.GenerateAsync(It.IsAny<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.PrescriptionItemWithPatient>(), It.IsAny<IReadOnlyList<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()))
             .ReturnsAsync(new List<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.ScheduledDose>());
 
-        await service.PayAndDispenseAsync(invoiceId, PaymentMethod.CASH);
+        await service.PayInvoiceAsync(invoiceId, PaymentMethod.CASH);
 
         scheduleMock.Verify(s => s.GenerateAsync(It.IsAny<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.PrescriptionItemWithPatient>(), It.IsAny<IReadOnlyList<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>>(), new TimeOnly(6, 30), new TimeOnly(11, 30), new TimeOnly(21, 0), It.IsAny<DateTime>(), It.IsAny<System.Threading.CancellationToken>()), Moq.Times.Once);
     }

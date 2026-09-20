@@ -50,7 +50,7 @@ public class InvoicesController : ControllerBase
             return BadRequest("Phương thức thanh toán không hợp lệ (CASH, CREDIT_CARD, BANK_TRANSFER, etc).");
         }
         
-        await _invoiceService.PayAndDispenseAsync(id, method);
+        await _invoiceService.PayInvoiceAsync(id, method);
         return Ok(ApiResponse<object>.Ok(new { message = "Thanh toán và xuất kho thành công." }));
     }
 
