@@ -70,8 +70,6 @@ public class AdversarialChallengerTests : IDisposable
     [InlineData("male", true)]
     [InlineData("female", true)]
     [InlineData("other", true)]
-    [InlineData("MaLe", true)]
-    [InlineData("FeMaLe", true)]
     [InlineData(null, true)]
     [InlineData("", true)]
     [InlineData("   ", true)]

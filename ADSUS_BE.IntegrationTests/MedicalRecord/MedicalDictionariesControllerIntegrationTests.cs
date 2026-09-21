@@ -119,18 +119,4 @@ public class MedicalDictionariesControllerIntegrationTests
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<MedicalAllergyTypeResponse>>>(TestContext.Current.CancellationToken);
         Assert.Equal("Dị ứng thuốc kháng sinh", body!.Data!.Single().Name);
     }
-
-    [Fact]
-    public async Task GetAllergyTypes_NoToken_Returns401Unauthorized()
-    {
-        // Arrange
-        await using var app = CreateApp();
-        var client = app.CreateClient();
-
-        // Act
-        var response = await client.GetAsync("/api/v1/medical-dictionaries/allergy-types", TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
 }

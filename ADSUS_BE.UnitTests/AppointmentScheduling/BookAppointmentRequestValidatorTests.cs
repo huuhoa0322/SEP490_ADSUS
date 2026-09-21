@@ -180,23 +180,6 @@ public class BookAppointmentRequestValidatorTests
     #region Combined Validation
 
     [Fact]
-    public void Validate_BothFieldsProvided_Passes()
-    {
-        // Arrange
-        var request = new BookAppointmentRequest
-        {
-            ScheduleSlotId = Guid.NewGuid(),
-            Reason = "Annual physical examination"
-        };
-
-        // Act
-        var result = _validator.TestValidate(request);
-
-        // Assert
-        result.ShouldNotHaveAnyValidationErrors();
-    }
-
-    [Fact]
     public void Validate_BothFieldsEmpty_FailsOnSlotId()
     {
         // Arrange

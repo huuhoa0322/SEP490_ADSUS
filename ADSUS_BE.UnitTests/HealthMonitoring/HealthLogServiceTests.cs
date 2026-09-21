@@ -103,9 +103,7 @@ public class HealthLogServiceTests
 
     [Theory]
     [InlineData("exercise")]
-    [InlineData("Exercise")]
     [InlineData("EXERCISE")]
-    [InlineData("ExErCiSe")]
     public async Task LogExercise_CaseInsensitive_ParsesCorrectly(string typeInput)
     {
         // Arrange

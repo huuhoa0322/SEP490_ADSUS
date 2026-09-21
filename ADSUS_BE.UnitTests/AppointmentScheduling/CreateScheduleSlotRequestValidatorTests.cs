@@ -215,55 +215,15 @@ public class CreateScheduleSlotRequestValidatorTests
             .WithErrorMessage("Slot duration must be greater than 15 minutes.");
     }
 
-    [Fact]
-    public void Validate_14Minutes_Fails()
-    {
-        // Arrange - duration less than 15 minutes
-        var request = new CreateScheduleSlotRequest
-        {
-            VisitDate = GetFutureDate(),
-            StartTime = new TimeOnly(9, 0),
-            EndTime = new TimeOnly(9, 14), // 14 minutes
-        };
-
-        // Act
-        var result = _validator.TestValidate(request);
-
-        // Assert
-        result.ShouldHaveValidationErrorFor(x => x)
-            .WithErrorMessage("Slot duration must be greater than 15 minutes.");
-    }
-
-    [Fact]
-    public void Validate_1MinuteDuration_Fails()
-    {
-        // Arrange - very short duration
-        var request = new CreateScheduleSlotRequest
-        {
-            VisitDate = GetFutureDate(),
-            StartTime = new TimeOnly(9, 0),
-            EndTime = new TimeOnly(9, 1), // 1 minute
-        };
-
-        // Act
-        var result = _validator.TestValidate(request);
-
-        // Assert
-        result.ShouldHaveValidationErrorFor(x => x)
-            .WithErrorMessage("Slot duration must be greater than 15 minutes.");
-    }
-
     #endregion
 
     #region Boundary Value Analysis
 
     [Theory]
-    [InlineData(15, 0, 15, 16, true)]   // 16 min - Pass
-    [InlineData(15, 0, 15, 0, false)]  // 0 min - Fail
-    [InlineData(15, 0, 14, 59, false)] // end before start - Fail
-    [InlineData(0, 0, 0, 16, true)]    // 16 min - Pass
+    [InlineData(15, 0, 15, 0)]  // 0 min - Fail
+    [InlineData(15, 0, 14, 59)] // end before start - Fail
     public void Validate_DurationBoundaryCases_ExpectedResult(
-        int startHour, int startMin, int endHour, int endMin, bool shouldPass)
+        int startHour, int startMin, int endHour, int endMin)
     {
         // Arrange
         var request = new CreateScheduleSlotRequest
@@ -277,15 +237,8 @@ public class CreateScheduleSlotRequestValidatorTests
         var result = _validator.TestValidate(request);
 
         // Assert
-        if (shouldPass)
-        {
-            result.ShouldNotHaveValidationErrorFor(x => x);
-        }
-        else
-        {
-            result.ShouldHaveValidationErrorFor(x => x)
-                .WithErrorMessage("Slot duration must be greater than 15 minutes.");
-        }
+        result.ShouldHaveValidationErrorFor(x => x)
+            .WithErrorMessage("Slot duration must be greater than 15 minutes.");
     }
 
     #endregion

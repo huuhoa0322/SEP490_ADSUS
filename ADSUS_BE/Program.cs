@@ -227,11 +227,15 @@ namespace ADSUS_BE
             dataSourceBuilder.MapEnum<ShiftRequestType>("shift_request_type");
             dataSourceBuilder.MapEnum<ShiftRequestStatus>("shift_request_status");
             dataSourceBuilder.MapEnum<ShiftType>("shift_type");
-            var dataSource = dataSourceBuilder.Build();
-
-            builder.Services.AddSingleton(dataSource);
-            builder.Services.AddDbContext<AppDbContext>(options =>
+            // Đăng ký qua factory (không phải AddSingleton(instance) dựng sẵn) để container
+            // thật sự sở hữu và Dispose NpgsqlDataSource khi host tắt — DI mặc định KHÔNG
+            // dispose 1 instance được truyền sẵn từ bên ngoài. Thiếu điều này khiến mỗi
+            // WebApplicationFactory trong ADSUS_BE.SystemTests rò rỉ 1 connection pool vĩnh
+            // viễn, dồn lại vượt giới hạn "session mode" của Supabase pooler sau vài chục test.
+            builder.Services.AddSingleton(_ => dataSourceBuilder.Build());
+            builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
             {
+                var dataSource = serviceProvider.GetRequiredService<NpgsqlDataSource>();
                 options.UseNpgsql(dataSource);
                 // The test suite creates a WebApplicationFactory per test method, triggering the
                 // ManyServiceProvidersCreatedWarning (which is configured to throw as error by default in EF 8 if > 20 instances).

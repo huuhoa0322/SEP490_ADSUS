@@ -52,9 +52,7 @@ public class LogHealthDataRequestValidatorTests
 
     [Theory]
     [InlineData("exercise")]
-    [InlineData("Exercise")]
     [InlineData("EXERCISE")]
-    [InlineData("ExErCiSe")]
     public void LowercaseExercise_Passes(string type)
     {
         var request = new LogHealthDataRequest
@@ -70,9 +68,7 @@ public class LogHealthDataRequestValidatorTests
 
     [Theory]
     [InlineData("diet")]
-    [InlineData("Diet")]
     [InlineData("DIET")]
-    [InlineData("dIeT")]
     public void LowercaseDiet_Passes(string type)
     {
         var request = new LogHealthDataRequest

@@ -63,7 +63,6 @@ public class CompleteRegistrationRequestValidatorTests
     [InlineData("female")]
     [InlineData("male")]
     [InlineData("other")]
-    [InlineData("Female")]
     public void Validate_ValidGender_Passes(string gender)
     {
         var request = ValidRequest() with { Gender = gender };

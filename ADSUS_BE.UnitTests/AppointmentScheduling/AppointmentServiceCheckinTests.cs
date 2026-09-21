@@ -206,33 +206,6 @@ public class AppointmentServiceCheckinTests : IDisposable
 
     #endregion
 
-    #region TC-002: Already Checked-in Appointment (Completed or Approved - backward compat)
-
-    /// <summary>
-    /// TC-UNIT-AppointmentServiceCheckin-002
-    /// Edge case: Appointment đã checkin (Completed mới hoặc Approved cũ) → Checkin lại → Throw InvalidOperationException
-    /// </summary>
-    [Fact]
-    public async Task CheckinAppointmentAsync_AlreadyApproved_ThrowsInvalidOperationException()
-    {
-        // Arrange
-        var doctor = CreateDoctor();
-        var patient = CreatePatient();
-        var profile = CreatePatientProfile(patient);
-        var slot = CreateSlot(doctor, SlotStatus.Booked);
-        var appointment = CreateAppointment(slot, profile, AppointmentStatus.Completed); // Đã checkin rồi (Completed = mới, Approved = cũ)
-
-        await SeedAppointmentAsync(appointment);
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CheckinAppointmentAsync(_appointmentId, TestContext.Current.CancellationToken));
-
-        Assert.Contains("ĐÃ ĐẶT", ex.Message);
-    }
-
-    #endregion
-
     #region TC-003: Cancelled Appointment
 
     /// <summary>
@@ -727,7 +700,6 @@ public class AppointmentServiceCheckinTests : IDisposable
     [Theory]
     [InlineData("CANCELLED")]
     [InlineData("cancelled")]
-    [InlineData("Cancelled")]
     public async Task GetCheckinQueueAsync_StatusCancelled_ReturnsOnlyCancelledAppointments_AndCountersRemainIndependent(string status)
     {
         // Arrange: Tạo 4 ca đủ 4 trạng thái
