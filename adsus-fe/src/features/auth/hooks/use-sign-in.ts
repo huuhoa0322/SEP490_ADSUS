@@ -9,16 +9,6 @@ import { getHomePathForRole, useAuthStore } from "@/store/auth-store";
 import { login } from "../api/auth.api";
 import type { LoginRequest } from "../types/auth.types";
 
-/**
- * Lấy ?redirect=/abc từ URL nếu hợp lệ (relative, không phải absolute URL).
- * - null = không có / không hợp lệ → caller tự quyết định đích.
- */
-export function getSafeRedirect(searchParams: URLSearchParams): string | null {
-  const value = searchParams.get("redirect");
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
-  return value;
-}
-
 export function useSignIn() {
   const router = useRouter();
   const signIn = useAuthStore((state) => state.signIn);
@@ -48,11 +38,8 @@ export function useSignIn() {
       }
 
       // UC-01 BR-03: route by role, there is no role picker.
-      // Tôn trọng ?redirect=... nếu user đến /login từ trang khác (vd /dat-lich).
-      const params =
-        typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-      const safeRedirect = params ? getSafeRedirect(params) : null;
-      router.replace(safeRedirect ?? getHomePathForRole(data.role));
+      // Luôn redirect về trang mặc định của role (dashboard) 
+      router.replace(getHomePathForRole(data.role));
     },
   });
 }

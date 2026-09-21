@@ -26,7 +26,7 @@ class ApiConstants {
   ///   flutter build apk --release --dart-define=API_BASE_URL=https://api.adsus...
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:5036',
+    defaultValue: 'http://localhost:5036',
   );
 
   static const String login = '/api/v1/auth/login';

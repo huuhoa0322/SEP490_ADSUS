@@ -1,3 +1,4 @@
+using FluentValidation.AspNetCore;
 using System.Globalization;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -437,6 +438,7 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IValidator<UpdatePatientAccountRequest>, UpdatePatientAccountRequestValidator>();
 
             // BLL — Module 6: AI Model Management
+            builder.Services.AddSingleton<ADSUS_BE.BLL.AIDiagnosis.Services.IAiDiagnosisStateTracker, ADSUS_BE.BLL.AIDiagnosis.Services.AiDiagnosisStateTracker>();
             builder.Services.AddScoped<IAiModelService, AiModelService>();
 
             // BLL — Module 7: Inventory Management
@@ -744,6 +746,10 @@ namespace ADSUS_BE
             // Scans the whole BLL assembly, so validators added by other modules are picked
             // up automatically.
             builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
+            builder.Services.AddFluentValidationAutoValidation();
+            
+            // Add MemoryCache for Lockout mechanism
+            builder.Services.AddMemoryCache();
 
             var app = builder.Build();
 
@@ -794,6 +800,7 @@ namespace ADSUS_BE
             // (are you allowed). Swap them and every [Authorize] returns 401.
             app.UseAuthentication();
             app.UseAuthorization();
+            app.UseMiddleware<MustChangePasswordMiddleware>();
 
             app.MapControllers();
 

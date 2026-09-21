@@ -111,14 +111,14 @@ public sealed class ChatService : IChatService
             var rateLimitSince = now.Subtract(ChatRateLimitConstants.RateLimitWindow);
             var recentCalls = await _repo.CountAssistantMessagesSinceAsync(userId, rateLimitSince, ct);
 
-            if (recentCalls >= ChatRateLimitConstants.MaxCallsPerHour)
+            if (recentCalls >= ChatRateLimitConstants.MaxCallsPerWindow)
             {
                 _logger.LogInformation(
                     "User {UserId} hit rate limit ({Count} calls in last hour). Skipping LLM call.",
                     userId, recentCalls);
                 assistantContent =
-                    $"Bạn đã sử dụng hết {ChatRateLimitConstants.MaxCallsPerHour} lượt hỏi trong 5 giờ qua. " +
-                    "Vui lòng chờ ít nhất 5 giờ trước khi tiếp tục. " +
+                    $"Bạn đã sử dụng hết {ChatRateLimitConstants.MaxCallsPerWindow} lượt hỏi trong 1 tiếng qua. " +
+                    "Vui lòng chờ ít nhất 1 tiếng trước khi tiếp tục. " +
                     "Nếu cần hỗ trợ gấp, hãy liên hệ bác sĩ trực tiếp.";
                 isRateLimitExceeded = true;
                 isSafety = false;
@@ -127,11 +127,11 @@ public sealed class ChatService : IChatService
             {
                 _logger.LogInformation(
                     "User {UserId} approaching rate limit ({Count}/{Max} calls). Proceeding with warning.",
-                    userId, recentCalls, ChatRateLimitConstants.MaxCallsPerHour);
+                    userId, recentCalls, ChatRateLimitConstants.MaxCallsPerWindow);
                 // Vẫn gọi LLM nhưng thêm warning vào prompt
                 var history = await BuildHistoryForLlm(userId, ct);
                 var effectivePrompt = await BuildSystemPromptAsync(userId, intent, ct) +
-                    $"\n\n[LƯU Ý: Người dùng đã hỏi {recentCalls}/{ChatRateLimitConstants.MaxCallsPerHour} lần trong 5 giờ qua. Hãy trả lời NGẮN GỌN hơn bình thường.]";
+                    $"\n\n[LƯU Ý: Người dùng đã hỏi {recentCalls}/{ChatRateLimitConstants.MaxCallsPerWindow} lần trong 1 tiếng qua. Hãy trả lời NGẮN GỌN hơn bình thường.]";
                 var llmResponse = await _chatClient.SendMessageAsync(
                     effectivePrompt, history, content, ct);
                 assistantContent = llmResponse.Trim();

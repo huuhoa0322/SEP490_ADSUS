@@ -516,7 +516,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                     CurrentStock = stock.TotalStock,
                     Threshold = med.LowStockThreshold,
                     BaseUnitName = baseUnitPack?.MedicineUnit?.Name ?? "Đơn vị cơ sở",
-                    Severity = stock.TotalStock <= med.LowStockThreshold / 5 ? "CRITICAL" : "WARNING"
+                    Severity = stock.TotalStock <= (int)Math.Ceiling(med.LowStockThreshold * 0.2m) ? "CRITICAL" : "WARNING"
                 });
             }
 

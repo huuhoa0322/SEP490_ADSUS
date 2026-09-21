@@ -72,14 +72,14 @@ public interface ICaseService
         CancellationToken ct = default);
 
     Task<CaseResponse> UpdateSymptomsAsync(
-        Guid caseId, UpdateCaseSymptomsRequest request, CancellationToken ct = default);
+        Guid caseId, Guid actingDoctorId, UpdateCaseSymptomsRequest request, CancellationToken ct = default);
 
     Task<CaseResponse> UpdateDiseasesAsync(
-        Guid caseId, UpdateCaseDiseasesRequest request, CancellationToken ct = default);
+        Guid caseId, Guid actingDoctorId, UpdateCaseDiseasesRequest request, CancellationToken ct = default);
 
     Task<CaseResponse> UpdateAllergiesAsync(
-        Guid caseId, UpdateCaseAllergiesRequest request, CancellationToken ct = default);
+        Guid caseId, Guid actingDoctorId, UpdateCaseAllergiesRequest request, CancellationToken ct = default);
 
     Task<CaseResponse> UpdateDiagnosesAsync(
-        Guid caseId, UpdateCaseDiagnosesRequest request, CancellationToken ct = default);
+        Guid caseId, Guid actingDoctorId, UpdateCaseDiagnosesRequest request, CancellationToken ct = default);
 }

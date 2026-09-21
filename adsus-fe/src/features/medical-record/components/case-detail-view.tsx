@@ -39,6 +39,7 @@ import { useUpdateCaseDiagnoses } from "../hooks/use-diagnosis";
 import { FollowUpSection } from "@/features/appointment-scheduling/components/follow-up-section";
 import { useCreateFollowUpAppointment } from "@/features/appointment-scheduling/hooks/use-doctor-appointments";
 import { useExportCaseReport } from "../hooks/use-case-report";
+import { useCaseInvoices } from "@/features/prescription-adherence/hooks/use-invoices";
 import {
   EMPTY_VALUE,
   caseStatusLabel,
@@ -131,6 +132,10 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
   const confirmMutation = useConfirmCase(caseId);
   const endCaseMutation = useEndCaseWithoutPrescription(caseId);
   const report = useExportCaseReport(caseId);
+
+  // Module 9 — Invoice summary card: chỉ hiện cho Nurse, bất kể status ca.
+  const isNurse = currentUser?.role === "STAFF";
+  const { data: caseInvoices } = useCaseInvoices(isNurse ? caseId : undefined);
 
   // Chỉ hiển thị khung Ảnh siêu âm khi ca đã được gắn dịch vụ ULTRASOUND_EXAM
   const { data: caseClinicServices } = useCaseClinicServices(caseId);
@@ -913,102 +918,137 @@ export function CaseDetailView({ caseId }: { caseId: string }) {
         </div>
       ) : null}
 
-      {hasUltrasoundService ? (
-        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.7fr_1fr]">
-          <section className="rounded-xl border border-border p-6">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-heading text-xl font-bold text-foreground">
-                Ảnh siêu âm{" "}
-                <span className="font-mono text-sm font-bold text-foreground">
-                  ({medicalCase.ultrasoundImages.length} ảnh)
+      {/* Module 9 — Invoice summary: chỉ Nurse, bất kể status ca */}
+      {currentUser?.role === "STAFF" && caseInvoices && caseInvoices.length > 0 ? (
+        <section className="mt-5 rounded-xl border-2 border-border border-l-4 border-l-primary p-5">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h3 className="text-base font-bold text-foreground">Hóa đơn</h3>
+              <p className="mt-0.5 text-sm font-bold text-foreground">
+                {caseInvoices.length === 1 ? "1 hóa đơn" : `${caseInvoices.length} hóa đơn`}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {caseInvoices[0] && (
+                <span
+                  className={cn(
+                    "rounded px-2.5 py-1 text-xs font-bold",
+                    caseInvoices[0].status === "PENDING"
+                      ? "bg-amber-50 text-amber-700"
+                      : caseInvoices[0].status === "PAID"
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-red-50 text-red-700",
+                  )}
+                >
+                  {caseInvoices[0].status === "PENDING"
+                    ? "Chờ thanh toán"
+                    : caseInvoices[0].status === "PAID"
+                      ? "Đã thanh toán"
+                      : "Đã hủy"}
                 </span>
-              </h2>
-              <div className="flex flex-col items-end gap-1">
-                {isResponsibleDoctor ? (
-                  <>
+              )}
+              <Link
+                href={`/invoices/${caseInvoices[0].id}`}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90"
+              >
+                Chi tiết hóa đơn
+              </Link>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.7fr_1fr]">
+        <div className="space-y-6">
+          {clinicalInfoSection}
+
+          {hasUltrasoundService && (
+            <section className="rounded-xl border border-gray-300 dark:border-gray-700 bg-card p-6 shadow-sm">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h2 className="font-heading text-xl font-bold text-foreground">
+                  Ảnh siêu âm{" "}
+                  <span className="font-mono text-sm font-bold text-foreground">
+                    ({medicalCase.ultrasoundImages.length} ảnh)
+                  </span>
+                </h2>
+                <div className="flex flex-col items-end gap-1">
+                  {isResponsibleDoctor ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setShowUpload((open) => !open)}
+                        // GB-01 — ca đã chốt không nhận thêm ảnh. isLocked — khoá tạm sau "Lưu kết luận".
+                        disabled={isConfirmedOrEnd || isLocked || isBooked || isCancelled}
+                        className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-[var(--success)] disabled:opacity-50 transition-colors"
+                      >
+                        Bổ sung ảnh siêu âm
+                      </button>
+                      {isBooked ? (
+                        <span className="text-xs font-bold italic text-amber-700 dark:text-amber-400">
+                          Chờ điều dưỡng check-in trước khi tải ảnh
+                        </span>
+                      ) : isCancelled ? (
+                        <span className="text-xs font-bold italic text-rose-700 dark:text-rose-400">
+                          Ca đã huỷ không nhận thêm ảnh
+                        </span>
+                      ) : isConfirmedOrEnd ? (
+                        <span className="text-xs font-bold italic text-foreground">
+                          Ca đã kết luận nên không nhận thêm ảnh
+                        </span>
+                      ) : isLocked ? (
+                        <span className="text-xs font-bold italic text-foreground">
+                          Bấm &ldquo;Sửa&rdquo; ở mục kết luận để mở lại
+                        </span>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+              </div>
+
+              {showUpload && isResponsibleDoctor && !isConfirmedOrEnd && !isLocked && !isBooked && !isCancelled ? (
+                <div className="mb-5 space-y-4 rounded-lg border-2 border-dashed border-border bg-muted/20 p-4">
+                  <UltrasoundUploadField
+                    files={pendingImages}
+                    onChange={setPendingImages}
+                  />
+
+                  <div>
+                    <label htmlFor="batch-note" className="mb-1.5 block text-sm font-bold text-foreground">
+                      Ghi chú cho lô ảnh này
+                    </label>
+                    <input
+                      id="batch-note"
+                      value={note}
+                      onChange={(event) => setNote(event.target.value)}
+                      placeholder="Áp dụng cho toàn bộ ảnh vừa chọn"
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-background px-3 text-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+
+                  <div className="flex justify-end">
                     <button
                       type="button"
-                      onClick={() => setShowUpload((open) => !open)}
-                      // GB-01 — ca đã chốt không nhận thêm ảnh. isLocked — khoá tạm sau "Lưu kết luận".
-                      disabled={isConfirmedOrEnd || isLocked || isBooked || isCancelled}
-                      className="rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm font-bold text-foreground hover:bg-[var(--success)] disabled:opacity-50 transition-colors"
+                      onClick={handleAddImages}
+                      disabled={pendingImages.length === 0}
+                      className="rounded-xl bg-blue-600 px-6 py-3 text-base font-bold uppercase tracking-wide text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl disabled:opacity-50"
                     >
-                      Bổ sung ảnh siêu âm
+                      { }
+                      Xem kết quả AI
                     </button>
-                    {isBooked ? (
-                      <span className="text-xs font-bold italic text-amber-700 dark:text-amber-400">
-                        Chờ điều dưỡng check-in trước khi tải ảnh
-                      </span>
-                    ) : isCancelled ? (
-                      <span className="text-xs font-bold italic text-rose-700 dark:text-rose-400">
-                        Ca đã huỷ không nhận thêm ảnh
-                      </span>
-                    ) : isConfirmedOrEnd ? (
-                      <span className="text-xs font-bold italic text-foreground">
-                        Ca đã kết luận nên không nhận thêm ảnh
-                      </span>
-                    ) : isLocked ? (
-                      <span className="text-xs font-bold italic text-foreground">
-                        Bấm &ldquo;Sửa&rdquo; ở mục kết luận để mở lại
-                      </span>
-                    ) : null}
-                  </>
-                ) : null}
-              </div>
-            </div>
-
-            {showUpload && isResponsibleDoctor && !isConfirmedOrEnd && !isLocked && !isBooked && !isCancelled ? (
-              <div className="mb-5 space-y-4 rounded-lg border-2 border-dashed border-border bg-muted/20 p-4">
-                <UltrasoundUploadField
-                  files={pendingImages}
-                  onChange={setPendingImages}
-                />
-
-                <div>
-                  <label htmlFor="batch-note" className="mb-1.5 block text-sm font-bold text-foreground">
-                    Ghi chú cho lô ảnh này
-                  </label>
-                  <input
-                    id="batch-note"
-                    value={note}
-                    onChange={(event) => setNote(event.target.value)}
-                    placeholder="Áp dụng cho toàn bộ ảnh vừa chọn"
-                    className="h-10 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-background px-3 text-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  />
+                  </div>
                 </div>
+              ) : null}
 
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={handleAddImages}
-                    disabled={pendingImages.length === 0}
-                    className="rounded-xl bg-blue-600 px-6 py-3 text-base font-bold uppercase tracking-wide text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl disabled:opacity-50"
-                  >
-                    { }
-                    Xem kết quả AI
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            <UltrasoundImageGallery images={medicalCase.ultrasoundImages} />
-          </section>
-
-          <div className="space-y-6">
-            {clinicalInfoSection}
-            {diagnosisSection}
-            {conclusionSection}
-          </div>
+              <UltrasoundImageGallery images={medicalCase.ultrasoundImages} />
+            </section>
+          )}
         </div>
-      ) : (
-        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {clinicalInfoSection}
-          <div className="space-y-6">
-            {diagnosisSection}
-            {conclusionSection}
-          </div>
+
+        <div className="space-y-6">
+          {diagnosisSection}
+          {conclusionSection}
         </div>
-      )}
+      </div>
 
       <footer className="pt-2">
         <p className="font-mono text-xs font-bold text-foreground">

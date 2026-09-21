@@ -21,19 +21,8 @@ class MyRelativesScreen extends ConsumerWidget {
 
     // Listen for state changes
     ref.listen<MyRelativesState>(myRelativesViewModelProvider, (prev, next) {
-      // Show snackbar when a relative is deleted
-      if (prev?.deletedId == null && next.deletedId != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đã xóa người thân khỏi danh bạ.'),
-            backgroundColor: AppColors.teal,
-          ),
-        );
-        ref.read(myRelativesViewModelProvider.notifier).clearDeletedFlag();
-      }
-
       // Show error snackbar
-      if (prev?.errorMessage == null && next.errorMessage != null && !next.isDeleting) {
+      if (prev?.errorMessage == null && next.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(next.errorMessage!),
@@ -137,46 +126,10 @@ class MyRelativesScreen extends ConsumerWidget {
           final relative = state.relatives[index];
           return RelativeCard(
             relative: relative,
-            isDeleting: state.isDeleting,
-            onDelete: () => _confirmDelete(context, ref, relative.relationshipId),
           );
         },
       ),
     );
-  }
-
-  Future<void> _confirmDelete(
-    BuildContext context,
-    WidgetRef ref,
-    String relationshipId,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Center(child: Text('Xóa người thân')),
-        content: const Text(
-          'Bạn có chắc muốn xóa người thân này khỏi danh bạ?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('HỦY'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('XÓA'),
-          ),
-        ],
-        actionsAlignment: MainAxisAlignment.center,
-      ),
-    );
-
-    if (confirmed == true) {
-      await ref
-          .read(myRelativesViewModelProvider.notifier)
-          .deleteRelative(relationshipId);
-    }
   }
 
   Future<void> _navigateToAddRelative(BuildContext context, WidgetRef ref) async {

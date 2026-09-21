@@ -108,6 +108,10 @@ public sealed class PatientRelationshipsController : ControllerBase
             await _service.DeleteRelativeAsync(id, GetCurrentUserId(), ct);
             return NoContent();
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         catch (KeyNotFoundException)
         {
             return NotFound();

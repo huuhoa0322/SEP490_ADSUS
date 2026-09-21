@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.Common;
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using FluentValidation;
 
 namespace ADSUS_BE.BLL.AppointmentScheduling.Services;
 
@@ -43,16 +43,19 @@ public sealed class ScheduleSlotService : IScheduleSlotService
 
     private readonly IScheduleSlotRepository _repo;
     private readonly IUserRepository _userRepo;
-    private readonly IValidator<CreateScheduleSlotRequest> _validator;
+    private readonly INotificationService _notificationService;
+    private readonly AppDbContext _db;
 
     public ScheduleSlotService(
         IScheduleSlotRepository repo,
         IUserRepository userRepo,
-        IValidator<CreateScheduleSlotRequest> validator)
+        INotificationService notificationService,
+        AppDbContext db)
     {
         _repo = repo;
         _userRepo = userRepo;
-        _validator = validator;
+        _notificationService = notificationService;
+        _db = db;
     }
 
     public async Task<(IReadOnlyList<ScheduleSlotResponse> Items, int TotalCount)> ListSlotsAsync(
@@ -68,14 +71,14 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             throw new InvalidOperationException("doctorId is required.");
 
         var from = fromDate ?? ClinicClock.Today();
-        var to = toDate ?? from.AddDays(21); // 3 tuần = 21 ngày
+        var to = toDate ?? from.AddDays(30); // 1 tháng = 30 ngày
 
         if (to < from)
             throw new InvalidOperationException("toDate must not be before fromDate.");
 
         // Auto-sinh dựa trên data đã có (1 query duy nhất)
         var today = ClinicClock.Today();
-        var targetEndDate = today.AddDays(20); // 21 ngày (today..today+20)
+        var targetEndDate = today.AddDays(29); // 30 ngày (today..today+29)
         var allSlots = await _repo.ListByRangeAsync(today, targetEndDate, doctorId, null, ct);
         await EnsureMissingSlotsAsync(doctorId.Value, today, targetEndDate, allSlots, ct);
 
@@ -191,7 +194,7 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             throw new InvalidOperationException($"User '{doctorId}' is not a valid Doctor.");
 
         var today = ClinicClock.Today();
-        var targetEndDate = today.AddDays(20);
+        var targetEndDate = today.AddDays(29);
         var existingSlots = await _repo.ListByRangeAsync(today, targetEndDate, doctorId, null, ct);
 
         await EnsureMissingSlotsAsync(doctorId, today, targetEndDate, existingSlots, ct);
@@ -203,50 +206,6 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         return slot is null ? null : MapToResponse(slot);
     }
 
-    public async Task<ScheduleSlotResponse> CreateSlotAsync(
-        Guid doctorId,
-        CreateScheduleSlotRequest request,
-        CancellationToken ct = default)
-    {
-        var validation = await _validator.ValidateAsync(request, ct);
-        if (!validation.IsValid)
-        {
-            throw new ValidationException(validation.Errors);
-        }
-
-        // Doctor phải tồn tại và là Doctor.
-        var doctor = await _userRepo.GetByIdAsync(doctorId, ct);
-        if (doctor is null || doctor.Role != UserRole.Doctor)
-        {
-            throw new InvalidOperationException(
-                $"User '{doctorId}' is not a valid Doctor.");
-        }
-
-        var hasOverlap = await _repo.HasOverlapAsync(
-            doctorId, request.VisitDate, request.StartTime, request.EndTime,
-            excludeSlotId: null, ct);
-        if (hasOverlap)
-        {
-            throw new InvalidOperationException(
-                $"Slot overlaps with an existing slot on {request.VisitDate:yyyy-MM-dd}.");
-        }
-
-        var now = DateTime.UtcNow;
-        var slot = new ScheduleSlot
-        {
-            SlotId = Guid.NewGuid(),
-            DoctorId = doctorId,
-            SlotDate = request.VisitDate,
-            StartTime = request.StartTime,
-            EndTime = request.EndTime,
-            Status = SlotStatus.Open,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-
-        await _repo.AddAsync(slot, ct);
-        return MapToResponse(slot);
-    }
 
     public async Task<(int SuccessCount, int ErrorCount)> CreateOvertimeSlotsAsync(
         CreateOvertimeSlotsRequest request,
@@ -312,45 +271,6 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         return (successCount, errorCount);
     }
 
-    public async Task<ScheduleSlotResponse> UpdateSlotAsync(
-        Guid slotId,
-        UpdateScheduleSlotRequest request,
-        CancellationToken ct = default)
-    {
-        var slot = await _repo.GetByIdForUpdateAsync(slotId, ct);
-        if (slot is null)
-            throw new InvalidOperationException($"Slot '{slotId}' not found.");
-
-        // BR-02: Closed là terminal.
-        if (slot.Status == SlotStatus.Closed)
-            throw new InvalidOperationException("Cannot update a closed slot.");
-
-        // Validate BR-01 với StartTime/EndTime mới.
-        var probe = new CreateScheduleSlotRequest
-        {
-            VisitDate = slot.SlotDate,
-            StartTime = request.StartTime,
-            EndTime = request.EndTime,
-        };
-        var validation = await _validator.ValidateAsync(probe, ct);
-        if (!validation.IsValid)
-            throw new ValidationException(validation.Errors);
-
-        // Check overlap với slot khác (loại trừ chính slot đang update).
-        var hasOverlap = await _repo.HasOverlapAsync(
-            slot.DoctorId, slot.SlotDate,
-            request.StartTime, request.EndTime,
-            excludeSlotId: slotId, ct);
-        if (hasOverlap)
-            throw new InvalidOperationException(
-                $"Updated slot overlaps with another slot on {slot.SlotDate:yyyy-MM-dd}.");
-
-        slot.StartTime = request.StartTime;
-        slot.EndTime = request.EndTime;
-        slot.UpdatedAt = DateTime.UtcNow;
-        await _repo.UpdateAsync(slot, ct);
-        return MapToResponse(slot);
-    }
 
     public async Task<CloseSlotImpactResponse> CloseSlotAsync(
         Guid slotId,
@@ -377,6 +297,32 @@ public sealed class ScheduleSlotService : IScheduleSlotService
 
         slot.Status = SlotStatus.Closed;
         slot.UpdatedAt = DateTime.UtcNow;
+
+        if (forceClose && activeCount > 0)
+        {
+            foreach (var appointment in slot.Appointments
+                .Where(a => a.Status == AppointmentStatus.Booked))
+            {
+                appointment.Status = AppointmentStatus.Cancelled;
+                appointment.CancelledReason = "Lịch khám bị hủy do bác sĩ/quản trị viên đóng slot.";
+                appointment.UpdatedAt = DateTime.UtcNow;
+
+                var patientProfile = await _db.PatientProfiles.FirstOrDefaultAsync(p => p.PatientProfileId == appointment.PatientProfileId, ct);
+                var recipientUserId = appointment.BookedByUserId ?? patientProfile?.UserId;
+
+                if (recipientUserId.HasValue)
+                {
+                    await _notificationService.SendAsync(new SendNotificationRequest
+                    {
+                        UserId = recipientUserId.Value,
+                        Type = "appointment_cancelled_by_clinic",
+                        Title = "Lịch hẹn đã bị hủy",
+                        Body = $"Lịch hẹn ngày {slot.SlotDate:dd/MM/yyyy} đã bị hủy bởi phòng khám."
+                    }, ct);
+                }
+            }
+        }
+
         await _repo.UpdateAsync(slot, ct);
 
         return new CloseSlotImpactResponse
@@ -422,8 +368,8 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         var currentTimeVn = TimeOnly.FromDateTime(nowVn);
         var newSlots = new List<ScheduleSlot>();
 
-        // 14 ngày T2-CN (Thứ 2 đến Chủ nhật, 2 tuần).
-        for (var d = 0; d < 14; d++)
+        // 30 ngày.
+        for (var d = 0; d < 30; d++)
         {
             var day = weekStart.AddDays(d);
 

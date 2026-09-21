@@ -189,19 +189,15 @@ void main() {
       expect(find.text('01/04/2026'), findsOneWidget);
     });
 
-    testWidgets('TC-REL-06: triggers onDelete callback when delete button tapped',
+    testWidgets('TC-REL-06: does not display delete button (deleting relatives is disallowed)',
         (tester) async {
-      var deleteCalled = false;
       await tester.pumpWidget(buildTestWidget(
         relative: sampleRelative,
-        onDelete: () => deleteCalled = true,
       ));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Xóa người thân'));
-      await tester.pumpAndSettle();
-
-      expect(deleteCalled, isTrue);
+      expect(find.byTooltip('Xóa người thân'), findsNothing);
+      expect(find.byIcon(Icons.delete_outline), findsNothing);
     });
 
     testWidgets('TC-REL-07: triggers onEdit callback when edit button tapped',

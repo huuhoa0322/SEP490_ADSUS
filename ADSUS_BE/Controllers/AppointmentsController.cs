@@ -94,17 +94,36 @@ public sealed class AppointmentsController : ControllerBase
 
     /// <summary>
     /// GET /api/v1/appointments/{id} — Chi tiết lịch hẹn.
+    /// BR-065: Ownership verification — Chỉ Patient sở hữu, Doctor phụ trách hoặc Admin mới được xem.
     /// </summary>
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = "PATIENT")]
+    [Authorize(Roles = "PATIENT,DOCTOR,ADMIN")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
     {
-        var appointment = await _appointmentService.GetByIdAsync(id, ct);
-        if (appointment == null)
-            return NotFound(ApiResponse<object>.Fail(404, $"Appointment '{id}' not found."));
-        return Ok(ApiResponse<AppointmentResponse>.Ok(appointment));
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdStr, out var currentUserId))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object>.Fail(403, "Missing or invalid NameIdentifier claim."));
+        }
+
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? "";
+        var profileId = await GetOptionalPatientProfileIdAsync(ct);
+
+        try
+        {
+            var appointment = await _appointmentService.GetByIdAsync(id, currentUserId, role, profileId, ct);
+            if (appointment == null)
+                return NotFound(ApiResponse<object>.Fail(404, $"Appointment '{id}' not found."));
+
+            return Ok(ApiResponse<AppointmentResponse>.Ok(appointment));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object>.Fail(403, ex.Message));
+        }
     }
 
     /// <summary>
@@ -322,7 +341,7 @@ public sealed class AppointmentsController : ControllerBase
     /// Reuse logic BookAppointmentAsync, PatientProfileId từ body thay vì JWT.
     /// </summary>
     [HttpPost("book-for-patient")]
-    [Authorize(Roles = "STAFF,ADMIN")]
+    [Authorize(Roles = "STAFF")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -367,7 +386,7 @@ public sealed class AppointmentsController : ControllerBase
     /// POST /api/v1/appointments/{id}/reschedule — Đổi lịch hoặc tái đặt lịch hẹn cho Nurse / Lễ tân / Admin (Milestone 1).
     /// </summary>
     [HttpPost("{id:guid}/reschedule")]
-    [Authorize(Roles = "STAFF,ADMIN")]
+    [Authorize(Roles = "STAFF")]
     [ProducesResponseType(typeof(ApiResponse<AppointmentResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

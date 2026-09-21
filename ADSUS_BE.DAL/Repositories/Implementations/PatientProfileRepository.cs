@@ -115,7 +115,7 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
 
             // ILike là so khớp không phân biệt hoa thường đúng chuẩn Postgres (UC-09 BR-01).
             baseQuery = baseQuery.Where(x =>
-                EF.Functions.ILike(x.User.FullName, keyword)
+                EF.Functions.ILike(EF.Functions.Unaccent(x.User.FullName), EF.Functions.Unaccent(keyword))
                 || EF.Functions.ILike(x.User.Phone, keyword));
         }
 
@@ -165,11 +165,14 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
         if (string.Equals(visitStatus, "Pending", StringComparison.OrdinalIgnoreCase))
         {
             merged = merged.Where(x => x.LatestCase != null
-                && (x.LatestCase.Status == CaseStatus.InProgress || x.LatestCase.Status == CaseStatus.End));
+                && (x.LatestCase.Status == CaseStatus.Booked
+                 || x.LatestCase.Status == CaseStatus.InProgress));
         }
-        else if (string.Equals(visitStatus, "Confirmed", StringComparison.OrdinalIgnoreCase))
+        else if (string.Equals(visitStatus, "Completed", StringComparison.OrdinalIgnoreCase))
         {
-            merged = merged.Where(x => x.LatestCase != null && x.LatestCase.Status == CaseStatus.Confirmed);
+            merged = merged.Where(x => x.LatestCase != null
+                && (x.LatestCase.Status == CaseStatus.Confirmed
+                 || x.LatestCase.Status == CaseStatus.End));
         }
 
         var mergedList = merged.ToList();

@@ -294,7 +294,8 @@ public sealed class CasesController : ControllerBase
         [FromBody] UpdateCaseSymptomsRequest request,
         CancellationToken ct)
     {
-        var result = await _cases.UpdateSymptomsAsync(caseId, request, ct);
+        var actingDoctorId = Guid.Parse(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)!);
+        var result = await _cases.UpdateSymptomsAsync(caseId, actingDoctorId, request, ct);
         return Ok(ApiResponse<CaseResponse>.Ok(result, "Case symptoms updated successfully"));
     }
 
@@ -313,7 +314,8 @@ public sealed class CasesController : ControllerBase
         [FromBody] UpdateCaseDiagnosesRequest request,
         CancellationToken ct)
     {
-        var result = await _cases.UpdateDiagnosesAsync(caseId, request, ct);
+        var actingDoctorId = Guid.Parse(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)!);
+        var result = await _cases.UpdateDiagnosesAsync(caseId, actingDoctorId, request, ct);
         return Ok(ApiResponse<CaseResponse>.Ok(result, "Case diagnoses updated successfully"));
     }
 
@@ -332,7 +334,8 @@ public sealed class CasesController : ControllerBase
         [FromBody] UpdateCaseDiseasesRequest request,
         CancellationToken ct)
     {
-        var result = await _cases.UpdateDiseasesAsync(caseId, request, ct);
+        var actingDoctorId = Guid.Parse(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)!);
+        var result = await _cases.UpdateDiseasesAsync(caseId, actingDoctorId, request, ct);
         return Ok(ApiResponse<CaseResponse>.Ok(result, "Case diseases updated successfully"));
     }
 
@@ -351,7 +354,8 @@ public sealed class CasesController : ControllerBase
         [FromBody] UpdateCaseAllergiesRequest request,
         CancellationToken ct)
     {
-        var result = await _cases.UpdateAllergiesAsync(caseId, request, ct);
+        var actingDoctorId = Guid.Parse(User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)!);
+        var result = await _cases.UpdateAllergiesAsync(caseId, actingDoctorId, request, ct);
         return Ok(ApiResponse<CaseResponse>.Ok(result, "Case allergies updated successfully"));
     }
 

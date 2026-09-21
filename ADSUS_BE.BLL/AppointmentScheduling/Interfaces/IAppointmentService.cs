@@ -37,6 +37,17 @@ public interface IAppointmentService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Chi tiết một lịch hẹn có kiểm tra quyền sở hữu (BR-065).
+    /// Chỉ bệnh nhân được gán, bác sĩ phụ trách hoặc Admin mới được xem.
+    /// </summary>
+    Task<AppointmentResponse?> GetByIdAsync(
+        Guid appointmentId,
+        Guid currentUserId,
+        string currentUserRole,
+        Guid? currentPatientProfileId = null,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Đặt lịch hẹn mới (UC-13).
     /// BR-01: Slot phải tồn tại và có status = OPEN.
     /// BR-02: Kiểm tra không trùng booking.

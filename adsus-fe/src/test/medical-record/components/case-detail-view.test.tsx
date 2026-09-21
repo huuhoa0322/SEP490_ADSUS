@@ -716,7 +716,7 @@ describe("CaseDetailView", () => {
     expect(errorAlert).toHaveClass("font-bold", "text-destructive");
   });
 
-  it("lưới làm việc chính chia 2 cột responsive (grid lg:grid-cols-[1.7fr_1fr]) theo Phase 4", () => {
+  it("lưới làm việc chính chia 2 cột responsive (grid lg:grid-cols-[1.7fr_1fr])", () => {
     detailMock.mockReturnValue(makeCase("IN_PROGRESS"));
 
     const { container } = render(<CaseDetailView caseId="case-1" />);

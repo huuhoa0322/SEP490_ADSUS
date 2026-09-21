@@ -173,6 +173,7 @@ public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogReposito
             .Select(g => new
             {
                 PrescriptionItemId = g.Key,
+                DueDoses = g.Count(l => l.ScheduledTime <= DateTime.UtcNow),
                 TotalDoses = g.Count(),
                 TakenDoses = g.Count(l => l.Status == IntakeStatus.Taken),
                 PendingDoses = g.Count(l => l.Status == IntakeStatus.Pending),
@@ -191,9 +192,9 @@ public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogReposito
                     s.TotalDoses,
                     s.TakenDoses,
                     s.PendingDoses,
-                    s.TotalDoses == 0
+                    s.DueDoses == 0
                         ? 0
-                        : Math.Round(s.TakenDoses * 100.0 / s.TotalDoses, 1));
+                        : Math.Round(s.TakenDoses * 100.0 / s.DueDoses, 1));
             }
             else
             {

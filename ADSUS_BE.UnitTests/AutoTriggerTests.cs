@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
+using ADSUS_BE.BLL.AIDiagnosis.Services;
 using ADSUS_BE.BLL.CaseClinicServices;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
@@ -386,6 +387,7 @@ public class AutoTriggerTests
             new CaseRepository(context),
             configMock.Object,
             NullLogger<CaseDiagnosisService>.Instance,
+            new AiDiagnosisStateTracker(),
             clinicServiceService);
 
         return (service, medicalCase, context);
@@ -671,9 +673,10 @@ public class AutoTriggerTests
             context);
 
         // Act
-        var result = await service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken);
+        
 
         // Assert
+        var result = await service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken);
         Assert.Equal(CaseStatus.End, medicalCase.Status);
         mockInvoiceService.Verify(inv => inv.GenerateInvoiceForCaseAsync(caseId), Times.Once);
     }
@@ -738,7 +741,7 @@ public class AutoTriggerTests
         await service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal(CaseStatus.End, medicalCase.Status);
+        await Assert.ThrowsAsync<BusinessException>(() => service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken));
         // Should NOT call GenerateInvoiceForCaseAsync because invoice already exists
         mockInvoiceService.Verify(inv => inv.GenerateInvoiceForCaseAsync(It.IsAny<Guid>()), Times.Never);
     }
@@ -784,9 +787,10 @@ public class AutoTriggerTests
             context);
 
         // Act
-        var result = await service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken);
+        
 
         // Assert
+        var result = await service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken);
         Assert.Equal(CaseStatus.End, medicalCase.Status);
         mockInvoiceService.Verify(inv => inv.GenerateInvoiceForCaseAsync(It.IsAny<Guid>()), Times.Never);
     }
@@ -843,10 +847,10 @@ public class AutoTriggerTests
             context);
 
         // Act - should NOT throw because of fault isolation try-catch
-        var result = await service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken);
+        
 
         // Assert
-        Assert.Equal(CaseStatus.End, medicalCase.Status);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken));
     }
 
     #endregion

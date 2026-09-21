@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { getHomePathForRole, useAuthStore, useHasHydrated } from "@/store/auth-store";
 
-import { getSafeRedirect, useSignIn } from "../hooks/use-sign-in";
+import { useSignIn } from "../hooks/use-sign-in";
 import { useLatestAndroidRelease } from "../hooks/use-latest-android-release";
 import { getSignInErrorMessage } from "../lib/auth-messages";
 
@@ -50,10 +50,9 @@ export function SignInForm() {
 
   useEffect(() => {
     if (!alreadySignedIn || !user) return;
-    // Sau khi login xong quay về trang user đang muốn vào (vd /dat-lich) nếu có.
-    const redirectTo = getSafeRedirect(searchParams);
-    router.replace(redirectTo ?? getHomePathForRole(user.role));
-  }, [alreadySignedIn, user, router, searchParams]);
+    // Theo yêu cầu: luôn chuyển về trang mặc định của role thay vì redirect
+    router.replace(getHomePathForRole(user.role));
+  }, [alreadySignedIn, user, router]);
 
   // Chưa hydrate xong thì CHƯA BIẾT có phiên hay không — hiện spinner trong lúc đó thay vì
   // hiện form thật, nếu không người đã đăng nhập vẫn thấy form loé lên rồi mới bị đá đi

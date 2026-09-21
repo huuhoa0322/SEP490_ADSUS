@@ -277,7 +277,7 @@ void main() {
       expect(find.byType(RelativeDetailSheet), findsNothing);
     });
 
-    testWidgets('STRESS-WIDGET-04: isDeleting true disables delete button and shows CircularProgressIndicator', (tester) async {
+    testWidgets('STRESS-WIDGET-04: RelativeCard does not display delete button (delete disallowed)', (tester) async {
       var deleteTriggered = false;
       final sample = PatientRelationship(
         relationshipId: 'rel-del',
@@ -294,15 +294,11 @@ void main() {
         isDeleting: true,
         onDelete: () => deleteTriggered = true,
       ));
-      // CircularProgressIndicator animates continuously, pump a single frame
       await tester.pump();
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.byIcon(Icons.delete_outline), findsNothing);
-
-      // Attempt to tap delete button area
-      await tester.tap(find.byTooltip('Xóa người thân'), warnIfMissed: false);
-      await tester.pump();
+      expect(find.byTooltip('Xóa người thân'), findsNothing);
       expect(deleteTriggered, isFalse);
     });
 

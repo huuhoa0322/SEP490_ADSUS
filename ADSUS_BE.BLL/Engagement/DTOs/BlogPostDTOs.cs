@@ -1,4 +1,5 @@
 using ADSUS_BE.DAL.Entities;
+using System.ComponentModel.DataAnnotations;
 
 namespace ADSUS_BE.BLL.Engagement.DTOs;
 
@@ -59,6 +60,8 @@ public sealed class AdminBlogPostDetailResponse
 /// </summary>
 public sealed class CreateBlogPostRequest
 {
+    [Required]
+    [MaxLength(200, ErrorMessage = "Tiêu đề không được vượt quá 200 ký tự.")]
     public string Title { get; init; } = string.Empty;
     public string Content { get; init; } = string.Empty;
 }
@@ -68,6 +71,8 @@ public sealed class CreateBlogPostRequest
 /// </summary>
 public sealed class UpdateBlogPostRequest
 {
+    [Required]
+    [MaxLength(200, ErrorMessage = "Tiêu đề không được vượt quá 200 ký tự.")]
     public string Title { get; init; } = string.Empty;
     public string Content { get; init; } = string.Empty;
 }

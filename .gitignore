@@ -419,3 +419,7 @@ docs/
 
 #codex
 .codex/
+
+#kotlin
+.kotlin/
+**/android/.kotlin/
