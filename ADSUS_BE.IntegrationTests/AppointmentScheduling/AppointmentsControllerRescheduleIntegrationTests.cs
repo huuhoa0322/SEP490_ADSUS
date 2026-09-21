@@ -16,9 +16,12 @@ namespace ADSUS_BE.IntegrationTests.AppointmentScheduling;
 
 /// <summary>
 /// RBAC Integration tests for Appointment Reschedule endpoints:
-/// - POST /api/v1/appointments/{id}/reschedule
-/// - GET /api/v1/appointments/available-slots
-/// Verifies NURSE and ADMIN access (201 / 200), forbidden roles PATIENT, DOCTOR, PHARMACIST (403), and missing token (401).
+/// - POST /api/v1/appointments/{id}/reschedule — STAFF only (201). ADMIN was removed by
+///   commit 5bf512c "fix some authen" (19/09/2026); PATIENT, DOCTOR, PHARMACIST, ADMIN are
+///   forbidden (403).
+/// - GET /api/v1/appointments/available-slots — STAFF and ADMIN (200); PATIENT, DOCTOR,
+///   PHARMACIST are forbidden (403).
+/// Missing token is 401 on both.
 /// </summary>
 public class AppointmentsControllerRescheduleIntegrationTests
 {
@@ -32,7 +35,6 @@ public class AppointmentsControllerRescheduleIntegrationTests
 
     [Theory]
     [InlineData(UserRole.Staff)]
-    [InlineData(UserRole.Admin)]
     public async Task RescheduleAppointment_AuthorizedRoles_ReturnsCreated(UserRole role)
     {
         using var app = CreateApp();
@@ -74,6 +76,7 @@ public class AppointmentsControllerRescheduleIntegrationTests
     [InlineData(UserRole.Patient)]
     [InlineData(UserRole.Doctor)]
     [InlineData(UserRole.Pharmacist)]
+    [InlineData(UserRole.Admin)]
     public async Task RescheduleAppointment_UnauthorizedRoles_IsForbidden(UserRole role)
     {
         using var app = CreateApp();
