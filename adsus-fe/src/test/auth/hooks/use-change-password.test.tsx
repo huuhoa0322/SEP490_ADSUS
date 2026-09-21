@@ -33,6 +33,24 @@ function nguoiDung(overrides: Partial<AuthUser> = {}): AuthUser {
   };
 }
 
+/**
+ * Backend giờ trả token MỚI trong response của change-password (sửa 21/09/2026) — access token
+ * cũ có thể vẫn mang cờ mustChangePassword=true và bị MustChangePasswordMiddleware chặn 403
+ * cho các request sau đó nếu không thay bằng token mới ngay.
+ */
+function newTokenPayload(overrides: Partial<AuthUser> = {}) {
+  const user = nguoiDung({ mustChangePassword: false, ...overrides });
+  return {
+    userId: user.userId,
+    accessToken: "new-access-token",
+    refreshToken: "new-refresh-token",
+    role: user.role,
+    fullName: user.fullName,
+    email: user.email,
+    mustChangePassword: user.mustChangePassword,
+  };
+}
+
 describe("useChangePassword", () => {
   beforeEach(() => {
     replaceMock.mockClear();
@@ -44,7 +62,11 @@ describe("useChangePassword", () => {
 
     server.use(
       http.post(`${API_BASE_URL}/api/v1/auth/change-password`, () =>
-        HttpResponse.json({ code: 200, message: "Password changed successfully.", data: null }),
+        HttpResponse.json({
+          code: 200,
+          message: "Password changed successfully.",
+          data: newTokenPayload({ role: "ADMIN" }),
+        }),
       ),
     );
 
@@ -58,15 +80,21 @@ describe("useChangePassword", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(useAuthStore.getState().user?.mustChangePassword).toBe(false);
+    expect(useAuthStore.getState().accessToken).toBe("new-access-token");
+    expect(useAuthStore.getState().refreshToken).toBe("new-refresh-token");
     expect(replaceMock).toHaveBeenCalledWith("/dashboard");
   });
 
-  it("đổi tự nguyện (mustChangePassword=false) — xoá cờ nhưng KHÔNG điều hướng đi đâu", async () => {
+  it("đổi tự nguyện (mustChangePassword=false) — cập nhật token nhưng KHÔNG điều hướng đi đâu", async () => {
     useAuthStore.setState({ user: nguoiDung({ role: "DOCTOR", mustChangePassword: false }) });
 
     server.use(
       http.post(`${API_BASE_URL}/api/v1/auth/change-password`, () =>
-        HttpResponse.json({ code: 200, message: "Password changed successfully.", data: null }),
+        HttpResponse.json({
+          code: 200,
+          message: "Password changed successfully.",
+          data: newTokenPayload({ role: "DOCTOR" }),
+        }),
       ),
     );
 
@@ -80,6 +108,7 @@ describe("useChangePassword", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(useAuthStore.getState().user?.mustChangePassword).toBe(false);
+    expect(useAuthStore.getState().accessToken).toBe("new-access-token");
     expect(replaceMock).not.toHaveBeenCalled();
   });
 

@@ -38,9 +38,12 @@ public interface IAuthService
 
     /// <summary>
     /// UC-25 — a signed-in user changes their own password.
-    /// A successful change also clears the mandatory-change flag if one was set.
+    /// A successful change also clears the mandatory-change flag if one was set, and issues a
+    /// fresh access/refresh token pair (Tokens is non-null only on Success) — the caller's old
+    /// access token may still carry the MustChangePassword claim and would otherwise keep being
+    /// rejected by MustChangePasswordMiddleware until a separate re-login.
     /// </summary>
-    Task<ChangePasswordResult> ChangePasswordAsync(
+    Task<(ChangePasswordResult Result, LoginResponse? Tokens)> ChangePasswordAsync(
         Guid userId,
         ChangePasswordRequest request,
         CancellationToken cancellationToken = default);

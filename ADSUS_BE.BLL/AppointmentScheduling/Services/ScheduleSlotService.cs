@@ -366,6 +366,17 @@ public sealed class ScheduleSlotService : IScheduleSlotService
         var nowVn = DateTime.UtcNow.Add(ClinicClock.Offset);
         var todayVn = DateOnly.FromDateTime(nowVn);
         var currentTimeVn = TimeOnly.FromDateTime(nowVn);
+        var windowEnd = weekStart.AddDays(29);
+
+        // 1 câu SELECT lấy hết slot đã có của doctor trong cả 30 ngày, thay vì 480 lượt
+        // HasOverlapAsync riêng lẻ (30 ngày × 16 ca) — mỗi lượt là 1 round-trip DB. Với DB test
+        // thật (mạng thật, không phải localhost) cách cũ mất hơn 100 giây, đủ để HttpClient tự
+        // huỷ request (phát hiện qua System Test, sửa 21/09/2026).
+        var existingSlots = await _repo.ListByRangeAsync(weekStart, windowEnd, doctorId, statusFilter: null, ct);
+
+        bool HasExistingOverlap(DateOnly day, TimeOnly start, TimeOnly end) =>
+            existingSlots.Any(s => s.SlotDate == day && s.StartTime < end && start < s.EndTime);
+
         var newSlots = new List<ScheduleSlot>();
 
         // 30 ngày.
@@ -379,10 +390,7 @@ public sealed class ScheduleSlotService : IScheduleSlotService
                 // Skip ca trong quá khứ.
                 if (day < todayVn || (day == todayVn && start <= currentTimeVn)) continue;
 
-                var hasOverlap = await _repo.HasOverlapAsync(
-                    doctorId, day, start, end,
-                    excludeSlotId: null, ct);
-                if (hasOverlap) continue; // Doctor đã có slot trong range này (tách ca hoặc tự thêm).
+                if (HasExistingOverlap(day, start, end)) continue; // Doctor đã có slot trong range này (tách ca hoặc tự thêm).
 
                 newSlots.Add(new ScheduleSlot
                 {
@@ -398,18 +406,34 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             }
         }
 
-        foreach (var s in newSlots)
+        if (newSlots.Count == 0) return;
+
+        // 1 SaveChanges hàng loạt thay vì 1 round-trip / slot.
+        try
         {
-            try
+            await _repo.AddRangeAsync(newSlots, ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx
+            && (pgEx.SqlState == "23505" || pgEx.SqlState == "23P01"))
+        {
+            // 23505: Unique constraint (uq_schedule_slots_start) bị vi phạm
+            // 23P01: EXCLUDE constraint (ex_schedule_slots_no_overlap) bị vi phạm
+            // → 1 request khác đã chèn slot trùng giữa lúc đọc existingSlots và lúc ghi (race
+            // hiếm gặp). Rơi về chèn từng slot một để không mất các slot hợp lệ còn lại trong
+            // batch, vẫn giữ đúng tính idempotent.
+            foreach (var entry in _db.ChangeTracker.Entries<ScheduleSlot>().ToList())
+                entry.State = EntityState.Detached;
+
+            foreach (var s in newSlots)
             {
-                await _repo.AddAsync(s, ct);
-            }
-            catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx
-                && (pgEx.SqlState == "23505" || pgEx.SqlState == "23P01"))
-            {
-                // 23505: Unique constraint (uq_schedule_slots_start) bị vi phạm
-                // 23P01: EXCLUDE constraint (ex_schedule_slots_no_overlap) bị vi phạm
-                // → slot đã tồn tại. Bỏ qua để giữ idempotent.
+                try
+                {
+                    await _repo.AddAsync(s, ct);
+                }
+                catch (DbUpdateException exOne) when (exOne.InnerException is Npgsql.PostgresException pgExOne
+                    && (pgExOne.SqlState == "23505" || pgExOne.SqlState == "23P01"))
+                {
+                }
             }
         }
     }

@@ -748,10 +748,15 @@ namespace ADSUS_BE
             });
 
             // Scans the whole BLL assembly, so validators added by other modules are picked
-            // up automatically.
+            // up automatically. Controllers call ValidateAsync() by hand and wrap failures in
+            // ApiResponse<T>.Fail(...) themselves — do NOT also call AddFluentValidationAutoValidation()
+            // here. That filter runs before the action and short-circuits with ASP.NET Core's
+            // default ValidationProblemDetails body ({type, title, status, errors}, no "message"
+            // field), which isn't the app's ApiResponse<T> envelope and silently empties out
+            // Message on the client for every 400 across the API (found via System Test, fixed
+            // 21/09/2026 — it briefly existed between commit 1447319 and this fix).
             builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
-            builder.Services.AddFluentValidationAutoValidation();
-            
+
             // Add MemoryCache for Lockout mechanism
             builder.Services.AddMemoryCache();
 

@@ -76,7 +76,33 @@ describe("forgotPassword", () => {
 });
 
 describe("changePassword", () => {
-  it("resolve thành công khi backend trả 200", async () => {
+  it("trả về cặp token mới khi backend trả 200 (sửa 21/09/2026, token cũ có thể còn mang cờ mustChangePassword)", async () => {
+    const newTokens = {
+      userId: "user-1",
+      accessToken: "new-access-token",
+      refreshToken: "new-refresh-token",
+      role: "DOCTOR",
+      fullName: "Test Doctor",
+      email: null,
+      mustChangePassword: false,
+    };
+
+    server.use(
+      http.post(`${API_BASE_URL}/api/v1/auth/change-password`, () =>
+        HttpResponse.json({ code: 200, message: "Password changed successfully.", data: newTokens }),
+      ),
+    );
+
+    await expect(
+      changePassword({
+        currentPassword: "Aa123456@",
+        newPassword: "Bb987654@",
+        confirmNewPassword: "Bb987654@",
+      }),
+    ).resolves.toEqual(newTokens);
+  });
+
+  it("ném lỗi khi backend trả 200 nhưng data rỗng (bug backend, không phải trạng thái hợp lệ)", async () => {
     server.use(
       http.post(`${API_BASE_URL}/api/v1/auth/change-password`, () =>
         HttpResponse.json({ code: 200, message: "Password changed successfully.", data: null }),
@@ -89,6 +115,6 @@ describe("changePassword", () => {
         newPassword: "Bb987654@",
         confirmNewPassword: "Bb987654@",
       }),
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow();
   });
 });

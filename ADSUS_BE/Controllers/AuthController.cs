@@ -169,7 +169,7 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("change-password")]
     [Authorize]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
@@ -192,12 +192,16 @@ public class AuthController : ControllerBase
                 StatusCodes.Status401Unauthorized, "Invalid access token."));
         }
 
-        var result = await _auth.ChangePasswordAsync(userId, request, cancellationToken);
+        var (result, tokens) = await _auth.ChangePasswordAsync(userId, request, cancellationToken);
 
         return result switch
         {
+            // A fresh token pair is returned so the caller can replace the one they're holding:
+            // that old token may still carry the MustChangePassword claim, and
+            // MustChangePasswordMiddleware would keep rejecting every request made with it
+            // otherwise, forcing an unnecessary logout/login round trip.
             ChangePasswordResult.Success =>
-                Ok(ApiResponse<object>.Ok(null!, "Password changed successfully.")),
+                Ok(ApiResponse<LoginResponse>.Ok(tokens!, "Password changed successfully.")),
 
             // AF-01. Naming the cause is fine here — the caller is authenticated and acting
             // on their own account, so nothing is disclosed to anyone else.

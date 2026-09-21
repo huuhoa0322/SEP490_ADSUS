@@ -168,7 +168,7 @@ public class AiModelLifecycleTests
         await RegisterAndActivateAsync(admin, versionCode, ct);
 
         var doctor = await CreateAccountAsync(admin, "STC007 Doctor", "DOCTOR", ct);
-        var doctorClient = await LoginAndAuthorizeAsync(app, doctor.Account.PhoneNumber, doctor.TemporaryPassword, ct);
+        var doctorClient = await LoginAndForcePasswordChangeAsync(app, doctor.Account.PhoneNumber, doctor.TemporaryPassword, ct);
 
         var response = await doctorClient.GetAsync("/api/v1/ai-model-versions/active", ct);
 
@@ -233,6 +233,31 @@ public class AiModelLifecycleTests
         }, ct);
         loginResponse.EnsureSuccessStatusCode();
         var body = await loginResponse.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>(ct);
+
+        var client = app.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", body!.Data!.AccessToken);
+        return client;
+    }
+
+    private const string FinalTestPassword = "Aa123456@";
+
+    /// <summary>Đăng nhập bằng mật khẩu tạm do Admin cấp, rồi đổi ngay sang mật khẩu cố định.
+    /// MustChangePasswordMiddleware chặn (403) mọi request khác ngoài change-password/logout khi
+    /// access token còn mang claim MustChangePassword=true. AuthService.ChangePasswordAsync phát
+    /// token mới ngay trong response (sửa 21/09/2026, giống LoginAsync) nên chỉ cần 1 vòng đăng
+    /// nhập, không cần đăng nhập lại lần 2.</summary>
+    private static async Task<HttpClient> LoginAndForcePasswordChangeAsync(
+        WebApplicationFactory<Program> app, string phone, string temporaryPassword, CancellationToken ct)
+    {
+        var tempClient = await LoginAndAuthorizeAsync(app, phone, temporaryPassword, ct);
+        var changeResponse = await tempClient.PostAsJsonAsync("/api/v1/auth/change-password", new
+        {
+            newPassword = FinalTestPassword,
+            confirmNewPassword = FinalTestPassword,
+        }, ct);
+        changeResponse.EnsureSuccessStatusCode();
+        var body = await changeResponse.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>(ct);
 
         var client = app.CreateClient();
         client.DefaultRequestHeaders.Authorization =

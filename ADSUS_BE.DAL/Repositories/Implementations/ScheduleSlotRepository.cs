@@ -125,6 +125,12 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
         return slot;
     }
 
+    public async Task AddRangeAsync(IEnumerable<ScheduleSlot> slots, CancellationToken ct = default)
+    {
+        _db.ScheduleSlots.AddRange(slots);
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task UpdateAsync(ScheduleSlot slot, CancellationToken ct = default)
     {
         _db.ScheduleSlots.Update(slot);
