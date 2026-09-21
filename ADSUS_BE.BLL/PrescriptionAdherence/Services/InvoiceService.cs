@@ -210,8 +210,15 @@ public class InvoiceService : IInvoiceService
         return invoice.Id;
     }
 
+    private const int MaxInvoicePageSize = 100;
+
     public async Task<PagedResult<InvoiceResponse>> GetInvoicesAsync(InvoiceFilter filter)
     {
+        // NFR-PER-03: giá»›i háº¡n kÃ­ch thÆ°á»›c trang â€” trÆ°á»›c Ä‘Ã¢y filter.PageSize Ä‘i tháº³ng vÃ o
+        // Skip/Take khÃ´ng qua kiá»ƒm tra, 1 client gá»­i ?pageSize=999999 sáº½ kÃ©o cáº£ báº£ng invoice.
+        var page = filter.Page < 1 ? 1 : filter.Page;
+        var pageSize = filter.PageSize is < 1 or > MaxInvoicePageSize ? 10 : filter.PageSize;
+
         var query = _context.Invoices
             .Include(i => i.Case)
                 .ThenInclude(c => c.PatientProfile)
@@ -241,8 +248,8 @@ public class InvoiceService : IInvoiceService
         var totalCount = await query.CountAsync();
 
         var items = await query
-            .Skip((filter.Page - 1) * filter.PageSize)
-            .Take(filter.PageSize)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(i => new InvoiceResponse
             {
                 Id = i.Id,
@@ -257,8 +264,8 @@ public class InvoiceService : IInvoiceService
             .ToListAsync();
 
         return new PagedResult<InvoiceResponse>(
-            items, filter.Page, filter.PageSize, totalCount,
-            (int)Math.Ceiling(totalCount / (double)filter.PageSize));
+            items, page, pageSize, totalCount,
+            (int)Math.Ceiling(totalCount / (double)pageSize));
     }
 
     public async Task<InvoiceDetailResponse> GetInvoiceDetailAsync(Guid id)
@@ -438,8 +445,8 @@ public class InvoiceService : IInvoiceService
 
                             if (invoice.Status == InvoiceStatus.PENDING)
                             {
-                                // Xóa luôn giao d?ch tr? kho ban d?u d? tránh rác d? li?u (don chua thanh toán)
-                                // N?u refundQtyBase < txn.QuantityBase thì sao? Th?c t? don PENDING thì chua u?ng thu?c nên luôn refund full.
+                                // Xï¿½a luï¿½n giao d?ch tr? kho ban d?u d? trï¿½nh rï¿½c d? li?u (don chua thanh toï¿½n)
+                                // N?u refundQtyBase < txn.QuantityBase thï¿½ sao? Th?c t? don PENDING thï¿½ chua u?ng thu?c nï¿½n luï¿½n refund full.
                                 if (refundQtyBase == txn.QuantityBase)
                                 {
                                     _context.InventoryTransactions.Remove(txn);
@@ -461,7 +468,7 @@ public class InvoiceService : IInvoiceService
                                     QuantityInUnit = refundQtyBase,
                                     QuantityBase = refundQtyBase,
                                     TxnDate = DateTime.UtcNow,
-                                    Reason = "Hoàn kho t? d?ng do h?y hóa don",
+                                    Reason = "Hoï¿½n kho t? d?ng do h?y hï¿½a don",
                                     PrescriptionItemId = txn.PrescriptionItemId
                                 };
                                 
