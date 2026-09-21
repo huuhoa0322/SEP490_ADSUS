@@ -75,7 +75,7 @@ public class InvoicesControllerBusinessTests
 
         var nonExistentId = Guid.NewGuid();
         _invoiceService
-            .Setup(s => s.PayAndDispenseAsync(nonExistentId, It.IsAny<PaymentMethod>()))
+            .Setup(s => s.PayInvoiceAsync(nonExistentId, It.IsAny<PaymentMethod>()))
             .ThrowsAsync(new BusinessException("Không tìm thấy hóa đơn."));
 
         var payload = new StringContent(
@@ -98,7 +98,7 @@ public class InvoicesControllerBusinessTests
 
         var invoiceId = Guid.NewGuid();
         _invoiceService
-            .Setup(s => s.PayAndDispenseAsync(invoiceId, It.IsAny<PaymentMethod>()))
+            .Setup(s => s.PayInvoiceAsync(invoiceId, It.IsAny<PaymentMethod>()))
             .ThrowsAsync(new BusinessException("Hóa đơn này đã được thanh toán."));
 
         var payload = new StringContent(

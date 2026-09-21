@@ -183,6 +183,55 @@ public sealed class AppointmentService : IAppointmentService
         return ToAppointmentResponse(appointment);
     }
 
+    public async Task<AppointmentResponse?> GetByIdAsync(
+        Guid appointmentId,
+        Guid currentUserId,
+        string currentUserRole,
+        Guid? currentPatientProfileId = null,
+        CancellationToken ct = default)
+    {
+        var appointment = await _appointmentRepo.GetByIdAsync(appointmentId, ct);
+        if (appointment == null) return null;
+
+        // BR-065: Quyền xem chi tiết lịch hẹn:
+        // 1. Admin được phép xem tất cả lịch hẹn
+        var isAdmin = string.Equals(currentUserRole, "ADMIN", StringComparison.OrdinalIgnoreCase);
+        if (isAdmin)
+        {
+            return ToAppointmentResponse(appointment);
+        }
+
+        // 2. Bác sĩ phụ trách lịch hẹn (khớp DoctorId của Slot hoặc Doctor User)
+        var isDoctor = string.Equals(currentUserRole, "DOCTOR", StringComparison.OrdinalIgnoreCase);
+        var isAssignedDoctor = appointment.Slot != null &&
+            (appointment.Slot.DoctorId == currentUserId || (appointment.Slot.Doctor != null && appointment.Slot.Doctor.UserId == currentUserId));
+
+        if (isDoctor && isAssignedDoctor)
+        {
+            return ToAppointmentResponse(appointment);
+        }
+
+        // 3. Bệnh nhân của lịch hẹn (chính chủ qua UserId, PatientProfileId, hoặc người thân đặt hộ qua BookedByUserId)
+        var isPatient = string.Equals(currentUserRole, "PATIENT", StringComparison.OrdinalIgnoreCase);
+        var isAssignedPatient =
+            (appointment.PatientProfile != null && appointment.PatientProfile.UserId == currentUserId) ||
+            (appointment.BookedByUserId.HasValue && appointment.BookedByUserId.Value == currentUserId) ||
+            (currentPatientProfileId.HasValue && appointment.PatientProfileId == currentPatientProfileId.Value);
+
+        if (isPatient && isAssignedPatient)
+        {
+            return ToAppointmentResponse(appointment);
+        }
+
+        // Nếu khớp trực tiếp phân quyền bác sĩ hoặc bệnh nhân kể cả khi role không trùng khớp hoàn toàn
+        if (isAssignedDoctor || isAssignedPatient)
+        {
+            return ToAppointmentResponse(appointment);
+        }
+
+        throw new UnauthorizedAccessException("Bạn không có quyền truy cập thông tin lịch hẹn này.");
+    }
+
     public Task<AppointmentResponse> BookAppointmentAsync(
         Guid patientProfileId,
         BookAppointmentRequest request,
@@ -402,7 +451,7 @@ public sealed class AppointmentService : IAppointmentService
             AppointmentId = Guid.NewGuid(),
             SlotId = request.ScheduleSlotId,
             PatientProfileId = targetPatientProfileId,
-            Reason = request.Reason != null ? HtmlHelper.StripToPlainText(request.Reason) : null,
+            Reason = request.Reason,
             Status = AppointmentStatus.Booked,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
@@ -738,6 +787,17 @@ public sealed class AppointmentService : IAppointmentService
         if (appointment.Status != AppointmentStatus.Booked)
         {
             throw new InvalidOperationException("Chỉ lịch hẹn đang đặt mới được hủy.");
+        }
+
+        // BR-057: Phải hủy lịch ít nhất trước 12 giờ
+        var nowVn = GetNowVietnam();
+        if (appointment.Slot != null)
+        {
+            var startDateTime = appointment.Slot.SlotDate.ToDateTime(appointment.Slot.StartTime);
+            if (nowVn >= startDateTime.AddHours(-12))
+            {
+                throw new InvalidOperationException("Chỉ có thể hủy lịch ít nhất 12 giờ trước thời gian bắt đầu ca khám.");
+            }
         }
 
         // Update appointment
@@ -1537,7 +1597,7 @@ public sealed class AppointmentService : IAppointmentService
 
         if (request.Reason != null)
         {
-            appointment.Reason = HtmlHelper.StripToPlainText(request.Reason);
+            appointment.Reason = request.Reason;
         }
 
         var validSymptoms = request.Symptoms?
@@ -1645,16 +1705,13 @@ public sealed class AppointmentService : IAppointmentService
         var nextAppointment = await _db.Appointments
             .Include(a => a.Slot)
             .Include(a => a.PatientProfile).ThenInclude(p => p.User)
+            .Include(a => a.Case)
             .Where(a => a.Slot.DoctorId == doctorId
                 && a.Slot.SlotDate == todayVn
-                && (a.Status == AppointmentStatus.Completed || a.Status == AppointmentStatus.Booked))
+                && (a.Status == AppointmentStatus.Completed || a.Status == AppointmentStatus.Booked)
+                && (a.Case == null || (a.Case.Status != CaseStatus.End && a.Case.Status != CaseStatus.Confirmed)))
             .OrderBy(a => a.Slot.StartTime)
             .FirstOrDefaultAsync(ct);
-
-        var patientName = nextAppointment?.PatientProfile?.User?.FullName
-            ?? nextAppointment?.PatientProfile?.FullName
-            ?? "bệnh nhân tiếp theo";
-        var slotTime = nextAppointment?.Slot?.StartTime.ToString("HH:mm") ?? "";
 
         // Bắn SignalR notification tới Staff/Lễ tân
         var staffUsers = await _db.Users
@@ -1663,21 +1720,39 @@ public sealed class AppointmentService : IAppointmentService
             .Select(u => u.UserId)
             .ToListAsync(ct);
 
+        string title = "Bác sĩ sẵn sàng tiếp nhận";
+        string body;
+        var metadata = new Dictionary<string, object>
+        {
+            ["doctorId"] = doctorId.ToString(),
+            ["doctorName"] = doctor.FullName,
+        };
+
+        if (nextAppointment != null)
+        {
+            var patientName = nextAppointment.PatientProfile?.User?.FullName
+                ?? nextAppointment.PatientProfile?.FullName
+                ?? "bệnh nhân";
+            var slotTime = nextAppointment.Slot?.StartTime.ToString("HH:mm") ?? "";
+            
+            body = $"BS. {doctor.FullName} đã sẵn sàng tiếp nhận ca tiếp theo: {patientName} ({slotTime}). Mời bệnh nhân vào phòng khám.";
+            metadata["patientName"] = patientName;
+        }
+        else
+        {
+            body = $"BS. {doctor.FullName} đã sẵn sàng tiếp nhận ca tiếp theo.";
+        }
+
         foreach (var staffId in staffUsers)
         {
             await _notificationService.SendAsync(new SendNotificationRequest
             {
                 UserId = staffId,
                 Type = "doctor_ready_next",
-                Title = "Bác sĩ sẵn sàng tiếp nhận",
-                Body = $"BS. {doctor.FullName} đã sẵn sàng tiếp nhận ca tiếp theo: {patientName} ({slotTime}). Mời bệnh nhân vào phòng khám.",
+                Title = title,
+                Body = body,
                 DeepLink = "/checkin",
-                Metadata = new Dictionary<string, object>
-                {
-                    ["doctorId"] = doctorId.ToString(),
-                    ["doctorName"] = doctor.FullName,
-                    ["patientName"] = patientName,
-                }
+                Metadata = metadata
             }, ct);
         }
     }

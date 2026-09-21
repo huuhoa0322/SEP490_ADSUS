@@ -337,36 +337,45 @@ public sealed class CaseService : ICaseService
             throw new BusinessException("Only confirmed cases can be ended without prescription.");
         }
 
-        medicalCase.Status = CaseStatus.End;
-        medicalCase.UpdatedAt = DateTime.UtcNow;
-
-        await _cases.SaveChangesAsync(ct);
-
-        // Auto-trigger: Sinh hóa đơn khi ca kết thúc nếu có dịch vụ/thuốc và chưa có hóa đơn
         if (_context != null && _invoiceService != null)
         {
-            var hasInvoice = await _context.Invoices.AnyAsync(i => i.CaseId == caseId 
-                && (i.Status == InvoiceStatus.PENDING || i.Status == InvoiceStatus.PAID), ct);
-
-            if (!hasInvoice)
+            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+            try
             {
-                var hasServiceOrMedicine = 
-                    await _context.CaseClinicServices.AnyAsync(cs => cs.CaseId == caseId, ct)
-                    || await _context.Prescriptions.AnyAsync(p => p.CaseId == caseId 
-                        && p.Status == PrescriptionStatus.Active, ct);
+                medicalCase.Status = CaseStatus.End;
+                medicalCase.UpdatedAt = DateTime.UtcNow;
+                await _cases.SaveChangesAsync(ct);
 
-                if (hasServiceOrMedicine)
+                var hasInvoice = await _context.Invoices.AnyAsync(i => i.CaseId == caseId 
+                    && (i.Status == InvoiceStatus.PENDING || i.Status == InvoiceStatus.PAID), ct);
+
+                if (!hasInvoice)
                 {
-                    try
+                    var hasServiceOrMedicine = 
+                        await _context.CaseClinicServices.AnyAsync(cs => cs.CaseId == caseId, ct)
+                        || await _context.Prescriptions.AnyAsync(p => p.CaseId == caseId 
+                            && p.Status == PrescriptionStatus.Active, ct);
+
+                    if (hasServiceOrMedicine)
                     {
                         await _invoiceService.GenerateInvoiceForCaseAsync(caseId);
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Tự động tạo hóa đơn khi kết thúc ca {CaseId} thất bại", caseId);
-                    }
                 }
+
+                await transaction.CommitAsync(ct);
             }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(ct);
+                _logger.LogError(ex, "EndCase + Invoice failed for case {CaseId}, rolling back", caseId);
+                throw;
+            }
+        }
+        else
+        {
+            medicalCase.Status = CaseStatus.End;
+            medicalCase.UpdatedAt = DateTime.UtcNow;
+            await _cases.SaveChangesAsync(ct);
         }
 
         _logger.LogInformation("Case {CaseId} ended without prescription by doctor {DoctorId}", caseId, actingDoctorId);
@@ -376,10 +385,11 @@ public sealed class CaseService : ICaseService
 
     public async Task<CaseResponse> UpdateSymptomsAsync(
         Guid caseId,
+        Guid actingDoctorId,
         UpdateCaseSymptomsRequest request,
         CancellationToken ct = default)
     {
-        var medicalCase = await LoadForClinicalUpdateAsync(caseId, ct);
+        var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
         if (_context != null)
         {
@@ -426,10 +436,11 @@ public sealed class CaseService : ICaseService
 
     public async Task<CaseResponse> UpdateDiseasesAsync(
         Guid caseId,
+        Guid actingDoctorId,
         UpdateCaseDiseasesRequest request,
         CancellationToken ct = default)
     {
-        var medicalCase = await LoadForClinicalUpdateAsync(caseId, ct);
+        var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
         if (_context != null)
         {
@@ -475,10 +486,11 @@ public sealed class CaseService : ICaseService
 
     public async Task<CaseResponse> UpdateAllergiesAsync(
         Guid caseId,
+        Guid actingDoctorId,
         UpdateCaseAllergiesRequest request,
         CancellationToken ct = default)
     {
-        var medicalCase = await LoadForClinicalUpdateAsync(caseId, ct);
+        var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
         if (_context != null)
         {
@@ -524,10 +536,11 @@ public sealed class CaseService : ICaseService
 
     public async Task<CaseResponse> UpdateDiagnosesAsync(
         Guid caseId,
+        Guid actingDoctorId,
         UpdateCaseDiagnosesRequest request,
         CancellationToken ct = default)
     {
-        var medicalCase = await LoadForClinicalUpdateAsync(caseId, ct);
+        var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
         if (medicalCase.Status == CaseStatus.Booked)
         {
@@ -721,7 +734,7 @@ public sealed class CaseService : ICaseService
     /// Tải ca (có theo dõi kèm collections) và kiểm điều kiện trạng thái: chỉ cho phép sửa
     /// khi ca đang ở trạng thái IN_PROGRESS hoặc BOOKED. Chặn khi CONFIRMED, END hoặc CANCELLED.
     /// </summary>
-    private async Task<Case> LoadForClinicalUpdateAsync(Guid caseId, CancellationToken ct)
+    private async Task<Case> LoadForClinicalUpdateAsync(Guid caseId, Guid actingDoctorId, CancellationToken ct)
     {
         var medicalCase = await _cases.GetForUpdateWithCollectionsAsync(caseId, ct)
             ?? throw new ResourceNotFoundException("Case not found.");
@@ -730,6 +743,9 @@ public sealed class CaseService : ICaseService
         {
             throw new BusinessException("Cannot modify a locked or cancelled case.");
         }
+
+        if (medicalCase.DoctorId != actingDoctorId)
+            throw new BusinessException("Only the responsible doctor can modify this case.");
 
         return medicalCase;
     }

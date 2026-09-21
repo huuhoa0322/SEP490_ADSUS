@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using ADSUS_BE.BLL.AIDiagnosis.Services;
 using ADSUS_BE.BLL.AIModelManagement.DTOs;
 using ADSUS_BE.BLL.AIModelManagement.Interfaces;
 using ADSUS_BE.BLL.AIModelManagement.Mappers;
@@ -20,18 +21,22 @@ public class AiModelService : IAiModelService
     private readonly AiBackendSettings _aiBackendSettings;
     private readonly ILogger<AiModelService> _logger;
 
+    private readonly IAiDiagnosisStateTracker _tracker;
+
     public AiModelService(
         IAiModelVersionRepository aiModelVersionRepository,
         IAuditLogRepository auditLogRepository,
         IHttpClientFactory httpClientFactory,
         IOptions<AiBackendSettings> aiBackendSettings,
-        ILogger<AiModelService> logger)
+        ILogger<AiModelService> logger,
+        IAiDiagnosisStateTracker tracker)
     {
         _aiModelVersionRepository = aiModelVersionRepository;
         _auditLogRepository = auditLogRepository;
         _httpClientFactory = httpClientFactory;
         _aiBackendSettings = aiBackendSettings.Value;
         _logger = logger;
+        _tracker = tracker;
     }
 
     public async Task<PagedResult<AiModelVersionDto>> SearchVersionsAsync(string? keyword, int page = 1, int pageSize = 20, CancellationToken cancellationToken = default)
@@ -151,6 +156,11 @@ public class AiModelService : IAiModelService
 
     public async Task ActivateVersionAsync(Guid id, Guid adminId, CancellationToken cancellationToken = default)
     {
+        if (_tracker.IsAnyDiagnosisInProgress())
+        {
+            throw new BusinessException("Hiện đang có ca khám sử dụng model AI để chẩn đoán. Vui lòng chờ đến khi các ca khám này hoàn tất (hoặc hủy) trước khi đổi model.");
+        }
+
         var targetVersion = await _aiModelVersionRepository.GetByIdAsync(id, cancellationToken);
         if (targetVersion == null)
         {

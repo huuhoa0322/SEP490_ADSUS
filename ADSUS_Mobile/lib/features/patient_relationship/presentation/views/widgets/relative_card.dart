@@ -10,14 +10,14 @@ class RelativeCard extends StatelessWidget {
   const RelativeCard({
     super.key,
     required this.relative,
-    required this.isDeleting,
-    required this.onDelete,
+    this.isDeleting = false,
+    this.onDelete,
     this.onEdit,
   });
 
   final PatientRelationship relative;
   final bool isDeleting;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
   final VoidCallback? onEdit;
 
   @override
@@ -148,20 +148,6 @@ class RelativeCard extends StatelessWidget {
                       // MyRelativesScreen sẽ tự rebuild vì updateRelativeLocally đã cập nhật state
                     },
                 tooltip: 'Chỉnh sửa thông tin',
-              ),
-
-              // Nút xóa
-              IconButton(
-                icon: isDeleting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.delete_outline),
-                color: AppColors.danger,
-                onPressed: isDeleting ? null : onDelete,
-                tooltip: 'Xóa người thân',
               ),
             ],
           ),

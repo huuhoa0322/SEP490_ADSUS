@@ -62,12 +62,12 @@ public sealed class ChatHistoryResponse
 /// </summary>
 public static class ChatRateLimitConstants
 {
-    /// <summary>Số lần gọi LLM tối đa mỗi 5 giờ cho mỗi user.</summary>
-    public const int MaxCallsPerHour = 15;
+    /// <summary>Số lần gọi LLM tối đa mỗi 1 tiếng cho mỗi user.</summary>
+    public const int MaxCallsPerWindow = 50;
 
     /// <summary>Ngưỡng bắt đầu hiển thị warning.</summary>
-    public const int WarningThreshold = 10;
+    public const int WarningThreshold = 40;
 
     /// <summary>Khoảng thời gian tính rate limit.</summary>
-    public static readonly TimeSpan RateLimitWindow = TimeSpan.FromHours(5);
+    public static readonly TimeSpan RateLimitWindow = TimeSpan.FromHours(1);
 }

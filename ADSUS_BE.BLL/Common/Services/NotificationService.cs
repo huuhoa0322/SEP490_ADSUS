@@ -1,4 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ADSUS_BE.BLL.Common.DTOs;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.DAL.Entities;
@@ -11,7 +13,7 @@ namespace ADSUS_BE.BLL.Common.Services;
 /// <summary>
 /// Implementation gui notification: luu DB + push FCM + SignalR.
 /// </summary>
-public sealed class NotificationService : INotificationService
+public sealed partial class NotificationService : INotificationService
 {
     private readonly INotificationLogRepository _notificationRepo;
     private readonly IPushNotificationClient _pushClient;
@@ -152,18 +154,24 @@ public sealed class NotificationService : INotificationService
             log.LogId, log.UserId);
     }
 
+    [GeneratedRegex(@"^https?://(?:[^/?#@]+@)?(?:[a-zA-Z0-9-]+\.)*(?:adsus\.com|adsus\.example\.com)(?::\d+)?(?=[/?#]|$)/*", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: 1000)]
+    [SuppressMessage("Security", "S5332", Justification = "Regex pattern matches legacy http/https web URLs to convert them to mobile scheme")]
+    private static partial Regex WebDeepLinkRegex();
+
+    [GeneratedRegex(@"^adsus:///+", RegexOptions.IgnoreCase, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex MobileDeepLinkMultiSlashRegex();
+
     /// <summary>
     /// Convert web deep link to mobile app scheme (adsus://)
     /// </summary>
+    [SuppressMessage("Security", "S5332", Justification = "Converts legacy or inbound http/https web URLs to internal adsus:// mobile scheme")]
     private static string ToMobileDeepLink(string? webDeepLink, Guid logId)
     {
-        if (string.IsNullOrEmpty(webDeepLink))
+        if (string.IsNullOrWhiteSpace(webDeepLink))
             return $"adsus://notifications/{logId}";
 
-        return webDeepLink
-            .Replace("https://adsus.example.com", "adsus://")
-            .Replace("http://adsus.example.com", "adsus://")
-            .Replace("https://adsus.com", "adsus://")
-            .Replace("http://adsus.com", "adsus://");
+        var trimmed = webDeepLink.Trim();
+        var mobileLink = WebDeepLinkRegex().Replace(trimmed, "adsus://");
+        return MobileDeepLinkMultiSlashRegex().Replace(mobileLink, "adsus://");
     }
 }

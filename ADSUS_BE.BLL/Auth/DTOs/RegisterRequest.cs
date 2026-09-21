@@ -15,6 +15,11 @@ public sealed class RegisterRequest
     /// <summary>
     /// Mật khẩu đăng nhập.
     /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MinLength(8, ErrorMessage = "Mật khẩu phải từ 8 ký tự trở lên.")]
+    [System.ComponentModel.DataAnnotations.MaxLength(72)]
+    [System.ComponentModel.DataAnnotations.RegularExpression(@"^(?=.*[A-Z])(?=.*\d).+$",
+        ErrorMessage = "Mật khẩu phải chứa ít nhất 1 chữ in hoa và 1 chữ số.")]
     public required string Password { get; init; }
 
     /// <summary>

@@ -164,10 +164,10 @@ describe("Case Ultrasound Section Visibility & Responsive Layout (US-01 -> US-08
     expect(screen.queryByRole("button", { name: /bổ sung ảnh siêu âm/i })).not.toBeInTheDocument();
     expect(screen.queryByTestId("ultrasound-gallery")).not.toBeInTheDocument();
 
-    // Responsive grid áp dụng lg:grid-cols-2 cân đối
-    const gridContainer = container.querySelector(".lg\\:grid-cols-2");
+    // Responsive grid áp dụng class mới lg:grid-cols-[1.7fr_1fr]
+    const gridContainer = container.querySelector(".lg\\:grid-cols-\\[1\\.7fr_1fr\\]");
     expect(gridContainer).toBeInTheDocument();
-    expect(container.querySelector(".lg\\:grid-cols-\\[1\\.7fr_1fr\\]")).not.toBeInTheDocument();
+    expect(container.querySelector(".lg\\:grid-cols-2")).not.toBeInTheDocument();
 
     // Đảm bảo 2 cột độc lập trực tiếp của Grid (Cột trái 50%: Lâm sàng, Cột phải 50%: Kết luận)
     expect(gridContainer?.children).toHaveLength(2);
@@ -175,7 +175,7 @@ describe("Case Ultrasound Section Visibility & Responsive Layout (US-01 -> US-08
     expect(gridContainer?.children[1]).toHaveTextContent(/kết luận của bác sĩ/i);
   });
 
-  it("US-02: Ca CÓ dịch vụ ULTRASOUND_EXAM -> Khung ảnh siêu âm hiển thị đầy đủ và layout chuyển sang lg:grid-cols-[1.7fr_1fr]", () => {
+  it("US-02: Ca CÓ dịch vụ ULTRASOUND_EXAM -> Khung ảnh siêu âm hiển thị ở cột trái nằm bên dưới thông tin lâm sàng, layout 2 cột lg:grid-cols-2 cân đối", () => {
     detailMock.mockReturnValue(makeMockCase());
     clinicServicesMock.mockReturnValue({
       data: [
@@ -211,12 +211,14 @@ describe("Case Ultrasound Section Visibility & Responsive Layout (US-01 -> US-08
     // Layout áp dụng lg:grid-cols-[1.7fr_1fr]
     const gridContainer = container.querySelector(".lg\\:grid-cols-\\[1\\.7fr_1fr\\]");
     expect(gridContainer).toBeInTheDocument();
-    expect(container.querySelector(".lg\\:grid-cols-2")).not.toBeInTheDocument();
 
-    // Cột 1 là Ảnh siêu âm, Cột 2 là wrapper space-y-6 chứa lâm sàng & kết luận
+    // Cột 1 là space-y-6 chứa lâm sàng ở trên và ảnh siêu âm ở dưới; Cột 2 là kết luận
     expect(gridContainer?.children).toHaveLength(2);
+    expect(gridContainer?.children[0]).toHaveClass("space-y-6");
+    expect(gridContainer?.children[0]).toHaveTextContent(/thông tin lâm sàng/i);
     expect(gridContainer?.children[0]).toHaveTextContent(/ảnh siêu âm/i);
     expect(gridContainer?.children[1]).toHaveClass("space-y-6");
+    expect(gridContainer?.children[1]).toHaveTextContent(/kết luận của bác sĩ/i);
   });
 
   it("US-03: Ca có ảnh siêu âm trong payload nhưng dịch vụ ULTRASOUND_EXAM đã bị xóa/chưa có -> Khung ảnh vẫn bị ẩn (đúng kịch bản chuẩn)", () => {

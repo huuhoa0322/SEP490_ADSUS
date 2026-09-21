@@ -27,7 +27,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.DTOs
         public int Quantity { get; set; }
 
         [Required(ErrorMessage = "Vui lòng nhập giá nhập.")]
-        [Range(0, double.MaxValue, ErrorMessage = "Giá nhập không được là số âm.")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Giá nhập phải lớn hơn 0.")]
         public decimal ImportPricePerUnit { get; set; }
     }
 }

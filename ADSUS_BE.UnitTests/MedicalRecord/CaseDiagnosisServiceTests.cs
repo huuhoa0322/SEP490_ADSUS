@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using ADSUS_BE.BLL.AIDiagnosis.Services;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Services;
@@ -81,7 +82,8 @@ public class CaseDiagnosisServiceTests : IDisposable
             new DoctorAnnotationRepository(_db),
             new CaseRepository(_db),
             configMock.Object,
-            _loggerMock.Object
+            _loggerMock.Object,
+            new AiDiagnosisStateTracker()
         );
     }
 
@@ -92,7 +94,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private static MemoryStream MakeFakeImageStream() => new(new byte[] { 1, 2, 3 });
+    private static MemoryStream MakeFakeImageStream() => new(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
 
     // =========================================================================
     // AnalyzeImageAsync

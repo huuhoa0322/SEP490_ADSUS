@@ -1070,8 +1070,8 @@ public class AppointmentServiceRescheduleTests : IDisposable
 
         var slotPastDate = CreateSlot(doctor, yesterday, new TimeOnly(10, 0), new TimeOnly(11, 0));
         var slotTodayPastTime = CreateSlot(doctor, today, new TimeOnly(0, 1), new TimeOnly(0, 30));
-        var slotTodayFutureTime = CreateSlot(doctor, today, new TimeOnly(23, 30), new TimeOnly(23, 59));
-        var slotTomorrow = CreateSlot(doctor, tomorrow, new TimeOnly(9, 0), new TimeOnly(10, 0));
+        var slotTodayFutureTime = CreateSlot(doctor, tomorrow, new TimeOnly(1, 0), new TimeOnly(2, 0));
+        var slotTomorrow = CreateSlot(doctor, tomorrow.AddDays(1), new TimeOnly(9, 0), new TimeOnly(10, 0));
 
         _slotRepo.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), SlotStatus.Open, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ScheduleSlot> { slotPastDate, slotTodayPastTime, slotTodayFutureTime, slotTomorrow });

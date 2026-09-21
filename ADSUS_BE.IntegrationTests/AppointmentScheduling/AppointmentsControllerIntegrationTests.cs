@@ -533,9 +533,39 @@ public class AppointmentsControllerIntegrationTests
         // Arrange
         using var app = CreateApp();
         var client = CreateDoctorClient(app);
+        var appointmentId = Guid.NewGuid();
+        var otherDoctorId = Guid.NewGuid();
+        var otherDoctor = new User
+        {
+            UserId = otherDoctorId,
+            FullName = "Other Doctor",
+            Role = UserRole.Doctor,
+            Status = UserStatus.Active,
+        };
+        var slot = new ScheduleSlot
+        {
+            SlotId = Guid.NewGuid(),
+            DoctorId = otherDoctorId,
+            Doctor = otherDoctor,
+            SlotDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            StartTime = new TimeOnly(10, 0),
+            EndTime = new TimeOnly(11, 0),
+            Status = SlotStatus.Booked,
+        };
+        var appointment = new Appointment
+        {
+            AppointmentId = appointmentId,
+            SlotId = slot.SlotId,
+            PatientProfileId = Guid.NewGuid(),
+            Status = AppointmentStatus.Booked,
+            Slot = slot,
+        };
+
+        _appointments.Setup(r => r.GetByIdAsync(appointmentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(appointment);
 
         // Act
-        var response = await client.GetAsync($"/api/v1/appointments/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
+        var response = await client.GetAsync($"/api/v1/appointments/{appointmentId}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);

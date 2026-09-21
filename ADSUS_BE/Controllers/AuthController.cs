@@ -109,8 +109,10 @@ public class AuthController : ControllerBase
 
         var result = await _auth.LoginAsync(request, cancellationToken);
 
-        // GB-06: unknown phone number, wrong password, locked account or deactivated account —
-        // every one of them returns this exact message. The real cause is never disclosed.
+        // GB-06: unknown phone number, wrong password, or deactivated account —
+        // return generic message.
+        // NOTE: Lockout (5 failed attempts) now throws UnauthorizedAccessException explicitly 
+        // to show the UI error message, overriding part of GB-06 by business requirement.
         if (result is null)
         {
             return Unauthorized(ApiResponse<LoginResponse>.Fail(

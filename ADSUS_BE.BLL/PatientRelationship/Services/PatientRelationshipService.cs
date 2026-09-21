@@ -220,19 +220,12 @@ public sealed class PatientRelationshipService : IPatientRelationshipService
         });
     }
 
-    public async Task DeleteRelativeAsync(
+    public Task DeleteRelativeAsync(
         Guid relationshipId,
         Guid userId,
         CancellationToken ct = default)
     {
-        var relationship = await _repository.GetByIdAndUserAsync(relationshipId, userId, ct);
-
-        if (relationship == null)
-        {
-            throw new KeyNotFoundException("Relationship not found.");
-        }
-
-        await _repository.DeleteAsync(relationshipId, ct);
+        throw new InvalidOperationException("Không được phép xóa người thân để bảo đảm tính toàn vẹn của hồ sơ và lịch sử ca khám bệnh.");
     }
 
     public async Task<bool> IsPhoneRegisteredAsync(string phone, CancellationToken ct = default)

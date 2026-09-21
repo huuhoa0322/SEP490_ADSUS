@@ -1,10 +1,10 @@
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Services;
-using ADSUS_BE.BLL.AppointmentScheduling.Validators;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using Microsoft.EntityFrameworkCore;
+using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using FluentValidation;
 using Moq;
 using Xunit;
 
@@ -19,7 +19,6 @@ public class ScheduleSlotServiceTests
 {
     private readonly Mock<IScheduleSlotRepository> _slotRepo = new();
     private readonly Mock<IUserRepository> _userRepo = new();
-    private readonly IValidator<CreateScheduleSlotRequest> _validator;
     private readonly ScheduleSlotService _sut;
 
     // Test data
@@ -29,11 +28,12 @@ public class ScheduleSlotServiceTests
 
     public ScheduleSlotServiceTests()
     {
-        _validator = new CreateScheduleSlotRequestValidator();
+        var options = new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(databaseName: "Schedule_Test").Options;
+        var db = new AppDbContext(options);
+        var notificationMock = new Mock<INotificationService>();
         _sut = new ScheduleSlotService(
             _slotRepo.Object,
-            _userRepo.Object,
-            _validator);
+            _userRepo.Object, notificationMock.Object, db);
 
         SetupDoctor();
     }
@@ -186,237 +186,6 @@ public class ScheduleSlotServiceTests
 
     #endregion
 
-    #region CreateSlotAsync Tests
-
-    [Fact]
-    public async Task CreateSlotAsync_ValidRequest_CreatesSlot()
-    {
-        // Arrange
-        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
-        var request = new CreateScheduleSlotRequest
-        {
-            VisitDate = futureDate,
-            StartTime = new TimeOnly(9, 0),
-            EndTime = new TimeOnly(10, 0),
-        };
-
-        _slotRepo.Setup(r => r.HasOverlapAsync(
-                _doctorId, futureDate, request.StartTime, request.EndTime,
-                null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
-        _slotRepo.Setup(r => r.AddAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ScheduleSlot s, CancellationToken _) => s);
-
-        // Act
-        var result = await _sut.CreateSlotAsync(_doctorId, request, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal(futureDate, result.SlotDate);
-        Assert.Equal(SlotStatus.Open, result.Status);
-    }
-
-    [Fact]
-    public async Task CreateSlotAsync_InvalidRequest_ThrowsValidationException()
-    {
-        // Arrange - request with StartTime >= EndTime
-        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
-        var request = new CreateScheduleSlotRequest
-        {
-            VisitDate = futureDate,
-            StartTime = new TimeOnly(10, 0),
-            EndTime = new TimeOnly(9, 0), // End before Start
-        };
-
-        // Act & Assert
-        await Assert.ThrowsAsync<ValidationException>(
-            () => _sut.CreateSlotAsync(_doctorId, request, TestContext.Current.CancellationToken));
-    }
-
-    [Fact]
-    public async Task CreateSlotAsync_DurationTooShort_ThrowsValidationException()
-    {
-        // Arrange - duration less than 15 minutes
-        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
-        var request = new CreateScheduleSlotRequest
-        {
-            VisitDate = futureDate,
-            StartTime = new TimeOnly(9, 0),
-            EndTime = new TimeOnly(9, 10), // Only 10 minutes
-        };
-
-        // Act & Assert
-        await Assert.ThrowsAsync<ValidationException>(
-            () => _sut.CreateSlotAsync(_doctorId, request, TestContext.Current.CancellationToken));
-    }
-
-    [Fact]
-    public async Task CreateSlotAsync_NotADoctor_ThrowsException()
-    {
-        // Arrange
-        _userRepo.Setup(r => r.GetByIdAsync(_patientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User
-            {
-                UserId = _patientId,
-                FullName = "Patient User",
-                Role = UserRole.Patient,
-                Status = UserStatus.Active,
-            });
-
-        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
-        var request = new CreateScheduleSlotRequest
-        {
-            VisitDate = futureDate,
-            StartTime = new TimeOnly(9, 0),
-            EndTime = new TimeOnly(10, 0),
-        };
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CreateSlotAsync(_patientId, request, TestContext.Current.CancellationToken));
-
-        Assert.Contains("not a valid Doctor", ex.Message);
-    }
-
-    [Fact]
-    public async Task CreateSlotAsync_OverlappingSlot_ThrowsException()
-    {
-        // Arrange
-        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
-        var request = new CreateScheduleSlotRequest
-        {
-            VisitDate = futureDate,
-            StartTime = new TimeOnly(9, 0),
-            EndTime = new TimeOnly(10, 0),
-        };
-
-        _slotRepo.Setup(r => r.HasOverlapAsync(
-                _doctorId, futureDate, request.StartTime, request.EndTime,
-                null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true); // Overlap exists
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.CreateSlotAsync(_doctorId, request, TestContext.Current.CancellationToken));
-
-        Assert.Contains("overlaps", ex.Message);
-    }
-
-    #endregion
-
-    #region UpdateSlotAsync Tests
-
-    [Fact]
-    public async Task UpdateSlotAsync_ValidUpdate_UpdatesSlot()
-    {
-        // Arrange
-        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
-        var slot = CreateSlot(futureDate, SlotStatus.Open);
-
-        _slotRepo.Setup(r => r.GetByIdForUpdateAsync(_slotId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(slot);
-
-        _slotRepo.Setup(r => r.HasOverlapAsync(
-                slot.DoctorId, slot.SlotDate,
-                new TimeOnly(10, 0), new TimeOnly(11, 0),
-                _slotId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
-        _slotRepo.Setup(r => r.UpdateAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        _slotRepo.Setup(r => r.AddAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ScheduleSlot s, CancellationToken _) => s);
-
-        var request = new UpdateScheduleSlotRequest
-        {
-            StartTime = new TimeOnly(10, 0),
-            EndTime = new TimeOnly(11, 0),
-        };
-
-        // Act
-        var result = await _sut.UpdateSlotAsync(_slotId, request, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal(new TimeOnly(10, 0), result.StartTime);
-        Assert.Equal(new TimeOnly(11, 0), result.EndTime);
-    }
-
-    [Fact]
-    public async Task UpdateSlotAsync_ClosedSlot_ThrowsException()
-    {
-        // Arrange
-        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
-        var slot = CreateSlot(futureDate, SlotStatus.Closed); // Already closed
-
-        _slotRepo.Setup(r => r.GetByIdForUpdateAsync(_slotId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(slot);
-
-        var request = new UpdateScheduleSlotRequest
-        {
-            StartTime = new TimeOnly(10, 0),
-            EndTime = new TimeOnly(11, 0),
-        };
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.UpdateSlotAsync(_slotId, request, TestContext.Current.CancellationToken));
-
-        Assert.Contains("Cannot update a closed slot", ex.Message);
-    }
-
-    [Fact]
-    public async Task UpdateSlotAsync_SlotNotFound_ThrowsException()
-    {
-        // Arrange
-        _slotRepo.Setup(r => r.GetByIdForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ScheduleSlot?)null);
-
-        var request = new UpdateScheduleSlotRequest
-        {
-            StartTime = new TimeOnly(10, 0),
-            EndTime = new TimeOnly(11, 0),
-        };
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.UpdateSlotAsync(Guid.NewGuid(), request, TestContext.Current.CancellationToken));
-
-        Assert.Contains("not found", ex.Message);
-    }
-
-    [Fact]
-    public async Task UpdateSlotAsync_UpdatedOverlap_ThrowsException()
-    {
-        // Arrange
-        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
-        var slot = CreateSlot(futureDate, SlotStatus.Open);
-
-        _slotRepo.Setup(r => r.GetByIdForUpdateAsync(_slotId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(slot);
-
-        _slotRepo.Setup(r => r.HasOverlapAsync(
-                slot.DoctorId, slot.SlotDate,
-                new TimeOnly(10, 0), new TimeOnly(11, 0),
-                _slotId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true); // Overlap with new time
-
-        var request = new UpdateScheduleSlotRequest
-        {
-            StartTime = new TimeOnly(10, 0),
-            EndTime = new TimeOnly(11, 0),
-        };
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.UpdateSlotAsync(_slotId, request, TestContext.Current.CancellationToken));
-
-        Assert.Contains("overlaps", ex.Message);
-    }
-
-    #endregion
 
     #region CloseSlotAsync Tests
 

@@ -2,7 +2,6 @@ using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Services;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using FluentValidation;
 using Moq;
 using Xunit;
 
@@ -12,12 +11,11 @@ public class CreateOvertimeSlotsAsyncTests
 {
     private readonly Mock<IScheduleSlotRepository> _repo = new();
     private readonly Mock<IUserRepository> _userRepo = new();
-    private readonly Mock<IValidator<CreateScheduleSlotRequest>> _validator = new();
     private readonly ScheduleSlotService _sut;
 
     public CreateOvertimeSlotsAsyncTests()
     {
-        _sut = new ScheduleSlotService(_repo.Object, _userRepo.Object, _validator.Object);
+        _sut = new ScheduleSlotService(_repo.Object, _userRepo.Object, null!, null!);
     }
 
     [Fact]

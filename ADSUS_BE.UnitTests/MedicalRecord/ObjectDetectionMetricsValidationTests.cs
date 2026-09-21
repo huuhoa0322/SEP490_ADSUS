@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ADSUS_BE.BLL.AIDiagnosis.Services;
 using ADSUS_BE.BLL.AIModelManagement.DTOs;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
@@ -109,7 +110,8 @@ public class ObjectDetectionMetricsValidationTests : IDisposable
             _annotationRepo,
             caseRepo,
             configMock.Object,
-            _loggerMock.Object
+            _loggerMock.Object,
+            new AiDiagnosisStateTracker()
         );
 
         _aiMetricsService = new AiMetricsService(
