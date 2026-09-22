@@ -41,9 +41,11 @@ export function HeroSection() {
               color: "var(--lp-navy)",
             }}
           >
-            Chăm sóc sức khỏe
+            Siêu Âm Thai Nhi &amp;
             <br />
-            <span style={{ color: "var(--lp-teal)" }}>bằng hình ảnh siêu âm</span>
+            <span style={{ color: "var(--lp-teal)" }}>
+              Chăm Sóc Sức Khỏe Phụ Khoa Chuyên Sâu
+            </span>
           </h1>
 
           {/* Tagline */}
@@ -51,8 +53,9 @@ export function HeroSection() {
             className="mb-10 max-w-xl text-base leading-relaxed sm:text-lg"
             style={{ color: "var(--lp-muted)" }}
           >
-            Kết hợp công nghệ AI tiên tiến với chuyên môn bác sĩ, mang đến kết quả
-            siêu âm chính xác và đáng tin cậy cho mẹ và bé.
+            Ứng dụng công nghệ siêu âm 2D, 3D, 4D tích hợp AI cùng bác sĩ Sản
+            Phụ khoa giàu kinh nghiệm. Chuẩn đoán sớm và điều trị an toàn các
+            bệnh lý phụ khoa.
           </p>
 
           {/* CTA */}
