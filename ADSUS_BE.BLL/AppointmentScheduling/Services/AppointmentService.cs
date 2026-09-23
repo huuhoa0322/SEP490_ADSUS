@@ -499,7 +499,7 @@ public sealed class AppointmentService : IAppointmentService
         }
 
         var patientProfile = await _profileRepo.GetByIdAsync(targetPatientProfileId, ct);
-        appointment.PatientProfile = patientProfile;
+        // appointment.PatientProfile = patientProfile; // Removed to prevent EF tracking conflicts
 
         // Send notification to patient/booker (best effort - don't fail the booking if notification fails)
         try
@@ -565,15 +565,34 @@ public sealed class AppointmentService : IAppointmentService
             _logger.LogWarning(ex, "[NOTIF-ERROR] Failed to send booking notification to doctor for appointment {AppointmentId}", appointment.AppointmentId);
         }
 
-        if (appointment.CaseId.HasValue)
+        var untrackedAppointment = new Appointment
         {
-            appointment.Case = await _db.Cases
+            AppointmentId = appointment.AppointmentId,
+            SlotId = appointment.SlotId,
+            PatientProfileId = appointment.PatientProfileId,
+            Reason = appointment.Reason,
+            Status = appointment.Status,
+            CreatedAt = appointment.CreatedAt,
+            UpdatedAt = appointment.UpdatedAt,
+            BookedByUserId = appointment.BookedByUserId,
+            RelationshipId = appointment.RelationshipId,
+            CaseId = appointment.CaseId,
+            Slot = slot,
+            PatientProfile = patientProfile,
+            BookedByUser = appointment.BookedByUser,
+            PatientRelationship = appointment.PatientRelationship
+        };
+
+        if (untrackedAppointment.CaseId.HasValue)
+        {
+            untrackedAppointment.Case = await _db.Cases
                 .Include(c => c.CaseSymptoms).ThenInclude(cs => cs.Category)
                 .Include(c => c.CaseSymptoms).ThenInclude(cs => cs.Symptom)
-                .FirstOrDefaultAsync(c => c.CaseId == appointment.CaseId.Value, ct);
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.CaseId == untrackedAppointment.CaseId.Value, ct);
         }
 
-        return ToAppointmentResponse(appointment);
+        return ToAppointmentResponse(untrackedAppointment);
     }
 
     public async Task<AppointmentResponse> CreateFollowUpAppointmentAsync(
@@ -744,17 +763,30 @@ public sealed class AppointmentService : IAppointmentService
             _logger.LogWarning(ex, "[NOTIF-ERROR] Failed to send follow-up notification to doctor");
         }
 
-        // Provide necessary nav props for response
-        appointment.Slot = slot;
-        appointment.PatientProfile = patientProfile;
-        if (appointment.CaseId.HasValue)
+        // Provide necessary nav props for response without mutating the tracked entity
+        var untrackedAppointment = new Appointment
         {
-            appointment.Case = await _db.Cases
+            AppointmentId = appointment.AppointmentId,
+            SlotId = appointment.SlotId,
+            PatientProfileId = appointment.PatientProfileId,
+            Reason = appointment.Reason,
+            Status = appointment.Status,
+            CreatedAt = appointment.CreatedAt,
+            UpdatedAt = appointment.UpdatedAt,
+            CaseId = appointment.CaseId,
+            Slot = slot,
+            PatientProfile = patientProfile
+        };
+
+        if (untrackedAppointment.CaseId.HasValue)
+        {
+            untrackedAppointment.Case = await _db.Cases
                 .Include(c => c.CaseSymptoms).ThenInclude(cs => cs.Category)
                 .Include(c => c.CaseSymptoms).ThenInclude(cs => cs.Symptom)
-                .FirstOrDefaultAsync(c => c.CaseId == appointment.CaseId.Value, ct);
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.CaseId == untrackedAppointment.CaseId.Value, ct);
         }
-        return ToAppointmentResponse(appointment);
+        return ToAppointmentResponse(untrackedAppointment);
     }
 
     public async Task<AppointmentResponse> CancelAppointmentAsync(
@@ -826,7 +858,7 @@ public sealed class AppointmentService : IAppointmentService
         await _db.SaveChangesAsync(ct);
 
         var patientProfile = await _profileRepo.GetByIdAsync(appointment.PatientProfileId, ct);
-        appointment.PatientProfile = patientProfile;
+        // appointment.PatientProfile = patientProfile; // Removed to prevent EF tracking conflicts
 
         // Send notification to patient about cancellation (best effort - don't fail cancellation if notification fails)
         try
@@ -875,7 +907,27 @@ public sealed class AppointmentService : IAppointmentService
             _logger.LogWarning(ex, "Failed to send cancellation notification to doctor for appointment {AppointmentId}", appointment.AppointmentId);
         }
 
-        return ToAppointmentResponse(appointment);
+        var untrackedAppointment = new Appointment
+        {
+            AppointmentId = appointment.AppointmentId,
+            SlotId = appointment.SlotId,
+            PatientProfileId = appointment.PatientProfileId,
+            Reason = appointment.Reason,
+            Status = appointment.Status,
+            CreatedAt = appointment.CreatedAt,
+            UpdatedAt = appointment.UpdatedAt,
+            CancelledReason = appointment.CancelledReason,
+            BookedByUserId = appointment.BookedByUserId,
+            RelationshipId = appointment.RelationshipId,
+            CaseId = appointment.CaseId,
+            Slot = slot,
+            PatientProfile = patientProfile,
+            BookedByUser = appointment.BookedByUser,
+            PatientRelationship = appointment.PatientRelationship,
+            Case = appointment.Case
+        };
+
+        return ToAppointmentResponse(untrackedAppointment);
     }
 
     public async Task<AppointmentResponse> CheckinAppointmentAsync(
@@ -1444,12 +1496,25 @@ public sealed class AppointmentService : IAppointmentService
             }
         }
 
-        // Set navigation properties for mapper
-        newAppointment.Slot = newSlot;
-        newAppointment.Case = oldAppointment.Case;
-        newAppointment.PatientProfile = oldAppointment.PatientProfile;
-        newAppointment.BookedByUser = oldAppointment.BookedByUser;
-        newAppointment.PatientRelationship = oldAppointment.PatientRelationship;
+        // We will create an untracked instance at the end for mapping, so do not mutate newAppointment here.
+        var untrackedNewAppointment = new Appointment
+        {
+            AppointmentId = newAppointment.AppointmentId,
+            SlotId = newAppointment.SlotId,
+            PatientProfileId = newAppointment.PatientProfileId,
+            Reason = newAppointment.Reason,
+            Status = newAppointment.Status,
+            CreatedAt = newAppointment.CreatedAt,
+            UpdatedAt = newAppointment.UpdatedAt,
+            BookedByUserId = newAppointment.BookedByUserId,
+            RelationshipId = newAppointment.RelationshipId,
+            CaseId = newAppointment.CaseId,
+            Slot = newSlot,
+            PatientProfile = oldAppointment.PatientProfile,
+            BookedByUser = oldAppointment.BookedByUser,
+            PatientRelationship = oldAppointment.PatientRelationship,
+            Case = oldAppointment.Case
+        };
 
         // Post-commit notifications (inside try-catch, best effort)
         // 1. Patient notification
@@ -1531,7 +1596,7 @@ public sealed class AppointmentService : IAppointmentService
             }
         }
 
-        return ToAppointmentResponse(newAppointment);
+        return ToAppointmentResponse(untrackedNewAppointment);
     }
 
     public async Task<CancellationStatusTodayResponse> GetCancellationStatusTodayAsync(
@@ -1715,7 +1780,7 @@ public sealed class AppointmentService : IAppointmentService
 
         // Bắn SignalR notification tới Staff/Lễ tân
         var staffUsers = await _db.Users
-            .Where(u => (u.Role == UserRole.Staff || u.Role == UserRole.Admin)
+            .Where(u => u.Role == UserRole.Staff
                 && u.Status == UserStatus.Active)
             .Select(u => u.UserId)
             .ToListAsync(ct);

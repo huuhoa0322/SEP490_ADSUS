@@ -52,6 +52,7 @@ public sealed class ScheduleSlotResponse
     public Guid SlotId { get; init; }
     public Guid DoctorId { get; init; }
     public string DoctorName { get; init; } = string.Empty;
+    public string? DoctorGender { get; init; }
     public DateOnly SlotDate { get; init; }
     public TimeOnly StartTime { get; init; }
     public TimeOnly EndTime { get; init; }

@@ -224,10 +224,6 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
                 (!string.IsNullOrEmpty(request.OriginalImageFileName) &&
                      request.OriginalImageFileName.Contains(img.ImageId.ToString(), StringComparison.OrdinalIgnoreCase)));
 
-            if (existingImage == null && caseImages.Count == 1)
-            {
-                existingImage = caseImages[0];
-            }
         }
 
         var imageId = existingImage?.ImageId ?? Guid.NewGuid();

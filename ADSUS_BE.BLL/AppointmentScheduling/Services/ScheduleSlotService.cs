@@ -458,6 +458,7 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             SlotId = slot.SlotId,
             DoctorId = slot.DoctorId,
             DoctorName = slot.Doctor?.FullName ?? string.Empty,
+            DoctorGender = slot.Doctor?.Gender?.ToString(),
             SlotDate = slot.SlotDate,
             StartTime = slot.StartTime,
             EndTime = slot.EndTime,
