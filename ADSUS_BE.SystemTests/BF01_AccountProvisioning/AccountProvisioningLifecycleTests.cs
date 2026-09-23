@@ -114,8 +114,8 @@ public class AccountProvisioningLifecycleTests
         var nurse = await CreateAccountAsync(admin, "STC004 Nurse", "STAFF");
         var doctor = await CreateAccountAsync(admin, "STC004 Doctor", "DOCTOR");
 
-        var nurseClient = await LoginAndAuthorizeAsync(app, nurse.Account.PhoneNumber, nurse.TemporaryPassword);
-        var doctorClient = await LoginAndAuthorizeAsync(app, doctor.Account.PhoneNumber, doctor.TemporaryPassword);
+        var nurseClient = await LoginAndForcePasswordChangeAsync(app, nurse.Account.PhoneNumber, nurse.TemporaryPassword);
+        var doctorClient = await LoginAndForcePasswordChangeAsync(app, doctor.Account.PhoneNumber, doctor.TemporaryPassword);
 
         var nurseResponse = await nurseClient.PostAsJsonAsync("/api/v1/patients", new
         {
@@ -216,7 +216,7 @@ public class AccountProvisioningLifecycleTests
         var ct = TestContext.Current.CancellationToken;
         var admin = await LoginAsAdminAsync(app);
         var created = await CreateAccountAsync(admin, "STC008 Original Name", "PATIENT");
-        var client = await LoginAndAuthorizeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword);
+        var client = await LoginAndForcePasswordChangeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword);
 
         const string updatedName = "STC008 Updated Name";
         var updateResponse = await client.PutAsJsonAsync("/api/v1/users/me", new
@@ -426,7 +426,7 @@ public class AccountProvisioningLifecycleTests
         Assert.False(string.IsNullOrEmpty(adminResetBody!.Data));
 
         var nurse = await CreateAccountAsync(admin, "STC022 Nurse", "STAFF");
-        var nurseClient = await LoginAndAuthorizeAsync(app, nurse.Account.PhoneNumber, nurse.TemporaryPassword);
+        var nurseClient = await LoginAndForcePasswordChangeAsync(app, nurse.Account.PhoneNumber, nurse.TemporaryPassword);
 
         var patientResponse = await nurseClient.PostAsJsonAsync("/api/v1/patients", new
         {
@@ -461,7 +461,7 @@ public class AccountProvisioningLifecycleTests
         var ct = TestContext.Current.CancellationToken;
         var admin = await LoginAsAdminAsync(app);
         var doctor = await CreateAccountAsync(admin, "STC023 Doctor", "DOCTOR");
-        var doctorClient = await LoginAndAuthorizeAsync(app, doctor.Account.PhoneNumber, doctor.TemporaryPassword);
+        var doctorClient = await LoginAndForcePasswordChangeAsync(app, doctor.Account.PhoneNumber, doctor.TemporaryPassword);
         var patient = await CreateAccountAsync(admin, "STC023 Patient", "PATIENT");
 
         var response = await doctorClient.PostAsJsonAsync("/api/v1/patient-profiles", new
@@ -485,7 +485,7 @@ public class AccountProvisioningLifecycleTests
         var ct = TestContext.Current.CancellationToken;
         var admin = await LoginAsAdminAsync(app);
         var doctor = await CreateAccountAsync(admin, "STC024 Doctor", "DOCTOR");
-        var doctorClient = await LoginAndAuthorizeAsync(app, doctor.Account.PhoneNumber, doctor.TemporaryPassword);
+        var doctorClient = await LoginAndForcePasswordChangeAsync(app, doctor.Account.PhoneNumber, doctor.TemporaryPassword);
         var patient = await CreateAccountAsync(admin, "STC024 Patient", "PATIENT");
 
         var response = await doctorClient.PostAsJsonAsync("/api/v1/patient-profiles", new
@@ -705,6 +705,33 @@ public class AccountProvisioningLifecycleTests
         });
         loginResponse.EnsureSuccessStatusCode();
         var body = await loginResponse.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>();
+
+        var client = app.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", body!.Data!.AccessToken);
+        return client;
+    }
+
+    private const string FinalTestPassword = "Aa123456@";
+
+    /// <summary>Đăng nhập bằng mật khẩu tạm do Admin cấp, rồi đổi ngay sang mật khẩu cố định.
+    /// MustChangePasswordMiddleware chặn (403) mọi request khác ngoài change-password/logout khi
+    /// access token còn mang claim MustChangePassword=true. AuthService.ChangePasswordAsync phát
+    /// token mới ngay trong response (sửa 21/09/2026, giống LoginAsync) nên chỉ cần 1 vòng đăng
+    /// nhập, không cần đăng nhập lại lần 2. Dùng hàm này thay cho LoginAndAuthorizeAsync ở BẤT KỲ
+    /// đâu client sẽ gọi tiếp 1 hành động nghiệp vụ khác ngoài change-password/logout.</summary>
+    private static async Task<HttpClient> LoginAndForcePasswordChangeAsync(
+        WebApplicationFactory<Program> app, string phone, string temporaryPassword)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var tempClient = await LoginAndAuthorizeAsync(app, phone, temporaryPassword);
+        var changeResponse = await tempClient.PostAsJsonAsync("/api/v1/auth/change-password", new
+        {
+            newPassword = FinalTestPassword,
+            confirmNewPassword = FinalTestPassword,
+        }, ct);
+        changeResponse.EnsureSuccessStatusCode();
+        var body = await changeResponse.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>(ct);
 
         var client = app.CreateClient();
         client.DefaultRequestHeaders.Authorization =

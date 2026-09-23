@@ -52,14 +52,16 @@ class ChangePasswordViewModel extends StateNotifier<ChangePasswordState> {
   }) async {
     state = state.copyWith(isSaving: true, clearError: true, succeeded: false);
     try {
-      await _ref.read(authRepositoryProvider).changePassword(
+      final session = await _ref.read(authRepositoryProvider).changePassword(
             currentPassword: currentPassword,
             newPassword: newPassword,
             confirmNewPassword: confirmNewPassword,
           );
 
-      // Backend đã gỡ cờ trong DB, gỡ luôn ở client để AuthGuard/router thôi chặn màn khác.
-      _ref.read(authViewModelProvider.notifier).clearMustChangePassword();
+      // Thay toàn bộ session bằng bản mới (kèm access token mới) — không chỉ gỡ cờ, để
+      // AuthGuard/router thôi chặn màn khác VÀ mọi request sau đó không còn dính 403 từ
+      // MustChangePasswordMiddleware do lỡ dùng lại token cũ.
+      _ref.read(authViewModelProvider.notifier).applySession(session);
 
       state = state.copyWith(isSaving: false, succeeded: true);
       return true;

@@ -292,6 +292,31 @@ public class ClinicalVisitTests
         return client;
     }
 
+    private const string FinalTestPassword = "Aa123456@";
+
+    /// <summary>Đăng nhập bằng mật khẩu tạm do Admin cấp, rồi đổi ngay sang mật khẩu cố định.
+    /// MustChangePasswordMiddleware chặn (403) mọi request khác ngoài change-password/logout khi
+    /// access token còn mang claim MustChangePassword=true. Sau khi vá AuthService.ChangePasswordAsync
+    /// (21/09/2026) để phát token mới ngay trong response — cùng cách LoginAsync phát token — chỉ
+    /// cần 1 vòng đăng nhập, không cần đăng nhập lại lần 2 như trước.</summary>
+    private static async Task<HttpClient> LoginAndForcePasswordChangeAsync(
+        WebApplicationFactory<Program> app, string phone, string temporaryPassword, CancellationToken ct)
+    {
+        var tempClient = await LoginAndAuthorizeAsync(app, phone, temporaryPassword, ct);
+        var changeResponse = await tempClient.PostAsJsonAsync("/api/v1/auth/change-password", new
+        {
+            newPassword = FinalTestPassword,
+            confirmNewPassword = FinalTestPassword,
+        }, ct);
+        changeResponse.EnsureSuccessStatusCode();
+        var body = await changeResponse.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>(JsonOptions, ct);
+
+        var client = app.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", body!.Data!.AccessToken);
+        return client;
+    }
+
     private static async Task<CreatedUserAccountResponse> CreateAccountAsync(
         HttpClient admin, string fullName, string role, CancellationToken ct)
     {
@@ -310,14 +335,14 @@ public class ClinicalVisitTests
         WebApplicationFactory<Program> app, HttpClient admin, string fullName, CancellationToken ct)
     {
         var created = await CreateAccountAsync(admin, fullName, "DOCTOR", ct);
-        return await LoginAndAuthorizeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword, ct);
+        return await LoginAndForcePasswordChangeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword, ct);
     }
 
     private static async Task<HttpClient> CreateStaffAsync(
         WebApplicationFactory<Program> app, HttpClient admin, string fullName, CancellationToken ct)
     {
         var created = await CreateAccountAsync(admin, fullName, "STAFF", ct);
-        return await LoginAndAuthorizeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword, ct);
+        return await LoginAndForcePasswordChangeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword, ct);
     }
 
     private static async Task<(HttpClient Client, Guid PatientProfileId)> CreatePatientWithProfileAsync(
@@ -335,23 +360,30 @@ public class ClinicalVisitTests
         profileResponse.EnsureSuccessStatusCode();
         var profile = await profileResponse.Content.ReadFromJsonAsync<ApiResponse<PatientProfileResponse>>(JsonOptions, ct);
 
-        var client = await LoginAndAuthorizeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword, ct);
+        var client = await LoginAndForcePasswordChangeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword, ct);
         return (client, profile!.Data!.PatientProfileId);
     }
 
+    /// <summary>Không còn endpoint tạo 1 slot thủ công (POST /api/v1/schedule-slots đã bị gỡ khỏi
+    /// ScheduleSlotsController trong lần merge master gần đây) — slot giờ chỉ sinh được qua
+    /// ensure-default (tự sinh nguyên tuần T2-CN, 16 ca 30 phút/ngày, idempotent), rồi lấy 1 ca
+    /// Open trong ngày cần dùng qua GET danh sách.</summary>
     private static async Task<Guid> CreateSlotAsync(
-        HttpClient doctor, DateOnly visitDate, CancellationToken ct,
-        string startTime = "09:00:00", string endTime = "10:00:00")
+        HttpClient doctor, DateOnly visitDate, CancellationToken ct)
     {
-        var response = await doctor.PostAsJsonAsync("/api/v1/schedule-slots", new
-        {
-            visitDate,
-            startTime,
-            endTime,
-        }, ct);
-        response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ScheduleSlotResponse>>(JsonOptions, ct);
-        return body!.Data!.SlotId;
+        var dayOffsetFromMonday = ((int)visitDate.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+        var weekStart = visitDate.AddDays(-dayOffsetFromMonday);
+
+        var ensureResponse = await doctor.PostAsync(
+            $"/api/v1/schedule-slots/ensure-default?weekStart={weekStart:yyyy-MM-dd}", null, ct);
+        ensureResponse.EnsureSuccessStatusCode();
+
+        var listResponse = await doctor.GetAsync(
+            $"/api/v1/schedule-slots?fromDate={visitDate:yyyy-MM-dd}&toDate={visitDate:yyyy-MM-dd}&status=Open", ct);
+        listResponse.EnsureSuccessStatusCode();
+        var page = await listResponse.Content
+            .ReadFromJsonAsync<ApiResponse<ADSUS_BE.BLL.Common.PagedResult<ScheduleSlotResponse>>>(JsonOptions, ct);
+        return page!.Data!.Items[0].SlotId;
     }
 
     private static async Task<Guid> CreateClinicServiceAsync(HttpClient admin, CancellationToken ct)

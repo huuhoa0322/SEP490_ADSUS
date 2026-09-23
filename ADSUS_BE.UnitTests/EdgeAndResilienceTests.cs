@@ -451,10 +451,11 @@ public class EdgeAndResilienceTests
 
         var request = new ConfirmAnalysisRequest
         {
-            OriginalImageStream = new System.IO.MemoryStream(new byte[] { 1 }),
+            // ConfirmAnalysisAsync kiểm tra magic bytes (NFR-SEC-07) — phải là header PNG thật.
+            OriginalImageStream = new System.IO.MemoryStream(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00 }),
             OriginalImageFileName = "a.png",
             OriginalImageContentType = "image/png",
-            BurntImageStream = new System.IO.MemoryStream(new byte[] { 2 }),
+            BurntImageStream = new System.IO.MemoryStream(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00 }),
             BurntImageFileName = "b.png",
             BurntImageContentType = "image/png",
             AiPredictionsJson = "[]",

@@ -19,6 +19,7 @@ public class ScheduleSlotServiceTests
 {
     private readonly Mock<IScheduleSlotRepository> _slotRepo = new();
     private readonly Mock<IUserRepository> _userRepo = new();
+    private readonly AppDbContext _db;
     private readonly ScheduleSlotService _sut;
 
     // Test data
@@ -29,11 +30,11 @@ public class ScheduleSlotServiceTests
     public ScheduleSlotServiceTests()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(databaseName: "Schedule_Test").Options;
-        var db = new AppDbContext(options);
+        _db = new AppDbContext(options);
         var notificationMock = new Mock<INotificationService>();
         _sut = new ScheduleSlotService(
             _slotRepo.Object,
-            _userRepo.Object, notificationMock.Object, db);
+            _userRepo.Object, notificationMock.Object, _db);
 
         SetupDoctor();
     }
@@ -365,21 +366,21 @@ public class ScheduleSlotServiceTests
                 Status = UserStatus.Active,
             });
 
-        _slotRepo.Setup(r => r.HasOverlapAsync(
-                _doctorId, It.IsAny<DateOnly>(),
-                It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
-                null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        _slotRepo.Setup(r => r.ListByRangeAsync(
+                It.IsAny<DateOnly>(), It.IsAny<DateOnly>(),
+                _doctorId, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot>());
 
-        _slotRepo.Setup(r => r.AddAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ScheduleSlot s, CancellationToken _) => s);
+        _slotRepo.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<ScheduleSlot>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         // Act
         await _sut.EnsureDefaultSlotsAsync(_doctorId, weekStart, TestContext.Current.CancellationToken);
 
         // Assert
-        _slotRepo.Verify(r => r.AddAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()),
-            Times.AtLeastOnce);
+        _slotRepo.Verify(r => r.AddRangeAsync(
+                It.Is<IEnumerable<ScheduleSlot>>(slots => slots.Any()), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

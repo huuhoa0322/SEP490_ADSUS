@@ -193,6 +193,18 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
             throw new BusinessException("Kích thước ảnh kết quả vượt quá giới hạn 20MB.");
         }
 
+        // NFR-SEC-07: xác thực nội dung thật (magic bytes) chứ không chỉ tin filename/Content-Type
+        // client tự khai — AnalyzeImageAsync đã làm việc này, ConfirmAnalysisAsync trước đây bỏ sót.
+        var originalUploadedFile = new UploadedFile(
+            request.OriginalImageFileName, request.OriginalImageContentType,
+            request.OriginalImageStream.CanSeek ? request.OriginalImageStream.Length : 0, request.OriginalImageStream);
+        await UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(originalUploadedFile, ct);
+
+        var burntUploadedFile = new UploadedFile(
+            request.BurntImageFileName, request.BurntImageContentType,
+            request.BurntImageStream.CanSeek ? request.BurntImageStream.Length : 0, request.BurntImageStream);
+        await UltrasoundImageContentValidator.ValidateAndResolveContentTypeAsync(burntUploadedFile, ct);
+
         // Fetch true active ModelVersionId for database tracking (using GetActiveVersionAsync for entity tracking)
         var activeModel = await _aiModelVersionRepo.GetActiveVersionAsync(ct)
             ?? await _aiModelVersionRepo.GetActiveVersionReadOnlyAsync(ct);

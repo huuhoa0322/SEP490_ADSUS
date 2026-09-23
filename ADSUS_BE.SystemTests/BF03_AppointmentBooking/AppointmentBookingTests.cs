@@ -40,8 +40,12 @@ public class AppointmentBookingTests
         Converters = { new JsonStringEnumConverter() },
     };
 
+    /// <summary>Không còn endpoint tạo 1 slot thủ công (đã bị gỡ khỏi ScheduleSlotsController
+    /// trong lần merge master gần đây, xem chú thích ở CreateSlotAsync) — case này viết lại theo
+    /// đúng tính năng hiện tại: Doctor mở trang lịch làm việc lần đầu trong tuần, hệ thống tự
+    /// sinh đủ 16 ca 30 phút/ngày (8h-12h + 13h-17h) cho cả tuần T2-CN, toàn bộ đang Open.</summary>
     [Fact]
-    public async Task STC001_DoctorCreatesScheduleSlot_Returns201Open()
+    public async Task STC001_DoctorOpensSchedulePage_EnsuresDefaultSlotsForTheWeek()
     {
         await using var app = CreateApp();
         var ct = TestContext.Current.CancellationToken;
@@ -49,16 +53,20 @@ public class AppointmentBookingTests
         var doctor = await CreateDoctorAsync(app, admin, "STC001 Doctor", ct);
 
         var visitDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
-        var response = await doctor.PostAsJsonAsync("/api/v1/schedule-slots", new
-        {
-            visitDate,
-            startTime = "09:00:00",
-            endTime = "10:00:00",
-        }, ct);
+        var dayOffsetFromMonday = ((int)visitDate.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+        var weekStart = visitDate.AddDays(-dayOffsetFromMonday);
 
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ScheduleSlotResponse>>(JsonOptions, ct);
-        Assert.Equal(SlotStatus.Open, body!.Data!.Status);
+        var response = await doctor.PostAsync(
+            $"/api/v1/schedule-slots/ensure-default?weekStart={weekStart:yyyy-MM-dd}", null, ct);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var listResponse = await doctor.GetAsync(
+            $"/api/v1/schedule-slots?fromDate={visitDate:yyyy-MM-dd}&toDate={visitDate:yyyy-MM-dd}&status=Open", ct);
+        listResponse.EnsureSuccessStatusCode();
+        var page = await listResponse.Content
+            .ReadFromJsonAsync<ApiResponse<ADSUS_BE.BLL.Common.PagedResult<ScheduleSlotResponse>>>(JsonOptions, ct);
+        Assert.Equal(16, page!.Data!.Items.Count);
+        Assert.All(page.Data.Items, s => Assert.Equal(SlotStatus.Open, s.Status));
     }
 
     [Fact]
@@ -139,7 +147,10 @@ public class AppointmentBookingTests
         var ct = TestContext.Current.CancellationToken;
         var admin = await LoginAsAdminAsync(app);
         var doctor = await CreateDoctorAsync(app, admin, "STC005 Doctor", ct);
-        var slotId = await CreateSlotAsync(doctor, DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1), ct);
+        // CreateSlotAsync luôn lấy ca sớm nhất trong ngày (08:00) — +1 ngày không đủ đảm bảo
+        // BR-057 (hủy trước giờ khám ≥12h) nếu test chạy vào buổi tối; +2 ngày an toàn bất kể
+        // giờ chạy trong ngày.
+        var slotId = await CreateSlotAsync(doctor, DateOnly.FromDateTime(DateTime.UtcNow).AddDays(2), ct);
         var (patient, _) = await CreatePatientWithProfileAsync(app, admin, doctor, "STC005 Patient", ct);
 
         var bookResponse = await patient.PostAsJsonAsync("/api/v1/appointments", new
@@ -258,7 +269,7 @@ public class AppointmentBookingTests
         var doctor = await CreateDoctorAsync(app, admin, "STC009 Doctor", ct);
 
         var leaveDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(5);
-        var slotId = await CreateSlotAsync(doctor, leaveDate, ct, startTime: "09:00:00", endTime: "10:00:00");
+        var slotId = await CreateSlotAsync(doctor, leaveDate, ct);
         var (patient, _) = await CreatePatientWithProfileAsync(app, admin, doctor, "STC009 Patient", ct);
         var bookResponse = await patient.PostAsJsonAsync("/api/v1/appointments", new
         {
@@ -329,18 +340,43 @@ public class AppointmentBookingTests
         return body!.Data!;
     }
 
+    private const string FinalTestPassword = "Aa123456@";
+
+    /// <summary>Đăng nhập bằng mật khẩu tạm do Admin cấp, rồi đổi ngay sang mật khẩu cố định.
+    /// MustChangePasswordMiddleware chặn (403) mọi request khác ngoài change-password/logout khi
+    /// access token còn mang claim MustChangePassword=true. AuthService.ChangePasswordAsync phát
+    /// token mới ngay trong response (sửa 21/09/2026, giống LoginAsync) nên chỉ cần 1 vòng đăng
+    /// nhập, không cần đăng nhập lại lần 2.</summary>
+    private static async Task<HttpClient> LoginAndForcePasswordChangeAsync(
+        WebApplicationFactory<Program> app, string phone, string temporaryPassword, CancellationToken ct)
+    {
+        var tempClient = await LoginAndAuthorizeAsync(app, phone, temporaryPassword, ct);
+        var changeResponse = await tempClient.PostAsJsonAsync("/api/v1/auth/change-password", new
+        {
+            newPassword = FinalTestPassword,
+            confirmNewPassword = FinalTestPassword,
+        }, ct);
+        changeResponse.EnsureSuccessStatusCode();
+        var body = await changeResponse.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>(JsonOptions, ct);
+
+        var client = app.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", body!.Data!.AccessToken);
+        return client;
+    }
+
     private static async Task<HttpClient> CreateDoctorAsync(
         WebApplicationFactory<Program> app, HttpClient admin, string fullName, CancellationToken ct)
     {
         var created = await CreateAccountAsync(admin, fullName, "DOCTOR", ct);
-        return await LoginAndAuthorizeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword, ct);
+        return await LoginAndForcePasswordChangeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword, ct);
     }
 
     private static async Task<HttpClient> CreateStaffAsync(
         WebApplicationFactory<Program> app, HttpClient admin, string fullName, CancellationToken ct)
     {
         var created = await CreateAccountAsync(admin, fullName, "STAFF", ct);
-        return await LoginAndAuthorizeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword, ct);
+        return await LoginAndForcePasswordChangeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword, ct);
     }
 
     /// <summary>Tạo tài khoản Patient (Admin) rồi lập hồ sơ y tế nền (Doctor) — điều kiện bắt
@@ -363,23 +399,35 @@ public class AppointmentBookingTests
         profileResponse.EnsureSuccessStatusCode();
         var profile = await profileResponse.Content.ReadFromJsonAsync<ApiResponse<PatientProfileResponse>>(JsonOptions, ct);
 
-        var client = await LoginAndAuthorizeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword, ct);
+        var client = await LoginAndForcePasswordChangeAsync(app, created.Account.PhoneNumber, created.TemporaryPassword, ct);
         return (client, profile!.Data!.PatientProfileId);
     }
 
+    /// <summary>Không còn endpoint tạo 1 slot thủ công (POST /api/v1/schedule-slots đã bị gỡ khỏi
+    /// ScheduleSlotsController trong lần merge master gần đây) — slot giờ chỉ sinh được qua
+    /// ensure-default (tự sinh nguyên tuần T2-CN, 16 ca 30 phút/ngày, idempotent), rồi lấy 1 ca
+    /// Open buổi sáng trong ngày cần dùng qua GET danh sách. Cố định lấy ca buổi sáng (StartTime
+    /// &lt; 12h) để STC009 (ép nghỉ "Morning", 8h-12h) luôn đè đúng lên slot vừa tạo.</summary>
     private static async Task<Guid> CreateSlotAsync(
-        HttpClient doctor, DateOnly visitDate, CancellationToken ct,
-        string startTime = "09:00:00", string endTime = "10:00:00")
+        HttpClient doctor, DateOnly visitDate, CancellationToken ct)
     {
-        var response = await doctor.PostAsJsonAsync("/api/v1/schedule-slots", new
-        {
-            visitDate,
-            startTime,
-            endTime,
-        }, ct);
-        response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<ApiResponse<ScheduleSlotResponse>>(JsonOptions, ct);
-        return body!.Data!.SlotId;
+        var dayOffsetFromMonday = ((int)visitDate.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+        var weekStart = visitDate.AddDays(-dayOffsetFromMonday);
+
+        var ensureResponse = await doctor.PostAsync(
+            $"/api/v1/schedule-slots/ensure-default?weekStart={weekStart:yyyy-MM-dd}", null, ct);
+        ensureResponse.EnsureSuccessStatusCode();
+
+        var listResponse = await doctor.GetAsync(
+            $"/api/v1/schedule-slots?fromDate={visitDate:yyyy-MM-dd}&toDate={visitDate:yyyy-MM-dd}&status=Open", ct);
+        listResponse.EnsureSuccessStatusCode();
+        var page = await listResponse.Content
+            .ReadFromJsonAsync<ApiResponse<ADSUS_BE.BLL.Common.PagedResult<ScheduleSlotResponse>>>(JsonOptions, ct);
+        return page!.Data!.Items
+            .Where(s => s.StartTime < new TimeOnly(12, 0))
+            .OrderBy(s => s.StartTime)
+            .First()
+            .SlotId;
     }
 
     private static async Task<ScheduleSlotResponse> GetSlotAsync(HttpClient doctor, Guid slotId, CancellationToken ct)

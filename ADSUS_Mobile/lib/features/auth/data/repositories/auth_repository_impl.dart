@@ -91,13 +91,13 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> changePassword({
+  Future<AuthSession> changePassword({
     required String? currentPassword,
     required String newPassword,
     required String confirmNewPassword,
   }) async {
     try {
-      await _dio.post<Map<String, dynamic>>(
+      final res = await _dio.post<Map<String, dynamic>>(
         ApiConstants.changePassword,
         data: {
           'currentPassword': currentPassword,
@@ -105,6 +105,20 @@ class AuthRepositoryImpl implements AuthRepository {
           'confirmNewPassword': confirmNewPassword,
         },
       );
+
+      final envelope = ApiEnvelope.fromJson(res.data ?? const {});
+      if (envelope.data == null) {
+        throw const ApiException('Đổi mật khẩu thất bại.');
+      }
+
+      final session = AuthMapper.sessionFromJson(envelope.data!);
+
+      // Token cũ (còn mang claim MustChangePassword) phải bị thay ngay — không có bước này,
+      // mọi request kế tiếp vẫn tự gắn token cũ (xem dio_client.dart, đọc từ chính key này)
+      // và tiếp tục bị MustChangePasswordMiddleware từ chối dù đổi mật khẩu đã thành công.
+      await _storage.write(key: StorageKeys.accessToken, value: session.accessToken);
+
+      return session;
     } on DioException catch (e) {
       throw ApiErrorMapper.general(e, fallback: 'Đổi mật khẩu thất bại.');
     }

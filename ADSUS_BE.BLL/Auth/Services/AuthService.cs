@@ -243,7 +243,7 @@ public class AuthService : IAuthService
         return Convert.ToBase64String(hash);
     }
 
-    public async Task<ChangePasswordResult> ChangePasswordAsync(
+    public async Task<(ChangePasswordResult Result, LoginResponse? Tokens)> ChangePasswordAsync(
         Guid userId,
         ChangePasswordRequest request,
         CancellationToken cancellationToken = default)
@@ -254,13 +254,13 @@ public class AuthService : IAuthService
 
         if (user is null)
         {
-            return ChangePasswordResult.UserNotFound;
+            return (ChangePasswordResult.UserNotFound, null);
         }
 
         // The token may still be valid while an admin has locked the account in the meantime.
         if (user.Status != UserStatus.Active)
         {
-            return ChangePasswordResult.AccountNotActive;
+            return (ChangePasswordResult.AccountNotActive, null);
         }
 
         // BR-01: current password must match — UNLESS the account is still on a temp password
@@ -274,7 +274,7 @@ public class AuthService : IAuthService
             && (string.IsNullOrEmpty(request.CurrentPassword)
                 || !BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash)))
         {
-            return ChangePasswordResult.CurrentPasswordIncorrect;
+            return (ChangePasswordResult.CurrentPasswordIncorrect, null);
         }
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
@@ -288,7 +288,24 @@ public class AuthService : IAuthService
 
         _logger.LogInformation("User {UserId} changed their password successfully", user.UserId);
 
-        return ChangePasswordResult.Success;
+        // MustChangePasswordMiddleware chặn mọi request khi access token còn mang claim
+        // MustChangePassword=true, và claim đó được đóng cứng lúc phát token — đổi mật khẩu xong
+        // mà vẫn dùng token cũ thì mọi request tiếp theo (kể cả của FE) sẽ bị 403 cho tới khi
+        // đăng xuất/đăng nhập lại thủ công. Phát token mới ngay tại đây (giống LoginAsync) để
+        // token FE/mobile đang giữ được thay thế ngay, không cần vòng đăng nhập lại.
+        var accessToken = _tokens.GenerateAccessToken(user);
+        var refreshToken = GenerateSecureToken();
+        await _refreshTokens.CreateAsync(new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.UserId,
+            TokenHash = HashToken(refreshToken),
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            CreatedAt = DateTime.UtcNow,
+            DeviceInfo = null
+        }, cancellationToken);
+
+        return (ChangePasswordResult.Success, UserMapper.ToLoginResponse(user, accessToken, refreshToken));
     }
 
     /// <summary>

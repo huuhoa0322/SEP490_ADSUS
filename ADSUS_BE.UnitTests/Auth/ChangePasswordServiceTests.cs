@@ -40,9 +40,10 @@ public class ChangePasswordServiceTests
         var user = BuildUser(UserStatus.Active);
         SetupUser(user);
 
-        var result = await _sut.ChangePasswordAsync(user.UserId, Request(CurrentPassword), TestContext.Current.CancellationToken);
+        var (result, tokens) = await _sut.ChangePasswordAsync(user.UserId, Request(CurrentPassword), TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.Success, result);
+        Assert.NotNull(tokens);
     }
 
     [Fact]
@@ -78,9 +79,10 @@ public class ChangePasswordServiceTests
         var user = BuildUser(UserStatus.Active);
         SetupUser(user);
 
-        var result = await _sut.ChangePasswordAsync(user.UserId, Request("WrongOne1"), TestContext.Current.CancellationToken);
+        var (result, tokens) = await _sut.ChangePasswordAsync(user.UserId, Request("WrongOne1"), TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.CurrentPasswordIncorrect, result);
+        Assert.Null(tokens);
     }
 
     [Fact]
@@ -109,7 +111,7 @@ public class ChangePasswordServiceTests
         user.MustChangePassword = true;
         SetupUser(user);
 
-        var result = await _sut.ChangePasswordAsync(user.UserId, Request("DefinitelyWrong1"), TestContext.Current.CancellationToken);
+        var (result, _) = await _sut.ChangePasswordAsync(user.UserId, Request("DefinitelyWrong1"), TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.Success, result);
     }
@@ -128,7 +130,7 @@ public class ChangePasswordServiceTests
             ConfirmNewPassword = NewPassword,
         };
 
-        var result = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
+        var (result, _) = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.Success, result);
         Assert.True(BCrypt.Net.BCrypt.Verify(NewPassword, user.PasswordHash));
@@ -149,7 +151,7 @@ public class ChangePasswordServiceTests
             ConfirmNewPassword = NewPassword,
         };
 
-        var result = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
+        var (result, _) = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.CurrentPasswordIncorrect, result);
     }
@@ -159,7 +161,7 @@ public class ChangePasswordServiceTests
     {
         SetupUser(null);
 
-        var result = await _sut.ChangePasswordAsync(Guid.NewGuid(), Request(CurrentPassword), TestContext.Current.CancellationToken);
+        var (result, _) = await _sut.ChangePasswordAsync(Guid.NewGuid(), Request(CurrentPassword), TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.UserNotFound, result);
     }
@@ -172,7 +174,7 @@ public class ChangePasswordServiceTests
         var user = BuildUser(status);
         SetupUser(user);
 
-        var result = await _sut.ChangePasswordAsync(user.UserId, Request(CurrentPassword), TestContext.Current.CancellationToken);
+        var (result, _) = await _sut.ChangePasswordAsync(user.UserId, Request(CurrentPassword), TestContext.Current.CancellationToken);
 
         Assert.Equal(ChangePasswordResult.AccountNotActive, result);
     }

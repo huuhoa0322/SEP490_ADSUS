@@ -748,6 +748,12 @@ class _BookAppointmentScreenState
         DropdownButtonFormField<String>(
           // ignore: deprecated_member_use
           value: state.selectedRelative?.relationshipId,
+          // Không có isExpanded: true thì hàng nội dung (icon mũi tên + label) không co giãn
+          // theo bề ngang thật sự khả dụng — tên người thân dài (họ tên đầy đủ + tên quan hệ)
+          // tràn ra ngoài vài pixel, RenderFlex overflow thật trên thiết bị thật (bắt được
+          // qua integration_test BF-03, 22/09/2026), dù không lộ ra trên các tên ngắn dùng
+          // khi thiết kế màn hình.
+          isExpanded: true,
           decoration: const InputDecoration(
             labelText: 'Chọn người thân',
             prefixIcon: Icon(Icons.people_outline),
@@ -755,7 +761,10 @@ class _BookAppointmentScreenState
           items: state.savedRelatives.map((r) {
             return DropdownMenuItem(
               value: r.relationshipId,
-              child: Text('${r.relationshipName ?? ''} ${r.fullName}'.trim()),
+              child: Text(
+                '${r.relationshipName ?? ''} ${r.fullName}'.trim(),
+                overflow: TextOverflow.ellipsis,
+              ),
             );
           }).toList(),
           onChanged: (id) => notifier.selectRelative(id),

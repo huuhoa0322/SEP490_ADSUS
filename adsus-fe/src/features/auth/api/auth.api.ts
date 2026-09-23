@@ -64,8 +64,23 @@ export async function forgotPassword(payload: ForgotPasswordRequest): Promise<vo
   await apiClient.post<ApiResponse<null>>("/api/v1/auth/forgot-password", payload);
 }
 
-export async function changePassword(payload: ChangePasswordRequest): Promise<void> {
+/**
+ * Trả về cặp token MỚI (giống LoginResponse) — access token cũ (đang gắn trên apiClient) có
+ * thể vẫn mang cờ mustChangePassword=true, và MustChangePasswordMiddleware phía backend sẽ
+ * chặn 403 mọi request tiếp theo dùng token đó cho tới khi có token mới. Không đổi thành
+ * void/bỏ qua data như trước (sửa 21/09/2026, phát hiện qua System Test).
+ */
+export async function changePassword(payload: ChangePasswordRequest): Promise<LoginResponse> {
   // Requires authentication; the token is attached by the apiClient interceptor.
-  await apiClient.post<ApiResponse<null>>("/api/v1/auth/change-password", payload);
+  const { data } = await apiClient.post<ApiResponse<LoginResponse>>(
+    "/api/v1/auth/change-password",
+    payload,
+  );
+
+  if (!data.data) {
+    throw new Error(data.message || "Đổi mật khẩu thất bại.");
+  }
+
+  return data.data;
 }
 

@@ -27,26 +27,6 @@ class _MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
 
   @override
-  void initState() {
-    super.initState();
-    // Change 1: Listen widget open → tab Thuốc signal.
-    // Khi user tap widget, MainActivity gọi MethodChannel "openMedicationTab"
-    // → Flutter set initialMedicationTabProvider = true → listener đặt flag.
-    // build() phát hiện flag → setState _currentIndex = 1 → reset flag.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.listen<bool>(initialMedicationTabProvider, (_, shouldOpen) {
-        if (shouldOpen) {
-          setState(() => _currentIndex = 1);
-          // Reset provider sau khi đã set tab — tránh side-effect lần sau
-          Future.microtask(() {
-            ref.read(initialMedicationTabProvider.notifier).state = false;
-          });
-        }
-      });
-    });
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // T-3.3: Mỗi khi MainShell mount (app mở / quay lại từ background),
@@ -78,6 +58,27 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Change 1: Listen widget open → tab Thuốc signal.
+    // Khi user tap widget, MainActivity gọi MethodChannel "openMedicationTab"
+    // → Flutter set initialMedicationTabProvider = true → listener đặt flag.
+    // build() phát hiện flag → setState _currentIndex = 1 → reset flag.
+    //
+    // ref.listen() BẮT BUỘC gọi trong build() (ràng buộc của Riverpod) — bản cũ gọi trong
+    // initState()/addPostFrameCallback ném assertion thật "ref.listen can only be used within
+    // the build method" trên thiết bị thật (bắt được qua integration_test chạy máy thật,
+    // 22/09/2026, xem MainShell trong mọi bài System Test mobile chạm tới Trang chủ). Gọi lại
+    // mỗi lần build an toàn — Riverpod tự khử trùng theo provider, không đăng ký thêm listener
+    // mới mỗi rebuild.
+    ref.listen<bool>(initialMedicationTabProvider, (_, shouldOpen) {
+      if (shouldOpen) {
+        setState(() => _currentIndex = 1);
+        // Reset provider sau khi đã set tab — tránh side-effect lần sau
+        Future.microtask(() {
+          ref.read(initialMedicationTabProvider.notifier).state = false;
+        });
+      }
+    });
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,

@@ -49,6 +49,10 @@ public interface IScheduleSlotRepository
     /// <summary>Tạo slot mới (status = OPEN).</summary>
     Task<ScheduleSlot> AddAsync(ScheduleSlot slot, CancellationToken ct = default);
 
+    /// <summary>Tạo hàng loạt slot trong 1 SaveChanges duy nhất — dùng khi sinh nhiều slot cùng
+    /// lúc (EnsureDefaultSlotsAsync) để tránh 1 round-trip DB / slot.</summary>
+    Task AddRangeAsync(IEnumerable<ScheduleSlot> slots, CancellationToken ct = default);
+
     /// <summary>Update slot (dùng khi close).</summary>
     Task UpdateAsync(ScheduleSlot slot, CancellationToken ct = default);
 }

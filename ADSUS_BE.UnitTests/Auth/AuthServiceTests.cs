@@ -337,10 +337,11 @@ public class AuthServiceTests
         };
 
         // Act
-        var result = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
+        var (result, tokens) = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(ChangePasswordResult.Success, result);
+        Assert.NotNull(tokens);
     }
 
     [Fact]
@@ -357,10 +358,11 @@ public class AuthServiceTests
         };
 
         // Act
-        var result = await _sut.ChangePasswordAsync(Guid.NewGuid(), request, TestContext.Current.CancellationToken);
+        var (result, tokens) = await _sut.ChangePasswordAsync(Guid.NewGuid(), request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(ChangePasswordResult.UserNotFound, result);
+        Assert.Null(tokens);
     }
 
     [Fact]
@@ -378,10 +380,11 @@ public class AuthServiceTests
         };
 
         // Act
-        var result = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
+        var (result, tokens) = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(ChangePasswordResult.AccountNotActive, result);
+        Assert.Null(tokens);
     }
 
     [Fact]
@@ -400,10 +403,11 @@ public class AuthServiceTests
         };
 
         // Act
-        var result = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
+        var (result, tokens) = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(ChangePasswordResult.CurrentPasswordIncorrect, result);
+        Assert.Null(tokens);
     }
 
     [Fact]
@@ -424,10 +428,11 @@ public class AuthServiceTests
         };
 
         // Act
-        var result = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
+        var (result, tokens) = await _sut.ChangePasswordAsync(user.UserId, request, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(ChangePasswordResult.Success, result);
+        Assert.NotNull(tokens);
     }
 
     [Fact]

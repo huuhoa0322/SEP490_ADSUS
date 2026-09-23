@@ -395,14 +395,13 @@ public class ScheduleSlotsControllerIntegrationTests
         var client = CreateDoctorClient(app);
         var nextMonday = GetNextMonday();
 
-        _slots.Setup(r => r.HasOverlapAsync(
-                It.IsAny<Guid>(), It.IsAny<DateOnly>(),
-                It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(),
-                It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        _slots.Setup(r => r.ListByRangeAsync(
+                It.IsAny<DateOnly>(), It.IsAny<DateOnly>(),
+                It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot>());
 
-        _slots.Setup(r => r.AddAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ScheduleSlot s, CancellationToken _) => s);
+        _slots.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<ScheduleSlot>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         // Act
         var response = await client.PostAsync(
@@ -410,8 +409,9 @@ public class ScheduleSlotsControllerIntegrationTests
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        _slots.Verify(r => r.AddAsync(It.IsAny<ScheduleSlot>(), It.IsAny<CancellationToken>()),
-            Times.AtLeastOnce);
+        _slots.Verify(r => r.AddRangeAsync(
+                It.Is<IEnumerable<ScheduleSlot>>(slots => slots.Any()), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
