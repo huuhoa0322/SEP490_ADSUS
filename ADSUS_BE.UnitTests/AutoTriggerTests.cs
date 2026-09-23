@@ -43,14 +43,17 @@ public class AutoTriggerTests
         return new AppDbContext(options);
     }
 
+    // ConfirmAnalysisAsync kiểm tra magic bytes (NFR-SEC-07) — byte giả { 1, 2, 3 } sẽ bị từ chối.
+    private static readonly byte[] PngBytes = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00 };
+
     private static ConfirmAnalysisRequest MakeValidConfirmAnalysisRequest()
     {
         return new ConfirmAnalysisRequest
         {
-            OriginalImageStream = new MemoryStream(new byte[] { 1, 2, 3 }),
+            OriginalImageStream = new MemoryStream(PngBytes),
             OriginalImageFileName = "test.png",
             OriginalImageContentType = "image/png",
-            BurntImageStream = new MemoryStream(new byte[] { 4, 5, 6 }),
+            BurntImageStream = new MemoryStream(PngBytes),
             BurntImageFileName = "test_burnt.png",
             BurntImageContentType = "image/png",
             AiPredictionsJson = "[]",

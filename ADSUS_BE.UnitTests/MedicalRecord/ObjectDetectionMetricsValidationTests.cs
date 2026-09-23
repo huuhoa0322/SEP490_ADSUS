@@ -128,6 +128,9 @@ public class ObjectDetectionMetricsValidationTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    // ConfirmAnalysisAsync kiểm tra magic bytes (NFR-SEC-07) — byte giả { 1, 2, 3 } sẽ bị từ chối.
+    private static readonly byte[] PngBytes = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00 };
+
     private static ConfirmAnalysisRequest CreateConfirmRequest(
         string aiPredictionsJson,
         string doctorAnnotationsJson,
@@ -136,10 +139,10 @@ public class ObjectDetectionMetricsValidationTests : IDisposable
     {
         return new ConfirmAnalysisRequest
         {
-            OriginalImageStream = new MemoryStream(new byte[] { 1, 2, 3 }),
+            OriginalImageStream = new MemoryStream(PngBytes),
             OriginalImageContentType = "image/png",
             OriginalImageFileName = originalFileName ?? "ultrasound_original.png",
-            BurntImageStream = new MemoryStream(new byte[] { 4, 5, 6 }),
+            BurntImageStream = new MemoryStream(PngBytes),
             BurntImageContentType = "image/png",
             BurntImageFileName = burntFileName ?? "ultrasound_burnt.png",
             AiPredictionsJson = aiPredictionsJson,
