@@ -26,7 +26,17 @@ abstract interface class AuthRepository {
   /// currentPassword bỏ trống được (sửa 06/08/2026) khi tài khoản còn đang dùng mật khẩu tạm
   /// (mustChangePassword) — backend tự bỏ qua bước xác thực trong trường hợp đó, dựa trên cờ
   /// phía server chứ không phải giá trị client gửi lên.
-  Future<void> changePassword({
+  ///
+  /// Trả về [AuthSession] MỚI (sửa 22/09/2026) — chứ không phải void như trước: token cũ vẫn
+  /// còn mang claim MustChangePassword, và MustChangePasswordMiddleware phía backend tiếp tục
+  /// từ chối MỌI request khác dùng token đó, kể cả sau khi đổi mật khẩu thành công. Backend đã
+  /// trả sẵn 1 token mới trong response (đúng dữ liệu như lúc đăng nhập) chính vì lý do này —
+  /// bản cũ của hàm này bỏ qua luôn phần dữ liệu đó, nên trên Mobile 1 bệnh nhân vừa bị ép đổi
+  /// mật khẩu lần đầu sẽ tiếp tục dính 403 "Bạn phải đổi mật khẩu..." ở mọi màn hình sau đó
+  /// (thông báo, đồng bộ widget...) cho tới khi tự đăng xuất rồi đăng nhập lại. Việc trả về
+  /// AuthSession đầy đủ ở đây không vi phạm AF-01/GB-06 — hàm vẫn chỉ có đúng 1 đường thành
+  /// công (ném ApiException cho mọi thất bại), không hề lộ thêm thông tin phân biệt được.
+  Future<AuthSession> changePassword({
     required String? currentPassword,
     required String newPassword,
     required String confirmNewPassword,

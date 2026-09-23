@@ -41,7 +41,13 @@ void main() {
           currentPassword: any(named: 'currentPassword'),
           newPassword: any(named: 'newPassword'),
           confirmNewPassword: any(named: 'confirmNewPassword'),
-        )).thenAnswer((_) async {});
+        )).thenAnswer((_) async => const AuthSession(
+          userId: 'test-user-id',
+          accessToken: 'fresh-tok',
+          fullName: 'Nguyen Van A',
+          role: UserRole.patient,
+          mustChangePassword: false,
+        ));
 
     final result = await container.read(changePasswordViewModelProvider.notifier).submit(
           currentPassword: 'Old@123',
@@ -56,13 +62,13 @@ void main() {
     expect(state.errorMessage, isNull);
   });
 
-  test('submit_Success_ClearsMustChangePasswordOnAuthViewModel', () async {
+  test('submit_Success_ReplacesAuthViewModelSessionWithFreshToken', () async {
     when(() => authRepo.signIn(
           phoneNumber: any(named: 'phoneNumber'),
           password: any(named: 'password'),
         )).thenAnswer((_) async => const AuthSession(
           userId: 'test-user-id',
-          accessToken: 'tok',
+          accessToken: 'temp-tok',
           fullName: 'Nguyen Van A',
           role: UserRole.patient,
           mustChangePassword: true,
@@ -74,7 +80,13 @@ void main() {
           currentPassword: any(named: 'currentPassword'),
           newPassword: any(named: 'newPassword'),
           confirmNewPassword: any(named: 'confirmNewPassword'),
-        )).thenAnswer((_) async {});
+        )).thenAnswer((_) async => const AuthSession(
+          userId: 'test-user-id',
+          accessToken: 'fresh-tok',
+          fullName: 'Nguyen Van A',
+          role: UserRole.patient,
+          mustChangePassword: false,
+        ));
 
     await container.read(changePasswordViewModelProvider.notifier).submit(
           currentPassword: null,
@@ -82,9 +94,13 @@ void main() {
           confirmNewPassword: 'New@456',
         );
 
-    // Backend đã gỡ cờ trong DB, ViewModel phải gỡ theo ở AuthViewModel để AuthGuard/router
-    // thôi chặn màn khác — đây là hành vi thật ChangePasswordViewModel.submit() thực hiện.
-    expect(container.read(authViewModelProvider).session?.mustChangePassword, isFalse);
+    // AuthRepository.changePassword() giờ trả về AuthSession MỚI (kèm access token mới) thay
+    // vì void — ViewModel phải thay toàn bộ session bằng bản mới đó (applySession()), không
+    // chỉ gỡ cờ mustChangePassword trên session cũ, nếu không mọi request sau đó vẫn tự gắn
+    // token cũ (còn mang claim MustChangePassword) và tiếp tục bị backend từ chối 403.
+    final session = container.read(authViewModelProvider).session;
+    expect(session?.mustChangePassword, isFalse);
+    expect(session?.accessToken, 'fresh-tok');
   });
 
   test('submit_RepositoryThrows_SetsErrorMessageAndReturnsFalse', () async {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -58,22 +60,31 @@ class AiChatState {
 
 class AiChatViewModel extends StateNotifier<AiChatState> {
   AiChatViewModel(this._ref) : super(const AiChatState()) {
-    _listenConnectivity();
+    _connectivitySubscription = _listenConnectivity();
   }
 
   final Ref _ref;
   ChatRepository? _chatRepo;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   /// Khởi tạo repository sau khi user đăng nhập.
-  void initialize(String userId) {
+  ///
+  /// PHẢI await initializeForUser() trước khi coi _chatRepo là sẵn sàng dùng — bản cũ gọi
+  /// mà không await, nên _chatRepo đã khác null (qua được guard "if (_chatRepo == null)
+  /// return;" ở mọi hàm khác) trong khi Hive box bên trong VẪN CHƯA MỞ XONG. Nếu đúng lúc đó
+  /// có sự kiện đổi kết nối mạng tới (rất dễ xảy ra, xem _listenConnectivity — sự kiện đầu
+  /// tiên có thể tới ngay khi khởi động), syncPendingMessages() sẽ đọc thẳng vào box chưa mở,
+  /// ném StateError thật (bắt được qua integration_test BF-03, 22/09/2026).
+  Future<void> initialize(String userId) async {
     final local = _ref.read(chatLocalRepositoryProvider);
     final api = _ref.read(chatApiRepositoryProvider);
 
-    _chatRepo = ChatRepository(local: local, api: api);
-    _chatRepo!.onNewMessage = _onNewMessage;
+    final repo = ChatRepository(local: local, api: api);
+    repo.onNewMessage = _onNewMessage;
+    await repo.initializeForUser(userId);
+    _chatRepo = repo;
 
-    _chatRepo!.initializeForUser(userId);
-    loadHistory();
+    await loadHistory();
   }
 
   /// Dọn dẹp khi đăng xuất.
@@ -185,8 +196,14 @@ class AiChatViewModel extends StateNotifier<AiChatState> {
     );
   }
 
-  void _listenConnectivity() {
-    Connectivity().onConnectivityChanged.listen((results) {
+  StreamSubscription<List<ConnectivityResult>> _listenConnectivity() {
+    return Connectivity().onConnectivityChanged.listen((results) {
+      // Subscription trước đây không bao giờ bị huỷ (không lưu lại để gọi cancel()) — provider
+      // bị dispose (đăng xuất, đóng ProviderScope...) trong lúc 1 sự kiện đổi kết nối mạng
+      // đang bay thì callback này vẫn chạy và ghi vào `state` đã dispose, ném
+      // "Bad state: Tried to use AiChatViewModel after `dispose` was called" thật trên thiết
+      // bị thật (bắt được qua integration_test BF-03, 22/09/2026).
+      if (!mounted) return;
       final hasInternet = results.any((r) => r != ConnectivityResult.none);
       state = state.copyWith(isOffline: !hasInternet);
 
@@ -194,6 +211,12 @@ class AiChatViewModel extends StateNotifier<AiChatState> {
         syncPendingMessages();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
   }
 }
 

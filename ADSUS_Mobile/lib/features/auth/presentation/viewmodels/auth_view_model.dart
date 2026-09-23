@@ -68,20 +68,11 @@ class AuthViewModel extends StateNotifier<AuthState> {
     }
   }
 
-  /// Gọi sau khi đổi mật khẩu thành công — backend đã gỡ cờ trong DB, client gỡ theo.
-  void clearMustChangePassword() {
-    final current = state.session;
-    if (current == null) return;
-    state = state.copyWith(
-      session: AuthSession(
-        userId: current.userId,
-        accessToken: current.accessToken,
-        fullName: current.fullName,
-        email: current.email,
-        role: current.role,
-        mustChangePassword: false,
-      ),
-    );
+  /// Gọi sau khi đổi mật khẩu thành công — thay TOÀN BỘ session bằng bản mới AuthRepository
+  /// vừa trả về (kèm access token mới), không chỉ gỡ cờ mustChangePassword trên session cũ.
+  /// Token cũ vẫn mang claim MustChangePassword nên phải bị thay hẳn, không thể sửa tại chỗ.
+  void applySession(AuthSession session) {
+    state = state.copyWith(session: session);
   }
 
   /// Máy chủ đã từ chối token đang dùng — hết hạn, hoặc tài khoản vừa bị Admin khoá.
