@@ -9,6 +9,7 @@ using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace ADSUS_BE.BLL.AppointmentScheduling.Services;
 
@@ -34,6 +35,7 @@ public sealed class AppointmentService : IAppointmentService
     private readonly NoShowService _noShowService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AppointmentService> _logger;
+    private readonly AppDbContext _db;
 
     public AppointmentService(
         IAppointmentRepository appointmentRepo,
@@ -45,7 +47,8 @@ public sealed class AppointmentService : IAppointmentService
         ICaseService caseService,
         NoShowService noShowService,
         IUnitOfWork unitOfWork,
-        ILogger<AppointmentService> logger)
+        ILogger<AppointmentService> logger,
+        AppDbContext db)
     {
         _appointmentRepo = appointmentRepo;
         _slotRepo = slotRepo;
@@ -57,6 +60,7 @@ public sealed class AppointmentService : IAppointmentService
         _noShowService = noShowService;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _db = db;
     }
 
     private static readonly TimeZoneInfo VietnamZone = GetVietnamTimeZone();
@@ -580,29 +584,23 @@ public sealed class AppointmentService : IAppointmentService
             throw new InvalidOperationException("Không thể đặt lịch tái khám vào khung giờ đã qua.");
         }
 
-        // 5-7. Validate patient profile, active count, và appointment on date song song
-        var patientProfileTask = _patientProfiles.FindByIdAsync(request.PatientProfileId, ct);
-        var activeCountTask = _appointmentRepo.CountBookedByProfileAsync(request.PatientProfileId, ct);
-        var existingAppointmentTask = _appointmentRepo.GetFirstOnDateAsync(
-            request.PatientProfileId, slot.SlotDate,
-            new[] { AppointmentStatus.Booked, AppointmentStatus.Completed }, excludeAppointmentId: null, ct);
-
-        await Task.WhenAll(patientProfileTask, activeCountTask, existingAppointmentTask);
-
-        var patientProfile = await patientProfileTask;
+        // 5-7. Validate patient profile, active count, và appointment on date tuần tự (tránh lỗi EF Core Threading)
+        var patientProfile = await _patientProfiles.FindByIdAsync(request.PatientProfileId, ct);
         if (patientProfile == null)
         {
             throw new KeyNotFoundException("Không tìm thấy hồ sơ bệnh nhân.");
         }
 
-        var activeAppointments = await activeCountTask;
+        var activeAppointments = await _appointmentRepo.CountBookedByProfileAsync(request.PatientProfileId, ct);
         if (activeAppointments >= 3)
         {
             throw new InvalidOperationException(
                 "Bệnh nhân đã có 3 lịch hẹn đang chờ. Vui lòng hoàn thành hoặc hủy lịch cũ trước khi đặt mới.");
         }
 
-        var existingAppointment = await existingAppointmentTask;
+        var existingAppointment = await _appointmentRepo.GetFirstOnDateAsync(
+            request.PatientProfileId, slot.SlotDate,
+            new[] { AppointmentStatus.Booked, AppointmentStatus.Completed }, excludeAppointmentId: null, ct);
         if (existingAppointment != null)
         {
             var existingDoctorName = existingAppointment.Slot?.Doctor?.FullName ?? "bác sĩ";

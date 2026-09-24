@@ -347,7 +347,7 @@ public class InvoiceService : IInvoiceService
             PaidAt = invoice.PaidAt,
             Status = invoice.Status.ToString(),
             PaymentMethod = invoice.PaymentMethod != null ? invoice.PaymentMethod.ToString() : null,
-            Items = responseItems
+            Items = responseItems.OrderBy(i => i.ItemType).ThenBy(i => i.Description).ToList()
         };
     }
 
