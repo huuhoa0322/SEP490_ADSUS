@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../../domain/entities/medical_record_case.dart';
 import '../../domain/entities/medical_record_feedback.dart';
 import '../../domain/entities/medical_record_image.dart';
@@ -35,12 +37,17 @@ class MedicalRecordMapper {
         images: dto.ultrasoundImages.map(_imageFromDto).toList(),
       );
 
-  static MedicalRecordImage _imageFromDto(UltrasoundImageDto dto) => MedicalRecordImage(
-        imageId: dto.imageId,
-        uploadedAt: DateTime.parse(dto.uploadedAt),
-        imageUrl: dto.imageUrl,
-        note: dto.note,
-      );
+  static MedicalRecordImage _imageFromDto(UltrasoundImageDto dto) {
+    // DEBUG: In ra log để xem URL gốc
+    print('DEBUG_IMAGE_URL - Original: ${dto.imageUrl}');
+
+    return MedicalRecordImage(
+      imageId: dto.imageId,
+      uploadedAt: DateTime.parse(dto.uploadedAt),
+      imageUrl: dto.imageUrl,
+      note: dto.note,
+    );
+  }
 
   static MedicalRecordPrescription _prescriptionFromDto(PrescriptionSummaryDto dto) =>
       MedicalRecordPrescription(

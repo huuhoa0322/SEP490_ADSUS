@@ -19,6 +19,7 @@ public class ScheduleSlotServiceTests
 {
     private readonly Mock<IScheduleSlotRepository> _slotRepo = new();
     private readonly Mock<IUserRepository> _userRepo = new();
+    private readonly Mock<INotificationService> _notifications = new();
     private readonly AppDbContext _db;
     private readonly ScheduleSlotService _sut;
 
@@ -31,10 +32,9 @@ public class ScheduleSlotServiceTests
     {
         var options = new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(databaseName: "Schedule_Test").Options;
         _db = new AppDbContext(options);
-        var notificationMock = new Mock<INotificationService>();
         _sut = new ScheduleSlotService(
             _slotRepo.Object,
-            _userRepo.Object, notificationMock.Object, _db);
+            _userRepo.Object, _notifications.Object, _db);
 
         SetupDoctor();
     }
@@ -272,6 +272,48 @@ public class ScheduleSlotServiceTests
         // Assert
         Assert.Equal(1, result.AffectedBookingsCount);
         Assert.Equal(SlotStatus.Closed, slot.Status);
+    }
+
+    [Fact]
+    public async Task CloseSlotAsync_ForceCloseWithSeveralBookings_NotifiesEachPatientAccountResolvedFromProfiles()
+    {
+        // Arrange — người nhận tin huỷ lịch lấy từ patient_profiles.user_id (nạp một lần cho mọi
+        // lịch hẹn, không truy vấn lại trong vòng lặp), trừ lịch đặt hộ thì báo cho người đặt.
+        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
+        var slot = CreateSlot(futureDate, SlotStatus.Open);
+        var profileA = Guid.NewGuid();
+        var profileB = Guid.NewGuid();
+        var userA = Guid.NewGuid();
+        var userB = Guid.NewGuid();
+        var bookedByRelative = Guid.NewGuid();
+
+        _db.PatientProfiles.AddRange(
+            new PatientProfile { PatientProfileId = profileA, UserId = userA, CreatedBy = userA, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+            new PatientProfile { PatientProfileId = profileB, UserId = userB, CreatedBy = userB, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        slot.Appointments = new List<Appointment>
+        {
+            new() { AppointmentId = Guid.NewGuid(), SlotId = _slotId, PatientProfileId = profileA, Status = AppointmentStatus.Booked, CreatedAt = DateTime.UtcNow },
+            new() { AppointmentId = Guid.NewGuid(), SlotId = _slotId, PatientProfileId = profileB, Status = AppointmentStatus.Booked, CreatedAt = DateTime.UtcNow, BookedByUserId = bookedByRelative },
+        };
+
+        _slotRepo.Setup(r => r.GetByIdForUpdateAsync(_slotId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(slot);
+
+        // Act
+        await _sut.CloseSlotAsync(_slotId, forceClose: true, TestContext.Current.CancellationToken);
+
+        // Assert
+        _notifications.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r => r.UserId == userA && r.Type == "appointment_cancelled_by_clinic"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _notifications.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r => r.UserId == bookedByRelative),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _notifications.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r => r.UserId == userB),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

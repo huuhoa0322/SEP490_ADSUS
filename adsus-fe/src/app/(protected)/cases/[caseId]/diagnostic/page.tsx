@@ -119,7 +119,6 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
         }
 
         await apiClient.post(`/api/v1/cases/${caseId}/images/confirm`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
           timeout: 60000,
         });
       }

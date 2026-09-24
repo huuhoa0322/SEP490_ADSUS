@@ -80,8 +80,8 @@ public class PrescriptionServiceTests
         );
 
         // Giả lập DB không tìm thấy thuốc
-        _medicineRepoMock.Setup(r => r.FindByNameAsync("ThuocKhongTonTai", It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Medicine?)null);
+        _medicineRepoMock.Setup(r => r.ListByNamesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Medicine>());
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<BusinessException>(() => service.CreateAsync(doctorId, request, TestContext.Current.CancellationToken));
@@ -119,8 +119,8 @@ public class PrescriptionServiceTests
             .ReturnsAsync(new Case { CaseId = caseId, DoctorId = doctorId, Status = CaseStatus.Confirmed });
 
         // Tìm thấy thuốc trong danh mục
-        _medicineRepoMock.Setup(r => r.FindByNameAsync("Paracetamol", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Medicine { MedicineId = medicineId, Name = "Paracetamol", Status = MedicineStatus.Active, UsageUnit = "viên" });
+        _medicineRepoMock.Setup(r => r.ListByNamesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { new Medicine { MedicineId = medicineId, Name = "Paracetamol", Status = MedicineStatus.Active, UsageUnit = "viên" } });
 
         // Add 10 viên vào kho (Trong khi request yêu cầu 1 * 1 * 15 = 15 viên)
         db.MedicineBatches.Add(new MedicineBatch
@@ -177,8 +177,8 @@ public class PrescriptionServiceTests
         _prescriptionRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, CancellationToken ct) => new Prescription { PrescriptionId = id, Case = new Case { PatientProfile = new PatientProfile { User = new User { FullName = "Test User" } } } });
 
-        _medicineRepoMock.Setup(r => r.FindByNameAsync("Paracetamol", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Medicine { MedicineId = medicineId, Name = "Paracetamol", Status = MedicineStatus.Active, UsageUnit = "viên" });
+        _medicineRepoMock.Setup(r => r.ListByNamesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { new Medicine { MedicineId = medicineId, Name = "Paracetamol", Status = MedicineStatus.Active, UsageUnit = "viên" } });
 
         // Database setup for MedicineBatch
         var dbName = Guid.NewGuid().ToString();
@@ -392,8 +392,8 @@ public class PrescriptionServiceTests
 
         // Thuốc tồn tại nhưng Inactive
         _medicineRepoMock
-            .Setup(r => r.FindByNameAsync("ThuocCu", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Medicine { MedicineId = medicineId, Name = "ThuocCu", Status = MedicineStatus.Inactive });
+            .Setup(r => r.ListByNamesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { new Medicine { MedicineId = medicineId, Name = "ThuocCu", Status = MedicineStatus.Inactive } });
 
         var request = new CreatePrescriptionRequest(
             CaseId: caseId,
@@ -433,8 +433,8 @@ public class PrescriptionServiceTests
             
         var medicineId = Guid.NewGuid();
         _medicineRepoMock
-            .Setup(r => r.FindByNameAsync("ValidMedicine", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Medicine { MedicineId = medicineId, Name = "ValidMedicine", Status = MedicineStatus.Active, VolumePerBaseUnit = 1 });
+            .Setup(r => r.ListByNamesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { new Medicine { MedicineId = medicineId, Name = "ValidMedicine", Status = MedicineStatus.Active, VolumePerBaseUnit = 1 } });
             
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         db.MedicineBatches.Add(new MedicineBatch

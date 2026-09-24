@@ -133,7 +133,7 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
 
     public async Task UpdateAsync(ScheduleSlot slot, CancellationToken ct = default)
     {
-        _db.ScheduleSlots.Update(slot);
+        // _db.ScheduleSlots.Update(slot); // Bỏ gọi explicit Update vì slot đã được track, gọi Update sẽ đánh dấu toàn bộ navigation properties thành Modified gây lỗi SaveChanges (Identity Resolution).
         await _db.SaveChangesAsync(ct);
     }
 }

@@ -33,6 +33,23 @@ public sealed class MedicineRepository : IMedicineRepository
                 EF.Functions.ILike(m.Name, trimmed), ct);
     }
 
+    public async Task<IReadOnlyList<Medicine>> ListByNamesAsync(IEnumerable<string> names, CancellationToken ct = default)
+    {
+        var lowered = names
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Select(n => n.Trim().ToLowerInvariant())
+            .Distinct()
+            .ToList();
+        if (lowered.Count == 0) return Array.Empty<Medicine>();
+
+        // So bằng lower() thay vì ILike như FindByNameAsync: ILike không gộp được thành một
+        // câu IN (...), và ILike còn coi '_'/'%' trong tên thuốc là ký tự đại diện.
+        return await _db.Medicines
+            .AsNoTracking()
+            .Where(m => lowered.Contains(m.Name.ToLower()))
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(Medicine medicine, CancellationToken ct = default)
     {
         await _db.Medicines.AddAsync(medicine, ct);

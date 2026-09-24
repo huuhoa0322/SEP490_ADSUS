@@ -288,6 +288,7 @@ public class ShiftRequestService : IShiftRequestService
         var endDate = startDate.AddMonths(1).AddDays(-1);
 
         var slots = await _db.ScheduleSlots
+            .AsNoTracking()
             .Include(s => s.Appointments)
             .Where(s => s.DoctorId == userId && s.SlotDate >= startDate && s.SlotDate <= endDate)
             .ToListAsync(ct);

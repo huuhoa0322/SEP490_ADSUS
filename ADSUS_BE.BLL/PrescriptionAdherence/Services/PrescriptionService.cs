@@ -87,11 +87,27 @@ public sealed class PrescriptionService : IPrescriptionService
             if (caseEntity.DoctorId != actorId)
                 throw new BusinessException("Bác sĩ không có quyền kê đơn cho ca khám này.");
 
-            // Option A: lookup by name (case-insensitive).
-            // Handles doctor picks from catalog.
-            var medicineCache = new Dictionary<string, (Guid Id, string? Unit, decimal VolumePerBaseUnit)>(StringComparer.OrdinalIgnoreCase);
-
             var now = DateTime.UtcNow;
+            var today = DateOnly.FromDateTime(now);
+
+            // Option A: lookup by name (case-insensitive). Handles doctor picks from catalog.
+            // Nạp thuốc và tồn kho cho MỌI dòng trong đơn bằng 2 truy vấn trước vòng lặp, thay vì
+            // 2 truy vấn cho TỪNG dòng (N+1, P11 review 24/09/2026). Trùng tên thì ưu tiên thuốc
+            // còn hoạt động.
+            var medicinesByName = (await _medicineRepo.ListByNamesAsync(request.Items.Select(i => i.MedicineName), ct))
+                .GroupBy(m => m.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderBy(m => m.Status == MedicineStatus.Inactive ? 1 : 0).First(),
+                    StringComparer.OrdinalIgnoreCase);
+
+            var medicineIds = medicinesByName.Values.Select(m => m.MedicineId).Distinct().ToList();
+            var availableBaseByMedicine = await _db.MedicineBatches
+                .AsNoTracking()
+                .Where(b => medicineIds.Contains(b.MedicineId) && b.QuantityBase > 0 && b.ExpiryDate >= today)
+                .GroupBy(b => b.MedicineId)
+                .Select(g => new { MedicineId = g.Key, Total = g.Sum(b => b.QuantityBase) })
+                .ToDictionaryAsync(x => x.MedicineId, x => x.Total, ct);
 
             // Create prescription
             var prescription = new Prescription
@@ -113,24 +129,19 @@ public sealed class PrescriptionService : IPrescriptionService
                 var itemId = Guid.NewGuid();
 
                 // Lookup medicine by name
-                if (!medicineCache.TryGetValue(itemDto.MedicineName, out var medicineInfo))
+                if (string.IsNullOrWhiteSpace(itemDto.MedicineName)
+                    || !medicinesByName.TryGetValue(itemDto.MedicineName.Trim(), out var existing)
+                    || existing.Status == MedicineStatus.Inactive)
                 {
-                    var existing = await _medicineRepo.FindByNameAsync(itemDto.MedicineName, ct);
-                    if (existing is null || existing.Status == MedicineStatus.Inactive)
-                    {
-                        throw new BusinessException($"Thuốc '{itemDto.MedicineName}' không tồn tại trong hệ thống hoặc đã bị ngừng sử dụng. Vui lòng chọn thuốc từ danh sách.");
-                    }
-                    
-                    medicineInfo = (existing.MedicineId, existing.UsageUnit, existing.VolumePerBaseUnit ?? 1m);
-                    medicineCache[itemDto.MedicineName] = medicineInfo;
+                    throw new BusinessException($"Thuốc '{itemDto.MedicineName}' không tồn tại trong hệ thống hoặc đã bị ngừng sử dụng. Vui lòng chọn thuốc từ danh sách.");
                 }
+
+                var medicineInfo = (Id: existing.MedicineId, Unit: existing.UsageUnit, VolumePerBaseUnit: existing.VolumePerBaseUnit ?? 1m);
 
                 var quantityUSNeeded = itemDto.QuantityPerDose * itemDto.ScheduleSlots.Count * itemDto.DurationDays;
                 decimal volumePerBaseUnit = medicineInfo.VolumePerBaseUnit;
-                
-                var totalAvailableBS = await _db.MedicineBatches
-                    .Where(b => b.MedicineId == medicineInfo.Id && b.QuantityBase > 0 && b.ExpiryDate >= DateOnly.FromDateTime(now))
-                    .SumAsync(b => b.QuantityBase, ct);
+
+                var totalAvailableBS = availableBaseByMedicine.GetValueOrDefault(medicineInfo.Id);
                 var totalAvailableUS = (int)(totalAvailableBS * volumePerBaseUnit);
 
                 if (quantityUSNeeded > totalAvailableUS)

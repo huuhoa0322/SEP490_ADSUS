@@ -155,7 +155,7 @@ public class InvoiceService : IInvoiceService
                     {
                         Id = Guid.NewGuid(),
                         InvoiceId = invoice.Id,
-                        Description = $"{pItem.Medicine.Name} - {pack.MedicineUnit.Name}",
+                        Description = $"Thuốc: {pItem.Medicine.Name} ({pack.MedicineUnit?.Name ?? "Đơn vị"})",
                         Quantity = qty,
                         UnitPrice = pack.SalePrice,
                         TotalPrice = qty * pack.SalePrice,
@@ -171,11 +171,10 @@ public class InvoiceService : IInvoiceService
         invoice.TotalAmount = grandTotal;
         
         await _context.SaveChangesAsync();
-
+        
         if (hasMedicine)
         {
             await _inventoryService.DispenseAsync(caseId);
-            await GenerateIntakeLogsForPrescriptionAsync(caseId);
         }
 
         // Send notification to all nurses
@@ -304,7 +303,9 @@ public class InvoiceService : IInvoiceService
 
     public async Task PayInvoiceAsync(Guid invoiceId, PaymentMethod method)
     {
-        var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.Id == invoiceId);
+        var invoice = await _context.Invoices
+            .Include(i => i.InvoiceItems)
+            .FirstOrDefaultAsync(i => i.Id == invoiceId);
         if (invoice == null) throw new BusinessException("Không tìm thấy hóa đơn.");
         
         if (invoice.Status == InvoiceStatus.PAID)
@@ -315,7 +316,11 @@ public class InvoiceService : IInvoiceService
         invoice.PaidAt = DateTime.UtcNow;
         invoice.PaymentMethod = method;
 
-
+        bool hasMedicine = invoice.InvoiceItems.Any(i => i.ItemType == InvoiceItemType.Medicine);
+        if (hasMedicine)
+        {
+            await GenerateIntakeLogsForPrescriptionAsync(invoice.CaseId);
+        }
 
         // Lưu trạng thái hóa đơn (giao dịch Inventory đã được add bên trong DispenseAsync)
         await _context.SaveChangesAsync();

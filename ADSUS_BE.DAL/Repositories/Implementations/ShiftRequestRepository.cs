@@ -71,6 +71,7 @@ public class ShiftRequestRepository : IShiftRequestRepository
         Guid userId, DateOnly monthStart, DateOnly monthEnd, CancellationToken ct = default)
     {
         return await _context.ShiftRequests
+            .AsNoTracking()
             .Where(r => r.UserId == userId &&
                         r.RequestDate >= monthStart &&
                         r.RequestDate <= monthEnd &&

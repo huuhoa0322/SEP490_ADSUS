@@ -31,6 +31,7 @@ public class HealthLogRepository : IHealthLogRepository
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.HealthLogs
+            .AsNoTracking()
             .Where(h => h.PatientProfileId == patientProfileId && h.LogDate == date)
             .OrderBy(h => h.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -42,6 +43,7 @@ public class HealthLogRepository : IHealthLogRepository
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.HealthLogs
+            .AsNoTracking()
             .Where(h => h.PatientProfileId == patientProfileId)
             .OrderByDescending(h => h.CreatedAt)
             .Take(limit)
