@@ -47,5 +47,8 @@ public interface ICaseRepository
     /// dùng cho các cập nhật đơn giản như SaveConclusionAsync/ConfirmAsync. KHÔNG dùng với
     /// entity tải qua GetByIdAsync/GetDetailAsync — hai hàm đó dùng AsNoTracking(), sửa xong
     /// gọi SaveChangesAsync sẽ không ghi được gì (EF không theo dõi để biết mà lưu).</summary>
+    /// <summary>Case kèm triệu chứng (tên danh mục + tên triệu chứng). Chỉ đọc.</summary>
+    Task<Case?> GetWithSymptomsAsync(Guid caseId, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

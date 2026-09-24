@@ -55,4 +55,18 @@ public interface IScheduleSlotRepository
 
     /// <summary>Update slot (dùng khi close).</summary>
     Task UpdateAsync(ScheduleSlot slot, CancellationToken ct = default);
+
+    /// <summary>
+    /// Slot đang Booked của bác sĩ trong một ngày, bắt đầu SAU <paramref name="afterTime"/> —
+    /// ứng viên để tái chế về Open khi ca trước kết thúc sớm. CÓ tracking (Service sẽ cập nhật
+    /// Status rồi gọi <see cref="SaveChangesAsync"/>). Kèm Appointments + Case.
+    /// </summary>
+    Task<IReadOnlyList<ScheduleSlot>> ListBookedForDoctorAfterForUpdateAsync(
+        Guid doctorId,
+        DateOnly slotDate,
+        TimeOnly afterTime,
+        CancellationToken ct = default);
+
+    /// <summary>Lưu mọi thay đổi đang được track — Service quyết định lúc lưu (L3 §8).</summary>
+    Task SaveChangesAsync(CancellationToken ct = default);
 }

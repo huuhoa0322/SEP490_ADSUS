@@ -541,6 +541,77 @@ public sealed class CaseService : ICaseService
     }
 
     /// <inheritdoc />
+    public async Task StageCheckinFromAppointmentAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var medicalCase = await _cases.GetForUpdateAsync(caseId, ct);
+        if (medicalCase != null && medicalCase.Status == CaseStatus.Booked)
+        {
+            medicalCase.Status = CaseStatus.InProgress;
+            medicalCase.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public async Task StageCancelFromAppointmentAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var medicalCase = await _cases.GetForUpdateAsync(caseId, ct);
+        if (medicalCase != null)
+        {
+            medicalCase.Status = CaseStatus.Cancelled;
+            medicalCase.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public async Task StageReplaceSymptomsFromAppointmentAsync(
+        Guid caseId, IReadOnlyList<SymptomInput>? symptoms, CancellationToken ct = default)
+    {
+        var medicalCase = await _cases.GetForUpdateWithCollectionsAsync(caseId, ct);
+        if (medicalCase == null) return;
+
+        var now = DateTime.UtcNow;
+        if (symptoms != null)
+        {
+            medicalCase.CaseSymptoms.Clear();
+            foreach (var s in symptoms)
+            {
+                // Không tự gán Id — xem chú thích ở UpdateSymptomsAsync (EF sẽ sinh UPDATE thay vì INSERT).
+                medicalCase.CaseSymptoms.Add(new CaseSymptom
+                {
+                    CaseId = caseId,
+                    CategoryId = s.CategoryId,
+                    SymptomId = s.SymptomId,
+                    OtherNote = s.OtherNote,
+                    CreatedAt = now
+                });
+            }
+        }
+        medicalCase.UpdatedAt = now;
+    }
+
+    public async Task StageRescheduleFromAppointmentAsync(
+        Guid caseId, Guid? reassignDoctorTo, CaseStatus? newStatus, CancellationToken ct = default)
+    {
+        var medicalCase = await _cases.GetForUpdateAsync(caseId, ct);
+        if (medicalCase == null) return;
+
+        if (reassignDoctorTo.HasValue)
+        {
+            medicalCase.DoctorId = reassignDoctorTo.Value;
+        }
+
+        if (newStatus.HasValue)
+        {
+            medicalCase.Status = newStatus.Value;
+            medicalCase.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public async Task<IReadOnlyList<CaseSymptomResponse>> ListSymptomsAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var medicalCase = await _cases.GetWithSymptomsAsync(caseId, ct);
+        return medicalCase?.CaseSymptoms.Select(CaseMapper.ToSymptomResponse).ToList()
+            ?? new List<CaseSymptomResponse>();
+    }
+
     public async Task<Guid> CreateFromBookingAsync(
         Guid patientProfileId,
         Guid doctorId,

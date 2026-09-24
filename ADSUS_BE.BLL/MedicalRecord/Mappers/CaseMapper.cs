@@ -12,6 +12,13 @@ namespace ADSUS_BE.BLL.MedicalRecord.Mappers;
 /// </summary>
 public static class CaseMapper
 {
+    public static CaseSymptomResponse ToSymptomResponse(CaseSymptom symptom) => new(
+        CategoryId: symptom.CategoryId,
+        CategoryName: symptom.Category?.Name ?? string.Empty,
+        SymptomId: symptom.SymptomId,
+        SymptomName: symptom.Symptom?.Name,
+        OtherNote: symptom.OtherNote);
+
     public static UltrasoundImageResponse ToImageResponse(
         UltrasoundImage image,
         string? signedUrl) => new(

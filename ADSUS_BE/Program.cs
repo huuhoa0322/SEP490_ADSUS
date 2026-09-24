@@ -120,12 +120,6 @@ namespace ADSUS_BE
             // Must be called BEFORE UseSerilog so Serilog reads the full config tree.
             builder.Configuration.AddUserSecrets("0b55daea-3ede-48d9-847b-1d62fa20823d");
 
-            // Verify config is present:
-            var openAiKey = builder.Configuration["OpenAi:ApiKey"];
-            var openAiModel = builder.Configuration["OpenAi:Model"];
-            Console.WriteLine($"[DEBUG CONFIG] OpenAi:ApiKey = '{(string.IsNullOrEmpty(openAiKey) ? "NULL/EMPTY" : string.Concat(openAiKey.AsSpan(0, Math.Min(10, openAiKey.Length)), "..."))}'");
-            Console.WriteLine($"[DEBUG CONFIG] OpenAi:Model = '{(openAiModel ?? "NULL")}'");
-
             builder.Host.UseSerilog((context, configuration) =>
                 configuration.ReadFrom.Configuration(context.Configuration));
 

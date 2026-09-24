@@ -217,6 +217,37 @@ public class PatientProfileServiceTests
         await Assert.ThrowsAsync<ResourceNotFoundException>(() => _sut.GetByIdAsync(Guid.NewGuid(), TestContext.Current.CancellationToken));
     }
 
+    [Fact]
+    public async Task FindByIdAsync_NotFound_ReturnsNullInsteadOfThrowing()
+    {
+        // Arrange — module khác (AppointmentService) chỉ cần hồ sơ "nếu có" để gửi thông báo.
+        _profiles.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync((PatientProfile?)null);
+
+        // Act
+        var response = await _sut.FindByIdAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Null(response);
+    }
+
+    [Fact]
+    public async Task FindByIdAsync_GuestProfile_ReturnsGuestNameWithEmptyPatientUserId()
+    {
+        // Arrange — hồ sơ guest (người thân chưa có tài khoản): tên nằm trên chính hồ sơ.
+        var guest = new PatientProfile { PatientProfileId = Guid.NewGuid(), UserId = null, FullName = "Người thân", CreatedBy = Guid.NewGuid() };
+        _profiles.Setup(r => r.GetByIdAsync(guest.PatientProfileId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(guest);
+
+        // Act
+        var response = await _sut.FindByIdAsync(guest.PatientProfileId, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(response);
+        Assert.Equal(Guid.Empty, response!.PatientUserId);
+        Assert.Equal("Người thân", response.FullName);
+    }
+
     // ---------- SearchPatientsAsync ----------
 
     [Fact]

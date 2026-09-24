@@ -53,6 +53,13 @@ public sealed class CaseRepository : ICaseRepository
             .Include(c => c.CaseDiagnoses)
             .FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
 
+    public Task<Case?> GetWithSymptomsAsync(Guid caseId, CancellationToken ct = default) =>
+        _db.Cases
+            .AsNoTracking()
+            .Include(c => c.CaseSymptoms).ThenInclude(cs => cs.Category)
+            .Include(c => c.CaseSymptoms).ThenInclude(cs => cs.Symptom)
+            .FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
+
     public Task SaveChangesAsync(CancellationToken ct = default) =>
         _db.SaveChangesAsync(ct);
 

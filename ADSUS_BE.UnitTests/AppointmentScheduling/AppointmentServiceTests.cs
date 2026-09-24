@@ -51,11 +51,13 @@ public class AppointmentServiceTests : IDisposable
             Mock.Of<ILogger<NoShowService>>());
 
         _sut = new AppointmentService(
-            _appointmentRepo.Object,
-            _slotRepo.Object,
-            _profileRepo.Object,
+            _appointmentRepo.BackedBy(_db).Object,
+            _slotRepo.BackedBy(_db).Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db),
+            new ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService(_profileRepo.Object, new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db), Microsoft.Extensions.Logging.Abstractions.NullLogger<ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService>.Instance),
+            new ADSUS_BE.BLL.PatientRelationship.Services.PatientRelationshipService(new ADSUS_BE.DAL.Repositories.Implementations.PatientRelationshipRepository(_db), _profileRepo.Object, _db),
             _notificationService.Object,
-            _caseService.Object,
+            _caseService.BackedBy(_db).Object,
             _noShowService,
             _db,
             Mock.Of<ILogger<AppointmentService>>());
@@ -1021,6 +1023,70 @@ public class AppointmentServiceTests : IDisposable
 
         // Assert
         Assert.Equal(SlotStatus.Open, appointment.Slot!.Status);
+    }
+
+    [Fact]
+    public async Task CancelAppointmentAsync_LinkedCase_CaseCancelledAndSavedTogetherWithAppointment()
+    {
+        // Arrange — Case (module MedicalRecord) đổi trạng thái qua ICaseService, không lưu riêng;
+        // phải được lưu chung một lần với lịch hẹn và slot.
+        var appointment = SetupCancelScenario();
+        var medicalCase = new Case
+        {
+            CaseId = Guid.NewGuid(),
+            PatientProfileId = _patientId,
+            DoctorId = appointment.Slot.DoctorId,
+            VisitDate = appointment.Slot.SlotDate,
+            Status = CaseStatus.Booked,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        _db.Cases.Add(medicalCase);
+        appointment.CaseId = medicalCase.CaseId;
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        await _sut.CancelAppointmentAsync(
+            _appointmentId, _patientId, _patientId,
+            new CancelAppointmentRequest { CancellationReason = "Schedule conflict" },
+            TestContext.Current.CancellationToken);
+
+        // Assert — đọc lại từ DB để chắc cả ba đã được LƯU
+        _db.ChangeTracker.Clear();
+        Assert.Equal(CaseStatus.Cancelled,
+            (await _db.Cases.AsNoTracking().SingleAsync(c => c.CaseId == medicalCase.CaseId, TestContext.Current.CancellationToken)).Status);
+        Assert.Equal(AppointmentStatus.Cancelled,
+            (await _db.Appointments.AsNoTracking().SingleAsync(a => a.AppointmentId == _appointmentId, TestContext.Current.CancellationToken)).Status);
+        Assert.Equal(SlotStatus.Open,
+            (await _db.ScheduleSlots.AsNoTracking().SingleAsync(s => s.SlotId == _slotId, TestContext.Current.CancellationToken)).Status);
+    }
+
+    [Fact]
+    public async Task CancelAppointmentAsync_SelfBooked_NotifiesPatientAccountFromProfile()
+    {
+        // Arrange — người nhận tin lấy từ hồ sơ bệnh nhân qua IPatientProfileService.
+        SetupCancelScenario();
+        var patientUserId = Guid.NewGuid();
+        _profileRepo.Setup(r => r.GetByIdAsync(_patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PatientProfile
+            {
+                PatientProfileId = _patientId,
+                UserId = patientUserId,
+                User = new User { UserId = patientUserId, FullName = "Nguyễn Thị Hoa", Phone = "0900000009" },
+            });
+
+        // Act
+        var result = await _sut.CancelAppointmentAsync(
+            _appointmentId, _patientId, _patientId,
+            new CancelAppointmentRequest { CancellationReason = "Schedule conflict" },
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        _notificationService.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r => r.UserId == patientUserId && r.Type == "appointment_cancellation"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal("Nguyễn Thị Hoa", result.PatientFullName);
+        Assert.Equal("0900000009", result.PatientPhone);
     }
 
     [Fact]

@@ -118,6 +118,21 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
             .CountAsync(ct);
     }
 
+    public async Task<IReadOnlyList<ScheduleSlot>> ListBookedForDoctorAfterForUpdateAsync(
+        Guid doctorId,
+        DateOnly slotDate,
+        TimeOnly afterTime,
+        CancellationToken ct = default) =>
+        await _db.ScheduleSlots
+            .Include(s => s.Appointments).ThenInclude(a => a.Case)
+            .Where(s => s.DoctorId == doctorId
+                && s.SlotDate == slotDate
+                && s.StartTime > afterTime
+                && s.Status == SlotStatus.Booked)
+            .ToListAsync(ct);
+
+    public Task SaveChangesAsync(CancellationToken ct = default) => _db.SaveChangesAsync(ct);
+
     public async Task<ScheduleSlot> AddAsync(ScheduleSlot slot, CancellationToken ct = default)
     {
         _db.ScheduleSlots.Add(slot);

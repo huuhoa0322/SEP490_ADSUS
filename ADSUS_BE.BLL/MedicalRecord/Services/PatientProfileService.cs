@@ -244,6 +244,14 @@ public sealed class PatientProfileService : IPatientProfileService
         return PatientProfileMapper.ToResponse(profile);
     }
 
+    public async Task<PatientProfileResponse?> FindByIdAsync(
+        Guid patientProfileId,
+        CancellationToken ct = default)
+    {
+        var profile = await _profiles.GetByIdAsync(patientProfileId, ct);
+        return profile is null ? null : PatientProfileMapper.ToResponse(profile);
+    }
+
     public async Task<PagedResult<PatientSummaryResponse>> SearchPatientsAsync(
         string? search,
         string? visitStatus,

@@ -49,11 +49,13 @@ public class AppointmentServiceCheckinTests : IDisposable
             Mock.Of<ILogger<NoShowService>>());
 
         _sut = new AppointmentService(
-            _appointmentRepo.Object,
-            _slotRepo.Object,
-            _profileRepo.Object,
+            _appointmentRepo.BackedBy(_db).Object,
+            _slotRepo.BackedBy(_db).Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db),
+            new ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService(_profileRepo.Object, new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db), Microsoft.Extensions.Logging.Abstractions.NullLogger<ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService>.Instance),
+            new ADSUS_BE.BLL.PatientRelationship.Services.PatientRelationshipService(new ADSUS_BE.DAL.Repositories.Implementations.PatientRelationshipRepository(_db), _profileRepo.Object, _db),
             _notificationService.Object,
-            _caseService.Object,
+            _caseService.BackedBy(_db).Object,
             _noShowService,
             _db,
             Mock.Of<ILogger<AppointmentService>>());
@@ -201,6 +203,64 @@ public class AppointmentServiceCheckinTests : IDisposable
                 r.DeepLink == $"/cases/{expectedCaseId}" &&
                 r.Metadata != null &&
                 r.Metadata["caseId"].ToString() == expectedCaseId.ToString()),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CheckinAppointmentAsync_LinkedBookedCase_CaseMovesToInProgressAndIsSaved()
+    {
+        // Arrange — Case thuộc module MedicalRecord, được chuyển trạng thái qua ICaseService
+        // (không lưu riêng) rồi lưu chung một lần với lịch hẹn.
+        var doctor = CreateDoctor();
+        var profile = CreatePatientProfile(CreatePatient());
+        var slot = CreateSlot(doctor, SlotStatus.Booked);
+        var medicalCase = new Case
+        {
+            CaseId = Guid.NewGuid(),
+            PatientProfileId = profile.PatientProfileId,
+            DoctorId = doctor.UserId,
+            VisitDate = slot.SlotDate,
+            Status = CaseStatus.Booked,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        _db.Cases.Add(medicalCase);
+        var appointment = CreateAppointment(slot, profile, AppointmentStatus.Booked);
+        appointment.CaseId = medicalCase.CaseId;
+        await SeedAppointmentAsync(appointment);
+
+        // Act
+        await _sut.CheckinAppointmentAsync(_appointmentId, TestContext.Current.CancellationToken);
+
+        // Assert — đọc lại từ DB (bỏ bản đang track) để chắc thay đổi đã được LƯU, không chỉ nằm trong bộ nhớ
+        _db.ChangeTracker.Clear();
+        var savedCase = await _db.Cases.AsNoTracking().SingleAsync(c => c.CaseId == medicalCase.CaseId, TestContext.Current.CancellationToken);
+        Assert.Equal(CaseStatus.InProgress, savedCase.Status);
+        var savedAppointment = await _db.Appointments.AsNoTracking().SingleAsync(a => a.AppointmentId == _appointmentId, TestContext.Current.CancellationToken);
+        Assert.Equal(AppointmentStatus.Completed, savedAppointment.Status);
+    }
+
+    [Fact]
+    public async Task CheckinAppointmentAsync_PatientWithAccount_NotifiesPatientAccountAndNamesPatientToDoctor()
+    {
+        // Arrange — hồ sơ bệnh nhân lấy qua IPatientProfileService (không còn đọc thẳng repository)
+        var doctor = CreateDoctor();
+        var patient = CreatePatient();
+        var profile = CreatePatientProfile(patient);
+        var slot = CreateSlot(doctor, SlotStatus.Booked);
+        await SeedAppointmentAsync(CreateAppointment(slot, profile, AppointmentStatus.Booked));
+        _profileRepo.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile);
+
+        // Act
+        await _sut.CheckinAppointmentAsync(_appointmentId, TestContext.Current.CancellationToken);
+
+        // Assert
+        _notificationService.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r => r.UserId == patient.UserId && r.Type == "appointment_checkin"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _notificationService.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r => r.UserId == doctor.UserId && r.Body.Contains("Patient Test")),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

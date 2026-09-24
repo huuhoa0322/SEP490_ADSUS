@@ -462,7 +462,7 @@ public class AppointmentsControllerIntegrationTests
         using var app = CreateApp();
         var client = CreatePatientClient(app);
 
-        _appointments.Setup(r => r.ListByPatientAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _appointments.Setup(r => r.ListForPatientOrBookerAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<AppointmentStatus?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Appointment>());
 
         // Act
@@ -481,7 +481,7 @@ public class AppointmentsControllerIntegrationTests
         using var app = CreateApp();
         var client = CreatePatientClient(app);
 
-        _appointments.Setup(r => r.ListByPatientAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _appointments.Setup(r => r.ListForPatientOrBookerAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), AppointmentStatus.Booked, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Appointment>());
 
         // Act

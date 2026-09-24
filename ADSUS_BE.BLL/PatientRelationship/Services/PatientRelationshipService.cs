@@ -233,6 +233,18 @@ public sealed class PatientRelationshipService : IPatientRelationshipService
         return await _repository.IsPhoneRegisteredAsync(phone, ct);
     }
 
+    public async Task<RelationshipBookingTarget?> FindBookingTargetAsync(
+        Guid relationshipId, Guid? ownerUserId, CancellationToken ct = default)
+    {
+        var relationship = ownerUserId.HasValue
+            ? await _repository.GetByIdAndUserAsync(relationshipId, ownerUserId.Value, ct)
+            : await _repository.GetByIdAsync(relationshipId, ct);
+
+        return relationship is null
+            ? null
+            : new RelationshipBookingTarget(relationship.RelationshipId, relationship.PatientProfileId, relationship.UserId);
+    }
+
     private static RelativeResponse MapToResponse(DAL.Entities.PatientRelationship relationship)
     {
         var profile = relationship.PatientProfile;
