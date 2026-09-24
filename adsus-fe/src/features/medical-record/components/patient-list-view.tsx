@@ -42,8 +42,13 @@ const VISIT_FILTERS: VisitStatusFilter[] = ["All", "Pending", "Confirmed"];
  * Không tự sinh tuổi hay giới tính giả khi API không cung cấp.
  */
 function getPatientSubtext(patient: PatientSummary): string | null {
-  if (!patient.patientProfileId) return "Chưa lập hồ sơ nền";
+  if (!hasBaselineProfile(patient)) return "Chưa lập hồ sơ nền";
   return null;
+}
+
+/** Có bản ghi hồ sơ (patientProfileId) chưa chắc đã lập hồ sơ nền — bản ghi rỗng tạo sẵn cùng tài khoản. */
+function hasBaselineProfile(patient: PatientSummary): boolean {
+  return patient.hasBaselineProfile ?? patient.patientProfileId !== null;
 }
 
 /** Render soft badge trạng thái ca khám chuẩn màu Preclinic. */
@@ -318,12 +323,21 @@ export function PatientListView() {
                                       Đặt lịch hẹn
                                     </DropdownMenuItem>
                                   )}
-                                  <DropdownMenuItem asChild>
-                                    <Link href={`/patients/${patient.patientProfileId}/profile`}>
-                                      <FileEdit className="size-4 text-foreground" />
-                                      Chỉnh sửa thông tin
-                                    </Link>
-                                  </DropdownMenuItem>
+                                  {hasBaselineProfile(patient) ? (
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/patients/${patient.patientProfileId}/profile`}>
+                                        <FileEdit className="size-4 text-foreground" />
+                                        Chỉnh sửa thông tin
+                                      </Link>
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/patients/new?patientUserId=${patient.patientUserId}`}>
+                                        <FilePlus className="size-4 text-foreground" />
+                                        Tạo hồ sơ nền
+                                      </Link>
+                                    </DropdownMenuItem>
+                                  )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </>

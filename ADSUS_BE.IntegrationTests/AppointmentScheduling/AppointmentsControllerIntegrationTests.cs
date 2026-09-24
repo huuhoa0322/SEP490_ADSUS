@@ -282,6 +282,8 @@ public class AppointmentsControllerIntegrationTests
         };
 
         var patientUserId = Guid.NewGuid();
+        _profiles.Setup(r => r.EnsureForUserAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(patientId);
         _profiles.Setup(r => r.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PatientProfile
             {
@@ -750,6 +752,8 @@ public class AppointmentsControllerIntegrationTests
             .ReturnsAsync(patientUser);
         _profiles.Setup(r => r.GetByUserIdAsync(patientUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(patientProfile);
+        _profiles.Setup(r => r.EnsureForUserAsync(patientUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(patientProfile.PatientProfileId);
 
         using var scope = app.Services.CreateScope();
         var token = scope.ServiceProvider.GetRequiredService<IJwtTokenService>()

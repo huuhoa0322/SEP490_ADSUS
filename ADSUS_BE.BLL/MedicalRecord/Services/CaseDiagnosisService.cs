@@ -211,24 +211,20 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         if (activeModel == null) throw new BusinessException("Hệ thống chưa có phiên bản AI nào được kích hoạt. Vui lòng liên hệ Admin.");
         var activeModelId = activeModel.ModelVersionId;
 
-        // Check if an existing image in the case is being re-diagnosed / having calipers updated
+        // Check if an existing image in the case is being re-diagnosed / having calipers updated.
+        // Chỉ coi là xác nhận lại khi request CHỈ ĐÍCH DANH ảnh cũ (tên file chứa imageId hoặc
+        // trùng file_ref). Một ca có nhiều ảnh siêu âm, bác sĩ tải và xác nhận lần lượt từng ảnh
+        // — ảnh không khớp là ảnh MỚI. Bản cũ còn coi "ca đang có đúng 1 ảnh" là xác nhận lại
+        // ảnh đó, nên ảnh thứ hai của mọi ca đều bị hiểu nhầm thành ảnh thứ nhất (FE luôn gửi
+        // tên file gốc trên máy bác sĩ, không bao giờ chứa imageId) — gặp thật 24/09/2026.
         var caseImages = await _images.ListByCaseAsync(caseId, ct);
-        UltrasoundImage? existingImage = null;
-        if (caseImages.Count > 0)
-        {
-            existingImage = caseImages.FirstOrDefault(img =>
-                (!string.IsNullOrEmpty(request.BurntImageFileName) &&
-                    (img.FileRef.Equals(request.BurntImageFileName, StringComparison.OrdinalIgnoreCase) ||
-                     Path.GetFileName(img.FileRef).Equals(request.BurntImageFileName, StringComparison.OrdinalIgnoreCase) ||
-                     request.BurntImageFileName.Contains(img.ImageId.ToString(), StringComparison.OrdinalIgnoreCase))) ||
-                (!string.IsNullOrEmpty(request.OriginalImageFileName) &&
-                     request.OriginalImageFileName.Contains(img.ImageId.ToString(), StringComparison.OrdinalIgnoreCase)));
-
-            if (existingImage == null && caseImages.Count == 1)
-            {
-                existingImage = caseImages[0];
-            }
-        }
+        var existingImage = caseImages.FirstOrDefault(img =>
+            (!string.IsNullOrEmpty(request.BurntImageFileName) &&
+                (img.FileRef.Equals(request.BurntImageFileName, StringComparison.OrdinalIgnoreCase) ||
+                 Path.GetFileName(img.FileRef).Equals(request.BurntImageFileName, StringComparison.OrdinalIgnoreCase) ||
+                 request.BurntImageFileName.Contains(img.ImageId.ToString(), StringComparison.OrdinalIgnoreCase))) ||
+            (!string.IsNullOrEmpty(request.OriginalImageFileName) &&
+                 request.OriginalImageFileName.Contains(img.ImageId.ToString(), StringComparison.OrdinalIgnoreCase)));
 
         var imageId = existingImage?.ImageId ?? Guid.NewGuid();
         var baseName = $"case_{caseId}_img_{imageId}";

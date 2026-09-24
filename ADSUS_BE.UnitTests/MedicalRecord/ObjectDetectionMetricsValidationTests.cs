@@ -483,6 +483,11 @@ public class ObjectDetectionMetricsValidationTests : IDisposable
         var req1 = CreateConfirmRequest(aiJson, docJson1, burntFileName: "case_img_1_burnt.png");
         await _caseDiagnosisService.ConfirmAnalysisAsync(_caseId, req1, ct);
 
+        // Xác nhận lại phải CHỈ ĐÍCH DANH ảnh đã lưu (tên file chứa imageId) — tên file gốc trên
+        // máy bác sĩ không đủ để phân biệt, vì một ca có nhiều ảnh (xem T3_05).
+        var savedImage = Assert.Single(await _db.UltrasoundImages.Where(i => i.CaseId == _caseId).ToListAsync(ct));
+        var sameImageBurntName = $"case_img_{savedImage.ImageId}_burnt.png";
+
         var model = await _db.AiModelVersions.FindAsync(new object[] { _activeModelId }, ct);
         Assert.NotNull(model);
         Assert.Equal(1, model.LiveTp);
@@ -491,7 +496,7 @@ public class ObjectDetectionMetricsValidationTests : IDisposable
 
         // Step 2: Doctor re-saves caliper on the SAME image with identical coordinates.
         // Metrics must NOT double (LiveTp must still be 1, not 2).
-        var req2 = CreateConfirmRequest(aiJson, docJson1, burntFileName: "case_img_1_burnt.png");
+        var req2 = CreateConfirmRequest(aiJson, docJson1, burntFileName: sameImageBurntName);
         await _caseDiagnosisService.ConfirmAnalysisAsync(_caseId, req2, ct);
 
         await _db.Entry(model).ReloadAsync(ct);
@@ -504,13 +509,39 @@ public class ObjectDetectionMetricsValidationTests : IDisposable
         // New metrics (TP=0, FP=1, FN=1) must be added.
         // Net result: LiveTp = 0, LiveFp = 1, LiveFn = 1.
         var docJson2 = "[{\"xmin\":500,\"ymin\":500,\"xmax\":600,\"ymax\":600}]";
-        var req3 = CreateConfirmRequest(aiJson, docJson2, burntFileName: "case_img_1_burnt.png");
+        var req3 = CreateConfirmRequest(aiJson, docJson2, burntFileName: sameImageBurntName);
         await _caseDiagnosisService.ConfirmAnalysisAsync(_caseId, req3, ct);
 
         await _db.Entry(model).ReloadAsync(ct);
         Assert.Equal(0, model.LiveTp);
         Assert.Equal(1, model.LiveFp);
         Assert.Equal(1, model.LiveFn);
+
+        // Vẫn chỉ 1 ảnh — cả 3 lần đều là cùng một ảnh.
+        Assert.Single(await _db.UltrasoundImages.Where(i => i.CaseId == _caseId).ToListAsync(ct));
+    }
+
+    [Fact]
+    public async Task T3_05_SequentialDifferentImages_EachConfirmCreatesNewImage_AndMetricsAccumulate()
+    {
+        // Bác sĩ tải và xác nhận lần lượt 2 ảnh KHÁC NHAU trong cùng một ca. FE luôn gửi tên file
+        // gốc trên máy, không chứa imageId. Ảnh thứ hai phải là ảnh mới, không được ghi đè ảnh
+        // thứ nhất (bản cũ coi "ca có đúng 1 ảnh" là xác nhận lại ảnh đó → Storage trả 409).
+        var ct = TestContext.Current.CancellationToken;
+        var aiJson = "[{\"xmin\":0,\"ymin\":0,\"xmax\":100,\"ymax\":100,\"confidence\":0.90}]";
+        var docJson = "[{\"xmin\":0,\"ymin\":0,\"xmax\":100,\"ymax\":100}]";
+
+        await _caseDiagnosisService.ConfirmAnalysisAsync(
+            _caseId, CreateConfirmRequest(aiJson, docJson, burntFileName: "burnt_IMG_001.jpg", originalFileName: "IMG_001.jpg"), ct);
+        await _caseDiagnosisService.ConfirmAnalysisAsync(
+            _caseId, CreateConfirmRequest(aiJson, docJson, burntFileName: "burnt_IMG_002.jpg", originalFileName: "IMG_002.jpg"), ct);
+
+        var images = await _db.UltrasoundImages.Where(i => i.CaseId == _caseId).ToListAsync(ct);
+        Assert.Equal(2, images.Count);
+        Assert.NotEqual(images[0].FileRef, images[1].FileRef);
+
+        var model = await _db.AiModelVersions.FindAsync(new object[] { _activeModelId }, ct);
+        Assert.Equal(2, model!.LiveTp);
     }
 
     [Fact]

@@ -35,17 +35,17 @@ public sealed class AppointmentsController : ControllerBase
         _patientProfileRepo = patientProfileRepo;
     }
 
-    /// <summary>Lấy PatientProfileId từ JWT.</summary>
+    /// <summary>
+    /// Lấy PatientProfileId từ JWT, tạo bù nếu tài khoản chưa có hồ sơ. UC-13 chỉ đòi bệnh
+    /// nhân đã đăng nhập — tài khoản Admin/Điều dưỡng tạo trước 24/09/2026 không được gắn hồ sơ
+    /// và từng bị chặn đặt lịch với lỗi "Patient profile not found.".
+    /// </summary>
     private async Task<Guid> GetPatientProfileIdAsync(CancellationToken ct)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? throw new InvalidOperationException("Missing NameIdentifier claim.");
 
-        var userGuid = Guid.Parse(userId);
-        var profile = await _patientProfileRepo.GetByUserIdAsync(userGuid, ct)
-            ?? throw new InvalidOperationException("Patient profile not found.");
-
-        return profile.PatientProfileId;
+        return await _patientProfileRepo.EnsureForUserAsync(Guid.Parse(userId), ct);
     }
 
     /// <summary>Lấy PatientProfileId tùy chọn từ JWT (không throw exception nếu user chưa có profile).</summary>

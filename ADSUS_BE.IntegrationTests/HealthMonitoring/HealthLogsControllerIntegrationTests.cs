@@ -143,8 +143,8 @@ public class HealthLogsControllerIntegrationTests
         var client = CreatePatientClient(app);
         var profile = NewPatientProfile(_patientId);
 
-        _profiles.Setup(r => r.GetByUserIdAsync(_patientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        _profiles.Setup(r => r.EnsureForUserAsync(_patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile.PatientProfileId);
         _healthLogs.Setup(r => r.CreateAsync(It.IsAny<HealthLog>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((HealthLog log, CancellationToken _) => log);
 
@@ -174,8 +174,8 @@ public class HealthLogsControllerIntegrationTests
         var client = CreatePatientClient(app);
         var profile = NewPatientProfile(_patientId);
 
-        _profiles.Setup(r => r.GetByUserIdAsync(_patientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        _profiles.Setup(r => r.EnsureForUserAsync(_patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile.PatientProfileId);
         _healthLogs.Setup(r => r.CreateAsync(It.IsAny<HealthLog>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((HealthLog log, CancellationToken _) => log);
 
@@ -202,8 +202,8 @@ public class HealthLogsControllerIntegrationTests
         var client = CreatePatientClient(app);
         var profile = NewPatientProfile(_patientId);
 
-        _profiles.Setup(r => r.GetByUserIdAsync(_patientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        _profiles.Setup(r => r.EnsureForUserAsync(_patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile.PatientProfileId);
         _healthLogs.Setup(r => r.CreateAsync(It.IsAny<HealthLog>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((HealthLog log, CancellationToken _) => log);
 
@@ -402,8 +402,8 @@ public class HealthLogsControllerIntegrationTests
         var profile = NewPatientProfile(_patientId);
         var createdLogs = new List<HealthLog>();
 
-        _profiles.Setup(r => r.GetByUserIdAsync(_patientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        _profiles.Setup(r => r.EnsureForUserAsync(_patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile.PatientProfileId);
         _healthLogs.Setup(r => r.CreateAsync(It.IsAny<HealthLog>(), It.IsAny<CancellationToken>()))
             .Callback<HealthLog, CancellationToken>((log, _) => createdLogs.Add(log))
             .ReturnsAsync((HealthLog log, CancellationToken _) => log);
@@ -441,8 +441,8 @@ public class HealthLogsControllerIntegrationTests
             new() { HealthLogId = Guid.NewGuid(), PatientProfileId = profile.PatientProfileId, LogDate = today, LogType = HealthLogType.Diet, Content = "Lunch salad", CreatedAt = DateTime.UtcNow },
         };
 
-        _profiles.Setup(r => r.GetByUserIdAsync(_patientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        _profiles.Setup(r => r.EnsureForUserAsync(_patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile.PatientProfileId);
         _healthLogs.Setup(r => r.GetByPatientAndDateAsync(profile.PatientProfileId, today, It.IsAny<CancellationToken>()))
             .ReturnsAsync(logs);
 
@@ -469,8 +469,8 @@ public class HealthLogsControllerIntegrationTests
             new() { HealthLogId = Guid.NewGuid(), PatientProfileId = profile.PatientProfileId, LogDate = specificDate, LogType = HealthLogType.Exercise, Content = "Old log", CreatedAt = DateTime.UtcNow },
         };
 
-        _profiles.Setup(r => r.GetByUserIdAsync(_patientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        _profiles.Setup(r => r.EnsureForUserAsync(_patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile.PatientProfileId);
         _healthLogs.Setup(r => r.GetByPatientAndDateAsync(profile.PatientProfileId, specificDate, It.IsAny<CancellationToken>()))
             .ReturnsAsync(logs);
 
@@ -493,8 +493,8 @@ public class HealthLogsControllerIntegrationTests
         var profile = NewPatientProfile(_patientId);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        _profiles.Setup(r => r.GetByUserIdAsync(_patientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        _profiles.Setup(r => r.EnsureForUserAsync(_patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile.PatientProfileId);
         _healthLogs.Setup(r => r.GetByPatientAndDateAsync(profile.PatientProfileId, today, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<HealthLog>());
 
@@ -516,8 +516,8 @@ public class HealthLogsControllerIntegrationTests
         var profile = NewPatientProfile(_patientId);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        _profiles.Setup(r => r.GetByUserIdAsync(_patientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        _profiles.Setup(r => r.EnsureForUserAsync(_patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile.PatientProfileId);
         _healthLogs.Setup(r => r.GetByPatientAndDateAsync(profile.PatientProfileId, today, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<HealthLog>());
 
@@ -545,8 +545,8 @@ public class HealthLogsControllerIntegrationTests
             new() { HealthLogId = logId, PatientProfileId = profile.PatientProfileId, LogDate = today, LogType = HealthLogType.Exercise, Content = "Test", CreatedAt = createdAt },
         };
 
-        _profiles.Setup(r => r.GetByUserIdAsync(_patientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        _profiles.Setup(r => r.EnsureForUserAsync(_patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile.PatientProfileId);
         _healthLogs.Setup(r => r.GetByPatientAndDateAsync(profile.PatientProfileId, today, It.IsAny<CancellationToken>()))
             .ReturnsAsync(logs);
 
@@ -587,8 +587,8 @@ public class HealthLogsControllerIntegrationTests
         var profile = NewPatientProfile(_patientId);
         var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30));
 
-        _profiles.Setup(r => r.GetByUserIdAsync(_patientId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
+        _profiles.Setup(r => r.EnsureForUserAsync(_patientId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(profile.PatientProfileId);
         _healthLogs.Setup(r => r.GetByPatientAndDateAsync(profile.PatientProfileId, futureDate, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<HealthLog>());
 

@@ -93,8 +93,12 @@ public class PatientProfilesControllerIntegrationTests
 
         _users.Setup(r => r.GetByIdReadOnlyAsync(_patient.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(_patient);
-        _profiles.Setup(r => r.ExistsForUserAsync(_patient.UserId, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(true);
+        // Hồ sơ đã được Bác sĩ lập (created_by = Bác sĩ) — khác bản ghi rỗng tạo sẵn cùng tài
+        // khoản, bản đó UC-06 vẫn được phép điền vào (PatientProfileBaseline).
+        _users.Setup(r => r.GetByIdAsync(_doctor.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(_doctor);
+        _profiles.Setup(r => r.GetForUpdateByUserIdAsync(_patient.UserId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new PatientProfile { PatientProfileId = Guid.NewGuid(), UserId = _patient.UserId, CreatedBy = _doctor.UserId });
 
         var request = new CreatePatientProfileRequest(_patient.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
 

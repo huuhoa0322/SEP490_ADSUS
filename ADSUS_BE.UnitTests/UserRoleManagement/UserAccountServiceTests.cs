@@ -18,6 +18,7 @@ public class UserAccountServiceTests
 {
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IAuditLogRepository> _auditLogs = new();
+    private readonly Mock<IPatientProfileRepository> _patientProfiles = new();
     private readonly UserAccountService _sut;
 
     private readonly List<User> _saved = new();
@@ -47,11 +48,34 @@ public class UserAccountServiceTests
 
         _sut = new UserAccountService(
             _users.Object,
+            _patientProfiles.Object,
             new AccountAuditTrail(_auditLogs.Object),
             new Mock<ILogger<UserAccountService>>().Object);
     }
 
     // ---------- FT-07: tạo tài khoản ----------
+
+    [Fact]
+    public async Task CreateAsync_PatientRole_StagesPatientProfileSoPatientCanBookRightAway()
+    {
+        // UC-13 chỉ đòi bệnh nhân đã đăng nhập — tài khoản Admin tạo từng thiếu hồ sơ nên đặt
+        // lịch bị chặn với "Patient profile not found.".
+        var (result, _, _) = await _sut.CreateAsync(BuildCreateRequest("PATIENT"), _adminId, TestContext.Current.CancellationToken);
+
+        Assert.Equal(AccountOperationResult.Success, result);
+        var user = Assert.Single(_saved);
+        _patientProfiles.Verify(
+            r => r.StageForNewPatientAsync(user, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_NonPatientRole_DoesNotStagePatientProfile()
+    {
+        await _sut.CreateAsync(BuildCreateRequest("DOCTOR"), _adminId, TestContext.Current.CancellationToken);
+
+        _patientProfiles.Verify(
+            r => r.StageForNewPatientAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 
     [Fact]
     public async Task CreateAsync_ValidDoctorRequest_CreatesActiveAccountAndForcesPasswordChange()

@@ -105,18 +105,55 @@ public class PatientProfileServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_ProfileAlreadyExistsForUser_ThrowsConflictException()
+    public async Task CreateAsync_BaselineAlreadyEstablishedByDoctor_ThrowsConflictException()
     {
-        // Arrange — uq_patient_profiles_user: 1 tài khoản chỉ có đúng 1 hồ sơ nền.
+        // Arrange — 1 tài khoản chỉ được lập hồ sơ nền đúng 1 lần: hồ sơ đã đứng tên Bác sĩ
+        // (PatientProfileBaseline) thì không lập lại, phải sửa qua UpdateAsync.
         var patient = MedicalRecordTestData.MakePatientUser();
+        var doctor = MedicalRecordTestData.MakeDoctor();
         var request = new CreatePatientProfileRequest(patient.UserId, "FEMALE", new List<PatientDiseaseInput>(), new List<PatientAllergyInput>());
         _users.Setup(r => r.GetByIdAsync(patient.UserId, It.IsAny<CancellationToken>()))
               .ReturnsAsync(patient);
-        _profiles.Setup(r => r.ExistsForUserAsync(patient.UserId, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(true);
+        _users.Setup(r => r.GetByIdAsync(doctor.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(doctor);
+        _profiles.Setup(r => r.GetForUpdateByUserIdAsync(patient.UserId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(new PatientProfile { PatientProfileId = Guid.NewGuid(), UserId = patient.UserId, CreatedBy = doctor.UserId });
 
         // Act & Assert
         await Assert.ThrowsAsync<ConflictException>(() => _sut.CreateAsync(request, Guid.NewGuid(), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task CreateAsync_ExistingAutoCreatedProfile_FillsItAndRecordsActingUserAsCreatedBy()
+    {
+        // Arrange — mọi tài khoản PATIENT có sẵn hồ sơ rỗng đứng tên chính bệnh nhân (để đặt
+        // lịch được ngay, UC-13). UC-06 phải điền vào đúng bản ghi đó, không báo 409, không
+        // tạo bản ghi thứ hai (uq_patient_profiles_user).
+        var patient = MedicalRecordTestData.MakePatientUser();
+        var actingNurseId = Guid.NewGuid();
+        var diseaseId = Guid.NewGuid();
+        var existing = new PatientProfile { PatientProfileId = Guid.NewGuid(), UserId = patient.UserId, User = patient, CreatedBy = patient.UserId };
+        var request = new CreatePatientProfileRequest(
+            patient.UserId, "FEMALE",
+            new List<PatientDiseaseInput> { new(diseaseId, null) },
+            new List<PatientAllergyInput>());
+
+        _users.Setup(r => r.GetByIdAsync(patient.UserId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(patient);
+        _profiles.Setup(r => r.GetForUpdateByUserIdAsync(patient.UserId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(existing);
+        _profiles.Setup(r => r.GetByIdAsync(existing.PatientProfileId, It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(existing);
+
+        // Act
+        var response = await _sut.CreateAsync(request, actingNurseId, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(existing.PatientProfileId, response.PatientProfileId);
+        Assert.Equal(actingNurseId, existing.CreatedBy);
+        Assert.Equal(diseaseId, Assert.Single(existing.PatientDiseases).DiseaseId);
+        _profiles.Verify(r => r.UpdateAsync(existing, It.IsAny<CancellationToken>()), Times.Once);
+        _profiles.Verify(r => r.AddAsync(It.IsAny<PatientProfile>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ---------- UpdateAsync ----------

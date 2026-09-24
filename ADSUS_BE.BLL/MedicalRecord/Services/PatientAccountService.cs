@@ -13,17 +13,20 @@ namespace ADSUS_BE.BLL.MedicalRecord.Services;
 public sealed class PatientAccountService : IPatientAccountService
 {
     private readonly IUserRepository _users;
+    private readonly IPatientProfileRepository _patientProfiles;
     private readonly IAuditLogRepository _audit;
     private readonly IPasswordResetService _passwordReset;
     private readonly ILogger<PatientAccountService> _logger;
 
     public PatientAccountService(
         IUserRepository users,
+        IPatientProfileRepository patientProfiles,
         IAuditLogRepository audit,
         IPasswordResetService passwordReset,
         ILogger<PatientAccountService> logger)
     {
         _users = users;
+        _patientProfiles = patientProfiles;
         _audit = audit;
         _passwordReset = passwordReset;
         _logger = logger;
@@ -72,6 +75,10 @@ public sealed class PatientAccountService : IPatientAccountService
         };
 
         await _users.AddAsync(user, ct);
+
+        // Gắn sẵn bản ghi hồ sơ rỗng để bệnh nhân đặt lịch được ngay (UC-13). Hồ sơ nền (UC-06)
+        // lập sau vẫn điền vào đúng bản ghi này — xem PatientProfileService.CreateAsync.
+        await _patientProfiles.StageForNewPatientAsync(user, ct);
 
         // BR-06 / GB-09 (PRD v1.28) — hành động tài khoản của Điều dưỡng phải truy vết được
         // y như của Admin. Cùng DbContext nên một lần SaveChanges lưu cả hai.

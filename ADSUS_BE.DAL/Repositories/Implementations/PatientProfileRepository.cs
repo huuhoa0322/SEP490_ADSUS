@@ -44,6 +44,77 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
     public Task<bool> ExistsForUserAsync(Guid userId, CancellationToken ct = default) =>
         _db.PatientProfiles.AnyAsync(p => p.UserId == userId, ct);
 
+    public Task<PatientProfile?> GetForUpdateByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        _db.PatientProfiles
+            .Include(p => p.User)
+            .Include(p => p.PatientDiseases)
+            .Include(p => p.PatientAllergies)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+
+    public async Task<PatientProfile> StageForNewPatientAsync(User patient, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+
+        var guestProfile = await _db.PatientProfiles
+            .FirstOrDefaultAsync(p => p.UserId == null && p.Phone == patient.Phone, ct);
+
+        if (guestProfile != null)
+        {
+            // Cùng cách PatientSelfRegistrationService nhận lại guest profile: các trường guest
+            // chỉ dùng khi user_id IS NULL, từ giờ họ tên/sđt/ngày sinh lấy từ bảng users.
+            guestProfile.UserId = patient.UserId;
+            guestProfile.FullName = null;
+            guestProfile.Phone = null;
+            guestProfile.DateOfBirth = null;
+            guestProfile.UpdatedAt = now;
+            return guestProfile;
+        }
+
+        var profile = new PatientProfile
+        {
+            PatientProfileId = Guid.NewGuid(),
+            UserId = patient.UserId,
+            // Đứng tên chính bệnh nhân, không phải Admin/Điều dưỡng đang thao tác — đây chưa
+            // phải hồ sơ nền (xem PatientProfileBaseline).
+            CreatedBy = patient.UserId,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        _db.PatientProfiles.Add(profile);
+        return profile;
+    }
+
+    public async Task<Guid> EnsureForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        var existingId = await FindIdByUserIdAsync(userId, ct);
+        if (existingId.HasValue) return existingId.Value;
+
+        var patient = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId, ct)
+            ?? throw new InvalidOperationException("Patient account not found.");
+
+        var staged = await StageForNewPatientAsync(patient, ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+            return staged.PatientProfileId;
+        }
+        catch (DbUpdateException)
+        {
+            // Hai request cùng lúc cùng tạo bù — uq_patient_profiles_user chặn request thứ hai.
+            // Bỏ bản ghi vừa gắn khỏi context rồi dùng bản của request kia.
+            _db.Entry(staged).State = EntityState.Detached;
+            return await FindIdByUserIdAsync(userId, ct) ?? throw new InvalidOperationException("Patient profile not found.");
+        }
+    }
+
+    private async Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken ct) =>
+        await _db.PatientProfiles
+            .AsNoTracking()
+            .Where(p => p.UserId == userId)
+            .Select(p => (Guid?)p.PatientProfileId)
+            .FirstOrDefaultAsync(ct);
+
     public async Task<PatientProfile> AddAsync(PatientProfile profile, CancellationToken ct = default)
     {
         _db.PatientProfiles.Add(profile);
@@ -107,7 +178,15 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
                         where u.Role == UserRole.Patient
                         join p in _db.PatientProfiles.AsNoTracking() on u.UserId equals p.UserId into profiles
                         from p in profiles.DefaultIfEmpty()
-                        select new { User = u, Profile = p };
+                        select new
+                        {
+                            User = u,
+                            Profile = p,
+                            // Điều kiện phải khớp PatientProfileBaseline.IsEstablishedBy — viết
+                            // tay ở đây vì EF Core không dịch được lời gọi hàm C# sang SQL.
+                            HasBaseline = p != null && _db.Users.Any(c => c.UserId == p.CreatedBy
+                                && (c.Role == UserRole.Doctor || c.Role == UserRole.Staff)),
+                        };
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -121,11 +200,11 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
 
         if (hasProfile == true)
         {
-            baseQuery = baseQuery.Where(x => x.Profile != null);
+            baseQuery = baseQuery.Where(x => x.HasBaseline);
         }
         else if (hasProfile == false)
         {
-            baseQuery = baseQuery.Where(x => x.Profile == null);
+            baseQuery = baseQuery.Where(x => !x.HasBaseline);
         }
 
         var candidates = await baseQuery.ToListAsync(ct);
@@ -156,6 +235,7 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
             {
                 x.User,
                 x.Profile,
+                x.HasBaseline,
                 LatestCase = x.Profile != null && latestCaseByProfile.TryGetValue(x.Profile.PatientProfileId, out var lc)
                     ? lc
                     : null,
@@ -200,7 +280,8 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
                 // nên — tham chiếu BLL (chiều phụ thuộc đúng là BLL -> DAL). Ba nhãn case_status
                 // ToApiString(CaseStatus) hiện tại (xem chú thích tại EnumExtensions.cs).
                 LatestVisitStatus: x.LatestCase == null ? null : (x.LatestCase.Status == CaseStatus.InProgress ? "IN_PROGRESS" : x.LatestCase.Status.ToString().ToUpperInvariant()),
-                LatestCaseId: x.LatestCase?.CaseId))
+                LatestCaseId: x.LatestCase?.CaseId,
+                HasBaselineProfile: x.HasBaseline))
             .ToList();
 
         return (rows, total);
