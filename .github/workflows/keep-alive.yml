@@ -26,4 +26,4 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Ping api-adsus
-              run: curl --fail --silent --show-error --max-time 30 https://api-adsus.onrender.com/api/health
+              run: curl --fail --silent --show-error --max-time 30 https://api-adsus-v2.onrender.com/api/health
