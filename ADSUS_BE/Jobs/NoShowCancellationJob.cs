@@ -1,12 +1,6 @@
-using ADSUS_BE.BLL.Common.Interfaces;
-using ADSUS_BE.BLL.Common.Settings;
-using ADSUS_BE.DAL.Data;
-using ADSUS_BE.DAL.Entities;
-using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
+using ADSUS_BE.BLL.AppointmentScheduling.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Quartz;
 
 namespace ADSUS_BE.Jobs;
@@ -22,135 +16,35 @@ namespace ADSUS_BE.Jobs;
 ///
 /// Ví dụ:
 /// - Slot bắt đầu: 8:00, grace time: 15 phút
-/// - Nếu 8:16 mà chưa checkin → Auto-NoShow
+/// - Từ 8:15 mà chưa checkin → Auto-NoShow
+///
+/// Toàn bộ logic nằm ở <see cref="NoShowService.ProcessOverdueAsync"/> — dùng chung với luồng
+/// check-in muộn (P11 review 25/09/2026: trước đây job có bản logic riêng lệch với service và
+/// truy vấn thẳng AppDbContext).
 /// </summary>
 [DisallowConcurrentExecution]
 public sealed class NoShowCancellationJob : IJob
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly INotificationService _notificationService;
-    private readonly IOptions<NoShowSettings> _noShowSettings;
     private readonly ILogger<NoShowCancellationJob> _logger;
 
     public NoShowCancellationJob(
         IServiceScopeFactory scopeFactory,
-        INotificationService notificationService,
-        IOptions<NoShowSettings> noShowSettings,
         ILogger<NoShowCancellationJob> logger)
     {
         _scopeFactory = scopeFactory;
-        _notificationService = notificationService;
-        _noShowSettings = noShowSettings;
         _logger = logger;
     }
 
     public async Task Execute(IJobExecutionContext context)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var noShowService = scope.ServiceProvider.GetRequiredService<NoShowService>();
 
-        var now = DateTime.UtcNow;
-        var graceTimeMinutes = _noShowSettings.Value.GraceTimeMinutes;
-        var thresholdTime = now.AddMinutes(-graceTimeMinutes);
+        _logger.LogInformation("[JOB-08] No-show cancellation job started at {Time}", DateTime.UtcNow);
 
-        _logger.LogInformation("[JOB-08] No-show cancellation job started at {Time}, grace time: {GraceTime} minutes", now, graceTimeMinutes);
+        var noShowCount = await noShowService.ProcessOverdueAsync(context.CancellationToken);
 
-        // Tìm tất cả appointment đang BOOKED mà đã quá ngưỡng thời gian
-        var noShowAppointments = await db.Appointments
-            .Include(a => a.Slot)
-                .ThenInclude(s => s.Doctor)
-            .Include(a => a.PatientProfile)
-                .ThenInclude(p => p.User)
-            .Where(a => a.Status == AppointmentStatus.Booked)
-            .Where(a => a.Slot != null)
-            .ToListAsync(context.CancellationToken);
-
-        var cancelledCount = 0;
-
-        foreach (var appointment in noShowAppointments)
-        {
-            if (appointment.Slot == null) continue;
-
-            // SlotDate và StartTime là giờ địa phương phòng khám (UTC+7, theo ClinicClock).
-            // Cần quy đổi sang UTC trước khi so sánh với thresholdTime (UTC).
-            var slotDateTimeUtc = ClinicClock.StartOfDayUtc(appointment.Slot.SlotDate)
-                .Add(appointment.Slot.StartTime.ToTimeSpan());
-
-            // Kiểm tra nếu đã quá ngưỡng thời gian
-            if (slotDateTimeUtc < thresholdTime)
-            {
-                try
-                {
-                    // Chuyển status: BOOKED → NO_SHOW
-                    appointment.Status = AppointmentStatus.NoShow;
-                    appointment.CancelledReason = $"Bệnh nhân không đến checkin trong vòng {graceTimeMinutes} phút.";
-                    appointment.UpdatedAt = DateTime.UtcNow;
-
-                    // Giải phóng slot (chuyển về OPEN)
-                    appointment.Slot.Status = SlotStatus.Open;
-
-                    // Đồng bộ trạng thái Case liên kết sang Cancelled
-                    if (appointment.CaseId.HasValue)
-                    {
-                        var medicalCase = await db.Cases
-                            .FirstOrDefaultAsync(c => c.CaseId == appointment.CaseId.Value, context.CancellationToken);
-
-                        if (medicalCase != null && medicalCase.Status == CaseStatus.Booked)
-                        {
-                            medicalCase.Status = CaseStatus.Cancelled;
-                            medicalCase.UpdatedAt = DateTime.UtcNow;
-                        }
-                    }
-
-                    // Gửi notification cho bệnh nhân
-                    var doctorName = appointment.Slot?.Doctor?.FullName ?? "bác sĩ";
-                    var slotTimeStr = appointment.Slot!.StartTime.ToString("HH:mm");
-                    var slotDateStr = appointment.Slot.SlotDate.ToString("dd/MM/yyyy");
-
-                    try
-                    {
-                        var patientUserId = appointment.PatientProfile?.UserId;
-                        if (patientUserId.HasValue)
-                        {
-                            await _notificationService.SendAsync(new SendNotificationRequest
-                            {
-                                UserId = patientUserId.Value,
-                                Type = "no_show_cancelled",
-                                Title = "Lịch hẹn bị hủy",
-                                Body = $"Lịch khám với {doctorName} lúc {slotTimeStr} ngày {slotDateStr} đã bị hủy do bạn không đến checkin trong vòng {graceTimeMinutes} phút. Vui lòng đặt lịch khám mới.",
-                                Metadata = new Dictionary<string, object>
-                                {
-                                    ["appointmentId"] = appointment.AppointmentId.ToString(),
-                                    ["doctorName"] = doctorName,
-                                    ["slotTime"] = $"{slotDateStr} {slotTimeStr}",
-                                    ["reason"] = "no_show"
-                                }
-                            }, context.CancellationToken);
-                        }
-                    }
-                    catch (Exception notifEx)
-                    {
-                        _logger.LogWarning(notifEx, "[JOB-08] Failed to send cancellation notification for appointment {AppointmentId}", appointment.AppointmentId);
-                    }
-
-                    cancelledCount++;
-                    _logger.LogInformation(
-                        "[JOB-08] Marked no-show appointment {AppointmentId}. Doctor: {DoctorName}, Slot: {SlotDate} {SlotTime}",
-                        appointment.AppointmentId, doctorName, appointment.Slot?.SlotDate, appointment.Slot?.StartTime);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "[JOB-08] Failed to process appointment {AppointmentId}", appointment.AppointmentId);
-                }
-            }
-        }
-
-        if (cancelledCount > 0)
-        {
-            await db.SaveChangesAsync(context.CancellationToken);
-            _logger.LogInformation("[JOB-08] Saved {Count} no-show appointments", cancelledCount);
-        }
-
-        _logger.LogInformation("[JOB-08] No-show cancellation job completed. No-show: {NoShow}", cancelledCount);
+        _logger.LogInformation("[JOB-08] No-show cancellation job completed. No-show: {NoShow}", noShowCount);
     }
 }

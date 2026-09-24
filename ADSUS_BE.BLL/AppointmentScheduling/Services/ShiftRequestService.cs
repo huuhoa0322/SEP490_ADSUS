@@ -7,10 +7,10 @@ using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Interfaces;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace ADSUS_BE.BLL.AppointmentScheduling.Services;
@@ -19,20 +19,23 @@ public class ShiftRequestService : IShiftRequestService
 {
     private readonly IShiftRequestRepository _repo;
     private readonly IUserRepository _userRepo;
-    private readonly AppDbContext _db;
+    private readonly IScheduleSlotRepository _slotRepo;
+    private readonly IPatientProfileService _patientProfiles;
     private readonly INotificationService _notificationService;
     private readonly int _minAdvanceDays;
 
     public ShiftRequestService(
         IShiftRequestRepository repo,
         IUserRepository userRepo,
-        AppDbContext db,
+        IScheduleSlotRepository slotRepo,
+        IPatientProfileService patientProfiles,
         INotificationService notificationService,
         IConfiguration config)
     {
         _repo = repo;
         _userRepo = userRepo;
-        _db = db;
+        _slotRepo = slotRepo;
+        _patientProfiles = patientProfiles;
         _notificationService = notificationService;
         _minAdvanceDays = config.GetValue<int>("ScheduleSettings:MinAdvanceDaysForLeave", 2);
     }
@@ -60,7 +63,9 @@ public class ShiftRequestService : IShiftRequestService
         }
 
         // Advance notice validation
-        var minDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(_minAdvanceDays);
+        // Tính từ "hôm nay" theo giờ phòng khám — theo UTC thì từ 00:00 đến 07:00 giờ VN mốc lùi 1
+        // ngày và yêu cầu chỉ báo trước 1 ngày vẫn lọt.
+        var minDate = ClinicClock.Today().AddDays(_minAdvanceDays);
         if (dto.RequestDate < minDate)
         {
             throw new InvalidOperationException($"Phải gửi yêu cầu trước ít nhất {_minAdvanceDays} ngày.");
@@ -91,13 +96,14 @@ public class ShiftRequestService : IShiftRequestService
 
         await _repo.AddAsync(entity, ct);
         
-        // Gửi Notification cho tất cả Admin
-        var admins = await _db.Users.Where(u => u.Role == UserRole.Admin).ToListAsync(ct);
-        foreach (var admin in admins)
+        // Gửi Notification cho tất cả Admin đang hoạt động
+        // Chỉ cần Id — không nạp (và track) nguyên entity User của từng Admin
+        var adminIds = await _userRepo.ListActiveUserIdsByRoleAsync(UserRole.Admin, ct);
+        foreach (var adminId in adminIds)
         {
             var notification = new SendNotificationRequest
             {
-                UserId = admin.UserId,
+                UserId = adminId,
                 Type = "shift_request_new",
                 Title = "Yêu cầu thay đổi lịch làm việc",
                 Body = $"Bác sĩ {doctor.FullName} vừa gửi yêu cầu {(dto.RequestType == ShiftRequestType.Leave ? "Xin nghỉ" : "Tăng ca")} cho ngày {dto.RequestDate:dd/MM/yyyy}.",
@@ -201,14 +207,19 @@ public class ShiftRequestService : IShiftRequestService
         foreach (var range in timeRanges)
         {
             // Tìm tất cả slot trong range của Doctor trong ngày đó
-            var slotsToClose = await _db.ScheduleSlots
-                .Include(s => s.Appointments)
-                .Where(s => s.DoctorId == request.UserId &&
-                            s.SlotDate == request.RequestDate &&
-                            s.StartTime >= range.Start &&
-                            s.EndTime <= range.End &&
-                            s.Status != SlotStatus.Closed)
-                .ToListAsync(ct);
+            var slotsToClose = await _slotRepo.ListNotClosedWithinForUpdateAsync(
+                request.UserId, request.RequestDate, range.Start, range.End, ct);
+
+            // Nạp UserId của mọi hồ sơ bệnh nhân cần báo tin bằng MỘT truy vấn, thay vì truy vấn
+            // lại từng hồ sơ bên trong vòng lặp (N+1, P11 review 24/09/2026). Hồ sơ thuộc module
+            // MedicalRecord — đi qua IPatientProfileService.
+            var profileIds = slotsToClose
+                .SelectMany(s => s.Appointments)
+                .Where(a => a.Status == AppointmentStatus.Booked)
+                .Select(a => a.PatientProfileId)
+                .Distinct()
+                .ToList();
+            var profileUserIds = await _patientProfiles.FindUserIdsAsync(profileIds, ct);
 
             foreach (var slot in slotsToClose)
             {
@@ -223,20 +234,21 @@ public class ShiftRequestService : IShiftRequestService
                     appointment.CancelledReason = "Bác sĩ nghỉ phép, lịch hẹn đã được hệ thống tự động hủy.";
                     appointment.UpdatedAt = now;
 
-                    // Lấy user_id của bệnh nhân để gửi thông báo
-                    var patientUserId = await _db.PatientProfiles
-                        .Where(p => p.PatientProfileId == appointment.PatientProfileId)
-                        .Select(p => p.UserId)
-                        .FirstOrDefaultAsync(ct);
+                    // Bệnh nhân có tài khoản nhận thông báo; hồ sơ guest (người thân chưa có tài
+                    // khoản) thì người đặt hộ nhận — cùng quy tắc với nhắc lịch (JOB-03) và No-Show.
+                    var patientUserId = profileUserIds.GetValueOrDefault(appointment.PatientProfileId);
+                    var recipientUserId = patientUserId is { } id && id != Guid.Empty
+                        ? id
+                        : appointment.BookedByUserId;
 
-                    if (patientUserId.HasValue && patientUserId.Value != Guid.Empty)
+                    if (recipientUserId is { } recipient && recipient != Guid.Empty)
                     {
                         var notification = new SendNotificationRequest
                         {
-                            UserId = patientUserId.Value,
+                            UserId = recipient,
                             Type = "appointment_cancellation",
                             Title = "Lịch khám đã bị hủy",
-                            Body = $"Lịch khám lúc {slot.StartTime:hh\\:mm} ngày {slot.SlotDate:dd/MM/yyyy} đã bị hủy do bác sĩ có việc đột xuất. Xin lỗi vì sự bất tiện này.",
+                            Body = $"Lịch khám lúc {slot.StartTime:HH\\:mm} ngày {slot.SlotDate:dd/MM/yyyy} đã bị hủy do bác sĩ có việc đột xuất. Xin lỗi vì sự bất tiện này.",
                             DeepLink = "/appointments/history"
                         };
                         // Lửa fire and forget hoặc await đều được, ở đây await.
@@ -246,16 +258,17 @@ public class ShiftRequestService : IShiftRequestService
             }
         }
         
-        await _db.SaveChangesAsync(ct);
+        await _slotRepo.SaveChangesAsync(ct);
     }
 
     private async Task HandleOvertimeApprovalAsync(ShiftRequest request, CancellationToken ct)
     {
         // 17h đến 20h = 6 ca x 30 phút
         var now = DateTime.UtcNow;
-        var existingSlots = await _db.ScheduleSlots
-            .Where(s => s.DoctorId == request.UserId && s.SlotDate == request.RequestDate)
-            .ToListAsync(ct);
+        // Chỉ cần khung giờ để kiểm tra trùng (mọi trạng thái, như HasOverlapAsync)
+        var existingSlots = await _slotRepo.ListTimeRangesAsync(
+            new[] { request.UserId }, request.RequestDate, request.RequestDate, ct);
+        var newSlots = new List<ScheduleSlot>();
 
         for (int i = 0; i < 6; i++)
         {
@@ -276,10 +289,11 @@ public class ShiftRequestService : IShiftRequestService
                 CreatedAt = now,
                 UpdatedAt = now,
             };
-            await _db.ScheduleSlots.AddAsync(slot, ct);
+            newSlots.Add(slot);
         }
-        
-        await _db.SaveChangesAsync(ct);
+
+        // 1 lần lưu cho cả 6 ca, như bản trước
+        await _slotRepo.AddRangeAsync(newSlots, ct);
     }
 
     public async Task<List<DayShiftSummary>> GetMonthSummaryAsync(Guid userId, int year, int month, CancellationToken ct = default)
@@ -287,15 +301,12 @@ public class ShiftRequestService : IShiftRequestService
         var startDate = new DateOnly(year, month, 1);
         var endDate = startDate.AddMonths(1).AddDays(-1);
 
-        var slots = await _db.ScheduleSlots
-            .Include(s => s.Appointments)
-            .Where(s => s.DoctorId == userId && s.SlotDate >= startDate && s.SlotDate <= endDate)
-            .ToListAsync(ct);
+        var slots = await _slotRepo.ListWithAppointmentsForDoctorAsync(userId, startDate, endDate, ct);
 
         var requests = await _repo.ListByUserMonthAsync(userId, startDate, endDate, ct);
 
         var results = new List<DayShiftSummary>();
-        var nowLocal = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7)); // Giả sử GMT+7
+        var nowLocal = ClinicClock.Today();
 
         for (var day = startDate; day <= endDate; day = day.AddDays(1))
         {

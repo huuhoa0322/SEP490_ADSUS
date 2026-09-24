@@ -1,6 +1,7 @@
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
+using ADSUS_BE.DAL.Entities;
 
 namespace ADSUS_BE.BLL.MedicalRecord.Interfaces;
 
@@ -59,6 +60,56 @@ public interface ICaseService
     /// </summary>
     Task<CaseResponse> EndWithoutPrescriptionAsync(
         Guid caseId, Guid actingDoctorId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Chuyển Case sang InProgress khi lịch hẹn của nó được check-in (chỉ khi Case đang Booked).
+    /// KHÔNG lưu: AppointmentService gọi SaveChanges MỘT lần cho cả lịch hẹn lẫn Case (cùng
+    /// DbContext theo request), để hai trạng thái luôn được lưu cùng lúc hoặc không lưu gì.
+    /// </summary>
+    Task StageCheckinFromAppointmentAsync(Guid caseId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Chuyển Case sang Cancelled khi lịch hẹn của nó bị huỷ. KHÔNG lưu — xem
+    /// <see cref="StageCheckinFromAppointmentAsync"/>.
+    /// </summary>
+    Task StageCancelFromAppointmentAsync(Guid caseId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Chuyển các Case sang Cancelled khi lịch hẹn của chúng bị đánh dấu No-Show — CHỈ Case còn
+    /// Booked (Case đã sang trạng thái khác giữ nguyên). Một truy vấn cho cả danh sách. KHÔNG lưu —
+    /// xem <see cref="StageCheckinFromAppointmentAsync"/>.
+    /// </summary>
+    Task StageNoShowFromAppointmentsAsync(IReadOnlyCollection<Guid> caseIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Thay toàn bộ triệu chứng của Case khi bệnh nhân sửa thông tin lịch hẹn. <paramref name="symptoms"/>
+    /// null nghĩa là không đụng tới triệu chứng (chỉ cập nhật UpdatedAt). KHÔNG lưu — xem
+    /// <see cref="StageCheckinFromAppointmentAsync"/>.
+    /// </summary>
+    Task StageReplaceSymptomsFromAppointmentAsync(
+        Guid caseId, IReadOnlyList<SymptomInput>? symptoms, CancellationToken ct = default);
+
+    /// <summary>
+    /// Cập nhật Case khi lịch hẹn của nó được đổi sang slot khác. <paramref name="reassignDoctorTo"/>
+    /// khác null thì chuyển bác sĩ phụ trách; <paramref name="newStatus"/> khác null thì đặt trạng
+    /// thái mới (kèm UpdatedAt). Quyết định giá trị nào thuộc về AppointmentService (tuỳ tình huống
+    /// đổi lịch). KHÔNG lưu — xem <see cref="StageCheckinFromAppointmentAsync"/>.
+    /// </summary>
+    Task StageRescheduleFromAppointmentAsync(
+        Guid caseId, Guid? reassignDoctorTo, CaseStatus? newStatus, CancellationToken ct = default);
+
+    /// <summary>Triệu chứng của Case (để trả kèm thông tin lịch hẹn). Case không tồn tại → danh sách rỗng.</summary>
+    Task<IReadOnlyList<CaseSymptomResponse>> ListSymptomsAsync(Guid caseId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Bác sĩ phụ trách + trạng thái hiện tại của Case, null nếu không có — cho module khác kiểm
+    /// tra quyền/trạng thái trước khi thao tác trên ca (vd gắn/gỡ dịch vụ). Nếu Case đang được
+    /// track trong request (vừa đổi trạng thái, chưa lưu) thì trả trạng thái đang track đó.
+    /// </summary>
+    Task<CaseOwnershipInfo?> FindOwnershipAsync(Guid caseId, CancellationToken ct = default);
+
+    /// <summary>Ca đã có ít nhất một ảnh siêu âm chưa.</summary>
+    Task<bool> HasUltrasoundImagesAsync(Guid caseId, CancellationToken ct = default);
 
     /// <summary>
     /// Tạo case từ việc đặt lịch khám (Mobile).

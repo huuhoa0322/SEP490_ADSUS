@@ -140,12 +140,39 @@ class MyAppointmentsViewModel extends Notifier<MyAppointmentsState> {
               ))
           .toList();
 
-      // Booked lên trước, Cancelled xuống dưới; trong cùng nhóm sắp theo slotDate ↓.
+      // Logic sắp xếp:
+      // 1. Ca chưa khám (Booked và chưa qua giờ) lên đầu, sắp xếp tăng dần (ca gần nhất lên đầu).
+      // 2. Ca đã hủy hoặc đã qua giờ (Past) xuống dưới, sắp xếp giảm dần (ca mới hủy/mới qua hiển thị trước).
+      
+      DateTime getDateTime(Appointment ap) {
+        if (ap.slotDate != null && ap.startTime != null) {
+          final parts = ap.startTime!.split(':');
+          if (parts.length >= 2) {
+            final h = int.tryParse(parts[0]) ?? 0;
+            final m = int.tryParse(parts[1]) ?? 0;
+            return DateTime(ap.slotDate!.year, ap.slotDate!.month, ap.slotDate!.day, h, m);
+          }
+        }
+        return ap.slotDate ?? ap.createdAt;
+      }
+
       details.sort((a, b) {
-        if (a.isBooked != b.isBooked) return a.isBooked ? -1 : 1;
-        final aDate = a.slotDate ?? a.createdAt;
-        final bDate = b.slotDate ?? b.createdAt;
-        return bDate.compareTo(aDate);
+        final aActive = a.isBooked && !a.isExpired;
+        final bActive = b.isBooked && !b.isExpired;
+        
+        // Active lên trước, Cancelled/Past xuống dưới
+        if (aActive != bActive) return aActive ? -1 : 1;
+
+        final aDateTime = getDateTime(a);
+        final bDateTime = getDateTime(b);
+
+        if (aActive && bActive) {
+          // Nhóm Active: Tăng dần (ca gần hiện tại nhất lên đầu)
+          return aDateTime.compareTo(bDateTime);
+        } else {
+          // Nhóm Cancelled/Past: Giảm dần (ca mới xảy ra gần đây lên đầu)
+          return bDateTime.compareTo(aDateTime);
+        }
       });
 
       // UC-16 — hydrate cờ "đã sync Calendar" cho mỗi appointment Booked. Cancelled

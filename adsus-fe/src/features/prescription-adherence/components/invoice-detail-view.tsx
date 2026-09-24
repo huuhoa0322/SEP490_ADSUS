@@ -179,9 +179,10 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
             <CardContent>
               <Table>
                 <TableHeader>
-                  <TableRow>
+                    <TableRow>
                     <TableHead className="font-bold">Mô tả chi tiết</TableHead>
                     <TableHead className="font-bold w-[120px]">Loại</TableHead>
+                    <TableHead className="text-right font-bold">Đơn vị</TableHead>
                     <TableHead className="text-right font-bold">Số lượng</TableHead>
                     <TableHead className="text-right font-bold">Đơn giá</TableHead>
                     <TableHead className="text-right font-bold">Thành tiền</TableHead>
@@ -202,13 +203,14 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
                           </Badge>
                         )}
                       </TableCell>
+                      <TableCell className="text-right">{item.unit}</TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
                       <TableCell className="text-right font-bold">{formatCurrency(item.totalPrice)}</TableCell>
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell colSpan={4} className="text-right font-extrabold text-lg">Tổng cộng:</TableCell>
+                    <TableCell colSpan={5} className="text-right font-extrabold text-lg">Tổng cộng:</TableCell>
                     <TableCell className="text-right font-extrabold text-lg text-primary">{formatCurrency(data.totalAmount)}</TableCell>
                   </TableRow>
                 </TableBody>

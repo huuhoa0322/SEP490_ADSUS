@@ -1,12 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.PatientRelationship.DTOs;
 using ADSUS_BE.BLL.PatientRelationship.Interfaces;
-using ADSUS_BE.DAL.Data;
-using ADSUS_BE.DAL.Entities;
 
 namespace ADSUS_BE.Controllers;
 
@@ -16,14 +13,10 @@ namespace ADSUS_BE.Controllers;
 public sealed class PatientRelationshipsController : ControllerBase
 {
     private readonly IPatientRelationshipService _service;
-    private readonly AppDbContext _db;
 
-    public PatientRelationshipsController(
-        IPatientRelationshipService service,
-        AppDbContext db)
+    public PatientRelationshipsController(IPatientRelationshipService service)
     {
         _service = service;
-        _db = db;
     }
 
     private Guid GetCurrentUserId()
@@ -141,12 +134,10 @@ public sealed class PatientRelationshipsController : ControllerBase
     {
         try
         {
-            var guardian = await _db.Users.FirstOrDefaultAsync(
-                u => u.UserId == guardianUserId && u.Role == UserRole.Patient, ct);
-            if (guardian == null)
+            var result = await _service.AddRelativeForGuardianAsync(request, guardianUserId, ct);
+            if (result == null)
                 return NotFound(ApiResponse<object>.Fail(404, "Không tìm thấy tài khoản bệnh nhân."));
 
-            var result = await _service.AddRelativeAsync(request, guardianUserId, ct);
             return Ok(ApiResponse<RelativeResponse>.Ok(result));
         }
         catch (InvalidOperationException ex)

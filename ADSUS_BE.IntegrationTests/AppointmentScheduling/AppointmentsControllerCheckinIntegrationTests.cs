@@ -47,6 +47,31 @@ public class AppointmentsControllerCheckinIntegrationTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetCheckinQueue_NoDate_DefaultsToClinicToday()
+    {
+        // Không truyền ngày → hàng đợi của "hôm nay" theo giờ phòng khám. Theo ngày UTC thì điều
+        // dưỡng mở màn hình trước 7h sáng sẽ thấy hàng đợi của hôm qua.
+        using var app = CreateApp();
+        var client = CreateClient(app, UserRole.Staff);
+        _appointmentService.Setup(s => s.GetCheckinQueueAsync(
+            It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(),
+            It.IsAny<string?>(), It.IsAny<string?>(),
+            It.IsAny<int>(), It.IsAny<int>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CheckinQueueResponse { Items = new List<CheckinQueueItemResponse>() });
+
+        var response = await client.GetAsync(CheckinQueuePath, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var today = ADSUS_BE.DAL.Data.ClinicClock.Today();
+        _appointmentService.Verify(s => s.GetCheckinQueueAsync(
+            today, today,
+            It.IsAny<string?>(), It.IsAny<string?>(),
+            It.IsAny<int>(), It.IsAny<int>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Theory]
     [InlineData(UserRole.Patient)]
     [InlineData(UserRole.Doctor)]

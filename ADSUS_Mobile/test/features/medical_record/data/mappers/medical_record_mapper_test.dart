@@ -131,7 +131,9 @@ void main() {
       expect(entity.images, hasLength(1));
       expect(entity.images.first.imageId, 'img-1');
       expect(entity.images.first.imageUrl, 'https://signed-url.example/anh.png');
-      expect(entity.images.first.uploadedAt, DateTime.parse('2026-08-14T10:00:00Z'));
+      // Moc UTC tu backend duoc doi ve gio may de UI hien thi dung gio dia phuong
+      expect(entity.images.first.uploadedAt, DateTime.parse('2026-08-14T10:00:00Z').toLocal());
+      expect(entity.images.first.uploadedAt.isUtc, isFalse);
     });
 
     test('khong co anh thi list rong, khong nem loi', () {
@@ -163,7 +165,8 @@ void main() {
       expect(entity.id, 'feedback-1');
       expect(entity.rating, 5);
       expect(entity.content, 'Bac si rat tan tam');
-      expect(entity.submittedAt, DateTime.parse('2026-08-20T09:30:00Z'));
+      expect(entity.submittedAt, DateTime.parse('2026-08-20T09:30:00Z').toLocal());
+      expect(entity.submittedAt.isUtc, isFalse);
     });
 
     test('content null thi entity cung null, khong nem loi', () {

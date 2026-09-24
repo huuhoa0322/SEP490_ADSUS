@@ -13,7 +13,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence;
 /// - ListByPatientRangeAsync lọc theo range
 /// - AddRangeAsync add nhiều rows cùng lúc
 /// - ListUpcomingAsync trả về hết logs hôm nay (không filter ConfirmedAt)
-/// - ListUpcomingAsync range là [00:00 hôm nay, 00:00 ngày mai) UTC
+/// - ListUpcomingAsync range là [00:00 hôm nay, 00:00 ngày mai) theo giờ phòng khám (UTC+7)
 /// - ListUpcomingAsync loại trừ logs ngày khác
 /// </summary>
 public class MedicationIntakeLogRepositoryTests
@@ -182,7 +182,9 @@ public class MedicationIntakeLogRepositoryTests
     public async Task ListUpcomingAsync_ReturnsAllTodayIncludingTaken()
     {
         using var db = CreateContext();
-        var today = DateTime.UtcNow.Date;
+        // "Hôm nay" là ngày của phòng khám (UTC+7) như repository — dùng ngày UTC thì từ 00:00
+        // đến 07:00 giờ VN test lệch sang hôm trước và fail.
+        var today = ClinicClock.StartOfDayUtc(ClinicClock.Today());
         var tomorrow = today.AddDays(1);
         var todayLog1 = NewLog(Guid.Empty, today.AddHours(8), DateTime.UtcNow); // TAKEN
         var todayLog2 = NewLog(Guid.Empty, today.AddHours(13), null);           // PENDING
@@ -193,14 +195,14 @@ public class MedicationIntakeLogRepositoryTests
         var result = await repo.ListUpcomingAsync(patientProfileId, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, result.Count);
-        Assert.All(result, l => Assert.Equal(today, l.ScheduledTime.Date));
+        Assert.All(result, l => Assert.InRange(l.ScheduledTime, today, tomorrow.AddTicks(-1)));
     }
 
     [Fact]
     public async Task ListUpcomingAsync_ExcludesYesterday()
     {
         using var db = CreateContext();
-        var today = DateTime.UtcNow.Date;
+        var today = ClinicClock.StartOfDayUtc(ClinicClock.Today());
         var yesterday = today.AddDays(-1);
         var yesterdayLog = NewLog(Guid.Empty, yesterday.AddHours(8), null);
         var todayLog = NewLog(Guid.Empty, today.AddHours(8), null);
@@ -217,7 +219,7 @@ public class MedicationIntakeLogRepositoryTests
     public async Task ListUpcomingAsync_ExcludesTomorrow()
     {
         using var db = CreateContext();
-        var today = DateTime.UtcNow.Date;
+        var today = ClinicClock.StartOfDayUtc(ClinicClock.Today());
         var tomorrow = today.AddDays(1);
         var todayLog = NewLog(Guid.Empty, today.AddHours(8), null);
         var tomorrowLog = NewLog(Guid.Empty, tomorrow.AddHours(8), null);

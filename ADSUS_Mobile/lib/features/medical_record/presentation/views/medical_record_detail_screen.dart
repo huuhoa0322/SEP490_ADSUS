@@ -9,6 +9,7 @@ import '../../domain/entities/medical_record_prescription.dart';
 import '../viewmodels/medical_record_detail_viewmodel.dart';
 import '../widgets/feedback_card.dart';
 import 'feedback_sheet.dart';
+import '../../../../core/utils/html_sanitizer.dart';
 
 /// SCR-14 (Mobile) — chi tiết 1 lượt khám (UC-08). KHÔNG có nút xuất PDF (Doctor/Nurse
 /// only trên Web), KHÔNG có badge % AI confidence (GB-05) — xem thiết kế §1.
@@ -120,7 +121,9 @@ class _MedicalRecordDetailScreenState
           const SizedBox(height: 12),
           _InfoCard(
             title: 'Hướng xử trí',
-            content: record.doctorConclusion ?? 'Chưa có kết luận.',
+            content: record.doctorConclusion != null
+                ? HtmlSanitizer.sanitize(record.doctorConclusion)
+                : 'Chưa có kết luận.',
           ),
           if (record.prescription != null) ...[
             const SizedBox(height: 12),
@@ -433,7 +436,7 @@ class _PrescriptionCard extends StatelessWidget {
           if (prescription.generalNote != null) ...[
             const SizedBox(height: 8),
             Text(
-              prescription.generalNote!,
+              HtmlSanitizer.sanitize(prescription.generalNote),
               style: const TextStyle(fontSize: 13, color: AppColors.navy),
             ),
           ],

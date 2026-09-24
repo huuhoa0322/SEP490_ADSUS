@@ -4,6 +4,7 @@ using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Interfaces;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
@@ -44,18 +45,18 @@ public sealed class ScheduleSlotService : IScheduleSlotService
     private readonly IScheduleSlotRepository _repo;
     private readonly IUserRepository _userRepo;
     private readonly INotificationService _notificationService;
-    private readonly AppDbContext _db;
+    private readonly IPatientProfileService _patientProfiles;
 
     public ScheduleSlotService(
         IScheduleSlotRepository repo,
         IUserRepository userRepo,
         INotificationService notificationService,
-        AppDbContext db)
+        IPatientProfileService patientProfiles)
     {
         _repo = repo;
         _userRepo = userRepo;
         _notificationService = notificationService;
-        _db = db;
+        _patientProfiles = patientProfiles;
     }
 
     public async Task<(IReadOnlyList<ScheduleSlotResponse> Items, int TotalCount)> ListSlotsAsync(
@@ -300,15 +301,24 @@ public sealed class ScheduleSlotService : IScheduleSlotService
 
         if (forceClose && activeCount > 0)
         {
-            foreach (var appointment in slot.Appointments
-                .Where(a => a.Status == AppointmentStatus.Booked))
+            var bookedAppointments = slot.Appointments
+                .Where(a => a.Status == AppointmentStatus.Booked)
+                .ToList();
+
+            // Nạp UserId của mọi hồ sơ bệnh nhân cần báo tin bằng MỘT truy vấn, thay vì truy vấn
+            // lại từng hồ sơ bên trong vòng lặp (N+1, P11 review 24/09/2026). Hồ sơ thuộc module
+            // MedicalRecord — đi qua IPatientProfileService.
+            var profileIds = bookedAppointments.Select(a => a.PatientProfileId).Distinct().ToList();
+            var profileUserIds = await _patientProfiles.FindUserIdsAsync(profileIds, ct);
+
+            foreach (var appointment in bookedAppointments)
             {
                 appointment.Status = AppointmentStatus.Cancelled;
                 appointment.CancelledReason = "Lịch khám bị hủy do bác sĩ/quản trị viên đóng slot.";
                 appointment.UpdatedAt = DateTime.UtcNow;
 
-                var patientProfile = await _db.PatientProfiles.FirstOrDefaultAsync(p => p.PatientProfileId == appointment.PatientProfileId, ct);
-                var recipientUserId = appointment.BookedByUserId ?? patientProfile?.UserId;
+                var recipientUserId = appointment.BookedByUserId
+                    ?? profileUserIds.GetValueOrDefault(appointment.PatientProfileId);
 
                 if (recipientUserId.HasValue)
                 {
@@ -421,8 +431,7 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             // → 1 request khác đã chèn slot trùng giữa lúc đọc existingSlots và lúc ghi (race
             // hiếm gặp). Rơi về chèn từng slot một để không mất các slot hợp lệ còn lại trong
             // batch, vẫn giữ đúng tính idempotent.
-            foreach (var entry in _db.ChangeTracker.Entries<ScheduleSlot>().ToList())
-                entry.State = EntityState.Detached;
+            _repo.DetachTracked();
 
             foreach (var s in newSlots)
             {
@@ -458,6 +467,7 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             SlotId = slot.SlotId,
             DoctorId = slot.DoctorId,
             DoctorName = slot.Doctor?.FullName ?? string.Empty,
+            DoctorGender = slot.Doctor?.Gender?.ToString(),
             SlotDate = slot.SlotDate,
             StartTime = slot.StartTime,
             EndTime = slot.EndTime,

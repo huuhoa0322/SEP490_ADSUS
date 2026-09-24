@@ -30,7 +30,7 @@ public sealed class CaseService : ICaseService
     private readonly ILogger<CaseService> _logger;
     private readonly ICaseClinicServiceService? _caseClinicServiceService;
     private readonly IInvoiceService? _invoiceService;
-    private readonly AppDbContext? _context;
+    private readonly IUnitOfWork? _unitOfWork;
 
     private IFileStorageService _storage => _storageLazy.Value;
 
@@ -44,7 +44,7 @@ public sealed class CaseService : ICaseService
         ILogger<CaseService> logger,
         ICaseClinicServiceService? caseClinicServiceService = null,
         IInvoiceService? invoiceService = null,
-        AppDbContext? context = null)
+        IUnitOfWork? unitOfWork = null)
     {
         _cases = cases;
         _images = images;
@@ -55,7 +55,7 @@ public sealed class CaseService : ICaseService
         _logger = logger;
         _caseClinicServiceService = caseClinicServiceService;
         _invoiceService = invoiceService;
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<IReadOnlyList<UltrasoundImageResponse>> ListImagesAsync(
@@ -337,30 +337,18 @@ public sealed class CaseService : ICaseService
             throw new BusinessException("Only confirmed cases can be ended without prescription.");
         }
 
-        if (_context != null && _invoiceService != null)
+        if (_unitOfWork != null && _invoiceService != null)
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+            await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
             try
             {
                 medicalCase.Status = CaseStatus.End;
                 medicalCase.UpdatedAt = DateTime.UtcNow;
                 await _cases.SaveChangesAsync(ct);
 
-                var hasInvoice = await _context.Invoices.AnyAsync(i => i.CaseId == caseId 
-                    && (i.Status == InvoiceStatus.PENDING || i.Status == InvoiceStatus.PAID), ct);
-
-                if (!hasInvoice)
-                {
-                    var hasServiceOrMedicine = 
-                        await _context.CaseClinicServices.AnyAsync(cs => cs.CaseId == caseId, ct)
-                        || await _context.Prescriptions.AnyAsync(p => p.CaseId == caseId 
-                            && p.Status == PrescriptionStatus.Active, ct);
-
-                    if (hasServiceOrMedicine)
-                    {
-                        await _invoiceService.GenerateInvoiceForCaseAsync(caseId);
-                    }
-                }
+                // Sinh hoá đơn nếu ca có dịch vụ/đơn thuốc và chưa có hoá đơn — module hoá đơn tự
+                // quyết định, CaseService không đọc bảng hoá đơn/dịch vụ/đơn thuốc (P11).
+                await _invoiceService.GenerateInvoiceIfBillableAsync(caseId);
 
                 await transaction.CommitAsync(ct);
             }
@@ -391,14 +379,7 @@ public sealed class CaseService : ICaseService
     {
         var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
-        if (_context != null)
-        {
-            _context.CaseSymptoms.RemoveRange(medicalCase.CaseSymptoms.ToList());
-        }
-        else
-        {
-            medicalCase.CaseSymptoms.Clear();
-        }
+        medicalCase.CaseSymptoms.Clear();
 
         var now = DateTime.UtcNow;
         if (request.Symptoms != null)
@@ -407,22 +388,17 @@ public sealed class CaseService : ICaseService
             {
                 var newSymptom = new CaseSymptom
                 {
-                    Id = Guid.NewGuid(),
+                    // KHÔNG tự gán Id: cột id do DB sinh (gen_random_uuid()). Entity mới gắn vào
+                    // navigation của Case đang được track mà đã có sẵn khoá thì EF hiểu nhầm là
+                    // bản ghi cũ và sinh UPDATE thay vì INSERT → DbUpdateConcurrencyException.
                     CaseId = caseId,
                     CategoryId = s.CategoryId,
                     SymptomId = s.SymptomId,
                     OtherNote = s.OtherNote,
                     CreatedAt = now
                 };
-
-                if (_context != null)
-                {
-                    _context.CaseSymptoms.Add(newSymptom);
-                }
-                else
-                {
-                    medicalCase.CaseSymptoms.Add(newSymptom);
-                }
+                
+                medicalCase.CaseSymptoms.Add(newSymptom);
             }
         }
 
@@ -442,14 +418,7 @@ public sealed class CaseService : ICaseService
     {
         var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
-        if (_context != null)
-        {
-            _context.CaseDiseases.RemoveRange(medicalCase.CaseDiseases.ToList());
-        }
-        else
-        {
-            medicalCase.CaseDiseases.Clear();
-        }
+        medicalCase.CaseDiseases.Clear();
 
         var now = DateTime.UtcNow;
         if (request.Diseases != null)
@@ -458,21 +427,16 @@ public sealed class CaseService : ICaseService
             {
                 var newDisease = new CaseDisease
                 {
-                    Id = Guid.NewGuid(),
+                    // KHÔNG tự gán Id: cột id do DB sinh (gen_random_uuid()). Entity mới gắn vào
+                    // navigation của Case đang được track mà đã có sẵn khoá thì EF hiểu nhầm là
+                    // bản ghi cũ và sinh UPDATE thay vì INSERT → DbUpdateConcurrencyException.
                     CaseId = caseId,
                     DiseaseId = d.DiseaseId,
                     Note = d.Note,
                     CreatedAt = now
                 };
-
-                if (_context != null)
-                {
-                    _context.CaseDiseases.Add(newDisease);
-                }
-                else
-                {
-                    medicalCase.CaseDiseases.Add(newDisease);
-                }
+                
+                medicalCase.CaseDiseases.Add(newDisease);
             }
         }
 
@@ -492,14 +456,7 @@ public sealed class CaseService : ICaseService
     {
         var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
-        if (_context != null)
-        {
-            _context.CaseAllergies.RemoveRange(medicalCase.CaseAllergies.ToList());
-        }
-        else
-        {
-            medicalCase.CaseAllergies.Clear();
-        }
+        medicalCase.CaseAllergies.Clear();
 
         var now = DateTime.UtcNow;
         if (request.Allergies != null)
@@ -508,21 +465,16 @@ public sealed class CaseService : ICaseService
             {
                 var newAllergy = new CaseAllergy
                 {
-                    Id = Guid.NewGuid(),
+                    // KHÔNG tự gán Id: cột id do DB sinh (gen_random_uuid()). Entity mới gắn vào
+                    // navigation của Case đang được track mà đã có sẵn khoá thì EF hiểu nhầm là
+                    // bản ghi cũ và sinh UPDATE thay vì INSERT → DbUpdateConcurrencyException.
                     CaseId = caseId,
                     AllergyTypeId = a.AllergyTypeId,
                     Note = a.Note,
                     CreatedAt = now
                 };
-
-                if (_context != null)
-                {
-                    _context.CaseAllergies.Add(newAllergy);
-                }
-                else
-                {
-                    medicalCase.CaseAllergies.Add(newAllergy);
-                }
+                
+                medicalCase.CaseAllergies.Add(newAllergy);
             }
         }
 
@@ -548,14 +500,7 @@ public sealed class CaseService : ICaseService
                 "This case has not been checked in yet. Please wait for the nurse to check in the patient first.");
         }
 
-        if (_context != null)
-        {
-            _context.CaseDiagnoses.RemoveRange(medicalCase.CaseDiagnoses.ToList());
-        }
-        else
-        {
-            medicalCase.CaseDiagnoses.Clear();
-        }
+        medicalCase.CaseDiagnoses.Clear();
 
         var now = DateTime.UtcNow;
         if (request.Diagnoses != null)
@@ -564,21 +509,13 @@ public sealed class CaseService : ICaseService
             {
                 var newDiagnosis = new CaseDiagnosis
                 {
-                    Id = Guid.NewGuid(),
                     CaseId = caseId,
                     DiagnosisItemId = d.DiagnosisItemId,
                     Note = d.Note,
                     CreatedAt = now
                 };
-
-                if (_context != null)
-                {
-                    _context.CaseDiagnoses.Add(newDiagnosis);
-                }
-                else
-                {
-                    medicalCase.CaseDiagnoses.Add(newDiagnosis);
-                }
+                
+                medicalCase.CaseDiagnoses.Add(newDiagnosis);
             }
         }
 
@@ -591,6 +528,102 @@ public sealed class CaseService : ICaseService
     }
 
     /// <inheritdoc />
+    public async Task StageCheckinFromAppointmentAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var medicalCase = await _cases.GetForUpdateAsync(caseId, ct);
+        if (medicalCase != null && medicalCase.Status == CaseStatus.Booked)
+        {
+            medicalCase.Status = CaseStatus.InProgress;
+            medicalCase.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public async Task StageCancelFromAppointmentAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var medicalCase = await _cases.GetForUpdateAsync(caseId, ct);
+        if (medicalCase != null)
+        {
+            medicalCase.Status = CaseStatus.Cancelled;
+            medicalCase.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public async Task StageNoShowFromAppointmentsAsync(IReadOnlyCollection<Guid> caseIds, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        foreach (var medicalCase in await _cases.ListForUpdateByIdsAsync(caseIds, ct))
+        {
+            if (medicalCase.Status != CaseStatus.Booked) continue;
+
+            medicalCase.Status = CaseStatus.Cancelled;
+            medicalCase.UpdatedAt = now;
+        }
+    }
+
+    public async Task StageReplaceSymptomsFromAppointmentAsync(
+        Guid caseId, IReadOnlyList<SymptomInput>? symptoms, CancellationToken ct = default)
+    {
+        var medicalCase = await _cases.GetForUpdateWithCollectionsAsync(caseId, ct);
+        if (medicalCase == null) return;
+
+        var now = DateTime.UtcNow;
+        if (symptoms != null)
+        {
+            medicalCase.CaseSymptoms.Clear();
+            foreach (var s in symptoms)
+            {
+                // Không tự gán Id — xem chú thích ở UpdateSymptomsAsync (EF sẽ sinh UPDATE thay vì INSERT).
+                medicalCase.CaseSymptoms.Add(new CaseSymptom
+                {
+                    CaseId = caseId,
+                    CategoryId = s.CategoryId,
+                    SymptomId = s.SymptomId,
+                    OtherNote = s.OtherNote,
+                    CreatedAt = now
+                });
+            }
+        }
+        medicalCase.UpdatedAt = now;
+    }
+
+    public async Task StageRescheduleFromAppointmentAsync(
+        Guid caseId, Guid? reassignDoctorTo, CaseStatus? newStatus, CancellationToken ct = default)
+    {
+        var medicalCase = await _cases.GetForUpdateAsync(caseId, ct);
+        if (medicalCase == null) return;
+
+        if (reassignDoctorTo.HasValue)
+        {
+            medicalCase.DoctorId = reassignDoctorTo.Value;
+        }
+
+        if (newStatus.HasValue)
+        {
+            medicalCase.Status = newStatus.Value;
+            medicalCase.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public async Task<IReadOnlyList<CaseSymptomResponse>> ListSymptomsAsync(Guid caseId, CancellationToken ct = default)
+    {
+        var medicalCase = await _cases.GetWithSymptomsAsync(caseId, ct);
+        return medicalCase?.CaseSymptoms.Select(CaseMapper.ToSymptomResponse).ToList()
+            ?? new List<CaseSymptomResponse>();
+    }
+
+    public async Task<CaseOwnershipInfo?> FindOwnershipAsync(Guid caseId, CancellationToken ct = default)
+    {
+        // Bản CÓ tracking: nếu Case đã được track trong request (vd check-in vừa đổi trạng thái,
+        // chưa lưu) thì EF trả đúng instance đó — giữ cách đọc cũ của CaseClinicServiceService.
+        var medicalCase = await _cases.GetForUpdateAsync(caseId, ct);
+        return medicalCase is null
+            ? null
+            : new CaseOwnershipInfo(medicalCase.CaseId, medicalCase.DoctorId, medicalCase.Status);
+    }
+
+    public Task<bool> HasUltrasoundImagesAsync(Guid caseId, CancellationToken ct = default) =>
+        _images.ExistsForCaseAsync(caseId, ct);
+
     public async Task<Guid> CreateFromBookingAsync(
         Guid patientProfileId,
         Guid doctorId,

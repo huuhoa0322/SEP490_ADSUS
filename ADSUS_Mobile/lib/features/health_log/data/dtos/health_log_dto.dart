@@ -1,3 +1,4 @@
+import '../../../../core/utils/api_date_time.dart';
 import '../../domain/entities/health_log.dart';
 
 /// DTO cho API response health-logs.
@@ -39,7 +40,8 @@ class HealthLogDto {
       logDate: DateTime.parse(json['logDate'] as String),
       type: json['type'] as String,
       content: json['content'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      // Moc thoi gian UTC (hau to Z) -> doi ve gio may.
+      createdAt: ApiDateTime.parse(json['createdAt'] as String),
     );
   }
 

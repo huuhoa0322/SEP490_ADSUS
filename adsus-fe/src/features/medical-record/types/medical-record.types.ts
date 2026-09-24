@@ -27,8 +27,14 @@ export type VisitStatusFilter = "All" | "Pending" | "Confirmed";
 
 /** Một dòng danh sách bệnh nhân (#26, SCR-09). */
 export interface PatientSummary {
-  /** NULL = tài khoản đã tồn tại nhưng CHƯA có hồ sơ nền → nút hành động đổi thành "Tạo hồ sơ nền". */
+  /**
+   * NULL = tài khoản cũ chưa có bản ghi hồ sơ → nút hành động đổi thành "Tạo hồ sơ nền".
+   * Khác NULL chưa chắc đã lập hồ sơ nền — mọi tài khoản mới đều có sẵn bản ghi rỗng để đặt
+   * lịch được ngay (UC-13). Xem hasBaselineProfile.
+   */
   patientProfileId: string | null;
+  /** UC-06 — Bác sĩ/Điều dưỡng đã lập hồ sơ nền chưa. Thiếu trường (backend cũ) thì suy từ patientProfileId. */
+  hasBaselineProfile?: boolean;
   patientUserId: string;
   fullName: string;
   phone: string;

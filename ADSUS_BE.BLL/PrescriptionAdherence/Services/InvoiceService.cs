@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ADSUS_BE.BLL.CaseClinicServices;
 using ADSUS_BE.BLL.Common.Exceptions;
-using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
-using Microsoft.EntityFrameworkCore;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs.Invoice;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
@@ -16,51 +15,117 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services;
 
 public class InvoiceService : IInvoiceService
 {
-    private readonly AppDbContext _context;
+    private readonly IInvoiceRepository _invoices;
+    private readonly IPrescriptionRepository _prescriptions;
+    private readonly IPrescriptionItemRepository _prescriptionItems;
+    private readonly IInventoryRepository _inventory;
+    private readonly IReminderPreferenceRepository _reminderPreferences;
+    private readonly IUserRepository _users;
+    private readonly ICaseClinicServiceService _caseClinicServices;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IInventoryService _inventoryService;
     private readonly IMedicationIntakeLogRepository _intakeLogRepo;
     private readonly IMedicationIntakeScheduleGenerator _scheduleGenerator;
     private readonly INotificationService _notificationService;
 
     public InvoiceService(
-        AppDbContext context,
+        IInvoiceRepository invoices,
+        IPrescriptionRepository prescriptions,
+        IPrescriptionItemRepository prescriptionItems,
+        IInventoryRepository inventory,
+        IReminderPreferenceRepository reminderPreferences,
+        IUserRepository users,
+        ICaseClinicServiceService caseClinicServices,
+        IUnitOfWork unitOfWork,
         IInventoryService inventoryService,
         IMedicationIntakeLogRepository intakeLogRepo,
         IMedicationIntakeScheduleGenerator scheduleGenerator,
         INotificationService notificationService)
     {
-        _context = context;
+        _invoices = invoices;
+        _prescriptions = prescriptions;
+        _prescriptionItems = prescriptionItems;
+        _inventory = inventory;
+        _reminderPreferences = reminderPreferences;
+        _users = users;
+        _caseClinicServices = caseClinicServices;
+        _unitOfWork = unitOfWork;
         _inventoryService = inventoryService;
         _intakeLogRepo = intakeLogRepo;
         _scheduleGenerator = scheduleGenerator;
         _notificationService = notificationService;
     }
 
+    public async Task<Guid?> GenerateInvoiceIfBillableAsync(Guid caseId)
+    {
+        if (await _invoices.GetActiveIdByCaseAsync(caseId) is not null)
+            return null;
+
+        var hasServiceOrMedicine =
+            (await _caseClinicServices.GetServicesForCaseAsync(caseId)).Count > 0
+            || await _prescriptions.ExistsActiveByCaseAsync(caseId);
+
+        return hasServiceOrMedicine ? await GenerateInvoiceForCaseAsync(caseId) : null;
+    }
+
+    public Task<bool> HasPaidInvoiceAsync(Guid caseId, CancellationToken ct = default) =>
+        _invoices.HasPaidByCaseAsync(caseId, ct);
+
+    public async Task StageServiceAddedAsync(Guid caseId, Guid caseClinicServiceId, string description, decimal price, CancellationToken ct = default)
+    {
+        var pendingInvoice = await _invoices.GetPendingWithItemsForUpdateAsync(caseId, ct);
+        if (pendingInvoice == null) return;
+
+        var invoiceItem = new InvoiceItem
+        {
+            Id = Guid.NewGuid(),
+            InvoiceId = pendingInvoice.Id,
+            Description = description,
+            Quantity = 1,
+            UnitPrice = price,
+            TotalPrice = price,
+            ItemType = InvoiceItemType.Service,
+            ReferenceId = caseClinicServiceId
+        };
+
+        await _invoices.AddItemAsync(invoiceItem, ct);
+        pendingInvoice.InvoiceItems.Add(invoiceItem);
+        pendingInvoice.TotalAmount += invoiceItem.TotalPrice;
+    }
+
+    public async Task StageServiceRemovedAsync(Guid caseId, Guid caseClinicServiceId, CancellationToken ct = default)
+    {
+        var pendingInvoice = await _invoices.GetPendingWithItemsForUpdateAsync(caseId, ct);
+        if (pendingInvoice == null) return;
+
+        var itemToRemove = pendingInvoice.InvoiceItems
+            .FirstOrDefault(item => item.ReferenceId == caseClinicServiceId && item.ItemType == InvoiceItemType.Service);
+        if (itemToRemove == null) return;
+
+        _invoices.RemoveItem(itemToRemove);
+        pendingInvoice.InvoiceItems.Remove(itemToRemove);
+        pendingInvoice.TotalAmount -= itemToRemove.TotalPrice;
+
+        if (pendingInvoice.InvoiceItems.Count == 0)
+        {
+            pendingInvoice.Status = InvoiceStatus.CANCELLED;
+            pendingInvoice.CancelledReason = "Tự động hủy do đã xóa hết dịch vụ";
+        }
+    }
+
     public async Task<Guid> GenerateInvoiceForCaseAsync(Guid caseId)
     {
         // 1. Kiểm tra xem Case đã có hóa đơn nào PENDING/PAID chưa để tránh tạo trùng
-        var existingInvoice = await _context.Invoices
-            .FirstOrDefaultAsync(i => i.CaseId == caseId && (i.Status == InvoiceStatus.PENDING || i.Status == InvoiceStatus.PAID));
-            
-
-        
-        if (existingInvoice != null)
+        var existingInvoiceId = await _invoices.GetActiveIdByCaseAsync(caseId);
+        if (existingInvoiceId is not null)
         {
-            return existingInvoice.Id;
+            return existingInvoiceId.Value;
         }
 
-        // 2. Lấy danh sách dịch vụ và đơn thuốc của Case này
-        var caseClinicServices = await _context.CaseClinicServices
-            .AsNoTracking()
-            .Include(cs => cs.ClinicService)
-            .Where(cs => cs.CaseId == caseId)
-            .ToListAsync();
+        // 2. Lấy danh sách dịch vụ (module CaseClinicServices) và đơn thuốc của Case này
+        var caseClinicServices = await _caseClinicServices.GetServicesForCaseAsync(caseId);
 
-        var prescription = await _context.Prescriptions
-            .AsNoTracking()
-            .Include(p => p.PrescriptionItems)
-                .ThenInclude(pi => pi.Medicine)
-            .FirstOrDefaultAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active);
+        var prescription = await _prescriptions.GetActiveByCaseWithItemsAsync(caseId);
 
         bool hasMedicine = prescription != null && prescription.PrescriptionItems.Count > 0;
         bool hasService = caseClinicServices.Count > 0;
@@ -79,7 +144,7 @@ public class InvoiceService : IInvoiceService
             Status = InvoiceStatus.PENDING,
             TotalAmount = 0
         };
-        _context.Invoices.Add(invoice);
+        await _invoices.AddAsync(invoice);
 
         decimal grandTotal = 0;
 
@@ -90,14 +155,14 @@ public class InvoiceService : IInvoiceService
             {
                 Id = Guid.NewGuid(),
                 InvoiceId = invoice.Id,
-                Description = cs.ClinicService?.Name ?? "Dịch vụ phòng khám",
+                Description = string.IsNullOrEmpty(cs.ServiceName) ? "Dịch vụ phòng khám" : cs.ServiceName,
                 Quantity = 1,
                 UnitPrice = cs.PriceAtTime,
                 TotalPrice = cs.PriceAtTime,
                 ItemType = InvoiceItemType.Service,
                 ReferenceId = cs.Id
             };
-            _context.InvoiceItems.Add(serviceItem);
+            await _invoices.AddItemAsync(serviceItem);
             grandTotal += serviceItem.TotalPrice;
         }
 
@@ -110,12 +175,11 @@ public class InvoiceService : IInvoiceService
                 decimal volumePerBaseUnit = pItem.Medicine.VolumePerBaseUnit ?? 1m;
                 if (remainingQuantity <= 0) continue;
 
-                // Lấy tất cả các quy cách đóng gói được phép bán của loại thuốc này, xếp từ lớn xuống nhỏ
-                var packagings = await _context.MedicinePackagings
-                    .Include(mp => mp.MedicineUnit)
-                    .Where(mp => mp.MedicineId == pItem.MedicineId && mp.IsSellable)
+                // Các quy cách được phép bán của thuốc (đã nạp sẵn cùng đơn), xếp từ lớn xuống nhỏ
+                var packagings = pItem.Medicine.MedicinePackagings
+                    .Where(mp => mp.IsSellable)
                     .OrderByDescending(mp => mp.ConversionFactor)
-                    .ToListAsync();
+                    .ToList();
 
                 if (packagings.Count == 0)
                 {
@@ -155,43 +219,32 @@ public class InvoiceService : IInvoiceService
                     {
                         Id = Guid.NewGuid(),
                         InvoiceId = invoice.Id,
-                        Description = $"{pItem.Medicine.Name} - {pack.MedicineUnit.Name}",
+                        Description = $"Thuốc: {pItem.Medicine.Name} ({pack.MedicineUnit?.Name ?? "Đơn vị"})",
                         Quantity = qty,
                         UnitPrice = pack.SalePrice,
                         TotalPrice = qty * pack.SalePrice,
                         ItemType = InvoiceItemType.Medicine,
                         ReferenceId = pItem.PrescriptionItemId
                     };
-                    _context.InvoiceItems.Add(invoiceItem);
+                    await _invoices.AddItemAsync(invoiceItem);
                     grandTotal += invoiceItem.TotalPrice;
                 }
             }
         }
-        
-        invoice.TotalAmount = grandTotal;
-        
-        await _context.SaveChangesAsync();
 
+        invoice.TotalAmount = grandTotal;
+        await _unitOfWork.SaveChangesAsync();
         if (hasMedicine)
         {
             await _inventoryService.DispenseAsync(caseId);
-            await GenerateIntakeLogsForPrescriptionAsync(caseId);
         }
 
         // Send notification to all nurses
-        var nurseIds = await _context.Users
-            .Where(u => u.Role == UserRole.Staff)
-            .Select(u => u.UserId)
-            .ToListAsync();
+        var nurseIds = await _users.ListActiveUserIdsByRoleAsync(UserRole.Staff);
 
         if (nurseIds.Count > 0)
         {
-            var caseEntity = await _context.Cases
-                .Include(c => c.PatientProfile)
-                    .ThenInclude(p => p.User)
-                .FirstOrDefaultAsync(c => c.CaseId == caseId);
-                
-            var patientName = caseEntity?.PatientProfile?.User?.FullName ?? "bệnh nhân";
+            var patientName = await _invoices.GetPatientNameAsync(invoice.Id) ?? "bệnh nhân";
 
             await _notificationService.SendBulkAsync(nurseIds, new SendNotificationRequest
             {
@@ -219,49 +272,25 @@ public class InvoiceService : IInvoiceService
         var page = filter.Page < 1 ? 1 : filter.Page;
         var pageSize = filter.PageSize is < 1 or > MaxInvoicePageSize ? 10 : filter.PageSize;
 
-        var query = _context.Invoices
-            .Include(i => i.Case)
-                .ThenInclude(c => c.PatientProfile)
-                    .ThenInclude(p => p.User)
-            .AsQueryable();
+        InvoiceStatus? status = !string.IsNullOrWhiteSpace(filter.Status) && Enum.TryParse<InvoiceStatus>(filter.Status, true, out var statusEnum)
+            ? statusEnum
+            : null;
 
-        if (!string.IsNullOrWhiteSpace(filter.Search))
+        bool desc = !string.Equals(filter.SortDir, "asc", StringComparison.OrdinalIgnoreCase);
+
+        var (invoices, totalCount) = await _invoices.SearchPagedAsync(filter.Search, status, filter.SortBy, desc, page, pageSize);
+
+        var items = invoices.Select(i => new InvoiceResponse
         {
-            var search = filter.Search.Trim().ToLower();
-            query = query.Where(i => i.Id.ToString().Contains(search) || i.Case.PatientProfile.User.FullName.ToLower().Contains(search));
-        }
-
-        if (!string.IsNullOrWhiteSpace(filter.Status) && Enum.TryParse<InvoiceStatus>(filter.Status, true, out var statusEnum))
-        {
-            query = query.Where(i => i.Status == statusEnum);
-        }
-
-        bool desc = string.Equals(filter.SortDir, "asc", StringComparison.OrdinalIgnoreCase) ? false : true;
-        
-        query = filter.SortBy?.ToLower() switch
-        {
-            "totalamount" => desc ? query.OrderByDescending(i => i.TotalAmount) : query.OrderBy(i => i.TotalAmount),
-            "createdat" => desc ? query.OrderByDescending(i => i.CreatedAt) : query.OrderBy(i => i.CreatedAt),
-            _ => desc ? query.OrderByDescending(i => i.CreatedAt) : query.OrderBy(i => i.CreatedAt)
-        };
-
-        var totalCount = await query.CountAsync();
-
-        var items = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(i => new InvoiceResponse
-            {
-                Id = i.Id,
-                CaseId = i.CaseId,
-                CaseName = i.Case.PatientProfile.User.FullName,
-                TotalAmount = i.TotalAmount,
-                CreatedAt = i.CreatedAt,
-                PaidAt = i.PaidAt,
-                Status = i.Status.ToString(),
-                PaymentMethod = i.PaymentMethod != null ? i.PaymentMethod.ToString() : null
-            })
-            .ToListAsync();
+            Id = i.Id,
+            CaseId = i.CaseId,
+            CaseName = i.Case?.PatientProfile?.User?.FullName ?? string.Empty,
+            TotalAmount = i.TotalAmount,
+            CreatedAt = i.CreatedAt,
+            PaidAt = i.PaidAt,
+            Status = i.Status.ToString(),
+            PaymentMethod = i.PaymentMethod != null ? i.PaymentMethod.ToString() : null
+        }).ToList();
 
         return new PagedResult<InvoiceResponse>(
             items, page, pageSize, totalCount,
@@ -270,43 +299,63 @@ public class InvoiceService : IInvoiceService
 
     public async Task<InvoiceDetailResponse> GetInvoiceDetailAsync(Guid id)
     {
-        var invoice = await _context.Invoices
-            .Include(i => i.Case)
-                .ThenInclude(c => c.PatientProfile)
-                    .ThenInclude(p => p.User)
-            .Include(i => i.InvoiceItems)
-            .FirstOrDefaultAsync(i => i.Id == id);
+        var invoice = await _invoices.GetDetailAsync(id);
 
         if (invoice == null)
             throw new BusinessException("Không tìm thấy hóa đơn.");
+
+        var responseItems = new List<InvoiceItemResponse>();
+        foreach (var item in invoice.InvoiceItems)
+        {
+            string unit = item.ItemType == InvoiceItemType.Service ? "Lần" : "";
+            string desc = item.Description;
+
+            if (item.ItemType == InvoiceItemType.Medicine)
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(desc, @"\(([^)]+)\)$");
+                if (match.Success)
+                {
+                    unit = match.Groups[1].Value;
+                    desc = desc.Substring(0, match.Index).Trim();
+                }
+
+                if (desc.StartsWith("Thuốc: "))
+                {
+                    desc = desc.Substring("Thuốc: ".Length).Trim();
+                }
+            }
+
+            responseItems.Add(new InvoiceItemResponse
+            {
+                Id = item.Id,
+                Description = desc,
+                Unit = unit,
+                Quantity = item.Quantity,
+                UnitPrice = item.UnitPrice,
+                TotalPrice = item.TotalPrice,
+                ItemType = item.ItemType == InvoiceItemType.Service ? "SERVICE" : "MEDICINE"
+            });
+        }
 
         return new InvoiceDetailResponse
         {
             Id = invoice.Id,
             CaseId = invoice.CaseId,
-            CaseName = invoice.Case.PatientProfile.User.FullName,
+            CaseName = invoice.Case?.PatientProfile?.User?.FullName ?? string.Empty,
             TotalAmount = invoice.TotalAmount,
             CreatedAt = invoice.CreatedAt,
             PaidAt = invoice.PaidAt,
             Status = invoice.Status.ToString(),
             PaymentMethod = invoice.PaymentMethod != null ? invoice.PaymentMethod.ToString() : null,
-            Items = invoice.InvoiceItems.Select(item => new InvoiceItemResponse
-            {
-                Id = item.Id,
-                Description = item.Description,
-                Quantity = item.Quantity,
-                UnitPrice = item.UnitPrice,
-                TotalPrice = item.TotalPrice,
-                ItemType = item.ItemType == InvoiceItemType.Service ? "SERVICE" : "MEDICINE"
-            }).ToList()
+            Items = responseItems.OrderBy(i => i.ItemType).ThenBy(i => i.Description).ToList()
         };
     }
 
     public async Task PayInvoiceAsync(Guid invoiceId, PaymentMethod method)
     {
-        var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.Id == invoiceId);
+        var invoice = await _invoices.GetWithItemsForUpdateAsync(invoiceId);
         if (invoice == null) throw new BusinessException("Không tìm thấy hóa đơn.");
-        
+
         if (invoice.Status == InvoiceStatus.PAID)
             throw new BusinessException("Hóa đơn này đã được thanh toán.");
 
@@ -315,24 +364,23 @@ public class InvoiceService : IInvoiceService
         invoice.PaidAt = DateTime.UtcNow;
         invoice.PaymentMethod = method;
 
-
+        bool hasMedicine = invoice.InvoiceItems.Any(i => i.ItemType == InvoiceItemType.Medicine);
+        if (hasMedicine)
+        {
+            await GenerateIntakeLogsForPrescriptionAsync(invoice.CaseId);
+        }
 
         // Lưu trạng thái hóa đơn (giao dịch Inventory đã được add bên trong DispenseAsync)
-        await _context.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
     }
 
     private async Task GenerateIntakeLogsForPrescriptionAsync(Guid caseId)
     {
-        var prescription = await _context.Prescriptions
-            .Include(p => p.PrescriptionItems)
-            .Include(p => p.Case)
-            .FirstOrDefaultAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active);
+        var prescription = await _prescriptions.GetActiveByCaseForIntakeScheduleAsync(caseId);
 
         if (prescription == null || prescription.PrescriptionItems.Count == 0) return;
 
-        var patientPref = await _context.PatientReminderPreferences
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.PatientProfileId == prescription.Case.PatientProfileId);
+        var patientPref = await _reminderPreferences.GetByPatientProfileIdAsync(prescription.Case.PatientProfileId);
 
         var morningTime = patientPref?.MorningTime ?? new TimeOnly(7, 0);
         var middayTime  = patientPref?.MiddayTime ?? new TimeOnly(12, 0);
@@ -349,9 +397,9 @@ public class InvoiceService : IInvoiceService
                 pItem.DurationDays);
 
             // Chuyển mảng enum int về List<ScheduleSlot>
-            var slots = pItem.ScheduleSlots?.Select(s => (ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot)(int)s).ToList() 
+            var slots = pItem.ScheduleSlots?.Select(s => (ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot)(int)s).ToList()
                 ?? new List<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>();
-            
+
             if (slots.Count == 0) continue;
 
             var scheduledDoses = await _scheduleGenerator.GenerateAsync(
@@ -382,43 +430,33 @@ public class InvoiceService : IInvoiceService
 
     public async Task CancelInvoiceAsync(Guid invoiceId, CancelInvoiceRequest request)
     {
-        var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.Id == invoiceId);
+        var invoice = await _invoices.GetForUpdateAsync(invoiceId);
         if (invoice == null) throw new BusinessException("Không tìm thấy hóa đơn.");
-        
+
         if (invoice.Status == InvoiceStatus.CANCELLED)
             throw new BusinessException("Hóa đơn này đã bị hủy từ trước.");
 
         if (invoice.Status == InvoiceStatus.PENDING || invoice.Status == InvoiceStatus.PAID)
         {
             // Lấy danh sách PrescriptionItems của Case này
-            var prescriptionItems = await _context.PrescriptionItems
-                .Include(pi => pi.Prescription)
-                .Where(pi => pi.Prescription.CaseId == invoice.CaseId)
-                .ToListAsync();
+            var prescriptionItems = await _prescriptionItems.ListByCaseForUpdateAsync(invoice.CaseId);
 
             if (prescriptionItems.Count > 0)
             {
-                var prescription = prescriptionItems.First().Prescription;
+                var prescription = prescriptionItems[0].Prescription;
                 prescription.Status = PrescriptionStatus.Cancelled;
 
                 var itemIds = prescriptionItems.Select(p => p.PrescriptionItemId).ToList();
 
-                var allLogs = await _context.MedicationIntakeLogs
-                    .Where(l => itemIds.Contains(l.PrescriptionItemId))
-                    .ToListAsync();
+                var allLogs = await _intakeLogRepo.ListByItemIdsForUpdateAsync(itemIds);
 
                 var pendingLogs = allLogs.Where(l => l.ConfirmedAt == null).ToList();
                 if (pendingLogs.Count > 0)
                 {
-                    _context.MedicationIntakeLogs.RemoveRange(pendingLogs);
+                    _intakeLogRepo.RemoveRange(pendingLogs);
                 }
 
-                var dispenseTransactions = await _context.InventoryTransactions
-                    .Include(t => t.Batch)
-                    .Where(t => t.TxnType == InventoryTxnType.Dispense 
-                                && t.PrescriptionItemId.HasValue 
-                                && itemIds.Contains(t.PrescriptionItemId.Value))
-                    .ToListAsync();
+                var dispenseTransactions = await _inventory.ListDispenseTransactionsForUpdateAsync(itemIds);
 
                 foreach (var pi in prescriptionItems)
                 {
@@ -429,29 +467,29 @@ public class InvoiceService : IInvoiceService
                     if (totalLogsCount > 0 && pendingLogsCount == 0) continue; // Đã uống hết, không hoàn kho
 
                     var txnsForItem = dispenseTransactions.Where(t => t.PrescriptionItemId == pi.PrescriptionItemId).ToList();
-                    
+
                     foreach (var txn in txnsForItem)
                     {
                         var batch = txn.Batch;
                         if (batch != null)
                         {
-                            var refundQtyBase = totalLogsCount == 0 
+                            var refundQtyBase = totalLogsCount == 0
                                 ? txn.QuantityBase // Nếu chưa sinh log nào, hoàn lại toàn bộ
                                 : (int)Math.Round((double)txn.QuantityBase * pendingLogsCount / totalLogsCount);
-                            
+
                             if (refundQtyBase <= 0) continue;
 
-                                                        batch.QuantityBase += refundQtyBase;
+                            batch.QuantityBase += refundQtyBase;
 
                             if (invoice.Status == InvoiceStatus.PENDING)
                             {
-                                // X�a lu�n giao d?ch tr? kho ban d?u d? tr�nh r�c d? li?u (don chua thanh to�n)
-                                // N?u refundQtyBase < txn.QuantityBase th� sao? Th?c t? don PENDING th� chua u?ng thu?c n�n lu�n refund full.
+                                // Xoá luôn giao dịch trừ kho ban đầu để tránh rác dữ liệu (đơn chưa thanh toán).
+                                // Đơn PENDING thì chưa uống thuốc nên thực tế luôn hoàn đủ.
                                 if (refundQtyBase == txn.QuantityBase)
                                 {
-                                    _context.InventoryTransactions.Remove(txn);
+                                    _inventory.RemoveTransaction(txn);
                                 }
-                                else 
+                                else
                                 {
                                     txn.QuantityBase -= refundQtyBase;
                                     txn.QuantityInUnit -= refundQtyBase;
@@ -468,11 +506,11 @@ public class InvoiceService : IInvoiceService
                                     QuantityInUnit = refundQtyBase,
                                     QuantityBase = refundQtyBase,
                                     TxnDate = DateTime.UtcNow,
-                                    Reason = "Ho�n kho t? d?ng do h?y h�a don",
+                                    Reason = "Hoàn kho tự động do hủy hóa đơn",
                                     PrescriptionItemId = txn.PrescriptionItemId
                                 };
-                                
-                                _context.InventoryTransactions.Add(reverseTxn);
+
+                                await _inventory.AddTransactionAsync(reverseTxn);
                             }
                         }
                     }
@@ -483,6 +521,6 @@ public class InvoiceService : IInvoiceService
             invoice.CancelledReason = request.Reason;
         }
 
-        await _context.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
     }
 }

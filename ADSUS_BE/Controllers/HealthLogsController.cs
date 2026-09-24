@@ -38,18 +38,15 @@ public sealed class HealthLogsController : ControllerBase
     }
 
     /// <summary>
-    /// Gets the PatientProfileId from JWT.
+    /// Gets the PatientProfileId from JWT, creating an empty one for older accounts that were
+    /// created by Admin/Nurse without a profile (they used to fail with "Patient profile not found.").
     /// </summary>
     private async Task<Guid> GetPatientProfileIdAsync(CancellationToken ct)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? throw new InvalidOperationException("Missing NameIdentifier claim.");
 
-        var userGuid = Guid.Parse(userId);
-        var profile = await _patientProfileRepo.GetByUserIdAsync(userGuid, ct)
-            ?? throw new InvalidOperationException("Patient profile not found.");
-
-        return profile.PatientProfileId;
+        return await _patientProfileRepo.EnsureForUserAsync(Guid.Parse(userId), ct);
     }
 
     /// <summary>

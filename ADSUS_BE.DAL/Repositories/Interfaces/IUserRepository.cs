@@ -103,4 +103,10 @@ public interface IUserRepository
     /// Lấy tất cả bệnh nhân Active — dùng để gửi notification khi có bài viết blog mới.
     /// </summary>
     Task<IReadOnlyList<User>> GetAllPatientsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Id của mọi tài khoản Active thuộc một vai trò — dùng để gửi thông báo cho cả nhóm (vd báo
+    /// Điều dưỡng khi bác sĩ sẵn sàng nhận ca tiếp theo). Tập nhỏ có biên, không phân trang.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> ListActiveUserIdsByRoleAsync(UserRole role, CancellationToken cancellationToken = default);
 }

@@ -86,6 +86,33 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<ScheduleSlot>> ListOpenSlotsForBookingAsync(
+        DateOnly from,
+        DateOnly to,
+        DateOnly todayVn,
+        TimeOnly currentTimeVn,
+        Guid? doctorId = null,
+        CancellationToken ct = default)
+    {
+        IQueryable<ScheduleSlot> query = _db.ScheduleSlots
+            .AsNoTracking()
+            .Include(s => s.Doctor)
+            .Where(s => s.SlotDate >= from && s.SlotDate <= to && s.Status == SlotStatus.Open)
+            .Where(s => s.Doctor.Status == UserStatus.Active)
+            .Where(s => s.SlotDate > todayVn || (s.SlotDate == todayVn && s.StartTime > currentTimeVn))
+            .Where(s => !s.Appointments.Any(a => 
+                a.Status == AppointmentStatus.Booked
+                || (a.Case != null && a.Case.Status == CaseStatus.InProgress)));
+
+        if (doctorId.HasValue)
+            query = query.Where(s => s.DoctorId == doctorId.Value);
+
+        return await query
+            .OrderBy(s => s.SlotDate)
+            .ThenBy(s => s.StartTime)
+            .ToListAsync(ct);
+    }
+
     public async Task<bool> HasOverlapAsync(
         Guid doctorId,
         DateOnly slotDate,
@@ -111,12 +138,80 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
         return await query.AnyAsync(ct);
     }
 
+    public async Task<IReadOnlyList<ScheduleSlot>> ListTimeRangesAsync(
+        IReadOnlyCollection<Guid> doctorIds,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken ct = default)
+    {
+        return await _db.ScheduleSlots
+            .AsNoTracking()
+            .Where(s => doctorIds.Contains(s.DoctorId)
+                     && s.SlotDate >= from
+                     && s.SlotDate <= to)
+            .Select(s => new ScheduleSlot
+            {
+                DoctorId = s.DoctorId,
+                SlotDate = s.SlotDate,
+                StartTime = s.StartTime,
+                EndTime = s.EndTime,
+            })
+            .ToListAsync(ct);
+    }
+
     public async Task<int> CountActiveAppointmentsAsync(Guid slotId, CancellationToken ct = default)
     {
         return await _db.Appointments
             .Where(a => a.SlotId == slotId && a.Status == AppointmentStatus.Booked)
             .CountAsync(ct);
     }
+
+    public async Task<IReadOnlyList<ScheduleSlot>> ListBookedForDoctorAfterForUpdateAsync(
+        Guid doctorId,
+        DateOnly slotDate,
+        TimeOnly afterTime,
+        CancellationToken ct = default) =>
+        await _db.ScheduleSlots
+            .Include(s => s.Appointments).ThenInclude(a => a.Case)
+            .Where(s => s.DoctorId == doctorId
+                && s.SlotDate == slotDate
+                && s.StartTime > afterTime
+                && s.Status == SlotStatus.Booked)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<ScheduleSlot>> ListNotClosedWithinForUpdateAsync(
+        Guid doctorId,
+        DateOnly slotDate,
+        TimeOnly from,
+        TimeOnly to,
+        CancellationToken ct = default) =>
+        await _db.ScheduleSlots
+            .Include(s => s.Appointments)
+            .Where(s => s.DoctorId == doctorId
+                && s.SlotDate == slotDate
+                && s.StartTime >= from
+                && s.EndTime <= to
+                && s.Status != SlotStatus.Closed)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<ScheduleSlot>> ListWithAppointmentsForDoctorAsync(
+        Guid doctorId,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken ct = default) =>
+        await _db.ScheduleSlots
+            .AsNoTracking()
+            .Include(s => s.Appointments)
+            .Where(s => s.DoctorId == doctorId && s.SlotDate >= from && s.SlotDate <= to)
+            .ToListAsync(ct);
+
+    public void DetachTracked()
+    {
+        foreach (var entry in _db.ChangeTracker.Entries<ScheduleSlot>().ToList())
+            entry.State = EntityState.Detached;
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct = default) => _db.SaveChangesAsync(ct);
 
     public async Task<ScheduleSlot> AddAsync(ScheduleSlot slot, CancellationToken ct = default)
     {
@@ -133,7 +228,7 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
 
     public async Task UpdateAsync(ScheduleSlot slot, CancellationToken ct = default)
     {
-        _db.ScheduleSlots.Update(slot);
+        // _db.ScheduleSlots.Update(slot); // Bỏ gọi explicit Update vì slot đã được track, gọi Update sẽ đánh dấu toàn bộ navigation properties thành Modified gây lỗi SaveChanges (Identity Resolution).
         await _db.SaveChangesAsync(ct);
     }
 }

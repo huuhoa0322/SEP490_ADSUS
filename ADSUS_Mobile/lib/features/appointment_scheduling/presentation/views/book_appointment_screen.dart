@@ -132,6 +132,7 @@ class _BookAppointmentScreenState
           .read(bookAppointmentViewModelProvider.notifier)
           .loadSlots(),
       child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

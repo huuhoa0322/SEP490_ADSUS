@@ -6,7 +6,6 @@ using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.PrescriptionAdherence;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 
@@ -20,7 +19,8 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services;
 /// </summary>
 public sealed class PrescriptionService : IPrescriptionService
 {
-    private readonly AppDbContext _db;
+    private readonly IInventoryRepository _inventory;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IPrescriptionRepository _prescriptionRepo;
     private readonly IPrescriptionItemRepository _itemRepo;
     private readonly IMedicationIntakeLogRepository _intakeLogRepo;
@@ -32,7 +32,8 @@ public sealed class PrescriptionService : IPrescriptionService
     private readonly Microsoft.Extensions.Logging.ILogger<PrescriptionService>? _logger;
 
     public PrescriptionService(
-        AppDbContext db,
+        IInventoryRepository inventory,
+        IUnitOfWork unitOfWork,
         IPrescriptionRepository prescriptionRepo,
         IPrescriptionItemRepository itemRepo,
         IMedicationIntakeLogRepository intakeLogRepo,
@@ -43,7 +44,8 @@ public sealed class PrescriptionService : IPrescriptionService
         IInvoiceService? invoiceService = null,
         Microsoft.Extensions.Logging.ILogger<PrescriptionService>? logger = null)
     {
-        _db = db;
+        _inventory = inventory;
+        _unitOfWork = unitOfWork;
         _prescriptionRepo = prescriptionRepo;
         _itemRepo = itemRepo;
         _intakeLogRepo = intakeLogRepo;
@@ -71,8 +73,7 @@ public sealed class PrescriptionService : IPrescriptionService
         if (doctor.Status != UserStatus.Active)
             throw new BusinessException("Tài khoản bác sĩ đang không hoạt động.");
 
-        var isRelational = _db.Database.IsRelational();
-        var transaction = isRelational ? await _db.Database.BeginTransactionAsync(ct) : null;
+        await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             // UC-18 BR-01: Validate case is Confirmed
@@ -87,11 +88,24 @@ public sealed class PrescriptionService : IPrescriptionService
             if (caseEntity.DoctorId != actorId)
                 throw new BusinessException("Bác sĩ không có quyền kê đơn cho ca khám này.");
 
-            // Option A: lookup by name (case-insensitive).
-            // Handles doctor picks from catalog.
-            var medicineCache = new Dictionary<string, (Guid Id, string? Unit, decimal VolumePerBaseUnit)>(StringComparer.OrdinalIgnoreCase);
-
             var now = DateTime.UtcNow;
+            // Mốc hạn dùng khi tính tồn kho hợp lệ: "hôm nay" theo giờ phòng khám — theo UTC thì từ
+            // 00:00 đến 07:00 giờ VN lô hết hạn hôm qua vẫn được tính là còn.
+            var today = ClinicClock.Today();
+
+            // Option A: lookup by name (case-insensitive). Handles doctor picks from catalog.
+            // Nạp thuốc và tồn kho cho MỌI dòng trong đơn bằng 2 truy vấn trước vòng lặp, thay vì
+            // 2 truy vấn cho TỪNG dòng (N+1, P11 review 24/09/2026). Trùng tên thì ưu tiên thuốc
+            // còn hoạt động.
+            var medicinesByName = (await _medicineRepo.ListByNamesAsync(request.Items.Select(i => i.MedicineName), ct))
+                .GroupBy(m => m.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderBy(m => m.Status == MedicineStatus.Inactive ? 1 : 0).First(),
+                    StringComparer.OrdinalIgnoreCase);
+
+            var medicineIds = medicinesByName.Values.Select(m => m.MedicineId).Distinct().ToList();
+            var availableBaseByMedicine = await _inventory.GetAvailableBaseQuantitiesAsync(medicineIds, today, ct);
 
             // Create prescription
             var prescription = new Prescription
@@ -99,7 +113,7 @@ public sealed class PrescriptionService : IPrescriptionService
                 PrescriptionId = Guid.NewGuid(),
                 CaseId = request.CaseId,
                 DoctorId = actorId,
-                PrescribedDate = DateOnly.FromDateTime(now),
+                PrescribedDate = today, // ngày phòng khám — theo UTC thì đơn kê trước 7h sáng ghi nhầm hôm trước
                 GeneralNote = request.GeneralNote,
                 CreatedAt = now,
                 UpdatedAt = now,
@@ -113,24 +127,19 @@ public sealed class PrescriptionService : IPrescriptionService
                 var itemId = Guid.NewGuid();
 
                 // Lookup medicine by name
-                if (!medicineCache.TryGetValue(itemDto.MedicineName, out var medicineInfo))
+                if (string.IsNullOrWhiteSpace(itemDto.MedicineName)
+                    || !medicinesByName.TryGetValue(itemDto.MedicineName.Trim(), out var existing)
+                    || existing.Status == MedicineStatus.Inactive)
                 {
-                    var existing = await _medicineRepo.FindByNameAsync(itemDto.MedicineName, ct);
-                    if (existing is null || existing.Status == MedicineStatus.Inactive)
-                    {
-                        throw new BusinessException($"Thuốc '{itemDto.MedicineName}' không tồn tại trong hệ thống hoặc đã bị ngừng sử dụng. Vui lòng chọn thuốc từ danh sách.");
-                    }
-                    
-                    medicineInfo = (existing.MedicineId, existing.UsageUnit, existing.VolumePerBaseUnit ?? 1m);
-                    medicineCache[itemDto.MedicineName] = medicineInfo;
+                    throw new BusinessException($"Thuốc '{itemDto.MedicineName}' không tồn tại trong hệ thống hoặc đã bị ngừng sử dụng. Vui lòng chọn thuốc từ danh sách.");
                 }
+
+                var medicineInfo = (Id: existing.MedicineId, Unit: existing.UsageUnit, VolumePerBaseUnit: existing.VolumePerBaseUnit ?? 1m);
 
                 var quantityUSNeeded = itemDto.QuantityPerDose * itemDto.ScheduleSlots.Count * itemDto.DurationDays;
                 decimal volumePerBaseUnit = medicineInfo.VolumePerBaseUnit;
-                
-                var totalAvailableBS = await _db.MedicineBatches
-                    .Where(b => b.MedicineId == medicineInfo.Id && b.QuantityBase > 0 && b.ExpiryDate >= DateOnly.FromDateTime(now))
-                    .SumAsync(b => b.QuantityBase, ct);
+
+                var totalAvailableBS = availableBaseByMedicine.GetValueOrDefault(medicineInfo.Id);
                 var totalAvailableUS = (int)(totalAvailableBS * volumePerBaseUnit);
 
                 if (quantityUSNeeded > totalAvailableUS)
@@ -168,35 +177,21 @@ public sealed class PrescriptionService : IPrescriptionService
             trackedCase.Status = CaseStatus.End;
             trackedCase.UpdatedAt = DateTime.UtcNow;
 
-            await _db.SaveChangesAsync(ct);
-            
-            if (transaction != null)
-                await transaction.CommitAsync(ct);
+            await _unitOfWork.SaveChangesAsync(ct);
 
-            // Auto-trigger: Sinh hóa đơn khi ca kết thúc nếu có dịch vụ/thuốc và chưa có hóa đơn
+            await transaction.CommitAsync(ct);
+
+            // Auto-trigger: Sinh hóa đơn khi ca kết thúc nếu có dịch vụ/thuốc và chưa có hóa đơn —
+            // việc quyết định có cần sinh hay không thuộc module hoá đơn (GenerateInvoiceIfBillableAsync).
             if (_invoiceService != null)
             {
-                var hasInvoice = await _db.Invoices.AnyAsync(i => i.CaseId == request.CaseId 
-                    && (i.Status == InvoiceStatus.PENDING || i.Status == InvoiceStatus.PAID), ct);
-
-                if (!hasInvoice)
+                try
                 {
-                    var hasServiceOrMedicine = 
-                        await _db.CaseClinicServices.AnyAsync(cs => cs.CaseId == request.CaseId, ct)
-                        || await _db.Prescriptions.AnyAsync(p => p.CaseId == request.CaseId 
-                            && p.Status == PrescriptionStatus.Active, ct);
-
-                    if (hasServiceOrMedicine)
-                    {
-                        try
-                        {
-                            await _invoiceService.GenerateInvoiceForCaseAsync(request.CaseId);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger?.LogError(ex, "Tự động tạo hóa đơn khi kê đơn cho ca {CaseId} thất bại", request.CaseId);
-                        }
-                    }
+                    await _invoiceService.GenerateInvoiceIfBillableAsync(request.CaseId);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Tự động tạo hóa đơn khi kê đơn cho ca {CaseId} thất bại", request.CaseId);
                 }
             }
 
@@ -208,14 +203,8 @@ public sealed class PrescriptionService : IPrescriptionService
         }
         catch
         {
-            if (transaction != null)
-                await transaction.RollbackAsync(ct);
+            await transaction.RollbackAsync(ct);
             throw;
-        }
-        finally
-        {
-            if (transaction != null)
-                await transaction.DisposeAsync();
         }
     }
 

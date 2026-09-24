@@ -2,15 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
-using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.Repositories.Interfaces;
 
 namespace ADSUS_BE.Jobs
 {
@@ -45,21 +44,18 @@ namespace ADSUS_BE.Jobs
             using var scope = _serviceProvider.CreateScope();
             var inventoryService = scope.ServiceProvider.GetRequiredService<IInventoryService>();
             var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            
+            var users = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+
             var summary = await inventoryService.GetAlertSummaryAsync();
-            
+
             if (summary.LowStockCount == 0 && summary.ExpiringSoonCount == 0 && summary.ExpiredCount == 0)
             {
                 _logger.LogInformation("[InventoryAlertJob] No alerts to send.");
                 return;
             }
-            
-            // Lấy tất cả user PHARMACIST
-            var recipientIds = await dbContext.Users
-                .Where(u => u.Role == UserRole.Pharmacist && u.Status == UserStatus.Active)
-                .Select(u => u.UserId)
-                .ToListAsync(stoppingToken);
+
+            // Lấy tất cả user PHARMACIST đang hoạt động
+            var recipientIds = await users.ListActiveUserIdsByRoleAsync(UserRole.Pharmacist, stoppingToken);
             
             if (recipientIds.Count == 0)
             {

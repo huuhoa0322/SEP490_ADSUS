@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/utils/api_date_time.dart';
 import '../../domain/entities/appointment.dart';
 import '../../domain/entities/appointment_summary.dart';
 import '../../domain/entities/schedule_slot.dart';
@@ -148,8 +149,8 @@ class AppointmentMapper {
         reason: dto.reason,
         status: parseAppointmentStatus(dto.status),
         cancelledReason: dto.cancelledReason,
-        createdAt: DateTime.tryParse(dto.createdAt ?? '') ?? DateTime.now(),
-        updatedAt: DateTime.tryParse(dto.updatedAt ?? '') ?? DateTime.now(),
+        createdAt: ApiDateTime.tryParse(dto.createdAt) ?? DateTime.now(),
+        updatedAt: ApiDateTime.tryParse(dto.updatedAt) ?? DateTime.now(),
         slotDate: parseSlotDate(dto.slotDate),
         startTime: parseHm(dto.startTime),
         endTime: parseHm(dto.endTime),
@@ -172,7 +173,7 @@ class AppointmentMapper {
         status: parseAppointmentStatus(dto.status),
         reason: dto.reason,
         cancelledReason: dto.cancelledReason,
-        createdAt: DateTime.tryParse(dto.createdAt ?? '') ?? DateTime.now(),
+        createdAt: ApiDateTime.tryParse(dto.createdAt) ?? DateTime.now(),
         slotDate: parseSlotDate(dto.slotDate),
         startTime: parseHm(dto.startTime),
         endTime: parseHm(dto.endTime),

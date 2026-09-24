@@ -120,12 +120,6 @@ namespace ADSUS_BE
             // Must be called BEFORE UseSerilog so Serilog reads the full config tree.
             builder.Configuration.AddUserSecrets("0b55daea-3ede-48d9-847b-1d62fa20823d");
 
-            // Verify config is present:
-            var openAiKey = builder.Configuration["OpenAi:ApiKey"];
-            var openAiModel = builder.Configuration["OpenAi:Model"];
-            Console.WriteLine($"[DEBUG CONFIG] OpenAi:ApiKey = '{(string.IsNullOrEmpty(openAiKey) ? "NULL/EMPTY" : string.Concat(openAiKey.AsSpan(0, Math.Min(10, openAiKey.Length)), "..."))}'");
-            Console.WriteLine($"[DEBUG CONFIG] OpenAi:Model = '{(openAiModel ?? "NULL")}'");
-
             builder.Host.UseSerilog((context, configuration) =>
                 configuration.ReadFrom.Configuration(context.Configuration));
 
@@ -452,6 +446,14 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IInvoiceService, InvoiceService>();
             builder.Services.AddScoped<IClinicServiceManagementService, ClinicServiceManagementService>();
             builder.Services.AddScoped<ICaseClinicServiceService, CaseClinicServiceService>();
+            builder.Services.AddScoped<IClinicServiceRepository, ClinicServiceRepository>();
+            builder.Services.AddScoped<ICaseClinicServiceRepository, CaseClinicServiceRepository>();
+            // Lazy cho CaseClinicServiceService — ICaseService/IInvoiceService lại phụ thuộc ngược
+            // vào ICaseClinicServiceService, inject trực tiếp sẽ thành vòng DI
+            builder.Services.AddScoped<System.Lazy<ICaseService>>(sp =>
+                new System.Lazy<ICaseService>(() => sp.GetRequiredService<ICaseService>()));
+            builder.Services.AddScoped<System.Lazy<IInvoiceService>>(sp =>
+                new System.Lazy<IInvoiceService>(() => sp.GetRequiredService<IInvoiceService>()));
 
             // BLL — Module 8: Appointment Scheduling (UC-15)
             builder.Services.AddScoped<IScheduleSlotRepository, ScheduleSlotRepository>();
@@ -579,6 +581,13 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IPrescriptionItemRepository, PrescriptionItemRepository>();
             builder.Services.AddScoped<IMedicationIntakeLogRepository, MedicationIntakeLogRepository>();
             builder.Services.AddScoped<IMedicineRepository, MedicineRepository>();
+            builder.Services.AddScoped<IMedicinePackagingRepository, MedicinePackagingRepository>();
+            builder.Services.AddScoped<IMedicineUnitRepository, MedicineUnitRepository>();
+            builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
+            builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
+            builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+            // Service mở transaction/lưu qua IUnitOfWork, không tự cầm AppDbContext (P11)
+            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             // AdherenceCalculator is static — used directly, not injected.
             builder.Services.AddSingleton<IMedicationIntakeScheduleGenerator, MedicationIntakeScheduleGenerator>();
             builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();

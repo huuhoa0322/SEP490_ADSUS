@@ -40,12 +40,18 @@ public class ShiftRequestServiceTests
         _db.Users.Add(new User 
         { 
             UserId = _adminId, 
-            Role = UserRole.Admin, 
+            Role = UserRole.Admin,
+            Status = UserStatus.Active,
             FullName = "Admin Test",
             PasswordHash = "hashed",
             Phone = "0123456789"
         });
         _db.SaveChanges();
+
+        // Danh sách Admin nhận thông báo đọc thật từ DB InMemory (trước đây service tự query _db.Users)
+        var realUsers = new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db);
+        _userRepoMock.Setup(u => u.ListActiveUserIdsByRoleAsync(It.IsAny<UserRole>(), It.IsAny<CancellationToken>()))
+            .Returns((UserRole role, CancellationToken ct) => realUsers.ListActiveUserIdsByRoleAsync(role, ct));
 
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -57,7 +63,8 @@ public class ShiftRequestServiceTests
         _sut = new ShiftRequestService(
             _repoMock.Object,
             _userRepoMock.Object,
-            _db,
+            new ADSUS_BE.DAL.Repositories.Implementations.ScheduleSlotRepository(_db),
+            PatientAccountTestServices.PatientProfiles(_db),
             _notificationMock.Object,
             config);
 
@@ -115,6 +122,25 @@ public class ShiftRequestServiceTests
             RequestDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
             Reason = "Too soon"
         };
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateRequestAsync(_doctorId, dto, TestContext.Current.CancellationToken));
+        Assert.Contains("trước ít nhất 2 ngày", ex.Message);
+    }
+
+    [Fact]
+    public async Task CreateRequestAsync_TomorrowClinicTime_ThrowsException()
+    {
+        // "Ngày mai" theo giờ phòng khám vẫn chưa đủ 2 ngày báo trước. Tính theo ngày UTC thì từ
+        // 00:00 đến 07:00 giờ VN hệ thống lùi 1 ngày và cho lọt yêu cầu này.
+        var dto = new CreateShiftRequestDto
+        {
+            RequestType = ShiftRequestType.Leave,
+            ShiftType = ShiftType.Morning,
+            RequestDate = ClinicClock.Today().AddDays(1),
+            Reason = "Too soon"
+        };
+        _repoMock.Setup(r => r.HasActiveRequestAsync(_doctorId, dto.RequestDate, dto.ShiftType, dto.RequestType, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateRequestAsync(_doctorId, dto, TestContext.Current.CancellationToken));
         Assert.Contains("trước ít nhất 2 ngày", ex.Message);
@@ -183,6 +209,75 @@ public class ShiftRequestServiceTests
         
         // Gửi noti cho bác sĩ
         _notificationMock.Verify(n => n.SendAsync(It.Is<SendNotificationRequest>(r => r.UserId == _doctorId && r.Type == "shift_request_reviewed"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReviewRequestAsync_ApproveLeave_NotifiesEveryCancelledPatientOnce()
+    {
+        // Arrange — 4 lịch trong ca sáng: 2 bệnh nhân có tài khoản, 1 hồ sơ guest được người giám hộ
+        // đặt hộ, 1 hồ sơ guest không rõ người đặt (không có UserId, không có BookedByUserId)
+        var requestId = Guid.NewGuid();
+        var requestDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3));
+        _repoMock.Setup(r => r.GetByIdAsync(requestId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ShiftRequest
+            {
+                RequestId = requestId,
+                UserId = _doctorId,
+                RequestType = ShiftRequestType.Leave,
+                ShiftType = ShiftType.Morning,
+                RequestDate = requestDate,
+                Status = ShiftRequestStatus.Pending,
+                User = new User { UserId = _doctorId, FullName = "Dr. Test" }
+            });
+
+        var patientUserIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        var guardianId = Guid.NewGuid();
+        var profileOwners = new Guid?[] { patientUserIds[0], patientUserIds[1], null, null };
+        var bookers = new Guid?[] { null, null, guardianId, null };
+        for (var i = 0; i < profileOwners.Length; i++)
+        {
+            var profileId = Guid.NewGuid();
+            _db.PatientProfiles.Add(new PatientProfile { PatientProfileId = profileId, UserId = profileOwners[i] });
+            var slot = new ScheduleSlot
+            {
+                SlotId = Guid.NewGuid(),
+                DoctorId = _doctorId,
+                SlotDate = requestDate,
+                StartTime = new TimeOnly(8, 0).AddMinutes(30 * i),
+                EndTime = new TimeOnly(8, 30).AddMinutes(30 * i),
+                Status = SlotStatus.Booked
+            };
+            _db.ScheduleSlots.Add(slot);
+            _db.Appointments.Add(new Appointment
+            {
+                AppointmentId = Guid.NewGuid(),
+                SlotId = slot.SlotId,
+                PatientProfileId = profileId,
+                BookedByUserId = bookers[i],
+                Status = AppointmentStatus.Booked
+            });
+        }
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        await _sut.ReviewRequestAsync(requestId, _adminId, new ReviewShiftRequestDto { Decision = "APPROVED" }, TestContext.Current.CancellationToken);
+
+        // Assert — mỗi bệnh nhân có tài khoản nhận đúng 1 tin; lịch đặt hộ người thân chưa có tài
+        // khoản thì người giám hộ nhận; hồ sơ guest không rõ người đặt thì không có người nhận
+        foreach (var userId in patientUserIds.Append(guardianId))
+        {
+            _notificationMock.Verify(n => n.SendAsync(
+                It.Is<SendNotificationRequest>(r => r.UserId == userId && r.Type == "appointment_cancellation"),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+        _notificationMock.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r => r.Type == "appointment_cancellation"),
+            It.IsAny<CancellationToken>()), Times.Exactly(3));
+        _notificationMock.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r => r.UserId == Guid.Empty),
+            It.IsAny<CancellationToken>()), Times.Never);
+        Assert.All(await _db.Appointments.ToListAsync(TestContext.Current.CancellationToken),
+            a => Assert.Equal(AppointmentStatus.Cancelled, a.Status));
     }
 
     [Fact]

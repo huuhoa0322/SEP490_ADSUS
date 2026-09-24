@@ -16,6 +16,7 @@ using ADSUS_BE.BLL.PatientRelationship.DTOs;
 using ADSUS_BE.BLL.PatientRelationship.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.Repositories.Implementations;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using ADSUS_BE.Jobs;
 using Microsoft.EntityFrameworkCore;
@@ -116,28 +117,22 @@ public class BookingForRelativeRulesTests : IDisposable
                 It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateOnly>(), It.IsAny<IReadOnlyList<SymptomInput>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Guid.NewGuid());
 
-        var noShowSettings = Options.Create(new NoShowSettings { GraceTimeMinutes = 15 });
-        var noShowService = new NoShowService(
-            _db,
-            noShowSettings,
-            _notificationService.Object,
-            _profileRepo.Object,
-            Mock.Of<ILogger<NoShowService>>());
+        var noShowService = NoShowTestServices.Create(_db, _notificationService.Object);
 
         _appointmentService = new AppointmentService(
-            _appointmentRepo.Object,
-            _slotRepo.Object,
-            _profileRepo.Object,
+            _appointmentRepo.BackedBy(_db).Object,
+            _slotRepo.BackedBy(_db).Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db),
+            new ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService(_profileRepo.Object, new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db), Microsoft.Extensions.Logging.Abstractions.NullLogger<ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService>.Instance),
+            PatientAccountTestServices.Relationship(_db),
             _notificationService.Object,
-            _caseService.Object,
+            _caseService.BackedBy(_db).Object,
             noShowService,
-            _db,
-            Mock.Of<ILogger<AppointmentService>>());
-
-        _relationshipService = new PatientRelationshipService(
-            _relationshipRepo.Object,
-            _profileRepo.Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
+            Mock.Of<ILogger<AppointmentService>>(),
             _db);
+
+        _relationshipService = PatientAccountTestServices.Relationship(_relationshipRepo, _db);
     }
 
     public void Dispose()
@@ -590,6 +585,53 @@ public class BookingForRelativeRulesTests : IDisposable
         Assert.Equal(AppointmentStatus.Booked, resChild.Status);
     }
 
+    [Fact]
+    public async Task TC_BOOK_FOR_RELATIVE_RESPONSE_ShowsBookerNameAndRelationshipLabel_AndLeavesContextSaveable()
+    {
+        // Arrange — người đặt hộ + nhãn quan hệ được đọc bằng bản KHÔNG track và chỉ gắn vào đối
+        // tượng dựng response. Gắn nhầm vào lịch hẹn đang được track thì lần SaveChanges kế tiếp
+        // trên cùng DbContext (vd khi gửi thông báo) sẽ cố INSERT lại User/Relationship đó.
+        var wifeProfile = new PatientProfile
+        {
+            PatientProfileId = Guid.NewGuid(),
+            FullName = "Vợ Yêu",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var wifeRel = new PatientRelationship
+        {
+            RelationshipId = Guid.NewGuid(),
+            UserId = _userId,
+            PatientProfileId = wifeProfile.PatientProfileId,
+            RelationshipName = "Vợ",
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.PatientProfiles.Add(wifeProfile);
+        _db.PatientRelationships.Add(wifeRel);
+        _db.SaveChanges();
+        var slot = CreateSlot(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(9)), new TimeOnly(8, 0), new TimeOnly(9, 0));
+
+        // Mock mặc định của file chỉ Add mà không lưu; AppointmentRepository.CreateAsync thật có
+        // lưu — cần đúng như vậy để bước đọc lại người đặt hộ/quan hệ thấy được lịch vừa tạo.
+        _appointmentRepo.Setup(r => r.CreateAsync(It.IsAny<Appointment>(), It.IsAny<CancellationToken>()))
+            .Returns((Appointment appt, CancellationToken ct) => new ADSUS_BE.DAL.Repositories.Implementations.AppointmentRepository(_db).CreateAsync(appt, ct));
+
+        // Act
+        var response = await _appointmentService.BookAppointmentAsync(
+            _userId,
+            _userProfileId,
+            new BookAppointmentRequest { ScheduleSlotId = slot.SlotId, RelationshipId = wifeRel.RelationshipId },
+            ct: TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.True(response.IsBookedForOthers);
+        Assert.Equal("Vợ", response.RelationshipLabel);
+        Assert.Equal("Nguyễn Văn Chồng", response.BookedByUserName);
+        Assert.Equal("Vợ Yêu", response.PatientFullName);
+        var saveAgain = await Record.ExceptionAsync(() => _db.SaveChangesAsync(TestContext.Current.CancellationToken));
+        Assert.Null(saveAgain);
+    }
+
     #endregion
 
     #region TC-TRUSTED-RELATIONSHIP-BOOKING: Đặt hộ thành công kể cả khi người thân đã có account
@@ -765,10 +807,11 @@ public class BookingForRelativeRulesTests : IDisposable
             .Returns("mock_access_token");
 
         var authService = new AuthService(
-            mockUserRepo.Object,
+            mockUserRepo.AddsTo(_db).Object,
             mockTokenRepo.Object,
             mockJwtService.Object,
-            _db,
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
+            PatientAccountTestServices.PatientProfiles(_db),
             Mock.Of<ILogger<AuthService>>());
 
         var registerRequest = new RegisterRequest
@@ -813,8 +856,8 @@ public class BookingForRelativeRulesTests : IDisposable
         };
         _db.PatientProfiles.Add(elderlyProfile);
 
-        // Slot hẹn vào 22 giờ tới (nằm trong khung 20-24h nhắc hẹn)
-        var appointmentTime = DateTime.UtcNow.AddHours(22);
+        // Slot hẹn vào 22 giờ tới (nằm trong khung 20-24h nhắc hẹn) — giờ slot là giờ phòng khám
+        var appointmentTime = DateTime.UtcNow.Add(ClinicClock.Offset).AddHours(22);
         var slot = CreateSlot(
             DateOnly.FromDateTime(appointmentTime),
             TimeOnly.FromDateTime(appointmentTime),
@@ -834,23 +877,9 @@ public class BookingForRelativeRulesTests : IDisposable
         _db.Appointments.Add(appointment);
         _db.SaveChanges();
 
-        // Setup mock repos cho Reminder Job
-        var patientRow = new PatientListRow(
-            PatientProfileId: elderlyProfileId,
-            PatientUserId: Guid.Empty, // Bệnh nhân chưa có user_id
-            FullName: "Bà Ngoại",
-            Phone: "0900000000",
-            LatestVisitDate: null,
-            LatestVisitStatus: null);
-
-        var jobProfileRepo = new Mock<IPatientProfileRepository>();
-        jobProfileRepo.Setup(r => r.SearchAsync(null, null, null, 1, int.MaxValue, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((new List<PatientListRow> { patientRow }, 1));
-
-        var jobAppointmentRepo = new Mock<IAppointmentRepository>();
-        jobAppointmentRepo.Setup(r => r.ListByPatientAsync(elderlyProfileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Appointment> { appointment });
-
+        // Reminder Job đọc lịch hẹn qua repository thật. Trước đây test giả lập danh sách bệnh nhân
+        // có chứa hồ sơ guest, trong khi SearchAsync thật chỉ trả tài khoản PATIENT — nên lịch đặt
+        // hộ cho guest thực tế không bao giờ được nhắc mà test vẫn xanh.
         var reminderNotificationMock = new Mock<INotificationService>();
         var serviceScope = new Mock<IServiceScope>();
         var serviceProvider = new Mock<IServiceProvider>();
@@ -863,8 +892,7 @@ public class BookingForRelativeRulesTests : IDisposable
 
         var reminderJob = new AppointmentReminderJob(
             scopeFactory.Object,
-            jobProfileRepo.Object,
-            jobAppointmentRepo.Object,
+            new AppointmentRepository(_db),
             Mock.Of<ILogger<AppointmentReminderJob>>());
 
         var jobContext = new Mock<IJobExecutionContext>();

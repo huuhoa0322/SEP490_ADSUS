@@ -32,6 +32,7 @@ public class ShiftRequestRepository : IShiftRequestRepository
         int page, int pageSize, CancellationToken ct = default)
     {
         var query = _context.ShiftRequests
+            .AsNoTracking()
             .Include(r => r.User)
             .Include(r => r.ReviewedByNavigation)
             .AsQueryable();
@@ -71,6 +72,7 @@ public class ShiftRequestRepository : IShiftRequestRepository
         Guid userId, DateOnly monthStart, DateOnly monthEnd, CancellationToken ct = default)
     {
         return await _context.ShiftRequests
+            .AsNoTracking()
             .Where(r => r.UserId == userId &&
                         r.RequestDate >= monthStart &&
                         r.RequestDate <= monthEnd &&

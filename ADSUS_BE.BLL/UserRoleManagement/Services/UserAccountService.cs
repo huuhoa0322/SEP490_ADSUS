@@ -30,13 +30,18 @@ public class UserAccountService : IUserAccountService
         { UserRole.Doctor, UserRole.Staff, UserRole.Patient, UserRole.Pharmacist };
 
     private readonly IUserRepository _users;
+    private readonly IPatientProfileRepository _patientProfiles;
     private readonly AccountAuditTrail _audit;
     private readonly ILogger<UserAccountService> _logger;
 
     public UserAccountService(
-        IUserRepository users, AccountAuditTrail audit, ILogger<UserAccountService> logger)
+        IUserRepository users,
+        IPatientProfileRepository patientProfiles,
+        AccountAuditTrail audit,
+        ILogger<UserAccountService> logger)
     {
         _users = users;
+        _patientProfiles = patientProfiles;
         _audit = audit;
         _logger = logger;
     }
@@ -128,6 +133,15 @@ public class UserAccountService : IUserAccountService
         };
 
         await _users.AddAsync(user, cancellationToken);
+
+        // Bệnh nhân phải đặt lịch được ngay sau khi nhận tài khoản (UC-13 không đòi hồ sơ nền),
+        // mà đặt lịch cần bản ghi patient_profiles — gắn sẵn một bản rỗng như luồng tự đăng ký.
+        // Bản ghi này không chứa dữ liệu y tế nào, nên không trái quy tắc Admin không chạm dữ
+        // liệu y tế (§3.2).
+        if (role.Value == UserRole.Patient)
+        {
+            await _patientProfiles.StageForNewPatientAsync(user, cancellationToken);
+        }
 
         // Nhật ký đi cùng một lượt lưu với chính bản ghi tài khoản — xem AccountAuditTrail.
         await _audit.RecordAsync(

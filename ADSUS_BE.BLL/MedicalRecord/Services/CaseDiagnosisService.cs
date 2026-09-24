@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 using ADSUS_BE.BLL.AIDiagnosis.Services;
 using ADSUS_BE.BLL.MedicalRecord.DTOs;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
-using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.ExternalServices;
 using ADSUS_BE.DAL.Repositories.Interfaces;
@@ -18,23 +17,20 @@ using ADSUS_BE.BLL.CaseClinicServices;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
 
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.MedicalRecord.Services;
 
 /// <summary>
-/// AppDbContext vẫn được inject, nhưng CHỈ để mở transaction bao ngoài (Database
-/// .BeginTransactionAsync/CommitAsync/RollbackAsync) — mọi thao tác đọc/ghi entity giờ đi
-/// qua Repository (P11 review Feature 4, 29/08/2026); trước đây gọi thẳng
-/// _db.UltrasoundImages/.AiPredictions/.DoctorAnnotations/.AiModelVersions. Nhiều
+/// Mọi thao tác đọc/ghi entity đi qua Repository (P11 review Feature 4, 29/08/2026), transaction
+/// bao ngoài mở qua IUnitOfWork — service không cầm AppDbContext (P11 review 24/09/2026). Nhiều
 /// SaveChangesAsync() gọi tuần tự bên trong 1 transaction vẫn atomic — chưa gì commit thật
 /// cho tới transaction.CommitAsync() cuối cùng, rollback sẽ hoàn tác tất cả.
 /// </summary>
 public sealed class CaseDiagnosisService : ICaseDiagnosisService
 {
-    private readonly AppDbContext _db;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IFileStorageService _storage;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IAiModelVersionRepository _aiModelVersionRepo;
@@ -50,7 +46,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
     private readonly IAiDiagnosisStateTracker _tracker;
 
     public CaseDiagnosisService(
-        AppDbContext db,
+        IUnitOfWork unitOfWork,
         IFileStorageService storage,
         IHttpClientFactory httpClientFactory,
         IAiModelVersionRepository aiModelVersionRepo,
@@ -63,7 +59,7 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         IAiDiagnosisStateTracker tracker,
         ICaseClinicServiceService? caseClinicServiceService = null)
     {
-        _db = db;
+        _unitOfWork = unitOfWork;
         _storage = storage;
         _httpClientFactory = httpClientFactory;
         _aiModelVersionRepo = aiModelVersionRepo;
@@ -211,24 +207,20 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
         if (activeModel == null) throw new BusinessException("Hệ thống chưa có phiên bản AI nào được kích hoạt. Vui lòng liên hệ Admin.");
         var activeModelId = activeModel.ModelVersionId;
 
-        // Check if an existing image in the case is being re-diagnosed / having calipers updated
+        // Check if an existing image in the case is being re-diagnosed / having calipers updated.
+        // Chỉ coi là xác nhận lại khi request CHỈ ĐÍCH DANH ảnh cũ (tên file chứa imageId hoặc
+        // trùng file_ref). Một ca có nhiều ảnh siêu âm, bác sĩ tải và xác nhận lần lượt từng ảnh
+        // — ảnh không khớp là ảnh MỚI. Bản cũ còn coi "ca đang có đúng 1 ảnh" là xác nhận lại
+        // ảnh đó, nên ảnh thứ hai của mọi ca đều bị hiểu nhầm thành ảnh thứ nhất (FE luôn gửi
+        // tên file gốc trên máy bác sĩ, không bao giờ chứa imageId) — gặp thật 24/09/2026.
         var caseImages = await _images.ListByCaseAsync(caseId, ct);
-        UltrasoundImage? existingImage = null;
-        if (caseImages.Count > 0)
-        {
-            existingImage = caseImages.FirstOrDefault(img =>
-                (!string.IsNullOrEmpty(request.BurntImageFileName) &&
-                    (img.FileRef.Equals(request.BurntImageFileName, StringComparison.OrdinalIgnoreCase) ||
-                     Path.GetFileName(img.FileRef).Equals(request.BurntImageFileName, StringComparison.OrdinalIgnoreCase) ||
-                     request.BurntImageFileName.Contains(img.ImageId.ToString(), StringComparison.OrdinalIgnoreCase))) ||
-                (!string.IsNullOrEmpty(request.OriginalImageFileName) &&
-                     request.OriginalImageFileName.Contains(img.ImageId.ToString(), StringComparison.OrdinalIgnoreCase)));
-
-            if (existingImage == null && caseImages.Count == 1)
-            {
-                existingImage = caseImages[0];
-            }
-        }
+        var existingImage = caseImages.FirstOrDefault(img =>
+            (!string.IsNullOrEmpty(request.BurntImageFileName) &&
+                (img.FileRef.Equals(request.BurntImageFileName, StringComparison.OrdinalIgnoreCase) ||
+                 Path.GetFileName(img.FileRef).Equals(request.BurntImageFileName, StringComparison.OrdinalIgnoreCase) ||
+                 request.BurntImageFileName.Contains(img.ImageId.ToString(), StringComparison.OrdinalIgnoreCase))) ||
+            (!string.IsNullOrEmpty(request.OriginalImageFileName) &&
+                 request.OriginalImageFileName.Contains(img.ImageId.ToString(), StringComparison.OrdinalIgnoreCase)));
 
         var imageId = existingImage?.ImageId ?? Guid.NewGuid();
         var baseName = $"case_{caseId}_img_{imageId}";
@@ -259,29 +251,26 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
             return $"0 {xCenter:0.6f} {yCenter:0.6f} {width:0.6f} {height:0.6f}";
         }).ToList();
         var yoloText = string.Join("\n", yoloLines);
-
-        // Upload to Storage
-        await _storage.UploadAsync(request.OriginalImageStream, $"{baseName}{originalExt}", request.OriginalImageContentType, "datasets", ct);
-
+        // Upload to Storage (Concurrent for better latency)
         using var yoloStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(yoloText));
-        await _storage.UploadAsync(yoloStream, $"{baseName}.txt", "text/plain", "datasets", ct);
+        
+        var uploadOriginal = _storage.UploadAsync(request.OriginalImageStream, $"{baseName}{originalExt}", request.OriginalImageContentType, "datasets", ct);
+        var uploadYolo = _storage.UploadAsync(yoloStream, $"{baseName}.txt", "text/plain", "datasets", ct);
+        var uploadBurnt = _storage.UploadAsync(request.BurntImageStream, burntPath, request.BurntImageContentType, "ultrasound-images", ct);
 
-        await _storage.UploadAsync(request.BurntImageStream, burntPath, request.BurntImageContentType, "ultrasound-images", ct);
+        await Task.WhenAll(uploadOriginal, uploadYolo, uploadBurnt);
 
         // Database Transaction
-        using var transaction = await _db.Database.BeginTransactionAsync(ct);
+        await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             if (existingImage != null)
             {
                 // Re-diagnosis / caliper update idempotence:
                 // Calculate old metrics attributed to this image (filtering out sentinels with Confidence == 0m)
-                var oldPredictions = await _db.AiPredictions
-                    .Where(p => p.ImageId == imageId && p.Confidence > 0m)
-                    .ToListAsync(ct);
-                var oldAnnotations = await _db.DoctorAnnotations
-                    .Where(a => a.ImageId == imageId)
-                    .ToListAsync(ct);
+                var allOldPredictions = await _predictions.ListByImageForUpdateAsync(imageId, ct);
+                var oldPredictions = allOldPredictions.Where(p => p.Confidence > 0m).ToList();
+                var oldAnnotations = await _annotations.ListByImageForUpdateAsync(imageId, ct);
 
                 int oldTp = 0;
                 int oldFp = 0;
@@ -333,14 +322,11 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
                 activeModel.LiveFn = Math.Max(0, activeModel.LiveFn - oldFn);
 
                 // Remove previous predictions (including sentinels) and annotations
-                var allOldPredictions = await _db.AiPredictions
-                    .Where(p => p.ImageId == imageId)
-                    .ToListAsync(ct);
-                _db.AiPredictions.RemoveRange(allOldPredictions);
-                _db.DoctorAnnotations.RemoveRange(oldAnnotations);
+                _predictions.RemoveRange(allOldPredictions);
+                _annotations.RemoveRange(oldAnnotations);
 
                 // Update existing ultrasound image entity
-                var trackedImage = await _db.UltrasoundImages.FirstOrDefaultAsync(i => i.ImageId == imageId, ct);
+                var trackedImage = await _images.GetForUpdateAsync(imageId, ct);
                 if (trackedImage != null)
                 {
                     trackedImage.FileRef = burntPath;

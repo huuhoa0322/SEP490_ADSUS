@@ -99,8 +99,7 @@ public class EdgeAndResilienceTests
 
     private static InvoiceService CreateInvoiceService(AppDbContext context, IInventoryService? inventoryService = null)
     {
-        return new InvoiceService(
-            context,
+        return PrescriptionAdherenceTestServices.Invoice(context,
             inventoryService ?? Mock.Of<IInventoryService>(),
             Mock.Of<IMedicationIntakeLogRepository>(),
             Mock.Of<IMedicationIntakeScheduleGenerator>(),
@@ -130,8 +129,8 @@ public class EdgeAndResilienceTests
         context.ClinicServices.Add(clinicService);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var service1 = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
-        var service2 = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var service1 = ClinicServiceTestServices.CaseClinicService(context);
+        var service2 = ClinicServiceTestServices.CaseClinicService(context);
 
         // Act - Run concurrent add requests
         var task1 = service1.AddServiceToCaseAsync(c.CaseId, clinicService.Id, TestContext.Current.CancellationToken);
@@ -219,7 +218,7 @@ public class EdgeAndResilienceTests
         context.Invoices.Add(pendingInvoice);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var service = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var service = ClinicServiceTestServices.CaseClinicService(context);
 
         // Act
         var result = await service.AddServiceToCaseAsync(c.CaseId, clinicService.Id, TestContext.Current.CancellationToken);
@@ -273,7 +272,7 @@ public class EdgeAndResilienceTests
             NullLogger<CaseService>.Instance,
             Mock.Of<ICaseClinicServiceService>(),
             invoiceService,
-            context);
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(context));
 
         // Act
         await caseService.EndWithoutPrescriptionAsync(c.CaseId, doctor.UserId, TestContext.Current.CancellationToken);
@@ -338,7 +337,7 @@ public class EdgeAndResilienceTests
         using var context = CreateContext();
         var (c, _, _) = SeedCaseWithPatient(context);
 
-        var service = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var service = ClinicServiceTestServices.CaseClinicService(context);
         var nonExistentServiceId = Guid.NewGuid();
 
         // Act & Assert - Attempting to add non-existent service should throw
@@ -395,7 +394,7 @@ public class EdgeAndResilienceTests
             NullLogger<CaseService>.Instance,
             mockClinicService.Object,
             null,
-            context);
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(context));
 
         // Act
         var caseId = await service.CreateFromBookingAsync(
@@ -435,8 +434,7 @@ public class EdgeAndResilienceTests
                 HfFilename = "file"
             });
 
-        var diagnosisService = new CaseDiagnosisService(
-            context,
+        var diagnosisService = new CaseDiagnosisService(new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(context),
             Mock.Of<IFileStorageService>(),
             Mock.Of<IHttpClientFactory>(),
             aiModelVersionRepoMock.Object,
@@ -521,7 +519,7 @@ public class EdgeAndResilienceTests
         context.Invoices.Add(invoice);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var service = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var service = ClinicServiceTestServices.CaseClinicService(context);
 
         // Act - Remove the sole service from the case
         await service.RemoveServiceFromCaseAsync(c.CaseId, junction.Id, TestContext.Current.CancellationToken);
@@ -575,7 +573,8 @@ public class EdgeAndResilienceTests
         // Assert
         var item = Assert.Single(detail.Items);
         Assert.Equal("MEDICINE", item.ItemType);
-        Assert.Equal("Amoxicillin 500mg (Legacy)", item.Description);
+        Assert.Equal("Amoxicillin 500mg", item.Description);
+        Assert.Equal("Legacy", item.Unit);
     }
 
     [Fact]
@@ -642,7 +641,7 @@ public class EdgeAndResilienceTests
     {
         // Arrange
         using var context = CreateContext();
-        var mgmtService = new ClinicServiceManagementService(context, NullLogger<ClinicServiceManagementService>.Instance);
+        var mgmtService = ClinicServiceTestServices.Management(context);
 
         // Boundary: 200-char name and minimum positive price (0.01) with rich Vietnamese unicode
         var unicodeName = "Khám sức khỏe tổng quát định kỳ & Chẩn đoán hình ảnh siêu âm 4D chất lượng cao (Tiêu chuẩn Quốc tế ISO 9001:2026)";
@@ -686,13 +685,13 @@ public class EdgeAndResilienceTests
     {
         // 1. Admin setup
         using var context = CreateContext();
-        var mgmtService = new ClinicServiceManagementService(context, NullLogger<ClinicServiceManagementService>.Instance);
+        var mgmtService = ClinicServiceTestServices.Management(context);
         var genExam = await mgmtService.CreateAsync(new CreateClinicServiceRequest { Code = "GENERAL_EXAM", Name = "Khám thường", Price = 100000 }, TestContext.Current.CancellationToken);
         var usExam = await mgmtService.CreateAsync(new CreateClinicServiceRequest { Code = "ULTRASOUND_EXAM", Name = "Khám siêu âm", Price = 200000 }, TestContext.Current.CancellationToken);
 
         // 2. Doctor creates case -> auto-adds GENERAL_EXAM
         var (medicalCase, _, _) = SeedCaseWithPatient(context);
-        var caseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var caseClinicService = ClinicServiceTestServices.CaseClinicService(context);
         await caseClinicService.AddServiceToCaseByCodeAsync(medicalCase.CaseId, "GENERAL_EXAM", TestContext.Current.CancellationToken);
 
         // 3. Ultrasound AI confirmation -> auto-adds ULTRASOUND_EXAM
@@ -736,7 +735,7 @@ public class EdgeAndResilienceTests
         // Arrange
         using var context = CreateContext();
         var (c, _, _) = SeedCaseWithPatient(context);
-        var caseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var caseClinicService = ClinicServiceTestServices.CaseClinicService(context);
 
         var clinicService = new ClinicService { Id = Guid.NewGuid(), Code = "GENERAL_EXAM", Name = "Khám thường", Price = 100000, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
         context.ClinicServices.Add(clinicService);
@@ -776,7 +775,7 @@ public class EdgeAndResilienceTests
         // Arrange
         using var context = CreateContext();
         var (c, _, _) = SeedCaseWithPatient(context);
-        var caseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var caseClinicService = ClinicServiceTestServices.CaseClinicService(context);
 
         var clinicService = new ClinicService { Id = Guid.NewGuid(), Code = "GENERAL_EXAM", Name = "Khám thường", Price = 100000, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
         context.ClinicServices.Add(clinicService);
@@ -802,7 +801,7 @@ public class EdgeAndResilienceTests
         // Arrange
         using var context = CreateContext();
         var (c, _, _) = SeedCaseWithPatient(context);
-        var caseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var caseClinicService = ClinicServiceTestServices.CaseClinicService(context);
 
         var s1 = new ClinicService { Id = Guid.NewGuid(), Code = "GENERAL_EXAM", Name = "Khám thường", Price = 100000, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
         var s2 = new ClinicService { Id = Guid.NewGuid(), Code = "ULTRASOUND_EXAM", Name = "Khám siêu âm", Price = 200000, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
@@ -835,7 +834,7 @@ public class EdgeAndResilienceTests
         // Arrange
         using var context = CreateContext();
         var (c, _, _) = SeedCaseWithPatient(context);
-        var caseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var caseClinicService = ClinicServiceTestServices.CaseClinicService(context);
 
         var s = new ClinicService { Id = Guid.NewGuid(), Code = "GENERAL_EXAM", Name = "Khám thường", Price = 100000, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
         context.ClinicServices.Add(s);
@@ -870,8 +869,8 @@ public class EdgeAndResilienceTests
     {
         // Arrange
         using var context = CreateContext();
-        var mgmtService = new ClinicServiceManagementService(context, NullLogger<ClinicServiceManagementService>.Instance);
-        var caseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var mgmtService = ClinicServiceTestServices.Management(context);
+        var caseClinicService = ClinicServiceTestServices.CaseClinicService(context);
 
         var created = await mgmtService.CreateAsync(new CreateClinicServiceRequest
         {
@@ -905,7 +904,7 @@ public class EdgeAndResilienceTests
         // Arrange
         using var context = CreateContext();
         var (c, _, _) = SeedCaseWithPatient(context);
-        var caseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var caseClinicService = ClinicServiceTestServices.CaseClinicService(context);
 
         var usService = new ClinicService { Id = Guid.NewGuid(), Code = "ULTRASOUND_EXAM", Name = "Khám siêu âm", Price = 200000, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
         context.ClinicServices.Add(usService);
@@ -940,7 +939,7 @@ public class EdgeAndResilienceTests
         // Arrange
         using var context = CreateContext();
         var (c, _, _) = SeedCaseWithPatient(context, CaseStatus.End);
-        var caseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var caseClinicService = ClinicServiceTestServices.CaseClinicService(context);
 
         var s = new ClinicService { Id = Guid.NewGuid(), Code = "EXAM", Name = "Khám", Price = 100000, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
         context.ClinicServices.Add(s);
@@ -958,7 +957,7 @@ public class EdgeAndResilienceTests
         // Arrange
         using var context = CreateContext();
         var (c, _, _) = SeedCaseWithPatient(context);
-        var caseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var caseClinicService = ClinicServiceTestServices.CaseClinicService(context);
 
         var s = new ClinicService { Id = Guid.NewGuid(), Code = "EXAM", Name = "Khám", Price = 100000, IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
         var junction = new CaseClinicService { Id = Guid.NewGuid(), CaseId = c.CaseId, ClinicServiceId = s.Id, PriceAtTime = 100000, CreatedAt = DateTime.UtcNow };
@@ -981,7 +980,7 @@ public class EdgeAndResilienceTests
         // Arrange
         using var context = CreateContext();
         var (c, _, _) = SeedCaseWithPatient(context);
-        var caseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var caseClinicService = ClinicServiceTestServices.CaseClinicService(context);
 
         var inactiveService = new ClinicService { Id = Guid.NewGuid(), Code = "INACT_EXAM", Name = "Dịch vụ đã tắt", Price = 100000, IsActive = false, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
         context.ClinicServices.Add(inactiveService);

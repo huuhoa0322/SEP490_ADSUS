@@ -51,23 +51,20 @@ public class FeedbackAndCheckinBoundaryStressTests
         var notifService = new Mock<INotificationService>();
         var caseService = new Mock<ADSUS_BE.BLL.MedicalRecord.Interfaces.ICaseService>();
 
-        var noShowSettings = Options.Create(new NoShowSettings { GraceTimeMinutes = 15 });
-        var noShowService = new NoShowService(
-            db,
-            noShowSettings,
-            notifService.Object,
-            profileRepo.Object,
-            Mock.Of<ILogger<NoShowService>>());
+        var noShowService = NoShowTestServices.Create(db, notifService.Object);
 
         return new AppointmentService(
-            apptRepo.Object,
-            slotRepo.Object,
-            profileRepo.Object,
+            apptRepo.BackedBy(db).Object,
+            slotRepo.BackedBy(db).Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(db),
+            new ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService(profileRepo.Object, new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(db), Microsoft.Extensions.Logging.Abstractions.NullLogger<ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService>.Instance),
+            PatientAccountTestServices.Relationship(db),
             notifService.Object,
-            caseService.Object,
+            caseService.BackedBy(db).Object,
             noShowService,
-            db,
-            Mock.Of<ILogger<AppointmentService>>());
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(db),
+            Mock.Of<ILogger<AppointmentService>>(),
+            db);
     }
 
     #region 1. Feedback Boundary Tests: Null/Empty/Invalid CaseId

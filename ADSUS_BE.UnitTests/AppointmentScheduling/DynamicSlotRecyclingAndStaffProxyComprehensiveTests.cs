@@ -195,23 +195,20 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         _notificationService.Setup(n => n.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Guid.NewGuid());
 
-        var noShowSettings = Options.Create(new NoShowSettings { GraceTimeMinutes = 15 });
-        _noShowService = new NoShowService(
-            _db,
-            noShowSettings,
-            _notificationService.Object,
-            _profileRepo.Object,
-            Mock.Of<ILogger<NoShowService>>());
+        _noShowService = NoShowTestServices.Create(_db, _notificationService.Object);
 
         _appointmentService = new AppointmentService(
-            _appointmentRepo.Object,
-            _slotRepo.Object,
-            _profileRepo.Object,
+            _appointmentRepo.BackedBy(_db).Object,
+            _slotRepo.BackedBy(_db).Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db),
+            new ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService(_profileRepo.Object, new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db), Microsoft.Extensions.Logging.Abstractions.NullLogger<ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService>.Instance),
+            PatientAccountTestServices.Relationship(_db),
             _notificationService.Object,
-            _caseService.Object,
+            _caseService.BackedBy(_db).Object,
             _noShowService,
-            _db,
-            Mock.Of<ILogger<AppointmentService>>());
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
+            Mock.Of<ILogger<AppointmentService>>(),
+            _db);
     }
 
     public void Dispose()
@@ -349,10 +346,9 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         Assert.Equal(SlotStatus.Open, updatedSlot.Status);
 
         // Assert: Notification sent to staff
-        _notificationService.Verify(n => n.SendAsync(
-            It.Is<SendNotificationRequest>(r =>
-                r.UserId == _staffUserId &&
-                r.Type == "doctor_ready_next"),
+        _notificationService.Verify(n => n.SendBulkAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Contains(_staffUserId)),
+            It.Is<SendNotificationRequest>(r => r.Type == "doctor_ready_next"),
             It.IsAny<CancellationToken>()), Times.AtLeastOnce);
     }
 

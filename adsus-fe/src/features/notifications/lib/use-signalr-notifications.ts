@@ -142,26 +142,7 @@ export function useSignalRNotifications() {
     }
   }, []);
 
-  // Auto-refresh token every 10 minutes
-  useEffect(() => {
-    if (!user) return;
-
-    const refreshToken = async () => {
-      console.log("SignalR: Refreshing token...");
-      const success = await refreshAccessToken();
-      if (success) {
-        console.log("SignalR: Token refreshed, connection will auto-reconnect");
-      } else {
-        console.warn("SignalR: Token refresh failed, will retry on next interval");
-      }
-    };
-
-    // Initial refresh after 10 minutes
-    const timer = setInterval(refreshToken, TOKEN_REFRESH_INTERVAL);
-
-    return () => clearInterval(timer);
-  }, [user, refreshAccessToken]);
-
+  // (Removed Auto-refresh token every 10 minutes to prevent race conditions across tabs)
   // Start/stop connection based on auth state
   useEffect(() => {
     let mounted = true;

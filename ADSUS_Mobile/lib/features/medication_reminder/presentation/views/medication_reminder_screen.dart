@@ -194,6 +194,7 @@ class _MedicationBody extends ConsumerWidget {
     ];
 
     return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       controller: scrollController,
       slivers: [
         SliverAppBar(

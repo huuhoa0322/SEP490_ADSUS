@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ADSUS_BE.BLL.Common;
@@ -94,6 +95,56 @@ public sealed class OpenAiChatClient : IChatClient
         {
             _logger.LogError(ex, "OpenAI call failed for user message.");
             return "Trợ lý AI đang bận. Vui lòng thử lại sau.";
+        }
+    }
+
+    public async IAsyncEnumerable<string> StreamMessageAsync(
+        string systemPrompt,
+        IReadOnlyList<ChatTurn> history,
+        string userMessage,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(_apiKey))
+        {
+            _logger.LogWarning("OpenAiChatClient activated without API key. Falling back to empty response.");
+            yield return "Trợ lý AI hiện không khả dụng. Vui lòng thử lại sau.";
+            yield break;
+        }
+
+        string? errorMessage = null;
+        string? fullResponse = null;
+        try
+        {
+            fullResponse = await SendMessageAsync(systemPrompt, history, userMessage, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            yield break;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "OpenAI streaming call failed.");
+            errorMessage = "Trợ lý AI đang bận. Vui lòng thử lại sau.";
+        }
+
+        if (errorMessage != null)
+        {
+            yield return errorMessage;
+            yield break;
+        }
+
+        if (string.IsNullOrWhiteSpace(fullResponse))
+        {
+            yield return "Trợ lý AI không có phản hồi. Vui lòng thử lại sau.";
+            yield break;
+        }
+
+        var words = fullResponse.Split(' ');
+        for (int i = 0; i < words.Length; i++)
+        {
+            if (ct.IsCancellationRequested) yield break;
+            yield return (i == 0 ? "" : " ") + words[i];
+            await Task.Yield();
         }
     }
 

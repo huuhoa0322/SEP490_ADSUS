@@ -7,6 +7,7 @@ using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.Repositories.Implementations;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -27,7 +28,10 @@ public class MedicineServiceTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         _db = new AppDbContext(options);
-        _sut = new MedicineService(_medicineRepoMock.Object, _db);
+        _sut = new MedicineService(
+            _medicineRepoMock.BackedBy(_db).Object,
+            new MedicinePackagingRepository(_db),
+            new MedicineUnitRepository(_db));
     }
 
     [Fact]
@@ -437,7 +441,7 @@ public class MedicineServiceTests
     {
         // Arrange
         var medId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today(); // ngày phòng khám, cùng mốc với service
         var medicines = new List<Medicine>
         {
             new Medicine
@@ -478,7 +482,7 @@ public class MedicineServiceTests
     {
         // Arrange
         var medId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today(); // ngày phòng khám, cùng mốc với service
         var medicines = new List<Medicine>
         {
             new Medicine
@@ -513,7 +517,7 @@ public class MedicineServiceTests
     {
         // Arrange
         var medId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today(); // ngày phòng khám, cùng mốc với service
         var medicine = new Medicine
         {
             MedicineId = medId,
@@ -537,5 +541,32 @@ public class MedicineServiceTests
         // Assert: TotalInventoryBase must equal 25, strictly excluding 75
         Assert.NotNull(result);
         Assert.Equal(25, result.TotalInventoryBase);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_BatchExpiredYesterdayClinicTime_ExcludedFromTotalInventoryBase()
+    {
+        // "Hôm nay" là ngày phòng khám (UTC+7) — theo UTC thì từ 00:00 đến 07:00 giờ VN lô hết hạn
+        // hôm qua vẫn bị tính là còn hạn.
+        var medId = Guid.NewGuid();
+        var today = ClinicClock.Today();
+        _db.Medicines.Add(new Medicine
+        {
+            MedicineId = medId,
+            Name = "Cefuroxim 500mg",
+            Status = MedicineStatus.Active,
+            CreatedAt = DateTime.UtcNow,
+            MedicineBatches = new List<MedicineBatch>
+            {
+                new MedicineBatch { Id = Guid.NewGuid(), LotNumber = "LOT-TODAY", QuantityBase = 40, ExpiryDate = today },
+                new MedicineBatch { Id = Guid.NewGuid(), LotNumber = "LOT-YESTERDAY", QuantityBase = 60, ExpiryDate = today.AddDays(-1) }
+            }
+        });
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await _sut.GetByIdAsync(medId, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal(40, result.TotalInventoryBase);
     }
 }

@@ -108,23 +108,20 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
                 It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateOnly>(), It.IsAny<IReadOnlyList<SymptomInput>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Guid.NewGuid());
 
-        var noShowSettings = Options.Create(new NoShowSettings { GraceTimeMinutes = 15 });
-        var noShowService = new NoShowService(
-            _db,
-            noShowSettings,
-            _notificationService.Object,
-            _profileRepo.Object,
-            Mock.Of<ILogger<NoShowService>>());
+        var noShowService = NoShowTestServices.Create(_db, _notificationService.Object);
 
         _appointmentService = new AppointmentService(
-            _appointmentRepo.Object,
-            _slotRepo.Object,
-            _profileRepo.Object,
+            _appointmentRepo.BackedBy(_db).Object,
+            _slotRepo.BackedBy(_db).Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db),
+            new ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService(_profileRepo.Object, new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db), Microsoft.Extensions.Logging.Abstractions.NullLogger<ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService>.Instance),
+            PatientAccountTestServices.Relationship(_db),
             _notificationService.Object,
-            _caseService.Object,
+            _caseService.BackedBy(_db).Object,
             noShowService,
-            _db,
-            Mock.Of<ILogger<AppointmentService>>());
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
+            Mock.Of<ILogger<AppointmentService>>(),
+            _db);
     }
 
     public void Dispose()
@@ -488,6 +485,86 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
         var symptomsInDb = await _db.CaseSymptoms.Where(cs => cs.CaseId == medicalCase.CaseId).ToListAsync(TestContext.Current.CancellationToken);
         var symptomInDb = Assert.Single(symptomsInDb);
         Assert.Equal(symptom.SymptomId, symptomInDb.SymptomId);
+    }
+
+    /// <summary>Case + 1 triệu chứng cũ + lịch hẹn Booked trỏ tới Case đó.</summary>
+    private (Appointment Appointment, Case MedicalCase, SymptomCategory Category) SeedCaseWithOldSymptom()
+    {
+        var slot = CreateOpenSlot(ClinicClock.Today().AddDays(2), new TimeOnly(10, 0), new TimeOnly(10, 30));
+        var category = new SymptomCategory { CategoryId = Guid.NewGuid(), Name = "Tiêu hóa" };
+        _db.SymptomCategories.Add(category);
+        var medicalCase = new Case
+        {
+            CaseId = Guid.NewGuid(),
+            PatientProfileId = _userProfileId,
+            DoctorId = _doctorId,
+            VisitDate = slot.SlotDate,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        medicalCase.CaseSymptoms.Add(new CaseSymptom
+        {
+            Id = Guid.NewGuid(),
+            CaseId = medicalCase.CaseId,
+            CategoryId = category.CategoryId,
+            OtherNote = "Triệu chứng cũ",
+            CreatedAt = DateTime.UtcNow
+        });
+        _db.Cases.Add(medicalCase);
+        var appt = new Appointment
+        {
+            AppointmentId = Guid.NewGuid(),
+            SlotId = slot.SlotId,
+            PatientProfileId = _userProfileId,
+            Status = AppointmentStatus.Booked,
+            Reason = "Lý do ban đầu",
+            CaseId = medicalCase.CaseId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _db.Appointments.Add(appt);
+        _db.SaveChanges();
+        return (appt, medicalCase, category);
+    }
+
+    [Fact]
+    public async Task UpdateClinicalInfo_CaseAlreadyHasSymptoms_OldSymptomsReplacedNotAppended()
+    {
+        // Arrange
+        var (appt, medicalCase, category) = SeedCaseWithOldSymptom();
+        var request = new UpdateAppointmentClinicalInfoRequest
+        {
+            Symptoms = new List<SymptomInput> { new() { CategoryId = category.CategoryId, OtherNote = "Triệu chứng mới" } }
+        };
+
+        // Act
+        var response = await _appointmentService.UpdateClinicalInfoAsync(
+            appt.AppointmentId, _userId, _userProfileId, request, TestContext.Current.CancellationToken);
+
+        // Assert — response và DB đều chỉ còn triệu chứng mới
+        Assert.Equal("Triệu chứng mới", Assert.Single(response.Symptoms).OtherNote);
+        _db.ChangeTracker.Clear();
+        var inDb = await _db.CaseSymptoms.AsNoTracking().Where(cs => cs.CaseId == medicalCase.CaseId).ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("Triệu chứng mới", Assert.Single(inDb).OtherNote);
+    }
+
+    [Fact]
+    public async Task UpdateClinicalInfo_SymptomsNotSent_ExistingSymptomsKept()
+    {
+        // Arrange — chỉ sửa lý do khám, không gửi danh sách triệu chứng
+        var (appt, medicalCase, _) = SeedCaseWithOldSymptom();
+        var request = new UpdateAppointmentClinicalInfoRequest { Reason = "Chỉ đổi lý do" };
+
+        // Act
+        var response = await _appointmentService.UpdateClinicalInfoAsync(
+            appt.AppointmentId, _userId, _userProfileId, request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal("Chỉ đổi lý do", response.Reason);
+        Assert.Equal("Triệu chứng cũ", Assert.Single(response.Symptoms).OtherNote);
+        _db.ChangeTracker.Clear();
+        var inDb = await _db.CaseSymptoms.AsNoTracking().Where(cs => cs.CaseId == medicalCase.CaseId).ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("Triệu chứng cũ", Assert.Single(inDb).OtherNote);
     }
 
     [Fact]

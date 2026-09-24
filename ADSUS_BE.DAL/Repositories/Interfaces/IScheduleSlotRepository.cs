@@ -30,6 +30,15 @@ public interface IScheduleSlotRepository
         SlotStatus? statusFilter = null,
         CancellationToken ct = default);
 
+    /// <summary>Truy vấn tối ưu lấy danh sách slot mở cho đặt lịch (lọc trực tiếp dưới SQL).</summary>
+    Task<IReadOnlyList<ScheduleSlot>> ListOpenSlotsForBookingAsync(
+        DateOnly from,
+        DateOnly to,
+        DateOnly todayVn,
+        TimeOnly currentTimeVn,
+        Guid? doctorId = null,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Kiểm tra overlap slot cho cùng Doctor trong cùng ngày.
     /// Overlap = hai slot có khoảng thời gian giao nhau (start &lt; other.end && end &gt; other.start).
@@ -41,6 +50,17 @@ public interface IScheduleSlotRepository
         TimeOnly startTime,
         TimeOnly endTime,
         Guid? excludeSlotId = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Khung giờ (DoctorId, SlotDate, StartTime, EndTime) của mọi slot thuộc các bác sĩ cho trước
+    /// trong khoảng ngày, ở MỌI trạng thái — cùng quy tắc với <see cref="HasOverlapAsync"/>. Dùng
+    /// khi cần kiểm tra trùng giờ cho hàng loạt slot trong bộ nhớ (JOB-02). Chỉ đọc, chỉ có 4 cột.
+    /// </summary>
+    Task<IReadOnlyList<ScheduleSlot>> ListTimeRangesAsync(
+        IReadOnlyCollection<Guid> doctorIds,
+        DateOnly from,
+        DateOnly to,
         CancellationToken ct = default);
 
     /// <summary>Đếm số appointment đang Booked trên slot này (dùng khi close slot có booking).</summary>
@@ -55,4 +75,46 @@ public interface IScheduleSlotRepository
 
     /// <summary>Update slot (dùng khi close).</summary>
     Task UpdateAsync(ScheduleSlot slot, CancellationToken ct = default);
+
+    /// <summary>
+    /// Slot đang Booked của bác sĩ trong một ngày, bắt đầu SAU <paramref name="afterTime"/> —
+    /// ứng viên để tái chế về Open khi ca trước kết thúc sớm. CÓ tracking (Service sẽ cập nhật
+    /// Status rồi gọi <see cref="SaveChangesAsync"/>). Kèm Appointments + Case.
+    /// </summary>
+    Task<IReadOnlyList<ScheduleSlot>> ListBookedForDoctorAfterForUpdateAsync(
+        Guid doctorId,
+        DateOnly slotDate,
+        TimeOnly afterTime,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Slot chưa Closed của bác sĩ trong một ngày, nằm trọn trong [<paramref name="from"/>,
+    /// <paramref name="to"/>] — CÓ tracking, kèm Appointments. Dùng khi duyệt đơn nghỉ phép: đóng
+    /// slot và huỷ lịch hẹn trên đó rồi <see cref="SaveChangesAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<ScheduleSlot>> ListNotClosedWithinForUpdateAsync(
+        Guid doctorId,
+        DateOnly slotDate,
+        TimeOnly from,
+        TimeOnly to,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Slot của một bác sĩ trong khoảng ngày, kèm Appointments (không kèm Doctor/Case/hồ sơ như
+    /// <see cref="ListByRangeAsync"/>). Chỉ đọc — dùng cho bảng tổng hợp ca làm theo tháng.
+    /// </summary>
+    Task<IReadOnlyList<ScheduleSlot>> ListWithAppointmentsForDoctorAsync(
+        Guid doctorId,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Bỏ theo dõi mọi slot đang track — dùng sau khi lưu hàng loạt thất bại, để các slot chưa
+    /// lưu được không bị gửi lại ở lần SaveChanges kế tiếp.
+    /// </summary>
+    void DetachTracked();
+
+    /// <summary>Lưu mọi thay đổi đang được track — Service quyết định lúc lưu (L3 §8).</summary>
+    Task SaveChangesAsync(CancellationToken ct = default);
 }

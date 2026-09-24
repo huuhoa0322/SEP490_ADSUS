@@ -87,7 +87,7 @@ public class PrescriptionServiceComplianceTests
         IMedicationIntakeLogRepository intakeRepo)
     {
         return new PrescriptionService(
-            db,
+            new ADSUS_BE.DAL.Repositories.Implementations.InventoryRepository(db), new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(db),
             new PrescriptionRepository(db),
             new PrescriptionItemRepository(db),
             intakeRepo,

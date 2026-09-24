@@ -282,6 +282,8 @@ public class AppointmentsControllerIntegrationTests
         };
 
         var patientUserId = Guid.NewGuid();
+        _profiles.Setup(r => r.EnsureForUserAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(patientId);
         _profiles.Setup(r => r.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PatientProfile
             {
@@ -391,8 +393,9 @@ public class AppointmentsControllerIntegrationTests
         var client = CreatePatientClient(app);
 
         // Act
-                  _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<ScheduleSlot>());
-          var response = await client.GetAsync("/api/v1/appointments/slots", TestContext.Current.CancellationToken);
+        _slots.Setup(r => r.ListOpenSlotsForBookingAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot>());
+        var response = await client.GetAsync("/api/v1/appointments/slots", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -409,7 +412,8 @@ public class AppointmentsControllerIntegrationTests
         var doctorId = Guid.NewGuid();
 
         // Act
-        _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<ScheduleSlot>());
+        _slots.Setup(r => r.ListOpenSlotsForBookingAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot>());
         var response = await client.GetAsync($"/api/v1/appointments/slots?doctorId={doctorId}", TestContext.Current.CancellationToken);
 
         // Assert
@@ -426,7 +430,8 @@ public class AppointmentsControllerIntegrationTests
         var toDate = fromDate.AddDays(7);
 
         // Act
-        _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<ScheduleSlot>());
+        _slots.Setup(r => r.ListOpenSlotsForBookingAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot>());
         var response = await client.GetAsync(
             $"/api/v1/appointments/slots?fromDate={fromDate:yyyy-MM-dd}&toDate={toDate:yyyy-MM-dd}", TestContext.Current.CancellationToken);
 
@@ -460,7 +465,7 @@ public class AppointmentsControllerIntegrationTests
         using var app = CreateApp();
         var client = CreatePatientClient(app);
 
-        _appointments.Setup(r => r.ListByPatientAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _appointments.Setup(r => r.ListForPatientOrBookerAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<AppointmentStatus?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Appointment>());
 
         // Act
@@ -479,7 +484,7 @@ public class AppointmentsControllerIntegrationTests
         using var app = CreateApp();
         var client = CreatePatientClient(app);
 
-        _appointments.Setup(r => r.ListByPatientAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _appointments.Setup(r => r.ListForPatientOrBookerAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), AppointmentStatus.Booked, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Appointment>());
 
         // Act
@@ -750,6 +755,8 @@ public class AppointmentsControllerIntegrationTests
             .ReturnsAsync(patientUser);
         _profiles.Setup(r => r.GetByUserIdAsync(patientUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(patientProfile);
+        _profiles.Setup(r => r.EnsureForUserAsync(patientUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(patientProfile.PatientProfileId);
 
         using var scope = app.Services.CreateScope();
         var token = scope.ServiceProvider.GetRequiredService<IJwtTokenService>()

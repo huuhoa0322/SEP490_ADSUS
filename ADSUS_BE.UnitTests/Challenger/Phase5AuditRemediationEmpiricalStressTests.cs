@@ -91,25 +91,25 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
             .Options;
         _db = new AppDbContext(options);
 
-        var noShowSettings = Options.Create(new NoShowSettings { GraceTimeMinutes = 15 });
-        var noShowService = new NoShowService(
-            _db,
-            noShowSettings,
-            _notificationService.Object,
-            _profileRepo.Object,
-            Mock.Of<ILogger<NoShowService>>());
+        var noShowService = NoShowTestServices.Create(_db, _notificationService.Object);
 
         _appointmentService = new AppointmentService(
-            _appointmentRepo.Object,
-            _slotRepo.Object,
-            _profileRepo.Object,
+            _appointmentRepo.BackedBy(_db).Object,
+            _slotRepo.BackedBy(_db).Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db),
+            new ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService(_profileRepo.Object, new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db), Microsoft.Extensions.Logging.Abstractions.NullLogger<ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService>.Instance),
+            PatientAccountTestServices.Relationship(_db),
             _notificationService.Object,
-            _caseService.Object,
+            _caseService.BackedBy(_db).Object,
             noShowService,
-            _db,
-            Mock.Of<ILogger<AppointmentService>>());
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
+            Mock.Of<ILogger<AppointmentService>>(),
+            _db);
 
-        _medicineService = new MedicineService(_medicineRepo.Object, _db);
+        _medicineService = new MedicineService(
+            _medicineRepo.BackedBy(_db).Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.MedicinePackagingRepository(_db),
+            new ADSUS_BE.DAL.Repositories.Implementations.MedicineUnitRepository(_db));
     }
 
     public void Dispose()
@@ -717,7 +717,7 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
     public async Task BR123_Inventory_ExcludesExpiredBatches_IncludesTodayAndFutureBatches()
     {
         // Arrange
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today(); // ngày phòng khám, cùng mốc với service
         var medId = Guid.NewGuid();
 
         var medicine = new Medicine
@@ -776,7 +776,7 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
     public async Task BR123_Inventory_MedicineWithOnlyExpiredBatches_ReturnsZeroStock()
     {
         // Arrange
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today(); // ngày phòng khám, cùng mốc với service
         var medId = Guid.NewGuid();
 
         var medicine = new Medicine

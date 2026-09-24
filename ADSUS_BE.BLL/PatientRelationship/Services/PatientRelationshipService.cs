@@ -1,31 +1,36 @@
+using ADSUS_BE.BLL.MedicalRecord.DTOs;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.PatientRelationship.DTOs;
 using ADSUS_BE.BLL.PatientRelationship.Interfaces;
-using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 using PatientRelEntity = ADSUS_BE.DAL.Entities.PatientRelationship;
 
 namespace ADSUS_BE.BLL.PatientRelationship.Services;
 
 /// <summary>
-/// Implementation của IPatientRelationshipService.
+/// Implementation của IPatientRelationshipService. Hồ sơ người thân (guest profile) thuộc module
+/// MedicalRecord nên đọc/tạo/sửa qua IPatientProfileService; transaction mở qua IUnitOfWork —
+/// service không cầm AppDbContext (P11 review 24/09/2026).
 /// </summary>
 public sealed class PatientRelationshipService : IPatientRelationshipService
 {
     private readonly IPatientRelationshipRepository _repository;
-    private readonly IPatientProfileRepository _patientProfileRepository;
-    private readonly AppDbContext _context;
+    private readonly IPatientProfileService _patientProfiles;
+    private readonly IUserRepository _users;
+    private readonly IUnitOfWork _unitOfWork;
 
     public PatientRelationshipService(
         IPatientRelationshipRepository repository,
-        IPatientProfileRepository patientProfileRepository,
-        AppDbContext context)
+        IPatientProfileService patientProfiles,
+        IUserRepository users,
+        IUnitOfWork unitOfWork)
     {
         _repository = repository;
-        _patientProfileRepository = patientProfileRepository;
-        _context = context;
+        _patientProfiles = patientProfiles;
+        _users = users;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<RelativesListResponse> GetRelativesAsync(Guid userId, CancellationToken ct = default)
@@ -66,36 +71,15 @@ public sealed class PatientRelationshipService : IPatientRelationshipService
             }
         }
 
-        async Task<RelativeResponse> ExecuteCreationAsync()
+        await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
+        try
         {
-            PatientProfile? profile = null;
-
-            if (hasPhone)
-            {
-                // Tìm guest profile đã tồn tại theo phone (guest profile có UserId == null)
-                profile = await _context.PatientProfiles
-                    .FirstOrDefaultAsync(p => p.Phone == normalizedPhone && p.UserId == null, ct);
-            }
-
-            if (profile == null)
-            {
-                profile = new PatientProfile
-                {
-                    PatientProfileId = Guid.NewGuid(),
-                    FullName = request.FullName,
-                    Phone = normalizedPhone,
-                    DateOfBirth = request.DateOfBirth,
-                    CreatedBy = userId,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                };
-                _context.PatientProfiles.Add(profile);
-            }
+            // Guest profile trùng số điện thoại (nếu có) hoặc guest profile mới — chưa lưu
+            var profile = await _patientProfiles.StageGuestProfileAsync(
+                request.FullName, normalizedPhone, request.DateOfBirth, userId, ct);
 
             // Kiem tra relationship chua ton tai
-            var exists = await _context.PatientRelationships
-                .AnyAsync(r => r.UserId == userId && r.PatientProfileId == profile.PatientProfileId, ct);
-            if (exists)
+            if (await _repository.ExistsAsync(userId, profile.PatientProfileId, ct))
             {
                 throw new InvalidOperationException("Người thân này đã có trong danh bạ của bạn.");
             }
@@ -109,35 +93,32 @@ public sealed class PatientRelationshipService : IPatientRelationshipService
                 RelationshipName = request.RelationshipName,
                 CreatedAt = DateTime.UtcNow,
             };
-            _context.PatientRelationships.Add(relationship);
+            await _repository.StageAddAsync(relationship, ct);
 
-            await _context.SaveChangesAsync(ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+
             return MapToResponse(relationship, profile);
         }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
+    }
 
-        if (_context.Database.IsRelational())
+    public async Task<RelativeResponse?> AddRelativeForGuardianAsync(
+        AddRelativeRequest request,
+        Guid guardianUserId,
+        CancellationToken ct = default)
+    {
+        var guardian = await _users.GetByIdReadOnlyAsync(guardianUserId, ct);
+        if (guardian == null || guardian.Role != UserRole.Patient)
         {
-            var strategy = _context.Database.CreateExecutionStrategy();
-            return await strategy.ExecuteAsync(async () =>
-            {
-                await using var transaction = await _context.Database.BeginTransactionAsync(ct);
-                try
-                {
-                    var result = await ExecuteCreationAsync();
-                    await transaction.CommitAsync(ct);
-                    return result;
-                }
-                catch
-                {
-                    await transaction.RollbackAsync(ct);
-                    throw;
-                }
-            });
+            return null;
         }
-        else
-        {
-            return await ExecuteCreationAsync();
-        }
+
+        return await AddRelativeAsync(request, guardianUserId, ct);
     }
 
     public async Task<RelativeResponse> UpdateRelativeAsync(
@@ -146,78 +127,60 @@ public sealed class PatientRelationshipService : IPatientRelationshipService
         Guid userId,
         CancellationToken ct = default)
     {
-        // Query trực tiếp từ context WITH TRACKING (không dùng AsNoTracking)
-        // để EF Core detect changes khi cập nhật PatientProfile
-        var relationship = await _context.Set<PatientRelEntity>()
-            .Include(r => r.PatientProfile)
-                .ThenInclude(p => p!.User)
-            .Include(r => r.User)
-            .FirstOrDefaultAsync(r => r.RelationshipId == relationshipId && r.UserId == userId, ct);
+        // Bản CÓ tracking để EF lưu được RelationshipName
+        var relationship = await _repository.GetByIdAndUserForUpdateAsync(relationshipId, userId, ct);
 
         if (relationship == null)
         {
             throw new KeyNotFoundException("Relationship not found.");
         }
 
-        var strategy = _context.Database.CreateExecutionStrategy();
-        return await strategy.ExecuteAsync(async () =>
+        await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
+        try
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
-            try
+            // 1. Cập nhật RelationshipName trên entity PatientRelationship
+            if (request.RelationshipName != null)
             {
-                // 1. Cập nhật RelationshipName trên entity PatientRelationship
-                if (request.RelationshipName != null)
-                {
-                    relationship.RelationshipName = request.RelationshipName;
-                }
+                relationship.RelationshipName = request.RelationshipName;
+            }
 
-                // 2. Cập nhật FullName/Phone/DateOfBirth trên PatientProfile
-                //    (chỉ khi profile là guest — UserId IS NULL)
-                var profile = relationship.PatientProfile;
-                if (profile != null && profile.UserId == null)
+            // 2. Cập nhật FullName/Phone/DateOfBirth trên PatientProfile
+            //    (chỉ khi profile là guest — UserId IS NULL)
+            var guestProfile = await _patientProfiles.FindGuestProfileAsync(relationship.PatientProfileId, ct);
+            if (guestProfile != null)
+            {
+                if (request.Phone != null)
                 {
-                    if (request.FullName != null)
+                    var normalizedPhone = request.Phone.Trim();
+                    if (!string.IsNullOrEmpty(normalizedPhone) && normalizedPhone != guestProfile.Phone)
                     {
-                        profile.FullName = request.FullName.Trim();
-                    }
-
-                    if (request.Phone != null)
-                    {
-                        var normalizedPhone = request.Phone.Trim();
-                        if (!string.IsNullOrEmpty(normalizedPhone) && normalizedPhone != profile.Phone)
+                        // Kiểm tra SĐT mới có trùng tài khoản đã đăng ký không
+                        var phoneExists = await _repository.IsPhoneRegisteredAsync(normalizedPhone, ct);
+                        if (phoneExists)
                         {
-                            // Kiểm tra SĐT mới có trùng tài khoản đã đăng ký không
-                            var phoneExists = await _repository.IsPhoneRegisteredAsync(normalizedPhone, ct);
-                            if (phoneExists)
-                            {
-                                throw new InvalidOperationException(
-                                    "Số điện thoại này đã có tài khoản trong hệ thống. Người thân vui lòng đăng nhập bằng tài khoản riêng để đặt lịch.");
-                            }
+                            throw new InvalidOperationException(
+                                "Số điện thoại này đã có tài khoản trong hệ thống. Người thân vui lòng đăng nhập bằng tài khoản riêng để đặt lịch.");
                         }
-                        profile.Phone = string.IsNullOrEmpty(normalizedPhone) ? null : normalizedPhone;
                     }
-
-                    if (request.DateOfBirth != null)
-                    {
-                        profile.DateOfBirth = request.DateOfBirth;
-                    }
-
-                    profile.UpdatedAt = DateTime.UtcNow;
                 }
 
-                await _context.SaveChangesAsync(ct);
-                await transaction.CommitAsync(ct);
+                await _patientProfiles.StageGuestProfileUpdateAsync(
+                    relationship.PatientProfileId, request.FullName, request.Phone, request.DateOfBirth, ct);
+            }
 
-                // Load lại để map response
-                var loaded = await _repository.GetByIdAsync(relationshipId, ct);
-                return MapToResponse(loaded!);
-            }
-            catch
-            {
-                await transaction.RollbackAsync(ct);
-                throw;
-            }
-        });
+            await _unitOfWork.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+
+            // Load lại để map response — bản CÓ Include hồ sơ + tài khoản. Trước đây dùng
+            // GetByIdAsync (không Include) nên response sau khi sửa luôn trả tên rỗng, sđt null.
+            var loaded = await _repository.GetByIdAndUserAsync(relationshipId, userId, ct);
+            return MapToResponse(loaded!);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
     }
 
     public Task DeleteRelativeAsync(
@@ -231,6 +194,18 @@ public sealed class PatientRelationshipService : IPatientRelationshipService
     public async Task<bool> IsPhoneRegisteredAsync(string phone, CancellationToken ct = default)
     {
         return await _repository.IsPhoneRegisteredAsync(phone, ct);
+    }
+
+    public async Task<RelationshipBookingTarget?> FindBookingTargetAsync(
+        Guid relationshipId, Guid? ownerUserId, CancellationToken ct = default)
+    {
+        var relationship = ownerUserId.HasValue
+            ? await _repository.GetByIdAndUserAsync(relationshipId, ownerUserId.Value, ct)
+            : await _repository.GetByIdAsync(relationshipId, ct);
+
+        return relationship is null
+            ? null
+            : new RelationshipBookingTarget(relationship.RelationshipId, relationship.PatientProfileId, relationship.UserId);
     }
 
     private static RelativeResponse MapToResponse(DAL.Entities.PatientRelationship relationship)
@@ -251,20 +226,16 @@ public sealed class PatientRelationshipService : IPatientRelationshipService
         );
     }
 
-    private static RelativeResponse MapToResponse(PatientRelEntity relationship, PatientProfile profile)
-    {
-        var user = profile?.User;
-
-        return new RelativeResponse(
+    /// <summary>Người thân vừa thêm luôn là guest profile (chưa có tài khoản) — thông tin nằm trên hồ sơ.</summary>
+    private static RelativeResponse MapToResponse(PatientRelEntity relationship, GuestProfileInfo profile) =>
+        new(
             relationship.RelationshipId,
             relationship.PatientProfileId,
-            user?.FullName ?? profile?.FullName ?? string.Empty,
-            user?.Phone ?? profile?.Phone,
-            profile?.DateOfBirth,
-            user?.Gender?.ToString(),
+            profile.FullName ?? string.Empty,
+            profile.Phone,
+            profile.DateOfBirth,
+            null,
             relationship.RelationshipName,
-            user != null,
-            relationship.CreatedAt
-        );
-    }
+            false,
+            relationship.CreatedAt);
 }

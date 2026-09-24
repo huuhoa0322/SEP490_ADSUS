@@ -75,6 +75,17 @@ public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogReposito
         await _db.MedicationIntakeLogs.AddRangeAsync(logs, ct);
     }
 
+    public async Task<IReadOnlyList<MedicationIntakeLog>> ListByItemIdsForUpdateAsync(
+        IReadOnlyCollection<Guid> prescriptionItemIds,
+        CancellationToken ct = default)
+    {
+        return await _db.MedicationIntakeLogs
+            .Where(l => prescriptionItemIds.Contains(l.PrescriptionItemId))
+            .ToListAsync(ct);
+    }
+
+    public void RemoveRange(IEnumerable<MedicationIntakeLog> logs) => _db.MedicationIntakeLogs.RemoveRange(logs);
+
     public async Task<MedicationIntakeLog?> GetByIdAsync(Guid intakeId, CancellationToken ct = default)
     {
         return await _db.MedicationIntakeLogs
@@ -111,8 +122,12 @@ public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogReposito
         CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
-        var todayUtc = now.Date;
-        var tomorrowUtc = todayUtc.AddDays(1);
+        var localNow = now.Add(ClinicClock.Offset);
+        var todayLocal = localNow.Date;
+        var tomorrowLocal = todayLocal.AddDays(1);
+        
+        var todayUtc = DateTime.SpecifyKind(todayLocal - ClinicClock.Offset, DateTimeKind.Utc);
+        var tomorrowUtc = DateTime.SpecifyKind(tomorrowLocal - ClinicClock.Offset, DateTimeKind.Utc);
 
         return await _db.MedicationIntakeLogs
             .AsNoTracking()

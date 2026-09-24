@@ -1,49 +1,53 @@
 using ADSUS_BE.BLL.ClinicServiceManagement.DTOs;
 using ADSUS_BE.BLL.Common.Exceptions;
-using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.Repositories.Interfaces;
 using FluentValidation;
 using FluentValidation.Results;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.ClinicServiceManagement;
 
 public class ClinicServiceManagementService : IClinicServiceManagementService
 {
-    private readonly AppDbContext _context;
+    private readonly IClinicServiceRepository _services;
     private readonly ILogger<ClinicServiceManagementService> _logger;
 
     public ClinicServiceManagementService(
-        AppDbContext context,
+        IClinicServiceRepository services,
         ILogger<ClinicServiceManagementService> logger)
     {
-        _context = context;
+        _services = services;
         _logger = logger;
     }
 
     public async Task<IReadOnlyList<ClinicServiceResponse>> GetAllAsync(bool? isActive, CancellationToken ct = default)
     {
-        var query = _context.ClinicServices.AsNoTracking();
-
-        if (isActive.HasValue)
-        {
-            query = query.Where(s => s.IsActive == isActive.Value);
-        }
-
-        var list = await query.OrderBy(s => s.Code).ToListAsync(ct);
+        var list = await _services.ListAsync(isActive, ct);
         return list.Select(MapToResponse).ToList();
     }
 
     public async Task<ClinicServiceResponse> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var service = await _context.ClinicServices.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id, ct);
+        var service = await _services.GetByIdAsync(id, ct);
         if (service == null)
         {
             throw new BusinessException("Không tìm thấy dịch vụ.");
         }
 
         return MapToResponse(service);
+    }
+
+    public async Task<ClinicServiceResponse?> FindByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var service = await _services.GetByIdAsync(id, ct);
+        return service is null ? null : MapToResponse(service);
+    }
+
+    public async Task<ClinicServiceResponse?> FindActiveByCodeAsync(string code, CancellationToken ct = default)
+    {
+        var service = await _services.FindActiveByCodeAsync(code, ct);
+        return service is null ? null : MapToResponse(service);
     }
 
     public async Task<ClinicServiceResponse> CreateAsync(CreateClinicServiceRequest request, CancellationToken ct = default)
@@ -74,7 +78,7 @@ public class ClinicServiceManagementService : IClinicServiceManagementService
         }
 
         var codeNormalized = request.Code.Trim().ToUpper();
-        var exists = await _context.ClinicServices.AnyAsync(s => s.Code.ToUpper() == codeNormalized, ct);
+        var exists = await _services.CodeExistsAsync(codeNormalized, ct);
         if (exists)
         {
             throw new ConflictException("Mã dịch vụ đã tồn tại.");
@@ -93,8 +97,8 @@ public class ClinicServiceManagementService : IClinicServiceManagementService
             UpdatedAt = now
         };
 
-        _context.ClinicServices.Add(service);
-        await _context.SaveChangesAsync(ct);
+        await _services.AddAsync(service, ct);
+        await _services.SaveChangesAsync(ct);
 
         _logger.LogInformation("Đã tạo dịch vụ phòng khám {Code} ({Name}) với giá {Price}", service.Code, service.Name, service.Price);
         return MapToResponse(service);
@@ -102,7 +106,7 @@ public class ClinicServiceManagementService : IClinicServiceManagementService
 
     public async Task<ClinicServiceResponse> UpdateAsync(Guid id, UpdateClinicServiceRequest request, CancellationToken ct = default)
     {
-        var service = await _context.ClinicServices.FirstOrDefaultAsync(s => s.Id == id, ct);
+        var service = await _services.GetForUpdateAsync(id, ct);
         if (service == null)
         {
             throw new BusinessException("Không tìm thấy dịch vụ.");
@@ -144,7 +148,7 @@ public class ClinicServiceManagementService : IClinicServiceManagementService
         }
 
         service.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync(ct);
+        await _services.SaveChangesAsync(ct);
 
         _logger.LogInformation("Đã cập nhật dịch vụ phòng khám {ServiceId} ({Code})", service.Id, service.Code);
         return MapToResponse(service);
@@ -152,7 +156,7 @@ public class ClinicServiceManagementService : IClinicServiceManagementService
 
     public async Task DeactivateAsync(Guid id, CancellationToken ct = default)
     {
-        var service = await _context.ClinicServices.FirstOrDefaultAsync(s => s.Id == id, ct);
+        var service = await _services.GetForUpdateAsync(id, ct);
         if (service == null)
         {
             throw new BusinessException("Không tìm thấy dịch vụ.");
@@ -166,7 +170,7 @@ public class ClinicServiceManagementService : IClinicServiceManagementService
 
         service.IsActive = false;
         service.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync(ct);
+        await _services.SaveChangesAsync(ct);
 
         _logger.LogInformation("Đã vô hiệu hóa (soft delete) dịch vụ phòng khám {ServiceId} ({Code})", service.Id, service.Code);
     }

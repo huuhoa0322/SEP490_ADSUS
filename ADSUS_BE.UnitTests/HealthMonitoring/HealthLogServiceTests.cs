@@ -1,6 +1,7 @@
 using ADSUS_BE.BLL.HealthMonitoring.DTOs;
 using ADSUS_BE.BLL.HealthMonitoring.Interfaces;
 using ADSUS_BE.BLL.HealthMonitoring.Services;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -31,7 +32,7 @@ public class HealthLogServiceTests
         {
             HealthLogId = id ?? Guid.NewGuid(),
             PatientProfileId = patientId ?? Guid.NewGuid(),
-            LogDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow),
+            LogDate = date ?? ClinicClock.Today(),
             LogType = type,
             Content = content,
             CreatedAt = createdAt ?? DateTime.UtcNow,
@@ -68,7 +69,7 @@ public class HealthLogServiceTests
         Assert.Equal(patientId, capturedLog!.PatientProfileId);
         Assert.Equal(HealthLogType.Exercise, capturedLog.LogType);
         Assert.Equal("Ran 5km", capturedLog.Content);
-        Assert.Equal(DateOnly.FromDateTime(DateTime.UtcNow), capturedLog.LogDate);
+        Assert.Equal(ClinicClock.Today(), capturedLog.LogDate);
         Assert.NotEqual(Guid.Empty, capturedLog.HealthLogId);
     }
 
@@ -165,7 +166,7 @@ public class HealthLogServiceTests
         // Arrange
         var patientId = Guid.NewGuid();
         var logId = Guid.NewGuid();
-        var logDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        var logDate = ClinicClock.Today();
         var createdAt = DateTime.UtcNow;
 
         var repo = new Mock<IHealthLogRepository>();
@@ -202,7 +203,7 @@ public class HealthLogServiceTests
     {
         // Arrange
         var patientId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today();
         var logs = new List<HealthLog>
         {
             NewHealthLog(patientId: patientId, date: today, content: "Log 1"),
@@ -263,7 +264,7 @@ public class HealthLogServiceTests
     {
         // Arrange
         var patientId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today();
 
         var repo = new Mock<IHealthLogRepository>();
         repo.Setup(r => r.GetByPatientAndDateAsync(patientId, today, It.IsAny<CancellationToken>()))
@@ -286,7 +287,7 @@ public class HealthLogServiceTests
     {
         // Arrange
         var patientId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today();
 
         var repo = new Mock<IHealthLogRepository>();
         repo.Setup(r => r.GetByPatientAndDateAsync(patientId, It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
@@ -310,7 +311,7 @@ public class HealthLogServiceTests
         // Arrange
         var patientAId = Guid.NewGuid();
         var patientBId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today();
 
         var repo = new Mock<IHealthLogRepository>();
         repo.Setup(r => r.GetByPatientAndDateAsync(patientAId, today, It.IsAny<CancellationToken>()))

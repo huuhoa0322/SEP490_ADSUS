@@ -46,8 +46,10 @@ public sealed record PatientProfileResponse(
 /// KHÔNG có email, trạng thái tài khoản, mustChangePassword — đó là dữ liệu quản trị tài
 /// khoản của Module 2, không thuộc màn hình lâm sàng này.
 ///
-/// PatientProfileId NULL nghĩa là tài khoản đã tồn tại nhưng chưa được lập hồ sơ nền — giao
-/// diện đổi nút hành động thành "Tạo hồ sơ nền" thay vì "Xem hồ sơ".
+/// HasBaselineProfile false nghĩa là chưa được lập hồ sơ nền (UC-06) — giao diện hiện nhãn
+/// "Chưa lập hồ sơ nền" và nút "Tạo hồ sơ nền". PatientProfileId vẫn có thể khác null lúc đó:
+/// mọi tài khoản PATIENT đều có bản ghi hồ sơ tạo sẵn để đặt lịch được ngay (UC-13). Chỉ tài
+/// khoản cũ tạo trước 24/09/2026 mới có thể còn PatientProfileId null.
 /// </summary>
 public sealed record PatientSummaryResponse(
     Guid? PatientProfileId,
@@ -56,7 +58,8 @@ public sealed record PatientSummaryResponse(
     string Phone,
     DateOnly? LatestVisitDate,
     string? LatestVisitStatus,
-    Guid? LatestCaseId = null);
+    Guid? LatestCaseId = null,
+    bool HasBaselineProfile = false);
 
 public sealed record PatientDiseaseInput(Guid DiseaseId, string? Note);
 public sealed record PatientAllergyInput(Guid AllergyTypeId, string? Note);

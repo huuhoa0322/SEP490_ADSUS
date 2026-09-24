@@ -52,8 +52,15 @@ class _EditClinicalInfoSheetState extends ConsumerState<EditClinicalInfoSheet> {
       final repo = ref.read(symptomRepositoryProvider);
       final categories = await repo.getCategories();
 
+      final appRepo = ref.read(appointmentRepositoryProvider);
+      final fullAppointment = await appRepo.getMyAppointment(widget.appointment.id);
+
+      if (mounted && _reasonController.text.isEmpty && fullAppointment.reason != null) {
+        _reasonController.text = fullAppointment.reason!;
+      }
+
       final initialBlocks = <SymptomBlock>[];
-      final oldSymptoms = widget.appointment.symptoms;
+      final oldSymptoms = fullAppointment.symptoms;
 
       if (oldSymptoms != null && oldSymptoms.isNotEmpty) {
         // Group by categoryId

@@ -33,8 +33,9 @@ public class PatientSelfRegistrationServiceTests : IDisposable
         _db = new AppDbContext(options);
 
         _sut = new PatientSelfRegistrationService(
-            _db,
-            _users.Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
+            PatientAccountTestServices.PatientProfiles(_db),
+            _users.AddsTo(_db).Object,
             _firebase.Object,
             _auth.Object,
             Mock.Of<ILogger<PatientSelfRegistrationService>>());

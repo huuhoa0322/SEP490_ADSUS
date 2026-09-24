@@ -38,6 +38,14 @@ public interface IMedicationIntakeLogRepository
     /// <summary>Add nhiều logs cùng lúc (dùng cho IntakeLogGenerationService khi sinh lịch).</summary>
     Task AddRangeAsync(IEnumerable<MedicationIntakeLog> logs, CancellationToken ct = default);
 
+    /// <summary>Mọi liều của các dòng thuốc cho trước — CÓ tracking (huỷ hoá đơn xoá liều chưa uống).</summary>
+    Task<IReadOnlyList<MedicationIntakeLog>> ListByItemIdsForUpdateAsync(
+        IReadOnlyCollection<Guid> prescriptionItemIds,
+        CancellationToken ct = default);
+
+    /// <summary>Đánh dấu xoá các liều, CHƯA lưu.</summary>
+    void RemoveRange(IEnumerable<MedicationIntakeLog> logs);
+
     /// <summary>Lấy log theo ID, có Include PrescriptionItem → Prescription → Case.</summary>
     Task<MedicationIntakeLog?> GetByIdAsync(Guid intakeId, CancellationToken ct = default);
 

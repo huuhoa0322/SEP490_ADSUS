@@ -13,6 +13,15 @@ public interface ICaseRepository
     /// <summary>Bản CÓ theo dõi — dùng khi cần sửa entity rồi gọi SaveChangesAsync (vd. ConfirmAsync).</summary>
     Task<Case?> GetForUpdateAsync(Guid caseId, CancellationToken ct = default);
 
+    /// <summary>Như <see cref="GetForUpdateAsync"/> cho nhiều Case trong MỘT truy vấn — CÓ theo dõi.</summary>
+    Task<IReadOnlyList<Case>> ListForUpdateByIdsAsync(IReadOnlyCollection<Guid> caseIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// <paramref name="take"/> ca gần nhất của một hồ sơ (ngày khám mới nhất trước), kèm bác sĩ và
+    /// chẩn đoán (tên mục chẩn đoán). Chỉ đọc — dùng làm ngữ cảnh cho chatbot.
+    /// </summary>
+    Task<IReadOnlyList<Case>> ListRecentWithDiagnosesAsync(Guid patientProfileId, int take, CancellationToken ct = default);
+
     /// <summary>Bản CÓ theo dõi kèm các collections (Symptoms, Diseases, Allergies) — dùng khi sửa inline triệu chứng, tiền sử, dị ứng.</summary>
     Task<Case?> GetForUpdateWithCollectionsAsync(Guid caseId, CancellationToken ct = default);
 
@@ -47,5 +56,8 @@ public interface ICaseRepository
     /// dùng cho các cập nhật đơn giản như SaveConclusionAsync/ConfirmAsync. KHÔNG dùng với
     /// entity tải qua GetByIdAsync/GetDetailAsync — hai hàm đó dùng AsNoTracking(), sửa xong
     /// gọi SaveChangesAsync sẽ không ghi được gì (EF không theo dõi để biết mà lưu).</summary>
+    /// <summary>Case kèm triệu chứng (tên danh mục + tên triệu chứng). Chỉ đọc.</summary>
+    Task<Case?> GetWithSymptomsAsync(Guid caseId, CancellationToken ct = default);
+
     Task SaveChangesAsync(CancellationToken ct = default);
 }

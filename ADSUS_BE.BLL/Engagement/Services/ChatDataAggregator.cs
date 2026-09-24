@@ -1,9 +1,10 @@
 using ADSUS_BE.BLL.Engagement.DTOs;
 using ADSUS_BE.BLL.Engagement.Interfaces;
+using ADSUS_BE.BLL.MedicalRecord.DTOs;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace ADSUS_BE.BLL.Engagement.Services;
 
@@ -11,7 +12,8 @@ namespace ADSUS_BE.BLL.Engagement.Services;
 /// Tổng hợp dữ liệu bệnh nhân cho chatbot — từ 7 data sources trở lên.
 ///
 /// Selective query: chỉ query sources cần thiết dựa trên intent đã detect.
-/// allergies/diseases không có repository riêng → query trực tiếp qua AppDbContext.
+/// Hồ sơ (họ tên, ngày sinh, dị ứng, bệnh nền) lấy qua IPatientProfileService — không truy vấn
+/// thẳng AppDbContext (P11 review 25/09/2026).
 ///
 /// Giới hạn context để tránh token bloat khi gửi LLM:
 /// - Đơn thuốc: 2 đơn gần nhất, mỗi đơn 5 items
@@ -29,7 +31,7 @@ public sealed class ChatDataAggregator : IChatDataAggregator
     private const int HealthLogDays = 7;
     private const int MaxRecentBlogs = 3;
 
-    private readonly AppDbContext _db;
+    private readonly IPatientProfileService _patientProfiles;
     private readonly IPrescriptionRepository _prescriptionRepo;
     private readonly IMedicationIntakeLogRepository _intakeLogRepo;
     private readonly IAppointmentRepository _appointmentRepo;
@@ -38,7 +40,7 @@ public sealed class ChatDataAggregator : IChatDataAggregator
     private readonly IBlogPostRepository _blogPostRepo;
 
     public ChatDataAggregator(
-        AppDbContext db,
+        IPatientProfileService patientProfiles,
         IPrescriptionRepository prescriptionRepo,
         IMedicationIntakeLogRepository intakeLogRepo,
         IAppointmentRepository appointmentRepo,
@@ -46,7 +48,7 @@ public sealed class ChatDataAggregator : IChatDataAggregator
         IHealthLogRepository healthLogRepo,
         IBlogPostRepository blogPostRepo)
     {
-        _db = db;
+        _patientProfiles = patientProfiles;
         _prescriptionRepo = prescriptionRepo;
         _intakeLogRepo = intakeLogRepo;
         _appointmentRepo = appointmentRepo;
@@ -58,11 +60,9 @@ public sealed class ChatDataAggregator : IChatDataAggregator
     public async Task<PatientChatContext?> BuildContextAsync(
         Guid userId, IntentResult intent, CancellationToken ct = default)
     {
-        // Lấy patientProfileId trước — dùng cho mọi query phía sau
-        var patientProfile = await _db.PatientProfiles
-            .AsNoTracking()
-            .Include(p => p.User)
-            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        // Lấy hồ sơ trước — patientProfileId dùng cho mọi query phía sau; dị ứng/bệnh nền đi kèm
+        // hồ sơ nên không cần truy vấn riêng.
+        var patientProfile = await _patientProfiles.FindByUserIdAsync(userId, ct);
 
         if (patientProfile == null)
             return null;
@@ -97,10 +97,10 @@ public sealed class ChatDataAggregator : IChatDataAggregator
             cases = await BuildRecentCasesAsync(patientProfileId, ct);
 
         if (sources.HasFlag(DataSource.Allergies))
-            allergies = await BuildAllergiesAsync(patientProfileId, ct);
+            allergies = BuildAllergies(patientProfile);
 
         if (sources.HasFlag(DataSource.Diseases))
-            diseases = await BuildDiseasesAsync(patientProfileId, ct);
+            diseases = BuildDiseases(patientProfile);
 
         if (sources.HasFlag(DataSource.RecentHealthLogs))
             healthLogs = await BuildHealthLogsAsync(patientProfileId, ct);
@@ -122,17 +122,17 @@ public sealed class ChatDataAggregator : IChatDataAggregator
 
     // ─── Basic info ──────────────────────────────────────────────────────────────
 
-    private static PatientBasicContextDto BuildBasicInfo(PatientProfile profile)
+    private static PatientBasicContextDto BuildBasicInfo(PatientProfileResponse profile)
     {
-        var user = profile.User;
-        var age = user?.DateOfBirth is { } dob
-            ? DateTime.UtcNow.Year - dob.Year
-                - (DateTime.UtcNow < dob.AddYears(DateTime.UtcNow.Year - dob.Year).ToDateTime(TimeOnly.MinValue) ? 1 : 0)
+        // "Hôm nay" theo giờ phòng khám — theo UTC thì từ 00:00 đến 07:00 vẫn là ngày hôm trước
+        var today = ClinicClock.Today();
+        var age = profile.DateOfBirth is { } dob
+            ? today.Year - dob.Year - (today < dob.AddYears(today.Year - dob.Year) ? 1 : 0)
             : (int?)null;
 
         return new PatientBasicContextDto(
-            user?.FullName ?? string.Empty,
-            user?.DateOfBirth,
+            profile.FullName,
+            profile.DateOfBirth,
             age);
     }
 
@@ -141,15 +141,8 @@ public sealed class ChatDataAggregator : IChatDataAggregator
     private async Task<IReadOnlyList<PrescriptionContextDto>> BuildPrescriptionsAsync(
         Guid patientProfileId, CancellationToken ct)
     {
-        var prescriptions = await _db.Prescriptions
-            .AsNoTracking()
-            .Include(p => p.PrescriptionItems.Take(MaxItemsPerPrescription))
-                .ThenInclude(pi => pi.Medicine)
-            .Include(p => p.Case)
-            .Where(p => p.Case.PatientProfileId == patientProfileId)
-            .OrderByDescending(p => p.PrescribedDate)
-            .Take(MaxPrescriptions)
-            .ToListAsync(ct);
+        var prescriptions = await _prescriptionRepo.ListLatestByPatientWithItemsAsync(
+            patientProfileId, MaxPrescriptions, MaxItemsPerPrescription, ct);
 
         return prescriptions
             .Where(p => p.Status == PrescriptionStatus.Active)
@@ -200,7 +193,8 @@ public sealed class ChatDataAggregator : IChatDataAggregator
     private async Task<IReadOnlyList<UpcomingAppointmentContextDto>> BuildUpcomingAppointmentsAsync(
         Guid patientProfileId, CancellationToken ct)
     {
-        var nowDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        // SlotDate là ngày theo giờ phòng khám — so với "hôm nay" cùng hệ giờ
+        var nowDate = ClinicClock.Today();
         var appointments = await _appointmentRepo.ListByPatientAsync(patientProfileId, ct);
 
         return appointments
@@ -223,16 +217,7 @@ public sealed class ChatDataAggregator : IChatDataAggregator
     private async Task<IReadOnlyList<CaseHistoryContextDto>> BuildRecentCasesAsync(
         Guid patientProfileId, CancellationToken ct)
     {
-        var cases = await _db.Cases
-            .AsNoTracking()
-            .Include(c => c.Doctor)
-            .Include(c => c.CaseDiagnoses)
-                .ThenInclude(cd => cd.DiagnosisItem)
-            .Where(c => c.PatientProfileId == patientProfileId)
-            .OrderByDescending(c => c.VisitDate)
-            .ThenByDescending(c => c.CreatedAt)
-            .Take(MaxRecentCases)
-            .ToListAsync(ct);
+        var cases = await _caseRepo.ListRecentWithDiagnosesAsync(patientProfileId, MaxRecentCases, ct);
 
         return cases
             .Select(c => new CaseHistoryContextDto(
@@ -249,41 +234,19 @@ public sealed class ChatDataAggregator : IChatDataAggregator
 
     // ─── Allergies ───────────────────────────────────────────────────────────────
 
-    private async Task<IReadOnlyList<AllergyContextDto>> BuildAllergiesAsync(
-        Guid patientProfileId, CancellationToken ct)
-    {
-        var allergies = await _db.PatientAllergies
-            .AsNoTracking()
-            .Include(pa => pa.AllergyType)
-            .Where(pa => pa.PatientProfileId == patientProfileId)
-            .ToListAsync(ct);
-
-        return allergies
-            .Select(a => new AllergyContextDto(
-                a.Id,
-                a.AllergyType?.Name ?? string.Empty,
-                a.Note))
+    // Id của dòng ngữ cảnh là Id loại dị ứng / bệnh (hồ sơ trả về theo danh mục) — prompt chỉ dùng
+    // tên và ghi chú.
+    private static IReadOnlyList<AllergyContextDto> BuildAllergies(PatientProfileResponse profile) =>
+        profile.Allergies
+            .Select(a => new AllergyContextDto(a.AllergyTypeId, a.AllergyName, a.Note))
             .ToList();
-    }
 
     // ─── Diseases ───────────────────────────────────────────────────────────────
 
-    private async Task<IReadOnlyList<DiseaseContextDto>> BuildDiseasesAsync(
-        Guid patientProfileId, CancellationToken ct)
-    {
-        var diseases = await _db.PatientDiseases
-            .AsNoTracking()
-            .Include(pd => pd.Disease)
-            .Where(pd => pd.PatientProfileId == patientProfileId)
-            .ToListAsync(ct);
-
-        return diseases
-            .Select(d => new DiseaseContextDto(
-                d.Id,
-                d.Disease?.Name ?? string.Empty,
-                d.Note))
+    private static IReadOnlyList<DiseaseContextDto> BuildDiseases(PatientProfileResponse profile) =>
+        profile.Diseases
+            .Select(d => new DiseaseContextDto(d.DiseaseId, d.DiseaseName, d.Note))
             .ToList();
-    }
 
     // ─── Health logs ─────────────────────────────────────────────────────────────
 
@@ -294,7 +257,7 @@ public sealed class ChatDataAggregator : IChatDataAggregator
             patientProfileId, HealthLogDays * 3, ct);
 
         return logs
-            .Where(l => l.LogDate >= DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-HealthLogDays)))
+            .Where(l => l.LogDate >= ClinicClock.Today().AddDays(-HealthLogDays))
             .OrderByDescending(l => l.LogDate)
             .Take(HealthLogDays)
             .Select(l => new HealthLogContextDto(l.LogDate, l.Content))

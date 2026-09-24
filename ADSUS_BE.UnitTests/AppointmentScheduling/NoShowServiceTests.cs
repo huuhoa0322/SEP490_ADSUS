@@ -19,8 +19,6 @@ namespace ADSUS_BE.UnitTests.AppointmentScheduling;
 public class NoShowServiceTests : IDisposable
 {
     private readonly Mock<INotificationService> _notificationService = new();
-    private readonly Mock<IPatientProfileRepository> _profileRepo = new();
-    private readonly Mock<ILogger<NoShowService>> _logger = new();
     private readonly AppDbContext _db;
     private readonly NoShowService _sut;
 
@@ -31,13 +29,7 @@ public class NoShowServiceTests : IDisposable
             .Options;
         _db = new AppDbContext(options);
 
-        var noShowSettings = Options.Create(new NoShowSettings { GraceTimeMinutes = 15 });
-        _sut = new NoShowService(
-            _db,
-            noShowSettings,
-            _notificationService.Object,
-            _profileRepo.Object,
-            _logger.Object);
+        _sut = NoShowTestServices.Create(_db, _notificationService.Object);
     }
 
     public void Dispose()
@@ -242,8 +234,6 @@ public class NoShowServiceTests : IDisposable
         var doctor = CreateDoctor();
         var patient = CreatePatient();
         var profile = CreatePatientProfile(patient);
-        _profileRepo.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
 
         var now = DateTime.UtcNow;
         var slotDate = DateOnly.FromDateTime(now.AddHours(-2));
@@ -281,8 +271,6 @@ public class NoShowServiceTests : IDisposable
         var doctor = CreateDoctor();
         var patient = CreatePatient();
         var profile = CreatePatientProfile(patient);
-        _profileRepo.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
 
         var now = DateTime.UtcNow;
         var slotDate = DateOnly.FromDateTime(now.AddHours(-2));
@@ -319,8 +307,6 @@ public class NoShowServiceTests : IDisposable
         var doctor = CreateDoctor();
         var patient = CreatePatient();
         var profile = CreatePatientProfile(patient);
-        _profileRepo.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
 
         // Setup notification để throw exception
         _notificationService
@@ -359,8 +345,6 @@ public class NoShowServiceTests : IDisposable
         var doctor = CreateDoctor();
         var patient = CreatePatient();
         var profile = CreatePatientProfile(patient);
-        _profileRepo.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
 
         var callCount = 0;
         _notificationService
@@ -403,24 +387,28 @@ public class NoShowServiceTests : IDisposable
         var doctor = CreateDoctor();
         var patient = CreatePatient();
         var profile = CreatePatientProfile(patient);
-        _profileRepo.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((PatientProfile?)null);
 
         var now = DateTime.UtcNow;
         var slotDate = DateOnly.FromDateTime(now.AddHours(-2));
         var startTime = TimeOnly.FromDateTime(now.AddHours(-2));
         var slot = CreateSlot(doctor, slotDate, startTime);
         var appointment = CreateAppointment(slot, profile, AppointmentStatus.Booked);
+        // Hồ sơ không tồn tại trong DB (DB InMemory không kiểm khoá ngoại)
+        appointment.PatientProfile = null!;
+        appointment.PatientProfileId = Guid.NewGuid();
 
         await SeedAppointmentAsync(appointment);
 
         // Act
         var result = await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
 
-        // Assert
+        // Assert — vẫn đánh dấu NoShow, chỉ bác sĩ nhận thông báo
         Assert.True(result.WasProcessed);
         var updatedAppointment = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal(AppointmentStatus.NoShow, updatedAppointment!.Status);
+        _notificationService.Verify(
+            s => s.SendAsync(It.Is<SendNotificationRequest>(r => r.Type == "appointment_no_show"), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     #endregion
@@ -550,6 +538,136 @@ public class NoShowServiceTests : IDisposable
 
         // Assert - At exactly grace time should be processed
         Assert.True(result.WasProcessed);
+    }
+
+    #endregion
+
+    #region Quy tắc gộp với JOB-08 (P11 review 25/09/2026)
+
+    /// <summary>Giờ phòng khám lùi <paramref name="minutesAgo"/> phút — cùng hệ giờ với SlotDate/StartTime.</summary>
+    private static (DateOnly Date, TimeOnly Time) ClinicMinutesAgo(int minutesAgo)
+    {
+        var local = DateTime.UtcNow.Add(ClinicClock.Offset).AddMinutes(-minutesAgo);
+        return (DateOnly.FromDateTime(local), TimeOnly.FromDateTime(local));
+    }
+
+    /// <summary>Hồ sơ guest (người thân chưa có tài khoản) → người đặt hộ nhận thông báo No-Show.</summary>
+    [Fact]
+    public async Task ProcessNoShowAsync_GuestProfile_NotifiesGuardian()
+    {
+        var doctor = CreateDoctor();
+        var guardianId = Guid.NewGuid();
+        var guestProfile = new PatientProfile
+        {
+            PatientProfileId = Guid.NewGuid(),
+            UserId = null,
+            FullName = "Người thân",
+            Phone = "0911111111",
+            CreatedBy = guardianId,
+        };
+        var (date, time) = ClinicMinutesAgo(120);
+        var appointment = CreateAppointment(CreateSlot(doctor, date, time), guestProfile, AppointmentStatus.Booked);
+        appointment.BookedByUserId = guardianId;
+        await SeedAppointmentAsync(appointment);
+
+        var result = await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
+
+        Assert.True(result.WasProcessed);
+        _notificationService.Verify(
+            s => s.SendAsync(It.Is<SendNotificationRequest>(r =>
+                r.UserId == guardianId && r.Type == "appointment_no_show"), It.IsAny<CancellationToken>()),
+            Times.Once);
+        _notificationService.Verify(
+            s => s.SendAsync(It.Is<SendNotificationRequest>(r => r.UserId == Guid.Empty), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    /// <summary>Case liên kết còn Booked → Cancelled; Case đã sang trạng thái khác giữ nguyên.</summary>
+    [Fact]
+    public async Task ProcessNoShowAsync_LinkedCase_CancelsOnlyBookedCase()
+    {
+        var doctor = CreateDoctor();
+        var (date, time) = ClinicMinutesAgo(120);
+
+        var profile1 = CreatePatientProfile(CreatePatient());
+        var bookedCase = new Case { CaseId = Guid.NewGuid(), DoctorId = doctor.UserId, PatientProfileId = profile1.PatientProfileId, Status = CaseStatus.Booked };
+        var ap1 = CreateAppointment(CreateSlot(doctor, date, time), profile1, AppointmentStatus.Booked);
+        ap1.CaseId = bookedCase.CaseId;
+
+        var profile2 = CreatePatientProfile(CreatePatient());
+        var inProgressCase = new Case { CaseId = Guid.NewGuid(), DoctorId = doctor.UserId, PatientProfileId = profile2.PatientProfileId, Status = CaseStatus.InProgress };
+        var ap2 = CreateAppointment(CreateSlot(doctor, date, time.AddMinutes(-30)), profile2, AppointmentStatus.Booked);
+        ap2.CaseId = inProgressCase.CaseId;
+
+        _db.Cases.AddRange(bookedCase, inProgressCase);
+        _db.Appointments.AddRange(ap1, ap2);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        await _sut.ProcessNoShowAsync(ap1, TestContext.Current.CancellationToken);
+        await _sut.ProcessNoShowAsync(ap2, TestContext.Current.CancellationToken);
+
+        Assert.Equal(CaseStatus.Cancelled, (await _db.Cases.FindAsync(new object[] { bookedCase.CaseId }, TestContext.Current.CancellationToken))!.Status);
+        Assert.Equal(CaseStatus.InProgress, (await _db.Cases.FindAsync(new object[] { inProgressCase.CaseId }, TestContext.Current.CancellationToken))!.Status);
+    }
+
+    /// <summary>Slot được mở lại và cập nhật UpdatedAt.</summary>
+    [Fact]
+    public async Task ProcessNoShowAsync_ReopensSlotAndUpdatesTimestamp()
+    {
+        var doctor = CreateDoctor();
+        var (date, time) = ClinicMinutesAgo(120);
+        var slot = CreateSlot(doctor, date, time);
+        slot.UpdatedAt = DateTime.UtcNow.AddDays(-1);
+        var appointment = CreateAppointment(slot, CreatePatientProfile(CreatePatient()), AppointmentStatus.Booked);
+        await SeedAppointmentAsync(appointment);
+        var before = DateTime.UtcNow;
+
+        await _sut.ProcessNoShowAsync(appointment, TestContext.Current.CancellationToken);
+
+        var updatedSlot = await _db.ScheduleSlots.FindAsync(new object[] { slot.SlotId }, TestContext.Current.CancellationToken);
+        Assert.Equal(SlotStatus.Open, updatedSlot!.Status);
+        Assert.True(updatedSlot.UpdatedAt >= before);
+    }
+
+    /// <summary>
+    /// JOB-08 dùng chung quy tắc: chỉ lịch Booked đã qua grace time (đúng phút thứ 15 cũng tính);
+    /// lịch còn trong grace time, lịch tương lai, lịch đã Completed giữ nguyên. Báo cả bệnh nhân lẫn bác sĩ.
+    /// </summary>
+    [Fact]
+    public async Task ProcessOverdueAsync_MarksOnlyOverdueBookedAndNotifiesPatientAndDoctor()
+    {
+        var doctor = CreateDoctor();
+        var patient = CreatePatient();
+        var profile = CreatePatientProfile(patient);
+
+        var (d1, t1) = ClinicMinutesAgo(120);
+        var overdue = CreateAppointment(CreateSlot(doctor, d1, t1), profile, AppointmentStatus.Booked);
+        var (d2, t2) = ClinicMinutesAgo(15);
+        var atGrace = CreateAppointment(CreateSlot(doctor, d2, t2), profile, AppointmentStatus.Booked);
+        var (d3, t3) = ClinicMinutesAgo(10);
+        var withinGrace = CreateAppointment(CreateSlot(doctor, d3, t3), profile, AppointmentStatus.Booked);
+        var future = CreateAppointment(CreateSlot(doctor, ClinicClock.Today().AddDays(1), new TimeOnly(8, 0)), profile, AppointmentStatus.Booked);
+        var completed = CreateAppointment(CreateSlot(doctor, d1, t1.AddMinutes(-30)), profile, AppointmentStatus.Completed);
+        _db.Appointments.AddRange(overdue, atGrace, withinGrace, future, completed);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var count = await _sut.ProcessOverdueAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, count);
+        async Task<AppointmentStatus> StatusOf(Appointment a) =>
+            (await _db.Appointments.FindAsync(new object[] { a.AppointmentId }, TestContext.Current.CancellationToken))!.Status;
+        Assert.Equal(AppointmentStatus.NoShow, await StatusOf(overdue));
+        Assert.Equal(AppointmentStatus.NoShow, await StatusOf(atGrace));
+        Assert.Equal(AppointmentStatus.Booked, await StatusOf(withinGrace));
+        Assert.Equal(AppointmentStatus.Booked, await StatusOf(future));
+        Assert.Equal(AppointmentStatus.Completed, await StatusOf(completed));
+
+        _notificationService.Verify(
+            s => s.SendAsync(It.Is<SendNotificationRequest>(r => r.UserId == patient.UserId && r.Type == "appointment_no_show"), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+        _notificationService.Verify(
+            s => s.SendAsync(It.Is<SendNotificationRequest>(r => r.UserId == doctor.UserId && r.Type == "patient_no_show"), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
     }
 
     #endregion

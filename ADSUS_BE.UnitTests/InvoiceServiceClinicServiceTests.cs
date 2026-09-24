@@ -38,8 +38,7 @@ public class InvoiceServiceClinicServiceTests
         var scheduleGeneratorMock = new Mock<IMedicationIntakeScheduleGenerator>();
         var notifMock = new Mock<INotificationService>();
 
-        var service = new InvoiceService(
-            context,
+        var service = PrescriptionAdherenceTestServices.Invoice(context,
             inventoryMock.Object,
             intakeLogRepoMock.Object,
             scheduleGeneratorMock.Object,
@@ -690,6 +689,76 @@ public class InvoiceServiceClinicServiceTests
         // Assert
         var item = Assert.Single(detail.Items);
         Assert.Equal("MEDICINE", item.ItemType);
+    }
+
+    #endregion
+
+    #region 3.6 GenerateInvoiceIfBillableAsync — tự sinh hoá đơn khi ca kết thúc
+
+    [Fact]
+    public async Task TC_3_6_1_GenerateIfBillable_ActiveInvoiceExists_ReturnsNullAndCreatesNothing()
+    {
+        using var context = CreateContext();
+        var (service, _, _) = CreateService(context);
+        var medicalCase = SeedCase(context);
+        SeedClinicServiceForCase(context, medicalCase.CaseId, "GENERAL_EXAM", "Khám thường", 100000);
+        context.Invoices.Add(new Invoice { Id = Guid.NewGuid(), CaseId = medicalCase.CaseId, Status = InvoiceStatus.PENDING, CreatedAt = DateTime.UtcNow });
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var result = await service.GenerateInvoiceIfBillableAsync(medicalCase.CaseId);
+
+        Assert.Null(result);
+        Assert.Single(await context.Invoices.ToListAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task TC_3_6_2_GenerateIfBillable_NoServiceNoPrescription_ReturnsNullWithoutThrowing()
+    {
+        using var context = CreateContext();
+        var (service, _, _) = CreateService(context);
+        var medicalCase = SeedCase(context);
+
+        var result = await service.GenerateInvoiceIfBillableAsync(medicalCase.CaseId);
+
+        Assert.Null(result);
+        Assert.Empty(await context.Invoices.ToListAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task TC_3_6_3_GenerateIfBillable_HasService_GeneratesInvoice()
+    {
+        using var context = CreateContext();
+        var (service, _, _) = CreateService(context);
+        var medicalCase = SeedCase(context);
+        SeedClinicServiceForCase(context, medicalCase.CaseId, "GENERAL_EXAM", "Khám thường", 100000);
+
+        var result = await service.GenerateInvoiceIfBillableAsync(medicalCase.CaseId);
+
+        Assert.NotNull(result);
+        var invoice = await context.Invoices.SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(result, invoice.Id);
+        Assert.Equal(100000, invoice.TotalAmount);
+    }
+
+    [Fact]
+    public async Task TC_3_6_4_GenerateInvoice_NotifiesActiveNursesOnlyWithPatientName()
+    {
+        using var context = CreateContext();
+        var (service, _, notifMock) = CreateService(context);
+        var medicalCase = SeedCase(context);
+        SeedClinicServiceForCase(context, medicalCase.CaseId, "GENERAL_EXAM", "Khám thường", 100000);
+
+        var activeNurse = new User { UserId = Guid.NewGuid(), FullName = "ĐD 1", Phone = "0981111002", PasswordHash = "x", Role = UserRole.Staff, Status = UserStatus.Active };
+        var inactiveNurse = new User { UserId = Guid.NewGuid(), FullName = "ĐD 2", Phone = "0981111003", PasswordHash = "x", Role = UserRole.Staff, Status = UserStatus.Deactivated };
+        context.Users.AddRange(activeNurse, inactiveNurse);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        await service.GenerateInvoiceForCaseAsync(medicalCase.CaseId);
+
+        notifMock.Verify(n => n.SendBulkAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Contains(activeNurse.UserId) && !ids.Contains(inactiveNurse.UserId)),
+            It.Is<SendNotificationRequest>(r => r.Type == "new_invoice_created" && r.Body.Contains("Nguyễn Văn A")),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion

@@ -1,16 +1,15 @@
 using ADSUS_BE.BLL.Common.Exceptions;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
-using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace ADSUS_BE.BLL.PrescriptionAdherence.Services;
 
 /// <summary>
 /// SCR-19 — reminder settings của bệnh nhân.
-/// Lấy patientProfileId từ userId qua PatientProfiles.UserId → PatientProfileId.
+/// Lấy patientProfileId từ userId qua IPatientProfileService (hồ sơ thuộc module MedicalRecord).
 /// Nếu bệnh nhân chưa có dòng preference thì trả default (không tạo row mới cho GET).
 /// Upsert tạo row mới nếu chưa có.
 /// </summary>
@@ -23,14 +22,14 @@ public sealed class ReminderPreferenceService : IReminderPreferenceService
         MiddayTime: "12:00",
         EveningTime: "20:00");
 
-    private readonly AppDbContext _db;
+    private readonly IPatientProfileService _patientProfiles;
     private readonly IReminderPreferenceRepository _prefRepo;
 
     public ReminderPreferenceService(
-        AppDbContext db,
+        IPatientProfileService patientProfiles,
         IReminderPreferenceRepository prefRepo)
     {
-        _db = db;
+        _patientProfiles = patientProfiles;
         _prefRepo = prefRepo;
     }
 
@@ -38,13 +37,9 @@ public sealed class ReminderPreferenceService : IReminderPreferenceService
         Guid userId,
         CancellationToken ct = default)
     {
-        var patientProfile = await _db.PatientProfiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId, ct)
-            ?? throw new ResourceNotFoundException("Hồ sơ bệnh nhân không tồn tại.");
+        var patientProfileId = await GetPatientProfileIdAsync(userId, ct);
 
-        var pref = await _prefRepo.GetByPatientProfileIdAsync(
-            patientProfile.PatientProfileId, ct);
+        var pref = await _prefRepo.GetByPatientProfileIdAsync(patientProfileId, ct);
 
         if (pref is null)
             return Default;
@@ -61,13 +56,9 @@ public sealed class ReminderPreferenceService : IReminderPreferenceService
         UpdateReminderPreferenceRequest request,
         CancellationToken ct = default)
     {
-        var patientProfile = await _db.PatientProfiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId, ct)
-            ?? throw new ResourceNotFoundException("Hồ sơ bệnh nhân không tồn tại.");
+        var patientProfileId = await GetPatientProfileIdAsync(userId, ct);
 
-        var existing = await _prefRepo.GetForUpdateAsync(
-            patientProfile.PatientProfileId, ct);
+        var existing = await _prefRepo.GetForUpdateAsync(patientProfileId, ct);
 
         if (existing is null)
         {
@@ -75,7 +66,7 @@ public sealed class ReminderPreferenceService : IReminderPreferenceService
             existing = new PatientReminderPreference
             {
                 PreferenceId = Guid.NewGuid(),
-                PatientProfileId = patientProfile.PatientProfileId,
+                PatientProfileId = patientProfileId,
                 NotifEnabled = request.NotifEnabled ?? true,
                 MorningTime = ParseOrDefault(request.MorningTime, new TimeOnly(7, 0)),
                 MiddayTime = ParseOrDefault(request.MiddayTime, new TimeOnly(12, 0)),
@@ -98,7 +89,7 @@ public sealed class ReminderPreferenceService : IReminderPreferenceService
             await _prefRepo.UpdateAsync(existing, ct);
         }
 
-        await _db.SaveChangesAsync(ct);
+        await _prefRepo.SaveChangesAsync(ct);
 
         return new ReminderPreferenceResponse(
             NotifEnabled: existing.NotifEnabled ?? true,
@@ -106,6 +97,10 @@ public sealed class ReminderPreferenceService : IReminderPreferenceService
             MiddayTime: ToHHmm(existing.MiddayTime ?? new TimeOnly(12, 0)),
             EveningTime: ToHHmm(existing.EveningTime ?? new TimeOnly(20, 0)));
     }
+
+    private async Task<Guid> GetPatientProfileIdAsync(Guid userId, CancellationToken ct) =>
+        await _patientProfiles.FindIdByUserIdAsync(userId, ct)
+            ?? throw new ResourceNotFoundException("Hồ sơ bệnh nhân không tồn tại.");
 
     private static string ToHHmm(TimeOnly t) =>
         $"{t.Hour:D2}:{t.Minute:D2}";

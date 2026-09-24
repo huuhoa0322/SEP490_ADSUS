@@ -1,5 +1,6 @@
 using ADSUS_BE.BLL.Engagement.DTOs;
 using ADSUS_BE.BLL.Engagement.Interfaces;
+using ADSUS_BE.BLL.Engagement.Models;
 using ADSUS_BE.BLL.Engagement.Services;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
@@ -309,6 +310,60 @@ public class ChatServiceTests
     }
 
     [Fact]
+    public async Task SendMessageAsync_TodayIntakes_PromptShowsClinicLocalDoseTime()
+    {
+        // Arrange — liều 08:00 giờ VN lưu trong DB là 01:00 UTC
+        var repo = new Mock<IAiChatMessageRepository>();
+        var filter = new Mock<IPsychologyTopicFilter>();
+        var chat = new Mock<IChatClient>();
+        var intentDetector = new Mock<IIntentDetector>();
+        var aggregator = new Mock<IChatDataAggregator>();
+
+        repo.Setup(r => r.AddAsync(It.IsAny<AiChatMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AiChatMessage m, CancellationToken _) => m);
+        repo.Setup(r => r.ListByUserAsync(
+                It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AiChatMessage>());
+        filter.Setup(f => f.DetectUnsafeTopic(It.IsAny<string>())).Returns((string?)null);
+        intentDetector.Setup(d => d.DetectAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IntentResult { Intent = ChatIntent.Prescription, TriggeredSources = DataSource.TodayIntakes });
+
+        var doseUtc = new DateTime(2026, 9, 24, 1, 0, 0, DateTimeKind.Utc);
+        aggregator.Setup(a => a.BuildContextAsync(It.IsAny<Guid>(), It.IsAny<IntentResult>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PatientChatContext(
+                BasicInfo: new PatientBasicContextDto("Nguyễn Văn A", new DateOnly(1990, 1, 1), 36),
+                ActivePrescriptions: null,
+                TodayIntakes: new List<TodayIntakeContextDto>
+                {
+                    new(Guid.NewGuid(), "Paracetamol", "1 viên", null, doseUtc, "Chưa uống"),
+                },
+                UpcomingAppointments: null,
+                RecentCases: null,
+                Allergies: null,
+                Diseases: null,
+                RecentHealthLogs: null,
+                RecentBlogs: null));
+
+        string? capturedSystemPrompt = null;
+        chat.Setup(c => c.SendMessageAsync(
+                It.IsAny<string>(), It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, IReadOnlyList<ChatTurn>, string, CancellationToken>(
+                (sysPrompt, _, _, _) => capturedSystemPrompt = sysPrompt)
+            .ReturnsAsync("AI response");
+
+        var sut = NewSut(repo.Object, filter.Object, chat.Object, intentDetector.Object, aggregator.Object);
+
+        // Act
+        await sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "Hôm nay tôi uống thuốc lúc mấy giờ?" }, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(capturedSystemPrompt);
+        Assert.Contains("Paracetamol 1 viên lúc 08:00", capturedSystemPrompt);
+        Assert.DoesNotContain("lúc 01:00", capturedSystemPrompt);
+    }
+
+    [Fact]
     public async Task SendMessageAsync_NoPatientProfile_FallsBackToDefaultPrompt()
     {
         // Arrange
@@ -350,5 +405,247 @@ public class ChatServiceTests
         Assert.NotNull(capturedSystemPrompt);
         Assert.Contains("Test system prompt", capturedSystemPrompt);
         Assert.DoesNotContain("THÔNG TIN BỆNH NHÂN", capturedSystemPrompt);
+    }
+
+    // ── StreamMessageAsync ────────────────────────────────────────────────────
+
+    private static async IAsyncEnumerable<string> ToAsyncEnumerable(IEnumerable<string> items)
+    {
+        foreach (var item in items)
+        {
+            yield return item;
+            await Task.Yield();
+        }
+    }
+
+    [Fact]
+    public async Task StreamMessageAsync_SafeMessage_EmitsThinking_Deltas_AndDone_PersistsToDb()
+    {
+        // Arrange
+        var repo = new Mock<IAiChatMessageRepository>();
+        var filter = new Mock<IPsychologyTopicFilter>();
+        var chat = new Mock<IChatClient>();
+        var intentDetector = new Mock<IIntentDetector>();
+
+        var savedMessages = new List<AiChatMessage>();
+        repo.Setup(r => r.AddAsync(It.IsAny<AiChatMessage>(), It.IsAny<CancellationToken>()))
+            .Callback<AiChatMessage, CancellationToken>((m, _) => savedMessages.Add(m))
+            .ReturnsAsync((AiChatMessage m, CancellationToken _) => m);
+
+        repo.Setup(r => r.ListByUserAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AiChatMessage>());
+
+        repo.Setup(r => r.CountAssistantMessagesSinceAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        filter.Setup(f => f.DetectUnsafeTopic(It.IsAny<string>())).Returns((string?)null);
+
+        intentDetector.Setup(d => d.DetectAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IntentResult { Intent = ChatIntent.General, TriggeredSources = DataSource.None });
+
+        chat.Setup(c => c.StreamMessageAsync(
+                It.IsAny<string>(),
+                It.IsAny<IReadOnlyList<ChatTurn>>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(ToAsyncEnumerable(new[] { "Chào bạn, ", "tôi có thể giúp gì cho bạn?" }));
+
+        var sut = NewSut(repo.Object, filter.Object, chat.Object, intentDetector.Object);
+        var userId = Guid.NewGuid();
+
+        // Act
+        var events = new List<ChatStreamEvent>();
+        await foreach (var ev in sut.StreamMessageAsync(userId, "Xin chào", TestContext.Current.CancellationToken))
+        {
+            events.Add(ev);
+        }
+
+        // Assert
+        Assert.Equal(4, events.Count);
+        Assert.IsType<ChatThinkingEvent>(events[0]);
+        Assert.Equal("thinking", ((ChatThinkingEvent)events[0]).Status);
+
+        Assert.IsType<ChatDeltaEvent>(events[1]);
+        Assert.Equal("Chào bạn, ", ((ChatDeltaEvent)events[1]).Chunk);
+
+        Assert.IsType<ChatDeltaEvent>(events[2]);
+        Assert.Equal("tôi có thể giúp gì cho bạn?", ((ChatDeltaEvent)events[2]).Chunk);
+
+        Assert.IsType<ChatDoneEvent>(events[3]);
+        var done = (ChatDoneEvent)events[3];
+        Assert.Equal("Chào bạn, tôi có thể giúp gì cho bạn?", done.Content);
+        Assert.False(done.IsSafetyResponse);
+        Assert.False(done.IsRateLimitExceeded);
+        Assert.Equal("General", done.DetectedIntent);
+
+        // Verify DB persistence: 1 USER message, 1 ASSISTANT message
+        Assert.Equal(2, savedMessages.Count);
+        Assert.Equal(ChatRole.User, savedMessages[0].Role);
+        Assert.Equal("Xin chào", savedMessages[0].Content);
+        Assert.Equal(ChatRole.Assistant, savedMessages[1].Role);
+        Assert.Equal("Chào bạn, tôi có thể giúp gì cho bạn?", savedMessages[1].Content);
+        Assert.Equal(done.MessageId, savedMessages[1].MessageId);
+    }
+
+    [Fact]
+    public async Task StreamMessageAsync_PsychologyTopic_EmitsDoneImmediately_NeverCallsChatClient()
+    {
+        // Arrange
+        var repo = new Mock<IAiChatMessageRepository>();
+        var filter = new Mock<IPsychologyTopicFilter>();
+        var chat = new Mock<IChatClient>();
+
+        filter.Setup(f => f.DetectUnsafeTopic("Tôi muốn tự tử")).Returns("suicide");
+
+        var savedMessages = new List<AiChatMessage>();
+        repo.Setup(r => r.AddAsync(It.IsAny<AiChatMessage>(), It.IsAny<CancellationToken>()))
+            .Callback<AiChatMessage, CancellationToken>((m, _) => savedMessages.Add(m))
+            .ReturnsAsync((AiChatMessage m, CancellationToken _) => m);
+
+        var sut = NewSut(repo.Object, filter.Object, chat.Object);
+
+        // Act
+        var events = new List<ChatStreamEvent>();
+        await foreach (var ev in sut.StreamMessageAsync(Guid.NewGuid(), "Tôi muốn tự tử", TestContext.Current.CancellationToken))
+        {
+            events.Add(ev);
+        }
+
+        // Assert
+        Assert.Single(events);
+        Assert.IsType<ChatDoneEvent>(events[0]);
+        var done = (ChatDoneEvent)events[0];
+        Assert.True(done.IsSafetyResponse);
+        Assert.Equal("PsychologyCrisis", done.DetectedIntent);
+        Assert.Contains(DisclaimerText.Safety, done.Content);
+
+        // GB-02: Never call LLM
+        chat.Verify(c => c.StreamMessageAsync(
+            It.IsAny<string>(), It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        chat.Verify(c => c.SendMessageAsync(
+            It.IsAny<string>(), It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        // Assert DB saved user and safety assistant message
+        Assert.Equal(2, savedMessages.Count);
+        Assert.Equal(ChatRole.User, savedMessages[0].Role);
+        Assert.Equal(ChatRole.Assistant, savedMessages[1].Role);
+        Assert.Equal(DisclaimerText.Safety, savedMessages[1].Content);
+    }
+
+    [Fact]
+    public async Task StreamMessageAsync_RateLimitExceeded_EmitsDoneImmediately_NeverCallsChatClient()
+    {
+        // Arrange
+        var repo = new Mock<IAiChatMessageRepository>();
+        var filter = new Mock<IPsychologyTopicFilter>();
+        var chat = new Mock<IChatClient>();
+
+        filter.Setup(f => f.DetectUnsafeTopic(It.IsAny<string>())).Returns((string?)null);
+
+        // 50 calls in last hour
+        repo.Setup(r => r.CountAssistantMessagesSinceAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(50);
+
+        repo.Setup(r => r.AddAsync(It.IsAny<AiChatMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AiChatMessage m, CancellationToken _) => m);
+
+        var sut = NewSut(repo.Object, filter.Object, chat.Object);
+
+        // Act
+        var events = new List<ChatStreamEvent>();
+        await foreach (var ev in sut.StreamMessageAsync(Guid.NewGuid(), "Câu hỏi thứ 51", TestContext.Current.CancellationToken))
+        {
+            events.Add(ev);
+        }
+
+        // Assert
+        Assert.Single(events);
+        Assert.IsType<ChatDoneEvent>(events[0]);
+        var done = (ChatDoneEvent)events[0];
+        Assert.True(done.IsRateLimitExceeded);
+        Assert.Contains("50 lượt hỏi", done.Content);
+
+        // Never call LLM
+        chat.Verify(c => c.StreamMessageAsync(
+            It.IsAny<string>(), It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task StreamMessageAsync_EmptyContent_ThrowsArgumentException()
+    {
+        var sut = NewSut();
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
+        {
+            await foreach (var _ in sut.StreamMessageAsync(Guid.NewGuid(), "   ", TestContext.Current.CancellationToken)) { }
+        });
+    }
+
+    [Fact]
+    public async Task StreamMessageAsync_ContentTooLong_ThrowsArgumentException()
+    {
+        var sut = NewSut();
+        var longMessage = new string('a', 1001);
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
+        {
+            await foreach (var _ in sut.StreamMessageAsync(Guid.NewGuid(), longMessage, TestContext.Current.CancellationToken)) { }
+        });
+    }
+
+    [Fact]
+    public async Task StreamMessageAsync_ClientCancelled_SkipsAssistantPersistence()
+    {
+        // Arrange
+        var repo = new Mock<IAiChatMessageRepository>();
+        var filter = new Mock<IPsychologyTopicFilter>();
+        var chat = new Mock<IChatClient>();
+        var intentDetector = new Mock<IIntentDetector>();
+
+        var savedMessages = new List<AiChatMessage>();
+        repo.Setup(r => r.AddAsync(It.IsAny<AiChatMessage>(), It.IsAny<CancellationToken>()))
+            .Callback<AiChatMessage, CancellationToken>((m, _) => savedMessages.Add(m))
+            .ReturnsAsync((AiChatMessage m, CancellationToken _) => m);
+
+        repo.Setup(r => r.ListByUserAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AiChatMessage>());
+
+        repo.Setup(r => r.CountAssistantMessagesSinceAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        filter.Setup(f => f.DetectUnsafeTopic(It.IsAny<string>())).Returns((string?)null);
+        intentDetector.Setup(d => d.DetectAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IntentResult { Intent = ChatIntent.General, TriggeredSources = DataSource.None });
+
+        using var cts = new CancellationTokenSource();
+
+        async IAsyncEnumerable<string> StreamWithAbort([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
+        {
+            yield return "Phần 1";
+            cts.Cancel(); // Abort mid-stream
+            await Task.Yield();
+            yield return "Phần 2";
+        }
+
+        chat.Setup(c => c.StreamMessageAsync(
+                It.IsAny<string>(),
+                It.IsAny<IReadOnlyList<ChatTurn>>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns((string _, IReadOnlyList<ChatTurn> _, string _, CancellationToken ct) => StreamWithAbort(ct));
+
+        var sut = NewSut(repo.Object, filter.Object, chat.Object, intentDetector.Object);
+
+        // Act
+        var events = new List<ChatStreamEvent>();
+        await foreach (var ev in sut.StreamMessageAsync(Guid.NewGuid(), "Alo bác sĩ", cts.Token))
+        {
+            events.Add(ev);
+        }
+
+        // Assert: USER message was saved at start, but ASSISTANT message is NOT saved because client cancelled
+        Assert.Single(savedMessages);
+        Assert.Equal(ChatRole.User, savedMessages[0].Role);
     }
 }

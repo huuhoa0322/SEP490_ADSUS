@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
@@ -10,23 +9,41 @@ using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.Repositories.Interfaces;
 
 namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
 {
     public class InventoryService : IInventoryService
     {
-        private readonly AppDbContext _dbContext;
+        private readonly IInventoryRepository _inventory;
+        private readonly IMedicineRepository _medicines;
+        private readonly ISupplierRepository _suppliers;
+        private readonly IMedicinePackagingRepository _packagings;
+        private readonly IPrescriptionRepository _prescriptions;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<InventoryService> _logger;
 
-        public InventoryService(AppDbContext dbContext, ILogger<InventoryService> logger)
+        public InventoryService(
+            IInventoryRepository inventory,
+            IMedicineRepository medicines,
+            ISupplierRepository suppliers,
+            IMedicinePackagingRepository packagings,
+            IPrescriptionRepository prescriptions,
+            IUnitOfWork unitOfWork,
+            ILogger<InventoryService> logger)
         {
-            _dbContext = dbContext;
+            _inventory = inventory;
+            _medicines = medicines;
+            _suppliers = suppliers;
+            _packagings = packagings;
+            _prescriptions = prescriptions;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
         public async Task ImportMedicineAsync(ImportInventoryRequest request)
         {
-            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
                 await ProcessSingleImportAsync(request);
@@ -49,7 +66,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
         {
             if (requests == null || requests.Count == 0) return;
 
-            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
             try
             {
                 for (int i = 0; i < requests.Count; i++)
@@ -80,31 +97,30 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
 
         private async Task ProcessSingleImportAsync(ImportInventoryRequest request)
         {
-                var medicine = await _dbContext.Medicines
-                    .FirstOrDefaultAsync(m => m.MedicineId == request.MedicineId);
-                
+                var medicine = await _medicines.GetByIdAsync(request.MedicineId);
+
                 if (medicine == null || medicine.Status != MedicineStatus.Active)
                 {
                     throw new BusinessException("Thuốc không tồn tại hoặc đã ngừng sử dụng.");
                 }
 
-                var supplier = await _dbContext.Suppliers
-                    .FirstOrDefaultAsync(s => s.SupplierId == request.SupplierId);
-                
+                var supplier = await _suppliers.GetByIdAsync(request.SupplierId);
+
                 if (supplier == null || !supplier.IsActive)
                 {
                     throw new BusinessException("Nhà cung cấp không tồn tại hoặc đã bị khóa.");
                 }
 
-                if (request.ExpiryDate.Date <= DateTime.UtcNow.Date)
+                // So với "hôm nay" theo giờ phòng khám — theo UTC thì từ 00:00 đến 07:00 giờ VN lô
+                // hết hạn ngay hôm nay vẫn nhập được.
+                if (DateOnly.FromDateTime(request.ExpiryDate) <= ClinicClock.Today())
                 {
                     throw new BusinessException("Hạn sử dụng phải lớn hơn ngày hiện tại.");
                 }
 
                 // 2. Validate Packaging & Calculate Base Unit
-                var packaging = await _dbContext.MedicinePackagings
-                    .FirstOrDefaultAsync(p => p.Id == request.MedicinePackagingId);
-                
+                var packaging = await _packagings.GetByIdAsync(request.MedicinePackagingId);
+
                 if (packaging == null || packaging.MedicineId != request.MedicineId)
                 {
                     throw new BusinessException("Đơn vị đóng gói không hợp lệ cho thuốc này.");
@@ -114,9 +130,8 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                 var unitImportPrice = request.ImportPricePerUnit / packaging.ConversionFactor;
 
                 // 3. Upsert MedicineBatch - Validate Lot Number uniqueness across medicines
-                var existingLotBatch = await _dbContext.MedicineBatches
-                    .FirstOrDefaultAsync(b => b.LotNumber == request.LotNumber);
-                
+                var existingLotBatch = await _inventory.GetBatchByLotNumberForUpdateAsync(request.LotNumber);
+
                 MedicineBatch batch;
                 if (existingLotBatch != null)
                 {
@@ -152,11 +167,11 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                         QuantityBase = quantityBase,
                         BaseUnitAvgImportPrice = unitImportPrice
                     };
-                    _dbContext.MedicineBatches.Add(batch);
+                    await _inventory.AddBatchAsync(batch);
                 }
 
                 // Chờ lưu Batch nếu là Batch mới để có ID
-                await _dbContext.SaveChangesAsync();
+                await _unitOfWork.SaveChangesAsync();
 
                 // 4. Ghi log InventoryTransaction
                 var txn = new InventoryTransaction
@@ -170,121 +185,72 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                     SupplierId = request.SupplierId,
                     ActualImportPrice = unitImportPrice
                 };
-                _dbContext.InventoryTransactions.Add(txn);
+                await _inventory.AddTransactionAsync(txn);
 
                 // Lưu lại thay đổi của lệnh Import này
-                await _dbContext.SaveChangesAsync();
+                await _unitOfWork.SaveChangesAsync();
         }
 
         public async Task<PagedResult<InventoryHistoryResponse>> GetInventoryHistoryAsync(InventoryHistoryFilter filter)
         {
-            var query = _dbContext.InventoryTransactions
-                .Include(t => t.Batch)
-                .ThenInclude(b => b.Medicine)
-                .Include(t => t.Supplier)
-                .Join(_dbContext.MedicinePackagings.Include(mp => mp.MedicineUnit),
-                    txn => txn.MedicinePackagingId,
-                    mp => mp.Id,
-                    (txn, mp) => new { txn, mp })
-                .AsQueryable();
-
-            if (filter.Type.HasValue)
-            {
-                query = query.Where(q => q.txn.TxnType == filter.Type.Value);
-            }
-
-            if (filter.BatchId.HasValue)
-            {
-                query = query.Where(q => q.txn.BatchId == filter.BatchId.Value);
-            }
-
-            if (!string.IsNullOrWhiteSpace(filter.Search))
-            {
-                var lowerSearch = filter.Search.Trim().ToLower();
-                query = query.Where(q => 
-                    q.txn.Batch.Medicine.Name.ToLower().Contains(lowerSearch) ||
-                    q.txn.Batch.LotNumber.ToLower().Contains(lowerSearch) ||
-                    (q.txn.Supplier != null && q.txn.Supplier.Name.ToLower().Contains(lowerSearch))
-                );
-            }
-
-            // Sắp xếp động theo filter
+            // Sắp xếp động theo filter — mặc định giảm dần (mới nhất trước)
             bool desc = !string.Equals(filter.SortDir, "asc", StringComparison.OrdinalIgnoreCase);
-            query = filter.SortBy?.ToLower() switch
+
+            var (rows, totalCount) = await _inventory.GetHistoryPageAsync(
+                filter.Type, filter.BatchId, filter.Search, filter.SortBy, desc, filter.Page, filter.PageSize);
+
+            var items = rows.Select(r => new InventoryHistoryResponse
             {
-                "quantitybase" => desc
-                    ? query.OrderByDescending(q => q.txn.QuantityBase)
-                    : query.OrderBy(q => q.txn.QuantityBase),
-                _ => desc
-                    ? query.OrderByDescending(q => q.txn.TxnDate)
-                    : query.OrderBy(q => q.txn.TxnDate),
-            };
-
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .Skip((filter.Page - 1) * filter.PageSize)
-                .Take(filter.PageSize)
-                .Select(q => new InventoryHistoryResponse
-                {
-                    TransactionId = q.txn.Id,
-                    BatchId = q.txn.BatchId,
-                    LotNumber = q.txn.Batch.LotNumber,
-                    MedicineName = q.txn.Batch.Medicine.Name,
-                    SupplierName = q.txn.Supplier != null ? q.txn.Supplier.Name : null,
-                    UnitName = q.mp.MedicineUnit.Name,
-                    // Lấy tên đơn vị cơ bản từ MedicinePackaging có IsBaseUnit = true
-                    BaseUnitName = _dbContext.MedicinePackagings
-                        .Where(bp => bp.MedicineId == q.txn.Batch.MedicineId && bp.IsBaseUnit)
-                        .Select(bp => bp.MedicineUnit.Name)
-                        .FirstOrDefault(),
-                    TxnType = q.txn.TxnType,
-                    QuantityBase = q.txn.QuantityBase,
-                    QuantityInUnit = q.txn.QuantityInUnit,
-                    TxnDate = q.txn.TxnDate,
-                    UnitImportPrice = (q.txn.ActualImportPrice ?? q.txn.Batch.BaseUnitAvgImportPrice) * q.mp.ConversionFactor,
-                    PrescriptionItemId = q.txn.PrescriptionItemId,
-                    Reason = q.txn.Reason
-                })
-                .ToListAsync();
+                TransactionId = r.TransactionId,
+                BatchId = r.BatchId,
+                LotNumber = r.LotNumber,
+                MedicineName = r.MedicineName,
+                SupplierName = r.SupplierName,
+                UnitName = r.UnitName,
+                BaseUnitName = r.BaseUnitName,
+                TxnType = r.TxnType,
+                QuantityBase = r.QuantityBase,
+                QuantityInUnit = r.QuantityInUnit,
+                TxnDate = r.TxnDate,
+                UnitImportPrice = r.UnitImportPrice,
+                PrescriptionItemId = r.PrescriptionItemId,
+                Reason = r.Reason
+            }).ToList();
 
             return new PagedResult<InventoryHistoryResponse>(items, filter.Page, filter.PageSize, totalCount, (int)Math.Ceiling(totalCount / (double)filter.PageSize));
         }
 
         public async Task<ImportValidationResponse> ValidateImportAsync(ImportInventoryRequest request)
         {
-            var medicine = await _dbContext.Medicines
-                .FirstOrDefaultAsync(m => m.MedicineId == request.MedicineId);
-            
+            // Chỉ kiểm tra hợp lệ, không sửa gì — mọi truy vấn đều chỉ đọc
+            var medicine = await _medicines.GetByIdAsync(request.MedicineId);
+
             if (medicine == null || medicine.Status != MedicineStatus.Active)
             {
                 return new ImportValidationResponse { IsValid = false, ErrorMessage = "Thuốc không tồn tại hoặc đã ngừng sử dụng." };
             }
 
-            var supplier = await _dbContext.Suppliers
-                .FirstOrDefaultAsync(s => s.SupplierId == request.SupplierId);
-            
+            var supplier = await _suppliers.GetByIdAsync(request.SupplierId);
+
             if (supplier == null || !supplier.IsActive)
             {
                 return new ImportValidationResponse { IsValid = false, ErrorMessage = "Nhà cung cấp không tồn tại hoặc đã bị khóa." };
             }
 
-            if (request.ExpiryDate.Date <= DateTime.UtcNow.Date)
+            if (DateOnly.FromDateTime(request.ExpiryDate) <= ClinicClock.Today())
             {
                 return new ImportValidationResponse { IsValid = false, ErrorMessage = "Hạn sử dụng phải lớn hơn ngày hiện tại." };
             }
 
-            var packaging = await _dbContext.MedicinePackagings
-                .FirstOrDefaultAsync(p => p.Id == request.MedicinePackagingId);
-            
+            var packaging = await _packagings.GetByIdAsync(request.MedicinePackagingId);
+
             if (packaging == null || packaging.MedicineId != request.MedicineId)
             {
                 return new ImportValidationResponse { IsValid = false, ErrorMessage = "Đơn vị đóng gói không hợp lệ cho thuốc này." };
             }
 
-            var existingLotBatch = await _dbContext.MedicineBatches
-                .FirstOrDefaultAsync(b => b.LotNumber == request.LotNumber);
-            
+            var existingLotBatch = await _inventory.GetBatchByLotNumberAsync(request.LotNumber);
+
             if (existingLotBatch != null)
             {
                 if (existingLotBatch.MedicineId != request.MedicineId)
@@ -303,52 +269,22 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
 
         public async Task<PagedResult<MedicineBatchResponse>> GetMedicineBatchesAsync(MedicineBatchFilter filter)
         {
-            var query = _dbContext.MedicineBatches
-                .Where(b => b.MedicineId == filter.MedicineId)
-                .AsQueryable();
-
-            // Search theo Số lô
-            if (!string.IsNullOrWhiteSpace(filter.Search))
-            {
-                var lower = filter.Search.Trim().ToLower();
-                query = query.Where(b => b.LotNumber.ToLower().Contains(lower));
-            }
-
-            // Sort động
+            // Sort động — mặc định tăng dần (hạn gần nhất lên trước)
             bool desc = string.Equals(filter.SortDir, "desc", StringComparison.OrdinalIgnoreCase);
-            query = filter.SortBy?.ToLower() switch
+
+            var (rows, totalCount) = await _inventory.GetBatchesPageAsync(
+                filter.MedicineId, filter.Search, filter.SortBy, desc, filter.Page, filter.PageSize);
+
+            var items = rows.Select(r => new MedicineBatchResponse
             {
-                "quantitybase" => desc
-                    ? query.OrderByDescending(b => b.QuantityBase)
-                    : query.OrderBy(b => b.QuantityBase),
-                "avgprice" => desc
-                    ? query.OrderByDescending(b => b.BaseUnitAvgImportPrice)
-                    : query.OrderBy(b => b.BaseUnitAvgImportPrice),
-                _ => desc
-                    ? query.OrderByDescending(b => b.ExpiryDate)
-                    : query.OrderBy(b => b.ExpiryDate), // mặc định: hạn gần nhất lên trước
-            };
-
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .Skip((filter.Page - 1) * filter.PageSize)
-                .Take(filter.PageSize)
-                .Select(b => new MedicineBatchResponse
-                {
-                    BatchId = b.Id,
-                    MedicineId = b.MedicineId,
-                    LotNumber = b.LotNumber,
-                    ExpiryDate = b.ExpiryDate.ToDateTime(TimeOnly.MinValue),
-                    QuantityBase = b.QuantityBase,
-                    BaseUnitAvgImportPrice = b.BaseUnitAvgImportPrice,
-                    // Lấy tên đơn vị cơ bản từ MedicinePackaging có IsBaseUnit = true
-                    UsageUnit = _dbContext.MedicinePackagings
-                        .Where(mp => mp.MedicineId == b.MedicineId && mp.IsBaseUnit)
-                        .Select(mp => mp.MedicineUnit.Name)
-                        .FirstOrDefault()
-                })
-                .ToListAsync();
+                BatchId = r.BatchId,
+                MedicineId = r.MedicineId,
+                LotNumber = r.LotNumber,
+                ExpiryDate = r.ExpiryDate.ToDateTime(TimeOnly.MinValue),
+                QuantityBase = r.QuantityBase,
+                BaseUnitAvgImportPrice = r.BaseUnitAvgImportPrice,
+                UsageUnit = r.UsageUnit
+            }).ToList();
 
             return new PagedResult<MedicineBatchResponse>(
                 items, filter.Page, filter.PageSize, totalCount,
@@ -356,16 +292,21 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
         }
         public async Task DispenseAsync(Guid caseId)
         {
-            var prescription = await _dbContext.Prescriptions
-                .Include(p => p.PrescriptionItems)
-                    .ThenInclude(pi => pi.Medicine)
-                        .ThenInclude(m => m.MedicinePackagings)
-                .FirstOrDefaultAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active);
+            var prescription = await _prescriptions.GetActiveByCaseWithItemsAsync(caseId);
 
             if (prescription == null || prescription.PrescriptionItems.Count == 0)
             {
                 throw new BusinessException("Không tìm thấy đơn thuốc hoặc đơn thuốc trống.");
             }
+
+            // FEFO: nạp các lô còn hạn, còn hàng của MỌI thuốc trong đơn bằng một truy vấn, sắp theo
+            // hạn dùng tăng dần — thay vì truy vấn lại cho từng dòng thuốc (N+1, P11 review 24/09/2026).
+            // Có tracking vì số lượng lô bị trừ ngay trên các entity này. "Hôm nay" theo giờ phòng
+            // khám — theo UTC thì từ 00:00 đến 07:00 giờ VN lô hết hạn hôm qua vẫn bị xuất.
+            var today = ClinicClock.Today();
+            var medicineIds = prescription.PrescriptionItems.Select(pi => pi.MedicineId).Distinct().ToList();
+            var batchesByMedicine = (await _inventory.ListAvailableBatchesForUpdateAsync(medicineIds, today))
+                .ToLookup(b => b.MedicineId);
 
             foreach (var pItem in prescription.PrescriptionItems)
             {
@@ -379,18 +320,14 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                     throw new BusinessException($"Thuốc '{pItem.Medicine.Name}' chưa được cấu hình Base Unit.");
                 }
 
-                // FEFO: Lấy các lô còn hạn, còn hàng, sắp xếp theo Hạn sử dụng tăng dần
-                var batches = await _dbContext.MedicineBatches
-                    .Where(b => b.MedicineId == pItem.MedicineId && b.QuantityBase > 0 && b.ExpiryDate >= DateOnly.FromDateTime(DateTime.UtcNow))
-                    .OrderBy(b => b.ExpiryDate)
-                    .ToListAsync();
-
-                foreach (var batch in batches)
+                foreach (var batch in batchesByMedicine[pItem.MedicineId])
                 {
                     if (quantityNeededBS <= 0) break;
+                    // Cùng một thuốc có thể xuất hiện ở nhiều dòng — lô đã bị dòng trước lấy hết thì bỏ qua
+                    if (batch.QuantityBase <= 0) continue;
 
                     int cutQtyBS = Math.Min(batch.QuantityBase, quantityNeededBS);
-                    
+
                     batch.QuantityBase -= cutQtyBS;
                     quantityNeededBS -= cutQtyBS;
 
@@ -407,7 +344,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                         TxnType = InventoryTxnType.Dispense
                     };
 
-                    _dbContext.InventoryTransactions.Add(txn);
+                    await _inventory.AddTransactionAsync(txn);
                 }
 
                 if (quantityNeededBS > 0)
@@ -416,14 +353,11 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                 }
             }
 
-            await _dbContext.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
         }
         public async Task<AdjustInventoryResponse> AdjustAsync(AdjustInventoryRequest request)
         {
-            var batch = await _dbContext.MedicineBatches
-                .Include(b => b.Medicine)
-                    .ThenInclude(m => m.MedicinePackagings)
-                .FirstOrDefaultAsync(b => b.Id == request.BatchId);
+            var batch = await _inventory.GetBatchWithPackagingsForUpdateAsync(request.BatchId);
 
             if (batch == null)
             {
@@ -463,8 +397,8 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                 Reason = request.Reason
             };
 
-            _dbContext.InventoryTransactions.Add(txn);
-            await _dbContext.SaveChangesAsync();
+            await _inventory.AddTransactionAsync(txn);
+            await _unitOfWork.SaveChangesAsync();
 
             return new AdjustInventoryResponse
             {
@@ -478,24 +412,15 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
         public async Task<InventoryAlertSummary> GetAlertSummaryAsync()
         {
             var summary = new InventoryAlertSummary();
-            var now = DateTime.UtcNow;
+            // "Hôm nay" theo giờ phòng khám cho cả tồn kho hợp lệ lẫn số ngày còn hạn
+            var today = ClinicClock.Today();
 
-            var allMedicinesQuery = await _dbContext.Medicines
-                .Include(m => m.MedicinePackagings)
-                    .ThenInclude(mp => mp.MedicineUnit)
-                .Where(m => m.Status == MedicineStatus.Active)
-                .Select(m => new
-                {
-                    Medicine = m,
-                    TotalStock = m.MedicineBatches
-                        .Where(b => b.QuantityBase > 0 && b.ExpiryDate >= DateOnly.FromDateTime(now))
-                        .Sum(b => (int?)b.QuantityBase) ?? 0
-                })
-                .ToListAsync();
+            // Báo cáo chỉ đọc — repository không tracking danh mục thuốc và lô
+            var allMedicinesQuery = await _inventory.ListActiveMedicineStocksAsync(today);
 
             summary.TotalMedicinesCount = allMedicinesQuery.Count;
             summary.OutOfStockCount = allMedicinesQuery.Count(x => x.TotalStock == 0);
-            
+
             // "Còn hàng" là những thuốc tồn kho > ngưỡng cảnh báo
             summary.InStockCount = allMedicinesQuery.Count(x => x.TotalStock > x.Medicine.LowStockThreshold);
 
@@ -508,7 +433,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
             {
                 var med = stock.Medicine;
                 var baseUnitPack = med.MedicinePackagings.FirstOrDefault(mp => mp.IsBaseUnit);
-                
+
                 summary.LowStockAlerts.Add(new LowStockAlertResponse
                 {
                     MedicineId = med.MedicineId,
@@ -523,16 +448,11 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
             summary.LowStockCount = summary.LowStockAlerts.Count;
 
             // 2. EXPIRY
-            var batches = await _dbContext.MedicineBatches
-                .Include(b => b.Medicine)
-                    .ThenInclude(m => m.MedicinePackagings)
-                        .ThenInclude(mp => mp.MedicineUnit)
-                .Where(b => b.QuantityBase > 0)
-                .ToListAsync();
+            var batches = await _inventory.ListBatchesInStockAsync();
 
             foreach (var batch in batches)
             {
-                var daysUntilExpiry = batch.ExpiryDate.DayNumber - DateOnly.FromDateTime(now).DayNumber;
+                var daysUntilExpiry = batch.ExpiryDate.DayNumber - today.DayNumber;
 
                 if (daysUntilExpiry <= 60)
                 {

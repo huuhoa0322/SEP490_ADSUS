@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
@@ -65,10 +67,29 @@ class _AiChatbotScreenState extends ConsumerState<AiChatbotScreen> {
     final state = ref.watch(aiChatViewModelProvider);
     final vm = ref.read(aiChatViewModelProvider.notifier);
 
+    // Lắng nghe lỗi để hiển thị SnackBar thân thiện (R4)
+    ref.listen<AiChatState>(aiChatViewModelProvider, (prev, next) {
+      if (next.errorMessage != null && next.errorMessage != prev?.errorMessage) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: AppColors.danger,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        ref.read(aiChatViewModelProvider.notifier).clearError();
+      }
+    });
+
     // Scroll khi có tin nhắn mới
     if (state.messages.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     }
+
+    final showTyping = state.isSending &&
+        (state.isThinking ||
+            (state.messages.isNotEmpty &&
+                state.messages.last.role == entity.ChatRole.user));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -127,9 +148,9 @@ class _AiChatbotScreenState extends ConsumerState<AiChatbotScreen> {
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    itemCount: state.messages.length + (state.isSending ? 1 : 0),
+                    itemCount: state.messages.length + (showTyping ? 1 : 0),
                     itemBuilder: (context, index) {
-                      if (state.isSending && index == state.messages.length) {
+                      if (showTyping && index == state.messages.length) {
                         return const _TypingIndicator();
                       }
                       final msg = state.messages[index];
@@ -381,10 +402,72 @@ class _AssistantBubble extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    // Nội dung
-                    Text(
-                      message.content,
-                      style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.navy),
+                    // Nội dung Markdown (R3/R4)
+                    MarkdownBody(
+                      data: message.content,
+                      selectable: true,
+                      styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                        p: const TextStyle(
+                          fontSize: 14,
+                          height: 1.5,
+                          color: AppColors.navy,
+                        ),
+                        strong: const TextStyle(
+                          fontSize: 14,
+                          height: 1.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
+                        ),
+                        em: const TextStyle(
+                          fontSize: 14,
+                          height: 1.5,
+                          fontStyle: FontStyle.italic,
+                          color: AppColors.navy,
+                        ),
+                        h1: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.navy,
+                        ),
+                        h2: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.navy,
+                        ),
+                        h3: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.navy,
+                        ),
+                        listBullet: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.navy,
+                        ),
+                        code: AppFonts.mono(
+                          fontSize: 13,
+                          color: AppColors.navy,
+                        ).copyWith(backgroundColor: AppColors.aiVioletTint),
+                        codeblockDecoration: BoxDecoration(
+                          color: AppColors.aiVioletTint,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        blockquoteDecoration: const BoxDecoration(
+                          border: Border(left: BorderSide(color: AppColors.aiViolet, width: 3)),
+                        ),
+                        blockquotePadding: const EdgeInsets.only(left: 10, top: 2, bottom: 2),
+                        a: const TextStyle(
+                          color: AppColors.teal,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                      onTapLink: (text, href, title) {
+                        if (href != null) {
+                          final uri = Uri.tryParse(href);
+                          if (uri != null) {
+                            launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        }
+                      },
                     ),
                   ],
                 ),

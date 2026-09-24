@@ -1,5 +1,5 @@
+using ADSUS_BE.BLL.AppointmentScheduling.Services;
 using ADSUS_BE.BLL.Common.Interfaces;
-using ADSUS_BE.BLL.Common.Settings;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.Jobs;
@@ -31,22 +31,18 @@ public class NoShowCancellationJobTests : IDisposable
             .Options;
         _db = new AppDbContext(options);
 
-        // Tạo mock IServiceScopeFactory
+        // Tạo mock IServiceScopeFactory — job lấy NoShowService (thật, chạy trên DB InMemory) từ scope
         var serviceScope = new Mock<IServiceScope>();
         var serviceProvider = new Mock<IServiceProvider>();
-        serviceProvider.Setup(sp => sp.GetService(typeof(AppDbContext)))
-            .Returns(_db);
+        serviceProvider.Setup(sp => sp.GetService(typeof(NoShowService)))
+            .Returns(NoShowTestServices.Create(_db, _notificationService.Object));
         serviceScope.Setup(s => s.ServiceProvider).Returns(serviceProvider.Object);
 
         var scopeFactory = new Mock<IServiceScopeFactory>();
         scopeFactory.Setup(f => f.CreateScope()).Returns(serviceScope.Object);
 
-        var noShowSettings = Options.Create(new NoShowSettings { GraceTimeMinutes = 15 });
-
         _sut = new NoShowCancellationJob(
             scopeFactory.Object,
-            _notificationService.Object,
-            noShowSettings,
             _logger.Object);
     }
 
@@ -421,12 +417,18 @@ public class NoShowCancellationJobTests : IDisposable
         // Act
         await _sut.Execute(context);
 
-        // Assert - Notification đã được gửi
+        // Assert - Notification đã được gửi (cùng loại với luồng check-in muộn — NoShowService)
         _notificationService.Verify(
             s => s.SendAsync(It.Is<SendNotificationRequest>(r =>
                 r.UserId == patient.UserId &&
-                r.Type == "no_show_cancelled" &&
-                r.Title == "Lịch hẹn bị hủy"),
+                r.Type == "appointment_no_show" &&
+                r.Title == "Lịch khám đã bị hủy (No-Show)"),
+            It.IsAny<CancellationToken>()),
+            Times.Once);
+        _notificationService.Verify(
+            s => s.SendAsync(It.Is<SendNotificationRequest>(r =>
+                r.UserId == doctor.UserId &&
+                r.Type == "patient_no_show"),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -486,6 +488,66 @@ public class NoShowCancellationJobTests : IDisposable
         var ap2 = await _db.Appointments.FindAsync(new object[] { appointment2.AppointmentId }, TestContext.Current.CancellationToken);
         Assert.Equal(AppointmentStatus.NoShow, ap1!.Status);
         Assert.Equal(AppointmentStatus.NoShow, ap2!.Status);
+    }
+
+    #endregion
+
+    #region TC-010: Linked Case Loaded With The Appointment
+
+    /// <summary>
+    /// Case liên kết được nạp cùng lịch hẹn (Include) thay vì truy vấn riêng từng lịch: Case còn
+    /// Booked thì chuyển Cancelled, Case đã sang trạng thái khác thì giữ nguyên.
+    /// </summary>
+    [Fact]
+    public async Task Execute_NoShowWithLinkedCase_CancelsOnlyBookedCase()
+    {
+        // Arrange — 2 lịch quá hạn (theo giờ phòng khám), mỗi lịch gắn 1 Case
+        var doctor = CreateDoctor();
+        var clinicPast = DateTime.UtcNow.Add(ClinicClock.Offset).AddHours(-2);
+        var date = DateOnly.FromDateTime(clinicPast);
+
+        var bookedCase = new Case { CaseId = Guid.NewGuid(), DoctorId = doctor.UserId, Status = CaseStatus.Booked };
+        var inProgressCase = new Case { CaseId = Guid.NewGuid(), DoctorId = doctor.UserId, Status = CaseStatus.InProgress };
+
+        var profile1 = CreatePatientProfile(CreatePatient("P1"));
+        var ap1 = CreateAppointment(CreateSlot(doctor, date, TimeOnly.FromDateTime(clinicPast)), profile1, AppointmentStatus.Booked);
+        bookedCase.PatientProfileId = profile1.PatientProfileId;
+        ap1.CaseId = bookedCase.CaseId;
+
+        var profile2 = CreatePatientProfile(CreatePatient("P2"));
+        var clinicPast2 = clinicPast.AddMinutes(-30);
+        var ap2 = CreateAppointment(CreateSlot(doctor, DateOnly.FromDateTime(clinicPast2), TimeOnly.FromDateTime(clinicPast2)), profile2, AppointmentStatus.Booked);
+        inProgressCase.PatientProfileId = profile2.PatientProfileId;
+        ap2.CaseId = inProgressCase.CaseId;
+
+        _db.Cases.AddRange(bookedCase, inProgressCase);
+        _db.Appointments.AddRange(ap1, ap2);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        await _sut.Execute(CreateMockJobExecutionContext());
+
+        // Assert
+        Assert.Equal(CaseStatus.Cancelled, (await _db.Cases.FindAsync(new object[] { bookedCase.CaseId }, TestContext.Current.CancellationToken))!.Status);
+        Assert.Equal(CaseStatus.InProgress, (await _db.Cases.FindAsync(new object[] { inProgressCase.CaseId }, TestContext.Current.CancellationToken))!.Status);
+    }
+
+    /// <summary>Lịch ngày mai theo giờ phòng khám không bị đụng tới (lọc thời gian nằm trong SQL).</summary>
+    [Fact]
+    public async Task Execute_FutureAppointment_IsLeftBooked()
+    {
+        var doctor = CreateDoctor();
+        var tomorrow = ClinicClock.Today().AddDays(1);
+        var appointment = CreateAppointment(
+            CreateSlot(doctor, tomorrow, new TimeOnly(8, 0)),
+            CreatePatientProfile(CreatePatient()),
+            AppointmentStatus.Booked);
+        await SeedAppointmentAsync(appointment);
+
+        await _sut.Execute(CreateMockJobExecutionContext());
+
+        var updated = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
+        Assert.Equal(AppointmentStatus.Booked, updated!.Status);
     }
 
     #endregion
