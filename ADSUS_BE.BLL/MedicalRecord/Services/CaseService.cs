@@ -391,14 +391,7 @@ public sealed class CaseService : ICaseService
     {
         var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
-        if (_context != null)
-        {
-            _context.CaseSymptoms.RemoveRange(medicalCase.CaseSymptoms.ToList());
-        }
-        else
-        {
-            medicalCase.CaseSymptoms.Clear();
-        }
+        medicalCase.CaseSymptoms.Clear();
 
         var now = DateTime.UtcNow;
         if (request.Symptoms != null)
@@ -414,15 +407,8 @@ public sealed class CaseService : ICaseService
                     OtherNote = s.OtherNote,
                     CreatedAt = now
                 };
-
-                if (_context != null)
-                {
-                    _context.CaseSymptoms.Add(newSymptom);
-                }
-                else
-                {
-                    medicalCase.CaseSymptoms.Add(newSymptom);
-                }
+                
+                medicalCase.CaseSymptoms.Add(newSymptom);
             }
         }
 
@@ -442,14 +428,7 @@ public sealed class CaseService : ICaseService
     {
         var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
-        if (_context != null)
-        {
-            _context.CaseDiseases.RemoveRange(medicalCase.CaseDiseases.ToList());
-        }
-        else
-        {
-            medicalCase.CaseDiseases.Clear();
-        }
+        medicalCase.CaseDiseases.Clear();
 
         var now = DateTime.UtcNow;
         if (request.Diseases != null)
@@ -464,15 +443,8 @@ public sealed class CaseService : ICaseService
                     Note = d.Note,
                     CreatedAt = now
                 };
-
-                if (_context != null)
-                {
-                    _context.CaseDiseases.Add(newDisease);
-                }
-                else
-                {
-                    medicalCase.CaseDiseases.Add(newDisease);
-                }
+                
+                medicalCase.CaseDiseases.Add(newDisease);
             }
         }
 
@@ -492,14 +464,7 @@ public sealed class CaseService : ICaseService
     {
         var medicalCase = await LoadForClinicalUpdateAsync(caseId, actingDoctorId, ct);
 
-        if (_context != null)
-        {
-            _context.CaseAllergies.RemoveRange(medicalCase.CaseAllergies.ToList());
-        }
-        else
-        {
-            medicalCase.CaseAllergies.Clear();
-        }
+        medicalCase.CaseAllergies.Clear();
 
         var now = DateTime.UtcNow;
         if (request.Allergies != null)
@@ -514,15 +479,8 @@ public sealed class CaseService : ICaseService
                     Note = a.Note,
                     CreatedAt = now
                 };
-
-                if (_context != null)
-                {
-                    _context.CaseAllergies.Add(newAllergy);
-                }
-                else
-                {
-                    medicalCase.CaseAllergies.Add(newAllergy);
-                }
+                
+                medicalCase.CaseAllergies.Add(newAllergy);
             }
         }
 
@@ -548,14 +506,7 @@ public sealed class CaseService : ICaseService
                 "This case has not been checked in yet. Please wait for the nurse to check in the patient first.");
         }
 
-        if (_context != null)
-        {
-            _context.CaseDiagnoses.RemoveRange(medicalCase.CaseDiagnoses.ToList());
-        }
-        else
-        {
-            medicalCase.CaseDiagnoses.Clear();
-        }
+        medicalCase.CaseDiagnoses.Clear();
 
         var now = DateTime.UtcNow;
         if (request.Diagnoses != null)
@@ -570,15 +521,8 @@ public sealed class CaseService : ICaseService
                     Note = d.Note,
                     CreatedAt = now
                 };
-
-                if (_context != null)
-                {
-                    _context.CaseDiagnoses.Add(newDiagnosis);
-                }
-                else
-                {
-                    medicalCase.CaseDiagnoses.Add(newDiagnosis);
-                }
+                
+                medicalCase.CaseDiagnoses.Add(newDiagnosis);
             }
         }
 
