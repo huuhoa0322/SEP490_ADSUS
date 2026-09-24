@@ -20,6 +20,12 @@ public interface IPatientProfileService
     /// </summary>
     Task<PatientProfileResponse?> FindByIdAsync(Guid patientProfileId, CancellationToken ct = default);
 
+    /// <summary>
+    /// PatientProfileId của một tài khoản bệnh nhân, null nếu tài khoản chưa có hồ sơ — cho module
+    /// khác chỉ cần biết "hồ sơ của người đang đăng nhập" (lời nhắc, lịch uống thuốc...). Không tạo bù.
+    /// </summary>
+    Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken ct = default);
+
     Task<PagedResult<PatientSummaryResponse>> SearchPatientsAsync(
         string? search,
         string? visitStatus,

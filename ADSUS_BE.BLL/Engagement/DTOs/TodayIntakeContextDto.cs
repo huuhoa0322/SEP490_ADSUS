@@ -9,5 +9,5 @@ public sealed record TodayIntakeContextDto(
     string MedicineName,
     string Dosage,
     string? Instructions,
-    DateTime ScheduledTime,
+    DateTime ScheduledTime, // UTC như trong DB — đổi sang giờ phòng khám khi hiển thị
     string Status);

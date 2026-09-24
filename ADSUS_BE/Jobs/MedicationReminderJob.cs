@@ -18,7 +18,6 @@ public sealed class MedicationReminderJob : IJob
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IMedicationIntakeLogRepository _intakeLogRepo;
-    private readonly IPatientProfileRepository _patientProfileRepo;
     private readonly ILogger<MedicationReminderJob> _logger;
 
     private const int ReminderWindowMinutes = 30;
@@ -26,12 +25,10 @@ public sealed class MedicationReminderJob : IJob
     public MedicationReminderJob(
         IServiceScopeFactory scopeFactory,
         IMedicationIntakeLogRepository intakeLogRepo,
-        IPatientProfileRepository patientProfileRepo,
         ILogger<MedicationReminderJob> logger)
     {
         _scopeFactory = scopeFactory;
         _intakeLogRepo = intakeLogRepo;
-        _patientProfileRepo = patientProfileRepo;
         _logger = logger;
     }
 
@@ -60,9 +57,9 @@ public sealed class MedicationReminderJob : IJob
         {
             try
             {
-                var patientProfile = await _patientProfileRepo.GetByIdAsync(
-                    log.PrescriptionItem?.Prescription?.Case?.PatientProfileId ?? Guid.Empty,
-                    context.CancellationToken);
+                // ListDueRemindersAsync đã Include Case → PatientProfile → User, không cần truy vấn
+                // lại hồ sơ cho từng liều (N+1, P11 review 24/09/2026).
+                var patientProfile = log.PrescriptionItem?.Prescription?.Case?.PatientProfile;
 
                 if (patientProfile?.User is null)
                 {

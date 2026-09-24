@@ -134,6 +134,16 @@ public interface IAppointmentRepository
     /// <summary>Hồ sơ bệnh nhân đã có lịch hẹn còn hiệu lực (không huỷ, không vắng) trong slot này chưa.</summary>
     Task<bool> ExistsActiveInSlotAsync(Guid patientProfileId, Guid slotId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Lịch hẹn đang Booked có giờ khám trong [<paramref name="fromLocal"/>, <paramref name="toLocal"/>]
+    /// — hai mốc là giờ địa phương phòng khám, cùng hệ với SlotDate/StartTime. Kèm Slot + Doctor và
+    /// hồ sơ bệnh nhân (để lấy UserId người nhận). Chỉ đọc. Dùng cho JOB-03 nhắc lịch khám.
+    /// </summary>
+    Task<IReadOnlyList<Appointment>> ListBookedStartingBetweenAsync(
+        DateTime fromLocal,
+        DateTime toLocal,
+        CancellationToken ct = default);
+
     /// <summary>Thêm lịch hẹn vào context, CHƯA lưu — dùng trong transaction của Service.</summary>
     Task AddAsync(Appointment appointment, CancellationToken ct = default);
 

@@ -104,18 +104,24 @@ public class InvoiceService : IInvoiceService
         // 4. Xử lý từng món thuốc (Greedy Allocation)
         if (hasMedicine && prescription != null)
         {
+            // Quy cách đóng gói được phép bán của MỌI thuốc trong đơn, nạp bằng một truy vấn, xếp từ
+            // lớn xuống nhỏ — thay vì truy vấn lại cho từng dòng thuốc (N+1, P11 review 24/09/2026).
+            var medicineIds = prescription.PrescriptionItems.Select(pi => pi.MedicineId).Distinct().ToList();
+            var packagingsByMedicine = (await _context.MedicinePackagings
+                    .AsNoTracking()
+                    .Include(mp => mp.MedicineUnit)
+                    .Where(mp => medicineIds.Contains(mp.MedicineId) && mp.IsSellable)
+                    .OrderByDescending(mp => mp.ConversionFactor)
+                    .ToListAsync())
+                .ToLookup(mp => mp.MedicineId);
+
             foreach (var pItem in prescription.PrescriptionItems)
             {
                 var remainingQuantity = pItem.QuantityBase;
                 decimal volumePerBaseUnit = pItem.Medicine.VolumePerBaseUnit ?? 1m;
                 if (remainingQuantity <= 0) continue;
 
-                // Lấy tất cả các quy cách đóng gói được phép bán của loại thuốc này, xếp từ lớn xuống nhỏ
-                var packagings = await _context.MedicinePackagings
-                    .Include(mp => mp.MedicineUnit)
-                    .Where(mp => mp.MedicineId == pItem.MedicineId && mp.IsSellable)
-                    .OrderByDescending(mp => mp.ConversionFactor)
-                    .ToListAsync();
+                var packagings = packagingsByMedicine[pItem.MedicineId].ToList();
 
                 if (packagings.Count == 0)
                 {
@@ -270,6 +276,7 @@ public class InvoiceService : IInvoiceService
     public async Task<InvoiceDetailResponse> GetInvoiceDetailAsync(Guid id)
     {
         var invoice = await _context.Invoices
+            .AsNoTracking()
             .Include(i => i.Case)
                 .ThenInclude(c => c.PatientProfile)
                     .ThenInclude(p => p.User)

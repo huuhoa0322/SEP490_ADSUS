@@ -43,6 +43,17 @@ public interface IScheduleSlotRepository
         Guid? excludeSlotId = null,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Khung giờ (DoctorId, SlotDate, StartTime, EndTime) của mọi slot thuộc các bác sĩ cho trước
+    /// trong khoảng ngày, ở MỌI trạng thái — cùng quy tắc với <see cref="HasOverlapAsync"/>. Dùng
+    /// khi cần kiểm tra trùng giờ cho hàng loạt slot trong bộ nhớ (JOB-02). Chỉ đọc, chỉ có 4 cột.
+    /// </summary>
+    Task<IReadOnlyList<ScheduleSlot>> ListTimeRangesAsync(
+        IReadOnlyCollection<Guid> doctorIds,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken ct = default);
+
     /// <summary>Đếm số appointment đang Booked trên slot này (dùng khi close slot có booking).</summary>
     Task<int> CountActiveAppointmentsAsync(Guid slotId, CancellationToken ct = default);
 

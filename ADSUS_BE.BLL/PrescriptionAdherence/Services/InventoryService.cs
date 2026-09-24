@@ -253,15 +253,18 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
 
         public async Task<ImportValidationResponse> ValidateImportAsync(ImportInventoryRequest request)
         {
+            // Chỉ kiểm tra hợp lệ, không sửa gì — đọc không tracking
             var medicine = await _dbContext.Medicines
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.MedicineId == request.MedicineId);
-            
+
             if (medicine == null || medicine.Status != MedicineStatus.Active)
             {
                 return new ImportValidationResponse { IsValid = false, ErrorMessage = "Thuốc không tồn tại hoặc đã ngừng sử dụng." };
             }
 
             var supplier = await _dbContext.Suppliers
+                .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.SupplierId == request.SupplierId);
             
             if (supplier == null || !supplier.IsActive)
@@ -275,14 +278,16 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
             }
 
             var packaging = await _dbContext.MedicinePackagings
+                .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.Id == request.MedicinePackagingId);
-            
+
             if (packaging == null || packaging.MedicineId != request.MedicineId)
             {
                 return new ImportValidationResponse { IsValid = false, ErrorMessage = "Đơn vị đóng gói không hợp lệ cho thuốc này." };
             }
 
             var existingLotBatch = await _dbContext.MedicineBatches
+                .AsNoTracking()
                 .FirstOrDefaultAsync(b => b.LotNumber == request.LotNumber);
             
             if (existingLotBatch != null)
@@ -367,6 +372,17 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                 throw new BusinessException("Không tìm thấy đơn thuốc hoặc đơn thuốc trống.");
             }
 
+            // FEFO: nạp các lô còn hạn, còn hàng của MỌI thuốc trong đơn bằng một truy vấn, sắp theo
+            // hạn dùng tăng dần — thay vì truy vấn lại cho từng dòng thuốc (N+1, P11 review 24/09/2026).
+            // Có tracking vì số lượng lô bị trừ ngay trên các entity này.
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var medicineIds = prescription.PrescriptionItems.Select(pi => pi.MedicineId).Distinct().ToList();
+            var batchesByMedicine = (await _dbContext.MedicineBatches
+                    .Where(b => medicineIds.Contains(b.MedicineId) && b.QuantityBase > 0 && b.ExpiryDate >= today)
+                    .OrderBy(b => b.ExpiryDate)
+                    .ToListAsync())
+                .ToLookup(b => b.MedicineId);
+
             foreach (var pItem in prescription.PrescriptionItems)
             {
                 decimal volumePerBaseUnit = pItem.Medicine.VolumePerBaseUnit ?? 1m;
@@ -379,15 +395,11 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                     throw new BusinessException($"Thuốc '{pItem.Medicine.Name}' chưa được cấu hình Base Unit.");
                 }
 
-                // FEFO: Lấy các lô còn hạn, còn hàng, sắp xếp theo Hạn sử dụng tăng dần
-                var batches = await _dbContext.MedicineBatches
-                    .Where(b => b.MedicineId == pItem.MedicineId && b.QuantityBase > 0 && b.ExpiryDate >= DateOnly.FromDateTime(DateTime.UtcNow))
-                    .OrderBy(b => b.ExpiryDate)
-                    .ToListAsync();
-
-                foreach (var batch in batches)
+                foreach (var batch in batchesByMedicine[pItem.MedicineId])
                 {
                     if (quantityNeededBS <= 0) break;
+                    // Cùng một thuốc có thể xuất hiện ở nhiều dòng — lô đã bị dòng trước lấy hết thì bỏ qua
+                    if (batch.QuantityBase <= 0) continue;
 
                     int cutQtyBS = Math.Min(batch.QuantityBase, quantityNeededBS);
                     
@@ -480,7 +492,9 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
             var summary = new InventoryAlertSummary();
             var now = DateTime.UtcNow;
 
+            // Báo cáo chỉ đọc — không tracking toàn bộ danh mục thuốc và lô
             var allMedicinesQuery = await _dbContext.Medicines
+                .AsNoTracking()
                 .Include(m => m.MedicinePackagings)
                     .ThenInclude(mp => mp.MedicineUnit)
                 .Where(m => m.Status == MedicineStatus.Active)
@@ -524,6 +538,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
 
             // 2. EXPIRY
             var batches = await _dbContext.MedicineBatches
+                .AsNoTracking()
                 .Include(b => b.Medicine)
                     .ThenInclude(m => m.MedicinePackagings)
                         .ThenInclude(mp => mp.MedicineUnit)

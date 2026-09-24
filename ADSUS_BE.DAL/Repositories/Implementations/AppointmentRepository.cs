@@ -48,6 +48,32 @@ public sealed class AppointmentRepository : IAppointmentRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Appointment>> ListBookedStartingBetweenAsync(
+        DateTime fromLocal,
+        DateTime toLocal,
+        CancellationToken ct = default)
+    {
+        var fromDate = DateOnly.FromDateTime(fromLocal);
+        var fromTime = TimeOnly.FromDateTime(fromLocal);
+        var toDate = DateOnly.FromDateTime(toLocal);
+        var toTime = TimeOnly.FromDateTime(toLocal);
+
+        // So sánh (SlotDate, StartTime) theo thứ tự từ điển — cửa sổ có thể vắt qua nửa đêm.
+        return await _db.Appointments
+            .AsNoTracking()
+            .Include(a => a.Slot)
+                .ThenInclude(s => s.Doctor)
+            .Include(a => a.PatientProfile)
+            .Where(a => a.Status == AppointmentStatus.Booked
+                && (a.Slot.SlotDate > fromDate
+                    || (a.Slot.SlotDate == fromDate && a.Slot.StartTime >= fromTime))
+                && (a.Slot.SlotDate < toDate
+                    || (a.Slot.SlotDate == toDate && a.Slot.StartTime <= toTime)))
+            .OrderBy(a => a.Slot.SlotDate)
+                .ThenBy(a => a.Slot.StartTime)
+            .ToListAsync(ct);
+    }
+
     public async Task<Appointment?> GetByIdAsync(Guid appointmentId, CancellationToken ct = default)
     {
         return await _db.Appointments

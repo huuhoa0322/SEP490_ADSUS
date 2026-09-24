@@ -495,6 +495,48 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             var exception = await Assert.ThrowsAsync<BusinessException>(() => _service.DispenseAsync(caseId));
             Assert.Contains("không đủ tồn kho hợp lệ", exception.Message);
         }
+
+        [Fact]
+        public async Task DispenseAsync_TwoMedicines_SameMedicineOnTwoLines_EachLineTakesRemainingStockFEFO()
+        {
+            // Arrange — thuốc A có 2 lô (8 + 50), xuất hiện ở 2 dòng đơn (5 + 6); thuốc B 1 lô, 1 dòng
+            var caseId = Guid.NewGuid();
+            var unit = new MedicineUnit { MedicineUnitId = Guid.NewGuid(), Name = "Viên" };
+            var medA = new Medicine { MedicineId = Guid.NewGuid(), Name = "A", UsageUnit = "Viên", VolumePerBaseUnit = 1 };
+            var medB = new Medicine { MedicineId = Guid.NewGuid(), Name = "B", UsageUnit = "Viên", VolumePerBaseUnit = 1 };
+            var packA = new MedicinePackaging { Id = Guid.NewGuid(), MedicineId = medA.MedicineId, MedicineUnitId = unit.MedicineUnitId, ConversionFactor = 1, IsBaseUnit = true, IsSellable = true, SalePrice = 1000, Medicine = medA, MedicineUnit = unit };
+            var packB = new MedicinePackaging { Id = Guid.NewGuid(), MedicineId = medB.MedicineId, MedicineUnitId = unit.MedicineUnitId, ConversionFactor = 1, IsBaseUnit = true, IsSellable = true, SalePrice = 1000, Medicine = medB, MedicineUnit = unit };
+            var batchAOld = new MedicineBatch { Id = Guid.NewGuid(), MedicineId = medA.MedicineId, LotNumber = "A-OLD", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(1)), QuantityBase = 8, BaseUnitAvgImportPrice = 100, Medicine = medA };
+            var batchANew = new MedicineBatch { Id = Guid.NewGuid(), MedicineId = medA.MedicineId, LotNumber = "A-NEW", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(9)), QuantityBase = 50, BaseUnitAvgImportPrice = 200, Medicine = medA };
+            var batchB = new MedicineBatch { Id = Guid.NewGuid(), MedicineId = medB.MedicineId, LotNumber = "B-1", ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(3)), QuantityBase = 30, BaseUnitAvgImportPrice = 300, Medicine = medB };
+
+            var prescription = new Prescription { PrescriptionId = Guid.NewGuid(), CaseId = caseId, Status = PrescriptionStatus.Active };
+            var lineA1 = new PrescriptionItem { PrescriptionItemId = Guid.NewGuid(), PrescriptionId = prescription.PrescriptionId, MedicineId = medA.MedicineId, QuantityBase = 5, Medicine = medA, Dosage = "1 viên" };
+            var lineA2 = new PrescriptionItem { PrescriptionItemId = Guid.NewGuid(), PrescriptionId = prescription.PrescriptionId, MedicineId = medA.MedicineId, QuantityBase = 6, Medicine = medA, Dosage = "1 viên" };
+            var lineB = new PrescriptionItem { PrescriptionItemId = Guid.NewGuid(), PrescriptionId = prescription.PrescriptionId, MedicineId = medB.MedicineId, QuantityBase = 4, Medicine = medB, Dosage = "1 viên" };
+
+            _dbContext.MedicineUnits.Add(unit);
+            _dbContext.Medicines.AddRange(medA, medB);
+            _dbContext.MedicinePackagings.AddRange(packA, packB);
+            _dbContext.MedicineBatches.AddRange(batchANew, batchAOld, batchB);
+            _dbContext.Prescriptions.Add(prescription);
+            _dbContext.PrescriptionItems.AddRange(lineA1, lineA2, lineB);
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            // Act
+            await _service.DispenseAsync(caseId);
+
+            // Assert — tổng A lấy 11: hết 8 lô cũ, 3 từ lô mới; B lấy 4
+            Assert.Equal(0, (await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batchAOld.Id, TestContext.Current.CancellationToken)).QuantityBase);
+            Assert.Equal(47, (await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batchANew.Id, TestContext.Current.CancellationToken)).QuantityBase);
+            Assert.Equal(26, (await _dbContext.MedicineBatches.FirstAsync(b => b.Id == batchB.Id, TestContext.Current.CancellationToken)).QuantityBase);
+
+            var txns = await _dbContext.InventoryTransactions.ToListAsync(TestContext.Current.CancellationToken);
+            Assert.DoesNotContain(txns, t => t.QuantityBase <= 0);
+            Assert.Equal(11, txns.Where(t => t.PrescriptionItemId == lineA1.PrescriptionItemId || t.PrescriptionItemId == lineA2.PrescriptionItemId).Sum(t => t.QuantityBase));
+            Assert.Equal(4, txns.Where(t => t.PrescriptionItemId == lineB.PrescriptionItemId).Sum(t => t.QuantityBase));
+        }
+
         [Fact]
         public async Task AdjustAsync_IncreaseQuantity_Success()
         {

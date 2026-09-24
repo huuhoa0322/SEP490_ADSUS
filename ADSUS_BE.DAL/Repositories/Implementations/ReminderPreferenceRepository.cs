@@ -42,4 +42,6 @@ public sealed class ReminderPreferenceRepository : IReminderPreferenceRepository
         _db.PatientReminderPreferences.Update(preference);
         await Task.CompletedTask;
     }
+
+    public Task SaveChangesAsync(CancellationToken ct = default) => _db.SaveChangesAsync(ct);
 }

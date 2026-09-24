@@ -13,6 +13,9 @@ public interface IPatientProfileRepository
     /// <summary>Tìm hồ sơ theo tài khoản người dùng (dùng khi bệnh nhân tự xem hồ sơ mình).</summary>
     Task<PatientProfile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>PatientProfileId của tài khoản, null nếu tài khoản chưa có hồ sơ. Chỉ đọc 1 cột.</summary>
+    Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken ct = default);
+
     /// <summary>Chặn tạo hồ sơ thứ hai cho cùng một tài khoản (uq_patient_profiles_user).</summary>
     Task<bool> ExistsForUserAsync(Guid userId, CancellationToken ct = default);
 

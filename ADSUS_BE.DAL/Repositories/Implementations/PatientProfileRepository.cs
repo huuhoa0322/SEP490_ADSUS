@@ -32,6 +32,13 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
             .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.PatientProfileId == patientProfileId, ct);
 
+    public Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        _db.PatientProfiles
+            .AsNoTracking()
+            .Where(p => p.UserId == userId)
+            .Select(p => (Guid?)p.PatientProfileId)
+            .FirstOrDefaultAsync(ct);
+
     public Task<PatientProfile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
         _db.PatientProfiles
             .AsNoTracking()
@@ -107,13 +114,6 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
             return await FindIdByUserIdAsync(userId, ct) ?? throw new InvalidOperationException("Patient profile not found.");
         }
     }
-
-    private async Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken ct) =>
-        await _db.PatientProfiles
-            .AsNoTracking()
-            .Where(p => p.UserId == userId)
-            .Select(p => (Guid?)p.PatientProfileId)
-            .FirstOrDefaultAsync(ct);
 
     public async Task<PatientProfile> AddAsync(PatientProfile profile, CancellationToken ct = default)
     {

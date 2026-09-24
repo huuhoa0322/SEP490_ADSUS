@@ -16,6 +16,7 @@ using ADSUS_BE.BLL.PatientRelationship.DTOs;
 using ADSUS_BE.BLL.PatientRelationship.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.Repositories.Implementations;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using ADSUS_BE.Jobs;
 using Microsoft.EntityFrameworkCore;
@@ -862,8 +863,8 @@ public class BookingForRelativeRulesTests : IDisposable
         };
         _db.PatientProfiles.Add(elderlyProfile);
 
-        // Slot hẹn vào 22 giờ tới (nằm trong khung 20-24h nhắc hẹn)
-        var appointmentTime = DateTime.UtcNow.AddHours(22);
+        // Slot hẹn vào 22 giờ tới (nằm trong khung 20-24h nhắc hẹn) — giờ slot là giờ phòng khám
+        var appointmentTime = DateTime.UtcNow.Add(ClinicClock.Offset).AddHours(22);
         var slot = CreateSlot(
             DateOnly.FromDateTime(appointmentTime),
             TimeOnly.FromDateTime(appointmentTime),
@@ -883,23 +884,9 @@ public class BookingForRelativeRulesTests : IDisposable
         _db.Appointments.Add(appointment);
         _db.SaveChanges();
 
-        // Setup mock repos cho Reminder Job
-        var patientRow = new PatientListRow(
-            PatientProfileId: elderlyProfileId,
-            PatientUserId: Guid.Empty, // Bệnh nhân chưa có user_id
-            FullName: "Bà Ngoại",
-            Phone: "0900000000",
-            LatestVisitDate: null,
-            LatestVisitStatus: null);
-
-        var jobProfileRepo = new Mock<IPatientProfileRepository>();
-        jobProfileRepo.Setup(r => r.SearchAsync(null, null, null, 1, int.MaxValue, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((new List<PatientListRow> { patientRow }, 1));
-
-        var jobAppointmentRepo = new Mock<IAppointmentRepository>();
-        jobAppointmentRepo.Setup(r => r.ListByPatientAsync(elderlyProfileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Appointment> { appointment });
-
+        // Reminder Job đọc lịch hẹn qua repository thật. Trước đây test giả lập danh sách bệnh nhân
+        // có chứa hồ sơ guest, trong khi SearchAsync thật chỉ trả tài khoản PATIENT — nên lịch đặt
+        // hộ cho guest thực tế không bao giờ được nhắc mà test vẫn xanh.
         var reminderNotificationMock = new Mock<INotificationService>();
         var serviceScope = new Mock<IServiceScope>();
         var serviceProvider = new Mock<IServiceProvider>();
@@ -912,8 +899,7 @@ public class BookingForRelativeRulesTests : IDisposable
 
         var reminderJob = new AppointmentReminderJob(
             scopeFactory.Object,
-            jobProfileRepo.Object,
-            jobAppointmentRepo.Object,
+            new AppointmentRepository(_db),
             Mock.Of<ILogger<AppointmentReminderJob>>());
 
         var jobContext = new Mock<IJobExecutionContext>();

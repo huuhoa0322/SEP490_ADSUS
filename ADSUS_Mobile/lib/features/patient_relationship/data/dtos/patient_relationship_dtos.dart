@@ -1,3 +1,4 @@
+import '../../../../core/utils/api_date_time.dart';
 import '../../domain/entities/patient_relationship.dart';
 
 /// DTO nhận từ backend cho PatientRelationship.
@@ -57,7 +58,7 @@ class PatientRelationshipDTO {
       dateOfBirth:
           dateOfBirth != null ? DateTime.tryParse(dateOfBirth!) : null,
       relationshipName: relationshipName,
-      createdAt: DateTime.tryParse(createdAt) ?? DateTime.now(),
+      createdAt: ApiDateTime.tryParse(createdAt) ?? DateTime.now(),
     );
   }
 }

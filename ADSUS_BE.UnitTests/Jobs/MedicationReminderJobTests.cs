@@ -20,7 +20,6 @@ namespace ADSUS_BE.UnitTests.Jobs;
 public class MedicationReminderJobTests : IDisposable
 {
     private readonly Mock<IMedicationIntakeLogRepository> _intakeLogRepo = new();
-    private readonly Mock<IPatientProfileRepository> _patientProfileRepo = new();
     private readonly Mock<INotificationService> _notificationService = new();
     private readonly Mock<ILogger<MedicationReminderJob>> _logger = new();
     private readonly AppDbContext _db;
@@ -45,7 +44,6 @@ public class MedicationReminderJobTests : IDisposable
         _sut = new MedicationReminderJob(
             scopeFactory.Object,
             _intakeLogRepo.Object,
-            _patientProfileRepo.Object,
             _logger.Object);
     }
 
@@ -143,9 +141,6 @@ public class MedicationReminderJobTests : IDisposable
         _intakeLogRepo.Setup(r => r.ListDueRemindersAsync(It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<MedicationIntakeLog> { intakeLog });
 
-        _patientProfileRepo.Setup(r => r.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile);
-
         var context = CreateMockJobExecutionContext();
 
         // Act
@@ -187,9 +182,6 @@ public class MedicationReminderJobTests : IDisposable
 
         _intakeLogRepo.Setup(r => r.ListDueRemindersAsync(It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<MedicationIntakeLog> { intakeLog });
-
-        _patientProfileRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((PatientProfile?)null);
 
         var context = CreateMockJobExecutionContext();
 
@@ -251,11 +243,6 @@ public class MedicationReminderJobTests : IDisposable
 
         _intakeLogRepo.Setup(r => r.ListDueRemindersAsync(It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<MedicationIntakeLog> { intakeLog1, intakeLog2 });
-
-        _patientProfileRepo.Setup(r => r.GetByIdAsync(profile1.PatientProfileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile1);
-        _patientProfileRepo.Setup(r => r.GetByIdAsync(profile2.PatientProfileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(profile2);
 
         var callCount = 0;
         _notificationService

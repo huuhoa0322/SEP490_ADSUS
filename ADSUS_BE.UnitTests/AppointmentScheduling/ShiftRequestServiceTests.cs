@@ -186,6 +186,67 @@ public class ShiftRequestServiceTests
     }
 
     [Fact]
+    public async Task ReviewRequestAsync_ApproveLeave_NotifiesEveryCancelledPatientOnce()
+    {
+        // Arrange — 3 lịch trong ca sáng: 2 bệnh nhân có tài khoản, 1 hồ sơ guest (không có UserId)
+        var requestId = Guid.NewGuid();
+        var requestDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3));
+        _repoMock.Setup(r => r.GetByIdAsync(requestId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ShiftRequest
+            {
+                RequestId = requestId,
+                UserId = _doctorId,
+                RequestType = ShiftRequestType.Leave,
+                ShiftType = ShiftType.Morning,
+                RequestDate = requestDate,
+                Status = ShiftRequestStatus.Pending,
+                User = new User { UserId = _doctorId, FullName = "Dr. Test" }
+            });
+
+        var patientUserIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        var profileOwners = new Guid?[] { patientUserIds[0], patientUserIds[1], null };
+        for (var i = 0; i < profileOwners.Length; i++)
+        {
+            var profileId = Guid.NewGuid();
+            _db.PatientProfiles.Add(new PatientProfile { PatientProfileId = profileId, UserId = profileOwners[i] });
+            var slot = new ScheduleSlot
+            {
+                SlotId = Guid.NewGuid(),
+                DoctorId = _doctorId,
+                SlotDate = requestDate,
+                StartTime = new TimeOnly(8, 0).AddMinutes(30 * i),
+                EndTime = new TimeOnly(8, 30).AddMinutes(30 * i),
+                Status = SlotStatus.Booked
+            };
+            _db.ScheduleSlots.Add(slot);
+            _db.Appointments.Add(new Appointment
+            {
+                AppointmentId = Guid.NewGuid(),
+                SlotId = slot.SlotId,
+                PatientProfileId = profileId,
+                Status = AppointmentStatus.Booked
+            });
+        }
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        await _sut.ReviewRequestAsync(requestId, _adminId, new ReviewShiftRequestDto { Decision = "APPROVED" }, TestContext.Current.CancellationToken);
+
+        // Assert — mỗi bệnh nhân có tài khoản nhận đúng 1 tin; hồ sơ guest không có người nhận
+        foreach (var userId in patientUserIds)
+        {
+            _notificationMock.Verify(n => n.SendAsync(
+                It.Is<SendNotificationRequest>(r => r.UserId == userId && r.Type == "appointment_cancellation"),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+        _notificationMock.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r => r.Type == "appointment_cancellation"),
+            It.IsAny<CancellationToken>()), Times.Exactly(2));
+        Assert.All(await _db.Appointments.ToListAsync(TestContext.Current.CancellationToken),
+            a => Assert.Equal(AppointmentStatus.Cancelled, a.Status));
+    }
+
+    [Fact]
     public async Task ReviewRequestAsync_RejectWithoutReason_ThrowsException()
     {
         var requestId = Guid.NewGuid();

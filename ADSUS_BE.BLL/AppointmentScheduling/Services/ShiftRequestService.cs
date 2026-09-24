@@ -92,12 +92,17 @@ public class ShiftRequestService : IShiftRequestService
         await _repo.AddAsync(entity, ct);
         
         // Gửi Notification cho tất cả Admin
-        var admins = await _db.Users.Where(u => u.Role == UserRole.Admin).ToListAsync(ct);
-        foreach (var admin in admins)
+        // Chỉ cần Id — không nạp (và track) nguyên entity User của từng Admin
+        var adminIds = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Role == UserRole.Admin)
+            .Select(u => u.UserId)
+            .ToListAsync(ct);
+        foreach (var adminId in adminIds)
         {
             var notification = new SendNotificationRequest
             {
-                UserId = admin.UserId,
+                UserId = adminId,
                 Type = "shift_request_new",
                 Title = "Yêu cầu thay đổi lịch làm việc",
                 Body = $"Bác sĩ {doctor.FullName} vừa gửi yêu cầu {(dto.RequestType == ShiftRequestType.Leave ? "Xin nghỉ" : "Tăng ca")} cho ngày {dto.RequestDate:dd/MM/yyyy}.",
@@ -210,6 +215,20 @@ public class ShiftRequestService : IShiftRequestService
                             s.Status != SlotStatus.Closed)
                 .ToListAsync(ct);
 
+            // Nạp UserId của mọi hồ sơ bệnh nhân cần báo tin bằng MỘT truy vấn, thay vì truy vấn
+            // lại từng hồ sơ bên trong vòng lặp (N+1, P11 review 24/09/2026).
+            var profileIds = slotsToClose
+                .SelectMany(s => s.Appointments)
+                .Where(a => a.Status == AppointmentStatus.Booked)
+                .Select(a => a.PatientProfileId)
+                .Distinct()
+                .ToList();
+            var profileUserIds = await _db.PatientProfiles
+                .AsNoTracking()
+                .Where(p => profileIds.Contains(p.PatientProfileId))
+                .Select(p => new { p.PatientProfileId, p.UserId })
+                .ToDictionaryAsync(p => p.PatientProfileId, p => p.UserId, ct);
+
             foreach (var slot in slotsToClose)
             {
                 slot.Status = SlotStatus.Closed;
@@ -223,11 +242,8 @@ public class ShiftRequestService : IShiftRequestService
                     appointment.CancelledReason = "Bác sĩ nghỉ phép, lịch hẹn đã được hệ thống tự động hủy.";
                     appointment.UpdatedAt = now;
 
-                    // Lấy user_id của bệnh nhân để gửi thông báo
-                    var patientUserId = await _db.PatientProfiles
-                        .Where(p => p.PatientProfileId == appointment.PatientProfileId)
-                        .Select(p => p.UserId)
-                        .FirstOrDefaultAsync(ct);
+                    // user_id của bệnh nhân để gửi thông báo
+                    var patientUserId = profileUserIds.GetValueOrDefault(appointment.PatientProfileId);
 
                     if (patientUserId.HasValue && patientUserId.Value != Guid.Empty)
                     {
@@ -236,7 +252,7 @@ public class ShiftRequestService : IShiftRequestService
                             UserId = patientUserId.Value,
                             Type = "appointment_cancellation",
                             Title = "Lịch khám đã bị hủy",
-                            Body = $"Lịch khám lúc {slot.StartTime:hh\\:mm} ngày {slot.SlotDate:dd/MM/yyyy} đã bị hủy do bác sĩ có việc đột xuất. Xin lỗi vì sự bất tiện này.",
+                            Body = $"Lịch khám lúc {slot.StartTime:HH\\:mm} ngày {slot.SlotDate:dd/MM/yyyy} đã bị hủy do bác sĩ có việc đột xuất. Xin lỗi vì sự bất tiện này.",
                             DeepLink = "/appointments/history"
                         };
                         // Lửa fire and forget hoặc await đều được, ở đây await.

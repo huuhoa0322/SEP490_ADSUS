@@ -32,6 +32,7 @@ public class ShiftRequestRepository : IShiftRequestRepository
         int page, int pageSize, CancellationToken ct = default)
     {
         var query = _context.ShiftRequests
+            .AsNoTracking()
             .Include(r => r.User)
             .Include(r => r.ReviewedByNavigation)
             .AsQueryable();

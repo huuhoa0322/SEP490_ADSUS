@@ -252,6 +252,9 @@ public sealed class PatientProfileService : IPatientProfileService
         return profile is null ? null : PatientProfileMapper.ToResponse(profile);
     }
 
+    public Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        _profiles.FindIdByUserIdAsync(userId, ct);
+
     public async Task<PagedResult<PatientSummaryResponse>> SearchPatientsAsync(
         string? search,
         string? visitStatus,

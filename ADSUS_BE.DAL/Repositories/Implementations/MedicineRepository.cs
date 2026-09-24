@@ -136,5 +136,13 @@ public sealed class MedicineRepository : IMedicineRepository
             .AsNoTracking()
             .AnyAsync(pi => pi.MedicineId == medicineId, ct);
     }
+
+    public Task<Medicine?> GetWithBatchesAsync(Guid medicineId, CancellationToken ct = default) =>
+        _db.Medicines
+            .AsNoTracking()
+            .Include(m => m.MedicineBatches)
+            .FirstOrDefaultAsync(m => m.MedicineId == medicineId, ct);
+
+    public Task SaveChangesAsync(CancellationToken ct = default) => _db.SaveChangesAsync(ct);
 }
 

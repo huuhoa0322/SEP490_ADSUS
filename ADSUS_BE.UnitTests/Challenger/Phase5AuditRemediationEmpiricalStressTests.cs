@@ -111,7 +111,10 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
             _db,
             Mock.Of<ILogger<AppointmentService>>());
 
-        _medicineService = new MedicineService(_medicineRepo.Object, _db);
+        _medicineService = new MedicineService(
+            _medicineRepo.BackedBy(_db).Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.MedicinePackagingRepository(_db),
+            new ADSUS_BE.DAL.Repositories.Implementations.MedicineUnitRepository(_db));
     }
 
     public void Dispose()

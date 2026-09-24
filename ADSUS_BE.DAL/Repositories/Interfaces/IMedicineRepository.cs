@@ -37,4 +37,10 @@ public interface IMedicineRepository
 
     /// <summary>Kiểm tra xem thuốc đã từng được sử dụng trong đơn thuốc nào chưa.</summary>
     Task<bool> HasBeenPrescribedAsync(Guid medicineId, CancellationToken ct = default);
+
+    /// <summary>Một thuốc kèm các lô (để tính tồn kho còn hạn). Chỉ đọc.</summary>
+    Task<Medicine?> GetWithBatchesAsync(Guid medicineId, CancellationToken ct = default);
+
+    /// <summary>Lưu mọi thay đổi đang được track — Service quyết định lúc lưu.</summary>
+    Task SaveChangesAsync(CancellationToken ct = default);
 }

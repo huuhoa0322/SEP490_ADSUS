@@ -111,6 +111,27 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
         return await query.AnyAsync(ct);
     }
 
+    public async Task<IReadOnlyList<ScheduleSlot>> ListTimeRangesAsync(
+        IReadOnlyCollection<Guid> doctorIds,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken ct = default)
+    {
+        return await _db.ScheduleSlots
+            .AsNoTracking()
+            .Where(s => doctorIds.Contains(s.DoctorId)
+                     && s.SlotDate >= from
+                     && s.SlotDate <= to)
+            .Select(s => new ScheduleSlot
+            {
+                DoctorId = s.DoctorId,
+                SlotDate = s.SlotDate,
+                StartTime = s.StartTime,
+                EndTime = s.EndTime,
+            })
+            .ToListAsync(ct);
+    }
+
     public async Task<int> CountActiveAppointmentsAsync(Guid slotId, CancellationToken ct = default)
     {
         return await _db.Appointments
