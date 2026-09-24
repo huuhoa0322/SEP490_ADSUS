@@ -1,5 +1,4 @@
 using System;
-using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -8,7 +7,6 @@ using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
-using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 
@@ -17,24 +15,26 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services;
 public sealed class MedicineService : IMedicineService
 {
     private readonly IMedicineRepository _medicineRepository;
-    private readonly AppDbContext _db;
+    private readonly IMedicinePackagingRepository _packagings;
+    private readonly IMedicineUnitRepository _units;
 
-    public MedicineService(IMedicineRepository medicineRepository, AppDbContext db)
+    public MedicineService(
+        IMedicineRepository medicineRepository,
+        IMedicinePackagingRepository packagings,
+        IMedicineUnitRepository units)
     {
         _medicineRepository = medicineRepository;
-        _db = db;
+        _packagings = packagings;
+        _units = units;
     }
 
     public async Task<IEnumerable<MedicineResponse>> SearchMedicinesAsync(string keyword, int limit = 20, CancellationToken ct = default)
     {
         var medicines = await _medicineRepository.SearchByNameAsync(keyword, limit, ct);
-        
+
         var medicineIds = medicines.Select(m => m.MedicineId).ToList();
-        
-        var baseUnitNames = await _db.MedicinePackagings
-            .Where(mp => medicineIds.Contains(mp.MedicineId) && mp.IsBaseUnit)
-            .Select(mp => new { mp.MedicineId, mp.MedicineUnit.Name })
-            .ToDictionaryAsync(x => x.MedicineId, x => x.Name, ct);
+
+        var baseUnitNames = await _packagings.GetBaseUnitNamesAsync(medicineIds, ct);
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -58,10 +58,7 @@ public sealed class MedicineService : IMedicineService
         var medicineIds = items.Select(m => m.MedicineId).ToList();
 
         // Lấy tên đơn vị cơ bản cho từng thuốc (IsBaseUnit = true)
-        var baseUnitNames = await _db.MedicinePackagings
-            .Where(mp => medicineIds.Contains(mp.MedicineId) && mp.IsBaseUnit)
-            .Select(mp => new { mp.MedicineId, mp.MedicineUnit.Name })
-            .ToDictionaryAsync(x => x.MedicineId, x => x.Name, ct);
+        var baseUnitNames = await _packagings.GetBaseUnitNamesAsync(medicineIds, ct);
         
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -84,16 +81,11 @@ public sealed class MedicineService : IMedicineService
 
     public async Task<MedicineResponse?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var m = await _db.Medicines
-            .Include(x => x.MedicineBatches)
-            .FirstOrDefaultAsync(x => x.MedicineId == id, ct);
+        var m = await _medicineRepository.GetWithBatchesAsync(id, ct);
 
         if (m == null) return null;
 
-        var baseUnitName = await _db.MedicinePackagings
-            .Where(mp => mp.MedicineId == id && mp.IsBaseUnit)
-            .Select(mp => mp.MedicineUnit.Name)
-            .FirstOrDefaultAsync(ct);
+        var baseUnitName = await _packagings.GetBaseUnitNameAsync(id, ct);
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -155,9 +147,9 @@ public sealed class MedicineService : IMedicineService
             IsSellable = true,
             SalePrice = request.SalePrice
         };
-        await _db.Set<MedicinePackaging>().AddAsync(basePackaging, ct);
-        
-        await _db.SaveChangesAsync(ct);
+        await _packagings.AddAsync(basePackaging, ct);
+
+        await _medicineRepository.SaveChangesAsync(ct);
 
         return new MedicineResponse
         {
@@ -202,7 +194,7 @@ public sealed class MedicineService : IMedicineService
         existing.LowStockThreshold = request.LowStockThreshold;
 
         await _medicineRepository.UpdateAsync(existing, ct);
-        await _db.SaveChangesAsync(ct);
+        await _medicineRepository.SaveChangesAsync(ct);
 
         return new MedicineResponse
         {
@@ -227,7 +219,7 @@ public sealed class MedicineService : IMedicineService
         // Soft delete
         existing.Status = MedicineStatus.Inactive;
         await _medicineRepository.UpdateAsync(existing, ct);
-        await _db.SaveChangesAsync(ct);
+        await _medicineRepository.SaveChangesAsync(ct);
     }
     public async Task ActivateMedicineAsync(Guid id, CancellationToken ct = default)
     {
@@ -239,47 +231,29 @@ public sealed class MedicineService : IMedicineService
 
         existing.Status = MedicineStatus.Active;
         await _medicineRepository.UpdateAsync(existing, ct);
-        await _db.SaveChangesAsync(ct);
+        await _medicineRepository.SaveChangesAsync(ct);
     }
     public async Task<IEnumerable<MedicineUnitResponse>> GetMedicineUnitsAsync(CancellationToken ct = default)
     {
-        var units = await _db.Set<MedicineUnit>()
-            .OrderBy(u => u.Name)
+        var units = await _units.ListAsync(ct);
+        return units
             .Select(u => new MedicineUnitResponse
             {
                 MedicineUnitId = u.MedicineUnitId,
                 Name = u.Name
             })
-            .ToListAsync(ct);
-        return units;
+            .ToList();
     }
 
     public async Task<IEnumerable<MedicinePackagingResponse>> GetPackagingsByMedicineIdAsync(Guid medicineId, CancellationToken ct = default)
     {
-        var packagings = await _db.Set<MedicinePackaging>()
-            .Include(p => p.MedicineUnit)
-            .Where(p => p.MedicineId == medicineId)
-            .OrderByDescending(p => p.IsBaseUnit)
-            .ThenBy(p => p.ConversionFactor)
-            .Select(p => new MedicinePackagingResponse
-            {
-                Id = p.Id,
-                MedicineId = p.MedicineId,
-                MedicineUnitId = p.MedicineUnitId,
-                UnitName = p.MedicineUnit.Name,
-                ConversionFactor = p.ConversionFactor,
-                IsBaseUnit = p.IsBaseUnit,
-                SalePrice = p.SalePrice,
-                IsSellable = p.IsSellable
-            })
-            .ToListAsync(ct);
-        return packagings;
+        var packagings = await _packagings.ListByMedicineAsync(medicineId, ct);
+        return packagings.Select(ToPackagingResponse).ToList();
     }
 
     public async Task<MedicinePackagingResponse> AddPackagingAsync(Guid medicineId, CreateMedicinePackagingRequest request, CancellationToken ct = default)
     {
-        var duplicateUnit = await _db.Set<MedicinePackaging>().FirstOrDefaultAsync(p => p.MedicineId == medicineId && p.MedicineUnitId == request.MedicineUnitId, ct);
-        if (duplicateUnit != null)
+        if (await _packagings.ExistsForUnitAsync(medicineId, request.MedicineUnitId, excludePackagingId: null, ct))
         {
             throw new BusinessException("Đơn vị tính này đã được sử dụng cho thuốc. Không thể thêm trùng.");
         }
@@ -300,15 +274,15 @@ public sealed class MedicineService : IMedicineService
             IsSellable = request.IsSellable
         };
 
-        await _db.Set<MedicinePackaging>().AddAsync(packaging, ct);
-        await _db.SaveChangesAsync(ct);
+        await _packagings.AddAsync(packaging, ct);
+        await _packagings.SaveChangesAsync(ct);
 
         return await GetPackagingByIdAsync(packaging.Id, ct);
     }
 
     public async Task<MedicinePackagingResponse> UpdatePackagingAsync(Guid id, UpdateMedicinePackagingRequest request, CancellationToken ct = default)
     {
-        var packaging = await _db.Set<MedicinePackaging>().FindAsync(new object[] { id }, ct);
+        var packaging = await _packagings.GetForUpdateAsync(id, ct);
         if (packaging == null) throw new ResourceNotFoundException("Không tìm thấy quy cách đóng gói.");
 
         if (packaging.IsBaseUnit)
@@ -330,8 +304,7 @@ public sealed class MedicineService : IMedicineService
         {
             if (request.MedicineUnitId != packaging.MedicineUnitId)
             {
-                var duplicateUnit = await _db.Set<MedicinePackaging>().FirstOrDefaultAsync(p => p.MedicineId == packaging.MedicineId && p.MedicineUnitId == request.MedicineUnitId && p.Id != id, ct);
-                if (duplicateUnit != null)
+                if (await _packagings.ExistsForUnitAsync(packaging.MedicineId, request.MedicineUnitId, excludePackagingId: id, ct))
                 {
                     throw new BusinessException("Đơn vị tính này đã được sử dụng bởi một quy cách khác của cùng loại thuốc.");
                 }
@@ -349,15 +322,15 @@ public sealed class MedicineService : IMedicineService
         packaging.SalePrice = request.SalePrice;
         packaging.IsSellable = request.IsSellable;
 
-        _db.Set<MedicinePackaging>().Update(packaging);
-        await _db.SaveChangesAsync(ct);
+        // packaging đang được track (GetForUpdateAsync) — chỉ cần lưu
+        await _packagings.SaveChangesAsync(ct);
 
         return await GetPackagingByIdAsync(id, ct);
     }
 
     public async Task DeletePackagingAsync(Guid id, CancellationToken ct = default)
     {
-        var packaging = await _db.Set<MedicinePackaging>().FindAsync(new object[] { id }, ct);
+        var packaging = await _packagings.GetForUpdateAsync(id, ct);
         if (packaging == null) throw new ResourceNotFoundException("Không tìm thấy quy cách đóng gói.");
 
         if (packaging.IsBaseUnit)
@@ -368,8 +341,7 @@ public sealed class MedicineService : IMedicineService
         // BR-019: Non-Destructive Entity Retirement
         // Packaging referenced by historical inventory transactions must be retained
         // to preserve inventory ledger integrity. Only unused packaging may be removed.
-        var hasInventoryHistory = await _db.Set<InventoryTransaction>()
-            .AnyAsync(t => t.MedicinePackagingId == id, ct);
+        var hasInventoryHistory = await _packagings.IsUsedInInventoryAsync(id, ct);
         if (hasInventoryHistory)
         {
             throw new BusinessException(
@@ -377,25 +349,26 @@ public sealed class MedicineService : IMedicineService
                 "Quy cách đã sử dụng trong lịch sử nhập/xuất kho phải được lưu giữ vĩnh viễn.");
         }
 
-        _db.Set<MedicinePackaging>().Remove(packaging);
-        await _db.SaveChangesAsync(ct);
+        _packagings.Remove(packaging);
+        await _packagings.SaveChangesAsync(ct);
     }
 
     private async Task<MedicinePackagingResponse> GetPackagingByIdAsync(Guid id, CancellationToken ct)
     {
-        return await _db.Set<MedicinePackaging>()
-            .Include(p => p.MedicineUnit)
-            .Where(p => p.Id == id)
-            .Select(p => new MedicinePackagingResponse
-            {
-                Id = p.Id,
-                MedicineId = p.MedicineId,
-                MedicineUnitId = p.MedicineUnitId,
-                UnitName = p.MedicineUnit.Name,
-                ConversionFactor = p.ConversionFactor,
-                IsBaseUnit = p.IsBaseUnit,
-                SalePrice = p.SalePrice,
-                IsSellable = p.IsSellable
-            }).FirstAsync(ct);
+        var packaging = await _packagings.GetWithUnitAsync(id, ct)
+            ?? throw new ResourceNotFoundException("Không tìm thấy quy cách đóng gói.");
+        return ToPackagingResponse(packaging);
     }
+
+    private static MedicinePackagingResponse ToPackagingResponse(MedicinePackaging p) => new()
+    {
+        Id = p.Id,
+        MedicineId = p.MedicineId,
+        MedicineUnitId = p.MedicineUnitId,
+        UnitName = p.MedicineUnit.Name,
+        ConversionFactor = p.ConversionFactor,
+        IsBaseUnit = p.IsBaseUnit,
+        SalePrice = p.SalePrice,
+        IsSellable = p.IsSellable
+    };
 }

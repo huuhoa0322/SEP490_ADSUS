@@ -55,14 +55,24 @@ public sealed class NoShowCancellationJob : IJob
 
         _logger.LogInformation("[JOB-08] No-show cancellation job started at {Time}, grace time: {GraceTime} minutes", now, graceTimeMinutes);
 
-        // Tìm tất cả appointment đang BOOKED mà đã quá ngưỡng thời gian
+        // Tìm tất cả appointment đang BOOKED mà đã quá ngưỡng thời gian. Ngưỡng được quy về giờ
+        // địa phương phòng khám (cùng hệ với SlotDate/StartTime) để lọc ngay trong SQL — bản trước
+        // nạp MỌI lịch BOOKED (kể cả lịch tương lai) rồi mới lọc trong bộ nhớ, và truy vấn Case
+        // riêng cho từng lịch (N+1, P11 review 24/09/2026).
+        var thresholdLocal = thresholdTime + ClinicClock.Offset;
+        var thresholdDate = DateOnly.FromDateTime(thresholdLocal);
+        var thresholdClock = TimeOnly.FromDateTime(thresholdLocal);
+
         var noShowAppointments = await db.Appointments
             .Include(a => a.Slot)
                 .ThenInclude(s => s.Doctor)
             .Include(a => a.PatientProfile)
                 .ThenInclude(p => p.User)
+            .Include(a => a.Case)
             .Where(a => a.Status == AppointmentStatus.Booked)
             .Where(a => a.Slot != null)
+            .Where(a => a.Slot.SlotDate < thresholdDate
+                || (a.Slot.SlotDate == thresholdDate && a.Slot.StartTime < thresholdClock))
             .ToListAsync(context.CancellationToken);
 
         var cancelledCount = 0;
@@ -92,8 +102,7 @@ public sealed class NoShowCancellationJob : IJob
                     // Đồng bộ trạng thái Case liên kết sang Cancelled
                     if (appointment.CaseId.HasValue)
                     {
-                        var medicalCase = await db.Cases
-                            .FirstOrDefaultAsync(c => c.CaseId == appointment.CaseId.Value, context.CancellationToken);
+                        var medicalCase = appointment.Case;
 
                         if (medicalCase != null && medicalCase.Status == CaseStatus.Booked)
                         {

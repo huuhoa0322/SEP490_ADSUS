@@ -282,6 +282,8 @@ public class AppointmentsControllerIntegrationTests
         };
 
         var patientUserId = Guid.NewGuid();
+        _profiles.Setup(r => r.EnsureForUserAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(patientId);
         _profiles.Setup(r => r.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PatientProfile
             {
@@ -460,7 +462,7 @@ public class AppointmentsControllerIntegrationTests
         using var app = CreateApp();
         var client = CreatePatientClient(app);
 
-        _appointments.Setup(r => r.ListByPatientAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _appointments.Setup(r => r.ListForPatientOrBookerAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<AppointmentStatus?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Appointment>());
 
         // Act
@@ -479,7 +481,7 @@ public class AppointmentsControllerIntegrationTests
         using var app = CreateApp();
         var client = CreatePatientClient(app);
 
-        _appointments.Setup(r => r.ListByPatientAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _appointments.Setup(r => r.ListForPatientOrBookerAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), AppointmentStatus.Booked, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Appointment>());
 
         // Act
@@ -750,6 +752,8 @@ public class AppointmentsControllerIntegrationTests
             .ReturnsAsync(patientUser);
         _profiles.Setup(r => r.GetByUserIdAsync(patientUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(patientProfile);
+        _profiles.Setup(r => r.EnsureForUserAsync(patientUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(patientProfile.PatientProfileId);
 
         using var scope = app.Services.CreateScope();
         var token = scope.ServiceProvider.GetRequiredService<IJwtTokenService>()

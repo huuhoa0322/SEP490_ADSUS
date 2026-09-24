@@ -44,4 +44,12 @@ public sealed class PrescriptionItemRepository : IPrescriptionItemRepository
     {
         await _db.PrescriptionItems.AddRangeAsync(items, ct);
     }
+
+    public async Task<IReadOnlyList<PrescriptionItem>> ListByCaseForUpdateAsync(Guid caseId, CancellationToken ct = default)
+    {
+        return await _db.PrescriptionItems
+            .Include(pi => pi.Prescription)
+            .Where(pi => pi.Prescription.CaseId == caseId)
+            .ToListAsync(ct);
+    }
 }

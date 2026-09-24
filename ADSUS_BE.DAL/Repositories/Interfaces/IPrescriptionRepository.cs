@@ -26,4 +26,16 @@ public interface IPrescriptionRepository
 
     /// <summary>Thêm 1 đơn (chưa bao gồm items) vào change tracker. Controller gọi SaveChangesAsync.</summary>
     Task AddAsync(Prescription prescription, CancellationToken ct = default);
+
+    /// <summary>
+    /// Đơn đang hiệu lực (Active) của một ca, kèm các dòng thuốc → Medicine → quy cách đóng gói →
+    /// đơn vị tính (đủ cho lập hoá đơn, xuất kho). Chỉ đọc.
+    /// </summary>
+    Task<Prescription?> GetActiveByCaseWithItemsAsync(Guid caseId, CancellationToken ct = default);
+
+    /// <summary>Đơn đang hiệu lực của một ca kèm các dòng thuốc và Case (để biết hồ sơ bệnh nhân khi sinh lịch uống). Chỉ đọc.</summary>
+    Task<Prescription?> GetActiveByCaseForIntakeScheduleAsync(Guid caseId, CancellationToken ct = default);
+
+    /// <summary>Ca đã có đơn đang hiệu lực (Active) chưa.</summary>
+    Task<bool> ExistsActiveByCaseAsync(Guid caseId, CancellationToken ct = default);
 }

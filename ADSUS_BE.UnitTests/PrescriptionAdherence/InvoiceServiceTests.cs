@@ -32,7 +32,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -79,7 +79,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -125,7 +125,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -180,7 +180,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -224,7 +224,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -269,7 +269,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var medicineId = Guid.NewGuid();
@@ -308,7 +308,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
 
@@ -327,7 +327,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var existingInvoiceId = Guid.NewGuid();
@@ -359,7 +359,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var existingInvoiceId = Guid.NewGuid();
@@ -395,7 +395,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var nonExistentId = Guid.NewGuid();
 
@@ -415,7 +415,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Pay_NotFound");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
 
         var nonExistentId = Guid.NewGuid();
 
@@ -431,7 +431,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Pay_AlreadyPaid");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
 
         var invoiceId = Guid.NewGuid();
         var caseId   = Guid.NewGuid();
@@ -464,7 +464,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Cancel_Pending");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
 
         var invoiceId = Guid.NewGuid();
         context.Invoices.Add(new Invoice
@@ -489,7 +489,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Cancel_Paid");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();
@@ -561,7 +561,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Cancel_NotFound");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
 
         var request = new CancelInvoiceRequest { Reason = "Lý do" };
         var ex = await Assert.ThrowsAsync<BusinessException>(
@@ -575,7 +575,7 @@ public class InvoiceServiceTests
         var options = GetInMemoryOptions("Invoice_Test_Cancel_Already");
         using var context = new AppDbContext(options);
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
-        var service = new InvoiceService(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, null!, null!, Mock.Of<INotificationService>());
 
         var invoiceId = Guid.NewGuid();
         context.Invoices.Add(new Invoice
@@ -598,7 +598,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();
@@ -631,7 +631,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();
@@ -661,7 +661,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();
@@ -700,7 +700,7 @@ public class InvoiceServiceTests
         var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
         var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
         var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
-        var service = new InvoiceService(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
 
         var caseId = Guid.NewGuid();
         var invoiceId = Guid.NewGuid();

@@ -81,6 +81,15 @@ public class UserRepository : IUserRepository
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _db.SaveChangesAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Guid>> ListActiveUserIdsByRoleAsync(
+        UserRole role,
+        CancellationToken cancellationToken = default) =>
+        await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Role == role && u.Status == UserStatus.Active)
+            .Select(u => u.UserId)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<User>> ListActiveDoctorsAsync(
         CancellationToken cancellationToken = default) =>
         await _db.Users

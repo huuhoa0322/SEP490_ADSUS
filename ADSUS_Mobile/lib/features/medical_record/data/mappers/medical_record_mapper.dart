@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import '../../../../core/utils/api_date_time.dart';
 import '../../domain/entities/medical_record_case.dart';
 import '../../domain/entities/medical_record_feedback.dart';
 import '../../domain/entities/medical_record_image.dart';
@@ -43,7 +42,7 @@ class MedicalRecordMapper {
 
     return MedicalRecordImage(
       imageId: dto.imageId,
-      uploadedAt: DateTime.parse(dto.uploadedAt),
+      uploadedAt: ApiDateTime.parse(dto.uploadedAt),
       imageUrl: dto.imageUrl,
       note: dto.note,
     );
@@ -71,6 +70,6 @@ class MedicalRecordMapper {
         id: dto.id,
         rating: dto.rating,
         content: dto.content,
-        submittedAt: DateTime.parse(dto.submittedAt),
+        submittedAt: ApiDateTime.parse(dto.submittedAt),
       );
 }

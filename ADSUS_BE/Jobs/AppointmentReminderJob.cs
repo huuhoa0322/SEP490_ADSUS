@@ -1,5 +1,5 @@
 using ADSUS_BE.BLL.Common.Interfaces;
-using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,7 +16,6 @@ namespace ADSUS_BE.Jobs;
 public sealed class AppointmentReminderJob : IJob
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IPatientProfileRepository _patientProfileRepo;
     private readonly IAppointmentRepository _appointmentRepo;
     private readonly ILogger<AppointmentReminderJob> _logger;
 
@@ -28,12 +27,10 @@ public sealed class AppointmentReminderJob : IJob
 
     public AppointmentReminderJob(
         IServiceScopeFactory scopeFactory,
-        IPatientProfileRepository patientProfileRepo,
         IAppointmentRepository appointmentRepo,
         ILogger<AppointmentReminderJob> logger)
     {
         _scopeFactory = scopeFactory;
-        _patientProfileRepo = patientProfileRepo;
         _appointmentRepo = appointmentRepo;
         _logger = logger;
     }
@@ -47,68 +44,55 @@ public sealed class AppointmentReminderJob : IJob
         var now = DateTime.UtcNow;
         _logger.LogInformation("[JOB-03] Appointment reminder job started at {Time}", now);
 
-        // Lấy tất cả bệnh nhân
-        var patients = await _patientProfileRepo.SearchAsync(null, null, null, 1, int.MaxValue, context.CancellationToken);
-        _logger.LogInformation("[JOB-03] Found {Count} patient profiles to check", patients.Items.Count);
+        // SlotDate/StartTime là giờ địa phương phòng khám (UTC+7, xem ClinicClock) — quy cửa sổ
+        // "còn 20-24 giờ" về cùng hệ giờ đó rồi lọc ngay trong SQL. Bản trước nạp mọi bệnh nhân
+        // rồi truy vấn lịch hẹn từng người (N+1, P11 review 24/09/2026), lại so giờ địa phương
+        // với UTC nên nhắc lệch 7 tiếng và in sai giờ khám trong nội dung.
+        var nowLocal = now + ClinicClock.Offset;
+        var appointments = await _appointmentRepo.ListBookedStartingBetweenAsync(
+            nowLocal.AddHours(MinHoursBefore),
+            nowLocal.AddHours(ReminderWindowHours),
+            context.CancellationToken);
+        _logger.LogInformation("[JOB-03] Found {Count} appointments to remind", appointments.Count);
 
         var sentCount = 0;
 
-        foreach (var row in patients.Items)
+        foreach (var ap in appointments)
         {
-            // Bỏ qua dòng không có PatientProfile (chưa có hồ sơ nền)
-            if (!row.PatientProfileId.HasValue) continue;
-
             try
             {
-                // Lấy appointments của bệnh nhân
-                var appointments = await _appointmentRepo.ListByPatientAsync(
-                    row.PatientProfileId.Value,
-                    context.CancellationToken);
+                // Lịch đặt hộ nhắc người đặt; tự đặt nhắc chủ hồ sơ. Hồ sơ guest (người thân chưa
+                // có tài khoản) không có UserId nên chỉ người đặt hộ nhận được nhắc.
+                var targetUserId = ap.BookedByUserId ?? ap.PatientProfile?.UserId;
+                if (targetUserId is null || targetUserId == Guid.Empty) continue;
 
-                foreach (var ap in appointments)
+                var doctorName = ap.Slot?.Doctor?.FullName ?? "bác sĩ";
+                var slotTimeLocal = new DateTimeOffset(
+                    ap.Slot!.SlotDate.ToDateTime(ap.Slot.StartTime),
+                    ClinicClock.Offset);
+
+                await notificationService.SendAsync(new SendNotificationRequest
                 {
-                    // Chỉ BOOKED appointments (đã đặt lịch và chưa bị hủy)
-                    if (ap.Status != AppointmentStatus.Booked) continue;
-
-                    // Tính thời gian đến giờ khám (Slot luôn được Include trong ListByPatientAsync)
-                    var appointmentTime = ap.Slot!.SlotDate.ToDateTime(ap.Slot.StartTime);
-                    var hoursUntil = (appointmentTime - now).TotalHours;
-
-                    // Chỉ nhắc nếu trong khoảng 20-24 giờ
-                    if (hoursUntil < MinHoursBefore || hoursUntil > ReminderWindowHours) continue;
-
-                    // Gửi notification
-                    var doctorName = ap.Slot?.Doctor?.FullName ?? "bác sĩ";
-                    var slotTimeLocal = TimeZoneInfo.ConvertTimeFromUtc(
-                        appointmentTime,
-                        TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"));
-
-                    var targetUserId = ap.BookedByUserId ?? row.PatientUserId;
-                    if (targetUserId == Guid.Empty) continue;
-
-                    await notificationService.SendAsync(new SendNotificationRequest
+                    UserId = targetUserId.Value,
+                    Type = "appointment_reminder",
+                    Title = "Nhắc lịch khám",
+                    Body = $"Ngày mai bạn có lịch khám với {doctorName} lúc {slotTimeLocal:HH:mm}.",
+                    Metadata = new Dictionary<string, object>
                     {
-                        UserId = targetUserId,
-                        Type = "appointment_reminder",
-                        Title = "Nhắc lịch khám",
-                        Body = $"Ngày mai bạn có lịch khám với {doctorName} lúc {slotTimeLocal:HH:mm}.",
-                        Metadata = new Dictionary<string, object>
-                        {
-                            ["appointmentId"] = ap.AppointmentId.ToString(),
-                            ["doctorName"] = doctorName,
-                            ["slotTime"] = slotTimeLocal.ToString("O")
-                        }
-                    }, context.CancellationToken);
+                        ["appointmentId"] = ap.AppointmentId.ToString(),
+                        ["doctorName"] = doctorName,
+                        ["slotTime"] = slotTimeLocal.ToString("O")
+                    }
+                }, context.CancellationToken);
 
-                    sentCount++;
-                    _logger.LogInformation(
-                        "[JOB-03] Sent reminder for appointment {AppointmentId} to user {UserId} ({Hours}h before)",
-                        ap.AppointmentId, targetUserId, (int)hoursUntil);
-                }
+                sentCount++;
+                _logger.LogInformation(
+                    "[JOB-03] Sent reminder for appointment {AppointmentId} to user {UserId}",
+                    ap.AppointmentId, targetUserId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[JOB-03] Failed to process patient profile {ProfileId}", row.PatientProfileId);
+                _logger.LogError(ex, "[JOB-03] Failed to send reminder for appointment {AppointmentId}", ap.AppointmentId);
             }
         }
 

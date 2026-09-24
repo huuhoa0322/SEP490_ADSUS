@@ -75,6 +75,17 @@ public sealed class MedicationIntakeLogRepository : IMedicationIntakeLogReposito
         await _db.MedicationIntakeLogs.AddRangeAsync(logs, ct);
     }
 
+    public async Task<IReadOnlyList<MedicationIntakeLog>> ListByItemIdsForUpdateAsync(
+        IReadOnlyCollection<Guid> prescriptionItemIds,
+        CancellationToken ct = default)
+    {
+        return await _db.MedicationIntakeLogs
+            .Where(l => prescriptionItemIds.Contains(l.PrescriptionItemId))
+            .ToListAsync(ct);
+    }
+
+    public void RemoveRange(IEnumerable<MedicationIntakeLog> logs) => _db.MedicationIntakeLogs.RemoveRange(logs);
+
     public async Task<MedicationIntakeLog?> GetByIdAsync(Guid intakeId, CancellationToken ct = default)
     {
         return await _db.MedicationIntakeLogs

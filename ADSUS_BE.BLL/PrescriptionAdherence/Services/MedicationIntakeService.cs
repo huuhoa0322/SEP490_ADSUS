@@ -1,11 +1,9 @@
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.Common.Interfaces;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
-using ADSUS_BE.DAL.Data;
-using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace ADSUS_BE.BLL.PrescriptionAdherence.Services;
 
@@ -16,18 +14,18 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services;
 /// </summary>
 public sealed class MedicationIntakeService : IMedicationIntakeService
 {
-    private readonly AppDbContext _db;
+    private readonly IPatientProfileService _patientProfiles;
     private readonly IMedicationIntakeLogRepository _intakeLogRepo;
     private readonly IPrescriptionRepository _prescriptionRepo;
     private readonly INotificationService _notificationService;
 
     public MedicationIntakeService(
-        AppDbContext db,
+        IPatientProfileService patientProfiles,
         IMedicationIntakeLogRepository intakeLogRepo,
         IPrescriptionRepository prescriptionRepo,
         INotificationService notificationService)
     {
-        _db = db;
+        _patientProfiles = patientProfiles;
         _intakeLogRepo = intakeLogRepo;
         _prescriptionRepo = prescriptionRepo;
         _notificationService = notificationService;
@@ -43,12 +41,9 @@ public sealed class MedicationIntakeService : IMedicationIntakeService
         if (prescription is null)
             throw new ResourceNotFoundException("Đơn thuốc không tồn tại.");
 
-        var patientProfile = await _db.PatientProfiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == patientId, ct)
-            ?? throw new ResourceNotFoundException("Hồ sơ bệnh nhân không tồn tại.");
+        var patientProfileId = await GetPatientProfileIdAsync(patientId, ct);
 
-        if (prescription.Case?.PatientProfileId != patientProfile.PatientProfileId)
+        if (prescription.Case?.PatientProfileId != patientProfileId)
             throw new UnauthorizedAccessException("Bạn không có quyền xem đơn thuốc này.");
 
         var logs = await _intakeLogRepo.ListByPrescriptionAsync(prescriptionId, ct);
@@ -60,12 +55,9 @@ public sealed class MedicationIntakeService : IMedicationIntakeService
         Guid patientId,
         CancellationToken ct = default)
     {
-        var patientProfile = await _db.PatientProfiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == patientId, ct)
-            ?? throw new ResourceNotFoundException("Hồ sơ bệnh nhân không tồn tại.");
+        var patientProfileId = await GetPatientProfileIdAsync(patientId, ct);
 
-        var logs = await _intakeLogRepo.ListUpcomingAsync(patientProfile.PatientProfileId, ct);
+        var logs = await _intakeLogRepo.ListUpcomingAsync(patientProfileId, ct);
         var now = DateTime.UtcNow;
         return logs.Select(log => IntakeLogResponseMapper.FromEntity(log, now)).ToList();
     }
@@ -82,12 +74,9 @@ public sealed class MedicationIntakeService : IMedicationIntakeService
         var prescription = await _prescriptionRepo.GetByIdAsync(log.PrescriptionItem?.PrescriptionId ?? Guid.Empty, ct)
             ?? throw new ResourceNotFoundException("Đơn thuốc không tồn tại.");
 
-        var patientProfile = await _db.PatientProfiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == patientId, ct)
-            ?? throw new ResourceNotFoundException("Hồ sơ bệnh nhân không tồn tại.");
+        var patientProfileId = await GetPatientProfileIdAsync(patientId, ct);
 
-        if (prescription.Case?.PatientProfileId != patientProfile.PatientProfileId)
+        if (prescription.Case?.PatientProfileId != patientProfileId)
             throw new UnauthorizedAccessException("Bạn không có quyền xác nhận liều thuốc này.");
 
         // GB-01: one-way — only update if still Pending
@@ -136,13 +125,8 @@ public sealed class MedicationIntakeService : IMedicationIntakeService
         var prescription = await _prescriptionRepo.GetByIdAsync(prescriptionId, ct)
             ?? throw new ResourceNotFoundException("Đơn thuốc không tồn tại.");
 
-        var items = await _db.PrescriptionItems
-            .AsNoTracking()
-            .Include(i => i.MedicationIntakeLogs)
-            .Where(i => i.PrescriptionId == prescriptionId)
-            .ToListAsync(ct);
-
-        var logs = items.SelectMany(i => i.MedicationIntakeLogs).ToList();
+        // Mọi liều thuộc các dòng thuốc của đơn này
+        var logs = await _intakeLogRepo.ListByPrescriptionAsync(prescriptionId, ct);
         var now = DateTime.UtcNow;
         var pct = AdherenceCalculator.Calculate(logs, now);
 
@@ -156,4 +140,9 @@ public sealed class MedicationIntakeService : IMedicationIntakeService
             AdherencePercent: pct,
             AdherenceLevel: AdherenceLevel.FromPercent(pct));
     }
+
+    /// <summary>Hồ sơ bệnh nhân của tài khoản đang đăng nhập (module MedicalRecord sở hữu).</summary>
+    private async Task<Guid> GetPatientProfileIdAsync(Guid userId, CancellationToken ct) =>
+        await _patientProfiles.FindIdByUserIdAsync(userId, ct)
+            ?? throw new ResourceNotFoundException("Hồ sơ bệnh nhân không tồn tại.");
 }

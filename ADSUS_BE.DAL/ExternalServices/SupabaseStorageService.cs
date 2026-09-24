@@ -73,6 +73,13 @@ public sealed class SupabaseStorageService : IFileStorageService
             $"{BaseUrl}/storage/v1/object/{encodedPath}");
         AddAuth(request);
 
+        // Cho ghi đè: khi request chỉ đích danh một ảnh đã lưu để xác nhận lại (sửa khung/caliper),
+        // CaseDiagnosisService.ConfirmAnalysisAsync dùng lại đúng tên file của ảnh đó — thiếu
+        // header này Supabase trả 409 KeyAlreadyExists. Ảnh mới luôn có imageId mới nên không
+        // bao giờ trùng tên. Mọi objectPath đều do backend tự sinh (caseId/imageId), không nhận
+        // từ client, nên không có chuyện người dùng ghi đè file của người khác.
+        request.Headers.Add("x-upsert", "true");
+
         request.Content = new StreamContent(content);
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
 

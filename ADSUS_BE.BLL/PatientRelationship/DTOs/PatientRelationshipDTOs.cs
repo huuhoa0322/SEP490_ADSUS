@@ -46,3 +46,13 @@ public record RelativeResponse(
 public record RelativesListResponse(
     IReadOnlyList<RelativeResponse> Relatives
 );
+
+/// <summary>
+/// Mối quan hệ dùng khi đặt lịch hộ: ai là bệnh nhân thật được khám (PatientProfileId) và ai
+/// là chủ danh bạ đã thêm người thân này (OwnerUserId).
+/// </summary>
+public record RelationshipBookingTarget(
+    Guid RelationshipId,
+    Guid PatientProfileId,
+    Guid OwnerUserId
+);

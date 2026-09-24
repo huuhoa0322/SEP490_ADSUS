@@ -300,15 +300,27 @@ public sealed class ScheduleSlotService : IScheduleSlotService
 
         if (forceClose && activeCount > 0)
         {
-            foreach (var appointment in slot.Appointments
-                .Where(a => a.Status == AppointmentStatus.Booked))
+            var bookedAppointments = slot.Appointments
+                .Where(a => a.Status == AppointmentStatus.Booked)
+                .ToList();
+
+            // Nạp UserId của mọi hồ sơ bệnh nhân cần báo tin bằng MỘT truy vấn, thay vì truy vấn
+            // lại từng hồ sơ bên trong vòng lặp (N+1, P11 review 24/09/2026).
+            var profileIds = bookedAppointments.Select(a => a.PatientProfileId).Distinct().ToList();
+            var profileUserIds = await _db.PatientProfiles
+                .AsNoTracking()
+                .Where(p => profileIds.Contains(p.PatientProfileId))
+                .Select(p => new { p.PatientProfileId, p.UserId })
+                .ToDictionaryAsync(p => p.PatientProfileId, p => p.UserId, ct);
+
+            foreach (var appointment in bookedAppointments)
             {
                 appointment.Status = AppointmentStatus.Cancelled;
                 appointment.CancelledReason = "Lịch khám bị hủy do bác sĩ/quản trị viên đóng slot.";
                 appointment.UpdatedAt = DateTime.UtcNow;
 
-                var patientProfile = await _db.PatientProfiles.FirstOrDefaultAsync(p => p.PatientProfileId == appointment.PatientProfileId, ct);
-                var recipientUserId = appointment.BookedByUserId ?? patientProfile?.UserId;
+                var recipientUserId = appointment.BookedByUserId
+                    ?? profileUserIds.GetValueOrDefault(appointment.PatientProfileId);
 
                 if (recipientUserId.HasValue)
                 {

@@ -13,6 +13,7 @@ public class PatientAccountServiceTests
 {
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IAuditLogRepository> _audit = new();
+    private readonly Mock<IPatientProfileRepository> _patientProfiles = new();
     private readonly Mock<IPasswordResetService> _passwordReset = new();
     private readonly PatientAccountService _sut;
 
@@ -22,6 +23,7 @@ public class PatientAccountServiceTests
     {
         _sut = new PatientAccountService(
             _users.Object,
+            _patientProfiles.Object,
             _audit.Object,
             _passwordReset.Object,
             Mock.Of<ILogger<PatientAccountService>>());
@@ -62,6 +64,10 @@ public class PatientAccountServiceTests
         Assert.Equal(new DateOnly(1984, 3, 12), response.DateOfBirth);
         Assert.False(string.IsNullOrEmpty(response.TemporaryPassword));
         Assert.True(response.TemporaryPassword.Length >= 8);
+
+        // UC-13 — bệnh nhân Điều dưỡng tạo phải đặt lịch được ngay, không đợi hồ sơ nền.
+        _patientProfiles.Verify(
+            r => r.StageForNewPatientAsync(saved, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

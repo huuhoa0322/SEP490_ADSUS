@@ -551,9 +551,13 @@ public class CaseDiagnosisServiceTests : IDisposable
         Assert.Equal(0, activeModel.LiveFp);
         Assert.Equal(0, activeModel.LiveFn);
 
-        // Doctor adjusts calipers on the same image (caliper moved to 200..300, no longer matches AI)
+        // Doctor adjusts calipers on the same image (caliper moved to 200..300, no longer matches AI).
+        // Xác nhận lại phải chỉ đích danh ảnh đã lưu (tên file chứa imageId) — một ca có nhiều
+        // ảnh, tên file gốc trên máy bác sĩ không đủ để biết đây là cùng một ảnh.
+        var savedImage = await _db.UltrasoundImages.SingleAsync(i => i.CaseId == _caseId, TestContext.Current.CancellationToken);
         var docJsonUpdated = "[{\"xmin\":200,\"ymin\":200,\"xmax\":300,\"ymax\":300}]";
         var request2 = MakeValidConfirmRequest(aiJson, docJsonUpdated);
+        request2.BurntImageFileName = $"burnt_{savedImage.ImageId}.png";
 
         // Act - Re-confirm
         await _sut.ConfirmAnalysisAsync(_caseId, request2, TestContext.Current.CancellationToken);

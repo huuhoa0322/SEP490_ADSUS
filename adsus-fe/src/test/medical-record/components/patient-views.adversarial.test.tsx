@@ -212,6 +212,38 @@ describe("Adversarial QA Suite: PatientListView & PatientRecordView", () => {
       expect(screen.getByText("Đã đặt lịch")).toBeInTheDocument();
     });
 
+    it("A5b. Auto-created profile without baseline: still labelled 'Chưa lập hồ sơ nền' but viewable", () => {
+      // Mọi tài khoản PATIENT mới đều có sẵn bản ghi hồ sơ rỗng (để đặt lịch được ngay, UC-13)
+      // — có patientProfileId nhưng Bác sĩ/Điều dưỡng chưa lập hồ sơ nền (UC-06).
+      const patients: PatientSummary[] = [
+        {
+          patientUserId: "usr-auto-profile",
+          patientProfileId: "prof-auto",
+          hasBaselineProfile: false,
+          fullName: "Phạm Thị Lan",
+          phone: "0900000009",
+          latestVisitDate: null,
+          latestVisitStatus: null,
+        },
+      ];
+
+      listMock.mockReturnValue({
+        data: { items: patients, page: 1, pageSize: 20, totalItems: 1, totalPages: 1 },
+        isLoading: false,
+        isError: false,
+        error: null,
+      });
+
+      render(<PatientListView />);
+
+      expect(screen.getByText("Chưa lập hồ sơ nền")).toBeInTheDocument();
+      // Vẫn mở được hồ sơ bằng patientProfileId, không bị khoá như tài khoản chưa có bản ghi.
+      expect(screen.getByRole("link", { name: "Phạm Thị Lan" })).toHaveAttribute(
+        "href",
+        "/patients/prof-auto",
+      );
+    });
+
     it("A6. Name variations: single-name, empty name, multi-word name render correctly", () => {
       const nameEdgePatients: PatientSummary[] = [
         {

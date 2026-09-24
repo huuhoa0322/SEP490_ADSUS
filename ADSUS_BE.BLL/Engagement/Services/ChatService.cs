@@ -1,6 +1,7 @@
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Engagement.DTOs;
 using ADSUS_BE.BLL.Engagement.Interfaces;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -314,7 +315,9 @@ public sealed class ChatService : IChatService
             sections.Add("\n=== LIỀU HÔM NAY ===");
             foreach (var dose in context.TodayIntakes)
             {
-                var time = dose.ScheduledTime.ToString("HH:mm");
+                // ScheduledTime lưu theo UTC — đổi sang giờ phòng khám trước khi đưa vào prompt,
+                // nếu không AI sẽ trả lời bệnh nhân giờ uống thuốc lệch 7 tiếng.
+                var time = (dose.ScheduledTime + ClinicClock.Offset).ToString("HH:mm");
                 sections.Add($"  - {dose.MedicineName} {dose.Dosage} lúc {time} [{dose.Status}]" +
                     (dose.Instructions is { } i ? $" — {i}" : ""));
             }

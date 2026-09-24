@@ -100,16 +100,21 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
             Mock.Of<ILogger<NoShowService>>());
 
         _appointmentService = new AppointmentService(
-            _appointmentRepo.Object,
-            _slotRepo.Object,
-            _profileRepo.Object,
+            _appointmentRepo.BackedBy(_db).Object,
+            _slotRepo.BackedBy(_db).Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db),
+            new ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService(_profileRepo.Object, new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db), Microsoft.Extensions.Logging.Abstractions.NullLogger<ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService>.Instance),
+            new ADSUS_BE.BLL.PatientRelationship.Services.PatientRelationshipService(new ADSUS_BE.DAL.Repositories.Implementations.PatientRelationshipRepository(_db), _profileRepo.Object, _db),
             _notificationService.Object,
-            _caseService.Object,
+            _caseService.BackedBy(_db).Object,
             noShowService,
             _db,
             Mock.Of<ILogger<AppointmentService>>());
 
-        _medicineService = new MedicineService(_medicineRepo.Object, _db);
+        _medicineService = new MedicineService(
+            _medicineRepo.BackedBy(_db).Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.MedicinePackagingRepository(_db),
+            new ADSUS_BE.DAL.Repositories.Implementations.MedicineUnitRepository(_db));
     }
 
     public void Dispose()

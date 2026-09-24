@@ -13,8 +13,28 @@ public interface IPatientProfileRepository
     /// <summary>Tìm hồ sơ theo tài khoản người dùng (dùng khi bệnh nhân tự xem hồ sơ mình).</summary>
     Task<PatientProfile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>PatientProfileId của tài khoản, null nếu tài khoản chưa có hồ sơ. Chỉ đọc 1 cột.</summary>
+    Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken ct = default);
+
     /// <summary>Chặn tạo hồ sơ thứ hai cho cùng một tài khoản (uq_patient_profiles_user).</summary>
     Task<bool> ExistsForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>Đọc để sửa theo tài khoản — có tracking (UC-06 lập hồ sơ nền trên bản ghi tạo sẵn).</summary>
+    Task<PatientProfile?> GetForUpdateByUserIdAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gắn sẵn hồ sơ cho tài khoản PATIENT vừa tạo, CHƯA lưu — bên gọi SaveChanges cùng lượt
+    /// với chính tài khoản. Nếu số điện thoại trùng một guest profile (người thân từng được
+    /// đặt hộ) thì nhận lại hồ sơ đó thay vì tạo mới, giống luồng tự đăng ký.
+    /// </summary>
+    Task<PatientProfile> StageForNewPatientAsync(User patient, CancellationToken ct = default);
+
+    /// <summary>
+    /// Trả về PatientProfileId của tài khoản, tạo bù nếu chưa có (tài khoản Admin/Điều dưỡng
+    /// tạo trước 24/09/2026 không được gắn hồ sơ). Dùng ở các thao tác bệnh nhân tự làm như
+    /// đặt lịch, ghi nhật ký sức khỏe.
+    /// </summary>
+    Task<Guid> EnsureForUserAsync(Guid userId, CancellationToken ct = default);
 
     Task<PatientProfile> AddAsync(PatientProfile profile, CancellationToken ct = default);
 
@@ -31,7 +51,7 @@ public interface IPatientProfileRepository
     /// patientUserId.
     /// </summary>
     /// <param name="visitStatus">null = tất cả; "Pending" = ca mới nhất ở InProgress/End; "Confirmed" = Confirmed.</param>
-    /// <param name="hasProfile">null = tất cả; true = chỉ người đã có hồ sơ nền; false = chỉ người chưa có.</param>
+    /// <param name="hasProfile">null = tất cả; true = chỉ người đã lập hồ sơ nền; false = chỉ người chưa lập (xem <see cref="PatientProfileBaseline"/>).</param>
     Task<(IReadOnlyList<PatientListRow> Items, int TotalCount)> SearchAsync(
         string? search,
         string? visitStatus,

@@ -60,11 +60,13 @@ public class FeedbackAndCheckinBoundaryStressTests
             Mock.Of<ILogger<NoShowService>>());
 
         return new AppointmentService(
-            apptRepo.Object,
-            slotRepo.Object,
-            profileRepo.Object,
+            apptRepo.BackedBy(db).Object,
+            slotRepo.BackedBy(db).Object,
+            new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(db),
+            new ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService(profileRepo.Object, new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(db), Microsoft.Extensions.Logging.Abstractions.NullLogger<ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService>.Instance),
+            new ADSUS_BE.BLL.PatientRelationship.Services.PatientRelationshipService(new ADSUS_BE.DAL.Repositories.Implementations.PatientRelationshipRepository(db), profileRepo.Object, db),
             notifService.Object,
-            caseService.Object,
+            caseService.BackedBy(db).Object,
             noShowService,
             db,
             Mock.Of<ILogger<AppointmentService>>());

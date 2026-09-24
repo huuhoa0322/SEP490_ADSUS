@@ -1131,5 +1131,132 @@ public class CaseServiceTests
             () => _sut.UpdateDiagnosesAsync(medicalCase.CaseId, medicalCase.DoctorId, request, TestContext.Current.CancellationToken));
         Assert.Contains("not been checked in", ex.Message);
     }
+
+    // ---------- StageCheckinFromAppointmentAsync (gọi từ AppointmentService khi check-in) ----------
+
+    [Fact]
+    public async Task StageCheckinFromAppointmentAsync_BookedCase_MovesToInProgressWithoutSaving()
+    {
+        // Arrange
+        var medicalCase = new Case { CaseId = Guid.NewGuid(), Status = CaseStatus.Booked };
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        await _sut.StageCheckinFromAppointmentAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
+
+        // Assert — KHÔNG tự lưu: AppointmentService lưu chung một lần với lịch hẹn.
+        Assert.Equal(CaseStatus.InProgress, medicalCase.Status);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task StageCancelFromAppointmentAsync_ExistingCase_MovesToCancelledWithoutSaving()
+    {
+        // Arrange
+        var medicalCase = new Case { CaseId = Guid.NewGuid(), Status = CaseStatus.Booked };
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        await _sut.StageCancelFromAppointmentAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(CaseStatus.Cancelled, medicalCase.Status);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task StageReplaceSymptomsFromAppointmentAsync_NewList_ReplacesSymptomsWithoutClientIdsAndWithoutSaving()
+    {
+        // Arrange
+        var categoryId = Guid.NewGuid();
+        var medicalCase = new Case { CaseId = Guid.NewGuid(), Status = CaseStatus.Booked };
+        medicalCase.CaseSymptoms.Add(new CaseSymptom { Id = Guid.NewGuid(), CaseId = medicalCase.CaseId, CategoryId = categoryId, OtherNote = "cũ" });
+        _cases.Setup(r => r.GetForUpdateWithCollectionsAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+        var symptoms = new List<ADSUS_BE.BLL.AppointmentScheduling.DTOs.SymptomInput>
+        {
+            new() { CategoryId = categoryId, OtherNote = "mới" }
+        };
+
+        // Act
+        await _sut.StageReplaceSymptomsFromAppointmentAsync(medicalCase.CaseId, symptoms, TestContext.Current.CancellationToken);
+
+        // Assert — Id để trống cho DB sinh (tự gán Id khiến EF sinh UPDATE thay vì INSERT)
+        var symptom = Assert.Single(medicalCase.CaseSymptoms);
+        Assert.Equal("mới", symptom.OtherNote);
+        Assert.Equal(Guid.Empty, symptom.Id);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task StageRescheduleFromAppointmentAsync_ReassignAndNewStatus_AppliesBothWithoutSaving()
+    {
+        // Arrange
+        var newDoctorId = Guid.NewGuid();
+        var medicalCase = new Case { CaseId = Guid.NewGuid(), DoctorId = Guid.NewGuid(), Status = CaseStatus.Cancelled };
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        await _sut.StageRescheduleFromAppointmentAsync(medicalCase.CaseId, newDoctorId, CaseStatus.Booked, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(newDoctorId, medicalCase.DoctorId);
+        Assert.Equal(CaseStatus.Booked, medicalCase.Status);
+        _cases.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task StageRescheduleFromAppointmentAsync_NoReassignNoStatus_CaseUntouched()
+    {
+        // Arrange — đổi lịch cùng bác sĩ, Case đang không bị huỷ (tình huống 3): không đổi gì
+        var doctorId = Guid.NewGuid();
+        var updatedAt = DateTime.UtcNow.AddDays(-1);
+        var medicalCase = new Case { CaseId = Guid.NewGuid(), DoctorId = doctorId, Status = CaseStatus.Booked, UpdatedAt = updatedAt };
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        await _sut.StageRescheduleFromAppointmentAsync(medicalCase.CaseId, null, null, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(doctorId, medicalCase.DoctorId);
+        Assert.Equal(CaseStatus.Booked, medicalCase.Status);
+        Assert.Equal(updatedAt, medicalCase.UpdatedAt);
+    }
+
+    [Fact]
+    public async Task ListSymptomsAsync_CaseNotFound_ReturnsEmptyList()
+    {
+        // Arrange
+        _cases.Setup(r => r.GetWithSymptomsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync((Case?)null);
+
+        // Act
+        var symptoms = await _sut.ListSymptomsAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(symptoms);
+    }
+
+    [Theory]
+    [InlineData(CaseStatus.InProgress)]
+    [InlineData(CaseStatus.Confirmed)]
+    [InlineData(CaseStatus.Cancelled)]
+    public async Task StageCheckinFromAppointmentAsync_CaseNotBooked_StatusUnchanged(CaseStatus status)
+    {
+        // Arrange
+        var medicalCase = new Case { CaseId = Guid.NewGuid(), Status = status };
+        _cases.Setup(r => r.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(medicalCase);
+
+        // Act
+        await _sut.StageCheckinFromAppointmentAsync(medicalCase.CaseId, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(status, medicalCase.Status);
+    }
 }
 

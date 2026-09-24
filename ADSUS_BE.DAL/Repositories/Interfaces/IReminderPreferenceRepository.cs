@@ -23,4 +23,7 @@ public interface IReminderPreferenceRepository
 
     /// <summary>Update dòng đã tồn tại.</summary>
     Task UpdateAsync(PatientReminderPreference preference, CancellationToken ct = default);
+
+    /// <summary>Lưu mọi thay đổi đang được track — Service quyết định lúc lưu.</summary>
+    Task SaveChangesAsync(CancellationToken ct = default);
 }

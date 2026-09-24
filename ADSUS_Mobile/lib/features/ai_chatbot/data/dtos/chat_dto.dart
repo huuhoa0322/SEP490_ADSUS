@@ -5,6 +5,8 @@
 ///   GET  /api/v1/me/chat/messages?from=&to=&limit=
 library;
 
+import '../../../../core/utils/api_date_time.dart';
+
 class SendChatMessageRequest {
   const SendChatMessageRequest({required this.content});
   final String content;
@@ -36,7 +38,7 @@ class ChatMessageDto {
       messageId: json['messageId'] as String,
       role: json['role'] as String,
       content: json['content'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: ApiDateTime.parse(json['createdAt'] as String),
       isSafetyResponse: json['isSafetyResponse'] as bool? ?? false,
       detectedIntent: json['detectedIntent'] as String?,
       isRateLimitExceeded: json['isRateLimitExceeded'] as bool? ?? false,

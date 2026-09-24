@@ -43,6 +43,17 @@ public interface IScheduleSlotRepository
         Guid? excludeSlotId = null,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Khung giờ (DoctorId, SlotDate, StartTime, EndTime) của mọi slot thuộc các bác sĩ cho trước
+    /// trong khoảng ngày, ở MỌI trạng thái — cùng quy tắc với <see cref="HasOverlapAsync"/>. Dùng
+    /// khi cần kiểm tra trùng giờ cho hàng loạt slot trong bộ nhớ (JOB-02). Chỉ đọc, chỉ có 4 cột.
+    /// </summary>
+    Task<IReadOnlyList<ScheduleSlot>> ListTimeRangesAsync(
+        IReadOnlyCollection<Guid> doctorIds,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken ct = default);
+
     /// <summary>Đếm số appointment đang Booked trên slot này (dùng khi close slot có booking).</summary>
     Task<int> CountActiveAppointmentsAsync(Guid slotId, CancellationToken ct = default);
 
@@ -55,4 +66,18 @@ public interface IScheduleSlotRepository
 
     /// <summary>Update slot (dùng khi close).</summary>
     Task UpdateAsync(ScheduleSlot slot, CancellationToken ct = default);
+
+    /// <summary>
+    /// Slot đang Booked của bác sĩ trong một ngày, bắt đầu SAU <paramref name="afterTime"/> —
+    /// ứng viên để tái chế về Open khi ca trước kết thúc sớm. CÓ tracking (Service sẽ cập nhật
+    /// Status rồi gọi <see cref="SaveChangesAsync"/>). Kèm Appointments + Case.
+    /// </summary>
+    Task<IReadOnlyList<ScheduleSlot>> ListBookedForDoctorAfterForUpdateAsync(
+        Guid doctorId,
+        DateOnly slotDate,
+        TimeOnly afterTime,
+        CancellationToken ct = default);
+
+    /// <summary>Lưu mọi thay đổi đang được track — Service quyết định lúc lưu (L3 §8).</summary>
+    Task SaveChangesAsync(CancellationToken ct = default);
 }

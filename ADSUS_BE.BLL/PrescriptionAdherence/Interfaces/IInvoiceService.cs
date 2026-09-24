@@ -15,6 +15,13 @@ public interface IInvoiceService
     /// </summary>
     Task<Guid> GenerateInvoiceForCaseAsync(Guid caseId);
 
+    /// <summary>
+    /// Tự sinh hoá đơn khi ca kết thúc: chỉ sinh nếu ca CHƯA có hoá đơn còn hiệu lực và CÓ dịch vụ
+    /// hoặc đơn thuốc đang hiệu lực. Trả về Id hoá đơn vừa sinh, null nếu không cần sinh. Module khác
+    /// (kê đơn, kết thúc ca) gọi hàm này thay vì tự đọc bảng hoá đơn/dịch vụ để quyết định.
+    /// </summary>
+    Task<Guid?> GenerateInvoiceIfBillableAsync(Guid caseId);
+
     Task<PagedResult<InvoiceResponse>> GetInvoicesAsync(InvoiceFilter filter);
     Task<InvoiceDetailResponse> GetInvoiceDetailAsync(Guid id);
     Task PayInvoiceAsync(Guid invoiceId, PaymentMethod method);

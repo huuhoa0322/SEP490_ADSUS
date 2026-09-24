@@ -273,6 +273,10 @@ public class UserAccountFlowTests
         public Task<IReadOnlyList<User>> GetAllPatientsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<User>>(
                 _byId.Values.Where(u => u.Role == UserRole.Patient && u.Status == UserStatus.Active).ToList());
+
+        public Task<IReadOnlyList<Guid>> ListActiveUserIdsByRoleAsync(UserRole role, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Guid>>(
+                _byId.Values.Where(u => u.Role == role && u.Status == UserStatus.Active).Select(u => u.UserId).ToList());
     }
 
     /// <summary>Bản giả chỉ để thoả DI — nội dung nhật ký không phải trọng tâm của các test này.</summary>

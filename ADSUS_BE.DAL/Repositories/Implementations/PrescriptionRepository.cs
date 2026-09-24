@@ -56,6 +56,26 @@ public sealed class PrescriptionRepository : IPrescriptionRepository
         await _db.Prescriptions.AddAsync(prescription, ct);
     }
 
+    public Task<Prescription?> GetActiveByCaseWithItemsAsync(Guid caseId, CancellationToken ct = default) =>
+        _db.Prescriptions
+            .AsNoTracking()
+            .Include(p => p.PrescriptionItems)
+                .ThenInclude(pi => pi.Medicine)
+                    .ThenInclude(m => m.MedicinePackagings)
+                        .ThenInclude(mp => mp.MedicineUnit)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active, ct);
+
+    public Task<Prescription?> GetActiveByCaseForIntakeScheduleAsync(Guid caseId, CancellationToken ct = default) =>
+        _db.Prescriptions
+            .AsNoTracking()
+            .Include(p => p.PrescriptionItems)
+            .Include(p => p.Case)
+            .FirstOrDefaultAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active, ct);
+
+    public Task<bool> ExistsActiveByCaseAsync(Guid caseId, CancellationToken ct = default) =>
+        _db.Prescriptions.AnyAsync(p => p.CaseId == caseId && p.Status == PrescriptionStatus.Active, ct);
+
     public async Task<Prescription?> GetByCaseIdAsync(Guid caseId, CancellationToken ct = default)
     {
         return await _db.Prescriptions

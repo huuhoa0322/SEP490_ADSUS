@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/api_date_time.dart';
 import '../../auth/presentation/viewmodels/auth_view_model.dart';
 
 /// Notification type enum - maps to backend NotificationType
@@ -154,8 +155,8 @@ class NotificationDto {
       body: json['body'] as String?,
       deepLink: json['deepLink'] as String?,
       metadata: json['metadata'] as Map<String, dynamic>?,
-      sentAt: DateTime.parse(json['sentAt'] as String),
-      readAt: json['readAt'] != null ? DateTime.parse(json['readAt'] as String) : null,
+      sentAt: ApiDateTime.parse(json['sentAt'] as String),
+      readAt: ApiDateTime.tryParse(json['readAt'] as String?),
       isRead: json['isRead'] as bool? ?? false,
     );
   }

@@ -1,3 +1,4 @@
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -62,12 +63,21 @@ public sealed class SlotGeneratorJob : IJob
             var doctors = await _userRepo.ListActiveDoctorsAsync(context.CancellationToken);
             _logger.LogInformation("[JOB-02] Found {Count} active doctors", doctors.Count);
 
-            // 2. Tính ngày: hôm nay → 29 ngày tới = 30 ngày
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            // 2. Tính ngày: hôm nay → 29 ngày tới = 30 ngày. "Hôm nay" theo giờ phòng khám (UTC+7):
+            // job chạy lúc 00:00 giờ VN, khi đó ngày UTC vẫn là hôm qua.
+            var today = ClinicClock.Today();
             var endDate = today.AddDays(29); // Hôm nay + 29 = 30 ngày
             _logger.LogInformation("[JOB-02] Generating slots from {From} to {To}", today, endDate);
 
-            // 3. Với mỗi Doctor, sinh slot cho 14 ngày
+            // 3. Nạp khung giờ mọi slot đã có của các bác sĩ trong khoảng ngày bằng MỘT truy vấn,
+            // rồi kiểm tra trùng giờ trong bộ nhớ. Bản trước gọi HasOverlapAsync cho từng ca của
+            // từng ngày, từng bác sĩ — tới 480 truy vấn/bác sĩ (N+1, P11 review 24/09/2026).
+            var doctorIds = doctors.Select(d => d.UserId).ToList();
+            var existingByDoctor = (await _slotRepo.ListTimeRangesAsync(
+                    doctorIds, today, endDate, context.CancellationToken))
+                .ToLookup(s => s.DoctorId);
+
+            // 4. Với mỗi Doctor, sinh slot cho 30 ngày
             var totalSlotsCreated = 0;
 
             foreach (var doctor in doctors)
@@ -76,7 +86,7 @@ public sealed class SlotGeneratorJob : IJob
                     doctor.UserId, doctor.FullName);
 
                 var count = await GenerateSlotsForDoctorAsync(
-                    doctor.UserId, today, endDate, context.CancellationToken);
+                    doctor.UserId, today, endDate, existingByDoctor[doctor.UserId], context.CancellationToken);
                 totalSlotsCreated += count;
 
                 _logger.LogInformation("[JOB-02] Doctor {DoctorId}: created {Count} slots",
@@ -98,8 +108,10 @@ public sealed class SlotGeneratorJob : IJob
         Guid doctorId,
         DateOnly fromDate,
         DateOnly toDate,
+        IEnumerable<ScheduleSlot> existingSlots,
         CancellationToken ct)
     {
+        var existingByDate = existingSlots.ToLookup(s => s.SlotDate);
         var createdCount = 0;
         var skippedPastCount = 0;
         var skippedOverlapCount = 0;
@@ -115,17 +127,16 @@ public sealed class SlotGeneratorJob : IJob
             // Duyệt qua 16 ca 30 phút
             foreach (var (start, end) in DailySlots30Min)
             {
-                // Skip ca đã qua
-                var slotDateTime = day.ToDateTime(start, DateTimeKind.Utc);
-                if (slotDateTime <= now)
+                // Skip ca đã qua — giờ ca là giờ địa phương phòng khám, quy về UTC trước khi so
+                var slotStartUtc = ClinicClock.StartOfDayUtc(day).Add(start.ToTimeSpan());
+                if (slotStartUtc <= now)
                 {
                     skippedPastCount++;
                     continue;
                 }
 
-                // Check overlap
-                var hasOverlap = await _slotRepo.HasOverlapAsync(
-                    doctorId, day, start, end, excludeSlotId: null, ct);
+                // Check overlap — cùng điều kiện với HasOverlapAsync (mọi trạng thái slot)
+                var hasOverlap = existingByDate[day].Any(s => s.StartTime < end && start < s.EndTime);
                 if (hasOverlap)
                 {
                     skippedOverlapCount++;

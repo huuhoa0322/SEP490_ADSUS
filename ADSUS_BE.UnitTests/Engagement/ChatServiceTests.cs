@@ -309,6 +309,60 @@ public class ChatServiceTests
     }
 
     [Fact]
+    public async Task SendMessageAsync_TodayIntakes_PromptShowsClinicLocalDoseTime()
+    {
+        // Arrange — liều 08:00 giờ VN lưu trong DB là 01:00 UTC
+        var repo = new Mock<IAiChatMessageRepository>();
+        var filter = new Mock<IPsychologyTopicFilter>();
+        var chat = new Mock<IChatClient>();
+        var intentDetector = new Mock<IIntentDetector>();
+        var aggregator = new Mock<IChatDataAggregator>();
+
+        repo.Setup(r => r.AddAsync(It.IsAny<AiChatMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AiChatMessage m, CancellationToken _) => m);
+        repo.Setup(r => r.ListByUserAsync(
+                It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+                It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AiChatMessage>());
+        filter.Setup(f => f.DetectUnsafeTopic(It.IsAny<string>())).Returns((string?)null);
+        intentDetector.Setup(d => d.DetectAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IntentResult { Intent = ChatIntent.Prescription, TriggeredSources = DataSource.TodayIntakes });
+
+        var doseUtc = new DateTime(2026, 9, 24, 1, 0, 0, DateTimeKind.Utc);
+        aggregator.Setup(a => a.BuildContextAsync(It.IsAny<Guid>(), It.IsAny<IntentResult>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PatientChatContext(
+                BasicInfo: new PatientBasicContextDto("Nguyễn Văn A", new DateOnly(1990, 1, 1), 36),
+                ActivePrescriptions: null,
+                TodayIntakes: new List<TodayIntakeContextDto>
+                {
+                    new(Guid.NewGuid(), "Paracetamol", "1 viên", null, doseUtc, "Chưa uống"),
+                },
+                UpcomingAppointments: null,
+                RecentCases: null,
+                Allergies: null,
+                Diseases: null,
+                RecentHealthLogs: null,
+                RecentBlogs: null));
+
+        string? capturedSystemPrompt = null;
+        chat.Setup(c => c.SendMessageAsync(
+                It.IsAny<string>(), It.IsAny<IReadOnlyList<ChatTurn>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, IReadOnlyList<ChatTurn>, string, CancellationToken>(
+                (sysPrompt, _, _, _) => capturedSystemPrompt = sysPrompt)
+            .ReturnsAsync("AI response");
+
+        var sut = NewSut(repo.Object, filter.Object, chat.Object, intentDetector.Object, aggregator.Object);
+
+        // Act
+        await sut.SendMessageAsync(Guid.NewGuid(), new SendChatMessageRequest { Content = "Hôm nay tôi uống thuốc lúc mấy giờ?" }, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(capturedSystemPrompt);
+        Assert.Contains("Paracetamol 1 viên lúc 08:00", capturedSystemPrompt);
+        Assert.DoesNotContain("lúc 01:00", capturedSystemPrompt);
+    }
+
+    [Fact]
     public async Task SendMessageAsync_NoPatientProfile_FallsBackToDefaultPrompt()
     {
         // Arrange

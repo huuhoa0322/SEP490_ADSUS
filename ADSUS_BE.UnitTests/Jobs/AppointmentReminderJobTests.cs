@@ -1,8 +1,10 @@
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Interfaces;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
-using ADSUS_BE.DAL.Repositories.Interfaces;
+using ADSUS_BE.DAL.Repositories.Implementations;
 using ADSUS_BE.Jobs;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -13,18 +15,23 @@ namespace ADSUS_BE.UnitTests.Jobs;
 
 /// <summary>
 /// Unit tests cho AppointmentReminderJob (JOB-03).
-/// Gửi nhắc nhở lịch hẹn trước 24 giờ.
+/// Gửi nhắc nhở lịch hẹn trước 24 giờ. Cửa sổ 20-24 giờ được lọc trong repository nên test chạy
+/// trên AppointmentRepository thật (DB InMemory). Giờ slot trong DB là giờ địa phương phòng khám.
 /// </summary>
-public class AppointmentReminderJobTests
+public class AppointmentReminderJobTests : IDisposable
 {
-    private readonly Mock<IPatientProfileRepository> _patientProfileRepo = new();
-    private readonly Mock<IAppointmentRepository> _appointmentRepo = new();
+    private readonly AppDbContext _db;
     private readonly Mock<INotificationService> _notificationService = new();
     private readonly Mock<ILogger<AppointmentReminderJob>> _logger = new();
     private readonly AppointmentReminderJob _sut;
+    private readonly User _doctor;
 
     public AppointmentReminderJobTests()
     {
+        _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options);
+
         var serviceScope = new Mock<IServiceScope>();
         var serviceProvider = new Mock<IServiceProvider>();
         serviceProvider.Setup(sp => sp.GetService(typeof(INotificationService))).Returns(_notificationService.Object);
@@ -35,9 +42,18 @@ public class AppointmentReminderJobTests
 
         _sut = new AppointmentReminderJob(
             scopeFactory.Object,
-            _patientProfileRepo.Object,
-            _appointmentRepo.Object,
+            new AppointmentRepository(_db),
             _logger.Object);
+
+        _doctor = CreateUser("Dr. Test", UserRole.Doctor);
+        _db.Users.Add(_doctor);
+        _db.SaveChanges();
+    }
+
+    public void Dispose()
+    {
+        _db.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     #region Helper Methods
@@ -48,61 +64,77 @@ public class AppointmentReminderJobTests
         return context.Object;
     }
 
-    private static PatientListRow CreatePatientListRow(Guid userId, Guid? profileId)
+    private static User CreateUser(string name, UserRole role) => new()
     {
-        return new PatientListRow(
-            PatientProfileId: profileId,
-            PatientUserId: userId,
-            FullName: "Patient Test",
-            Phone: "0900000001",
-            LatestVisitDate: null,
-            LatestVisitStatus: null);
-    }
+        UserId = Guid.NewGuid(),
+        FullName = name,
+        Phone = "09" + Random.Shared.Next(10000000, 99999999),
+        PasswordHash = "hash",
+        Role = role,
+        Status = UserStatus.Active,
+    };
 
-    private static Appointment CreateAppointment(Guid slotId, AppointmentStatus status, DateTime slotDateTime)
+    /// <summary>Giờ hiện tại theo giờ địa phương phòng khám — cùng hệ với SlotDate/StartTime.</summary>
+    private static DateTime NowLocal() => DateTime.UtcNow + ClinicClock.Offset;
+
+    /// <summary>
+    /// Tạo lịch hẹn có giờ khám (giờ địa phương) = <paramref name="slotLocal"/>. Hồ sơ gắn với
+    /// <paramref name="profileUser"/>; null = hồ sơ guest (người thân chưa có tài khoản).
+    /// </summary>
+    private Appointment SeedAppointment(
+        DateTime slotLocal,
+        AppointmentStatus status = AppointmentStatus.Booked,
+        User? profileUser = null,
+        Guid? bookedByUserId = null)
     {
+        var profile = new PatientProfile
+        {
+            PatientProfileId = Guid.NewGuid(),
+            UserId = profileUser?.UserId,
+            CreatedBy = Guid.NewGuid(),
+        };
         var slot = new ScheduleSlot
         {
-            SlotId = slotId,
-            DoctorId = Guid.NewGuid(),
-            Doctor = new User { FullName = "Dr. Test" },
-            SlotDate = DateOnly.FromDateTime(slotDateTime),
-            StartTime = TimeOnly.FromDateTime(slotDateTime),
-            EndTime = TimeOnly.FromDateTime(slotDateTime.AddMinutes(30)),
+            SlotId = Guid.NewGuid(),
+            DoctorId = _doctor.UserId,
+            SlotDate = DateOnly.FromDateTime(slotLocal),
+            StartTime = TimeOnly.FromDateTime(slotLocal),
+            EndTime = TimeOnly.FromDateTime(slotLocal.AddMinutes(30)),
             Status = SlotStatus.Booked,
         };
-
-        return new Appointment
+        var appointment = new Appointment
         {
             AppointmentId = Guid.NewGuid(),
-            SlotId = slotId,
-            Slot = slot,
-            PatientProfileId = Guid.NewGuid(),
+            SlotId = slot.SlotId,
+            PatientProfileId = profile.PatientProfileId,
+            BookedByUserId = bookedByUserId,
             Status = status,
             Reason = "Checkup",
         };
+
+        if (profileUser != null) _db.Users.Add(profileUser);
+        _db.PatientProfiles.Add(profile);
+        _db.ScheduleSlots.Add(slot);
+        _db.Appointments.Add(appointment);
+        _db.SaveChanges();
+        return appointment;
     }
 
-    #endregion
-
-    #region TC-001: No Patients
-
-    [Fact]
-    public async Task Execute_NoPatients_DoesNothing()
-    {
-        // Arrange
-        _patientProfileRepo.Setup(r => r.SearchAsync(null, null, null, 1, int.MaxValue, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((new List<PatientListRow>(), 0));
-
-        var context = CreateMockJobExecutionContext();
-
-        // Act
-        await _sut.Execute(context);
-
-        // Assert
+    private void VerifyNothingSent() =>
         _notificationService.Verify(
             s => s.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()),
             Times.Never);
+
+    #endregion
+
+    #region TC-001: No Appointments
+
+    [Fact]
+    public async Task Execute_NoAppointments_DoesNothing()
+    {
+        await _sut.Execute(CreateMockJobExecutionContext());
+
+        VerifyNothingSent();
     }
 
     #endregion
@@ -110,34 +142,22 @@ public class AppointmentReminderJobTests
     #region TC-002: Has Upcoming Appointment Within Window
 
     [Fact]
-    public async Task Execute_HasUpcomingAppointment_SendsNotification()
+    public async Task Execute_HasUpcomingAppointment_SendsNotificationWithLocalSlotTime()
     {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var profileId = Guid.NewGuid();
-        var slotId = Guid.NewGuid();
-
-        // Appointment trong vòng 20-24 giờ tới
-        var slotTime = DateTime.UtcNow.AddHours(22);
-        var patient = CreatePatientListRow(userId, profileId);
-        var appointment = CreateAppointment(slotId, AppointmentStatus.Booked, slotTime);
-
-        _patientProfileRepo.Setup(r => r.SearchAsync(null, null, null, 1, int.MaxValue, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((new List<PatientListRow> { patient }, 1));
-
-        _appointmentRepo.Setup(r => r.ListByPatientAsync(profileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Appointment> { appointment });
-
-        var context = CreateMockJobExecutionContext();
+        // Arrange — lịch khám còn 22 giờ nữa
+        var patient = CreateUser("Patient Test", UserRole.Patient);
+        var slotLocal = NowLocal().AddHours(22);
+        SeedAppointment(slotLocal, profileUser: patient);
 
         // Act
-        await _sut.Execute(context);
+        await _sut.Execute(CreateMockJobExecutionContext());
 
-        // Assert
+        // Assert — nội dung in đúng giờ khám địa phương, không cộng thêm 7 tiếng
         _notificationService.Verify(
             s => s.SendAsync(It.Is<SendNotificationRequest>(r =>
-                r.UserId == userId &&
-                r.Type == "appointment_reminder"),
+                r.UserId == patient.UserId &&
+                r.Type == "appointment_reminder" &&
+                r.Body.Contains($"lúc {slotLocal:HH:mm}")),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -149,31 +169,11 @@ public class AppointmentReminderJobTests
     [Fact]
     public async Task Execute_AppointmentTooFar_DoesNotSendNotification()
     {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var profileId = Guid.NewGuid();
-        var slotId = Guid.NewGuid();
+        SeedAppointment(NowLocal().AddHours(48), profileUser: CreateUser("Patient Test", UserRole.Patient));
 
-        // Appointment cách 2 ngày (48 giờ)
-        var slotTime = DateTime.UtcNow.AddHours(48);
-        var patient = CreatePatientListRow(userId, profileId);
-        var appointment = CreateAppointment(slotId, AppointmentStatus.Booked, slotTime);
+        await _sut.Execute(CreateMockJobExecutionContext());
 
-        _patientProfileRepo.Setup(r => r.SearchAsync(null, null, null, 1, int.MaxValue, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((new List<PatientListRow> { patient }, 1));
-
-        _appointmentRepo.Setup(r => r.ListByPatientAsync(profileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Appointment> { appointment });
-
-        var context = CreateMockJobExecutionContext();
-
-        // Act
-        await _sut.Execute(context);
-
-        // Assert
-        _notificationService.Verify(
-            s => s.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        VerifyNothingSent();
     }
 
     #endregion
@@ -183,30 +183,12 @@ public class AppointmentReminderJobTests
     [Fact]
     public async Task Execute_CancelledAppointment_DoesNotSendNotification()
     {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var profileId = Guid.NewGuid();
-        var slotId = Guid.NewGuid();
+        SeedAppointment(NowLocal().AddHours(22), AppointmentStatus.Cancelled,
+            profileUser: CreateUser("Patient Test", UserRole.Patient));
 
-        var slotTime = DateTime.UtcNow.AddHours(22);
-        var patient = CreatePatientListRow(userId, profileId);
-        var appointment = CreateAppointment(slotId, AppointmentStatus.Cancelled, slotTime);
+        await _sut.Execute(CreateMockJobExecutionContext());
 
-        _patientProfileRepo.Setup(r => r.SearchAsync(null, null, null, 1, int.MaxValue, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((new List<PatientListRow> { patient }, 1));
-
-        _appointmentRepo.Setup(r => r.ListByPatientAsync(profileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Appointment> { appointment });
-
-        var context = CreateMockJobExecutionContext();
-
-        // Act
-        await _sut.Execute(context);
-
-        // Assert
-        _notificationService.Verify(
-            s => s.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        VerifyNothingSent();
     }
 
     #endregion
@@ -216,30 +198,12 @@ public class AppointmentReminderJobTests
     [Fact]
     public async Task Execute_AlreadyCompleted_DoesNotSendNotification()
     {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var profileId = Guid.NewGuid();
-        var slotId = Guid.NewGuid();
+        SeedAppointment(NowLocal().AddHours(22), AppointmentStatus.Completed,
+            profileUser: CreateUser("Patient Test", UserRole.Patient));
 
-        var slotTime = DateTime.UtcNow.AddHours(22);
-        var patient = CreatePatientListRow(userId, profileId);
-        var appointment = CreateAppointment(slotId, AppointmentStatus.Completed, slotTime);
+        await _sut.Execute(CreateMockJobExecutionContext());
 
-        _patientProfileRepo.Setup(r => r.SearchAsync(null, null, null, 1, int.MaxValue, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((new List<PatientListRow> { patient }, 1));
-
-        _appointmentRepo.Setup(r => r.ListByPatientAsync(profileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Appointment> { appointment });
-
-        var context = CreateMockJobExecutionContext();
-
-        // Act
-        await _sut.Execute(context);
-
-        // Assert
-        _notificationService.Verify(
-            s => s.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        VerifyNothingSent();
     }
 
     #endregion
@@ -249,30 +213,69 @@ public class AppointmentReminderJobTests
     [Fact]
     public async Task Execute_AppointmentTooSoon_DoesNotSendNotification()
     {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var profileId = Guid.NewGuid();
-        var slotId = Guid.NewGuid();
+        SeedAppointment(NowLocal().AddHours(10), profileUser: CreateUser("Patient Test", UserRole.Patient));
 
-        // Appointment chỉ còn 10 giờ nữa (dưới ngưỡng 20 giờ)
-        var slotTime = DateTime.UtcNow.AddHours(10);
-        var patient = CreatePatientListRow(userId, profileId);
-        var appointment = CreateAppointment(slotId, AppointmentStatus.Booked, slotTime);
+        await _sut.Execute(CreateMockJobExecutionContext());
 
-        _patientProfileRepo.Setup(r => r.SearchAsync(null, null, null, 1, int.MaxValue, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((new List<PatientListRow> { patient }, 1));
+        // Không gửi notification vì đã quá gần rồi (sẽ có job khác nhắc sát giờ hơn)
+        VerifyNothingSent();
+    }
 
-        _appointmentRepo.Setup(r => r.ListByPatientAsync(profileId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Appointment> { appointment });
+    #endregion
 
-        var context = CreateMockJobExecutionContext();
+    #region TC-007: Slot Time Is Clinic Local Time, Not UTC
 
-        // Act
-        await _sut.Execute(context);
+    [Fact]
+    public async Task Execute_SlotClockEqualsUtcPlus22h_IsOnly15hAway_DoesNotSendNotification()
+    {
+        // Arrange — giờ slot trùng "UTC + 22h" nhưng giờ slot là giờ địa phương (UTC+7), nên thực tế
+        // chỉ còn 15 giờ. Bản cũ so giờ địa phương với UTC nên nhắc nhầm lịch này.
+        SeedAppointment(DateTime.UtcNow.AddHours(22), profileUser: CreateUser("Patient Test", UserRole.Patient));
 
-        // Assert - Không gửi notification vì đã quá gần rồi (sẽ có job khác nhắc sát giờ hơn)
+        await _sut.Execute(CreateMockJobExecutionContext());
+
+        VerifyNothingSent();
+    }
+
+    #endregion
+
+    #region TC-008: Booked For Relative
+
+    [Fact]
+    public async Task Execute_BookedForGuestRelative_RemindsBooker()
+    {
+        // Arrange — người thân chưa có tài khoản (hồ sơ guest), lịch do người khác đặt hộ
+        var booker = CreateUser("Booker", UserRole.Patient);
+        _db.Users.Add(booker);
+        _db.SaveChanges();
+        SeedAppointment(NowLocal().AddHours(22), profileUser: null, bookedByUserId: booker.UserId);
+
+        await _sut.Execute(CreateMockJobExecutionContext());
+
         _notificationService.Verify(
-            s => s.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()),
+            s => s.SendAsync(It.Is<SendNotificationRequest>(r => r.UserId == booker.UserId),
+            It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Execute_BookedForRelativeWithAccount_RemindsBookerNotProfileOwner()
+    {
+        var booker = CreateUser("Booker", UserRole.Patient);
+        var relative = CreateUser("Relative", UserRole.Patient);
+        _db.Users.Add(booker);
+        _db.SaveChanges();
+        SeedAppointment(NowLocal().AddHours(22), profileUser: relative, bookedByUserId: booker.UserId);
+
+        await _sut.Execute(CreateMockJobExecutionContext());
+
+        _notificationService.Verify(
+            s => s.SendAsync(It.Is<SendNotificationRequest>(r => r.UserId == booker.UserId),
+            It.IsAny<CancellationToken>()),
+            Times.Once);
+        _notificationService.Verify(
+            s => s.SendAsync(It.Is<SendNotificationRequest>(r => r.UserId == relative.UserId),
+            It.IsAny<CancellationToken>()),
             Times.Never);
     }
 

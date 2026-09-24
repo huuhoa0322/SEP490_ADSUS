@@ -46,4 +46,12 @@ public interface IPatientRelationshipService
     /// Kiểm tra SĐT đã có tài khoản chưa (cho Account Linking).
     /// </summary>
     Task<bool> IsPhoneRegisteredAsync(string phone, CancellationToken ct = default);
+
+    /// <summary>
+    /// Mối quan hệ để đặt lịch hộ (AppointmentService). <paramref name="ownerUserId"/> khác null
+    /// thì mối quan hệ PHẢI thuộc danh bạ của tài khoản đó (bệnh nhân tự đặt hộ); null thì chỉ
+    /// tìm theo Id (Điều dưỡng đặt hộ tại quầy). Không tìm thấy → null.
+    /// </summary>
+    Task<RelationshipBookingTarget?> FindBookingTargetAsync(
+        Guid relationshipId, Guid? ownerUserId, CancellationToken ct = default);
 }

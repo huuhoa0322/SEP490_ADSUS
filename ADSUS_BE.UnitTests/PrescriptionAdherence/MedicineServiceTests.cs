@@ -7,6 +7,7 @@ using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.Repositories.Implementations;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -27,7 +28,10 @@ public class MedicineServiceTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         _db = new AppDbContext(options);
-        _sut = new MedicineService(_medicineRepoMock.Object, _db);
+        _sut = new MedicineService(
+            _medicineRepoMock.BackedBy(_db).Object,
+            new MedicinePackagingRepository(_db),
+            new MedicineUnitRepository(_db));
     }
 
     [Fact]

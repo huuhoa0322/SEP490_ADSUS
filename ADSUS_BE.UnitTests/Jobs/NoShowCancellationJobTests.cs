@@ -489,4 +489,64 @@ public class NoShowCancellationJobTests : IDisposable
     }
 
     #endregion
+
+    #region TC-010: Linked Case Loaded With The Appointment
+
+    /// <summary>
+    /// Case liên kết được nạp cùng lịch hẹn (Include) thay vì truy vấn riêng từng lịch: Case còn
+    /// Booked thì chuyển Cancelled, Case đã sang trạng thái khác thì giữ nguyên.
+    /// </summary>
+    [Fact]
+    public async Task Execute_NoShowWithLinkedCase_CancelsOnlyBookedCase()
+    {
+        // Arrange — 2 lịch quá hạn (theo giờ phòng khám), mỗi lịch gắn 1 Case
+        var doctor = CreateDoctor();
+        var clinicPast = DateTime.UtcNow.Add(ClinicClock.Offset).AddHours(-2);
+        var date = DateOnly.FromDateTime(clinicPast);
+
+        var bookedCase = new Case { CaseId = Guid.NewGuid(), DoctorId = doctor.UserId, Status = CaseStatus.Booked };
+        var inProgressCase = new Case { CaseId = Guid.NewGuid(), DoctorId = doctor.UserId, Status = CaseStatus.InProgress };
+
+        var profile1 = CreatePatientProfile(CreatePatient("P1"));
+        var ap1 = CreateAppointment(CreateSlot(doctor, date, TimeOnly.FromDateTime(clinicPast)), profile1, AppointmentStatus.Booked);
+        bookedCase.PatientProfileId = profile1.PatientProfileId;
+        ap1.CaseId = bookedCase.CaseId;
+
+        var profile2 = CreatePatientProfile(CreatePatient("P2"));
+        var clinicPast2 = clinicPast.AddMinutes(-30);
+        var ap2 = CreateAppointment(CreateSlot(doctor, DateOnly.FromDateTime(clinicPast2), TimeOnly.FromDateTime(clinicPast2)), profile2, AppointmentStatus.Booked);
+        inProgressCase.PatientProfileId = profile2.PatientProfileId;
+        ap2.CaseId = inProgressCase.CaseId;
+
+        _db.Cases.AddRange(bookedCase, inProgressCase);
+        _db.Appointments.AddRange(ap1, ap2);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        await _sut.Execute(CreateMockJobExecutionContext());
+
+        // Assert
+        Assert.Equal(CaseStatus.Cancelled, (await _db.Cases.FindAsync(new object[] { bookedCase.CaseId }, TestContext.Current.CancellationToken))!.Status);
+        Assert.Equal(CaseStatus.InProgress, (await _db.Cases.FindAsync(new object[] { inProgressCase.CaseId }, TestContext.Current.CancellationToken))!.Status);
+    }
+
+    /// <summary>Lịch ngày mai theo giờ phòng khám không bị đụng tới (lọc thời gian nằm trong SQL).</summary>
+    [Fact]
+    public async Task Execute_FutureAppointment_IsLeftBooked()
+    {
+        var doctor = CreateDoctor();
+        var tomorrow = ClinicClock.Today().AddDays(1);
+        var appointment = CreateAppointment(
+            CreateSlot(doctor, tomorrow, new TimeOnly(8, 0)),
+            CreatePatientProfile(CreatePatient()),
+            AppointmentStatus.Booked);
+        await SeedAppointmentAsync(appointment);
+
+        await _sut.Execute(CreateMockJobExecutionContext());
+
+        var updated = await _db.Appointments.FindAsync(new object[] { appointment.AppointmentId }, TestContext.Current.CancellationToken);
+        Assert.Equal(AppointmentStatus.Booked, updated!.Status);
+    }
+
+    #endregion
 }

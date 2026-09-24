@@ -14,6 +14,12 @@ public interface IMedicineRepository
     /// <summary>Tìm theo tên chính xác (case-insensitive). Trả null nếu chưa có.</summary>
     Task<Medicine?> FindByNameAsync(string name, CancellationToken ct = default);
 
+    /// <summary>
+    /// Tìm nhiều thuốc theo tên trong MỘT truy vấn (khớp nguyên tên, không phân biệt hoa thường)
+    /// — dùng khi kê đơn nhiều dòng thuốc, tránh gọi FindByNameAsync lặp lại cho từng dòng (N+1).
+    /// </summary>
+    Task<IReadOnlyList<Medicine>> ListByNamesAsync(IEnumerable<string> names, CancellationToken ct = default);
+
     /// <summary>Add 1 medicine vào catalog.</summary>
     Task AddAsync(Medicine medicine, CancellationToken ct = default);
 
@@ -31,4 +37,10 @@ public interface IMedicineRepository
 
     /// <summary>Kiểm tra xem thuốc đã từng được sử dụng trong đơn thuốc nào chưa.</summary>
     Task<bool> HasBeenPrescribedAsync(Guid medicineId, CancellationToken ct = default);
+
+    /// <summary>Một thuốc kèm các lô (để tính tồn kho còn hạn). Chỉ đọc.</summary>
+    Task<Medicine?> GetWithBatchesAsync(Guid medicineId, CancellationToken ct = default);
+
+    /// <summary>Lưu mọi thay đổi đang được track — Service quyết định lúc lưu.</summary>
+    Task SaveChangesAsync(CancellationToken ct = default);
 }

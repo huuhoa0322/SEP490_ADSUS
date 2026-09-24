@@ -8,6 +8,7 @@ using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Services;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
+using ADSUS_BE.DAL.Repositories.Implementations;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -24,7 +25,7 @@ public class SupplierServiceTests : IDisposable
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         _db = new AppDbContext(options);
-        _sut = new SupplierService(_db);
+        _sut = new SupplierService(new SupplierRepository(_db));
     }
 
 
