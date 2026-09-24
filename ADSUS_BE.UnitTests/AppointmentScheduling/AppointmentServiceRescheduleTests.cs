@@ -47,7 +47,8 @@ public class AppointmentServiceRescheduleTests : IDisposable
             _caseService.BackedBy(_db).Object,
             _noShowService,
             new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
-            Mock.Of<ILogger<AppointmentService>>());
+            Mock.Of<ILogger<AppointmentService>>(),
+            _db);
     }
 
     public void Dispose()
@@ -1069,8 +1070,8 @@ public class AppointmentServiceRescheduleTests : IDisposable
         var slotTodayFutureTime = CreateSlot(doctor, tomorrow, new TimeOnly(1, 0), new TimeOnly(2, 0));
         var slotTomorrow = CreateSlot(doctor, tomorrow.AddDays(1), new TimeOnly(9, 0), new TimeOnly(10, 0));
 
-        _slotRepo.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), SlotStatus.Open, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ScheduleSlot> { slotPastDate, slotTodayPastTime, slotTodayFutureTime, slotTomorrow });
+        _slotRepo.Setup(r => r.ListOpenSlotsForBookingAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot> { slotTodayFutureTime, slotTomorrow });
 
         // Act
         var result = await _sut.ListOpenSlotsAsync(ct: TestContext.Current.CancellationToken);

@@ -48,7 +48,8 @@ public class AppointmentServiceRescheduleAdversarialTests : IDisposable
             _caseService.BackedBy(_db).Object,
             _noShowService,
             new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
-            Mock.Of<ILogger<AppointmentService>>());
+            Mock.Of<ILogger<AppointmentService>>(),
+            _db);
     }
 
     public void Dispose()

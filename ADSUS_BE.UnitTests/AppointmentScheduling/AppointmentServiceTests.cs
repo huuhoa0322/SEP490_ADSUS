@@ -54,7 +54,8 @@ public class AppointmentServiceTests : IDisposable
             _caseService.BackedBy(_db).Object,
             _noShowService,
             new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
-            Mock.Of<ILogger<AppointmentService>>());
+            Mock.Of<ILogger<AppointmentService>>(),
+            _db);
     }
 
     public void Dispose()
@@ -74,7 +75,7 @@ public class AppointmentServiceTests : IDisposable
         var doctor = CreateDoctor();
         var openSlot = CreateScheduleSlot(SlotStatus.Open, doctor);
 
-        _slotRepo.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()))
+        _slotRepo.Setup(r => r.ListOpenSlotsForBookingAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ScheduleSlot> { openSlot });
 
         // Act
@@ -93,7 +94,7 @@ public class AppointmentServiceTests : IDisposable
         var doctor1 = CreateDoctor("Dr. Smith", Guid.NewGuid());
         var slot1 = CreateScheduleSlot(SlotStatus.Open, doctor1);
 
-        _slotRepo.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), doctor1.UserId, It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()))
+        _slotRepo.Setup(r => r.ListOpenSlotsForBookingAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), doctor1.UserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ScheduleSlot> { slot1 });
 
         // Act
@@ -113,7 +114,7 @@ public class AppointmentServiceTests : IDisposable
         var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2));
         var slotFuture = CreateScheduleSlot(SlotStatus.Open, doctor, futureDate);
 
-        _slotRepo.Setup(r => r.ListByRangeAsync(futureDate, futureDate, It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>()))
+        _slotRepo.Setup(r => r.ListOpenSlotsForBookingAsync(futureDate, futureDate, It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<ScheduleSlot> { slotFuture });
 
         // Act

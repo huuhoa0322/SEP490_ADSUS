@@ -573,7 +573,8 @@ public class EdgeAndResilienceTests
         // Assert
         var item = Assert.Single(detail.Items);
         Assert.Equal("MEDICINE", item.ItemType);
-        Assert.Equal("Amoxicillin 500mg (Legacy)", item.Description);
+        Assert.Equal("Amoxicillin 500mg", item.Description);
+        Assert.Equal("Legacy", item.Unit);
     }
 
     [Fact]

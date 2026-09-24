@@ -38,6 +38,7 @@ class MedicalRecordMapper {
 
   static MedicalRecordImage _imageFromDto(UltrasoundImageDto dto) {
     // DEBUG: In ra log để xem URL gốc
+    // ignore: avoid_print
     print('DEBUG_IMAGE_URL - Original: ${dto.imageUrl}');
 
     return MedicalRecordImage(

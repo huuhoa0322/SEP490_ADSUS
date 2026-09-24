@@ -129,7 +129,8 @@ public class BookingForRelativeRulesTests : IDisposable
             _caseService.BackedBy(_db).Object,
             noShowService,
             new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
-            Mock.Of<ILogger<AppointmentService>>());
+            Mock.Of<ILogger<AppointmentService>>(),
+            _db);
 
         _relationshipService = PatientAccountTestServices.Relationship(_relationshipRepo, _db);
     }

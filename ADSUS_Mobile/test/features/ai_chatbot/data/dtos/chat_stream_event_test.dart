@@ -44,7 +44,7 @@ void main() {
       expect(done.messageId, 'msg-999');
       expect(done.role, 'ASSISTANT');
       expect(done.content, 'Đây là câu trả lời đầy đủ.');
-      expect(done.createdAt.isUtc, isTrue);
+      expect(done.createdAt, DateTime.parse('2026-09-24T10:00:00.000Z').toLocal());
       expect(done.isSafetyResponse, isTrue);
       expect(done.detectedIntent, 'prescription');
       expect(done.isRateLimitExceeded, isFalse);

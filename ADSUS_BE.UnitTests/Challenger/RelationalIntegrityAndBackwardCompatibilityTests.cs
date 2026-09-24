@@ -76,7 +76,8 @@ public class RelationalIntegrityAndBackwardCompatibilityTests
             caseService.BackedBy(db).Object,
             noShowService,
             new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(db),
-            Mock.Of<ILogger<AppointmentService>>());
+            Mock.Of<ILogger<AppointmentService>>(),
+            db);
     }
 
     #region 1. Concurrency & Query Robustness

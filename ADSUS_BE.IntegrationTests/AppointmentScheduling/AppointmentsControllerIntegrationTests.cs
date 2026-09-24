@@ -393,8 +393,9 @@ public class AppointmentsControllerIntegrationTests
         var client = CreatePatientClient(app);
 
         // Act
-                  _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<ScheduleSlot>());
-          var response = await client.GetAsync("/api/v1/appointments/slots", TestContext.Current.CancellationToken);
+        _slots.Setup(r => r.ListOpenSlotsForBookingAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot>());
+        var response = await client.GetAsync("/api/v1/appointments/slots", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -411,7 +412,8 @@ public class AppointmentsControllerIntegrationTests
         var doctorId = Guid.NewGuid();
 
         // Act
-        _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<ScheduleSlot>());
+        _slots.Setup(r => r.ListOpenSlotsForBookingAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot>());
         var response = await client.GetAsync($"/api/v1/appointments/slots?doctorId={doctorId}", TestContext.Current.CancellationToken);
 
         // Assert
@@ -428,7 +430,8 @@ public class AppointmentsControllerIntegrationTests
         var toDate = fromDate.AddDays(7);
 
         // Act
-        _slots.Setup(r => r.ListByRangeAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<SlotStatus?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new List<ScheduleSlot>());
+        _slots.Setup(r => r.ListOpenSlotsForBookingAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ScheduleSlot>());
         var response = await client.GetAsync(
             $"/api/v1/appointments/slots?fromDate={fromDate:yyyy-MM-dd}&toDate={toDate:yyyy-MM-dd}", TestContext.Current.CancellationToken);
 
