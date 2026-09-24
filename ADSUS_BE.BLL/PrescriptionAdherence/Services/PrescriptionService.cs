@@ -2,11 +2,9 @@ using System.Collections.Immutable;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
-using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.PrescriptionAdherence;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 
@@ -20,7 +18,8 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services;
 /// </summary>
 public sealed class PrescriptionService : IPrescriptionService
 {
-    private readonly AppDbContext _db;
+    private readonly IInventoryRepository _inventory;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IPrescriptionRepository _prescriptionRepo;
     private readonly IPrescriptionItemRepository _itemRepo;
     private readonly IMedicationIntakeLogRepository _intakeLogRepo;
@@ -32,7 +31,8 @@ public sealed class PrescriptionService : IPrescriptionService
     private readonly Microsoft.Extensions.Logging.ILogger<PrescriptionService>? _logger;
 
     public PrescriptionService(
-        AppDbContext db,
+        IInventoryRepository inventory,
+        IUnitOfWork unitOfWork,
         IPrescriptionRepository prescriptionRepo,
         IPrescriptionItemRepository itemRepo,
         IMedicationIntakeLogRepository intakeLogRepo,
@@ -43,7 +43,8 @@ public sealed class PrescriptionService : IPrescriptionService
         IInvoiceService? invoiceService = null,
         Microsoft.Extensions.Logging.ILogger<PrescriptionService>? logger = null)
     {
-        _db = db;
+        _inventory = inventory;
+        _unitOfWork = unitOfWork;
         _prescriptionRepo = prescriptionRepo;
         _itemRepo = itemRepo;
         _intakeLogRepo = intakeLogRepo;
@@ -71,8 +72,7 @@ public sealed class PrescriptionService : IPrescriptionService
         if (doctor.Status != UserStatus.Active)
             throw new BusinessException("Tài khoản bác sĩ đang không hoạt động.");
 
-        var isRelational = _db.Database.IsRelational();
-        var transaction = isRelational ? await _db.Database.BeginTransactionAsync(ct) : null;
+        await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             // UC-18 BR-01: Validate case is Confirmed
@@ -102,12 +102,7 @@ public sealed class PrescriptionService : IPrescriptionService
                     StringComparer.OrdinalIgnoreCase);
 
             var medicineIds = medicinesByName.Values.Select(m => m.MedicineId).Distinct().ToList();
-            var availableBaseByMedicine = await _db.MedicineBatches
-                .AsNoTracking()
-                .Where(b => medicineIds.Contains(b.MedicineId) && b.QuantityBase > 0 && b.ExpiryDate >= today)
-                .GroupBy(b => b.MedicineId)
-                .Select(g => new { MedicineId = g.Key, Total = g.Sum(b => b.QuantityBase) })
-                .ToDictionaryAsync(x => x.MedicineId, x => x.Total, ct);
+            var availableBaseByMedicine = await _inventory.GetAvailableBaseQuantitiesAsync(medicineIds, today, ct);
 
             // Create prescription
             var prescription = new Prescription
@@ -179,35 +174,21 @@ public sealed class PrescriptionService : IPrescriptionService
             trackedCase.Status = CaseStatus.End;
             trackedCase.UpdatedAt = DateTime.UtcNow;
 
-            await _db.SaveChangesAsync(ct);
-            
-            if (transaction != null)
-                await transaction.CommitAsync(ct);
+            await _unitOfWork.SaveChangesAsync(ct);
 
-            // Auto-trigger: Sinh hóa đơn khi ca kết thúc nếu có dịch vụ/thuốc và chưa có hóa đơn
+            await transaction.CommitAsync(ct);
+
+            // Auto-trigger: Sinh hóa đơn khi ca kết thúc nếu có dịch vụ/thuốc và chưa có hóa đơn —
+            // việc quyết định có cần sinh hay không thuộc module hoá đơn (GenerateInvoiceIfBillableAsync).
             if (_invoiceService != null)
             {
-                var hasInvoice = await _db.Invoices.AnyAsync(i => i.CaseId == request.CaseId 
-                    && (i.Status == InvoiceStatus.PENDING || i.Status == InvoiceStatus.PAID), ct);
-
-                if (!hasInvoice)
+                try
                 {
-                    var hasServiceOrMedicine = 
-                        await _db.CaseClinicServices.AnyAsync(cs => cs.CaseId == request.CaseId, ct)
-                        || await _db.Prescriptions.AnyAsync(p => p.CaseId == request.CaseId 
-                            && p.Status == PrescriptionStatus.Active, ct);
-
-                    if (hasServiceOrMedicine)
-                    {
-                        try
-                        {
-                            await _invoiceService.GenerateInvoiceForCaseAsync(request.CaseId);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger?.LogError(ex, "Tự động tạo hóa đơn khi kê đơn cho ca {CaseId} thất bại", request.CaseId);
-                        }
-                    }
+                    await _invoiceService.GenerateInvoiceIfBillableAsync(request.CaseId);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Tự động tạo hóa đơn khi kê đơn cho ca {CaseId} thất bại", request.CaseId);
                 }
             }
 
@@ -219,14 +200,8 @@ public sealed class PrescriptionService : IPrescriptionService
         }
         catch
         {
-            if (transaction != null)
-                await transaction.RollbackAsync(ct);
+            await transaction.RollbackAsync(ct);
             throw;
-        }
-        finally
-        {
-            if (transaction != null)
-                await transaction.DisposeAsync();
         }
     }
 

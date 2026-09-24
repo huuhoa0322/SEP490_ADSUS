@@ -19,6 +19,9 @@ public interface IMedicinePackagingRepository
     /// <summary>Mọi quy cách của một thuốc kèm đơn vị tính — đơn vị cơ sở trước, rồi hệ số tăng dần. Chỉ đọc.</summary>
     Task<IReadOnlyList<MedicinePackaging>> ListByMedicineAsync(Guid medicineId, CancellationToken ct = default);
 
+    /// <summary>Một quy cách (không kèm đơn vị tính). Chỉ đọc.</summary>
+    Task<MedicinePackaging?> GetByIdAsync(Guid packagingId, CancellationToken ct = default);
+
     /// <summary>Một quy cách kèm đơn vị tính. Chỉ đọc.</summary>
     Task<MedicinePackaging?> GetWithUnitAsync(Guid packagingId, CancellationToken ct = default);
 

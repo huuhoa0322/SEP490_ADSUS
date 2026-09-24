@@ -28,7 +28,7 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
 
             _dbContext = new AppDbContext(options);
             _loggerMock = new Mock<ILogger<InventoryService>>();
-            _service = new InventoryService(_dbContext, _loggerMock.Object);
+            _service = PrescriptionAdherenceTestServices.Inventory(_dbContext, _loggerMock.Object);
         }
 
         [Fact]

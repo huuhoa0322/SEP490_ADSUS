@@ -41,6 +41,9 @@ public sealed class MedicinePackagingRepository : IMedicinePackagingRepository
             .ToListAsync(ct);
     }
 
+    public Task<MedicinePackaging?> GetByIdAsync(Guid packagingId, CancellationToken ct = default) =>
+        _db.MedicinePackagings.AsNoTracking().FirstOrDefaultAsync(p => p.Id == packagingId, ct);
+
     public Task<MedicinePackaging?> GetWithUnitAsync(Guid packagingId, CancellationToken ct = default) =>
         _db.MedicinePackagings
             .AsNoTracking()

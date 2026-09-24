@@ -19,4 +19,7 @@ public interface IPrescriptionItemRepository
 
     /// <summary>Add nhiều items cùng lúc (dùng cho CreatePrescriptionCommandHandler).</summary>
     Task AddRangeAsync(IEnumerable<PrescriptionItem> items, CancellationToken ct = default);
+
+    /// <summary>Mọi dòng thuốc thuộc các đơn của một ca, kèm đơn cha — CÓ tracking (huỷ hoá đơn huỷ luôn đơn).</summary>
+    Task<IReadOnlyList<PrescriptionItem>> ListByCaseForUpdateAsync(Guid caseId, CancellationToken ct = default);
 }

@@ -38,7 +38,7 @@ public class PrescriptionServiceTests
         }
 
         return new PrescriptionService(
-            db,
+            new ADSUS_BE.DAL.Repositories.Implementations.InventoryRepository(db), new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(db),
             _prescriptionRepoMock.Object,
             _itemRepoMock.Object,
             _intakeLogRepoMock.Object,
@@ -98,7 +98,7 @@ public class PrescriptionServiceTests
             .Options;
         var db = new AppDbContext(options);
         var service = new PrescriptionService(
-            db,
+            new ADSUS_BE.DAL.Repositories.Implementations.InventoryRepository(db), new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(db),
             _prescriptionRepoMock.Object,
             _itemRepoMock.Object,
             _intakeLogRepoMock.Object,
@@ -198,7 +198,7 @@ public class PrescriptionServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var serviceWithDb = new PrescriptionService(
-            db,
+            new ADSUS_BE.DAL.Repositories.Implementations.InventoryRepository(db), new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(db),
             _prescriptionRepoMock.Object,
             _itemRepoMock.Object,
             _intakeLogRepoMock.Object,
@@ -448,7 +448,7 @@ public class PrescriptionServiceTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         service = new PrescriptionService(
-            db,
+            new ADSUS_BE.DAL.Repositories.Implementations.InventoryRepository(db), new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(db),
             _prescriptionRepoMock.Object,
             _itemRepoMock.Object,
             _intakeLogRepoMock.Object,

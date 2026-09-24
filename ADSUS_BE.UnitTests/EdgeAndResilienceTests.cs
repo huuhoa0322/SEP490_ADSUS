@@ -99,8 +99,7 @@ public class EdgeAndResilienceTests
 
     private static InvoiceService CreateInvoiceService(AppDbContext context, IInventoryService? inventoryService = null)
     {
-        return new InvoiceService(
-            context,
+        return PrescriptionAdherenceTestServices.Invoice(context,
             inventoryService ?? Mock.Of<IInventoryService>(),
             Mock.Of<IMedicationIntakeLogRepository>(),
             Mock.Of<IMedicationIntakeScheduleGenerator>(),

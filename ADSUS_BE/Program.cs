@@ -576,6 +576,10 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IMedicinePackagingRepository, MedicinePackagingRepository>();
             builder.Services.AddScoped<IMedicineUnitRepository, MedicineUnitRepository>();
             builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
+            builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
+            builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+            // Service mở transaction/lưu qua IUnitOfWork, không tự cầm AppDbContext (P11)
+            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             // AdherenceCalculator is static — used directly, not injected.
             builder.Services.AddSingleton<IMedicationIntakeScheduleGenerator, MedicationIntakeScheduleGenerator>();
             builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
