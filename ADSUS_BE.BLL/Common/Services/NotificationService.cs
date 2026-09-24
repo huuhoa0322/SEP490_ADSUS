@@ -127,18 +127,17 @@ public sealed partial class NotificationService : INotificationService
     /// <inheritdoc />
     public async Task SendBulkAsync(IEnumerable<Guid> userIds, SendNotificationRequest request, CancellationToken ct = default)
     {
-        foreach (var userId in userIds)
+        var tasks = userIds.Select(userId => SendAsync(new SendNotificationRequest
         {
-            await SendAsync(new SendNotificationRequest
-            {
-                UserId = userId,
-                Type = request.Type,
-                Title = request.Title,
-                Body = request.Body,
-                DeepLink = request.DeepLink,
-                Metadata = request.Metadata,
-            }, ct);
-        }
+            UserId = userId,
+            Type = request.Type,
+            Title = request.Title,
+            Body = request.Body,
+            DeepLink = request.DeepLink,
+            Metadata = request.Metadata,
+        }, ct));
+
+        await Task.WhenAll(tasks);
     }
 
     private async Task SaveToDbAsync(NotificationLog log, CancellationToken ct)

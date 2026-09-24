@@ -96,6 +96,21 @@ public interface IAppointmentRepository
     /// <summary>Lịch hẹn mới nhất của một Case, bất kể trạng thái. Chỉ đọc.</summary>
     Task<Appointment?> GetLatestByCaseAsync(Guid caseId, CancellationToken ct = default);
 
+    public class BookingRulesContext
+    {
+        public int UserCancellationsToday { get; set; }
+        public int PatientCancellationsToday { get; set; }
+        public int SelfActiveCount { get; set; }
+        public int BookedForOthersActiveCount { get; set; }
+        public int PatientTotalActiveCount { get; set; }
+        public Appointment? ExistingAppointmentOnDate { get; set; }
+    }
+
+    /// <summary>
+    /// Fetch all rule variables in one DB query to optimize booking performance.
+    /// </summary>
+    Task<BookingRulesContext> GetBookingRulesContextAsync(Guid userId, Guid targetPatientProfileId, DateTime todayStartUtc, DateOnly slotDate, CancellationToken ct = default);
+
     /// <summary>
     /// Đọc lịch hẹn cũ để đổi lịch — CÓ tracking, kèm Slot + Doctor, hồ sơ bệnh nhân + tài khoản
     /// và Case (trạng thái Case quyết định tình huống đổi lịch).

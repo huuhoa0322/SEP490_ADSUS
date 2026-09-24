@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/dtos/chat_stream_event.dart';
 import '../../data/models/chat_message_model.dart';
 import '../../data/repositories/chat_local_repository.dart';
 import '../../data/repositories/chat_api_repository.dart';
@@ -17,6 +19,7 @@ class AiChatState {
     this.messages = const [],
     this.isLoading = false,
     this.isSending = false,
+    this.isThinking = false,
     this.isMerging = false,
     this.errorMessage,
     this.isOffline = false,
@@ -27,6 +30,7 @@ class AiChatState {
   final List<entity.ChatMessage> messages;
   final bool isLoading;
   final bool isSending;
+  final bool isThinking;
   final bool isMerging;
   final String? errorMessage;
   final bool isOffline;
@@ -37,6 +41,7 @@ class AiChatState {
     List<entity.ChatMessage>? messages,
     bool? isLoading,
     bool? isSending,
+    bool? isThinking,
     bool? isMerging,
     String? errorMessage,
     bool? isOffline,
@@ -49,6 +54,7 @@ class AiChatState {
         messages: messages ?? this.messages,
         isLoading: isLoading ?? this.isLoading,
         isSending: isSending ?? this.isSending,
+        isThinking: isThinking ?? this.isThinking,
         isMerging: isMerging ?? this.isMerging,
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
         isOffline: isOffline ?? this.isOffline,
@@ -66,6 +72,7 @@ class AiChatViewModel extends StateNotifier<AiChatState> {
   final Ref _ref;
   ChatRepository? _chatRepo;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  CancelToken? _currentCancelToken;
 
   /// Khởi tạo repository sau khi user đăng nhập.
   ///
@@ -89,6 +96,8 @@ class AiChatViewModel extends StateNotifier<AiChatState> {
 
   /// Dọn dẹp khi đăng xuất.
   Future<void> disposeForUser() async {
+    _currentCancelToken?.cancel();
+    _currentCancelToken = null;
     await _chatRepo?.dispose();
     _chatRepo = null;
     state = const AiChatState();
@@ -135,21 +144,152 @@ class AiChatViewModel extends StateNotifier<AiChatState> {
     }
   }
 
-  /// Gửi tin nhắn mới.
+  /// Gửi tin nhắn mới qua SSE streaming.
+  ///
+  ///  - isSending giữ true trong suốt thời gian streaming để vô hiệu hóa nút gửi, chống race condition.
+  ///  - Sự kiện thinking: cập nhật isThinking = true để hiển thị typing/thinking indicator.
+  ///  - Sự kiện delta: tạo hoặc nối text chunk vào tin nhắn assistant trên bộ nhớ (real-time).
+  ///  - Sự kiện done: chuẩn hoá ID, detected intent, sanitize nội dung, gỡ bỏ isSending/isThinking.
+  ///  - Sự kiện error hoặc ngoại lệ mạng: bắt lỗi an toàn, gỡ bỏ isSending/isThinking, báo lỗi thân thiện.
   Future<void> sendMessage(String content) async {
     if (_chatRepo == null || content.trim().isEmpty) return;
+    if (state.isSending) return; // Khoá gửi song song
 
-    state = state.copyWith(isSending: true, clearError: true);
+    final trimmed = content.trim();
+    _currentCancelToken?.cancel();
+    final cancelToken = CancelToken();
+    _currentCancelToken = cancelToken;
+
+    state = state.copyWith(
+      isSending: true,
+      isThinking: true,
+      clearError: true,
+    );
+
+    String? currentAssistantId;
+    final assistantTextBuffer = StringBuffer();
+    bool receivedDone = false;
 
     try {
-      await _chatRepo!.sendMessage(content.trim());
-      state = state.copyWith(isSending: false);
-      // _onNewMessage đã update state rồi
+      final stream = _chatRepo!.streamMessage(trimmed, cancelToken: cancelToken);
+
+      await for (final event in stream) {
+        if (!mounted) break;
+
+        switch (event) {
+          case ChatStreamThinkingEvent():
+            state = state.copyWith(isThinking: true);
+            break;
+
+          case ChatStreamDeltaEvent(:final chunk):
+            if (chunk.isEmpty) break;
+            assistantTextBuffer.write(chunk);
+
+            if (currentAssistantId == null) {
+              currentAssistantId = 'stream_${DateTime.now().millisecondsSinceEpoch}';
+              final assistantMsg = entity.ChatMessage(
+                messageId: currentAssistantId,
+                role: entity.ChatRole.assistant,
+                content: assistantTextBuffer.toString(),
+                createdAt: DateTime.now(),
+                isSafety: false,
+              );
+              state = state.copyWith(
+                isThinking: false,
+                messages: [...state.messages, assistantMsg],
+              );
+            } else {
+              final updated = List<entity.ChatMessage>.from(state.messages);
+              final idx = updated.indexWhere((m) => m.messageId == currentAssistantId);
+              if (idx != -1) {
+                updated[idx] = updated[idx].copyWith(
+                  content: assistantTextBuffer.toString(),
+                );
+                state = state.copyWith(
+                  isThinking: false,
+                  messages: updated,
+                );
+              }
+            }
+            break;
+
+          case ChatStreamDoneEvent(
+            :final messageId,
+            :final content,
+            :final createdAt,
+            :final detectedIntent,
+            :final isSafetyResponse,
+            :final isRateLimitExceeded,
+          ):
+            receivedDone = true;
+            final finalRaw = content.isNotEmpty ? content : assistantTextBuffer.toString();
+            final sanitized = sanitizeAssistantContent(finalRaw);
+            final intent = entity.ChatIntent.fromString(detectedIntent);
+
+            final updated = List<entity.ChatMessage>.from(state.messages);
+            final idx = currentAssistantId != null
+                ? updated.indexWhere((m) => m.messageId == currentAssistantId)
+                : -1;
+
+            final finalMsg = entity.ChatMessage(
+              messageId: messageId.isNotEmpty
+                  ? messageId
+                  : (currentAssistantId ?? 'done_${DateTime.now().millisecondsSinceEpoch}'),
+              role: entity.ChatRole.assistant,
+              content: sanitized,
+              createdAt: createdAt,
+              isSafety: isSafetyResponse,
+              detectedIntent: intent,
+              isRateLimitExceeded: isRateLimitExceeded,
+            );
+
+            if (idx != -1) {
+              updated[idx] = finalMsg;
+            } else {
+              updated.add(finalMsg);
+            }
+
+            state = state.copyWith(
+              isSending: false,
+              isThinking: false,
+              messages: updated,
+              lastDetectedIntent: intent,
+            );
+            break;
+
+          case ChatStreamErrorEvent(:final message):
+            state = state.copyWith(
+              isSending: false,
+              isThinking: false,
+              errorMessage: message.isNotEmpty
+                  ? message
+                  : 'Gửi tin nhắn thất bại. Vui lòng thử lại.',
+            );
+            break;
+        }
+      }
+
+      if (!receivedDone && state.isSending && mounted) {
+        state = state.copyWith(
+          isSending: false,
+          isThinking: false,
+          errorMessage: assistantTextBuffer.isNotEmpty
+              ? null
+              : 'Mất kết nối với máy chủ. Vui lòng thử lại.',
+        );
+      }
     } catch (e) {
-      state = state.copyWith(
-        isSending: false,
-        errorMessage: 'Gửi tin nhắn thất bại. Vui lòng thử lại.',
-      );
+      if (mounted) {
+        state = state.copyWith(
+          isSending: false,
+          isThinking: false,
+          errorMessage: 'Gửi tin nhắn thất bại. Vui lòng thử lại.',
+        );
+      }
+    } finally {
+      if (_currentCancelToken == cancelToken) {
+        _currentCancelToken = null;
+      }
     }
   }
 
@@ -215,6 +355,8 @@ class AiChatViewModel extends StateNotifier<AiChatState> {
 
   @override
   void dispose() {
+    _currentCancelToken?.cancel();
+    _currentCancelToken = null;
     _connectivitySubscription?.cancel();
     super.dispose();
   }

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using ADSUS_BE.BLL.Engagement.DTOs;
 using ADSUS_BE.BLL.Engagement.Interfaces;
 
@@ -33,5 +34,23 @@ public sealed class FakeChatClient : IChatClient
         var response = MockResponses[_responseIndex % MockResponses.Length];
         _responseIndex++;
         return Task.FromResult(response);
+    }
+
+    public async IAsyncEnumerable<string> StreamMessageAsync(
+        string systemPrompt,
+        IReadOnlyList<ChatTurn> history,
+        string userMessage,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        var response = MockResponses[_responseIndex % MockResponses.Length];
+        _responseIndex++;
+
+        var words = response.Split(' ');
+        for (int i = 0; i < words.Length; i++)
+        {
+            if (ct.IsCancellationRequested) yield break;
+            yield return (i == 0 ? "" : " ") + words[i];
+            await Task.Yield();
+        }
     }
 }

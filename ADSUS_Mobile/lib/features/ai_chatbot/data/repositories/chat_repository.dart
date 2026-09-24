@@ -1,4 +1,7 @@
+import 'package:dio/dio.dart';
+
 import '../dtos/chat_dto.dart';
+import '../dtos/chat_stream_event.dart';
 import '../models/chat_message_model.dart';
 import 'chat_api_repository.dart';
 import 'chat_local_repository.dart';
@@ -65,6 +68,59 @@ class ChatRepository {
       return merged;
     } catch (_) {
       return localMessages;
+    }
+  }
+
+  /// Gửi tin nhắn qua SSE stream:
+  ///  1. Lưu USER message vào Hive (ngay lập tức) & phát qua onNewMessage
+  ///  2. Mở SSE stream từ API
+  ///  3. Chuyển tiếp các sự kiện stream (thinking, delta, done, error)
+  ///  4. QUAN TRỌNG: CHỈ lưu ASSISTANT message vào Hive khi nhận được sự kiện `done`.
+  ///     Các delta trung gian KHÔNG được ghi vào Hive để tránh I/O thrashing và dữ liệu dở dang.
+  ///  5. Khi done: lưu ASSISTANT message hoàn chỉnh vào Hive và đánh dấu user message là synced.
+  Stream<ChatStreamEvent> streamMessage(String content, {CancelToken? cancelToken}) async* {
+    final tempUserId = _generateTempId();
+
+    final userMessage = ChatMessageModel(
+      id: tempUserId,
+      content: content,
+      role: HiveChatRole.user,
+      createdAt: DateTime.now(),
+      isSafetyResponse: false,
+      isSynced: false,
+    );
+    await _local.saveMessage(userMessage);
+    onNewMessage?.call(userMessage);
+
+    try {
+      await for (final event in _api.streamMessage(content, cancelToken: cancelToken)) {
+        if (event is ChatStreamDoneEvent) {
+          final assistantMessage = ChatMessageModel(
+            id: event.messageId.isNotEmpty ? event.messageId : _generateTempId(),
+            content: event.content,
+            role: event.role.toLowerCase() == 'assistant'
+                ? HiveChatRole.assistant
+                : HiveChatRole.user,
+            createdAt: event.createdAt,
+            isSafetyResponse: event.isSafetyResponse,
+            detectedIntent: event.detectedIntent,
+            isSynced: true,
+          );
+          await _local.saveMessage(assistantMessage);
+          await _local.markAsSynced(tempUserId);
+        }
+        yield event;
+      }
+    } catch (e) {
+      yield ChatStreamErrorEvent(e.toString());
+    }
+  }
+
+  /// Lưu trực tiếp message assistant hoàn chỉnh vào Hive (dùng cho ViewModel nếu cần).
+  Future<void> persistAssistantMessage(ChatMessageModel message, {String? syncedUserMessageId}) async {
+    await _local.saveMessage(message);
+    if (syncedUserMessageId != null) {
+      await _local.markAsSynced(syncedUserMessageId);
     }
   }
 

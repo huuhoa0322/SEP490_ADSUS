@@ -1,4 +1,6 @@
+using System.IO;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ADSUS_BE.BLL.Engagement.DTOs;
@@ -130,6 +132,154 @@ public sealed class GeminiChatClient : IChatClient
         }
     }
 
+    public async IAsyncEnumerable<string> StreamMessageAsync(
+        string systemPrompt,
+        IReadOnlyList<ChatTurn> history,
+        string userMessage,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(_apiKey))
+        {
+            _logger.LogWarning("GeminiChatClient activated without API key.");
+            yield return "Trợ lý AI hiện không khả dụng. Vui lòng thử lại sau.";
+            yield break;
+        }
+
+        var client = _httpClientFactory.CreateClient("AiBackend");
+        client.DefaultRequestHeaders.Clear();
+        client.Timeout = TimeSpan.FromSeconds(60);
+
+        var request = BuildRequest(systemPrompt, history, userMessage);
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:streamGenerateContent?alt=sse&key={_apiKey}";
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = JsonContent.Create(request, options: JsonOptions)
+        };
+
+        HttpResponseMessage? response = null;
+        string? connectionError = null;
+        try
+        {
+            response = await client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogInformation("Gemini streaming request cancelled before response headers were received.");
+            yield break;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Gemini streaming request failed to connect.");
+            connectionError = "Trợ lý AI đang bận. Vui lòng thử lại sau.";
+        }
+
+        if (connectionError != null)
+        {
+            yield return connectionError;
+            yield break;
+        }
+
+        using (response!)
+        {
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogError("Gemini streaming API returned {StatusCode}. Body: {Body}", response.StatusCode, body);
+                yield return "Trợ lý AI đang bận. Vui lòng thử lại sau.";
+                yield break;
+            }
+
+            using var stream = await response.Content.ReadAsStreamAsync(ct);
+            using var reader = new StreamReader(stream);
+
+            var hasYieldedAnyContent = false;
+            string? streamReadError = null;
+            while (!ct.IsCancellationRequested)
+            {
+                string? line;
+                try
+                {
+                    line = await reader.ReadLineAsync(ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    _logger.LogInformation("Gemini streaming read cancelled by client.");
+                    yield break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error reading from Gemini SSE stream.");
+                    streamReadError = "Trợ lý AI đang bận. Vui lòng thử lại sau.";
+                    break;
+                }
+
+                if (streamReadError != null)
+                {
+                    break;
+                }
+
+                if (line == null)
+                {
+                    break;
+                }
+
+                line = line.Trim();
+                if (string.IsNullOrEmpty(line))
+                    continue;
+
+                if (!line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var json = line.Substring(5).Trim();
+                if (string.IsNullOrEmpty(json))
+                    continue;
+
+                GeminiResponse? chunk = null;
+                try
+                {
+                    chunk = JsonSerializer.Deserialize<GeminiResponse>(json, JsonOptions);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse Gemini SSE JSON chunk: {Line}", line);
+                    continue;
+                }
+
+                var candidate = chunk?.Candidates?.FirstOrDefault();
+                if (candidate == null)
+                    continue;
+
+                if (string.Equals(candidate.FinishReason, "SAFETY", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning("Gemini response stopped due to SAFETY finishReason.");
+                    yield return "Nội dung phản hồi bị giới hạn bởi tiêu chuẩn an toàn.";
+                    hasYieldedAnyContent = true;
+                    yield break;
+                }
+
+                var text = candidate.Content?.Parts?.FirstOrDefault()?.Text;
+                if (!string.IsNullOrEmpty(text))
+                {
+                    hasYieldedAnyContent = true;
+                    yield return text;
+                }
+            }
+
+            if (streamReadError != null)
+            {
+                yield return streamReadError;
+                yield break;
+            }
+
+            if (!hasYieldedAnyContent && !ct.IsCancellationRequested)
+            {
+                _logger.LogWarning("Gemini stream completed without yielding any content.");
+                yield return "Trợ lý AI không có phản hồi. Vui lòng thử lại sau.";
+            }
+        }
+    }
+
     private static GeminiRequest BuildRequest(
         string systemPrompt,
         IReadOnlyList<ChatTurn> history,
@@ -220,5 +370,8 @@ public sealed class GeminiChatClient : IChatClient
     {
         [JsonPropertyName("content")]
         public GeminiContent? Content { get; init; }
+
+        [JsonPropertyName("finishReason")]
+        public string? FinishReason { get; init; }
     }
 }

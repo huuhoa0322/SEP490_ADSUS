@@ -306,13 +306,25 @@ public sealed class AppointmentService : IAppointmentService
             // Bệnh nhân thực sự được đặt khám
             targetPatientProfileId = relationship.PatientProfileId;
             bookedByUserId = isStaffOverride ? relationship.OwnerUserId : userId;
+        }
+        else
+        {
+            // Tự đặt cho bản thân
+            targetPatientProfileId = patientProfileId;
+        }
 
+        // =====================================================
+        // LẤY CONTEXT ĐỂ KIỂM TRA LUẬT ĐẶT LỊCH (Chỉ 1 truy vấn)
+        // =====================================================
+        var todayStartUtc = ClinicClock.StartOfDayUtc(ClinicClock.Today());
+        var bookingRulesCtx = await _appointmentRepo.GetBookingRulesContextAsync(userId, targetPatientProfileId, todayStartUtc, slot.SlotDate, ct);
+
+        if (isBookingForOthers)
+        {
             // Pool 2: User đặt hộ tối đa 3 lịch active (BOOKED)
             if (!isStaffOverride)
             {
-                var bookedForOthersActiveCount = await _appointmentRepo.CountBookedForOthersByUserAsync(userId, ct);
-
-                if (bookedForOthersActiveCount >= MaxActiveBookedForOthers)
+                if (bookingRulesCtx.BookedForOthersActiveCount >= MaxActiveBookedForOthers)
                 {
                     throw new InvalidOperationException(
                         $"Bạn đã đặt tối đa {MaxActiveBookedForOthers} lịch hộ người thân đang chờ khám. Vui lòng hoàn thành hoặc hủy lịch cũ trước.");
@@ -321,15 +333,10 @@ public sealed class AppointmentService : IAppointmentService
         }
         else
         {
-            // Tự đặt cho bản thân
-            targetPatientProfileId = patientProfileId;
-
             // Pool 1: User tự đặt cho bản thân tối đa 3 lịch active (BOOKED)
             if (!isStaffOverride)
             {
-                var selfActiveCount = await _appointmentRepo.CountSelfBookedByProfileAsync(targetPatientProfileId, ct);
-
-                if (selfActiveCount >= MaxActiveSelfBookings)
+                if (bookingRulesCtx.SelfActiveCount >= MaxActiveSelfBookings)
                 {
                     throw new InvalidOperationException(
                         $"Bạn đã có {MaxActiveSelfBookings} lịch hẹn đang chờ. Vui lòng hoàn thành hoặc hủy lịch cũ trước khi đặt mới.");
@@ -340,19 +347,13 @@ public sealed class AppointmentService : IAppointmentService
         // Anti-Abuse Dual-Check: Không cho phép tự đặt lịch online nếu đã hủy >= 3 lần trong ngày hôm nay
         if (!isStaffOverride)
         {
-            var todayStartUtc = ClinicClock.StartOfDayUtc(ClinicClock.Today());
-
-            var userCancellationsToday = await _appointmentRepo.CountUserCancellationsSinceAsync(userId, todayStartUtc, ct);
-
-            if (userCancellationsToday >= 3)
+            if (bookingRulesCtx.UserCancellationsToday >= 3)
             {
                 throw new InvalidOperationException(
                     "Bạn đã hủy lịch 3 lần trong ngày hôm nay. Quyền tự đặt lịch trực tuyến tạm thời bị khóa đến hết ngày. Vui lòng liên hệ hotline phòng khám để được hỗ trợ.");
             }
 
-            var patientCancellationsToday = await _appointmentRepo.CountProfileCancellationsSinceAsync(targetPatientProfileId, todayStartUtc, ct);
-
-            if (patientCancellationsToday >= 3)
+            if (bookingRulesCtx.PatientCancellationsToday >= 3)
             {
                 throw new InvalidOperationException(
                     "Hồ sơ bệnh nhân này đã có 3 lần hủy lịch trong ngày hôm nay. Quyền tự đặt lịch trực tuyến cho hồ sơ này tạm thời bị khóa đến hết ngày. Vui lòng liên hệ hotline phòng khám để được hỗ trợ.");
@@ -366,9 +367,7 @@ public sealed class AppointmentService : IAppointmentService
         // =====================================================
         if (!isStaffOverride)
         {
-            var patientTotalActiveCount = await _appointmentRepo.CountBookedByProfileAsync(targetPatientProfileId, ct);
-
-            if (patientTotalActiveCount >= MaxActivePerPatientProfile)
+            if (bookingRulesCtx.PatientTotalActiveCount >= MaxActivePerPatientProfile)
             {
                 throw new InvalidOperationException(
                     $"Bệnh nhân này đã có tối đa {MaxActivePerPatientProfile} lịch hẹn đang chờ khám trên hệ thống. Vui lòng hoàn thành hoặc hủy lịch cũ trước khi đặt mới.");
@@ -379,8 +378,7 @@ public sealed class AppointmentService : IAppointmentService
         // QUY TẮC TRONG NGÀY: 1 Bệnh nhân chỉ có tối đa 1 lịch active trong cùng 1 ngày khám
         // Áp dụng cho cả Bệnh nhân và Staff: 1 ngày chỉ được có tối đa 1 appointment = Booked!
         // =====================================================
-        var existingAppointment = await _appointmentRepo.GetFirstOnDateAsync(
-            targetPatientProfileId, slot.SlotDate, new[] { AppointmentStatus.Booked }, excludeAppointmentId: null, ct);
+        var existingAppointment = bookingRulesCtx.ExistingAppointmentOnDate;
 
         if (existingAppointment != null)
         {
@@ -446,7 +444,7 @@ public sealed class AppointmentService : IAppointmentService
             patientRelationship = loadedAppointment?.PatientRelationship;
         }
 
-        var patientProfile = await _profileRepo.GetByIdAsync(targetPatientProfileId, ct);
+        var patientProfile = await _patientProfiles.FindByIdAsync(targetPatientProfileId, ct);
 
         // Send notification to patient/booker (best effort - don't fail the booking if notification fails)
         try
@@ -593,25 +591,29 @@ public sealed class AppointmentService : IAppointmentService
             throw new InvalidOperationException("Không thể đặt lịch tái khám vào khung giờ đã qua.");
         }
 
-        // 5. Patient Profile phải tồn tại
-        var patientProfile = await _patientProfiles.FindByIdAsync(request.PatientProfileId, ct);
+        // 5-7. Validate patient profile, active count, và appointment on date song song
+        var patientProfileTask = _patientProfiles.FindByIdAsync(request.PatientProfileId, ct);
+        var activeCountTask = _appointmentRepo.CountBookedByProfileAsync(request.PatientProfileId, ct);
+        var existingAppointmentTask = _appointmentRepo.GetFirstOnDateAsync(
+            request.PatientProfileId, slot.SlotDate,
+            new[] { AppointmentStatus.Booked, AppointmentStatus.Completed }, excludeAppointmentId: null, ct);
+
+        await Task.WhenAll(patientProfileTask, activeCountTask, existingAppointmentTask);
+
+        var patientProfile = await patientProfileTask;
         if (patientProfile == null)
         {
             throw new KeyNotFoundException("Không tìm thấy hồ sơ bệnh nhân.");
         }
 
-        // 6. Validation: Max 3 active appointments cho bệnh nhân
-        var activeAppointments = await _appointmentRepo.CountBookedByProfileAsync(request.PatientProfileId, ct);
+        var activeAppointments = await activeCountTask;
         if (activeAppointments >= 3)
         {
             throw new InvalidOperationException(
                 "Bệnh nhân đã có 3 lịch hẹn đang chờ. Vui lòng hoàn thành hoặc hủy lịch cũ trước khi đặt mới.");
         }
 
-        // 7. Validation: 1 bệnh nhân - 1 ngày - tối đa 1 lịch
-        var existingAppointment = await _appointmentRepo.GetFirstOnDateAsync(
-            request.PatientProfileId, slot.SlotDate,
-            new[] { AppointmentStatus.Booked, AppointmentStatus.Completed }, excludeAppointmentId: null, ct);
+        var existingAppointment = await existingAppointmentTask;
         if (existingAppointment != null)
         {
             var existingDoctorName = existingAppointment.Slot?.Doctor?.FullName ?? "bác sĩ";
@@ -781,7 +783,7 @@ public sealed class AppointmentService : IAppointmentService
 
         await _appointmentRepo.SaveChangesAsync(ct);
 
-        var patientProfile = await _profileRepo.GetByIdAsync(appointment.PatientProfileId, ct);
+        var patientProfile = await _patientProfiles.FindByIdAsync(appointment.PatientProfileId, ct);
 
         // Send notification to patient about cancellation (best effort - don't fail cancellation if notification fails)
         try
@@ -1636,18 +1638,15 @@ public sealed class AppointmentService : IAppointmentService
             body = $"BS. {doctor.FullName} đã sẵn sàng tiếp nhận ca tiếp theo.";
         }
 
-        foreach (var staffId in staffUsers)
+        await _notificationService.SendBulkAsync(staffUsers, new SendNotificationRequest
         {
-            await _notificationService.SendAsync(new SendNotificationRequest
-            {
-                UserId = staffId,
-                Type = "doctor_ready_next",
-                Title = title,
-                Body = body,
-                DeepLink = "/checkin",
-                Metadata = metadata
-            }, ct);
-        }
+            UserId = Guid.Empty, // Overwritten by SendBulkAsync
+            Type = "doctor_ready_next",
+            Title = title,
+            Body = body,
+            DeepLink = "/checkin",
+            Metadata = metadata
+        }, ct);
     }
 
     public async Task RecycleCompletedEarlySlotsAsync(Guid doctorId, CancellationToken ct = default)

@@ -277,6 +277,52 @@ public sealed class AppointmentRepository : IAppointmentRepository
                 && statuses.Contains(a.Status),
                 ct);
 
+    public async Task<IAppointmentRepository.BookingRulesContext> GetBookingRulesContextAsync(
+        Guid userId, 
+        Guid targetPatientProfileId, 
+        DateTime todayStartUtc, 
+        DateOnly slotDate, 
+        CancellationToken ct = default)
+    {
+        var relevantAppointments = await _db.Appointments
+            .AsNoTracking()
+            .Include(a => a.Slot)
+                .ThenInclude(s => s.Doctor)
+            .Include(a => a.PatientProfile)
+            .Where(a => 
+                (a.PatientProfileId == targetPatientProfileId || a.BookedByUserId == userId || (a.PatientProfile != null && a.PatientProfile.UserId == userId)) &&
+                (a.Status == AppointmentStatus.Booked || 
+                 (a.Status == AppointmentStatus.Cancelled && a.UpdatedAt >= todayStartUtc))
+            )
+            .ToListAsync(ct);
+
+        return new IAppointmentRepository.BookingRulesContext
+        {
+            UserCancellationsToday = relevantAppointments.Count(a => 
+                (a.BookedByUserId == userId || (a.BookedByUserId == null && a.PatientProfile?.UserId == userId)) &&
+                a.Status == AppointmentStatus.Cancelled && a.UpdatedAt >= todayStartUtc && 
+                (a.CancelledReason == null || (!a.CancelledReason.StartsWith("Đổi lịch:") && !a.CancelledReason.StartsWith("Bác sĩ nghỉ phép")))
+            ),
+            PatientCancellationsToday = relevantAppointments.Count(a => 
+                a.PatientProfileId == targetPatientProfileId &&
+                a.Status == AppointmentStatus.Cancelled && a.UpdatedAt >= todayStartUtc &&
+                (a.CancelledReason == null || (!a.CancelledReason.StartsWith("Đổi lịch:") && !a.CancelledReason.StartsWith("Bác sĩ nghỉ phép")))
+            ),
+            SelfActiveCount = relevantAppointments.Count(a => 
+                a.PatientProfileId == targetPatientProfileId && a.BookedByUserId == null && a.RelationshipId == null && a.Status == AppointmentStatus.Booked
+            ),
+            BookedForOthersActiveCount = relevantAppointments.Count(a => 
+                a.BookedByUserId == userId && a.RelationshipId != null && a.Status == AppointmentStatus.Booked
+            ),
+            PatientTotalActiveCount = relevantAppointments.Count(a => 
+                a.PatientProfileId == targetPatientProfileId && a.Status == AppointmentStatus.Booked
+            ),
+            ExistingAppointmentOnDate = relevantAppointments.FirstOrDefault(a => 
+                a.PatientProfileId == targetPatientProfileId && a.Slot != null && a.Slot.SlotDate == slotDate && a.Status == AppointmentStatus.Booked
+            )
+        };
+    }
+
     public Task<int> CountBookedByProfileAsync(Guid patientProfileId, CancellationToken ct = default) =>
         _db.Appointments.CountAsync(a => a.PatientProfileId == patientProfileId
             && a.Status == AppointmentStatus.Booked, ct);

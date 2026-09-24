@@ -1,4 +1,5 @@
 using ADSUS_BE.BLL.Engagement.DTOs;
+using ADSUS_BE.BLL.Engagement.Models;
 
 namespace ADSUS_BE.BLL.Engagement.Interfaces;
 
@@ -17,6 +18,22 @@ public interface IChatService
     /// <param name="request">Tin nhắn cần gửi.</param>
     /// <param name="ct">CancellationToken.</param>
     Task<ChatMessageResponse> SendMessageAsync(
+        Guid userId,
+        SendChatMessageRequest request,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Stream tin nhắn từ chatbot theo thời gian thực qua Server-Sent Events (SSE).
+    /// </summary>
+    IAsyncEnumerable<ChatStreamEvent> StreamMessageAsync(
+        Guid userId,
+        string content,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Stream tin nhắn từ chatbot theo thời gian thực qua Server-Sent Events (SSE) với request object.
+    /// </summary>
+    IAsyncEnumerable<ChatStreamEvent> StreamMessageAsync(
         Guid userId,
         SendChatMessageRequest request,
         CancellationToken ct = default);

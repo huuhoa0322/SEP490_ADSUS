@@ -45,6 +45,25 @@ class ChatMessage {
   /// True khi LLM bị skip do user đã vượt ngưỡng rate limit.
   /// Dùng để hiển thị banner giới hạn.
   final bool isRateLimitExceeded;
+
+  ChatMessage copyWith({
+    String? messageId,
+    ChatRole? role,
+    String? content,
+    DateTime? createdAt,
+    bool? isSafety,
+    ChatIntent? detectedIntent,
+    bool? isRateLimitExceeded,
+  }) =>
+      ChatMessage(
+        messageId: messageId ?? this.messageId,
+        role: role ?? this.role,
+        content: content ?? this.content,
+        createdAt: createdAt ?? this.createdAt,
+        isSafety: isSafety ?? this.isSafety,
+        detectedIntent: detectedIntent ?? this.detectedIntent,
+        isRateLimitExceeded: isRateLimitExceeded ?? this.isRateLimitExceeded,
+      );
 }
 
 /// Intent chatbot — khớp với BE ChatIntent enum.
@@ -111,11 +130,12 @@ String sanitizeAssistantContent(String raw) {
   var text = raw;
 
   // Bỏ các câu disclaimer ở ĐẦU hoặc CUỐI response (LLM hay ghép thêm).
-  // Dùng regex với multiline + dotall để bắt cả khi nó xuống dòng.
+  // Dùng regex với multiline để bắt trọn từng dòng disclaimer, tránh để lại
+  // dấu sao mồ côi (*** / **).
   final patterns = <RegExp>[
-    // "** Thông tin trên do AI sinh ra — chỉ mang tính tham khảo... **"
+    // "***Lưu ý: Thông tin do AI sinh ra..." hoặc "** Thông tin trên do AI sinh ra..."
     RegExp(
-      r'\*{0,2}\s*\*?\*?\s*Thông tin (?:trên )?do AI sinh ra[^.*]*?(?:\.{2,}|\*\*|\.\s*\*|\n|$)',
+      r'^\s*(?:\*+\s*)?(?:Lưu ý:?\s*)?Thông tin (?:trên )?do AI.*?(?:\n|$)',
       caseSensitive: false,
       multiLine: true,
     ),
@@ -125,15 +145,9 @@ String sanitizeAssistantContent(String raw) {
       caseSensitive: false,
       multiLine: true,
     ),
-    // "**Lưu ý: Thông tin do AI ... chỉ mang tính tham khảo.**"
-    RegExp(
-      r'\*{0,2}\s*Lưu ý:?\s*Thông tin (?:trên )?do AI[^.*]*?(?:\.{2,}|\*\*|\.\s*\*|\n|$)',
-      caseSensitive: false,
-      multiLine: true,
-    ),
     // "Luôn hỏi bác sĩ phụ trách trước khi áp dụng..." (LLM hay ghép cuối)
     RegExp(
-      r'\n\s*Luôn hỏi bác sĩ phụ trách[^.\n]*\.?\s*$',
+      r'^\s*(?:\*+\s*)?Luôn hỏi bác sĩ phụ trách.*?(?:\n|$)',
       caseSensitive: false,
       multiLine: true,
     ),
