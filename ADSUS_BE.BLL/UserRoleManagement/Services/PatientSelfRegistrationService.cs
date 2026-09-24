@@ -3,12 +3,11 @@ using ADSUS_BE.BLL.Auth.DTOs;
 using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.BLL.UserRoleManagement.DTOs;
 using ADSUS_BE.BLL.UserRoleManagement.Interfaces;
-using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.UserRoleManagement.Services;
@@ -22,20 +21,23 @@ public class PatientSelfRegistrationService : IPatientSelfRegistrationService
 {
     private const string DateFormat = "yyyy-MM-dd";
 
-    private readonly AppDbContext _db;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IPatientProfileService _patientProfiles;
     private readonly IUserRepository _users;
     private readonly IFirebasePhoneVerificationService _firebase;
     private readonly IAuthService _auth;
     private readonly ILogger<PatientSelfRegistrationService> _logger;
 
     public PatientSelfRegistrationService(
-        AppDbContext db,
+        IUnitOfWork unitOfWork,
+        IPatientProfileService patientProfiles,
         IUserRepository users,
         IFirebasePhoneVerificationService firebase,
         IAuthService auth,
         ILogger<PatientSelfRegistrationService> logger)
     {
-        _db = db;
+        _unitOfWork = unitOfWork;
+        _patientProfiles = patientProfiles;
         _users = users;
         _firebase = firebase;
         _auth = auth;
@@ -47,7 +49,7 @@ public class PatientSelfRegistrationService : IPatientSelfRegistrationService
         IFirebasePhoneVerificationService firebase,
         IAuthService auth,
         ILogger<PatientSelfRegistrationService> logger)
-        : this(null!, users, firebase, auth, logger)
+        : this(null!, null!, users, firebase, auth, logger)
     {
     }
 
@@ -71,10 +73,7 @@ public class PatientSelfRegistrationService : IPatientSelfRegistrationService
             throw new ConflictException("This phone number is already registered.");
         }
 
-        var isRelational = _db.Database.IsRelational();
-        await using var transaction = isRelational
-            ? await _db.Database.BeginTransactionAsync(cancellationToken)
-            : null;
+        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
         var user = new User
@@ -95,45 +94,18 @@ public class PatientSelfRegistrationService : IPatientSelfRegistrationService
 
         try
         {
-            _db.Users.Add(user);
+            await _users.AddAsync(user, cancellationToken);
 
-            var guestProfile = await _db.PatientProfiles
-                .FirstOrDefaultAsync(p => p.UserId == null && p.Phone == phone, cancellationToken);
+            // Hồ sơ bệnh nhân (module MedicalRecord): nhận lại guest profile trùng SĐT — xoá các
+            // trường guest — hoặc tạo hồ sơ mới. Lưu cùng lượt với tài khoản.
+            await _patientProfiles.StageForNewPatientAsync(user, cancellationToken);
 
-            if (guestProfile != null)
-            {
-                guestProfile.UserId = user.UserId;
-                guestProfile.FullName = null;
-                guestProfile.Phone = null;
-                guestProfile.DateOfBirth = null;
-                guestProfile.UpdatedAt = now;
-            }
-            else
-            {
-                var newProfile = new PatientProfile
-                {
-                    PatientProfileId = Guid.NewGuid(),
-                    UserId = user.UserId,
-                    CreatedBy = user.UserId,
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                };
-                _db.PatientProfiles.Add(newProfile);
-            }
-
-            await _db.SaveChangesAsync(cancellationToken);
-
-            if (transaction != null)
-            {
-                await transaction.CommitAsync(cancellationToken);
-            }
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
         catch
         {
-            if (transaction != null)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-            }
+            await transaction.RollbackAsync(cancellationToken);
             throw;
         }
 

@@ -68,6 +68,51 @@ public class InvoiceService : IInvoiceService
         return hasServiceOrMedicine ? await GenerateInvoiceForCaseAsync(caseId) : null;
     }
 
+    public Task<bool> HasPaidInvoiceAsync(Guid caseId, CancellationToken ct = default) =>
+        _invoices.HasPaidByCaseAsync(caseId, ct);
+
+    public async Task StageServiceAddedAsync(Guid caseId, Guid caseClinicServiceId, string description, decimal price, CancellationToken ct = default)
+    {
+        var pendingInvoice = await _invoices.GetPendingWithItemsForUpdateAsync(caseId, ct);
+        if (pendingInvoice == null) return;
+
+        var invoiceItem = new InvoiceItem
+        {
+            Id = Guid.NewGuid(),
+            InvoiceId = pendingInvoice.Id,
+            Description = description,
+            Quantity = 1,
+            UnitPrice = price,
+            TotalPrice = price,
+            ItemType = InvoiceItemType.Service,
+            ReferenceId = caseClinicServiceId
+        };
+
+        await _invoices.AddItemAsync(invoiceItem, ct);
+        pendingInvoice.InvoiceItems.Add(invoiceItem);
+        pendingInvoice.TotalAmount += invoiceItem.TotalPrice;
+    }
+
+    public async Task StageServiceRemovedAsync(Guid caseId, Guid caseClinicServiceId, CancellationToken ct = default)
+    {
+        var pendingInvoice = await _invoices.GetPendingWithItemsForUpdateAsync(caseId, ct);
+        if (pendingInvoice == null) return;
+
+        var itemToRemove = pendingInvoice.InvoiceItems
+            .FirstOrDefault(item => item.ReferenceId == caseClinicServiceId && item.ItemType == InvoiceItemType.Service);
+        if (itemToRemove == null) return;
+
+        _invoices.RemoveItem(itemToRemove);
+        pendingInvoice.InvoiceItems.Remove(itemToRemove);
+        pendingInvoice.TotalAmount -= itemToRemove.TotalPrice;
+
+        if (pendingInvoice.InvoiceItems.Count == 0)
+        {
+            pendingInvoice.Status = InvoiceStatus.CANCELLED;
+            pendingInvoice.CancelledReason = "Tự động hủy do đã xóa hết dịch vụ";
+        }
+    }
+
     public async Task<Guid> GenerateInvoiceForCaseAsync(Guid caseId)
     {
         // 1. Kiểm tra xem Case đã có hóa đơn nào PENDING/PAID chưa để tránh tạo trùng

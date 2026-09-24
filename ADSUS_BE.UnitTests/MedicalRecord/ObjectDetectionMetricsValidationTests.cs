@@ -100,8 +100,7 @@ public class ObjectDetectionMetricsValidationTests : IDisposable
         var client = new HttpClient { BaseAddress = new Uri("http://localhost:8000") };
         _httpClientFactoryMock.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(client);
 
-        _caseDiagnosisService = new CaseDiagnosisService(
-            _db,
+        _caseDiagnosisService = new CaseDiagnosisService(new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
             _storageMock.Object,
             _httpClientFactoryMock.Object,
             _modelVersionRepo,

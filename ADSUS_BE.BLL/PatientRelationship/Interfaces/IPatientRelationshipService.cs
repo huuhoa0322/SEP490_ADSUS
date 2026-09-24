@@ -27,6 +27,12 @@ public interface IPatientRelationshipService
     Task<RelativeResponse> AddRelativeAsync(AddRelativeRequest request, Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Nhân viên thêm người thân cho một tài khoản bệnh nhân (người giám hộ). Trả null nếu
+    /// <paramref name="guardianUserId"/> không phải tài khoản PATIENT.
+    /// </summary>
+    Task<RelativeResponse?> AddRelativeForGuardianAsync(AddRelativeRequest request, Guid guardianUserId, CancellationToken ct = default);
+
+    /// <summary>
     /// Cập nhật nhãn người thân.
     /// </summary>
     /// <exception cref="KeyNotFoundException">

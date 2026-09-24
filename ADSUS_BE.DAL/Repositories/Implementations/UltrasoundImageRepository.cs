@@ -25,4 +25,10 @@ public sealed class UltrasoundImageRepository : IUltrasoundImageRepository
         _db.UltrasoundImages.AddRange(images);
         await _db.SaveChangesAsync(ct);
     }
+
+    public Task<UltrasoundImage?> GetForUpdateAsync(Guid imageId, CancellationToken ct = default) =>
+        _db.UltrasoundImages.FirstOrDefaultAsync(i => i.ImageId == imageId, ct);
+
+    public Task<bool> ExistsForCaseAsync(Guid caseId, CancellationToken ct = default) =>
+        _db.UltrasoundImages.AnyAsync(i => i.CaseId == caseId, ct);
 }

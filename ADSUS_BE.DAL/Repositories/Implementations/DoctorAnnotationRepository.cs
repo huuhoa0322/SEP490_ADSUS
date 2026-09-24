@@ -11,6 +11,11 @@ public sealed class DoctorAnnotationRepository : IDoctorAnnotationRepository
 
     public DoctorAnnotationRepository(AppDbContext db) => _db = db;
 
+    public async Task<IReadOnlyList<DoctorAnnotation>> ListByImageForUpdateAsync(Guid imageId, CancellationToken ct = default) =>
+        await _db.DoctorAnnotations.Where(a => a.ImageId == imageId).ToListAsync(ct);
+
+    public void RemoveRange(IEnumerable<DoctorAnnotation> annotations) => _db.DoctorAnnotations.RemoveRange(annotations);
+
     public async Task<IReadOnlyList<DoctorAnnotation>> ListByImageIdsAsync(
         IReadOnlyList<Guid> imageIds, CancellationToken ct = default) =>
         await _db.DoctorAnnotations

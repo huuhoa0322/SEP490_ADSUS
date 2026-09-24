@@ -72,8 +72,7 @@ public class CaseDiagnosisServiceTests : IDisposable
         // _db.DoctorAnnotations). IAiModelVersionRepository vẫn giữ Mock thuần (không backed by
         // _db) vì một số test cần kiểm soát trực tiếp việc SaveChangesAsync thành công/thất bại.
         // ICaseRepository cũng là repo thật cùng lý do (thêm 10/09/2026, cho luật check-in).
-        _sut = new CaseDiagnosisService(
-            _db,
+        _sut = new CaseDiagnosisService(new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
             _storageMock.Object,
             _httpClientFactoryMock.Object,
             _aiModelVersionRepoMock.Object,

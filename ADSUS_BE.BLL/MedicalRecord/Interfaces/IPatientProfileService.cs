@@ -26,6 +26,39 @@ public interface IPatientProfileService
     /// </summary>
     Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken ct = default);
 
+    // ─── Dành cho module khác tạo tài khoản / người thân (không tự lưu) ──────────────
+
+    /// <summary>
+    /// Id guest profile (người thân chưa có tài khoản) mang số điện thoại này, null nếu không có.
+    /// <paramref name="lockForUpdate"/> = true khoá dòng đó tới hết transaction đang mở (đăng ký
+    /// tài khoản — chống hai request cùng nhận một hồ sơ).
+    /// </summary>
+    Task<Guid?> FindGuestProfileIdByPhoneAsync(string phone, bool lockForUpdate, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gắn hồ sơ cho tài khoản PATIENT vừa tạo (chưa lưu): nhận lại guest profile trùng số điện
+    /// thoại (xoá các trường guest), không có thì tạo hồ sơ mới. Trả PatientProfileId. Bên gọi lưu
+    /// cùng lượt với tài khoản.
+    /// </summary>
+    Task<Guid> StageForNewPatientAsync(ADSUS_BE.DAL.Entities.User patient, CancellationToken ct = default);
+
+    /// <summary>Thông tin guest profile, null nếu không có hồ sơ hoặc hồ sơ đã gắn tài khoản.</summary>
+    Task<GuestProfileInfo?> FindGuestProfileAsync(Guid patientProfileId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Hồ sơ cho người thân được thêm vào danh bạ (chưa lưu): có số điện thoại thì nhận lại guest
+    /// profile trùng số, không có thì tạo guest profile mới đứng tên <paramref name="createdBy"/>.
+    /// </summary>
+    Task<GuestProfileInfo> StageGuestProfileAsync(
+        string fullName, string? phone, DateOnly? dateOfBirth, Guid createdBy, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sửa thông tin guest profile (chưa lưu). Trường null = giữ nguyên; <paramref name="phone"/>
+    /// rỗng = xoá số. Hồ sơ đã gắn tài khoản thì không đổi gì (thông tin lấy từ tài khoản).
+    /// </summary>
+    Task StageGuestProfileUpdateAsync(
+        Guid patientProfileId, string? fullName, string? phone, DateOnly? dateOfBirth, CancellationToken ct = default);
+
     Task<PagedResult<PatientSummaryResponse>> SearchPatientsAsync(
         string? search,
         string? visitStatus,

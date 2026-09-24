@@ -5,10 +5,9 @@ using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Auth.Mappers;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Interfaces;
-using ADSUS_BE.DAL.Data;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -19,7 +18,8 @@ public class AuthService : IAuthService
     private readonly IUserRepository _users;
     private readonly IRefreshTokenRepository _refreshTokens;
     private readonly IJwtTokenService _tokens;
-    private readonly AppDbContext _db;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IPatientProfileService _patientProfiles;
     private readonly ILogger<AuthService> _logger;
     private readonly IFcmTokenService _fcmTokenService;
     private readonly IMemoryCache? _cache;
@@ -39,7 +39,8 @@ public class AuthService : IAuthService
         IUserRepository users,
         IRefreshTokenRepository refreshTokens,
         IJwtTokenService tokens,
-        AppDbContext db,
+        IUnitOfWork unitOfWork,
+        IPatientProfileService patientProfiles,
         IFcmTokenService fcmTokenService,
         IMemoryCache? cache,
         ILogger<AuthService> logger)
@@ -47,7 +48,8 @@ public class AuthService : IAuthService
         _users = users;
         _refreshTokens = refreshTokens;
         _tokens = tokens;
-        _db = db;
+        _unitOfWork = unitOfWork;
+        _patientProfiles = patientProfiles;
         _fcmTokenService = fcmTokenService;
         _cache = cache;
         _logger = logger;
@@ -57,9 +59,10 @@ public class AuthService : IAuthService
         IUserRepository users,
         IRefreshTokenRepository refreshTokens,
         IJwtTokenService tokens,
-        AppDbContext db,
+        IUnitOfWork unitOfWork,
+        IPatientProfileService patientProfiles,
         ILogger<AuthService> logger)
-        : this(users, refreshTokens, tokens, db, null!, null, logger)
+        : this(users, refreshTokens, tokens, unitOfWork, patientProfiles, null!, null, logger)
     {
     }
 
@@ -68,7 +71,7 @@ public class AuthService : IAuthService
         IRefreshTokenRepository refreshTokens,
         IJwtTokenService tokens,
         ILogger<AuthService> logger)
-        : this(users, refreshTokens, tokens, null!, null!, null, logger)
+        : this(users, refreshTokens, tokens, null!, null!, null!, null, logger)
     {
     }
 
@@ -342,38 +345,21 @@ public class AuthService : IAuthService
 
         // Account Linking: tự động liên kết guest profile chưa có user_id nếu SĐT trùng khớp.
         // Dùng pessimistic locking (FOR UPDATE) để bảo đảm an toàn dữ liệu và tránh race condition.
-        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+        // Hồ sơ bệnh nhân thuộc module MedicalRecord — tìm/khoá/gắn qua IPatientProfileService.
+        await using var transaction = await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
             var trimmedPhone = request.PhoneNumber.Trim();
-            PatientProfile? guestProfile = null;
-            if (_db.Database.IsRelational())
-            {
-                guestProfile = await _db.PatientProfiles
-                    .FromSqlRaw(
-                        "SELECT * FROM patient_profiles WHERE phone = {0} AND user_id IS NULL FOR UPDATE",
-                        trimmedPhone)
-                    .Include(p => p.User)
-                    .FirstOrDefaultAsync(cancellationToken);
-            }
-            else
-            {
-                guestProfile = await _db.PatientProfiles
-                    .Include(p => p.User)
-                    .FirstOrDefaultAsync(p => p.Phone == trimmedPhone && p.UserId == null, cancellationToken);
-            }
 
-            if (request.GuestPatientProfileId.HasValue && guestProfile == null)
+            // Khoá dòng guest profile (nếu có) tới hết transaction — StageForNewPatientAsync bên
+            // dưới nhận lại đúng dòng đã khoá này.
+            var guestProfileId = await _patientProfiles.FindGuestProfileIdByPhoneAsync(
+                trimmedPhone, lockForUpdate: true, cancellationToken);
+
+            if (request.GuestPatientProfileId.HasValue && guestProfileId == null)
             {
                 await transaction.RollbackAsync(cancellationToken);
                 return (RegisterResult.GuestProfileNotFound, null);
-            }
-
-            // Check if profile already has a user
-            if (guestProfile != null && guestProfile.UserId.HasValue && guestProfile.UserId.Value != Guid.Empty)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return (RegisterResult.InvalidAccount, null);
             }
 
             // Create new user
@@ -392,35 +378,12 @@ public class AuthService : IAuthService
                 CreatedAt = now,
                 UpdatedAt = now,
             };
-            _db.Users.Add(user);
+            await _users.AddAsync(user, cancellationToken);
 
-            if (guestProfile != null)
-            {
-                // Link user to patient profile and clear guest fields
-                guestProfile.UserId = newUserId;
-                guestProfile.FullName = null;
-                guestProfile.Phone = null;
-                guestProfile.DateOfBirth = null;
-                guestProfile.UpdatedAt = now;
+            // Nhận lại guest profile trùng SĐT (xoá các trường guest) hoặc tạo hồ sơ mới
+            patientProfileId = await _patientProfiles.StageForNewPatientAsync(user, cancellationToken);
 
-                patientProfileId = guestProfile.PatientProfileId;
-            }
-            else
-            {
-                // Create new patient profile
-                var profile = new PatientProfile
-                {
-                    PatientProfileId = Guid.NewGuid(),
-                    UserId = newUserId,
-                    CreatedBy = newUserId,
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                };
-                _db.PatientProfiles.Add(profile);
-                patientProfileId = profile.PatientProfileId;
-            }
-
-            await _db.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
             userId = newUserId;

@@ -95,6 +95,16 @@ public interface ICaseService
     Task<IReadOnlyList<CaseSymptomResponse>> ListSymptomsAsync(Guid caseId, CancellationToken ct = default);
 
     /// <summary>
+    /// Bác sĩ phụ trách + trạng thái hiện tại của Case, null nếu không có — cho module khác kiểm
+    /// tra quyền/trạng thái trước khi thao tác trên ca (vd gắn/gỡ dịch vụ). Nếu Case đang được
+    /// track trong request (vừa đổi trạng thái, chưa lưu) thì trả trạng thái đang track đó.
+    /// </summary>
+    Task<CaseOwnershipInfo?> FindOwnershipAsync(Guid caseId, CancellationToken ct = default);
+
+    /// <summary>Ca đã có ít nhất một ảnh siêu âm chưa.</summary>
+    Task<bool> HasUltrasoundImagesAsync(Guid caseId, CancellationToken ct = default);
+
+    /// <summary>
     /// Tạo case từ việc đặt lịch khám (Mobile).
     /// Status của case = BOOKED. Không tạo ảnh, không gửi notification.
     /// </summary>

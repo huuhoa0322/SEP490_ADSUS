@@ -27,7 +27,7 @@ public class CaseClinicServiceServiceTests
 
     private static CaseClinicServiceService CreateService(AppDbContext context)
     {
-        return new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        return ClinicServiceTestServices.CaseClinicService(context);
     }
 
     private static (Case medicalCase, ClinicService clinicService) SeedCaseAndService(

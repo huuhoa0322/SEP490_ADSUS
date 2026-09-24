@@ -30,7 +30,7 @@ public sealed class CaseService : ICaseService
     private readonly ILogger<CaseService> _logger;
     private readonly ICaseClinicServiceService? _caseClinicServiceService;
     private readonly IInvoiceService? _invoiceService;
-    private readonly AppDbContext? _context;
+    private readonly IUnitOfWork? _unitOfWork;
 
     private IFileStorageService _storage => _storageLazy.Value;
 
@@ -44,7 +44,7 @@ public sealed class CaseService : ICaseService
         ILogger<CaseService> logger,
         ICaseClinicServiceService? caseClinicServiceService = null,
         IInvoiceService? invoiceService = null,
-        AppDbContext? context = null)
+        IUnitOfWork? unitOfWork = null)
     {
         _cases = cases;
         _images = images;
@@ -55,7 +55,7 @@ public sealed class CaseService : ICaseService
         _logger = logger;
         _caseClinicServiceService = caseClinicServiceService;
         _invoiceService = invoiceService;
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<IReadOnlyList<UltrasoundImageResponse>> ListImagesAsync(
@@ -337,30 +337,18 @@ public sealed class CaseService : ICaseService
             throw new BusinessException("Only confirmed cases can be ended without prescription.");
         }
 
-        if (_context != null && _invoiceService != null)
+        if (_unitOfWork != null && _invoiceService != null)
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+            await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
             try
             {
                 medicalCase.Status = CaseStatus.End;
                 medicalCase.UpdatedAt = DateTime.UtcNow;
                 await _cases.SaveChangesAsync(ct);
 
-                var hasInvoice = await _context.Invoices.AnyAsync(i => i.CaseId == caseId 
-                    && (i.Status == InvoiceStatus.PENDING || i.Status == InvoiceStatus.PAID), ct);
-
-                if (!hasInvoice)
-                {
-                    var hasServiceOrMedicine = 
-                        await _context.CaseClinicServices.AnyAsync(cs => cs.CaseId == caseId, ct)
-                        || await _context.Prescriptions.AnyAsync(p => p.CaseId == caseId 
-                            && p.Status == PrescriptionStatus.Active, ct);
-
-                    if (hasServiceOrMedicine)
-                    {
-                        await _invoiceService.GenerateInvoiceForCaseAsync(caseId);
-                    }
-                }
+                // Sinh hoá đơn nếu ca có dịch vụ/đơn thuốc và chưa có hoá đơn — module hoá đơn tự
+                // quyết định, CaseService không đọc bảng hoá đơn/dịch vụ/đơn thuốc (P11).
+                await _invoiceService.GenerateInvoiceIfBillableAsync(caseId);
 
                 await transaction.CommitAsync(ct);
             }
@@ -611,6 +599,19 @@ public sealed class CaseService : ICaseService
         return medicalCase?.CaseSymptoms.Select(CaseMapper.ToSymptomResponse).ToList()
             ?? new List<CaseSymptomResponse>();
     }
+
+    public async Task<CaseOwnershipInfo?> FindOwnershipAsync(Guid caseId, CancellationToken ct = default)
+    {
+        // Bản CÓ tracking: nếu Case đã được track trong request (vd check-in vừa đổi trạng thái,
+        // chưa lưu) thì EF trả đúng instance đó — giữ cách đọc cũ của CaseClinicServiceService.
+        var medicalCase = await _cases.GetForUpdateAsync(caseId, ct);
+        return medicalCase is null
+            ? null
+            : new CaseOwnershipInfo(medicalCase.CaseId, medicalCase.DoctorId, medicalCase.Status);
+    }
+
+    public Task<bool> HasUltrasoundImagesAsync(Guid caseId, CancellationToken ct = default) =>
+        _images.ExistsForCaseAsync(caseId, ct);
 
     public async Task<Guid> CreateFromBookingAsync(
         Guid patientProfileId,

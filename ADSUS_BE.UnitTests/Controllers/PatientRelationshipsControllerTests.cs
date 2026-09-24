@@ -30,7 +30,7 @@ public class PatientRelationshipsControllerTests : IDisposable
             .Options;
         _db = new AppDbContext(options);
 
-        _controller = new PatientRelationshipsController(_serviceMock.Object, _db);
+        _controller = new PatientRelationshipsController(_serviceMock.Object);
     }
 
     public void Dispose()
@@ -115,7 +115,7 @@ public class PatientRelationshipsControllerTests : IDisposable
         var request = new AddRelativeRequest("Nguyễn Bố", "0988888888", new DateOnly(1980, 1, 1), "Chồng");
         var errorMessage = "Số điện thoại này đã có tài khoản trong hệ thống. Người thân vui lòng đăng nhập bằng tài khoản riêng để đặt lịch.";
 
-        _serviceMock.Setup(s => s.AddRelativeAsync(request, guardianId, It.IsAny<CancellationToken>()))
+        _serviceMock.Setup(s => s.AddRelativeForGuardianAsync(request, guardianId, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException(errorMessage));
 
         // Act
@@ -151,7 +151,7 @@ public class PatientRelationshipsControllerTests : IDisposable
         var request = new AddRelativeRequest("Nguyễn Bé", null, new DateOnly(2020, 2, 2), "Con");
         var errorMessage = "Người thân này đã có trong danh bạ của bạn.";
 
-        _serviceMock.Setup(s => s.AddRelativeAsync(request, guardianId, It.IsAny<CancellationToken>()))
+        _serviceMock.Setup(s => s.AddRelativeForGuardianAsync(request, guardianId, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException(errorMessage));
 
         // Act
@@ -197,7 +197,7 @@ public class PatientRelationshipsControllerTests : IDisposable
             CreatedAt: DateTime.UtcNow
         );
 
-        _serviceMock.Setup(s => s.AddRelativeAsync(request, guardianId, It.IsAny<CancellationToken>()))
+        _serviceMock.Setup(s => s.AddRelativeForGuardianAsync(request, guardianId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
         // Act

@@ -41,4 +41,13 @@ public interface IInvoiceRepository
 
     /// <summary>Thêm một dòng hoá đơn vào context, CHƯA lưu.</summary>
     Task AddItemAsync(InvoiceItem item, CancellationToken ct = default);
+
+    /// <summary>Ca đã có hoá đơn PAID chưa.</summary>
+    Task<bool> HasPaidByCaseAsync(Guid caseId, CancellationToken ct = default);
+
+    /// <summary>Hoá đơn PENDING của ca kèm các dòng — CÓ tracking, null nếu không có.</summary>
+    Task<Invoice?> GetPendingWithItemsForUpdateAsync(Guid caseId, CancellationToken ct = default);
+
+    /// <summary>Đánh dấu xoá một dòng hoá đơn, CHƯA lưu.</summary>
+    void RemoveItem(InvoiceItem item);
 }

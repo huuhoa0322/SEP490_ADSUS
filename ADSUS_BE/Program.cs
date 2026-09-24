@@ -446,6 +446,14 @@ namespace ADSUS_BE
             builder.Services.AddScoped<IInvoiceService, InvoiceService>();
             builder.Services.AddScoped<IClinicServiceManagementService, ClinicServiceManagementService>();
             builder.Services.AddScoped<ICaseClinicServiceService, CaseClinicServiceService>();
+            builder.Services.AddScoped<IClinicServiceRepository, ClinicServiceRepository>();
+            builder.Services.AddScoped<ICaseClinicServiceRepository, CaseClinicServiceRepository>();
+            // Lazy cho CaseClinicServiceService — ICaseService/IInvoiceService lại phụ thuộc ngược
+            // vào ICaseClinicServiceService, inject trực tiếp sẽ thành vòng DI
+            builder.Services.AddScoped<System.Lazy<ICaseService>>(sp =>
+                new System.Lazy<ICaseService>(() => sp.GetRequiredService<ICaseService>()));
+            builder.Services.AddScoped<System.Lazy<IInvoiceService>>(sp =>
+                new System.Lazy<IInvoiceService>(() => sp.GetRequiredService<IInvoiceService>()));
 
             // BLL — Module 8: Appointment Scheduling (UC-15)
             builder.Services.AddScoped<IScheduleSlotRepository, ScheduleSlotRepository>();

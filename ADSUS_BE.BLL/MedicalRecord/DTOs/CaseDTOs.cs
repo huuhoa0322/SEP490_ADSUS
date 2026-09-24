@@ -45,6 +45,12 @@ public sealed record CaseSymptomResponse(
 public sealed record CaseDiseaseResponse(
     Guid DiseaseId, string DiseaseName, bool IsOther, string? Note);
 
+/// <summary>Guest profile — hồ sơ người thân chưa có tài khoản (thông tin nằm ngay trên hồ sơ).</summary>
+public sealed record GuestProfileInfo(Guid PatientProfileId, string? FullName, string? Phone, DateOnly? DateOfBirth);
+
+/// <summary>Bác sĩ phụ trách + trạng thái của Case — cho module khác kiểm tra quyền/trạng thái.</summary>
+public sealed record CaseOwnershipInfo(Guid CaseId, Guid DoctorId, ADSUS_BE.DAL.Entities.CaseStatus Status);
+
 public sealed record CaseAllergyResponse(
     Guid AllergyTypeId, string AllergyName, bool IsOther, string? Note);
 

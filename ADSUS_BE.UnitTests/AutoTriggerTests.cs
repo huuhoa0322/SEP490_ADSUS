@@ -145,7 +145,7 @@ public class AutoTriggerTests
             NullLogger<CaseService>.Instance,
             mockClinicService.Object,
             null,
-            context);
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(context));
 
         var request = new CreateCaseRequest(
             profile.PatientProfileId,
@@ -184,7 +184,7 @@ public class AutoTriggerTests
             NullLogger<CaseService>.Instance,
             mockClinicService.Object,
             null,
-            context);
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(context));
 
         var patientProfileId = Guid.NewGuid();
         var doctorId = Guid.NewGuid();
@@ -233,7 +233,7 @@ public class AutoTriggerTests
         });
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var realClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var realClinicService = ClinicServiceTestServices.CaseClinicService(context);
 
         var service = new CaseService(
             mockCases.Object,
@@ -245,7 +245,7 @@ public class AutoTriggerTests
             NullLogger<CaseService>.Instance,
             realClinicService,
             null,
-            context);
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(context));
 
         var request = new CreateCaseRequest(profile.PatientProfileId, doctor.UserId, "Khám bệnh", null, new List<UploadedFile>());
 
@@ -273,7 +273,7 @@ public class AutoTriggerTests
         mockUsers.Setup(u => u.GetByIdAsync(doctor.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(doctor);
         mockProfiles.Setup(p => p.GetByIdAsync(profile.PatientProfileId, It.IsAny<CancellationToken>())).ReturnsAsync(profile);
 
-        var realClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var realClinicService = ClinicServiceTestServices.CaseClinicService(context);
 
         var service = new CaseService(
             mockCases.Object,
@@ -285,7 +285,7 @@ public class AutoTriggerTests
             NullLogger<CaseService>.Instance,
             realClinicService,
             null,
-            context);
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(context));
 
         var request = new CreateCaseRequest(profile.PatientProfileId, doctor.UserId, "Khám bệnh", null, new List<UploadedFile>());
 
@@ -329,7 +329,7 @@ public class AutoTriggerTests
             NullLogger<CaseService>.Instance,
             mockClinicService.Object,
             null,
-            context);
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(context));
 
         var request = new CreateCaseRequest(profile.PatientProfileId, doctor.UserId, "Khám định kỳ", null, new List<UploadedFile>());
 
@@ -379,8 +379,7 @@ public class AutoTriggerTests
         };
         aiModelVersionRepoMock.Setup(r => r.GetActiveVersionReadOnlyAsync(It.IsAny<CancellationToken>())).ReturnsAsync(activeModel);
 
-        var service = new CaseDiagnosisService(
-            context,
+        var service = new CaseDiagnosisService(new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(context),
             storageMock.Object,
             httpClientFactoryMock.Object,
             aiModelVersionRepoMock.Object,
@@ -434,7 +433,7 @@ public class AutoTriggerTests
         context.ClinicServices.Add(ultrasoundService);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var realCaseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var realCaseClinicService = ClinicServiceTestServices.CaseClinicService(context);
         var (service, medicalCase, _) = SetupDiagnosisService(context, realCaseClinicService);
 
         // Act - Call 3 times
@@ -468,7 +467,7 @@ public class AutoTriggerTests
         context.ClinicServices.Add(ultrasoundService);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var realCaseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var realCaseClinicService = ClinicServiceTestServices.CaseClinicService(context);
         var (service, medicalCase, _) = SetupDiagnosisService(context, realCaseClinicService);
 
         // Act - should not throw
@@ -530,7 +529,7 @@ public class AutoTriggerTests
         };
         context.ClinicServices.Add(ultrasoundService);
 
-        var realCaseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var realCaseClinicService = ClinicServiceTestServices.CaseClinicService(context);
         var (service, medicalCase, _) = SetupDiagnosisService(context, realCaseClinicService);
 
         // Pre-create PENDING invoice for this case (simulating pre-existing Rx)
@@ -596,7 +595,7 @@ public class AutoTriggerTests
         context.ClinicServices.Add(ultrasoundService);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var realCaseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var realCaseClinicService = ClinicServiceTestServices.CaseClinicService(context);
         var (service, medicalCase, _) = SetupDiagnosisService(context, realCaseClinicService);
 
         // Act 1: Initial confirm adds ULTRASOUND_EXAM
@@ -647,23 +646,64 @@ public class AutoTriggerTests
         context.Cases.Add(medicalCase);
 
         // Seed a service for this case
+        SeedBillableService(context, caseId);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var service = CreateCaseServiceForEndTrigger(context, medicalCase, RealInvoiceService(context));
+
+        // Act
+        await service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken);
+
+        // Assert — hoá đơn PENDING được sinh thật cho dịch vụ của ca
+        Assert.Equal(CaseStatus.End, medicalCase.Status);
+        var invoice = await context.Invoices.SingleAsync(i => i.CaseId == caseId, TestContext.Current.CancellationToken);
+        Assert.Equal(InvoiceStatus.PENDING, invoice.Status);
+        Assert.Equal(100000, invoice.TotalAmount);
+    }
+
+    /// <summary>
+    /// Việc quyết định "có cần sinh hoá đơn không" nằm trong IInvoiceService.GenerateInvoiceIfBillableAsync
+    /// (P11 review 24/09/2026) — nhóm test 4.3 dùng InvoiceService THẬT trên cùng DB để kiểm tra kết quả
+    /// cuối (có/không có hoá đơn) thay vì kiểm tra CaseService gọi hàm nào.
+    /// </summary>
+    private static IInvoiceService RealInvoiceService(AppDbContext context) =>
+        PrescriptionAdherenceTestServices.Invoice(
+            context,
+            Mock.Of<IInventoryService>(),
+            null!,
+            Mock.Of<IMedicationIntakeScheduleGenerator>(),
+            Mock.Of<INotificationService>());
+
+    private static void SeedBillableService(AppDbContext context, Guid caseId)
+    {
+        var clinicService = new ClinicService
+        {
+            Id = Guid.NewGuid(),
+            Code = "GENERAL_EXAM",
+            Name = "Khám thường",
+            Price = 100000,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.ClinicServices.Add(clinicService);
         context.CaseClinicServices.Add(new CaseClinicService
         {
             Id = Guid.NewGuid(),
             CaseId = caseId,
-            ClinicServiceId = Guid.NewGuid(),
+            ClinicServiceId = clinicService.Id,
             PriceAtTime = 100000,
             CreatedAt = DateTime.UtcNow
         });
-        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
 
+    private static CaseService CreateCaseServiceForEndTrigger(AppDbContext context, Case medicalCase, IInvoiceService invoiceService)
+    {
         var mockCases = new Mock<ICaseRepository>();
-        mockCases.Setup(c => c.GetForUpdateAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(medicalCase);
-        mockCases.Setup(c => c.GetDetailAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(medicalCase);
+        mockCases.Setup(c => c.GetForUpdateAsync(medicalCase.CaseId, It.IsAny<CancellationToken>())).ReturnsAsync(medicalCase);
+        mockCases.Setup(c => c.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>())).ReturnsAsync(medicalCase);
 
-        var mockInvoiceService = new Mock<IInvoiceService>();
-
-        var service = new CaseService(
+        return new CaseService(
             mockCases.Object,
             Mock.Of<IUltrasoundImageRepository>(),
             Mock.Of<IPatientProfileRepository>(),
@@ -672,16 +712,8 @@ public class AutoTriggerTests
             Mock.Of<INotificationService>(),
             NullLogger<CaseService>.Instance,
             Mock.Of<ICaseClinicServiceService>(),
-            mockInvoiceService.Object,
-            context);
-
-        // Act
-        
-
-        // Assert
-        var result = await service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken);
-        Assert.Equal(CaseStatus.End, medicalCase.Status);
-        mockInvoiceService.Verify(inv => inv.GenerateInvoiceForCaseAsync(caseId), Times.Once);
+            invoiceService,
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(context));
     }
 
     [Fact]
@@ -704,17 +736,11 @@ public class AutoTriggerTests
         context.Cases.Add(medicalCase);
 
         // Seed service and already existing PENDING invoice
-        context.CaseClinicServices.Add(new CaseClinicService
-        {
-            Id = Guid.NewGuid(),
-            CaseId = caseId,
-            ClinicServiceId = Guid.NewGuid(),
-            PriceAtTime = 100000,
-            CreatedAt = DateTime.UtcNow
-        });
+        SeedBillableService(context, caseId);
+        var existingInvoiceId = Guid.NewGuid();
         context.Invoices.Add(new Invoice
         {
-            Id = Guid.NewGuid(),
+            Id = existingInvoiceId,
             CaseId = caseId,
             Status = InvoiceStatus.PENDING,
             TotalAmount = 100000,
@@ -722,31 +748,15 @@ public class AutoTriggerTests
         });
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var mockCases = new Mock<ICaseRepository>();
-        mockCases.Setup(c => c.GetForUpdateAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(medicalCase);
-        mockCases.Setup(c => c.GetDetailAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(medicalCase);
-
-        var mockInvoiceService = new Mock<IInvoiceService>();
-
-        var service = new CaseService(
-            mockCases.Object,
-            Mock.Of<IUltrasoundImageRepository>(),
-            Mock.Of<IPatientProfileRepository>(),
-            Mock.Of<IUserRepository>(),
-            new Lazy<IFileStorageService>(() => Mock.Of<IFileStorageService>()),
-            Mock.Of<INotificationService>(),
-            NullLogger<CaseService>.Instance,
-            Mock.Of<ICaseClinicServiceService>(),
-            mockInvoiceService.Object,
-            context);
+        var service = CreateCaseServiceForEndTrigger(context, medicalCase, RealInvoiceService(context));
 
         // Act
         await service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken);
 
-        // Assert
+        // Assert — ca đã End thì không kết thúc lại được; hoá đơn cũ vẫn là hoá đơn duy nhất
         await Assert.ThrowsAsync<BusinessException>(() => service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken));
-        // Should NOT call GenerateInvoiceForCaseAsync because invoice already exists
-        mockInvoiceService.Verify(inv => inv.GenerateInvoiceForCaseAsync(It.IsAny<Guid>()), Times.Never);
+        var invoice = await context.Invoices.SingleAsync(i => i.CaseId == caseId, TestContext.Current.CancellationToken);
+        Assert.Equal(existingInvoiceId, invoice.Id);
     }
 
     [Fact]
@@ -771,31 +781,14 @@ public class AutoTriggerTests
 
         // No services, no prescription, no invoice
 
-        var mockCases = new Mock<ICaseRepository>();
-        mockCases.Setup(c => c.GetForUpdateAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(medicalCase);
-        mockCases.Setup(c => c.GetDetailAsync(caseId, It.IsAny<CancellationToken>())).ReturnsAsync(medicalCase);
-
-        var mockInvoiceService = new Mock<IInvoiceService>();
-
-        var service = new CaseService(
-            mockCases.Object,
-            Mock.Of<IUltrasoundImageRepository>(),
-            Mock.Of<IPatientProfileRepository>(),
-            Mock.Of<IUserRepository>(),
-            new Lazy<IFileStorageService>(() => Mock.Of<IFileStorageService>()),
-            Mock.Of<INotificationService>(),
-            NullLogger<CaseService>.Instance,
-            Mock.Of<ICaseClinicServiceService>(),
-            mockInvoiceService.Object,
-            context);
+        var service = CreateCaseServiceForEndTrigger(context, medicalCase, RealInvoiceService(context));
 
         // Act
-        
+        await service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken);
 
-        // Assert
-        var result = await service.EndWithoutPrescriptionAsync(caseId, doctorId, TestContext.Current.CancellationToken);
+        // Assert — ca rỗng vẫn kết thúc bình thường, không sinh hoá đơn (và không ném lỗi "không có gì để tính tiền")
         Assert.Equal(CaseStatus.End, medicalCase.Status);
-        mockInvoiceService.Verify(inv => inv.GenerateInvoiceForCaseAsync(It.IsAny<Guid>()), Times.Never);
+        Assert.Empty(await context.Invoices.ToListAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -834,7 +827,7 @@ public class AutoTriggerTests
 
         var mockInvoiceService = new Mock<IInvoiceService>();
         mockInvoiceService
-            .Setup(inv => inv.GenerateInvoiceForCaseAsync(caseId))
+            .Setup(inv => inv.GenerateInvoiceIfBillableAsync(caseId))
             .ThrowsAsync(new InvalidOperationException("DB error during invoice generation"));
 
         var service = new CaseService(
@@ -847,7 +840,7 @@ public class AutoTriggerTests
             NullLogger<CaseService>.Instance,
             Mock.Of<ICaseClinicServiceService>(),
             mockInvoiceService.Object,
-            context);
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(context));
 
         // Act - should NOT throw because of fault isolation try-catch
         
