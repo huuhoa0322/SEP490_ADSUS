@@ -728,4 +728,80 @@ public class DoctorMedicationTrackingServiceTests
     }
 
     #endregion
+
+    #region "Hôm nay" theo ngày phòng khám (UTC+7)
+
+    // 05:00 sáng 29/08 giờ VN = 22:00 ngày 28/08 UTC. Hai liều chưa uống: 17:00 28/08 giờ VN (hôm
+    // qua) và 04:00 29/08 giờ VN (hôm nay) — theo ngày UTC cả hai đều thuộc 28/08 nên bị tính chung.
+    private static readonly DateTime _earlyMorningUtc = new(2026, 8, 28, 22, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime _yesterdayDoseUtc = new(2026, 8, 28, 10, 0, 0, DateTimeKind.Utc); // 17:00 28/08 VN
+    private static readonly DateTime _todayDoseUtc = new(2026, 8, 28, 21, 0, 0, DateTimeKind.Utc);     // 04:00 29/08 VN
+
+    private static async Task<(Guid DoctorId, PatientProfile Profile, User Patient, Prescription Prescription)> SeedEarlyMorningDosesAsync(AppDbContext db)
+    {
+        var doctorId = Guid.NewGuid();
+        var doctorUser = NewUser(doctorId, "Dr. Test", UserRole.Doctor);
+        var patientUser = NewUser(Guid.NewGuid(), "Bệnh nhân Sáng Sớm", UserRole.Patient);
+        var profile = NewProfile(Guid.NewGuid(), patientUser.UserId, patientUser);
+        var caseEntity = NewCase(Guid.NewGuid(), profile.PatientProfileId, doctorId, doctorUser);
+        var prescription = NewPrescription(Guid.NewGuid(), caseEntity.CaseId, doctorId, caseEntity, doctorUser);
+        var med = new Medicine { MedicineId = Guid.NewGuid(), Name = "Paracetamol", CreatedAt = DateTime.UtcNow };
+        var item = NewItem(Guid.NewGuid(), prescription.PrescriptionId, prescription, med);
+        item.StartDate = new DateOnly(2026, 8, 28);
+        item.DurationDays = 3; // còn hiệu lực tới 30/08
+        prescription.PrescriptionItems.Add(item);
+        item.MedicationIntakeLogs.Add(NewLog(Guid.NewGuid(), item.PrescriptionItemId, item, _yesterdayDoseUtc, null));
+        item.MedicationIntakeLogs.Add(NewLog(Guid.NewGuid(), item.PrescriptionItemId, item, _todayDoseUtc, null));
+
+        db.Users.AddRange(doctorUser, patientUser);
+        db.PatientProfiles.Add(profile);
+        db.Cases.Add(caseEntity);
+        db.Medicines.Add(med);
+        db.Prescriptions.Add(prescription);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return (doctorId, profile, patientUser, prescription);
+    }
+
+    [Fact]
+    public async Task GetPatientListAsync_EarlyMorning_CountsOnlyClinicTodayDoses()
+    {
+        using var db = CreateContext();
+        var (doctorId, _, _, _) = await SeedEarlyMorningDosesAsync(db);
+
+        var result = await CreateService(db).GetPatientListAsync(doctorId, null, null, null, _earlyMorningUtc, ct: TestContext.Current.CancellationToken);
+
+        var patient = Assert.Single(result.Patients);
+        Assert.Equal(1, patient.TodayTotal);
+    }
+
+    [Fact]
+    public async Task GetPatientDetailAsync_EarlyMorning_ShowsOnlyClinicTodayDoses()
+    {
+        using var db = CreateContext();
+        var (doctorId, profile, _, _) = await SeedEarlyMorningDosesAsync(db);
+
+        var result = await CreateService(db).GetPatientDetailAsync(doctorId, profile.PatientProfileId, _earlyMorningUtc, ct: TestContext.Current.CancellationToken);
+
+        var card = Assert.Single(result.Prescriptions);
+        var dose = Assert.Single(card.TodayDoses);
+        Assert.Equal("04:00", dose.ScheduledTime);
+    }
+
+    [Fact]
+    public async Task SendRemindersAsync_EarlyMorning_RemindsOnlyClinicTodayDoses()
+    {
+        using var db = CreateContext();
+        var (doctorId, profile, patient, prescription) = await SeedEarlyMorningDosesAsync(db);
+        var notifService = new Mock<INotificationService>();
+
+        var result = await CreateService(db, notifService.Object).SendRemindersAsync(doctorId, profile.PatientProfileId,
+            new RemindRequest(prescription.PrescriptionId), _earlyMorningUtc, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, result.SentCount);
+        notifService.Verify(n => n.SendAsync(
+            It.Is<SendNotificationRequest>(r => r.UserId == patient.UserId && r.Body.Contains("04:00")),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    #endregion
 }

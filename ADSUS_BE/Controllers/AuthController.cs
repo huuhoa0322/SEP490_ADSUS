@@ -156,8 +156,8 @@ public class AuthController : ControllerBase
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (Guid.TryParse(userIdClaim, out var userId))
         {
+            // RevokeAllRefreshTokensAsync đã ghi log qua ILogger — không in thêm ra stdout
             await _auth.RevokeAllRefreshTokensAsync(userId, cancellationToken);
-            Console.WriteLine($"[Auth] User {userId} logged out, all refresh tokens revoked");
         }
 
         return Ok(ApiResponse<object>.Ok(null!, "Logged out successfully."));

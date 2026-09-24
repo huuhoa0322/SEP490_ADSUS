@@ -157,6 +157,63 @@ public class PrescriptionServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_OnlyBatchExpiredYesterdayClinicTime_NotCountedAsAvailable()
+    {
+        // "Hôm nay" là ngày phòng khám (UTC+7) — theo UTC thì từ 00:00 đến 07:00 giờ VN lô hết hạn
+        // hôm qua vẫn được tính vào tồn kho khi kê đơn.
+        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var service = new PrescriptionService(
+            new ADSUS_BE.DAL.Repositories.Implementations.InventoryRepository(db), new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(db),
+            _prescriptionRepoMock.Object,
+            _itemRepoMock.Object,
+            _intakeLogRepoMock.Object,
+            _caseRepoMock.Object,
+            _userRepoMock.Object,
+            _medicineRepoMock.Object,
+            _appointmentServiceMock.Object
+        );
+
+        var doctorId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
+        var medicineId = Guid.NewGuid();
+        _userRepoMock.Setup(r => r.GetByIdAsync(doctorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { UserId = doctorId, Role = UserRole.Doctor, Status = UserStatus.Active });
+        _caseRepoMock.Setup(r => r.GetByIdAsync(caseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Case { CaseId = caseId, DoctorId = doctorId, Status = CaseStatus.Confirmed });
+        _medicineRepoMock.Setup(r => r.ListByNamesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { new Medicine { MedicineId = medicineId, Name = "Paracetamol", Status = MedicineStatus.Active, UsageUnit = "viên" } });
+
+        db.MedicineBatches.Add(new MedicineBatch
+        {
+            Id = Guid.NewGuid(),
+            MedicineId = medicineId,
+            QuantityBase = 100,
+            ExpiryDate = ClinicClock.Today().AddDays(-1),
+            LotNumber = "LOT-EXPIRED"
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var request = new CreatePrescriptionRequest(
+            CaseId: caseId,
+            Items: new[]
+            {
+                new CreatePrescriptionItemDto(
+                    MedicineName: "Paracetamol",
+                    QuantityPerDose: 1,
+                    DurationDays: 5,
+                    StartDate: ClinicClock.Today(),
+                    Instructions: null,
+                    ScheduleSlots: new[] { ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot.Morning }
+                )
+            },
+            GeneralNote: null
+        );
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => service.CreateAsync(doctorId, request, TestContext.Current.CancellationToken));
+        Assert.Contains("Hiện còn: 0", ex.Message);
+    }
+
+    [Fact]
     public async Task CreateAsync_Success_NoIntakeLogsCreated()
     {
         // Arrange
@@ -497,5 +554,54 @@ public class PrescriptionServiceTests
             doctorId,
             It.IsAny<ADSUS_BE.BLL.AppointmentScheduling.DTOs.FollowUpAppointmentRequest>(),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_PrescribedDate_IsClinicToday()
+    {
+        // Ngày kê đơn là ngày phòng khám (UTC+7) — theo ngày UTC thì đơn kê từ 00:00 đến 07:00 giờ VN
+        // bị ghi ngày hôm trước trên hồ sơ và hoá đơn.
+        var doctorId = Guid.NewGuid();
+        var caseId = Guid.NewGuid();
+        var medicineId = Guid.NewGuid();
+        _userRepoMock.Setup(r => r.GetByIdAsync(doctorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { UserId = doctorId, Role = UserRole.Doctor, Status = UserStatus.Active });
+        _caseRepoMock.Setup(r => r.GetByIdAsync(caseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Case { CaseId = caseId, DoctorId = doctorId, Status = CaseStatus.Confirmed });
+        _caseRepoMock.Setup(r => r.GetForUpdateAsync(caseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Case { CaseId = caseId, DoctorId = doctorId, Status = CaseStatus.Confirmed });
+        _medicineRepoMock.Setup(r => r.ListByNamesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { new Medicine { MedicineId = medicineId, Name = "ValidMedicine", Status = MedicineStatus.Active, VolumePerBaseUnit = 1 } });
+        _prescriptionRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Prescription { PrescriptionId = Guid.NewGuid(), CaseId = caseId, DoctorId = doctorId, PrescriptionItems = new List<PrescriptionItem>() });
+        Prescription? added = null;
+        _prescriptionRepoMock.Setup(r => r.AddAsync(It.IsAny<Prescription>(), It.IsAny<CancellationToken>()))
+            .Callback<Prescription, CancellationToken>((p, _) => added = p)
+            .Returns(Task.CompletedTask);
+
+        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        db.MedicineBatches.Add(new MedicineBatch { Id = Guid.NewGuid(), MedicineId = medicineId, QuantityBase = 100, ExpiryDate = ClinicClock.Today().AddDays(30), LotNumber = "LOT01" });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var service = CreateService(db);
+
+        var request = new CreatePrescriptionRequest(
+            CaseId: caseId,
+            Items: new[]
+            {
+                new CreatePrescriptionItemDto(
+                    MedicineName: "ValidMedicine",
+                    QuantityPerDose: 1,
+                    DurationDays: 1,
+                    StartDate: ClinicClock.Today(),
+                    Instructions: null,
+                    ScheduleSlots: new[] { ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot.Morning }
+                )
+            },
+            GeneralNote: null);
+
+        await service.CreateAsync(doctorId, request, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(added);
+        Assert.Equal(ClinicClock.Today(), added!.PrescribedDate);
     }
 }

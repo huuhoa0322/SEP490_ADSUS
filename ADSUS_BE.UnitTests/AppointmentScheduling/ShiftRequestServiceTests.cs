@@ -128,6 +128,25 @@ public class ShiftRequestServiceTests
     }
 
     [Fact]
+    public async Task CreateRequestAsync_TomorrowClinicTime_ThrowsException()
+    {
+        // "Ngày mai" theo giờ phòng khám vẫn chưa đủ 2 ngày báo trước. Tính theo ngày UTC thì từ
+        // 00:00 đến 07:00 giờ VN hệ thống lùi 1 ngày và cho lọt yêu cầu này.
+        var dto = new CreateShiftRequestDto
+        {
+            RequestType = ShiftRequestType.Leave,
+            ShiftType = ShiftType.Morning,
+            RequestDate = ClinicClock.Today().AddDays(1),
+            Reason = "Too soon"
+        };
+        _repoMock.Setup(r => r.HasActiveRequestAsync(_doctorId, dto.RequestDate, dto.ShiftType, dto.RequestType, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.CreateRequestAsync(_doctorId, dto, TestContext.Current.CancellationToken));
+        Assert.Contains("trước ít nhất 2 ngày", ex.Message);
+    }
+
+    [Fact]
     public async Task ReviewRequestAsync_ApproveLeave_ClosesSlotsAndCancelsAppointments()
     {
         var requestId = Guid.NewGuid();

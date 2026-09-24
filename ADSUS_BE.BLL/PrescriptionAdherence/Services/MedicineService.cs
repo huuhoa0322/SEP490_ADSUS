@@ -7,6 +7,7 @@ using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 
@@ -36,7 +37,7 @@ public sealed class MedicineService : IMedicineService
 
         var baseUnitNames = await _packagings.GetBaseUnitNamesAsync(medicineIds, ct);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today(); // ngày phòng khám — lô hết hạn hôm qua (giờ VN) không tính vào tồn
 
         return medicines.Select(m => new MedicineResponse
         {
@@ -60,7 +61,7 @@ public sealed class MedicineService : IMedicineService
         // Lấy tên đơn vị cơ bản cho từng thuốc (IsBaseUnit = true)
         var baseUnitNames = await _packagings.GetBaseUnitNamesAsync(medicineIds, ct);
         
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today(); // ngày phòng khám — lô hết hạn hôm qua (giờ VN) không tính vào tồn
 
         var dtos = items.Select(m => new MedicineResponse
         {
@@ -87,7 +88,7 @@ public sealed class MedicineService : IMedicineService
 
         var baseUnitName = await _packagings.GetBaseUnitNameAsync(id, ct);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today(); // ngày phòng khám — lô hết hạn hôm qua (giờ VN) không tính vào tồn
 
         return new MedicineResponse
         {

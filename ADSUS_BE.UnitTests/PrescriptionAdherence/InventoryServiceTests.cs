@@ -817,5 +817,108 @@ namespace ADSUS_BE.UnitTests.PrescriptionAdherence
             Assert.Equal(medicineId1, warningAlert.MedicineId);
             Assert.Equal("WARNING", warningAlert.Severity); // > 30 ngày => WARNING (40 ngày)
         }
+
+        // ── Hạn dùng tính theo NGÀY PHÒNG KHÁM (UTC+7), không theo ngày UTC ─────────────
+        // Từ 00:00 đến 07:00 giờ VN, ngày UTC vẫn là hôm trước: tính theo UTC thì lô hết hạn hôm
+        // qua (giờ VN) vẫn được xuất cho bệnh nhân, và lô hết hạn ngay hôm nay vẫn nhập được.
+
+        private async Task<(Guid CaseId, MedicineBatch Expired, MedicineBatch Valid)> SeedPrescriptionWithExpiredAndValidBatchAsync()
+        {
+            var caseId = Guid.NewGuid();
+            var unit = new MedicineUnit { MedicineUnitId = Guid.NewGuid(), Name = "Viên" };
+            var medicine = new Medicine { MedicineId = Guid.NewGuid(), Name = "Amoxicillin", UsageUnit = "Viên", VolumePerBaseUnit = 1 };
+            var pack = new MedicinePackaging { Id = Guid.NewGuid(), MedicineId = medicine.MedicineId, MedicineUnitId = unit.MedicineUnitId, ConversionFactor = 1, IsBaseUnit = true, IsSellable = true, SalePrice = 1000, Medicine = medicine, MedicineUnit = unit };
+            var expired = new MedicineBatch { Id = Guid.NewGuid(), MedicineId = medicine.MedicineId, LotNumber = "EXPIRED", ExpiryDate = ClinicClock.Today().AddDays(-1), QuantityBase = 100, BaseUnitAvgImportPrice = 100, Medicine = medicine };
+            var valid = new MedicineBatch { Id = Guid.NewGuid(), MedicineId = medicine.MedicineId, LotNumber = "VALID", ExpiryDate = ClinicClock.Today().AddMonths(6), QuantityBase = 50, BaseUnitAvgImportPrice = 200, Medicine = medicine };
+            var prescription = new Prescription { PrescriptionId = Guid.NewGuid(), CaseId = caseId, Status = PrescriptionStatus.Active };
+            var item = new PrescriptionItem { PrescriptionItemId = Guid.NewGuid(), PrescriptionId = prescription.PrescriptionId, MedicineId = medicine.MedicineId, QuantityBase = 20, Medicine = medicine, Dosage = "1 viên" };
+
+            _dbContext.MedicineUnits.Add(unit);
+            _dbContext.Medicines.Add(medicine);
+            _dbContext.MedicinePackagings.Add(pack);
+            _dbContext.MedicineBatches.AddRange(expired, valid);
+            _dbContext.Prescriptions.Add(prescription);
+            _dbContext.PrescriptionItems.Add(item);
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+            return (caseId, expired, valid);
+        }
+
+        [Fact]
+        public async Task DispenseAsync_BatchExpiredYesterdayClinicTime_IsNeverDispensed()
+        {
+            var (caseId, expired, valid) = await SeedPrescriptionWithExpiredAndValidBatchAsync();
+
+            await _service.DispenseAsync(caseId);
+
+            // FEFO không được chọn lô đã hết hạn dù hạn của nó gần nhất
+            Assert.Equal(100, (await _dbContext.MedicineBatches.FirstAsync(b => b.Id == expired.Id, TestContext.Current.CancellationToken)).QuantityBase);
+            Assert.Equal(30, (await _dbContext.MedicineBatches.FirstAsync(b => b.Id == valid.Id, TestContext.Current.CancellationToken)).QuantityBase);
+            Assert.DoesNotContain(await _dbContext.InventoryTransactions.ToListAsync(TestContext.Current.CancellationToken), t => t.BatchId == expired.Id);
+        }
+
+        private async Task<ImportInventoryRequest> SeedImportRequestExpiringClinicTodayAsync()
+        {
+            var medicineId = Guid.NewGuid();
+            var supplierId = Guid.NewGuid();
+            var packagingId = Guid.NewGuid();
+            _dbContext.Medicines.Add(new Medicine { MedicineId = medicineId, Name = "Med", Status = MedicineStatus.Active, CreatedAt = DateTime.UtcNow });
+            _dbContext.Suppliers.Add(new Supplier { SupplierId = supplierId, Name = "Sup", IsActive = true, PhoneNumber = "1", Email = "a", Address = "a", TaxCode = "1" });
+            _dbContext.MedicinePackagings.Add(new MedicinePackaging { Id = packagingId, MedicineId = medicineId, ConversionFactor = 10 });
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            return new ImportInventoryRequest
+            {
+                MedicineId = medicineId,
+                SupplierId = supplierId,
+                MedicinePackagingId = packagingId,
+                LotNumber = "LOT-TODAY",
+                ExpiryDate = ClinicClock.Today().ToDateTime(TimeOnly.MinValue), // hết hạn ngay hôm nay (giờ VN)
+                Quantity = 1,
+                ImportPricePerUnit = 1000
+            };
+        }
+
+        [Fact]
+        public async Task ImportMedicineAsync_ExpiryIsClinicToday_Throws()
+        {
+            var request = await SeedImportRequestExpiringClinicTodayAsync();
+
+            var ex = await Assert.ThrowsAsync<BusinessException>(() => _service.ImportMedicineAsync(request));
+            Assert.Contains("Hạn sử dụng phải lớn hơn", ex.Message);
+            Assert.False(await _dbContext.MedicineBatches.AnyAsync(b => b.LotNumber == "LOT-TODAY", TestContext.Current.CancellationToken));
+        }
+
+        [Fact]
+        public async Task ValidateImportAsync_ExpiryIsClinicToday_ReturnsInvalid()
+        {
+            var request = await SeedImportRequestExpiringClinicTodayAsync();
+
+            var result = await _service.ValidateImportAsync(request);
+
+            Assert.False(result.IsValid);
+            Assert.Contains("Hạn sử dụng phải lớn hơn", result.ErrorMessage);
+        }
+
+        [Fact]
+        public async Task GetAlertSummaryAsync_UsesClinicToday_ForStockAndExpiry()
+        {
+            // Med chỉ còn 1 lô hết hạn hôm qua (giờ VN) → tồn hợp lệ = 0 (hết hàng)
+            var unit = new MedicineUnit { MedicineUnitId = Guid.NewGuid(), Name = "Viên" };
+            var med = new Medicine { MedicineId = Guid.NewGuid(), Name = "Med", UsageUnit = "Viên", LowStockThreshold = 5, Status = MedicineStatus.Active };
+            var pack = new MedicinePackaging { Id = Guid.NewGuid(), MedicineId = med.MedicineId, MedicineUnitId = unit.MedicineUnitId, ConversionFactor = 1, IsBaseUnit = true, Medicine = med, MedicineUnit = unit };
+            var batch = new MedicineBatch { Id = Guid.NewGuid(), MedicineId = med.MedicineId, LotNumber = "LOT", QuantityBase = 10, ExpiryDate = ClinicClock.Today().AddDays(-1), Medicine = med };
+            _dbContext.MedicineUnits.Add(unit);
+            _dbContext.Medicines.Add(med);
+            _dbContext.MedicinePackagings.Add(pack);
+            _dbContext.MedicineBatches.Add(batch);
+            await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            var summary = await _service.GetAlertSummaryAsync();
+
+            Assert.Equal(1, summary.OutOfStockCount);
+            var alert = Assert.Single(summary.ExpiryAlerts);
+            Assert.Equal("EXPIRED", alert.Severity);
+            Assert.Equal(-1, alert.DaysUntilExpiry);
+        }
     }
 }

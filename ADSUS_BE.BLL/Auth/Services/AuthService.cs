@@ -165,7 +165,7 @@ public class AuthService : IAuthService
         string refreshToken,
         CancellationToken cancellationToken = default)
     {
-        Console.WriteLine("[Auth] 🔄 Token refresh requested");
+        _logger.LogDebug("Token refresh requested");
 
         // 1. Hash the incoming refresh token
         var tokenHash = HashToken(refreshToken);
@@ -176,7 +176,6 @@ public class AuthService : IAuthService
         // 3. Validate: must exist, not revoked, not expired
         if (storedToken == null || storedToken.RevokedAt != null || storedToken.ExpiresAt < DateTime.UtcNow)
         {
-            Console.WriteLine("[Auth] ❌ Token refresh FAILED - Invalid/revoked/expired token");
             _logger.LogWarning("Invalid refresh token attempted");
             return null;
         }
@@ -185,14 +184,13 @@ public class AuthService : IAuthService
         var user = await _users.GetByIdReadOnlyAsync(storedToken.UserId, cancellationToken);
         if (user == null || user.Status != UserStatus.Active)
         {
-            Console.WriteLine($"[Auth] ❌ Token refresh FAILED - User inactive or deleted (UserId: {storedToken.UserId}, Status: {user?.Status})");
-            _logger.LogWarning("Refresh token for inactive/deleted user: {UserId}", storedToken.UserId);
+            _logger.LogWarning("Refresh token for inactive/deleted user: {UserId} (Status: {Status})", storedToken.UserId, user?.Status);
             return null;
         }
 
         // 5. Revoke old token (rotation)
         await _refreshTokens.RevokeAsync(storedToken.Id, cancellationToken);
-        Console.WriteLine($"[Auth] 🔒 Revoked old refresh token for user {user.UserId}");
+        _logger.LogDebug("Revoked old refresh token for user {UserId}", user.UserId);
 
         // 6. Generate new tokens
         var newAccessToken = _tokens.GenerateAccessToken(user);
@@ -209,7 +207,6 @@ public class AuthService : IAuthService
             DeviceInfo = storedToken.DeviceInfo
         }, cancellationToken);
 
-        Console.WriteLine($"[Auth] ✅ Token refresh SUCCESS for user {user.UserId}");
         _logger.LogInformation("Tokens refreshed for user {UserId}", user.UserId);
 
         return new RefreshTokenResponse(

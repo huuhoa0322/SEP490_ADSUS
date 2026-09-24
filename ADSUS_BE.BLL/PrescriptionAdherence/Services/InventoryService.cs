@@ -7,6 +7,7 @@ using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 
@@ -110,7 +111,9 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                     throw new BusinessException("Nhà cung cấp không tồn tại hoặc đã bị khóa.");
                 }
 
-                if (request.ExpiryDate.Date <= DateTime.UtcNow.Date)
+                // So với "hôm nay" theo giờ phòng khám — theo UTC thì từ 00:00 đến 07:00 giờ VN lô
+                // hết hạn ngay hôm nay vẫn nhập được.
+                if (DateOnly.FromDateTime(request.ExpiryDate) <= ClinicClock.Today())
                 {
                     throw new BusinessException("Hạn sử dụng phải lớn hơn ngày hiện tại.");
                 }
@@ -234,7 +237,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
                 return new ImportValidationResponse { IsValid = false, ErrorMessage = "Nhà cung cấp không tồn tại hoặc đã bị khóa." };
             }
 
-            if (request.ExpiryDate.Date <= DateTime.UtcNow.Date)
+            if (DateOnly.FromDateTime(request.ExpiryDate) <= ClinicClock.Today())
             {
                 return new ImportValidationResponse { IsValid = false, ErrorMessage = "Hạn sử dụng phải lớn hơn ngày hiện tại." };
             }
@@ -298,8 +301,9 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
 
             // FEFO: nạp các lô còn hạn, còn hàng của MỌI thuốc trong đơn bằng một truy vấn, sắp theo
             // hạn dùng tăng dần — thay vì truy vấn lại cho từng dòng thuốc (N+1, P11 review 24/09/2026).
-            // Có tracking vì số lượng lô bị trừ ngay trên các entity này.
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            // Có tracking vì số lượng lô bị trừ ngay trên các entity này. "Hôm nay" theo giờ phòng
+            // khám — theo UTC thì từ 00:00 đến 07:00 giờ VN lô hết hạn hôm qua vẫn bị xuất.
+            var today = ClinicClock.Today();
             var medicineIds = prescription.PrescriptionItems.Select(pi => pi.MedicineId).Distinct().ToList();
             var batchesByMedicine = (await _inventory.ListAvailableBatchesForUpdateAsync(medicineIds, today))
                 .ToLookup(b => b.MedicineId);
@@ -408,10 +412,11 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
         public async Task<InventoryAlertSummary> GetAlertSummaryAsync()
         {
             var summary = new InventoryAlertSummary();
-            var now = DateTime.UtcNow;
+            // "Hôm nay" theo giờ phòng khám cho cả tồn kho hợp lệ lẫn số ngày còn hạn
+            var today = ClinicClock.Today();
 
             // Báo cáo chỉ đọc — repository không tracking danh mục thuốc và lô
-            var allMedicinesQuery = await _inventory.ListActiveMedicineStocksAsync(DateOnly.FromDateTime(now));
+            var allMedicinesQuery = await _inventory.ListActiveMedicineStocksAsync(today);
 
             summary.TotalMedicinesCount = allMedicinesQuery.Count;
             summary.OutOfStockCount = allMedicinesQuery.Count(x => x.TotalStock == 0);
@@ -447,7 +452,7 @@ namespace ADSUS_BE.BLL.PrescriptionAdherence.Services
 
             foreach (var batch in batches)
             {
-                var daysUntilExpiry = batch.ExpiryDate.DayNumber - DateOnly.FromDateTime(now).DayNumber;
+                var daysUntilExpiry = batch.ExpiryDate.DayNumber - today.DayNumber;
 
                 if (daysUntilExpiry <= 60)
                 {
