@@ -30,7 +30,7 @@ public class ClinicServiceManagementServiceTests
 
     private static ClinicServiceManagementService CreateService(AppDbContext context)
     {
-        return new ClinicServiceManagementService(context, NullLogger<ClinicServiceManagementService>.Instance);
+        return ClinicServiceTestServices.Management(context);
     }
 
     #region 1.1 CreateAsync (8 test cases)
@@ -585,7 +585,7 @@ public class ClinicServiceManagementServiceTests
         // Arrange
         using var context = CreateContext();
         var mgmtService = CreateService(context);
-        var caseClinicService = new CaseClinicServiceService(context, NullLogger<CaseClinicServiceService>.Instance);
+        var caseClinicService = ClinicServiceTestServices.CaseClinicService(context);
 
         var serviceId = Guid.NewGuid();
         var caseId = Guid.NewGuid();

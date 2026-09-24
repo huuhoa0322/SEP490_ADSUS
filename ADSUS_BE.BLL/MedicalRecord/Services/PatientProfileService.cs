@@ -255,6 +255,70 @@ public sealed class PatientProfileService : IPatientProfileService
     public Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken ct = default) =>
         _profiles.FindIdByUserIdAsync(userId, ct);
 
+    public async Task<Guid?> FindGuestProfileIdByPhoneAsync(string phone, bool lockForUpdate, CancellationToken ct = default) =>
+        (await _profiles.FindGuestByPhoneForUpdateAsync(phone, lockForUpdate, ct))?.PatientProfileId;
+
+    public async Task<Guid> StageForNewPatientAsync(User patient, CancellationToken ct = default) =>
+        (await _profiles.StageForNewPatientAsync(patient, ct)).PatientProfileId;
+
+    public async Task<GuestProfileInfo?> FindGuestProfileAsync(Guid patientProfileId, CancellationToken ct = default)
+    {
+        var profile = await _profiles.GetForUpdateAsync(patientProfileId, ct);
+        return profile is null || profile.UserId is not null ? null : ToGuestInfo(profile);
+    }
+
+    public async Task<GuestProfileInfo> StageGuestProfileAsync(
+        string fullName, string? phone, DateOnly? dateOfBirth, Guid createdBy, CancellationToken ct = default)
+    {
+        // Người thân có số điện thoại: nhận lại guest profile trùng số (đã được người khác thêm trước)
+        var profile = phone is null ? null : await _profiles.FindGuestByPhoneForUpdateAsync(phone, lockRow: false, ct);
+
+        if (profile is null)
+        {
+            profile = new PatientProfile
+            {
+                PatientProfileId = Guid.NewGuid(),
+                FullName = fullName,
+                Phone = phone,
+                DateOfBirth = dateOfBirth,
+                CreatedBy = createdBy,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            };
+            await _profiles.StageAddAsync(profile, ct);
+        }
+
+        return ToGuestInfo(profile);
+    }
+
+    public async Task StageGuestProfileUpdateAsync(
+        Guid patientProfileId, string? fullName, string? phone, DateOnly? dateOfBirth, CancellationToken ct = default)
+    {
+        var profile = await _profiles.GetForUpdateAsync(patientProfileId, ct);
+        if (profile is null || profile.UserId is not null) return;
+
+        if (fullName != null)
+        {
+            profile.FullName = fullName.Trim();
+        }
+
+        if (phone != null)
+        {
+            var normalizedPhone = phone.Trim();
+            profile.Phone = string.IsNullOrEmpty(normalizedPhone) ? null : normalizedPhone;
+        }
+
+        if (dateOfBirth != null)
+        {
+            profile.DateOfBirth = dateOfBirth;
+        }
+
+        profile.UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static GuestProfileInfo ToGuestInfo(PatientProfile profile) =>
+        new(profile.PatientProfileId, profile.FullName, profile.Phone, profile.DateOfBirth);
+
     public async Task<PagedResult<PatientSummaryResponse>> SearchPatientsAsync(
         string? search,
         string? visitStatus,

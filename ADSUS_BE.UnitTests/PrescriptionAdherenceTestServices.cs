@@ -57,7 +57,7 @@ internal static class PrescriptionAdherenceTestServices
             new InventoryRepository(db),
             new ReminderPreferenceRepository(db),
             new UserRepository(db),
-            new CaseClinicServiceService(db, NullLogger<CaseClinicServiceService>.Instance),
+            ClinicServiceTestServices.CaseClinicService(db),
             new UnitOfWork(db),
             inventoryService,
             intakeLogRepo,

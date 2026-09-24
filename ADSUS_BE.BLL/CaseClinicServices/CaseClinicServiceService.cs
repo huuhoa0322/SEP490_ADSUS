@@ -1,33 +1,51 @@
 using ADSUS_BE.BLL.CaseClinicServices.DTOs;
+using ADSUS_BE.BLL.ClinicServiceManagement;
 using ADSUS_BE.BLL.Common.Exceptions;
-using ADSUS_BE.DAL.Data;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
+using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
 using ADSUS_BE.DAL.Entities;
-using Microsoft.EntityFrameworkCore;
+using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.CaseClinicServices;
 
+/// <summary>
+/// Gắn/gỡ dịch vụ phòng khám vào ca khám. Dữ liệu module khác đi qua service sở hữu: ca khám và
+/// ảnh siêu âm qua ICaseService, danh mục dịch vụ qua IClinicServiceManagementService, hoá đơn qua
+/// IInvoiceService (P11 review 24/09/2026).
+///
+/// ICaseService và IInvoiceService được inject dạng Lazy vì hai service đó lại phụ thuộc ngược vào
+/// ICaseClinicServiceService (CaseService tự gắn "Khám thường", InvoiceService đọc dịch vụ để lập
+/// hoá đơn) — inject trực tiếp thì DI không dựng được vòng này.
+/// </summary>
 public class CaseClinicServiceService : ICaseClinicServiceService
 {
-    private readonly AppDbContext _context;
+    private readonly ICaseClinicServiceRepository _caseServices;
+    private readonly IClinicServiceManagementService _clinicServices;
+    private readonly Lazy<ICaseService> _cases;
+    private readonly Lazy<IInvoiceService> _invoices;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CaseClinicServiceService> _logger;
 
     public CaseClinicServiceService(
-        AppDbContext context,
+        ICaseClinicServiceRepository caseServices,
+        IClinicServiceManagementService clinicServices,
+        Lazy<ICaseService> cases,
+        Lazy<IInvoiceService> invoices,
+        IUnitOfWork unitOfWork,
         ILogger<CaseClinicServiceService> logger)
     {
-        _context = context;
+        _caseServices = caseServices;
+        _clinicServices = clinicServices;
+        _cases = cases;
+        _invoices = invoices;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
     public async Task<IReadOnlyList<CaseClinicServiceResponse>> GetServicesForCaseAsync(Guid caseId, CancellationToken ct = default)
     {
-        var services = await _context.CaseClinicServices
-            .AsNoTracking()
-            .Include(cs => cs.ClinicService)
-            .Where(cs => cs.CaseId == caseId)
-            .OrderBy(cs => cs.CreatedAt)
-            .ToListAsync(ct);
+        var services = await _caseServices.ListByCaseAsync(caseId, ct);
 
         return services.Select(cs => new CaseClinicServiceResponse
         {
@@ -53,12 +71,10 @@ public class CaseClinicServiceService : ICaseClinicServiceService
 
     private async Task<CaseClinicServiceResponse> AddServiceToCaseInternalAsync(Guid caseId, Guid clinicServiceId, bool allowBooked, Guid? actingDoctorId = null, CancellationToken ct = default)
     {
-        var hasPaidInvoice = await _context.Invoices
-            .AnyAsync(i => i.CaseId == caseId && i.Status == ADSUS_BE.DAL.Entities.InvoiceStatus.PAID, ct);
-        if (hasPaidInvoice)
+        if (await _invoices.Value.HasPaidInvoiceAsync(caseId, ct))
             throw new BusinessException("Hóa đơn đã thanh toán, không thể thêm dịch vụ vào ca khám.");
 
-        var medicalCase = await _context.Cases.FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
+        var medicalCase = await _cases.Value.FindOwnershipAsync(caseId, ct);
         if (medicalCase == null)
         {
             throw new BusinessException("Không tìm thấy ca khám.");
@@ -79,15 +95,13 @@ public class CaseClinicServiceService : ICaseClinicServiceService
             throw new BusinessException("Không thể thêm dịch vụ vào ca khám đã hoàn thành hoặc bị hủy.");
         }
 
-        var service = await _context.ClinicServices.FirstOrDefaultAsync(s => s.Id == clinicServiceId, ct);
+        var service = await _clinicServices.FindByIdAsync(clinicServiceId, ct);
         if (service == null || !service.IsActive)
         {
             throw new BusinessException("Dịch vụ không tồn tại hoặc không hoạt động.");
         }
 
-        var existing = await _context.CaseClinicServices
-            .Include(cs => cs.ClinicService)
-            .FirstOrDefaultAsync(cs => cs.CaseId == caseId && cs.ClinicServiceId == clinicServiceId, ct);
+        var existing = await _caseServices.GetByCaseAndServiceAsync(caseId, clinicServiceId, ct);
 
         if (existing != null)
         {
@@ -113,32 +127,12 @@ public class CaseClinicServiceService : ICaseClinicServiceService
             CreatedAt = now
         };
 
-        _context.CaseClinicServices.Add(caseClinicService);
+        await _caseServices.AddAsync(caseClinicService, ct);
 
-        var pendingInvoice = await _context.Invoices
-            .Include(i => i.InvoiceItems)
-            .FirstOrDefaultAsync(i => i.CaseId == caseId && i.Status == InvoiceStatus.PENDING, ct);
+        // Hoá đơn PENDING (nếu có) thêm dòng dịch vụ — lưu cùng lượt với bản ghi dịch vụ
+        await _invoices.Value.StageServiceAddedAsync(caseId, caseClinicService.Id, service.Name, caseClinicService.PriceAtTime, ct);
 
-        if (pendingInvoice != null)
-        {
-            var invoiceItem = new InvoiceItem
-            {
-                Id = Guid.NewGuid(),
-                InvoiceId = pendingInvoice.Id,
-                Description = service.Name,
-                Quantity = 1,
-                UnitPrice = caseClinicService.PriceAtTime,
-                TotalPrice = caseClinicService.PriceAtTime,
-                ItemType = InvoiceItemType.Service,
-                ReferenceId = caseClinicService.Id
-            };
-
-            _context.InvoiceItems.Add(invoiceItem);
-            pendingInvoice.InvoiceItems.Add(invoiceItem);
-            pendingInvoice.TotalAmount += invoiceItem.TotalPrice;
-        }
-
-        await _context.SaveChangesAsync(ct);
+        await _unitOfWork.SaveChangesAsync(ct);
 
         _logger.LogInformation("Đã gắn dịch vụ {ServiceName} ({Price}) vào ca khám {CaseId}", service.Name, caseClinicService.PriceAtTime, caseId);
 
@@ -156,8 +150,7 @@ public class CaseClinicServiceService : ICaseClinicServiceService
 
     public async Task AddServiceToCaseByCodeAsync(Guid caseId, string serviceCode, CancellationToken ct = default)
     {
-        var service = await _context.ClinicServices
-            .FirstOrDefaultAsync(s => s.Code == serviceCode && s.IsActive, ct);
+        var service = await _clinicServices.FindActiveByCodeAsync(serviceCode, ct);
 
         if (service == null)
         {
@@ -180,27 +173,26 @@ public class CaseClinicServiceService : ICaseClinicServiceService
 
     private async Task RemoveServiceFromCaseInternalAsync(Guid caseId, Guid caseClinicServiceId, Guid? actingDoctorId, CancellationToken ct)
     {
-        var record = await _context.CaseClinicServices
-            .Include(cs => cs.Case)
-            .Include(cs => cs.ClinicService)
-            .FirstOrDefaultAsync(cs => cs.Id == caseClinicServiceId, ct);
+        var record = await _caseServices.GetForUpdateAsync(caseClinicServiceId, ct);
 
         if (record == null || record.CaseId != caseId)
         {
             throw new BusinessException("Không tìm thấy dịch vụ.");
         }
 
-        if (actingDoctorId.HasValue && record.Case?.DoctorId != actingDoctorId.Value)
+        var medicalCase = await _cases.Value.FindOwnershipAsync(record.CaseId, ct);
+
+        if (actingDoctorId.HasValue && medicalCase?.DoctorId != actingDoctorId.Value)
         {
             throw new BusinessException("Chỉ bác sĩ phụ trách ca khám mới có quyền xóa dịch vụ khám.");
         }
 
-        if (record.Case?.Status == CaseStatus.Booked)
+        if (medicalCase?.Status == CaseStatus.Booked)
         {
             throw new BusinessException("Không thể xóa dịch vụ khỏi ca khám chưa check-in.");
         }
 
-        if (record.Case?.Status == CaseStatus.End || record.Case?.Status == CaseStatus.Cancelled)
+        if (medicalCase?.Status == CaseStatus.End || medicalCase?.Status == CaseStatus.Cancelled)
         {
             throw new BusinessException("Không thể xóa dịch vụ khỏi ca khám đã hoàn thành hoặc bị hủy.");
         }
@@ -216,49 +208,22 @@ public class CaseClinicServiceService : ICaseClinicServiceService
             throw new BusinessException("Không thể xóa dịch vụ khám thường.");
         }
 
-        if (string.Equals(serviceCode, "ULTRASOUND_EXAM", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(serviceCode, "ULTRASOUND_EXAM", StringComparison.OrdinalIgnoreCase)
+            && await _cases.Value.HasUltrasoundImagesAsync(caseId, ct))
         {
-            var hasUltrasoundImages = await _context.UltrasoundImages
-                .AnyAsync(img => img.CaseId == caseId, ct);
-
-            if (hasUltrasoundImages)
-            {
-                throw new BusinessException("Không thể xóa dịch vụ siêu âm khi ca khám đã có ảnh siêu âm.");
-            }
+            throw new BusinessException("Không thể xóa dịch vụ siêu âm khi ca khám đã có ảnh siêu âm.");
         }
 
-        var invoices = await _context.Invoices
-            .Include(i => i.InvoiceItems)
-            .Where(i => i.CaseId == caseId)
-            .ToListAsync(ct);
-
-        if (invoices.Any(i => i.Status == InvoiceStatus.PAID))
+        if (await _invoices.Value.HasPaidInvoiceAsync(caseId, ct))
         {
             throw new BusinessException("Không thể xóa dịch vụ khi hóa đơn đã thanh toán.");
         }
 
-        var pendingInvoice = invoices.FirstOrDefault(i => i.Status == InvoiceStatus.PENDING);
-        if (pendingInvoice != null)
-        {
-            var itemToRemove = pendingInvoice.InvoiceItems
-                .FirstOrDefault(item => item.ReferenceId == caseClinicServiceId && item.ItemType == InvoiceItemType.Service);
+        // Hoá đơn PENDING (nếu có) bỏ dòng dịch vụ — lưu cùng lượt với việc gỡ dịch vụ
+        await _invoices.Value.StageServiceRemovedAsync(caseId, caseClinicServiceId, ct);
 
-            if (itemToRemove != null)
-            {
-                _context.InvoiceItems.Remove(itemToRemove);
-                pendingInvoice.InvoiceItems.Remove(itemToRemove);
-                pendingInvoice.TotalAmount -= itemToRemove.TotalPrice;
-
-                if (pendingInvoice.InvoiceItems.Count == 0)
-                {
-                    pendingInvoice.Status = InvoiceStatus.CANCELLED;
-                    pendingInvoice.CancelledReason = "Tự động hủy do đã xóa hết dịch vụ";
-                }
-            }
-        }
-
-        _context.CaseClinicServices.Remove(record);
-        await _context.SaveChangesAsync(ct);
+        _caseServices.Remove(record);
+        await _unitOfWork.SaveChangesAsync(ct);
 
         _logger.LogInformation("Đã xóa dịch vụ {CaseClinicServiceId} khỏi ca khám {CaseId}", caseClinicServiceId, caseId);
     }

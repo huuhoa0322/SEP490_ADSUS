@@ -76,6 +76,12 @@ public sealed class PatientRelationshipRepository : IPatientRelationshipReposito
             .AnyAsync(r => r.UserId == userId && r.PatientProfileId == patientProfileId, ct);
     }
 
+    public Task<PatientRelationship?> GetByIdAndUserForUpdateAsync(Guid relationshipId, Guid userId, CancellationToken ct = default) =>
+        _db.PatientRelationships.FirstOrDefaultAsync(r => r.RelationshipId == relationshipId && r.UserId == userId, ct);
+
+    public async Task StageAddAsync(PatientRelationship relationship, CancellationToken ct = default) =>
+        await _db.PatientRelationships.AddAsync(relationship, ct);
+
     public async Task<PatientRelationship?> GetByIdAndUserAsync(Guid relationshipId, Guid userId, CancellationToken ct = default)
     {
         return await _db.PatientRelationships

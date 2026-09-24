@@ -64,7 +64,7 @@ public class FeedbackAndCheckinBoundaryStressTests
             slotRepo.BackedBy(db).Object,
             new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(db),
             new ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService(profileRepo.Object, new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(db), Microsoft.Extensions.Logging.Abstractions.NullLogger<ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService>.Instance),
-            new ADSUS_BE.BLL.PatientRelationship.Services.PatientRelationshipService(new ADSUS_BE.DAL.Repositories.Implementations.PatientRelationshipRepository(db), profileRepo.Object, db),
+            PatientAccountTestServices.Relationship(db),
             notifService.Object,
             caseService.BackedBy(db).Object,
             noShowService,

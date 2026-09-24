@@ -62,7 +62,7 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
             Mock.Of<ILogger<CaseService>>(),
             caseClinicServiceService: null,
             invoiceService: null,
-            context: _context);
+            unitOfWork: new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_context));
 
         _reportService = new CaseReportService(
             _cases.Object,

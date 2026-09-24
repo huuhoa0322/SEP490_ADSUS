@@ -91,4 +91,14 @@ public sealed class InvoiceRepository : IInvoiceRepository
 
     public async Task AddItemAsync(InvoiceItem item, CancellationToken ct = default) =>
         await _db.InvoiceItems.AddAsync(item, ct);
+
+    public Task<bool> HasPaidByCaseAsync(Guid caseId, CancellationToken ct = default) =>
+        _db.Invoices.AnyAsync(i => i.CaseId == caseId && i.Status == InvoiceStatus.PAID, ct);
+
+    public Task<Invoice?> GetPendingWithItemsForUpdateAsync(Guid caseId, CancellationToken ct = default) =>
+        _db.Invoices
+            .Include(i => i.InvoiceItems)
+            .FirstOrDefaultAsync(i => i.CaseId == caseId && i.Status == InvoiceStatus.PENDING, ct);
+
+    public void RemoveItem(InvoiceItem item) => _db.InvoiceItems.Remove(item);
 }

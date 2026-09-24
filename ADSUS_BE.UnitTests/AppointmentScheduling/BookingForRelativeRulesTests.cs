@@ -130,17 +130,14 @@ public class BookingForRelativeRulesTests : IDisposable
             _slotRepo.BackedBy(_db).Object,
             new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db),
             new ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService(_profileRepo.Object, new ADSUS_BE.DAL.Repositories.Implementations.UserRepository(_db), Microsoft.Extensions.Logging.Abstractions.NullLogger<ADSUS_BE.BLL.MedicalRecord.Services.PatientProfileService>.Instance),
-            new ADSUS_BE.BLL.PatientRelationship.Services.PatientRelationshipService(new ADSUS_BE.DAL.Repositories.Implementations.PatientRelationshipRepository(_db), _profileRepo.Object, _db),
+            PatientAccountTestServices.Relationship(_db),
             _notificationService.Object,
             _caseService.BackedBy(_db).Object,
             noShowService,
             _db,
             Mock.Of<ILogger<AppointmentService>>());
 
-        _relationshipService = new PatientRelationshipService(
-            _relationshipRepo.Object,
-            _profileRepo.Object,
-            _db);
+        _relationshipService = PatientAccountTestServices.Relationship(_relationshipRepo, _db);
     }
 
     public void Dispose()
@@ -815,10 +812,11 @@ public class BookingForRelativeRulesTests : IDisposable
             .Returns("mock_access_token");
 
         var authService = new AuthService(
-            mockUserRepo.Object,
+            mockUserRepo.AddsTo(_db).Object,
             mockTokenRepo.Object,
             mockJwtService.Object,
-            _db,
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
+            PatientAccountTestServices.PatientProfiles(_db),
             Mock.Of<ILogger<AuthService>>());
 
         var registerRequest = new RegisterRequest

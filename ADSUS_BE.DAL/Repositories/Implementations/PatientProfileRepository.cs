@@ -59,12 +59,29 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
             .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
+    public async Task<PatientProfile?> FindGuestByPhoneForUpdateAsync(string phone, bool lockRow = false, CancellationToken ct = default)
+    {
+        if (lockRow && _db.Database.IsRelational())
+        {
+            return await _db.PatientProfiles
+                .FromSqlRaw(
+                    "SELECT * FROM patient_profiles WHERE phone = {0} AND user_id IS NULL FOR UPDATE",
+                    phone)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        return await _db.PatientProfiles
+            .FirstOrDefaultAsync(p => p.UserId == null && p.Phone == phone, ct);
+    }
+
+    public async Task StageAddAsync(PatientProfile profile, CancellationToken ct = default) =>
+        await _db.PatientProfiles.AddAsync(profile, ct);
+
     public async Task<PatientProfile> StageForNewPatientAsync(User patient, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
 
-        var guestProfile = await _db.PatientProfiles
-            .FirstOrDefaultAsync(p => p.UserId == null && p.Phone == patient.Phone, ct);
+        var guestProfile = await FindGuestByPhoneForUpdateAsync(patient.Phone, lockRow: false, ct);
 
         if (guestProfile != null)
         {

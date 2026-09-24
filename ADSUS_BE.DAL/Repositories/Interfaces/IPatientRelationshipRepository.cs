@@ -27,6 +27,12 @@ public interface IPatientRelationshipRepository
     /// </summary>
     Task<bool> ExistsAsync(Guid userId, Guid patientProfileId, CancellationToken ct = default);
 
+    /// <summary>Relationship của đúng user sở hữu — CÓ tracking, không kèm navigation (sửa tên quan hệ).</summary>
+    Task<PatientRelationship?> GetByIdAndUserForUpdateAsync(Guid relationshipId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>Thêm relationship vào context, CHƯA lưu — khác <see cref="AddAsync"/> (lưu ngay).</summary>
+    Task StageAddAsync(PatientRelationship relationship, CancellationToken ct = default);
+
     /// <summary>
     /// Thêm relationship mới.
     /// </summary>

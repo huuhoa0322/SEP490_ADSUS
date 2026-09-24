@@ -11,6 +11,11 @@ public sealed class AiPredictionRepository : IAiPredictionRepository
 
     public AiPredictionRepository(AppDbContext db) => _db = db;
 
+    public async Task<IReadOnlyList<AiPrediction>> ListByImageForUpdateAsync(Guid imageId, CancellationToken ct = default) =>
+        await _db.AiPredictions.Where(p => p.ImageId == imageId).ToListAsync(ct);
+
+    public void RemoveRange(IEnumerable<AiPrediction> predictions) => _db.AiPredictions.RemoveRange(predictions);
+
     public async Task<IReadOnlyList<AiPrediction>> ListByModelVersionAsync(
         Guid modelVersionId, CancellationToken ct = default) =>
         await _db.AiPredictions

@@ -42,8 +42,7 @@ public class CaseDiagnosisRobustnessTests
 
         _configMock.Setup(c => c["AiBackend:WebhookUrl"]).Returns("http://localhost:8000");
 
-        _sut = new CaseDiagnosisService(
-            _db,
+        _sut = new CaseDiagnosisService(new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
             _storageMock.Object,
             _httpFactoryMock.Object,
             _modelRepoMock.Object,

@@ -30,6 +30,18 @@ public interface IPatientProfileRepository
     Task<PatientProfile> StageForNewPatientAsync(User patient, CancellationToken ct = default);
 
     /// <summary>
+    /// Guest profile (người thân chưa có tài khoản, user_id IS NULL) có số điện thoại này — CÓ
+    /// tracking. <paramref name="lockRow"/> = true khoá dòng (SELECT ... FOR UPDATE) trong
+    /// transaction đang mở, chống hai request đăng ký cùng số cùng nhận một hồ sơ; gọi hàm này
+    /// trước <see cref="StageForNewPatientAsync"/> thì hàm đó nhận lại đúng dòng đã khoá (EF trả
+    /// instance đang track). Chỉ có tác dụng với DB quan hệ.
+    /// </summary>
+    Task<PatientProfile?> FindGuestByPhoneForUpdateAsync(string phone, bool lockRow = false, CancellationToken ct = default);
+
+    /// <summary>Thêm hồ sơ vào context, CHƯA lưu — khác <see cref="AddAsync"/> (lưu ngay).</summary>
+    Task StageAddAsync(PatientProfile profile, CancellationToken ct = default);
+
+    /// <summary>
     /// Trả về PatientProfileId của tài khoản, tạo bù nếu chưa có (tài khoản Admin/Điều dưỡng
     /// tạo trước 24/09/2026 không được gắn hồ sơ). Dùng ở các thao tác bệnh nhân tự làm như
     /// đặt lịch, ghi nhật ký sức khỏe.
