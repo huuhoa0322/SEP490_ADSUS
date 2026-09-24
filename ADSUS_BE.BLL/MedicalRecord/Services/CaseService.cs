@@ -509,7 +509,6 @@ public sealed class CaseService : ICaseService
             {
                 var newDiagnosis = new CaseDiagnosis
                 {
-                    Id = Guid.NewGuid(),
                     CaseId = caseId,
                     DiagnosisItemId = d.DiagnosisItemId,
                     Note = d.Note,

@@ -55,81 +55,91 @@ public sealed class GeminiChatClient : IChatClient
 
         var client = _httpClientFactory.CreateClient("AiBackend");
         client.DefaultRequestHeaders.Clear();
-        // Gemini free tier cold-start mỗi call từ 6-15s (đo 2026-08-27). Client
-        // abort sớm = user thấy 500 thay vì fallback thân thiện.
         client.Timeout = TimeSpan.FromSeconds(60);
 
         var request = BuildRequest(systemPrompt, history, userMessage);
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
 
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        try
+        const int maxAttempts = 3;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            using var response = await client.PostAsJsonAsync(url, request, JsonOptions, ct);
-            sw.Stop();
-            _logger.LogInformation("[DEBUG] Gemini response {StatusCode} in {Elapsed}ms",
-                response.StatusCode, sw.ElapsedMilliseconds);
+            if (ct.IsCancellationRequested)
+                return "Trợ lý AI đang bận. Vui lòng thử lại sau.";
 
-            if (!response.IsSuccessStatusCode)
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            try
             {
-                var body = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogError(
-                    "Gemini API returned {StatusCode}. Body: {Body}",
-                    response.StatusCode, body);
+                using var response = await client.PostAsJsonAsync(url, request, JsonOptions, ct);
+                sw.Stop();
+                _logger.LogInformation("[DEBUG] Gemini response {StatusCode} in {Elapsed}ms (attempt {Attempt}/{MaxAttempts})",
+                    response.StatusCode, sw.ElapsedMilliseconds, attempt, maxAttempts);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var statusCode = (int)response.StatusCode;
+                    var body = await response.Content.ReadAsStringAsync(ct);
+                    _logger.LogWarning(
+                        "Gemini API returned {StatusCode} on attempt {Attempt}/{MaxAttempts}. Body: {Body}",
+                        statusCode, attempt, maxAttempts, body);
+
+                    var isTransient = statusCode is 503 or 429 or 500 or 502 or 504;
+                    if (isTransient && attempt < maxAttempts)
+                    {
+                        var delayMs = attempt * 1500;
+                        _logger.LogInformation("Retrying Gemini request in {DelayMs}ms (attempt {NextAttempt}/{MaxAttempts})...",
+                            delayMs, attempt + 1, maxAttempts);
+                        await Task.Delay(delayMs, ct);
+                        continue;
+                    }
+
+                    return "Trợ lý AI đang bận. Vui lòng thử lại sau.";
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<GeminiResponse>(JsonOptions, ct);
+                if (result == null)
+                {
+                    var raw = await response.Content.ReadAsStringAsync(ct);
+                    _logger.LogWarning("Gemini returned null body. Raw: {Raw}", raw);
+                    return "Trợ lý AI không có phản hồi. Vui lòng thử lại sau.";
+                }
+                var content = result.Candidates
+                    .FirstOrDefault()?
+                    .Content?.Parts?
+                    .FirstOrDefault()?
+                    .Text;
+
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    _logger.LogWarning("Gemini returned empty content.");
+                    return "Trợ lý AI không có phản hồi. Vui lòng thử lại sau.";
+                }
+
+                return content.Trim();
+            }
+            catch (TaskCanceledException) when (ct.IsCancellationRequested)
+            {
+                sw.Stop();
+                _logger.LogInformation(
+                    "Gemini call cancelled by client after {Elapsed}ms (ct.IsCancellationRequested=true)",
+                    sw.ElapsedMilliseconds);
                 return "Trợ lý AI đang bận. Vui lòng thử lại sau.";
             }
-
-            var result = await response.Content.ReadFromJsonAsync<GeminiResponse>(JsonOptions, ct);
-            if (result == null)
+            catch (Exception ex) when (attempt < maxAttempts)
             {
-                var raw = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogWarning("Gemini returned null body. Raw: {Raw}", raw);
-                return "Trợ lý AI không có phản hồi. Vui lòng thử lại sau.";
+                sw.Stop();
+                _logger.LogWarning(ex, "Gemini call transient error on attempt {Attempt}/{MaxAttempts}.", attempt, maxAttempts);
+                var delayMs = attempt * 1500;
+                await Task.Delay(delayMs, ct);
             }
-            var content = result.Candidates
-                .FirstOrDefault()?
-                .Content?.Parts?
-                .FirstOrDefault()?
-                .Text;
-
-            if (string.IsNullOrWhiteSpace(content))
+            catch (Exception ex)
             {
-                _logger.LogWarning("Gemini returned empty content.");
-                return "Trợ lý AI không có phản hồi. Vui lòng thử lại sau.";
+                sw.Stop();
+                _logger.LogError(ex, "Gemini call failed after {Elapsed}ms on final attempt.", sw.ElapsedMilliseconds);
+                return "Trợ lý AI đang bận. Vui lòng thử lại sau.";
             }
+        }
 
-            return content.Trim();
-        }
-        catch (TaskCanceledException) when (ct.IsCancellationRequested)
-        {
-            // Client (Flutter) abort request → ct bị huỷ. Trước đây code re-throw khiến
-            // controller trả 500. Client timeout sớm hơn HttpClient.Timeout, nên khi ct
-            // bị cancel thường là vì user đã đóng, NHƯNG vẫn nên trả fallback để log
-            // không bị nhiễu bởi exception này.
-            sw.Stop();
-            _logger.LogInformation(
-                "Gemini call cancelled by client after {Elapsed}ms (ct.IsCancellationRequested=true)",
-                sw.ElapsedMilliseconds);
-            return "Trợ lý AI đang bận. Vui lòng thử lại sau.";
-        }
-        catch (TaskCanceledException tex)
-        {
-            sw.Stop();
-            _logger.LogError(tex, "Gemini call TIMED OUT after {Elapsed}ms", sw.ElapsedMilliseconds);
-            return "Trợ lý AI đang bận. Vui lòng thử lại sau.";
-        }
-        catch (HttpRequestException hex)
-        {
-            sw.Stop();
-            _logger.LogError(hex, "Gemini HTTP error after {Elapsed}ms", sw.ElapsedMilliseconds);
-            return "Trợ lý AI đang bận. Vui lòng thử lại sau.";
-        }
-        catch (Exception ex)
-        {
-            sw.Stop();
-            _logger.LogError(ex, "Gemini call failed after {Elapsed}ms", sw.ElapsedMilliseconds);
-            return "Trợ lý AI đang bận. Vui lòng thử lại sau.";
-        }
+        return "Trợ lý AI đang bận. Vui lòng thử lại sau.";
     }
 
     public async IAsyncEnumerable<string> StreamMessageAsync(
@@ -152,44 +162,86 @@ public sealed class GeminiChatClient : IChatClient
         var request = BuildRequest(systemPrompt, history, userMessage);
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:streamGenerateContent?alt=sse&key={_apiKey}";
 
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
-        {
-            Content = JsonContent.Create(request, options: JsonOptions)
-        };
-
         HttpResponseMessage? response = null;
         string? connectionError = null;
-        try
-        {
-            response = await client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            _logger.LogInformation("Gemini streaming request cancelled before response headers were received.");
-            yield break;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Gemini streaming request failed to connect.");
-            connectionError = "Trợ lý AI đang bận. Vui lòng thử lại sau.";
-        }
+        const int maxAttempts = 3;
 
-        if (connectionError != null)
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            yield return connectionError;
-            yield break;
-        }
+            if (ct.IsCancellationRequested)
+                yield break;
 
-        using (response!)
-        {
-            if (!response.IsSuccessStatusCode)
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
             {
-                var body = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogError("Gemini streaming API returned {StatusCode}. Body: {Body}", response.StatusCode, body);
-                yield return "Trợ lý AI đang bận. Vui lòng thử lại sau.";
+                Content = JsonContent.Create(request, options: JsonOptions)
+            };
+
+            connectionError = null;
+            try
+            {
+                response = await client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                _logger.LogInformation("Gemini streaming request cancelled before response headers were received.");
                 yield break;
             }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Gemini streaming request failed to connect on attempt {Attempt}/{MaxAttempts}.", attempt, maxAttempts);
+                connectionError = "Trợ lý AI đang bận. Vui lòng thử lại sau.";
+            }
 
+            if (response != null)
+            {
+                if (response.IsSuccessStatusCode)
+                {
+                    // Success! Proceed to read stream
+                    break;
+                }
+
+                var statusCode = (int)response.StatusCode;
+                var body = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning("Gemini streaming API returned {StatusCode} on attempt {Attempt}/{MaxAttempts}. Body: {Body}",
+                    statusCode, attempt, maxAttempts, body);
+
+                response.Dispose();
+                response = null;
+
+                var isTransient = statusCode is 503 or 429 or 500 or 502 or 504;
+                if (!isTransient || attempt >= maxAttempts)
+                {
+                    connectionError = "Trợ lý AI đang bận. Vui lòng thử lại sau.";
+                    break;
+                }
+            }
+            else if (attempt >= maxAttempts)
+            {
+                break;
+            }
+
+            var delayMs = attempt * 1500;
+            _logger.LogInformation("Retrying Gemini streaming request in {DelayMs}ms (attempt {NextAttempt}/{MaxAttempts})...",
+                delayMs, attempt + 1, maxAttempts);
+
+            try
+            {
+                await Task.Delay(delayMs, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                yield break;
+            }
+        }
+
+        if (response == null || !response.IsSuccessStatusCode)
+        {
+            yield return connectionError ?? "Trợ lý AI đang bận. Vui lòng thử lại sau.";
+            yield break;
+        }
+
+        using (response)
+        {
             using var stream = await response.Content.ReadAsStreamAsync(ct);
             using var reader = new StreamReader(stream);
 

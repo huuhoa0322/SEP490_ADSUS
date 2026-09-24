@@ -135,7 +135,7 @@ class ChatStreamDoneEvent extends ChatStreamEvent {
   factory ChatStreamDoneEvent.fromJson(Map<String, dynamic> json) {
     DateTime parsedDate;
     if (json['createdAt'] != null) {
-      parsedDate = DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now();
+      parsedDate = DateTime.tryParse(json['createdAt'].toString())?.toLocal() ?? DateTime.now();
     } else {
       parsedDate = DateTime.now();
     }

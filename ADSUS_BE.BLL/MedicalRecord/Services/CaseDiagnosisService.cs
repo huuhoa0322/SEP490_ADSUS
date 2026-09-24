@@ -251,14 +251,14 @@ public sealed class CaseDiagnosisService : ICaseDiagnosisService
             return $"0 {xCenter:0.6f} {yCenter:0.6f} {width:0.6f} {height:0.6f}";
         }).ToList();
         var yoloText = string.Join("\n", yoloLines);
-
-        // Upload to Storage
-        await _storage.UploadAsync(request.OriginalImageStream, $"{baseName}{originalExt}", request.OriginalImageContentType, "datasets", ct);
-
+        // Upload to Storage (Concurrent for better latency)
         using var yoloStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(yoloText));
-        await _storage.UploadAsync(yoloStream, $"{baseName}.txt", "text/plain", "datasets", ct);
+        
+        var uploadOriginal = _storage.UploadAsync(request.OriginalImageStream, $"{baseName}{originalExt}", request.OriginalImageContentType, "datasets", ct);
+        var uploadYolo = _storage.UploadAsync(yoloStream, $"{baseName}.txt", "text/plain", "datasets", ct);
+        var uploadBurnt = _storage.UploadAsync(request.BurntImageStream, burntPath, request.BurntImageContentType, "ultrasound-images", ct);
 
-        await _storage.UploadAsync(request.BurntImageStream, burntPath, request.BurntImageContentType, "ultrasound-images", ct);
+        await Task.WhenAll(uploadOriginal, uploadYolo, uploadBurnt);
 
         // Database Transaction
         await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);

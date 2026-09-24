@@ -30,6 +30,15 @@ public interface IScheduleSlotRepository
         SlotStatus? statusFilter = null,
         CancellationToken ct = default);
 
+    /// <summary>Truy vấn tối ưu lấy danh sách slot mở cho đặt lịch (lọc trực tiếp dưới SQL).</summary>
+    Task<IReadOnlyList<ScheduleSlot>> ListOpenSlotsForBookingAsync(
+        DateOnly from,
+        DateOnly to,
+        DateOnly todayVn,
+        TimeOnly currentTimeVn,
+        Guid? doctorId = null,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Kiểm tra overlap slot cho cùng Doctor trong cùng ngày.
     /// Overlap = hai slot có khoảng thời gian giao nhau (start &lt; other.end && end &gt; other.start).

@@ -95,13 +95,18 @@ class ChatRepository {
     try {
       await for (final event in _api.streamMessage(content, cancelToken: cancelToken)) {
         if (event is ChatStreamDoneEvent) {
+          // Phòng vệ lệch giờ (clock skew): Đảm bảo timestamp tin nhắn trả lời của AI luôn lớn hơn tin nhắn hỏi của user
+          final effectiveCreatedAt = event.createdAt.isBefore(userMessage.createdAt)
+              ? userMessage.createdAt.add(const Duration(milliseconds: 500))
+              : event.createdAt;
+
           final assistantMessage = ChatMessageModel(
             id: event.messageId.isNotEmpty ? event.messageId : _generateTempId(),
             content: event.content,
             role: event.role.toLowerCase() == 'assistant'
                 ? HiveChatRole.assistant
                 : HiveChatRole.user,
-            createdAt: event.createdAt,
+            createdAt: effectiveCreatedAt,
             isSafetyResponse: event.isSafetyResponse,
             detectedIntent: event.detectedIntent,
             isSynced: true,

@@ -101,22 +101,12 @@ public sealed class AppointmentService : IAppointmentService
         // BR-02: Chỉ trả về slot OPEN. Đi qua repository (như mọi service khác trong module
         // này) thay vì query thẳng AppDbContext — query thẳng cần kết nối DB thật, không thể
         // test bằng mock repository.
-        var rangeSlots = await _slotRepo.ListByRangeAsync(from, to, docGuid, SlotStatus.Open, ct);
-
         var nowVn = GetNowVietnam();
         var todayVn = DateOnly.FromDateTime(nowVn);
         var currentTimeVn = TimeOnly.FromDateTime(nowVn);
 
-        // Chỉ trả về slot của bác sĩ ACTIVE, loại slot đã có appointment BOOKED hoặc Case InProgress,
-        // và ẩn toàn bộ các slot trong quá khứ (SlotDate < today hoặc SlotDate == today && StartTime <= currentTime).
-        var slots = rangeSlots
-            .Where(s => s.Doctor.Status == UserStatus.Active)
-            .Where(s => !s.Appointments.Any(a =>
-                a.Status == AppointmentStatus.Booked
-                || (a.Case != null && a.Case.Status == CaseStatus.InProgress)))
-            .Where(s => s.SlotDate > todayVn || (s.SlotDate == todayVn && s.StartTime > currentTimeVn))
-            .OrderBy(s => s.SlotDate)
-            .ThenBy(s => s.StartTime);
+        // Gọi repository để filter hoàn toàn dưới SQL thay vì kéo vào memory
+        var slots = await _slotRepo.ListOpenSlotsForBookingAsync(from, to, todayVn, currentTimeVn, docGuid, ct);
 
         return slots.Select(s => new OpenSlotResponse
         {

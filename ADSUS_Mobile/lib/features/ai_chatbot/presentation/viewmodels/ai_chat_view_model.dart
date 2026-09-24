@@ -311,8 +311,9 @@ class AiChatViewModel extends StateNotifier<AiChatState> {
     if (!mounted) return;
 
     final entityMsg = _toEntity(model);
+    if (state.messages.any((m) => m.messageId == entityMsg.messageId)) return;
+
     final updated = [...state.messages, entityMsg];
-    updated.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     state = state.copyWith(
       messages: updated,
