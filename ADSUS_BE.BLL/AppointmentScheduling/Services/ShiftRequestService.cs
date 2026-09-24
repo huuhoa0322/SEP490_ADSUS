@@ -8,6 +8,7 @@ using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.MedicalRecord.Interfaces;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.Configuration;
@@ -62,7 +63,9 @@ public class ShiftRequestService : IShiftRequestService
         }
 
         // Advance notice validation
-        var minDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(_minAdvanceDays);
+        // Tính từ "hôm nay" theo giờ phòng khám — theo UTC thì từ 00:00 đến 07:00 giờ VN mốc lùi 1
+        // ngày và yêu cầu chỉ báo trước 1 ngày vẫn lọt.
+        var minDate = ClinicClock.Today().AddDays(_minAdvanceDays);
         if (dto.RequestDate < minDate)
         {
             throw new InvalidOperationException($"Phải gửi yêu cầu trước ít nhất {_minAdvanceDays} ngày.");
@@ -303,7 +306,7 @@ public class ShiftRequestService : IShiftRequestService
         var requests = await _repo.ListByUserMonthAsync(userId, startDate, endDate, ct);
 
         var results = new List<DayShiftSummary>();
-        var nowLocal = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7)); // Giả sử GMT+7
+        var nowLocal = ClinicClock.Today();
 
         for (var day = startDate; day <= endDate; day = day.AddDays(1))
         {

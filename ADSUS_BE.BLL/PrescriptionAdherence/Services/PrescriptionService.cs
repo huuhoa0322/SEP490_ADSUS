@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using ADSUS_BE.BLL.Common.Exceptions;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.PrescriptionAdherence;
 using ADSUS_BE.DAL.Repositories.Interfaces;
@@ -88,7 +89,9 @@ public sealed class PrescriptionService : IPrescriptionService
                 throw new BusinessException("Bác sĩ không có quyền kê đơn cho ca khám này.");
 
             var now = DateTime.UtcNow;
-            var today = DateOnly.FromDateTime(now);
+            // Mốc hạn dùng khi tính tồn kho hợp lệ: "hôm nay" theo giờ phòng khám — theo UTC thì từ
+            // 00:00 đến 07:00 giờ VN lô hết hạn hôm qua vẫn được tính là còn.
+            var today = ClinicClock.Today();
 
             // Option A: lookup by name (case-insensitive). Handles doctor picks from catalog.
             // Nạp thuốc và tồn kho cho MỌI dòng trong đơn bằng 2 truy vấn trước vòng lặp, thay vì
@@ -110,7 +113,7 @@ public sealed class PrescriptionService : IPrescriptionService
                 PrescriptionId = Guid.NewGuid(),
                 CaseId = request.CaseId,
                 DoctorId = actorId,
-                PrescribedDate = DateOnly.FromDateTime(now),
+                PrescribedDate = today, // ngày phòng khám — theo UTC thì đơn kê trước 7h sáng ghi nhầm hôm trước
                 GeneralNote = request.GeneralNote,
                 CreatedAt = now,
                 UpdatedAt = now,

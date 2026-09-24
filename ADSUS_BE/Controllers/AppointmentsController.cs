@@ -328,7 +328,8 @@ public sealed class AppointmentsController : ControllerBase
         [FromQuery] int pageSize = 15,
         CancellationToken ct = default)
     {
-        var effectiveFrom = fromDate ?? date ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        // Mặc định "hôm nay" theo giờ phòng khám — theo UTC thì trước 7h sáng ra hàng đợi hôm qua
+        var effectiveFrom = fromDate ?? date ?? ADSUS_BE.DAL.Data.ClinicClock.Today();
         var effectiveTo = toDate ?? date ?? effectiveFrom;
 
         var result = await _appointmentService.GetCheckinQueueAsync(

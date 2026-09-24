@@ -27,7 +27,13 @@ public static class ClinicClock
     public const double OffsetHours = 7;
 
     /// <summary>Hôm nay theo lịch phòng khám.</summary>
-    public static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow.Add(Offset));
+    public static DateOnly Today() => DateOf(DateTime.UtcNow);
+
+    /// <summary>
+    /// Ngày ở phòng khám của một mốc UTC — dùng khi mốc "bây giờ" được truyền vào (để test
+    /// cố định thời điểm) thay vì đọc DateTime.UtcNow.
+    /// </summary>
+    public static DateOnly DateOf(DateTime utc) => DateOnly.FromDateTime(utc.Add(Offset));
 
     /// <summary>
     /// Đổi một ngày ở phòng khám thành mốc UTC lúc 00:00 của ngày đó.

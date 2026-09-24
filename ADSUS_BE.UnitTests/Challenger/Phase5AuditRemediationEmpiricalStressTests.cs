@@ -716,7 +716,7 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
     public async Task BR123_Inventory_ExcludesExpiredBatches_IncludesTodayAndFutureBatches()
     {
         // Arrange
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today(); // ngày phòng khám, cùng mốc với service
         var medId = Guid.NewGuid();
 
         var medicine = new Medicine
@@ -775,7 +775,7 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
     public async Task BR123_Inventory_MedicineWithOnlyExpiredBatches_ReturnsZeroStock()
     {
         // Arrange
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today(); // ngày phòng khám, cùng mốc với service
         var medId = Guid.NewGuid();
 
         var medicine = new Medicine
