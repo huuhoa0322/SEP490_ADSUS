@@ -13,7 +13,7 @@ namespace ADSUS_BE.UnitTests.Engagement;
 /// Tests cho ChatDataAggregator — RAG data aggregator cho Module 10 Chat (FT-39).
 ///
 /// Test strategy:
-/// - allergies/diseases: InMemory EF Core (direct AppDbContext queries)
+/// - hồ sơ/allergies/diseases: PatientProfileService thật trên InMemory EF Core
 /// - prescriptions/intakes/appointments/cases/healthLogs/blogs: Mock repositories
 ///
 /// Phase 2: Intent detection → selective query. Tests verify correct sources are queried.
@@ -22,6 +22,7 @@ namespace ADSUS_BE.UnitTests.Engagement;
 public class ChatDataAggregatorTests : IDisposable
 {
     private readonly AppDbContext _db;
+    private readonly Mock<IAppointmentRepository> _appointmentRepo = new();
     private readonly ChatDataAggregator _sut;
 
     // Helper: build IntentResult from intent enum only (DataSource.None).
@@ -42,7 +43,6 @@ public class ChatDataAggregatorTests : IDisposable
 
         var prescriptionRepo = new Mock<IPrescriptionRepository>();
         var intakeLogRepo = new Mock<IMedicationIntakeLogRepository>();
-        var appointmentRepo = new Mock<IAppointmentRepository>();
         var caseRepo = new Mock<ICaseRepository>();
         var healthLogRepo = new Mock<IHealthLogRepository>();
         var blogPostRepo = new Mock<IBlogPostRepository>();
@@ -52,7 +52,7 @@ public class ChatDataAggregatorTests : IDisposable
             .ReturnsAsync(new List<Prescription>());
         intakeLogRepo.Setup(r => r.ListUpcomingAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<MedicationIntakeLog>());
-        appointmentRepo.Setup(r => r.ListByPatientAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _appointmentRepo.Setup(r => r.ListByPatientAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Appointment>());
         caseRepo.Setup(r => r.SearchByPatientAsync(
                 It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<CaseStatus>?>(),
@@ -65,10 +65,10 @@ public class ChatDataAggregatorTests : IDisposable
             .ReturnsAsync(new List<BlogPost>());
 
         _sut = new ChatDataAggregator(
-            _db,
+            PatientAccountTestServices.PatientProfiles(_db),
             prescriptionRepo.Object,
             intakeLogRepo.Object,
-            appointmentRepo.Object,
+            _appointmentRepo.Object,
             caseRepo.Object,
             healthLogRepo.Object,
             blogPostRepo.Object);
@@ -270,5 +270,34 @@ public class ChatDataAggregatorTests : IDisposable
         Assert.Single(result.Allergies);
         // Prescription source not triggered → null (not queried)
         Assert.Null(result.ActivePrescriptions);
+    }
+
+    [Fact]
+    public async Task BuildContextAsync_UpcomingAppointments_UsesClinicTodayNotUtc()
+    {
+        // SlotDate là ngày theo giờ phòng khám — lịch hôm qua (giờ VN) không còn là "sắp tới", kể cả
+        // khi chạy lúc 00:00–07:00 giờ VN (UTC vẫn đang ở hôm qua).
+        var user = NewUser();
+        var profile = NewPatientProfile(user);
+        var doctor = new User { UserId = Guid.NewGuid(), FullName = "BS. Test" };
+        Appointment NewAppointment(DateOnly date) => new()
+        {
+            AppointmentId = Guid.NewGuid(),
+            PatientProfileId = profile.PatientProfileId,
+            Status = AppointmentStatus.Booked,
+            Slot = new ScheduleSlot { SlotDate = date, StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(9, 30), Doctor = doctor },
+        };
+        var today = ClinicClock.Today();
+        var yesterdayAppointment = NewAppointment(today.AddDays(-1));
+        var todayAppointment = NewAppointment(today);
+        _appointmentRepo.Setup(r => r.ListByPatientAsync(profile.PatientProfileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Appointment> { yesterdayAppointment, todayAppointment });
+
+        var result = await _sut.BuildContextAsync(
+            user.UserId,
+            Ir(ChatIntent.Appointment, DataSource.UpcomingAppointments), TestContext.Current.CancellationToken);
+
+        var upcoming = Assert.Single(result!.UpcomingAppointments!);
+        Assert.Equal(todayAppointment.AppointmentId, upcoming.AppointmentId);
     }
 }

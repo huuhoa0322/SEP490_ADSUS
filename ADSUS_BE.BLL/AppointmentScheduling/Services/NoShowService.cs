@@ -1,36 +1,46 @@
 using ADSUS_BE.BLL.Common.Interfaces;
 using ADSUS_BE.BLL.Common.Settings;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ADSUS_BE.BLL.AppointmentScheduling.Services;
 
 /// <summary>
-/// Xử lý No-Show cho các appointment đã quá grace time.
+/// Xử lý No-Show cho các appointment đã quá grace time — nguồn DUY NHẤT cho cả check-in muộn
+/// (AppointmentService) lẫn JOB-08 (NoShowCancellationJob). Trước 25/09/2026 job có bản logic
+/// riêng lệch với service (điều kiện huỷ Case, Slot.UpdatedAt, lý do, người nhận thông báo) —
+/// nay gộp về đây theo quyết định của người dùng (P11 review).
+///
+/// Quy tắc: lịch đang Booked, tính từ giờ BẮT ĐẦU của slot đã qua ít nhất GraceTimeMinutes (đúng
+/// phút thứ 15 cũng tính) → NoShow, slot mở lại, Case liên kết còn Booked thì huỷ. Báo bệnh nhân
+/// (hồ sơ guest chưa có tài khoản thì báo người đặt hộ) và bác sĩ.
 /// </summary>
 public sealed class NoShowService
 {
-    private readonly AppDbContext _db;
     private readonly NoShowSettings _settings;
+    private readonly IAppointmentRepository _appointments;
+    private readonly ICaseService _cases;
+    private readonly IPatientProfileService _patientProfiles;
     private readonly INotificationService _notificationService;
-    private readonly IPatientProfileRepository _profileRepo;
     private readonly ILogger<NoShowService> _logger;
 
     public NoShowService(
-        AppDbContext db,
         IOptions<NoShowSettings> settings,
+        IAppointmentRepository appointments,
+        ICaseService cases,
+        IPatientProfileService patientProfiles,
         INotificationService notificationService,
-        IPatientProfileRepository profileRepo,
         ILogger<NoShowService> logger)
     {
-        _db = db;
         _settings = settings.Value;
+        _appointments = appointments;
+        _cases = cases;
+        _patientProfiles = patientProfiles;
         _notificationService = notificationService;
-        _profileRepo = profileRepo;
         _logger = logger;
     }
 
@@ -66,68 +76,141 @@ public sealed class NoShowService
             };
         }
 
-        // Đánh dấu No-Show
-        appointment.Status = AppointmentStatus.NoShow;
-        appointment.UpdatedAt = now;
-        appointment.CancelledReason = $"Tự động hủy do không check-in trong {_settings.GraceTimeMinutes} phút kể từ lịch hẹn";
+        await MarkSaveAndNotifyAsync(new[] { appointment }, now, ct);
 
-        // Cập nhật Case status nếu có liên kết
-        if (appointment.CaseId.HasValue)
+        return new NoShowResult
         {
-            var medicalCase = await _db.Cases
-                .FirstOrDefaultAsync(c => c.CaseId == appointment.CaseId, ct);
+            WasProcessed = true,
+            PreviousStatus = AppointmentStatus.Booked,
+            MinutesPastStart = (int)minutesPastStart
+        };
+    }
 
-            if (medicalCase != null)
+    /// <summary>
+    /// JOB-08 — đánh dấu No-Show mọi lịch Booked đã quá grace time: một truy vấn lấy lịch, một
+    /// truy vấn Case, một lần lưu. Trả về số lịch đã đánh dấu.
+    /// </summary>
+    public async Task<int> ProcessOverdueAsync(CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+
+        // SlotDate/StartTime là giờ địa phương phòng khám — quy ngưỡng về cùng hệ giờ để lọc
+        // ngay trong SQL. Slot bắt đầu đúng tại ngưỡng cũng tính (giống ProcessNoShowAsync).
+        var thresholdLocal = now.AddMinutes(-_settings.GraceTimeMinutes) + ClinicClock.Offset;
+        var overdue = await _appointments.ListBookedStartedAtOrBeforeForUpdateAsync(thresholdLocal, ct);
+
+        if (overdue.Count == 0)
+            return 0;
+
+        await MarkSaveAndNotifyAsync(overdue, now, ct);
+        return overdue.Count;
+    }
+
+    private async Task MarkSaveAndNotifyAsync(
+        IReadOnlyList<Appointment> appointments,
+        DateTime now,
+        CancellationToken ct)
+    {
+        foreach (var appointment in appointments)
+        {
+            appointment.Status = AppointmentStatus.NoShow;
+            appointment.UpdatedAt = now;
+            appointment.CancelledReason = $"Tự động hủy do không check-in trong {_settings.GraceTimeMinutes} phút kể từ lịch hẹn";
+
+            // [VÁ QA2-002]: Giải phóng slot để không bị kẹt ở trạng thái Booked vĩnh viễn
+            if (appointment.Slot != null)
             {
-                medicalCase.Status = CaseStatus.Cancelled;
-                medicalCase.UpdatedAt = now;
+                appointment.Slot.Status = SlotStatus.Open;
+                appointment.Slot.UpdatedAt = now;
             }
         }
 
-        // [VÁ QA2-002]: Giải phóng slot để không bị kẹt ở trạng thái Booked vĩnh viễn
-        if (appointment.Slot != null)
+        // Case thuộc module MedicalRecord — huỷ qua ICaseService (chỉ Case còn Booked), lưu chung
+        // với lịch hẹn ở SaveChanges ngay dưới.
+        var caseIds = appointments
+            .Where(a => a.CaseId.HasValue)
+            .Select(a => a.CaseId!.Value)
+            .Distinct()
+            .ToList();
+        if (caseIds.Count > 0)
         {
-            appointment.Slot.Status = SlotStatus.Open;
-            appointment.Slot.UpdatedAt = now;
+            await _cases.StageNoShowFromAppointmentsAsync(caseIds, ct);
         }
 
-        await _db.SaveChangesAsync(ct);
+        await _appointments.SaveChangesAsync(ct);
 
-        // Gửi notification cho patient khi bị No-Show
+        // Thông báo lỗi không được làm hỏng việc đánh dấu No-Show đã lưu.
+        IReadOnlyDictionary<Guid, Guid?> profileUserIds;
         try
         {
-            var patientProfile = await _profileRepo.GetByIdAsync(appointment.PatientProfileId, ct);
-            if (patientProfile != null)
-            {
-                await _notificationService.SendAsync(new SendNotificationRequest
-                {
-                    UserId = patientProfile.UserId ?? Guid.Empty,
-                    Type = "appointment_no_show",
-                    Title = "Lịch khám đã bị hủy (No-Show)",
-                    Body = $"Lịch khám ngày {appointment.Slot.SlotDate:dd/MM/yyyy} lúc {appointment.Slot.StartTime} đã bị hủy do không check-in trong {_settings.GraceTimeMinutes} phút.",
-                    DeepLink = $"/appointments",
-                    Metadata = new Dictionary<string, object>
-                    {
-                        ["appointmentId"] = appointment.AppointmentId.ToString()
-                    }
-                }, ct);
-            }
+            profileUserIds = await _patientProfiles.FindUserIdsAsync(
+                appointments.Select(a => a.PatientProfileId).Distinct().ToList(), ct);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to send no-show notification to patient for appointment {AppointmentId}", appointment.AppointmentId);
+            _logger.LogWarning(ex, "Failed to load patient accounts for no-show notifications");
+            profileUserIds = new Dictionary<Guid, Guid?>();
         }
+
+        foreach (var appointment in appointments)
+        {
+            await NotifyAsync(appointment, profileUserIds, ct);
+        }
+    }
+
+    private async Task NotifyAsync(
+        Appointment appointment,
+        IReadOnlyDictionary<Guid, Guid?> profileUserIds,
+        CancellationToken ct)
+    {
+        var slot = appointment.Slot;
+        var doctorName = slot?.Doctor?.FullName ?? "bác sĩ";
+        var slotTimeStr = slot is null ? string.Empty : $"{slot.StartTime:HH\\:mm}";
+        var slotDateStr = slot is null ? string.Empty : $"{slot.SlotDate:dd/MM/yyyy}";
+
+        // Bệnh nhân có tài khoản nhận thông báo; hồ sơ guest (người thân chưa có tài khoản) thì
+        // người đặt hộ nhận — cùng cách JOB-03 nhắc lịch.
+        var patientUserId = profileUserIds.GetValueOrDefault(appointment.PatientProfileId);
+        var recipientUserId = patientUserId is { } id && id != Guid.Empty ? id : appointment.BookedByUserId;
+
+        if (recipientUserId is { } recipient && recipient != Guid.Empty)
+        {
+            try
+            {
+                await _notificationService.SendAsync(new SendNotificationRequest
+                {
+                    UserId = recipient,
+                    Type = "appointment_no_show",
+                    Title = "Lịch khám đã bị hủy (No-Show)",
+                    Body = $"Lịch khám với {doctorName} lúc {slotTimeStr} ngày {slotDateStr} đã bị hủy do không check-in trong {_settings.GraceTimeMinutes} phút. Vui lòng đặt lịch khám mới.",
+                    DeepLink = "/appointments",
+                    Metadata = new Dictionary<string, object>
+                    {
+                        ["appointmentId"] = appointment.AppointmentId.ToString(),
+                        ["doctorName"] = doctorName,
+                        ["slotTime"] = $"{slotDateStr} {slotTimeStr}",
+                        ["reason"] = "no_show"
+                    }
+                }, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send no-show notification to patient for appointment {AppointmentId}", appointment.AppointmentId);
+            }
+        }
+
+        if (slot is null) return;
 
         // Gửi notification cho doctor khi có No-Show
         try
         {
             await _notificationService.SendAsync(new SendNotificationRequest
             {
-                UserId = appointment.Slot.DoctorId,
+                UserId = slot.DoctorId,
                 Type = "patient_no_show",
                 Title = "Bệnh nhân không đến khám (No-Show)",
-                Body = $"Bệnh nhân không check-in trong {_settings.GraceTimeMinutes} phút và đã được đánh dấu No-Show.",
-                DeepLink = $"/appointments",
+                Body = $"Bệnh nhân của lịch khám lúc {slotTimeStr} ngày {slotDateStr} không check-in trong {_settings.GraceTimeMinutes} phút và đã được đánh dấu No-Show.",
+                DeepLink = "/appointments",
                 Metadata = new Dictionary<string, object>
                 {
                     ["appointmentId"] = appointment.AppointmentId.ToString()
@@ -138,13 +221,6 @@ public sealed class NoShowService
         {
             _logger.LogWarning(ex, "Failed to send no-show notification to doctor for appointment {AppointmentId}", appointment.AppointmentId);
         }
-
-        return new NoShowResult
-        {
-            WasProcessed = true,
-            PreviousStatus = AppointmentStatus.Booked,
-            MinutesPastStart = (int)minutesPastStart
-        };
     }
 }
 

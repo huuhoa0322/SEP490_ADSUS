@@ -255,6 +255,16 @@ public sealed class PatientProfileService : IPatientProfileService
     public Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken ct = default) =>
         _profiles.FindIdByUserIdAsync(userId, ct);
 
+    public async Task<PatientProfileResponse?> FindByUserIdAsync(Guid userId, CancellationToken ct = default)
+    {
+        var profile = await _profiles.GetByUserIdAsync(userId, ct);
+        return profile is null ? null : PatientProfileMapper.ToResponse(profile);
+    }
+
+    public Task<IReadOnlyDictionary<Guid, Guid?>> FindUserIdsAsync(
+        IReadOnlyCollection<Guid> patientProfileIds, CancellationToken ct = default) =>
+        _profiles.ListUserIdsByIdsAsync(patientProfileIds, ct);
+
     public async Task<Guid?> FindGuestProfileIdByPhoneAsync(string phone, bool lockForUpdate, CancellationToken ct = default) =>
         (await _profiles.FindGuestByPhoneForUpdateAsync(phone, lockForUpdate, ct))?.PatientProfileId;
 

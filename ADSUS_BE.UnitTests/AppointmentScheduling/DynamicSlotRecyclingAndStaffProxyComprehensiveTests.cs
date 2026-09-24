@@ -195,13 +195,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         _notificationService.Setup(n => n.SendAsync(It.IsAny<SendNotificationRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Guid.NewGuid());
 
-        var noShowSettings = Options.Create(new NoShowSettings { GraceTimeMinutes = 15 });
-        _noShowService = new NoShowService(
-            _db,
-            noShowSettings,
-            _notificationService.Object,
-            _profileRepo.Object,
-            Mock.Of<ILogger<NoShowService>>());
+        _noShowService = NoShowTestServices.Create(_db, _notificationService.Object);
 
         _appointmentService = new AppointmentService(
             _appointmentRepo.BackedBy(_db).Object,
@@ -212,7 +206,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
             _notificationService.Object,
             _caseService.BackedBy(_db).Object,
             _noShowService,
-            _db,
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
             Mock.Of<ILogger<AppointmentService>>());
     }
 

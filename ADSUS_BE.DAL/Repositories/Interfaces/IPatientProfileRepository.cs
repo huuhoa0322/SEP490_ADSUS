@@ -16,6 +16,13 @@ public interface IPatientProfileRepository
     /// <summary>PatientProfileId của tài khoản, null nếu tài khoản chưa có hồ sơ. Chỉ đọc 1 cột.</summary>
     Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// UserId của nhiều hồ sơ trong MỘT truy vấn (khoá = PatientProfileId, giá trị null = guest
+    /// profile chưa có tài khoản). Hồ sơ không tồn tại thì không có khoá. Chỉ đọc 2 cột.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, Guid?>> ListUserIdsByIdsAsync(
+        IReadOnlyCollection<Guid> patientProfileIds, CancellationToken ct = default);
+
     /// <summary>Chặn tạo hồ sơ thứ hai cho cùng một tài khoản (uq_patient_profiles_user).</summary>
     Task<bool> ExistsForUserAsync(Guid userId, CancellationToken ct = default);
 

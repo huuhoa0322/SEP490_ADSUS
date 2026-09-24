@@ -29,6 +29,12 @@ public class DependencyInjectionResolutionTests
     [InlineData(typeof(ADSUS_BE.BLL.Auth.Interfaces.IAuthService))]
     [InlineData(typeof(ADSUS_BE.BLL.UserRoleManagement.Interfaces.IPatientSelfRegistrationService))]
     [InlineData(typeof(ADSUS_BE.BLL.PatientRelationship.Interfaces.IPatientRelationshipService))]
+    // Đợt F (25/09/2026): service bỏ AppDbContext, nhận thêm IPatientProfileService / ICaseService / IUnitOfWork
+    [InlineData(typeof(ADSUS_BE.BLL.AppointmentScheduling.Services.NoShowService))]
+    [InlineData(typeof(IShiftRequestService))]
+    [InlineData(typeof(IScheduleSlotService))]
+    [InlineData(typeof(ADSUS_BE.BLL.Engagement.Interfaces.IChatDataAggregator))]
+    [InlineData(typeof(ADSUS_BE.BLL.DoctorMedicationTracking.Interfaces.IDoctorMedicationTrackingService))]
     public void Resolve_ServiceInCrossModuleCycle_Succeeds(Type serviceType)
     {
         using var app = new WebApplicationFactory<Program>();
@@ -37,6 +43,22 @@ public class DependencyInjectionResolutionTests
         var service = scope.ServiceProvider.GetRequiredService(serviceType);
 
         Assert.NotNull(service);
+    }
+
+    [Theory]
+    [InlineData(typeof(ADSUS_BE.Jobs.NoShowCancellationJob))]
+    [InlineData(typeof(ADSUS_BE.Jobs.InventoryAlertJob))]
+    public void Create_JobWithServicesFromScope_Succeeds(Type jobType)
+    {
+        // Job dựng bằng constructor từ DI rồi tự mở scope lấy service — dựng job và resolve các
+        // service nó lấy trong scope (đợt F: job không còn lấy AppDbContext).
+        using var app = new WebApplicationFactory<Program>();
+        using var scope = app.Services.CreateScope();
+        var sp = scope.ServiceProvider;
+
+        Assert.NotNull(ActivatorUtilities.CreateInstance(sp, jobType));
+        Assert.NotNull(sp.GetRequiredService<ADSUS_BE.BLL.AppointmentScheduling.Services.NoShowService>());
+        Assert.NotNull(sp.GetRequiredService<ADSUS_BE.DAL.Repositories.Interfaces.IUserRepository>());
     }
 
     [Fact]

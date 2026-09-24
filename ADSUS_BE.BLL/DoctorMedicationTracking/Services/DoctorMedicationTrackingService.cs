@@ -5,17 +5,14 @@ using ADSUS_BE.BLL.DoctorMedicationTracking.DTOs;
 using ADSUS_BE.BLL.DoctorMedicationTracking.Interfaces;
 using ADSUS_BE.BLL.PrescriptionAdherence.DTOs;
 using ADSUS_BE.BLL.PrescriptionAdherence.Services;
-using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.DoctorMedicationTracking.Services;
 
 public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingService
 {
-    private readonly AppDbContext _db;
     private readonly IPrescriptionRepository _prescriptionRepo;
     private readonly IMedicationIntakeLogRepository _intakeLogRepo;
     private readonly IPatientProfileRepository _patientProfileRepo;
@@ -42,14 +39,12 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
     }
 
     public DoctorMedicationTrackingService(
-        AppDbContext db,
         IPrescriptionRepository prescriptionRepo,
         IMedicationIntakeLogRepository intakeLogRepo,
         IPatientProfileRepository patientProfileRepo,
         INotificationService notificationService,
         ILogger<DoctorMedicationTrackingService> logger)
     {
-        _db = db;
         _prescriptionRepo = prescriptionRepo;
         _intakeLogRepo = intakeLogRepo;
         _patientProfileRepo = patientProfileRepo;
@@ -79,17 +74,7 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
         // Query: Active prescriptions by doctor, with all necessary navigation.
         // Filter chỉ giữ đơn còn trong vòng ngày hôm nay (endDate = StartDate + DurationDays - 1 >= today).
         // Đơn đã hết hạn không đếm vào ActivePrescriptionCount ở màn danh sách.
-        var prescriptions = await _db.Prescriptions
-            .AsNoTracking()
-            .Where(p => p.DoctorId == doctorId && p.Status == PrescriptionStatus.Active)
-            .Where(p => p.PrescriptionItems
-                .Any(pi => pi.StartDate.AddDays(pi.DurationDays - 1) >= todayStartUtc))
-            .Include(p => p.Case)
-                .ThenInclude(c => c.PatientProfile)
-                    .ThenInclude(pp => pp.User)
-            .Include(p => p.PrescriptionItems)
-                .ThenInclude(pi => pi.MedicationIntakeLogs)
-            .ToListAsync(ct);
+        var prescriptions = await _prescriptionRepo.ListActiveForDoctorTrackingAsync(doctorId, todayStartUtc, ct: ct);
 
         // Group by patient
         var patientGroups = prescriptions
@@ -200,19 +185,7 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
         // Filter: chỉ đơn còn trong vòng ngày hôm nay (endDate >= today).
         // Đơn đã hết hạn (tất cả items đều có StartDate + DurationDays - 1 < today)
         // không hiển thị ở đây — xem ở case detail.
-        var prescriptions = await _db.Prescriptions
-            .AsNoTracking()
-            .Where(p => p.DoctorId == doctorId &&
-                        p.Status == PrescriptionStatus.Active &&
-                        p.Case.PatientProfileId == patientId)
-            .Include(p => p.Case)
-            .Include(p => p.PrescriptionItems)
-                .ThenInclude(pi => pi.MedicationIntakeLogs)
-            .Include(p => p.PrescriptionItems)
-                .ThenInclude(pi => pi.Medicine)
-            .Where(p => p.PrescriptionItems
-                .Any(pi => pi.StartDate.AddDays(pi.DurationDays - 1) >= todayStartUtc))
-            .ToListAsync(ct);
+        var prescriptions = await _prescriptionRepo.ListActiveForDoctorTrackingAsync(doctorId, todayStartUtc, patientId, ct);
 
         var cards = new List<PrescriptionCardDto>();
 
@@ -296,20 +269,8 @@ public sealed class DoctorMedicationTrackingService : IDoctorMedicationTrackingS
         var now = nowUtc ?? DateTime.UtcNow;
 
         // Validate prescription belongs to this doctor and patient
-        var prescription = await _db.Prescriptions
-            .AsNoTracking()
-            .Where(p => p.PrescriptionId == request.PrescriptionId &&
-                        p.DoctorId == doctorId &&
-                        p.Status == PrescriptionStatus.Active &&
-                        p.Case.PatientProfileId == patientId)
-            .Include(p => p.Case)
-                .ThenInclude(c => c.PatientProfile)
-                    .ThenInclude(pp => pp.User)
-            .Include(p => p.PrescriptionItems)
-                .ThenInclude(pi => pi.MedicationIntakeLogs)
-            .Include(p => p.PrescriptionItems)
-                .ThenInclude(pi => pi.Medicine)
-            .FirstOrDefaultAsync(ct);
+        var prescription = await _prescriptionRepo.GetActiveForDoctorTrackingAsync(
+            request.PrescriptionId, doctorId, patientId, ct);
 
         if (prescription is null)
             throw new ResourceNotFoundException("Không tìm thấy đơn thuốc hoặc bạn không có quyền nhắc đơn này.");

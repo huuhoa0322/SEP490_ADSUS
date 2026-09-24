@@ -159,6 +159,15 @@ public interface IAppointmentRepository
         DateTime toLocal,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Lịch hẹn đang Booked có giờ khám bắt đầu từ <paramref name="startedAtOrBeforeLocal"/> trở về
+    /// trước (giờ địa phương phòng khám, cùng hệ với SlotDate/StartTime). CÓ tracking, kèm Slot +
+    /// Doctor — dùng cho JOB-08 đánh dấu No-Show rồi <see cref="SaveChangesAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<Appointment>> ListBookedStartedAtOrBeforeForUpdateAsync(
+        DateTime startedAtOrBeforeLocal,
+        CancellationToken ct = default);
+
     /// <summary>Thêm lịch hẹn vào context, CHƯA lưu — dùng trong transaction của Service.</summary>
     Task AddAsync(Appointment appointment, CancellationToken ct = default);
 

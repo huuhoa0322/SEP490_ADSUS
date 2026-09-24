@@ -1,6 +1,7 @@
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.HealthMonitoring.DTOs;
 using ADSUS_BE.BLL.HealthMonitoring.Interfaces;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -33,7 +34,9 @@ public class HealthLogService : IHealthLogService
         {
             HealthLogId = Guid.NewGuid(),
             PatientProfileId = patientProfileId,
-            LogDate = request.LogDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+            // Ngày mặc định là "hôm nay" theo giờ phòng khám — theo UTC thì nhật ký ghi lúc
+            // 00:00–07:00 giờ VN bị tính vào hôm trước.
+            LogDate = request.LogDate ?? ClinicClock.Today(),
             LogType = logType,
             Content = request.Content!.Trim(),
             CreatedAt = DateTime.UtcNow,
@@ -54,7 +57,7 @@ public class HealthLogService : IHealthLogService
         HealthLogSearchCriteria criteria,
         CancellationToken cancellationToken = default)
     {
-        var date = criteria.Date ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var date = criteria.Date ?? ClinicClock.Today();
 
         var logs = await _healthLogRepository.GetByPatientAndDateAsync(
             patientProfileId,

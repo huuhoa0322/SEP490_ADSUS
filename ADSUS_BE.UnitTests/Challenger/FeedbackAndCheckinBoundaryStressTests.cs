@@ -51,13 +51,7 @@ public class FeedbackAndCheckinBoundaryStressTests
         var notifService = new Mock<INotificationService>();
         var caseService = new Mock<ADSUS_BE.BLL.MedicalRecord.Interfaces.ICaseService>();
 
-        var noShowSettings = Options.Create(new NoShowSettings { GraceTimeMinutes = 15 });
-        var noShowService = new NoShowService(
-            db,
-            noShowSettings,
-            notifService.Object,
-            profileRepo.Object,
-            Mock.Of<ILogger<NoShowService>>());
+        var noShowService = NoShowTestServices.Create(db, notifService.Object);
 
         return new AppointmentService(
             apptRepo.BackedBy(db).Object,
@@ -68,7 +62,7 @@ public class FeedbackAndCheckinBoundaryStressTests
             notifService.Object,
             caseService.BackedBy(db).Object,
             noShowService,
-            db,
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(db),
             Mock.Of<ILogger<AppointmentService>>());
     }
 

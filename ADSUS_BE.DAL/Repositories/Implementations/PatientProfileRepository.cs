@@ -39,6 +39,19 @@ public sealed class PatientProfileRepository : IPatientProfileRepository
             .Select(p => (Guid?)p.PatientProfileId)
             .FirstOrDefaultAsync(ct);
 
+    public async Task<IReadOnlyDictionary<Guid, Guid?>> ListUserIdsByIdsAsync(
+        IReadOnlyCollection<Guid> patientProfileIds, CancellationToken ct = default)
+    {
+        if (patientProfileIds.Count == 0)
+            return new Dictionary<Guid, Guid?>();
+
+        return await _db.PatientProfiles
+            .AsNoTracking()
+            .Where(p => patientProfileIds.Contains(p.PatientProfileId))
+            .Select(p => new { p.PatientProfileId, p.UserId })
+            .ToDictionaryAsync(p => p.PatientProfileId, p => p.UserId, ct);
+    }
+
     public Task<PatientProfile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
         _db.PatientProfiles
             .AsNoTracking()

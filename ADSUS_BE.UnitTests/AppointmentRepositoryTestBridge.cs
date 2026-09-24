@@ -77,19 +77,14 @@ internal static class AppointmentRepositoryTestBridge
     /// </summary>
     public static Mock<ICaseService> BackedBy(this Mock<ICaseService> mock, AppDbContext db)
     {
-        var real = new CaseService(
-            new CaseRepository(db),
-            Mock.Of<IUltrasoundImageRepository>(),
-            Mock.Of<IPatientProfileRepository>(),
-            new UserRepository(db),
-            new Lazy<IFileStorageService>(() => Mock.Of<IFileStorageService>()),
-            Mock.Of<INotificationService>(),
-            NullLogger<CaseService>.Instance);
+        var real = RealCaseService(db);
 
         mock.Setup(s => s.StageCheckinFromAppointmentAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .Returns((Guid caseId, CancellationToken ct) => real.StageCheckinFromAppointmentAsync(caseId, ct));
         mock.Setup(s => s.StageCancelFromAppointmentAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .Returns((Guid caseId, CancellationToken ct) => real.StageCancelFromAppointmentAsync(caseId, ct));
+        mock.Setup(s => s.StageNoShowFromAppointmentsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .Returns((IReadOnlyCollection<Guid> caseIds, CancellationToken ct) => real.StageNoShowFromAppointmentsAsync(caseIds, ct));
         mock.Setup(s => s.StageReplaceSymptomsFromAppointmentAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyList<SymptomInput>?>(), It.IsAny<CancellationToken>()))
             .Returns((Guid caseId, IReadOnlyList<SymptomInput>? symptoms, CancellationToken ct) =>
                 real.StageReplaceSymptomsFromAppointmentAsync(caseId, symptoms, ct));
@@ -101,6 +96,16 @@ internal static class AppointmentRepositoryTestBridge
 
         return mock;
     }
+
+    /// <summary>CaseService thật trên DB InMemory, chỉ đủ phụ thuộc cho các bước chuyển trạng thái Case.</summary>
+    public static CaseService RealCaseService(AppDbContext db) => new(
+        new CaseRepository(db),
+        Mock.Of<IUltrasoundImageRepository>(),
+        Mock.Of<IPatientProfileRepository>(),
+        new UserRepository(db),
+        new Lazy<IFileStorageService>(() => Mock.Of<IFileStorageService>()),
+        Mock.Of<INotificationService>(),
+        NullLogger<CaseService>.Instance);
 
     public static Mock<IScheduleSlotRepository> BackedBy(this Mock<IScheduleSlotRepository> mock, AppDbContext db)
     {

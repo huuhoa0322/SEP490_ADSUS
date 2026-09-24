@@ -39,6 +39,10 @@ public class ShiftRequestsControllerIntegrationTests
         _shiftRequests.Setup(r => r.AddAsync(It.IsAny<ShiftRequest>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        // Admin nhận thông báo "có yêu cầu mới" — service lấy qua IUserRepository (không còn query thẳng DB)
+        _users.Setup(r => r.ListActiveUserIdsByRoleAsync(UserRole.Admin, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Guid> { _adminId });
+
         var dto = new CreateShiftRequestDto
         {
             RequestType = ShiftRequestType.Leave,

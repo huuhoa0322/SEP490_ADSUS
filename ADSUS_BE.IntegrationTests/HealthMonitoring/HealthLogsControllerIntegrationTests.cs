@@ -4,6 +4,7 @@ using ADSUS_BE.BLL.Auth.Interfaces;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.HealthMonitoring.DTOs;
 using ADSUS_BE.BLL.HealthMonitoring.Validators;
+using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
 using FluentValidation;
@@ -434,7 +435,7 @@ public class HealthLogsControllerIntegrationTests
         using var app = CreateApp();
         var client = CreatePatientClient(app);
         var profile = NewPatientProfile(_patientId);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today();
         var logs = new List<HealthLog>
         {
             new() { HealthLogId = Guid.NewGuid(), PatientProfileId = profile.PatientProfileId, LogDate = today, LogType = HealthLogType.Exercise, Content = "Morning run", CreatedAt = DateTime.UtcNow },
@@ -491,7 +492,7 @@ public class HealthLogsControllerIntegrationTests
         using var app = CreateApp();
         var client = CreatePatientClient(app);
         var profile = NewPatientProfile(_patientId);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today();
 
         _profiles.Setup(r => r.EnsureForUserAsync(_patientId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(profile.PatientProfileId);
@@ -514,7 +515,7 @@ public class HealthLogsControllerIntegrationTests
         using var app = CreateApp();
         var client = CreatePatientClient(app);
         var profile = NewPatientProfile(_patientId);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today();
 
         _profiles.Setup(r => r.EnsureForUserAsync(_patientId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(profile.PatientProfileId);
@@ -537,7 +538,7 @@ public class HealthLogsControllerIntegrationTests
         using var app = CreateApp();
         var client = CreatePatientClient(app);
         var profile = NewPatientProfile(_patientId);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClinicClock.Today();
         var logId = Guid.NewGuid();
         var createdAt = DateTime.UtcNow;
         var logs = new List<HealthLog>

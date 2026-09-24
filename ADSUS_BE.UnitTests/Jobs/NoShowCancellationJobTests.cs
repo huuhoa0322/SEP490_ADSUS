@@ -1,5 +1,5 @@
+using ADSUS_BE.BLL.AppointmentScheduling.Services;
 using ADSUS_BE.BLL.Common.Interfaces;
-using ADSUS_BE.BLL.Common.Settings;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.Jobs;
@@ -31,22 +31,18 @@ public class NoShowCancellationJobTests : IDisposable
             .Options;
         _db = new AppDbContext(options);
 
-        // Tạo mock IServiceScopeFactory
+        // Tạo mock IServiceScopeFactory — job lấy NoShowService (thật, chạy trên DB InMemory) từ scope
         var serviceScope = new Mock<IServiceScope>();
         var serviceProvider = new Mock<IServiceProvider>();
-        serviceProvider.Setup(sp => sp.GetService(typeof(AppDbContext)))
-            .Returns(_db);
+        serviceProvider.Setup(sp => sp.GetService(typeof(NoShowService)))
+            .Returns(NoShowTestServices.Create(_db, _notificationService.Object));
         serviceScope.Setup(s => s.ServiceProvider).Returns(serviceProvider.Object);
 
         var scopeFactory = new Mock<IServiceScopeFactory>();
         scopeFactory.Setup(f => f.CreateScope()).Returns(serviceScope.Object);
 
-        var noShowSettings = Options.Create(new NoShowSettings { GraceTimeMinutes = 15 });
-
         _sut = new NoShowCancellationJob(
             scopeFactory.Object,
-            _notificationService.Object,
-            noShowSettings,
             _logger.Object);
     }
 
@@ -421,12 +417,18 @@ public class NoShowCancellationJobTests : IDisposable
         // Act
         await _sut.Execute(context);
 
-        // Assert - Notification đã được gửi
+        // Assert - Notification đã được gửi (cùng loại với luồng check-in muộn — NoShowService)
         _notificationService.Verify(
             s => s.SendAsync(It.Is<SendNotificationRequest>(r =>
                 r.UserId == patient.UserId &&
-                r.Type == "no_show_cancelled" &&
-                r.Title == "Lịch hẹn bị hủy"),
+                r.Type == "appointment_no_show" &&
+                r.Title == "Lịch khám đã bị hủy (No-Show)"),
+            It.IsAny<CancellationToken>()),
+            Times.Once);
+        _notificationService.Verify(
+            s => s.SendAsync(It.Is<SendNotificationRequest>(r =>
+                r.UserId == doctor.UserId &&
+                r.Type == "patient_no_show"),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }

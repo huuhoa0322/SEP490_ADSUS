@@ -8,7 +8,6 @@ using ADSUS_BE.BLL.PatientRelationship.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ADSUS_BE.BLL.AppointmentScheduling.Services;
@@ -33,7 +32,7 @@ public sealed class AppointmentService : IAppointmentService
     private readonly INotificationService _notificationService;
     private readonly ICaseService _caseService;
     private readonly NoShowService _noShowService;
-    private readonly AppDbContext _db;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AppointmentService> _logger;
 
     public AppointmentService(
@@ -45,7 +44,7 @@ public sealed class AppointmentService : IAppointmentService
         INotificationService notificationService,
         ICaseService caseService,
         NoShowService noShowService,
-        AppDbContext db,
+        IUnitOfWork unitOfWork,
         ILogger<AppointmentService> logger)
     {
         _appointmentRepo = appointmentRepo;
@@ -56,7 +55,7 @@ public sealed class AppointmentService : IAppointmentService
         _notificationService = notificationService;
         _caseService = caseService;
         _noShowService = noShowService;
-        _db = db;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -1260,10 +1259,9 @@ public sealed class AppointmentService : IAppointmentService
             UpdatedAt = now,
         };
 
-        // AppDbContext chỉ còn dùng để mở transaction bao ngoài (giống CaseDiagnosisService) — mọi
-        // đọc/ghi entity đi qua Repository hoặc service của module sở hữu.
-        var isRelational = _db.Database.IsRelational();
-        var transaction = isRelational ? await _db.Database.BeginTransactionAsync(ct) : null;
+        // Transaction bao ngoài mở qua IUnitOfWork (giống CaseDiagnosisService) — service không cầm
+        // AppDbContext; mọi đọc/ghi entity đi qua Repository hoặc service của module sở hữu.
+        await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
             if (isScenario1)
@@ -1317,25 +1315,12 @@ public sealed class AppointmentService : IAppointmentService
 
             await _appointmentRepo.SaveChangesAsync(ct);
 
-            if (transaction != null)
-            {
-                await transaction.CommitAsync(ct);
-            }
+            await transaction.CommitAsync(ct);
         }
         catch
         {
-            if (transaction != null)
-            {
-                await transaction.RollbackAsync(ct);
-            }
+            await transaction.RollbackAsync(ct);
             throw;
-        }
-        finally
-        {
-            if (transaction != null)
-            {
-                await transaction.DisposeAsync();
-            }
         }
 
         // We will create an untracked instance at the end for mapping, so do not mutate newAppointment here.

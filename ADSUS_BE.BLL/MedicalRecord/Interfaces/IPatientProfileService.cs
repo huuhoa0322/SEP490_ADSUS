@@ -26,6 +26,20 @@ public interface IPatientProfileService
     /// </summary>
     Task<Guid?> FindIdByUserIdAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Hồ sơ (kèm bệnh nền, dị ứng) của một tài khoản bệnh nhân, null nếu tài khoản chưa có hồ sơ
+    /// — cho module khác cần thông tin bệnh nhân đang đăng nhập (vd ngữ cảnh chatbot).
+    /// </summary>
+    Task<PatientProfileResponse?> FindByUserIdAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// UserId của nhiều hồ sơ trong MỘT truy vấn — cho module khác cần gửi thông báo hàng loạt.
+    /// Khoá = PatientProfileId; giá trị null = guest profile (người thân chưa có tài khoản). Hồ sơ
+    /// không tồn tại thì không có khoá.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, Guid?>> FindUserIdsAsync(
+        IReadOnlyCollection<Guid> patientProfileIds, CancellationToken ct = default);
+
     // ─── Dành cho module khác tạo tài khoản / người thân (không tự lưu) ──────────────
 
     /// <summary>
