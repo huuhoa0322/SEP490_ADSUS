@@ -549,6 +549,18 @@ public sealed class CaseService : ICaseService
         }
     }
 
+    public async Task StageNoShowFromAppointmentsAsync(IReadOnlyCollection<Guid> caseIds, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        foreach (var medicalCase in await _cases.ListForUpdateByIdsAsync(caseIds, ct))
+        {
+            if (medicalCase.Status != CaseStatus.Booked) continue;
+
+            medicalCase.Status = CaseStatus.Cancelled;
+            medicalCase.UpdatedAt = now;
+        }
+    }
+
     public async Task StageReplaceSymptomsFromAppointmentAsync(
         Guid caseId, IReadOnlyList<SymptomInput>? symptoms, CancellationToken ct = default)
     {

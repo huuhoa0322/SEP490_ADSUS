@@ -4,6 +4,7 @@ using ADSUS_BE.BLL.AppointmentScheduling.DTOs;
 using ADSUS_BE.BLL.AppointmentScheduling.Interfaces;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Common.Interfaces;
+using ADSUS_BE.BLL.MedicalRecord.Interfaces;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
@@ -44,18 +45,18 @@ public sealed class ScheduleSlotService : IScheduleSlotService
     private readonly IScheduleSlotRepository _repo;
     private readonly IUserRepository _userRepo;
     private readonly INotificationService _notificationService;
-    private readonly AppDbContext _db;
+    private readonly IPatientProfileService _patientProfiles;
 
     public ScheduleSlotService(
         IScheduleSlotRepository repo,
         IUserRepository userRepo,
         INotificationService notificationService,
-        AppDbContext db)
+        IPatientProfileService patientProfiles)
     {
         _repo = repo;
         _userRepo = userRepo;
         _notificationService = notificationService;
-        _db = db;
+        _patientProfiles = patientProfiles;
     }
 
     public async Task<(IReadOnlyList<ScheduleSlotResponse> Items, int TotalCount)> ListSlotsAsync(
@@ -305,13 +306,10 @@ public sealed class ScheduleSlotService : IScheduleSlotService
                 .ToList();
 
             // Nạp UserId của mọi hồ sơ bệnh nhân cần báo tin bằng MỘT truy vấn, thay vì truy vấn
-            // lại từng hồ sơ bên trong vòng lặp (N+1, P11 review 24/09/2026).
+            // lại từng hồ sơ bên trong vòng lặp (N+1, P11 review 24/09/2026). Hồ sơ thuộc module
+            // MedicalRecord — đi qua IPatientProfileService.
             var profileIds = bookedAppointments.Select(a => a.PatientProfileId).Distinct().ToList();
-            var profileUserIds = await _db.PatientProfiles
-                .AsNoTracking()
-                .Where(p => profileIds.Contains(p.PatientProfileId))
-                .Select(p => new { p.PatientProfileId, p.UserId })
-                .ToDictionaryAsync(p => p.PatientProfileId, p => p.UserId, ct);
+            var profileUserIds = await _patientProfiles.FindUserIdsAsync(profileIds, ct);
 
             foreach (var appointment in bookedAppointments)
             {
@@ -433,8 +431,7 @@ public sealed class ScheduleSlotService : IScheduleSlotService
             // → 1 request khác đã chèn slot trùng giữa lúc đọc existingSlots và lúc ghi (race
             // hiếm gặp). Rơi về chèn từng slot một để không mất các slot hợp lệ còn lại trong
             // batch, vẫn giữ đúng tính idempotent.
-            foreach (var entry in _db.ChangeTracker.Entries<ScheduleSlot>().ToList())
-                entry.State = EntityState.Detached;
+            _repo.DetachTracked();
 
             foreach (var s in newSlots)
             {

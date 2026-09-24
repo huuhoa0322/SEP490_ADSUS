@@ -35,13 +35,7 @@ public class AppointmentServiceRescheduleTests : IDisposable
             .Options;
         _db = new AppDbContext(options);
 
-        var noShowSettings = Options.Create(new ADSUS_BE.BLL.Common.Settings.NoShowSettings { GraceTimeMinutes = 15 });
-        _noShowService = new NoShowService(
-            _db,
-            noShowSettings,
-            _notificationService.Object,
-            _profileRepo.Object,
-            Mock.Of<ILogger<NoShowService>>());
+        _noShowService = NoShowTestServices.Create(_db, _notificationService.Object);
 
         _sut = new AppointmentService(
             _appointmentRepo.BackedBy(_db).Object,
@@ -52,7 +46,7 @@ public class AppointmentServiceRescheduleTests : IDisposable
             _notificationService.Object,
             _caseService.BackedBy(_db).Object,
             _noShowService,
-            _db,
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
             Mock.Of<ILogger<AppointmentService>>());
     }
 

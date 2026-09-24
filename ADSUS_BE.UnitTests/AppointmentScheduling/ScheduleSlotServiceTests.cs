@@ -34,7 +34,7 @@ public class ScheduleSlotServiceTests
         _db = new AppDbContext(options);
         _sut = new ScheduleSlotService(
             _slotRepo.Object,
-            _userRepo.Object, _notifications.Object, _db);
+            _userRepo.Object, _notifications.Object, PatientAccountTestServices.PatientProfiles(_db));
 
         SetupDoctor();
     }

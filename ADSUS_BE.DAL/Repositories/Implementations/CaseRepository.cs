@@ -42,6 +42,28 @@ public sealed class CaseRepository : ICaseRepository
     public Task<Case?> GetForUpdateAsync(Guid caseId, CancellationToken ct = default) =>
         _db.Cases.FirstOrDefaultAsync(c => c.CaseId == caseId, ct);
 
+    public async Task<IReadOnlyList<Case>> ListForUpdateByIdsAsync(IReadOnlyCollection<Guid> caseIds, CancellationToken ct = default)
+    {
+        if (caseIds.Count == 0)
+            return Array.Empty<Case>();
+
+        return await _db.Cases
+            .Where(c => caseIds.Contains(c.CaseId))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Case>> ListRecentWithDiagnosesAsync(Guid patientProfileId, int take, CancellationToken ct = default) =>
+        await _db.Cases
+            .AsNoTracking()
+            .Include(c => c.Doctor)
+            .Include(c => c.CaseDiagnoses)
+                .ThenInclude(cd => cd.DiagnosisItem)
+            .Where(c => c.PatientProfileId == patientProfileId)
+            .OrderByDescending(c => c.VisitDate)
+            .ThenByDescending(c => c.CreatedAt)
+            .Take(take)
+            .ToListAsync(ct);
+
     public Task<Case?> GetForUpdateWithCollectionsAsync(Guid caseId, CancellationToken ct = default) =>
         _db.Cases
             // AsSplitQuery: 3 nhánh collection trong 1 câu SQL sẽ nhân chéo số dòng, giống lý do

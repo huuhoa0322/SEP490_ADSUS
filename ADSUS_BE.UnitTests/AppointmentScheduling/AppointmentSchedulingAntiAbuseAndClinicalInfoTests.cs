@@ -108,13 +108,7 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
                 It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateOnly>(), It.IsAny<IReadOnlyList<SymptomInput>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Guid.NewGuid());
 
-        var noShowSettings = Options.Create(new NoShowSettings { GraceTimeMinutes = 15 });
-        var noShowService = new NoShowService(
-            _db,
-            noShowSettings,
-            _notificationService.Object,
-            _profileRepo.Object,
-            Mock.Of<ILogger<NoShowService>>());
+        var noShowService = NoShowTestServices.Create(_db, _notificationService.Object);
 
         _appointmentService = new AppointmentService(
             _appointmentRepo.BackedBy(_db).Object,
@@ -125,7 +119,7 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
             _notificationService.Object,
             _caseService.BackedBy(_db).Object,
             noShowService,
-            _db,
+            new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
             Mock.Of<ILogger<AppointmentService>>());
     }
 

@@ -75,6 +75,13 @@ public interface ICaseService
     Task StageCancelFromAppointmentAsync(Guid caseId, CancellationToken ct = default);
 
     /// <summary>
+    /// Chuyển các Case sang Cancelled khi lịch hẹn của chúng bị đánh dấu No-Show — CHỈ Case còn
+    /// Booked (Case đã sang trạng thái khác giữ nguyên). Một truy vấn cho cả danh sách. KHÔNG lưu —
+    /// xem <see cref="StageCheckinFromAppointmentAsync"/>.
+    /// </summary>
+    Task StageNoShowFromAppointmentsAsync(IReadOnlyCollection<Guid> caseIds, CancellationToken ct = default);
+
+    /// <summary>
     /// Thay toàn bộ triệu chứng của Case khi bệnh nhân sửa thông tin lịch hẹn. <paramref name="symptoms"/>
     /// null nghĩa là không đụng tới triệu chứng (chỉ cập nhật UpdatedAt). KHÔNG lưu — xem
     /// <see cref="StageCheckinFromAppointmentAsync"/>.

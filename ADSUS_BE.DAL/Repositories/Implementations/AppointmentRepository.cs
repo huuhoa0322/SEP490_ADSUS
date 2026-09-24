@@ -74,6 +74,22 @@ public sealed class AppointmentRepository : IAppointmentRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Appointment>> ListBookedStartedAtOrBeforeForUpdateAsync(
+        DateTime startedAtOrBeforeLocal,
+        CancellationToken ct = default)
+    {
+        var date = DateOnly.FromDateTime(startedAtOrBeforeLocal);
+        var time = TimeOnly.FromDateTime(startedAtOrBeforeLocal);
+
+        return await _db.Appointments
+            .Include(a => a.Slot)
+                .ThenInclude(s => s.Doctor)
+            .Where(a => a.Status == AppointmentStatus.Booked
+                && (a.Slot.SlotDate < date
+                    || (a.Slot.SlotDate == date && a.Slot.StartTime <= time)))
+            .ToListAsync(ct);
+    }
+
     public async Task<Appointment?> GetByIdAsync(Guid appointmentId, CancellationToken ct = default)
     {
         return await _db.Appointments

@@ -78,6 +78,34 @@ public interface IScheduleSlotRepository
         TimeOnly afterTime,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Slot chưa Closed của bác sĩ trong một ngày, nằm trọn trong [<paramref name="from"/>,
+    /// <paramref name="to"/>] — CÓ tracking, kèm Appointments. Dùng khi duyệt đơn nghỉ phép: đóng
+    /// slot và huỷ lịch hẹn trên đó rồi <see cref="SaveChangesAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<ScheduleSlot>> ListNotClosedWithinForUpdateAsync(
+        Guid doctorId,
+        DateOnly slotDate,
+        TimeOnly from,
+        TimeOnly to,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Slot của một bác sĩ trong khoảng ngày, kèm Appointments (không kèm Doctor/Case/hồ sơ như
+    /// <see cref="ListByRangeAsync"/>). Chỉ đọc — dùng cho bảng tổng hợp ca làm theo tháng.
+    /// </summary>
+    Task<IReadOnlyList<ScheduleSlot>> ListWithAppointmentsForDoctorAsync(
+        Guid doctorId,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Bỏ theo dõi mọi slot đang track — dùng sau khi lưu hàng loạt thất bại, để các slot chưa
+    /// lưu được không bị gửi lại ở lần SaveChanges kế tiếp.
+    /// </summary>
+    void DetachTracked();
+
     /// <summary>Lưu mọi thay đổi đang được track — Service quyết định lúc lưu (L3 §8).</summary>
     Task SaveChangesAsync(CancellationToken ct = default);
 }

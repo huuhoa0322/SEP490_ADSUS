@@ -32,7 +32,6 @@ public class DoctorMedicationTrackingServiceTests
         INotificationService? notificationService = null)
     {
         return new DoctorMedicationTrackingService(
-            db,
             new PrescriptionRepository(db),
             new MedicationIntakeLogRepository(db),
             new PatientProfileRepository(db),

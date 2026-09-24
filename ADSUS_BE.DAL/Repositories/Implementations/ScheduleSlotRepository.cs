@@ -152,6 +152,38 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
                 && s.Status == SlotStatus.Booked)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<ScheduleSlot>> ListNotClosedWithinForUpdateAsync(
+        Guid doctorId,
+        DateOnly slotDate,
+        TimeOnly from,
+        TimeOnly to,
+        CancellationToken ct = default) =>
+        await _db.ScheduleSlots
+            .Include(s => s.Appointments)
+            .Where(s => s.DoctorId == doctorId
+                && s.SlotDate == slotDate
+                && s.StartTime >= from
+                && s.EndTime <= to
+                && s.Status != SlotStatus.Closed)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<ScheduleSlot>> ListWithAppointmentsForDoctorAsync(
+        Guid doctorId,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken ct = default) =>
+        await _db.ScheduleSlots
+            .AsNoTracking()
+            .Include(s => s.Appointments)
+            .Where(s => s.DoctorId == doctorId && s.SlotDate >= from && s.SlotDate <= to)
+            .ToListAsync(ct);
+
+    public void DetachTracked()
+    {
+        foreach (var entry in _db.ChangeTracker.Entries<ScheduleSlot>().ToList())
+            entry.State = EntityState.Detached;
+    }
+
     public Task SaveChangesAsync(CancellationToken ct = default) => _db.SaveChangesAsync(ct);
 
     public async Task<ScheduleSlot> AddAsync(ScheduleSlot slot, CancellationToken ct = default)
