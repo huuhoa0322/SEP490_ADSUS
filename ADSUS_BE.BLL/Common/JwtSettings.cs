@@ -21,9 +21,7 @@ public class JwtSettings
     /// <summary>Who the token is for — shared by the web and mobile clients.</summary>
     public string Audience { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Token lifetime in minutes. There is no refresh token yet, so once it expires the user
-    /// has to sign in again.
+    /// Token lifetime in minutes (3 hours).
     /// </summary>
-    public int ExpiryMinutes { get; set; } = 60;
+    public int ExpiryMinutes { get; set; } = 180;
 }

@@ -20,7 +20,7 @@ public class CaseClinicServicesController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = "DOCTOR,STAFF")]
+    [Authorize(Roles = "ADMIN,DOCTOR,STAFF")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<CaseClinicServiceResponse>>>> GetServicesForCase(
         Guid caseId,
         CancellationToken ct)

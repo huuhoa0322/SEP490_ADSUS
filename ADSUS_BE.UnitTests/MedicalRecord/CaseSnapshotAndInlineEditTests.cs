@@ -428,6 +428,10 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
         Assert.Equal("", HtmlHelper.StripTags(null));
         Assert.Equal("", HtmlHelper.StripTags("   "));
 
+        Assert.Equal("Đặt thuốc âm đạo", HtmlHelper.StripTags("<p>Đặt thuốc âm đạo</p>"));
+        Assert.Equal("Dòng 1\nDòng 2", HtmlHelper.StripTags("<p>Dòng 1</p><p>Dòng 2</p>"));
+        Assert.Equal("Mục 1\n• Mục 2", HtmlHelper.StripTags("<p>Mục 1</p><ul><li>Mục 2</li></ul>"));
+
         // 2. CaseReportService PDF export with HTML rich-text and null DoctorConclusion
         var medicalCase = MedicalRecordTestData.MakeCase(status: CaseStatus.End);
         medicalCase.CaseDiagnoses = new List<CaseDiagnosis>
@@ -440,7 +444,7 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
                 DiagnosisItem = new DiagnosisItem { Id = Guid.NewGuid(), Name = "U tuyến xơ (BI-RADS 3)" }
             }
         };
-        medicalCase.DoctorConclusion = null; // Section "HƯỚNG XỬ TRÍ" should be omitted
+        medicalCase.DoctorConclusion = "<p>Đặt thuốc âm đạo trong 3–7 đêm.</p>"; // Rich text HTML conclusion
 
         _cases.Setup(r => r.GetDetailAsync(medicalCase.CaseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(medicalCase);

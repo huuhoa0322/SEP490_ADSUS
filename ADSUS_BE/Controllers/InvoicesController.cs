@@ -11,7 +11,7 @@ namespace ADSUS_BE.Controllers;
 
 [ApiController]
 [Route("api/v1/invoices")]
-[Authorize(Roles = "STAFF,DOCTOR")]
+[Authorize(Roles = "ADMIN,STAFF,DOCTOR")]
 public class InvoicesController : ControllerBase
 {
     private readonly IInvoiceService _invoiceService;
@@ -36,6 +36,7 @@ public class InvoicesController : ControllerBase
     }
 
     [HttpPost("generate/{caseId}")]
+    [Authorize(Roles = "STAFF,DOCTOR")]
     public async Task<ActionResult<Guid>> GenerateInvoiceForCase(Guid caseId)
     {
         var invoiceId = await _invoiceService.GenerateInvoiceForCaseAsync(caseId);
@@ -43,6 +44,7 @@ public class InvoicesController : ControllerBase
     }
 
     [HttpPut("{id}/pay")]
+    [Authorize(Roles = "STAFF")]
     public async Task<IActionResult> PayAndDispense(Guid id, [FromBody] PayInvoiceRequest request)
     {
         if (!Enum.TryParse<PaymentMethod>(request.PaymentMethod, true, out var method))
@@ -55,6 +57,7 @@ public class InvoicesController : ControllerBase
     }
 
     [HttpPut("{id}/cancel")]
+    [Authorize(Roles = "STAFF")]
     public async Task<IActionResult> CancelInvoice(Guid id, [FromBody] CancelInvoiceRequest request)
     {
         await _invoiceService.CancelInvoiceAsync(id, request);

@@ -168,8 +168,12 @@ public sealed class CaseReportService : ICaseReportService
 
                     if (!string.IsNullOrWhiteSpace(medicalCase.DoctorConclusion))
                     {
-                        column.Item().PaddingTop(10).Text("HƯỚNG XỬ TRÍ").SemiBold().FontSize(13);
-                        column.Item().Text(medicalCase.DoctorConclusion);
+                        var cleanConclusion = HtmlHelper.StripTags(medicalCase.DoctorConclusion);
+                        if (!string.IsNullOrWhiteSpace(cleanConclusion))
+                        {
+                            column.Item().PaddingTop(10).Text("HƯỚNG XỬ TRÍ").SemiBold().FontSize(13);
+                            column.Item().Text(cleanConclusion);
+                        }
                     }
 
                     column.Item().PaddingTop(10).Text("ĐƠN THUỐC").SemiBold().FontSize(13);
@@ -212,7 +216,7 @@ public sealed class CaseReportService : ICaseReportService
                             column.Item().PaddingTop(8).Text(text =>
                             {
                                 text.Span("Ghi chú: ").SemiBold();
-                                text.Span(prescription.GeneralNote);
+                                text.Span(HtmlHelper.StripTags(prescription.GeneralNote));
                             });
                         }
                     }
@@ -236,7 +240,7 @@ public sealed class CaseReportService : ICaseReportService
                                         noteCol.Item().Text(text =>
                                         {
                                             text.Span("Ghi chú ảnh:\n").SemiBold().FontSize(11).Italic();
-                                            text.Span(img.Note).FontSize(11).Italic();
+                                            text.Span(HtmlHelper.StripTags(img.Note)).FontSize(11).Italic();
                                         });
                                     }
                                 });
