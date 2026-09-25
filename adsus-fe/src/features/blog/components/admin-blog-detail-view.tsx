@@ -2,8 +2,9 @@
 
 import { ArrowLeft, Calendar, CheckCircle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import DOMPurify from "isomorphic-dompurify";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 
@@ -26,7 +27,6 @@ const STATUS_STYLES: Record<BlogStatus, string> = {
  * SCR-27 - Chi tiết và chỉnh sửa bài viết
  */
 export function AdminBlogDetailView({ id }: { id: string }) {
-  const router = useRouter();
   const { data: post, isLoading, isError, error } = useAdminBlogPost(id);
   const updateMutation = useUpdateBlogPost();
   const publishMutation = usePublishBlogPost();
@@ -48,7 +48,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
         payload: { title, content },
       });
       setIsEditing(false);
-    } catch (e) {
+    } catch {
       // Error handled by mutation
     }
   };
@@ -56,7 +56,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
   const handlePublish = async () => {
     try {
       await publishMutation.mutateAsync(id);
-    } catch (e) {
+    } catch {
       // Error handled by mutation
     }
   };
@@ -65,7 +65,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
     <div className="min-h-screen bg-[var(--muted)]">
       {/* Header */}
       <div className="bg-white border-b border-border">
-        <div className="mx-auto max-w-4xl px-6 py-4">
+        <div className="mx-auto w-[90%] max-w-[90%] px-6 py-4">
           <div className="flex items-center justify-between">
             <Link
               href="/admin/blog"
@@ -87,7 +87,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
       </div>
 
       {/* Content */}
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="mx-auto w-[90%] max-w-[90%] px-6 py-8">
         {isError && (
           <div
             role="alert"
@@ -154,17 +154,9 @@ export function AdminBlogDetailView({ id }: { id: string }) {
                 Nội dung bài viết
               </h2>
               {isEditing ? (
-                <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  rows={12}
-                  className="w-full rounded-lg border border-border px-4 py-3 font-mono text-sm focus:border-[var(--success)] focus:outline-none"
-                  placeholder="Nội dung bài viết (Markdown)"
-                />
+                <RichTextEditor value={content} onChange={setContent} />
               ) : (
-                <div className="whitespace-pre-wrap text-[var(--foreground)]">
-                  {post.content}
-                </div>
+                <div className="prose prose-sm sm:prose-base max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }} />
               )}
             </div>
 

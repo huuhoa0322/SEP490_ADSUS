@@ -4,6 +4,7 @@ import { ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 
@@ -33,13 +34,13 @@ export function AdminBlogCreateView() {
         content: content.trim(),
       });
       router.push(`/admin/blog/${result.id}`);
-    } catch (e) {
+    } catch {
       // Error handled by mutation
     }
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-8">
+    <div className="mx-auto w-[90%] max-w-[90%] px-6 py-8">
       <Link
         href="/admin/blog"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
@@ -76,14 +77,7 @@ export function AdminBlogCreateView() {
           <span className="font-heading text-[13px] font-600 uppercase tracking-wider text-foreground">
             Nội dung bài viết
           </span>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            required
-            rows={15}
-            className="w-full rounded-2xl border border-border bg-background px-5 py-4 font-mono text-sm outline-none transition-colors focus:border-[var(--success)]"
-            placeholder="Nhập nội dung bài viết (Markdown)..."
-          />
+          <RichTextEditor value={content} onChange={setContent} />
         </label>
 
         {/* Error */}

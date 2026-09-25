@@ -121,6 +121,15 @@ public sealed record CaseSummaryResponse(
     string Status,
     Guid DoctorId);
 
+/// <summary>Một dòng trong danh sách lần khám CỦA NGƯỜI THÂN (Mobile) — kèm thông tin bệnh nhân.</summary>
+public sealed record RelativeCaseSummaryResponse(
+    Guid CaseId,
+    DateOnly VisitDate,
+    string Status,
+    Guid DoctorId,
+    string PatientName,
+    string? RelationshipName);
+
 /// <summary>
 /// #24 — một dòng trong danh sách lần khám cho Bác sĩ/Điều dưỡng (Web SCR-12).
 ///

@@ -4,7 +4,7 @@ import { ArrowLeft, Calendar } from "lucide-react";
 import Link from "next/link";
 import { usePublicBlogPost } from "../hooks/use-blog";
 import { getApiErrorMessage } from "@/lib/api-client";
-
+import DOMPurify from "isomorphic-dompurify";
 /**
  * Blog detail view - PUBLIC, no authentication required.
  * SCR-26 - Chi tiết bài viết Blog Sức khỏe
@@ -16,7 +16,7 @@ export function BlogDetailView({ id }: { id: string }) {
     <div className="min-h-screen bg-muted">
       {/* Header with back button */}
       <div className="border-b border-border bg-background">
-        <div className="mx-auto max-w-4xl px-6 py-4">
+        <div className="mx-auto w-[90%] max-w-[90%] px-6 py-4">
           <Link
             href="/blog"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
@@ -28,7 +28,7 @@ export function BlogDetailView({ id }: { id: string }) {
       </div>
 
       {/* Content */}
-      <div className="mx-auto max-w-4xl px-6 py-10">
+      <div className="mx-auto w-[90%] max-w-[90%] px-6 py-10">
         {isError && (
           <div
             role="alert"
@@ -76,13 +76,7 @@ export function BlogDetailView({ id }: { id: string }) {
 
             {/* Article Content */}
             <div className="p-8">
-              <div className="prose prose-lg max-w-none text-foreground">
-                {post.content.split("\n").map((paragraph, index) => (
-                  <p key={index} className="mb-4 leading-relaxed">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
+              <div className="prose prose-lg max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }} />
             </div>
 
             {/* Disclaimer */}

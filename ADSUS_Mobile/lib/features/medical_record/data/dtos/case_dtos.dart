@@ -20,6 +20,36 @@ class CaseSummaryDto {
       );
 }
 
+/// DTO khớp 1:1 `RelativeCaseSummaryResponse` — API (GET /cases/relatives).
+/// Mở rộng CaseSummaryDto với tên bệnh nhân + quan hệ.
+class RelativeCaseSummaryDto {
+  const RelativeCaseSummaryDto({
+    required this.caseId,
+    required this.visitDate,
+    required this.status,
+    required this.doctorId,
+    required this.patientName,
+    this.relationshipName,
+  });
+
+  final String caseId;
+  final String visitDate;
+  final String status;
+  final String doctorId;
+  final String patientName;
+  final String? relationshipName;
+
+  factory RelativeCaseSummaryDto.fromJson(Map<String, dynamic> json) =>
+      RelativeCaseSummaryDto(
+        caseId: json['caseId'] as String,
+        visitDate: json['visitDate'] as String,
+        status: json['status'] as String,
+        doctorId: json['doctorId'] as String,
+        patientName: json['patientName'] as String? ?? 'Người thân',
+        relationshipName: json['relationshipName'] as String?,
+      );
+}
+
 /// DTO khớp 1:1 `PrescriptionItemSummary` lồng trong `PrescriptionSummaryDto`.
 class PrescriptionItemDto {
   const PrescriptionItemDto({
@@ -119,6 +149,31 @@ class CaseDiagnosisDto {
       );
 }
 
+/// DTO cho triệu chứng của ca khám (CaseSymptomResponse).
+class CaseSymptomDto {
+  const CaseSymptomDto({
+    required this.categoryId,
+    required this.categoryName,
+    this.symptomId,
+    this.symptomName,
+    this.otherNote,
+  });
+
+  final String categoryId;
+  final String categoryName;
+  final String? symptomId;
+  final String? symptomName;
+  final String? otherNote;
+
+  factory CaseSymptomDto.fromJson(Map<String, dynamic> json) => CaseSymptomDto(
+        categoryId: json['categoryId'] as String,
+        categoryName: json['categoryName'] as String? ?? '',
+        symptomId: json['symptomId'] as String?,
+        symptomName: json['symptomName'] as String?,
+        otherNote: json['otherNote'] as String?,
+      );
+}
+
 /// DTO khớp 1:1 `PatientCaseResponse` (field-set của Patient) — API Spec #23 (GET /cases/{id}).
 ///
 /// Đính chính 15/08/2026: thêm doctorName/caseDiagnoses/ultrasoundImages (backend đã trả sẵn,
@@ -136,6 +191,7 @@ class CaseDto {
     this.doctorConclusion,
     this.prescription,
     this.ultrasoundImages = const [],
+    this.symptoms = const [],
   });
 
   final String caseId;
@@ -147,6 +203,7 @@ class CaseDto {
   final String? doctorConclusion;
   final PrescriptionSummaryDto? prescription;
   final List<UltrasoundImageDto> ultrasoundImages;
+  final List<CaseSymptomDto> symptoms;
 
   factory CaseDto.fromJson(Map<String, dynamic> json) => CaseDto(
         caseId: json['caseId'] as String,
@@ -165,6 +222,9 @@ class CaseDto {
               ),
         ultrasoundImages: (json['ultrasoundImages'] as List<dynamic>? ?? const [])
             .map((e) => UltrasoundImageDto.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        symptoms: (json['symptoms'] as List<dynamic>? ?? const [])
+            .map((e) => CaseSymptomDto.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
 }

@@ -116,6 +116,37 @@ public sealed class CaseRepository : ICaseRepository
         return (items, total);
     }
 
+    public async Task<(IReadOnlyList<Case> Items, int TotalCount)> SearchByMultipleProfilesAsync(
+        IReadOnlyList<Guid> patientProfileIds,
+        IReadOnlyCollection<CaseStatus>? statuses,
+        string sortOrder,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        var query = _db.Cases
+            .AsNoTracking()
+            .Where(c => patientProfileIds.Contains(c.PatientProfileId));
+
+        if (statuses is { Count: > 0 })
+        {
+            query = query.Where(c => statuses.Contains(c.Status));
+        }
+
+        var total = await query.CountAsync(ct);
+
+        query = string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase)
+            ? query.OrderBy(c => c.VisitDate).ThenBy(c => c.CreatedAt)
+            : query.OrderByDescending(c => c.VisitDate).ThenByDescending(c => c.CreatedAt);
+
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return (items, total);
+    }
+
     public async Task<Case> CreateWithImagesAsync(
         Case newCase,
         IReadOnlyList<UltrasoundImage> images,

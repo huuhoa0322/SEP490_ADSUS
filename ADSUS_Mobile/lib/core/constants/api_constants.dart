@@ -49,6 +49,7 @@ class ApiConstants {
 
   // Module 04 — Medical Record (UC-08)
   static const String myCases = '/api/v1/cases/me';
+  static const String relativeCases = '/api/v1/cases/relatives';
   static String caseDetail(String id) => '/api/v1/cases/$id';
 
   // Module 04 — Symptoms (cho booking)

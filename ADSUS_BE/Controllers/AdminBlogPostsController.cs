@@ -20,10 +20,17 @@ namespace ADSUS_BE.Controllers;
 public sealed class AdminBlogPostsController : ControllerBase
 {
     private readonly IBlogPostService _blog;
+    private readonly ADSUS_BE.DAL.ExternalServices.IFileStorageService _storage;
+    private readonly IConfiguration _config;
 
-    public AdminBlogPostsController(IBlogPostService blog)
+    public AdminBlogPostsController(
+        IBlogPostService blog,
+        ADSUS_BE.DAL.ExternalServices.IFileStorageService storage,
+        IConfiguration config)
     {
         _blog = blog;
+        _storage = storage;
+        _config = config;
     }
 
     private Guid GetCurrentUserId()
@@ -158,5 +165,42 @@ public sealed class AdminBlogPostsController : ControllerBase
         }
 
         return Ok(ApiResponse<AdminBlogPostDetailResponse>.Ok(result, "Bài viết đã được xuất bản."));
+    }
+
+    /// <summary>
+    /// POST /api/v1/admin/blog-posts/upload-image — Upload ảnh cho bài viết
+    /// </summary>
+    [HttpPost("upload-image")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UploadImage(IFormFile file, CancellationToken ct)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, "Không có file nào được tải lên."));
+        }
+
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExtensions.Contains(ext))
+        {
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, "Định dạng ảnh không hợp lệ."));
+        }
+
+        var objectPath = $"{Guid.NewGuid()}{ext}";
+        using var stream = file.OpenReadStream();
+        
+        try 
+        {
+            var uploadedPath = await _storage.UploadAsync(stream, objectPath, file.ContentType, "blogs", ct);
+            var supabaseUrl = (_config["SupabaseStorage:Url"] ?? "https://miqarswgkuqvdmdnzrmi.supabase.co").TrimEnd('/');
+            var publicUrl = $"{supabaseUrl}/storage/v1/object/public/blogs/{uploadedPath}";
+            return Ok(ApiResponse<object>.Ok(new { url = publicUrl }));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(500, $"Lỗi upload: {ex.Message}"));
+        }
     }
 }

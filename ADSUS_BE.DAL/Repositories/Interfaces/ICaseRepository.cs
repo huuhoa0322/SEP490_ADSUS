@@ -38,6 +38,15 @@ public interface ICaseRepository
         int pageSize,
         CancellationToken ct = default);
 
+    /// <summary>Tìm ca khám theo nhiều PatientProfile cùng lúc (cho danh sách hồ sơ người thân).</summary>
+    Task<(IReadOnlyList<Case> Items, int TotalCount)> SearchByMultipleProfilesAsync(
+        IReadOnlyList<Guid> patientProfileIds,
+        IReadOnlyCollection<CaseStatus>? statuses,
+        string sortOrder,
+        int page,
+        int pageSize,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Tạo ca bệnh (dùng cho booking từ Mobile - không có images).
     /// </summary>

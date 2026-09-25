@@ -17,6 +17,16 @@ class MedicalRecordMapper {
         doctorId: dto.doctorId,
       );
 
+  static MedicalRecordSummary relativeSummaryFromDto(RelativeCaseSummaryDto dto) =>
+      MedicalRecordSummary(
+        caseId: dto.caseId,
+        visitDate: DateTime.parse(dto.visitDate),
+        status: CaseStatus.values.byName(dto.status.toLowerCase()),
+        doctorId: dto.doctorId,
+        patientName: dto.patientName,
+        relationshipName: dto.relationshipName,
+      );
+
   static MedicalRecordCase caseFromDto(CaseDto dto) => MedicalRecordCase(
         caseId: dto.caseId,
         visitDate: DateTime.parse(dto.visitDate),
@@ -34,6 +44,15 @@ class MedicalRecordMapper {
         doctorConclusion: dto.doctorConclusion,
         prescription: dto.prescription == null ? null : _prescriptionFromDto(dto.prescription!),
         images: dto.ultrasoundImages.map(_imageFromDto).toList(),
+        symptoms: dto.symptoms
+            .map((s) => CaseSymptomEntity(
+                  categoryId: s.categoryId,
+                  categoryName: s.categoryName,
+                  symptomId: s.symptomId,
+                  symptomName: s.symptomName,
+                  otherNote: s.otherNote,
+                ))
+            .toList(),
       );
 
   static MedicalRecordImage _imageFromDto(UltrasoundImageDto dto) {

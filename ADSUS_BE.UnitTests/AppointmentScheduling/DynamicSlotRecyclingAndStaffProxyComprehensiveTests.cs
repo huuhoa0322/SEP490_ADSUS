@@ -1104,6 +1104,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
             mockImages.Object,
             mockProfiles.Object,
             mockUsers.Object,
+            Mock.Of<IPatientRelationshipRepository>(),
             new Lazy<IFileStorageService>(() => mockStorage.Object),
             mockNotifications.Object,
             Mock.Of<ILogger<CaseService>>());
@@ -1149,6 +1150,7 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
             mockImages.Object,
             mockProfiles.Object,
             mockUsers.Object,
+            Mock.Of<IPatientRelationshipRepository>(),
             new Lazy<IFileStorageService>(() => mockStorage.Object),
             mockNotifications.Object,
             Mock.Of<ILogger<CaseService>>());

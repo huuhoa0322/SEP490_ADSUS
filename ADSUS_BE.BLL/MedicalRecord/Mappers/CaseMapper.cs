@@ -105,6 +105,15 @@ public static class CaseMapper
         Status: medicalCase.Status.ToApiString(),
         DoctorId: medicalCase.DoctorId);
 
+    public static RelativeCaseSummaryResponse ToRelativeSummary(
+        Case medicalCase, string patientName, string? relationshipName) => new(
+        CaseId: medicalCase.CaseId,
+        VisitDate: medicalCase.VisitDate,
+        Status: medicalCase.Status.ToApiString(),
+        DoctorId: medicalCase.DoctorId,
+        PatientName: patientName,
+        RelationshipName: relationshipName);
+
     public static StaffCaseSummaryResponse ToStaffSummary(Case medicalCase) => new(
         CaseId: medicalCase.CaseId,
         VisitDate: medicalCase.VisitDate,

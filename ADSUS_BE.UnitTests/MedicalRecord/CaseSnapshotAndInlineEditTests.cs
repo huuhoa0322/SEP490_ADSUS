@@ -57,6 +57,7 @@ public class CaseSnapshotAndInlineEditTests : IDisposable
             _images.Object,
             _profiles.Object,
             _users.Object,
+            Mock.Of<IPatientRelationshipRepository>(),
             new Lazy<IFileStorageService>(() => _storage.Object),
             _notificationService.Object,
             Mock.Of<ILogger<CaseService>>(),

@@ -159,5 +159,73 @@ void main() {
       expect(dto.ultrasoundImages[0].imageUrl, 'https://signed-url.example/anh.png');
       expect(dto.ultrasoundImages[1].imageUrl, isNull);
     });
+
+    test('co symptoms thi parse dung danh sach trieu chung va ghi chu', () {
+      final dto = CaseDto.fromJson({
+        'caseId': 'case-1',
+        'visitDate': '2026-07-22',
+        'status': 'CONFIRMED',
+        'doctorId': 'doctor-1',
+        'doctorName': 'BS. Le Minh Hoang',
+        'symptoms': [
+          {
+            'categoryId': 'cat-1',
+            'categoryName': 'Toàn thân',
+            'symptomId': 'sym-1',
+            'symptomName': 'Sốt nhẹ',
+            'otherNote': null,
+          },
+          {
+            'categoryId': 'cat-2',
+            'categoryName': 'Tiêu hóa',
+            'symptomId': null,
+            'symptomName': null,
+            'otherNote': 'Đau quặn bụng sau ăn',
+          },
+        ],
+      });
+
+      expect(dto.symptoms, hasLength(2));
+      expect(dto.symptoms[0].categoryId, 'cat-1');
+      expect(dto.symptoms[0].categoryName, 'Toàn thân');
+      expect(dto.symptoms[0].symptomName, 'Sốt nhẹ');
+      expect(dto.symptoms[0].otherNote, isNull);
+
+      expect(dto.symptoms[1].categoryId, 'cat-2');
+      expect(dto.symptoms[1].categoryName, 'Tiêu hóa');
+      expect(dto.symptoms[1].symptomId, isNull);
+      expect(dto.symptoms[1].symptomName, isNull);
+      expect(dto.symptoms[1].otherNote, 'Đau quặn bụng sau ăn');
+    });
+
+    test('symptoms null hoac thieu trong JSON thi tra ve list rong khong loi', () {
+      final dto = CaseDto.fromJson({
+        'caseId': 'case-1',
+        'visitDate': '2026-07-22',
+        'status': 'CONFIRMED',
+        'doctorId': 'doctor-1',
+        'doctorName': 'BS. Le Minh Hoang',
+      });
+
+      expect(dto.symptoms, isEmpty);
+    });
+  });
+
+  group('CaseSymptomDto.fromJson', () {
+    test('parse dung day du cac truong category, symptom va otherNote', () {
+      final dto = CaseSymptomDto.fromJson({
+        'categoryId': 'cat-10',
+        'categoryName': 'Hô hấp',
+        'symptomId': 'sym-20',
+        'symptomName': 'Ho có đờm',
+        'otherNote': 'Ho nhieu ve dem',
+      });
+
+      expect(dto.categoryId, 'cat-10');
+      expect(dto.categoryName, 'Hô hấp');
+      expect(dto.symptomId, 'sym-20');
+      expect(dto.symptomName, 'Ho có đờm');
+      expect(dto.otherNote, 'Ho nhieu ve dem');
+    });
   });
 }

@@ -117,6 +117,8 @@ class _MedicalRecordDetailScreenState
             ),
           ),
           const SizedBox(height: 12),
+          _SymptomsSection(symptoms: record.symptoms),
+          const SizedBox(height: 12),
           _DiagnosisChips(diagnoses: record.caseDiagnoses),
           const SizedBox(height: 12),
           _InfoCard(
@@ -237,6 +239,91 @@ class _InfoCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _SymptomsSection extends StatelessWidget {
+  const _SymptomsSection({required this.symptoms});
+
+  final List<CaseSymptomEntity> symptoms;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Triệu chứng ghi nhận',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.muted,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (symptoms.isEmpty)
+            const Text('—', style: TextStyle(fontSize: 14, color: AppColors.navy))
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: symptoms.map((s) {
+                final label = _formatSymptom(s);
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  static String _formatSymptom(CaseSymptomEntity s) {
+    final category = s.categoryName.trim();
+    final name = (s.symptomName != null && s.symptomName!.trim().isNotEmpty)
+        ? s.symptomName!.trim()
+        : null;
+    final note = (s.otherNote != null && s.otherNote!.trim().isNotEmpty)
+        ? s.otherNote!.trim()
+        : null;
+
+    String detail;
+    if (name != null && note != null) {
+      detail = '$name ($note)';
+    } else if (name != null) {
+      detail = name;
+    } else if (note != null) {
+      detail = note;
+    } else {
+      detail = category.isNotEmpty ? category : 'Triệu chứng khác';
+    }
+
+    if (category.isNotEmpty && !detail.startsWith(category)) {
+      return '$category: $detail';
+    }
+    return detail;
   }
 }
 

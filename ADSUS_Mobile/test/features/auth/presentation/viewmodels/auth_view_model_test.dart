@@ -22,6 +22,7 @@ void main() {
     medicalRepo = _MockMedicalRecordRepository();
 
     when(() => medicalRepo.getMyRecords()).thenAnswer((_) async => []);
+    when(() => medicalRepo.getRelativeCases()).thenAnswer((_) async => []);
 
     container = ProviderContainer(
       overrides: [

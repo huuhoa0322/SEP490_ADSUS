@@ -149,6 +149,46 @@ void main() {
 
       expect(entity.images, isEmpty);
     });
+
+    test('map dung danh sach symptoms sang CaseSymptomEntity', () {
+      const dto = CaseDto(
+        caseId: 'case-1',
+        visitDate: '2026-07-22',
+        status: 'CONFIRMED',
+        doctorId: 'doctor-1',
+        doctorName: 'BS. Le Minh Hoang',
+        symptoms: [
+          CaseSymptomDto(
+            categoryId: 'cat-1',
+            categoryName: 'Toàn thân',
+            symptomId: 'sym-1',
+            symptomName: 'Sốt nhẹ',
+            otherNote: null,
+          ),
+          CaseSymptomDto(
+            categoryId: 'cat-2',
+            categoryName: 'Tiêu hóa',
+            symptomId: null,
+            symptomName: null,
+            otherNote: 'Đau quặn bụng sau ăn',
+          ),
+        ],
+      );
+
+      final entity = MedicalRecordMapper.caseFromDto(dto);
+
+      expect(entity.symptoms, hasLength(2));
+      expect(entity.symptoms[0].categoryId, 'cat-1');
+      expect(entity.symptoms[0].categoryName, 'Toàn thân');
+      expect(entity.symptoms[0].symptomName, 'Sốt nhẹ');
+      expect(entity.symptoms[0].otherNote, isNull);
+
+      expect(entity.symptoms[1].categoryId, 'cat-2');
+      expect(entity.symptoms[1].categoryName, 'Tiêu hóa');
+      expect(entity.symptoms[1].symptomId, isNull);
+      expect(entity.symptoms[1].symptomName, isNull);
+      expect(entity.symptoms[1].otherNote, 'Đau quặn bụng sau ăn');
+    });
   });
 
   group('MedicalRecordMapper.feedbackFromDto', () {

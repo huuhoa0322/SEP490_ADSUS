@@ -1,161 +1,247 @@
-"use client";
+import React, { useCallback } from 'react';
+import { useEditor, EditorContent, type Editor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Image from '@tiptap/extension-image';
+import Placeholder from '@tiptap/extension-placeholder';
+import Underline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import { Indent } from './tiptap-indent';
+import { Bold, Italic, Underline as UnderlineIcon, Strikethrough, List, ListOrdered, ImageIcon, Heading2, Quote, AlignLeft, AlignCenter, AlignRight, AlignJustify, Indent as IndentIcon, Outdent } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { apiClient } from '@/lib/api-client';
 
-import { useEffect } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
-import Placeholder from "@tiptap/extension-placeholder";
-import { Bold, Italic, Underline as UnderlineIcon, List, ListOrdered } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-export interface RichTextEditorProps {
+interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   placeholder?: string;
-  className?: string;
 }
 
-export function RichTextEditor({
-  value,
-  onChange,
-  disabled = false,
-  placeholder = "Nhập nội dung...",
-  className,
-}: RichTextEditorProps) {
+const MenuBar = ({ editor }: { editor: Editor | null }) => {
+  const addImage = useCallback(() => {
+    if (!editor) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async () => {
+      if (input.files?.length) {
+        const file = input.files[0];
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          // Endpoint update blog-posts/upload-image
+          const res = await apiClient.post<{ data: { url: string } }>('/api/v1/admin/blog-posts/upload-image', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          
+          if (res.data?.data?.url) {
+            editor.chain().focus().setImage({ src: res.data.data.url }).run();
+          } else {
+            alert('Lỗi upload ảnh!');
+          }
+        } catch (error) {
+          console.error(error);
+          alert('Upload ảnh thất bại!');
+        }
+      }
+    };
+    input.click();
+  }, [editor]);
+
+  if (!editor) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1 border-b border-border bg-muted/20 p-2">
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        className={cn("p-2 rounded-md hover:bg-muted transition-colors", editor.isActive('bold') && "bg-muted text-primary")}
+      >
+        <Bold size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        className={cn("p-2 rounded-md hover:bg-muted transition-colors", editor.isActive('italic') && "bg-muted text-primary")}
+      >
+        <Italic size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        className={cn("p-2 rounded-md hover:bg-muted transition-colors", editor.isActive('underline') && "bg-muted text-primary")}
+      >
+        <UnderlineIcon size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleStrike().run()}
+        className={cn("p-2 rounded-md hover:bg-muted transition-colors", editor.isActive('strike') && "bg-muted text-primary")}
+      >
+        <Strikethrough size={16} />
+      </button>
+      
+      <div className="w-px h-4 bg-border mx-1" />
+      
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        className={cn("p-2 rounded-md hover:bg-muted transition-colors", editor.isActive('heading', { level: 2 }) && "bg-muted text-primary")}
+      >
+        <Heading2 size={16} />
+      </button>
+      
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        className={cn("p-2 rounded-md hover:bg-muted transition-colors", editor.isActive('bulletList') && "bg-muted text-primary")}
+      >
+        <List size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        className={cn("p-2 rounded-md hover:bg-muted transition-colors", editor.isActive('orderedList') && "bg-muted text-primary")}
+      >
+        <ListOrdered size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        className={cn("p-2 rounded-md hover:bg-muted transition-colors", editor.isActive('blockquote') && "bg-muted text-primary")}
+      >
+        <Quote size={16} />
+      </button>
+      
+      <div className="w-px h-4 bg-border mx-1" />
+
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().setTextAlign('left').run()}
+        className={cn("p-2 rounded-md hover:bg-muted transition-colors", editor.isActive({ textAlign: 'left' }) && "bg-muted text-primary")}
+      >
+        <AlignLeft size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().setTextAlign('center').run()}
+        className={cn("p-2 rounded-md hover:bg-muted transition-colors", editor.isActive({ textAlign: 'center' }) && "bg-muted text-primary")}
+      >
+        <AlignCenter size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().setTextAlign('right').run()}
+        className={cn("p-2 rounded-md hover:bg-muted transition-colors", editor.isActive({ textAlign: 'right' }) && "bg-muted text-primary")}
+      >
+        <AlignRight size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+        className={cn("p-2 rounded-md hover:bg-muted transition-colors", editor.isActive({ textAlign: 'justify' }) && "bg-muted text-primary")}
+      >
+        <AlignJustify size={16} />
+      </button>
+
+      <div className="w-px h-4 bg-border mx-1" />
+
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().indent().run()}
+        className="p-2 rounded-md hover:bg-muted transition-colors"
+      >
+        <IndentIcon size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().outdent().run()}
+        className="p-2 rounded-md hover:bg-muted transition-colors"
+      >
+        <Outdent size={16} />
+      </button>
+      
+      <div className="w-px h-4 bg-border mx-1" />
+      
+      <button
+        type="button"
+        onClick={addImage}
+        className="p-2 rounded-md hover:bg-muted transition-colors"
+      >
+        <ImageIcon size={16} />
+      </button>
+    </div>
+  );
+};
+
+export const RichTextEditor = ({ value, onChange, disabled = false, placeholder = 'Viết nội dung bài viết...' }: RichTextEditorProps) => {
   const editor = useEditor({
+    editable: !disabled,
     extensions: [
-      StarterKit.configure({
-        bulletList: {
-          keepMarks: true,
-          keepAttributes: false,
-        },
-        orderedList: {
-          keepMarks: true,
-          keepAttributes: false,
+      StarterKit,
+      Underline,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Indent,
+      Image.configure({
+        HTMLAttributes: {
+          class: 'rounded-lg max-w-full h-auto object-cover my-4',
         },
       }),
-      Underline,
       Placeholder.configure({
-        placeholder,
+        placeholder: placeholder,
       }),
     ],
-    content: value || "",
-    editable: !disabled,
-    immediatelyRender: false,
-    onUpdate: ({ editor: currentEditor }) => {
-      onChange(currentEditor.isEmpty ? "" : currentEditor.getHTML());
+    content: value,
+    onUpdate: ({ editor }) => {
+      onChange(editor.getHTML());
+    },
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm sm:prose-base focus:outline-none min-h-[300px] p-4 max-w-none',
+      },
+      handlePaste: (view, event) => {
+        const items = Array.from(event.clipboardData?.items || []);
+        const imageItem = items.find(item => item.type.startsWith('image/'));
+        
+        if (imageItem) {
+          const file = imageItem.getAsFile();
+          if (file) {
+            const uploadImage = async () => {
+              try {
+                const formData = new FormData();
+                formData.append('file', file);
+                const res = await apiClient.post<{ data: { url: string } }>('/api/v1/admin/blog-posts/upload-image', formData, {
+                  headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                
+                if (res.data?.data?.url) {
+                  const { schema } = view.state;
+                  const node = schema.nodes.image.create({ src: res.data.data.url });
+                  const transaction = view.state.tr.replaceSelectionWith(node);
+                  view.dispatch(transaction);
+                }
+              } catch (error) {
+                console.error('Paste image upload failed:', error);
+                alert('Upload ảnh thất bại!');
+              }
+            };
+            
+            uploadImage();
+            return true;
+          }
+        }
+        return false;
+      },
     },
   });
 
-  useEffect(() => {
-    if (!editor) return;
-    const currentHtml = editor.getHTML();
-    const isEmptyValue = !value || value.trim() === "";
-    const isEditorEmpty = editor.isEmpty;
-
-    if (isEmptyValue && isEditorEmpty) return;
-
-    if (value !== currentHtml) {
-      editor.commands.setContent(value || "");
-    }
-  }, [value, editor]);
-
-  useEffect(() => {
-    if (!editor) return;
-    editor.setEditable(!disabled);
-  }, [disabled, editor]);
-
-  if (!editor) {
-    return null;
-  }
-
   return (
-    <div
-      className={cn(
-        "w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-background transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:border-transparent overflow-hidden",
-        disabled && "opacity-60 cursor-not-allowed bg-muted/20",
-        className,
-      )}
-    >
-      {!disabled && (
-        <div className="flex flex-wrap items-center gap-1 border-b border-border bg-muted/30 px-2.5 py-1.5">
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            disabled={!editor.can().chain().focus().toggleBold().run()}
-            className={cn(
-              "rounded p-1.5 text-foreground/80 hover:bg-muted hover:text-foreground transition-colors",
-              editor.isActive("bold") && "bg-primary/15 text-primary font-bold",
-            )}
-            title="In đậm (Ctrl+B)"
-            aria-label="In đậm"
-          >
-            <Bold className="size-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            disabled={!editor.can().chain().focus().toggleItalic().run()}
-            className={cn(
-              "rounded p-1.5 text-foreground/80 hover:bg-muted hover:text-foreground transition-colors",
-              editor.isActive("italic") && "bg-primary/15 text-primary font-bold",
-            )}
-            title="In nghiêng (Ctrl+I)"
-            aria-label="In nghiêng"
-          >
-            <Italic className="size-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-            disabled={!editor.can().chain().focus().toggleUnderline().run()}
-            className={cn(
-              "rounded p-1.5 text-foreground/80 hover:bg-muted hover:text-foreground transition-colors",
-              editor.isActive("underline") && "bg-primary/15 text-primary font-bold",
-            )}
-            title="Gạch chân (Ctrl+U)"
-            aria-label="Gạch chân"
-          >
-            <UnderlineIcon className="size-4" />
-          </button>
-
-          <div className="mx-1 h-4 w-px bg-border" />
-
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={cn(
-              "rounded p-1.5 text-foreground/80 hover:bg-muted hover:text-foreground transition-colors",
-              editor.isActive("bulletList") && "bg-primary/15 text-primary font-bold",
-            )}
-            title="Danh sách dấu đầu dòng"
-            aria-label="Danh sách dấu đầu dòng"
-          >
-            <List className="size-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            className={cn(
-              "rounded p-1.5 text-foreground/80 hover:bg-muted hover:text-foreground transition-colors",
-              editor.isActive("orderedList") && "bg-primary/15 text-primary font-bold",
-            )}
-            title="Danh sách có số thứ tự"
-            aria-label="Danh sách có số thứ tự"
-          >
-            <ListOrdered className="size-4" />
-          </button>
-        </div>
-      )}
-
-      <EditorContent
-        editor={editor}
-        className="prose prose-sm dark:prose-invert max-w-none p-3 min-h-[120px] focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[100px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-5 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-5"
-      />
+    <div className={cn("flex flex-col rounded-2xl border border-border bg-background overflow-hidden transition-colors", !disabled && "focus-within:border-[var(--success)]", disabled && "opacity-70 cursor-not-allowed")}>
+      {!disabled && <MenuBar editor={editor} />}
+      <EditorContent editor={editor} className={cn(disabled && "pointer-events-none")} />
     </div>
   );
-}
+};

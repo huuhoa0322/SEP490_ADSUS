@@ -10,6 +10,10 @@ abstract interface class MedicalRecordRepository {
   /// KHÔNG hiện ở đây.
   Future<List<MedicalRecordSummary>> getMyRecords({int page = 1, int pageSize = 20});
 
+  /// Danh sách lượt khám đã End của người thân mà user đang quản lý (GET /cases/relatives).
+  /// Kèm thông tin tên bệnh nhân + quan hệ.
+  Future<List<MedicalRecordSummary>> getRelativeCases({int page = 1, int pageSize = 20});
+
   /// Chi tiết 1 lượt khám (SCR-14, GET /cases/{id}) — ném ApiException (404 → not found)
   /// nếu Case không thuộc về Patient này hoặc chưa End (UC-08 AF-01; đính chính 14/08/2026 —
   /// trước đó chấp nhận cả Confirmed, giờ chỉ End mới xem được).
