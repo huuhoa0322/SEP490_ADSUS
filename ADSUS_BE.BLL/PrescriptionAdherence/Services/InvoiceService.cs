@@ -333,7 +333,8 @@ public class InvoiceService : IInvoiceService
                 Quantity = item.Quantity,
                 UnitPrice = item.UnitPrice,
                 TotalPrice = item.TotalPrice,
-                ItemType = item.ItemType == InvoiceItemType.Service ? "SERVICE" : "MEDICINE"
+                ItemType = item.ItemType == InvoiceItemType.Service ? "SERVICE" : "MEDICINE",
+                ReferenceId = item.ReferenceId
             });
         }
 
@@ -561,9 +562,18 @@ public class InvoiceService : IInvoiceService
             }
         }
 
-        // 2. Xóa dòng hóa đơn
-        _invoices.RemoveItem(item);
-        invoice.InvoiceItems.Remove(item);
+        // 2. Xóa TẤT CẢ các dòng hóa đơn thuộc loại thuốc này (cùng PrescriptionItemId)
+        var itemsToRemove = prescriptionItemId.HasValue
+            ? invoice.InvoiceItems
+                .Where(i => i.ReferenceId == prescriptionItemId.Value && i.ItemType == InvoiceItemType.Medicine)
+                .ToList()
+            : new List<InvoiceItem> { item };
+
+        foreach (var it in itemsToRemove)
+        {
+            _invoices.RemoveItem(it);
+            invoice.InvoiceItems.Remove(it);
+        }
 
         // 3. Tính lại tổng tiền
         invoice.TotalAmount = invoice.InvoiceItems.Sum(i => i.TotalPrice);

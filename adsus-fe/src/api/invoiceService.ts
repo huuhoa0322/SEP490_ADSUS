@@ -31,6 +31,7 @@ export interface InvoiceItemResponse {
   unitPrice: number;
   totalPrice: number;
   itemType?: "MEDICINE" | "SERVICE" | string;
+  referenceId?: string;
 }
 
 export interface InvoiceDetailResponse extends InvoiceResponse {

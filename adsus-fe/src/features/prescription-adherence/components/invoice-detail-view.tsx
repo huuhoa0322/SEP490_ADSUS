@@ -353,14 +353,43 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
           </DialogHeader>
           <div className="space-y-3 pt-1 pb-2">
             <p className="text-sm text-muted-foreground">
-              Bệnh nhân không lấy thuốc này. Xóa dòng thuốc sẽ tự động hoàn số lượng về lại kho.
+              Bệnh nhân không lấy thuốc này. Xóa sẽ tự động hoàn toàn bộ số lượng thuốc về lại kho và xóa các quy cách liên quan trên hóa đơn.
             </p>
-            {removeItemId && data.items.find(i => i.id === removeItemId) && (
-              <div className="bg-muted p-3 rounded-md text-sm">
-                <p className="font-semibold">{data.items.find(i => i.id === removeItemId)?.description}</p>
-                <p>Số lượng: {data.items.find(i => i.id === removeItemId)?.quantity} {data.items.find(i => i.id === removeItemId)?.unit}</p>
-              </div>
-            )}
+            {(() => {
+              const selectedItem = data.items.find((i) => i.id === removeItemId);
+              if (!selectedItem) return null;
+              const relatedItems = selectedItem.referenceId
+                ? data.items.filter((i) => i.referenceId === selectedItem.referenceId && i.itemType === "MEDICINE")
+                : [selectedItem];
+              const totalRefund = relatedItems.reduce((acc, curr) => acc + curr.totalPrice, 0);
+
+              return (
+                <div className="bg-muted/70 p-3 rounded-md text-sm space-y-2 border">
+                  <div className="font-semibold text-foreground">
+                    {relatedItems.length > 1
+                      ? `Các dòng thuốc sẽ xóa (${relatedItems.length} dòng):`
+                      : "Dòng thuốc sẽ xóa:"}
+                  </div>
+                  <ul className="space-y-1 divide-y divide-border/50 text-xs">
+                    {relatedItems.map((rel) => (
+                      <li key={rel.id} className="pt-1 first:pt-0 flex justify-between items-center">
+                        <div>
+                          <span className="font-medium">{rel.description}</span>
+                          <span className="text-muted-foreground ml-1">({rel.quantity} {rel.unit})</span>
+                        </div>
+                        <span className="font-semibold text-primary">{formatCurrency(rel.totalPrice)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {relatedItems.length > 1 && (
+                    <div className="pt-1 border-t border-border flex justify-between font-bold text-xs">
+                      <span>Tổng tiền thuốc giảm:</span>
+                      <span className="text-destructive">{formatCurrency(totalRefund)}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRemoveItemId(null)} disabled={removeMedicine.isPending}>Đóng</Button>
