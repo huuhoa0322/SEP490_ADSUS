@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ArrowLeft, Calendar } from "lucide-react";
 import Link from "next/link";
@@ -7,7 +7,7 @@ import { getApiErrorMessage } from "@/lib/api-client";
 
 /**
  * Blog detail view - PUBLIC, no authentication required.
- * SCR-26 - Chi tiết bài viết Blog Sức khỏe
+ * SCR-26 - Chi tiáº¿t bÃ i viáº¿t Blog Sá»©c khá»e
  */
 export function BlogDetailView({ id }: { id: string }) {
   const { data: post, isLoading, isError, error } = usePublicBlogPost(id);
@@ -22,7 +22,7 @@ export function BlogDetailView({ id }: { id: string }) {
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
           >
             <ArrowLeft className="h-4 w-4" />
-            Quay lại danh sách
+            Quay láº¡i danh sÃ¡ch
           </Link>
         </div>
       </div>
@@ -34,7 +34,7 @@ export function BlogDetailView({ id }: { id: string }) {
             role="alert"
             className="mb-6 flex items-start gap-2.5 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"
           >
-            {getApiErrorMessage(error, "Không tải được bài viết.")}
+            {getApiErrorMessage(error, "KhÃ´ng táº£i Ä‘Æ°á»£c bÃ i viáº¿t.")}
           </div>
         )}
 
@@ -88,9 +88,9 @@ export function BlogDetailView({ id }: { id: string }) {
             {/* Disclaimer */}
             <div className="border-t border-border bg-secondary/30 p-6">
               <p className="text-sm text-muted-foreground">
-                <strong className="text-foreground">Lưu ý:</strong> Thông tin trong bài viết này chỉ mang tính chất tham khảo
-                và không thay thế cho lời khuyên y tế chuyên môn. Vui lòng tham khảo bác sĩ
-                của bạn để được tư vấn cụ thể.
+                <strong className="text-foreground">LÆ°u Ã½:</strong> ThÃ´ng tin trong bÃ i viáº¿t nÃ y chá»‰ mang tÃ­nh cháº¥t tham kháº£o
+                vÃ  khÃ´ng thay tháº¿ cho lá»i khuyÃªn y táº¿ chuyÃªn mÃ´n. Vui lÃ²ng tham kháº£o bÃ¡c sÄ©
+                cá»§a báº¡n Ä‘á»ƒ Ä‘Æ°á»£c tÆ° váº¥n cá»¥ thá»ƒ.
               </p>
             </div>
           </article>
@@ -99,3 +99,4 @@ export function BlogDetailView({ id }: { id: string }) {
     </div>
   );
 }
+

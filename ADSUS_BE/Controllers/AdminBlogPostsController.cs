@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Engagement.DTOs;
 using ADSUS_BE.BLL.Engagement.Interfaces;
@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace ADSUS_BE.Controllers;
 
 /// <summary>
-/// UC-24 — Admin Blog Management endpoints.
-/// Chỉ Admin mới truy cập.
-/// GB-01: Draft → Published một chiều (không rollback).
+/// UC-24 â€” Admin Blog Management endpoints.
+/// Chá»‰ Admin má»›i truy cáº­p.
+/// GB-01: Draft â†’ Published má»™t chiá»u (khÃ´ng rollback).
 /// </summary>
 [ApiController]
 [Route("api/v1/admin/blog-posts")]
@@ -19,11 +19,13 @@ namespace ADSUS_BE.Controllers;
 [Produces("application/json")]
 public sealed class AdminBlogPostsController : ControllerBase
 {
-    private readonly IBlogPostService _blog;
+        private readonly IBlogPostService _blog;
+    private readonly ADSUS_BE.DAL.ExternalServices.IFileStorageService _storage;
 
-    public AdminBlogPostsController(IBlogPostService blog)
+    public AdminBlogPostsController(IBlogPostService blog, ADSUS_BE.DAL.ExternalServices.IFileStorageService storage)
     {
         _blog = blog;
+        _storage = storage;
     }
 
     private Guid GetCurrentUserId()
@@ -33,7 +35,7 @@ public sealed class AdminBlogPostsController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/v1/admin/blog-posts — Danh sách tất cả blog (cả Draft + Published), phân trang.
+    /// GET /api/v1/admin/blog-posts â€” Danh sÃ¡ch táº¥t cáº£ blog (cáº£ Draft + Published), phÃ¢n trang.
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<AdminBlogPostListItemResponse>>), StatusCodes.Status200OK)]
@@ -54,7 +56,7 @@ public sealed class AdminBlogPostsController : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/v1/admin/blog-posts/{id} — Chi tiết blog (cả Draft + Published).
+    /// GET /api/v1/admin/blog-posts/{id} â€” Chi tiáº¿t blog (cáº£ Draft + Published).
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse<AdminBlogPostDetailResponse>), StatusCodes.Status200OK)]
@@ -66,14 +68,14 @@ public sealed class AdminBlogPostsController : ControllerBase
         if (result == null)
         {
             return NotFound(ApiResponse<AdminBlogPostDetailResponse>.Fail(
-                StatusCodes.Status404NotFound, "Bài viết không tồn tại."));
+                StatusCodes.Status404NotFound, "BÃ i viáº¿t khÃ´ng tá»“n táº¡i."));
         }
 
         return Ok(ApiResponse<AdminBlogPostDetailResponse>.Ok(result));
     }
 
     /// <summary>
-    /// POST /api/v1/admin/blog-posts — Tạo blog post mới (Draft).
+    /// POST /api/v1/admin/blog-posts â€” Táº¡o blog post má»›i (Draft).
     /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<AdminBlogPostDetailResponse>), StatusCodes.Status201Created)]
@@ -85,13 +87,13 @@ public sealed class AdminBlogPostsController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Title))
         {
             return BadRequest(ApiResponse<object>.Fail(
-                StatusCodes.Status400BadRequest, "Tiêu đề không được trống."));
+                StatusCodes.Status400BadRequest, "TiÃªu Ä‘á» khÃ´ng Ä‘Æ°á»£c trá»‘ng."));
         }
 
         if (string.IsNullOrWhiteSpace(request.Content))
         {
             return BadRequest(ApiResponse<object>.Fail(
-                StatusCodes.Status400BadRequest, "Nội dung không được trống."));
+                StatusCodes.Status400BadRequest, "Ná»™i dung khÃ´ng Ä‘Æ°á»£c trá»‘ng."));
         }
 
         var authorId = GetCurrentUserId();
@@ -100,12 +102,12 @@ public sealed class AdminBlogPostsController : ControllerBase
         return CreatedAtAction(
             nameof(GetById),
             new { id = result.Id },
-            ApiResponse<AdminBlogPostDetailResponse>.Ok(result, "Bài viết đã được tạo."));
+            ApiResponse<AdminBlogPostDetailResponse>.Ok(result, "BÃ i viáº¿t Ä‘Ã£ Ä‘Æ°á»£c táº¡o."));
     }
 
     /// <summary>
-    /// PUT /api/v1/admin/blog-posts/{id} — Cập nhật blog post.
-    /// GB-01: chỉ Draft mới cho sửa, Published không được sửa.
+    /// PUT /api/v1/admin/blog-posts/{id} â€” Cáº­p nháº­t blog post.
+    /// GB-01: chá»‰ Draft má»›i cho sá»­a, Published khÃ´ng Ä‘Æ°á»£c sá»­a.
     /// </summary>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse<AdminBlogPostDetailResponse>), StatusCodes.Status200OK)]
@@ -119,13 +121,13 @@ public sealed class AdminBlogPostsController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Title))
         {
             return BadRequest(ApiResponse<object>.Fail(
-                StatusCodes.Status400BadRequest, "Tiêu đề không được trống."));
+                StatusCodes.Status400BadRequest, "TiÃªu Ä‘á» khÃ´ng Ä‘Æ°á»£c trá»‘ng."));
         }
 
         if (string.IsNullOrWhiteSpace(request.Content))
         {
             return BadRequest(ApiResponse<object>.Fail(
-                StatusCodes.Status400BadRequest, "Nội dung không được trống."));
+                StatusCodes.Status400BadRequest, "Ná»™i dung khÃ´ng Ä‘Æ°á»£c trá»‘ng."));
         }
 
         var result = await _blog.UpdateAsync(id, request, ct);
@@ -133,15 +135,15 @@ public sealed class AdminBlogPostsController : ControllerBase
         if (result == null)
         {
             return NotFound(ApiResponse<AdminBlogPostDetailResponse>.Fail(
-                StatusCodes.Status404NotFound, "Bài viết không tồn tại hoặc đã được xuất bản (không thể sửa)."));
+                StatusCodes.Status404NotFound, "BÃ i viáº¿t khÃ´ng tá»“n táº¡i hoáº·c Ä‘Ã£ Ä‘Æ°á»£c xuáº¥t báº£n (khÃ´ng thá»ƒ sá»­a)."));
         }
 
-        return Ok(ApiResponse<AdminBlogPostDetailResponse>.Ok(result, "Bài viết đã được cập nhật."));
+        return Ok(ApiResponse<AdminBlogPostDetailResponse>.Ok(result, "BÃ i viáº¿t Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t."));
     }
 
     /// <summary>
-    /// POST /api/v1/admin/blog-posts/{id}/publish — Xuất bản blog post.
-    /// GB-01: Draft → Published một chiều (không rollback).
+    /// POST /api/v1/admin/blog-posts/{id}/publish â€” Xuáº¥t báº£n blog post.
+    /// GB-01: Draft â†’ Published má»™t chiá»u (khÃ´ng rollback).
     /// </summary>
     [HttpPost("{id:guid}/publish")]
     [ProducesResponseType(typeof(ApiResponse<AdminBlogPostDetailResponse>), StatusCodes.Status200OK)]
@@ -154,9 +156,45 @@ public sealed class AdminBlogPostsController : ControllerBase
         if (result == null)
         {
             return BadRequest(ApiResponse<AdminBlogPostDetailResponse>.Fail(
-                StatusCodes.Status400BadRequest, "Bài viết không tồn tại hoặc đã được xuất bản."));
+                StatusCodes.Status400BadRequest, "BÃ i viáº¿t khÃ´ng tá»“n táº¡i hoáº·c Ä‘Ã£ Ä‘Æ°á»£c xuáº¥t báº£n."));
         }
 
-        return Ok(ApiResponse<AdminBlogPostDetailResponse>.Ok(result, "Bài viết đã được xuất bản."));
+        return Ok(ApiResponse<AdminBlogPostDetailResponse>.Ok(result, "BÃ i viáº¿t Ä‘Ã£ Ä‘Æ°á»£c xuáº¥t báº£n."));
+    }
+    /// <summary>
+    /// POST /api/v1/admin/blog-posts/upload-image â€” Upload áº£nh cho bÃ i viáº¿t
+    /// </summary>
+    [HttpPost("upload-image")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UploadImage(IFormFile file, CancellationToken ct)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, "KhÃ´ng cÃ³ file nÃ o Ä‘Æ°á»£c táº£i lÃªn."));
+        }
+
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExtensions.Contains(ext))
+        {
+            return BadRequest(ApiResponse<object>.Fail(StatusCodes.Status400BadRequest, "Ä á»‹nh dáº¡ng áº£nh khÃ´ng há»£p lá»‡."));
+        }
+
+        var objectPath = $"blogs/{Guid.NewGuid()}{ext}";
+        using var stream = file.OpenReadStream();
+        
+        try 
+        {
+            var uploadedPath = await _storage.UploadAsync(stream, objectPath, file.ContentType, "datasets", ct);
+            var signedUrl = await _storage.CreateSignedUrlAsync(uploadedPath, "datasets", ct);
+            return Ok(ApiResponse<object>.Ok(new { url = signedUrl ?? uploadedPath }));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(500, $"Lá»—i upload: {ex.Message}"));
+        }
     }
 }
+

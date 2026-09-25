@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
@@ -11,7 +11,7 @@ import { useCreateBlogPost } from "../hooks/use-admin-blog";
 
 /**
  * Admin Blog Create View - requires ADMIN role.
- * SCR-27 - Tạo bài viết mới (bản Draft)
+ * SCR-27 - Táº¡o bÃ i viáº¿t má»›i (báº£n Draft)
  */
 export function AdminBlogCreateView() {
   const router = useRouter();
@@ -45,21 +45,21 @@ export function AdminBlogCreateView() {
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
       >
         <ArrowLeft className="size-4" />
-        Danh sách bài viết
+        Danh sÃ¡ch bÃ i viáº¿t
       </Link>
 
       <h1 className="mt-5 font-heading text-[32px] font-bold tracking-[-0.02em] text-foreground">
-        Tạo bài viết mới
+        Táº¡o bÃ i viáº¿t má»›i
       </h1>
       <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-        Bài viết sẽ được tạo ở trạng thái bản nháp. Bạn có thể chỉnh sửa và xuất bản sau.
+        BÃ i viáº¿t sáº½ Ä‘Æ°á»£c táº¡o á»Ÿ tráº¡ng thÃ¡i báº£n nhÃ¡p. Báº¡n cÃ³ thá»ƒ chá»‰nh sá»­a vÃ  xuáº¥t báº£n sau.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">
         {/* Title */}
         <label className="flex flex-col gap-2.5">
           <span className="font-heading text-[13px] font-600 uppercase tracking-wider text-foreground">
-            Tiêu đề bài viết
+            TiÃªu Ä‘á» bÃ i viáº¿t
           </span>
           <input
             type="text"
@@ -67,29 +67,22 @@ export function AdminBlogCreateView() {
             onChange={(e) => setTitle(e.target.value)}
             required
             className="h-14 w-full rounded-full border border-border bg-background px-5 text-[15px] outline-none transition-colors focus:border-[var(--success)]"
-            placeholder="Nhập tiêu đề bài viết..."
+            placeholder="Nháº­p tiÃªu Ä‘á» bÃ i viáº¿t..."
           />
         </label>
 
         {/* Content */}
         <label className="flex flex-col gap-2.5">
           <span className="font-heading text-[13px] font-600 uppercase tracking-wider text-foreground">
-            Nội dung bài viết
+            Ná»™i dung bÃ i viáº¿t
           </span>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            required
-            rows={15}
-            className="w-full rounded-2xl border border-border bg-background px-5 py-4 font-mono text-sm outline-none transition-colors focus:border-[var(--success)]"
-            placeholder="Nhập nội dung bài viết (Markdown)..."
-          />
+          <RichTextEditor value={content} onChange={setContent} />
         </label>
 
         {/* Error */}
         {createMutation.isError && (
           <div role="alert" className="flex items-start gap-2.5 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {getApiErrorMessage(createMutation.error, "Không tạo được bài viết.")}
+            {getApiErrorMessage(createMutation.error, "KhÃ´ng táº¡o Ä‘Æ°á»£c bÃ i viáº¿t.")}
           </div>
         )}
 
@@ -99,7 +92,7 @@ export function AdminBlogCreateView() {
             href="/admin/blog"
             className="rounded-full border border-border px-5 py-2.5 text-sm font-600 text-muted-foreground transition-colors hover:bg-secondary"
           >
-            Hủy
+            Há»§y
           </Link>
           <button
             type="submit"
@@ -107,10 +100,11 @@ export function AdminBlogCreateView() {
             className="flex items-center gap-2 rounded-full bg-[var(--success)] px-6 py-2.5 font-heading text-sm font-600 uppercase tracking-wider text-text-white shadow-lg shadow-[var(--success)]/25 transition-all hover:bg-[var(--success)]/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Send className="size-4" />
-            {createMutation.isPending ? "Đang tạo..." : "Tạo bài viết"}
+            {createMutation.isPending ? "Äang táº¡o..." : "Táº¡o bÃ i viáº¿t"}
           </button>
         </div>
       </form>
     </div>
   );
 }
+

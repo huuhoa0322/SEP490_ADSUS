@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Trash2 } from "lucide-react";
 import type { NotificationLog } from "../types/notification.types";
@@ -20,8 +20,17 @@ export function NotificationItem({ notification }: NotificationItemProps) {
   const router = useRouter();
   const currentUser = useAuthStore((s) => s.user);
   const [isHovered, setIsHovered] = useState(false);
+  const [, setTick] = useState(0); // Dùng để ép re-render định kỳ
   const markAsRead = useMarkAsRead();
   const deleteNotification = useDeleteNotification();
+
+  // Ép re-render mỗi 1 phút để update text "Vừa xong" -> "1 phút trước"
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTick((t) => t + 1);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const isUnread = !notification.isRead;
   const icon = NOTIFICATION_ICONS[notification.type] || "📢";
