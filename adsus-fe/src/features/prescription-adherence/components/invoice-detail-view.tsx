@@ -279,11 +279,11 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
       </div>
 
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Xác Nhận Hủy Hóa Đơn</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 pt-1 pb-2">
             <p className="text-sm text-muted-foreground">
               {data.status === "PAID" 
                 ? "Hóa đơn này đã thanh toán. Hủy hóa đơn sẽ tự động hoàn số lượng thuốc về lại các lô trong kho (Reverse Dispense)."
@@ -296,6 +296,7 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
                 placeholder="Nhập lý do hủy hóa đơn..."
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
+                className="min-h-[100px] resize-none"
               />
             </div>
           </div>
