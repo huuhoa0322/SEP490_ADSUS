@@ -16,6 +16,7 @@ public class CaseServiceTests
     private readonly Mock<IUltrasoundImageRepository> _images = new();
     private readonly Mock<IPatientProfileRepository> _profiles = new();
     private readonly Mock<IUserRepository> _users = new();
+    private readonly Mock<IPatientRelationshipRepository> _relationships = new();
     private readonly Mock<IFileStorageService> _storage = new();
     private readonly Mock<INotificationService> _notificationService = new();
     private readonly CaseService _sut;
@@ -24,6 +25,7 @@ public class CaseServiceTests
     {
         _sut = new CaseService(
             _cases.Object, _images.Object, _profiles.Object, _users.Object,
+            _relationships.Object,
             new System.Lazy<IFileStorageService>(() => _storage.Object),
             _notificationService.Object,
             Mock.Of<ILogger<CaseService>>());

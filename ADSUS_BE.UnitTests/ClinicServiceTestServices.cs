@@ -30,6 +30,7 @@ internal static class ClinicServiceTestServices
             new UltrasoundImageRepository(db),
             new PatientProfileRepository(db),
             new UserRepository(db),
+            new PatientRelationshipRepository(db),
             new Lazy<IFileStorageService>(() => Mock.Of<IFileStorageService>()),
             Mock.Of<INotificationService>(),
             NullLogger<CaseService>.Instance));

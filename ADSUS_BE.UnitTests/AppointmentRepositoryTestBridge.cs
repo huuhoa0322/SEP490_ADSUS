@@ -106,6 +106,7 @@ internal static class AppointmentRepositoryTestBridge
         Mock.Of<IUltrasoundImageRepository>(),
         Mock.Of<IPatientProfileRepository>(),
         new UserRepository(db),
+        new PatientRelationshipRepository(db),
         new Lazy<IFileStorageService>(() => Mock.Of<IFileStorageService>()),
         Mock.Of<INotificationService>(),
         NullLogger<CaseService>.Instance);
