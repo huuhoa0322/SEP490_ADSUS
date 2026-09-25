@@ -34,6 +34,15 @@ class MedicalRecordMapper {
         doctorConclusion: dto.doctorConclusion,
         prescription: dto.prescription == null ? null : _prescriptionFromDto(dto.prescription!),
         images: dto.ultrasoundImages.map(_imageFromDto).toList(),
+        symptoms: dto.symptoms
+            .map((s) => CaseSymptomEntity(
+                  categoryId: s.categoryId,
+                  categoryName: s.categoryName,
+                  symptomId: s.symptomId,
+                  symptomName: s.symptomName,
+                  otherNote: s.otherNote,
+                ))
+            .toList(),
       );
 
   static MedicalRecordImage _imageFromDto(UltrasoundImageDto dto) {

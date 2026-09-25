@@ -24,6 +24,23 @@ class CaseDiagnosisEntity {
   final String? note;
 }
 
+/// Entity đại diện cho một triệu chứng của ca khám.
+class CaseSymptomEntity {
+  const CaseSymptomEntity({
+    required this.categoryId,
+    required this.categoryName,
+    this.symptomId,
+    this.symptomName,
+    this.otherNote,
+  });
+
+  final String categoryId;
+  final String categoryName;
+  final String? symptomId;
+  final String? symptomName;
+  final String? otherNote;
+}
+
 /// Chi tiết đầy đủ 1 lượt khám mà Patient được xem — UC-08, SCR-14.
 ///
 /// Đính chính 15/08/2026: trước đây chỉ có `conclusion` + đơn thuốc tối thiểu, dựa theo UCS
@@ -42,6 +59,7 @@ class MedicalRecordCase {
     this.doctorConclusion,
     this.prescription,
     this.images = const [],
+    this.symptoms = const [],
   });
 
   final String caseId;
@@ -63,4 +81,7 @@ class MedicalRecordCase {
   /// xác nhận chưa có màn riêng để điều hướng tới.
   final MedicalRecordPrescription? prescription;
   final List<MedicalRecordImage> images;
+
+  /// Danh sách triệu chứng ghi nhận của ca khám.
+  final List<CaseSymptomEntity> symptoms;
 }
