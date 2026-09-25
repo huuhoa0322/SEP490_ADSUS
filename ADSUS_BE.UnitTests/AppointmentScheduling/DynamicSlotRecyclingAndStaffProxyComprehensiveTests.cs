@@ -207,7 +207,8 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
             _caseService.BackedBy(_db).Object,
             _noShowService,
             new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
-            Mock.Of<ILogger<AppointmentService>>());
+            Mock.Of<ILogger<AppointmentService>>(),
+            _db);
     }
 
     public void Dispose()
@@ -345,10 +346,9 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
         Assert.Equal(SlotStatus.Open, updatedSlot.Status);
 
         // Assert: Notification sent to staff
-        _notificationService.Verify(n => n.SendAsync(
-            It.Is<SendNotificationRequest>(r =>
-                r.UserId == _staffUserId &&
-                r.Type == "doctor_ready_next"),
+        _notificationService.Verify(n => n.SendBulkAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Contains(_staffUserId)),
+            It.Is<SendNotificationRequest>(r => r.Type == "doctor_ready_next"),
             It.IsAny<CancellationToken>()), Times.AtLeastOnce);
     }
 

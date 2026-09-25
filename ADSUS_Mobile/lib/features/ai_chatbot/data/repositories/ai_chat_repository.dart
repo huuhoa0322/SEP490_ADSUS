@@ -5,6 +5,7 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../domain/entities/chat_message.dart';
 import '../dtos/chat_dto.dart';
+import '../dtos/chat_stream_event.dart';
 
 /// Repository cho Module 10 Chat (FT-39).
 ///
@@ -13,6 +14,45 @@ class AiChatRepository {
   const AiChatRepository(this._dio);
 
   final Dio _dio;
+
+  /// POST /api/v1/me/chat/messages — SSE streaming
+  ///
+  /// Stream các sự kiện (thinking, delta, done, error).
+  Stream<ChatStreamEvent> streamMessage(String content, {CancelToken? cancelToken}) async* {
+    try {
+      debugPrint('[AiChatRepo] STREAM POST /api/v1/me/chat/messages content: $content');
+
+      final res = await _dio.post<ResponseBody>(
+        '/api/v1/me/chat/messages',
+        data: SendChatMessageRequest(content: content).toJson(),
+        cancelToken: cancelToken,
+        options: Options(
+          responseType: ResponseType.stream,
+          receiveTimeout: ApiConstants.chatTimeout,
+          sendTimeout: ApiConstants.chatTimeout,
+          headers: const {
+            'Accept': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+          },
+        ),
+      );
+
+      final stream = res.data?.stream;
+      if (stream == null) {
+        yield const ChatStreamErrorEvent('Không nhận được stream từ server.');
+        return;
+      }
+
+      yield* parseSseStream(stream);
+    } on DioException catch (e) {
+      debugPrint('[AiChatRepo] DioException: ${e.response?.statusCode} - ${e.message}');
+      final err = ApiErrorMapper.general(e,
+          fallback: 'Không gửi được tin nhắn. Vui lòng thử lại.');
+      yield ChatStreamErrorEvent(err.message);
+    } catch (e) {
+      yield ChatStreamErrorEvent(e.toString());
+    }
+  }
 
   /// POST /api/v1/me/chat/messages
   ///

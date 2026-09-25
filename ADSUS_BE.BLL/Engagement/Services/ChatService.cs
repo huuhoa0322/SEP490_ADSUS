@@ -1,6 +1,9 @@
+using System.Runtime.CompilerServices;
+using System.Text;
 using ADSUS_BE.BLL.Common;
 using ADSUS_BE.BLL.Engagement.DTOs;
 using ADSUS_BE.BLL.Engagement.Interfaces;
+using ADSUS_BE.BLL.Engagement.Models;
 using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using ADSUS_BE.DAL.Repositories.Interfaces;
@@ -214,6 +217,236 @@ public sealed class ChatService : IChatService
             DetectedIntent = isSafety ? null : intent?.Intent,
             IsRateLimitExceeded = isRateLimitExceeded,
         };
+    }
+
+    public IAsyncEnumerable<ChatStreamEvent> StreamMessageAsync(
+        Guid userId,
+        SendChatMessageRequest request,
+        CancellationToken ct = default)
+    {
+        return StreamMessageAsync(userId, request?.Content ?? string.Empty, ct);
+    }
+
+    public async IAsyncEnumerable<ChatStreamEvent> StreamMessageAsync(
+        Guid userId,
+        string content,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        // 1. Validate
+        var trimmed = content?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(trimmed))
+            throw new ArgumentException("Tin nhắn không được để trống.");
+        if (trimmed.Length > MaxContentLength)
+            throw new ArgumentException($"Tin nhắn vượt quá {MaxContentLength} ký tự.");
+
+        var now = DateTime.UtcNow;
+
+        // 2. Save USER message
+        var userMsg = new AiChatMessage
+        {
+            MessageId = Guid.NewGuid(),
+            UserId = userId,
+            Content = trimmed,
+            Role = ChatRole.User,
+            CreatedAt = now,
+        };
+        await _repo.AddAsync(userMsg, ct);
+
+        // 3. Pre-checks: Psychology filter check
+        var unsafeTopic = _psychologyFilter.DetectUnsafeTopic(trimmed);
+        if (unsafeTopic is not null)
+        {
+            // GB-02: safety — KHÔNG phát thinking, KHÔNG gọi LLM
+            _logger.LogInformation(
+                "PsychologyTopicFilter matched [{Topic}] for user {UserId}. Returning safety response immediately.",
+                unsafeTopic, userId);
+
+            var safetyMsg = new AiChatMessage
+            {
+                MessageId = Guid.NewGuid(),
+                UserId = userId,
+                Content = DisclaimerText.Safety,
+                Role = ChatRole.Assistant,
+                CreatedAt = DateTime.UtcNow,
+            };
+            await _repo.AddAsync(safetyMsg, ct);
+
+            yield return new ChatDoneEvent(
+                messageId: safetyMsg.MessageId,
+                content: DisclaimerText.Safety,
+                detectedIntent: "PsychologyCrisis",
+                isSafetyResponse: true,
+                isRateLimitExceeded: false,
+                createdAt: safetyMsg.CreatedAt
+            );
+            yield break;
+        }
+
+        // Rate limit pre-check
+        var rateLimitSince = now.Subtract(ChatRateLimitConstants.RateLimitWindow);
+        var recentCalls = await _repo.CountAssistantMessagesSinceAsync(userId, rateLimitSince, ct);
+
+        if (recentCalls >= ChatRateLimitConstants.MaxCallsPerWindow)
+        {
+            _logger.LogInformation(
+                "User {UserId} hit rate limit ({Count} calls in last hour). Skipping LLM call.",
+                userId, recentCalls);
+
+            var rateLimitNotice =
+                $"Bạn đã sử dụng hết {ChatRateLimitConstants.MaxCallsPerWindow} lượt hỏi trong 1 tiếng qua. " +
+                "Vui lòng chờ ít nhất 1 tiếng trước khi tiếp tục. " +
+                "Nếu cần hỗ trợ gấp, hãy liên hệ bác sĩ trực tiếp.";
+
+            var rateLimitMsg = new AiChatMessage
+            {
+                MessageId = Guid.NewGuid(),
+                UserId = userId,
+                Content = rateLimitNotice,
+                Role = ChatRole.Assistant,
+                CreatedAt = DateTime.UtcNow,
+            };
+            await _repo.AddAsync(rateLimitMsg, ct);
+
+            yield return new ChatDoneEvent(
+                messageId: rateLimitMsg.MessageId,
+                content: rateLimitNotice,
+                detectedIntent: null,
+                isSafetyResponse: false,
+                isRateLimitExceeded: true,
+                createdAt: rateLimitMsg.CreatedAt
+            );
+            yield break;
+        }
+
+        // 4. Normal path: Detect intent & prepare prompt
+        var intent = await _intentDetector.DetectAsync(trimmed, ct);
+        var history = await BuildHistoryForLlm(userId, ct);
+        var effectivePrompt = await BuildSystemPromptAsync(userId, intent, ct);
+
+        if (recentCalls >= ChatRateLimitConstants.WarningThreshold)
+        {
+            _logger.LogInformation(
+                "User {UserId} approaching rate limit ({Count}/{Max} calls). Proceeding with warning.",
+                userId, recentCalls, ChatRateLimitConstants.MaxCallsPerWindow);
+            effectivePrompt +=
+                $"\n\n[LƯU Ý: Người dùng đã hỏi {recentCalls}/{ChatRateLimitConstants.MaxCallsPerWindow} lần trong 1 tiếng qua. Hãy trả lời NGẮN GỌN hơn bình thường.]";
+        }
+
+        // Emit thinking event
+        yield return new ChatThinkingEvent("thinking");
+
+        // 5. Stream deltas from LLM client
+        var sb = new StringBuilder();
+        IAsyncEnumerator<string>? enumerator = null;
+        string? streamInitError = null;
+        try
+        {
+            enumerator = _chatClient.StreamMessageAsync(effectivePrompt, history, trimmed, ct)
+                .GetAsyncEnumerator(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("StreamMessageAsync cancelled before starting for user {UserId}.", userId);
+            yield break;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initiate LLM stream for user {UserId}.", userId);
+            streamInitError = "Trợ lý AI đang bận. Vui lòng thử lại sau.";
+        }
+
+        if (streamInitError != null)
+        {
+            yield return new ChatErrorEvent(streamInitError, "STREAM_ERROR");
+            yield break;
+        }
+
+        string? streamLoopError = null;
+        if (enumerator != null)
+        {
+            await using (enumerator)
+            {
+                while (true)
+                {
+                    bool hasMore;
+                    try
+                    {
+                        hasMore = await enumerator.MoveNextAsync();
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        _logger.LogWarning("LLM streaming cancelled by client for user {UserId}.", userId);
+                        yield break;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "LLM streaming error for user {UserId}.", userId);
+                        streamLoopError = "Trợ lý AI đang bận. Vui lòng thử lại sau.";
+                        break;
+                    }
+
+                    if (!hasMore) break;
+
+                    var chunk = enumerator.Current;
+                    if (!string.IsNullOrEmpty(chunk))
+                    {
+                        sb.Append(chunk);
+                        yield return new ChatDeltaEvent(chunk);
+                    }
+                }
+            }
+        }
+
+        if (streamLoopError != null)
+        {
+            yield return new ChatErrorEvent(streamLoopError, "STREAM_ERROR");
+            yield break;
+        }
+
+        // 6. Check cancellation before DB save
+        if (ct.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                "Cancellation requested for user {UserId} — skipping assistant message save to prevent orphan records.",
+                userId);
+            yield break;
+        }
+
+        // 7. Save ASSISTANT message to DB
+        var fullText = sb.ToString().Trim();
+        if (string.IsNullOrEmpty(fullText))
+        {
+            fullText = "Trợ lý AI không có phản hồi. Vui lòng thử lại sau.";
+        }
+
+        AiChatMessage assistantMsg;
+        try
+        {
+            assistantMsg = new AiChatMessage
+            {
+                MessageId = Guid.NewGuid(),
+                UserId = userId,
+                Content = fullText,
+                Role = ChatRole.Assistant,
+                CreatedAt = DateTime.UtcNow,
+            };
+            await _repo.AddAsync(assistantMsg, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("DB save cancelled for user {UserId}.", userId);
+            yield break;
+        }
+
+        // 8. Emit done event
+        yield return new ChatDoneEvent(
+            messageId: assistantMsg.MessageId,
+            content: fullText,
+            detectedIntent: intent?.Intent.ToString() ?? "General",
+            isSafetyResponse: false,
+            isRateLimitExceeded: false,
+            createdAt: assistantMsg.CreatedAt
+        );
     }
 
     public async Task<ChatHistoryResponse> GetHistoryAsync(

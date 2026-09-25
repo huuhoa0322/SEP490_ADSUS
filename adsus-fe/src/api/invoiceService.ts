@@ -26,6 +26,7 @@ export interface InvoiceResponse {
 export interface InvoiceItemResponse {
   id: string;
   description: string;
+  unit: string;
   quantity: number;
   unitPrice: number;
   totalPrice: number;

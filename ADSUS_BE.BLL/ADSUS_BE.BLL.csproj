@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <UserSecretsId>206523ca-79d3-4525-bd29-c0b7c9c2685a</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -62,6 +63,7 @@
     <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="HtmlSanitizer" Version="9.2.1039" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <!-- Khai tường minh thay vì dựa vào Quartz kéo hộ. Tầng nghiệp vụ cần ILogger, mà phụ
          thuộc bắc cầu thì biến mất ngay khi ai đó gỡ Quartz — lúc đó lỗi biên dịch hiện ra

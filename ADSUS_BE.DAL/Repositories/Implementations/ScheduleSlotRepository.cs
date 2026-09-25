@@ -86,6 +86,33 @@ public sealed class ScheduleSlotRepository : IScheduleSlotRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<ScheduleSlot>> ListOpenSlotsForBookingAsync(
+        DateOnly from,
+        DateOnly to,
+        DateOnly todayVn,
+        TimeOnly currentTimeVn,
+        Guid? doctorId = null,
+        CancellationToken ct = default)
+    {
+        IQueryable<ScheduleSlot> query = _db.ScheduleSlots
+            .AsNoTracking()
+            .Include(s => s.Doctor)
+            .Where(s => s.SlotDate >= from && s.SlotDate <= to && s.Status == SlotStatus.Open)
+            .Where(s => s.Doctor.Status == UserStatus.Active)
+            .Where(s => s.SlotDate > todayVn || (s.SlotDate == todayVn && s.StartTime > currentTimeVn))
+            .Where(s => !s.Appointments.Any(a => 
+                a.Status == AppointmentStatus.Booked
+                || (a.Case != null && a.Case.Status == CaseStatus.InProgress)));
+
+        if (doctorId.HasValue)
+            query = query.Where(s => s.DoctorId == doctorId.Value);
+
+        return await query
+            .OrderBy(s => s.SlotDate)
+            .ThenBy(s => s.StartTime)
+            .ToListAsync(ct);
+    }
+
     public async Task<bool> HasOverlapAsync(
         Guid doctorId,
         DateOnly slotDate,

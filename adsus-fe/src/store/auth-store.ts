@@ -114,7 +114,16 @@ export const useAuthStore = create<AuthState>()(
        * NOTE: Only logs out on 401 (invalid/revoked token), not on network errors.
        */
       refreshAccessToken: async () => {
-        const { refreshToken } = get();
+        let refreshToken = get().refreshToken;
+        
+        // Luôn đọc từ localStorage trước để tránh stale state khi có nhiều tab (vì token có thể đã được tab khác refresh)
+        if (typeof window !== "undefined" && window.localStorage) {
+          const storedRefresh = window.localStorage.getItem(REFRESH_TOKEN_KEY);
+          if (storedRefresh) {
+            refreshToken = storedRefresh;
+          }
+        }
+        
         if (!refreshToken) return false;
 
         try {

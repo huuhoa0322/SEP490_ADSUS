@@ -64,10 +64,11 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
 
     setIsSavingAll(true);
     try {
-      // Process sequentially
-      for (let i = 0; i < images.length; i++) {
-        setSavingProgress(i + 1);
-        const file = images[i];
+      // Xử lý song song tất cả các ảnh
+      let completedCount = 0;
+      setSavingProgress(0);
+
+      const uploadPromises = images.map(async (file, i) => {
         const draft = drafts[i];
         const result = aiResults[i];
         
@@ -121,7 +122,13 @@ export default function DiagnosticPage({ params }: { params: Promise<{ caseId: s
         await apiClient.post(`/api/v1/cases/${caseId}/images/confirm`, formData, {
           timeout: 60000,
         });
-      }
+
+        completedCount++;
+        // React state update is batched but this provides an optimistic progress indicator
+        setSavingProgress(completedCount);
+      });
+
+      await Promise.all(uploadPromises);
 
       queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.case(caseId) });
       queryClient.invalidateQueries({ queryKey: medicalRecordQueryKeys.images(caseId) });

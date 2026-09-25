@@ -103,7 +103,8 @@ public class Phase5AuditRemediationEmpiricalStressTests : IDisposable
             _caseService.BackedBy(_db).Object,
             noShowService,
             new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
-            Mock.Of<ILogger<AppointmentService>>());
+            Mock.Of<ILogger<AppointmentService>>(),
+            _db);
 
         _medicineService = new MedicineService(
             _medicineRepo.BackedBy(_db).Object,

@@ -233,9 +233,7 @@ public class InvoiceService : IInvoiceService
         }
 
         invoice.TotalAmount = grandTotal;
-
         await _unitOfWork.SaveChangesAsync();
-
         if (hasMedicine)
         {
             await _inventoryService.DispenseAsync(caseId);
@@ -306,6 +304,39 @@ public class InvoiceService : IInvoiceService
         if (invoice == null)
             throw new BusinessException("Không tìm thấy hóa đơn.");
 
+        var responseItems = new List<InvoiceItemResponse>();
+        foreach (var item in invoice.InvoiceItems)
+        {
+            string unit = item.ItemType == InvoiceItemType.Service ? "Lần" : "";
+            string desc = item.Description;
+
+            if (item.ItemType == InvoiceItemType.Medicine)
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(desc, @"\(([^)]+)\)$");
+                if (match.Success)
+                {
+                    unit = match.Groups[1].Value;
+                    desc = desc.Substring(0, match.Index).Trim();
+                }
+
+                if (desc.StartsWith("Thuốc: "))
+                {
+                    desc = desc.Substring("Thuốc: ".Length).Trim();
+                }
+            }
+
+            responseItems.Add(new InvoiceItemResponse
+            {
+                Id = item.Id,
+                Description = desc,
+                Unit = unit,
+                Quantity = item.Quantity,
+                UnitPrice = item.UnitPrice,
+                TotalPrice = item.TotalPrice,
+                ItemType = item.ItemType == InvoiceItemType.Service ? "SERVICE" : "MEDICINE"
+            });
+        }
+
         return new InvoiceDetailResponse
         {
             Id = invoice.Id,
@@ -316,15 +347,7 @@ public class InvoiceService : IInvoiceService
             PaidAt = invoice.PaidAt,
             Status = invoice.Status.ToString(),
             PaymentMethod = invoice.PaymentMethod != null ? invoice.PaymentMethod.ToString() : null,
-            Items = invoice.InvoiceItems.Select(item => new InvoiceItemResponse
-            {
-                Id = item.Id,
-                Description = item.Description,
-                Quantity = item.Quantity,
-                UnitPrice = item.UnitPrice,
-                TotalPrice = item.TotalPrice,
-                ItemType = item.ItemType == InvoiceItemType.Service ? "SERVICE" : "MEDICINE"
-            }).ToList()
+            Items = responseItems.OrderBy(i => i.ItemType).ThenBy(i => i.Description).ToList()
         };
     }
 

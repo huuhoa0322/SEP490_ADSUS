@@ -22,4 +22,18 @@ public interface IChatClient
         IReadOnlyList<ChatTurn> history,
         string userMessage,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Stream tin nhắn từ LLM và nhận từng phần phản hồi theo thời gian thực (SSE).
+    /// </summary>
+    /// <param name="systemPrompt">System prompt định nghĩa vai trò trợ lý.</param>
+    /// <param name="history">Lịch sử hội thoại (từ DB).</param>
+    /// <param name="userMessage">Tin nhắn mới của user.</param>
+    /// <param name="ct">CancellationToken.</param>
+    /// <returns>IAsyncEnumerable các chunk văn bản phản hồi.</returns>
+    IAsyncEnumerable<string> StreamMessageAsync(
+        string systemPrompt,
+        IReadOnlyList<ChatTurn> history,
+        string userMessage,
+        CancellationToken ct = default);
 }

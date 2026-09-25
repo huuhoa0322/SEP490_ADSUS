@@ -64,6 +64,9 @@ internal static class AppointmentRepositoryTestBridge
             .Returns((Guid profileId, Guid slotId, CancellationToken ct) => real.ExistsActiveInSlotAsync(profileId, slotId, ct));
         mock.Setup(r => r.AddAsync(It.IsAny<Appointment>(), It.IsAny<CancellationToken>()))
             .Returns((Appointment appointment, CancellationToken ct) => real.AddAsync(appointment, ct));
+        mock.Setup(r => r.GetBookingRulesContextAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .Returns((Guid userId, Guid targetProfileId, DateTime todayStartUtc, DateOnly slotDate, CancellationToken ct) =>
+                real.GetBookingRulesContextAsync(userId, targetProfileId, todayStartUtc, slotDate, ct));
         mock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .Returns((CancellationToken ct) => real.SaveChangesAsync(ct));
 
@@ -118,6 +121,9 @@ internal static class AppointmentRepositoryTestBridge
         mock.Setup(r => r.ListBookedForDoctorAfterForUpdateAsync(It.IsAny<Guid>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<CancellationToken>()))
             .Returns((Guid doctorId, DateOnly date, TimeOnly after, CancellationToken ct) =>
                 real.ListBookedForDoctorAfterForUpdateAsync(doctorId, date, after, ct));
+        mock.Setup(r => r.ListOpenSlotsForBookingAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<TimeOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .Returns((DateOnly from, DateOnly to, DateOnly todayVn, TimeOnly currentTimeVn, Guid? doctorId, CancellationToken ct) =>
+                real.ListOpenSlotsForBookingAsync(from, to, todayVn, currentTimeVn, doctorId, ct));
         mock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .Returns((CancellationToken ct) => real.SaveChangesAsync(ct));
 

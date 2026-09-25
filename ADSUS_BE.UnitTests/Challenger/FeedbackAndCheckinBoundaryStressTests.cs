@@ -63,7 +63,8 @@ public class FeedbackAndCheckinBoundaryStressTests
             caseService.BackedBy(db).Object,
             noShowService,
             new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(db),
-            Mock.Of<ILogger<AppointmentService>>());
+            Mock.Of<ILogger<AppointmentService>>(),
+            db);
     }
 
     #region 1. Feedback Boundary Tests: Null/Empty/Invalid CaseId

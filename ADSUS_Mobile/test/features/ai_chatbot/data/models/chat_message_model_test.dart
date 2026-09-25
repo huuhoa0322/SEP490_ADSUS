@@ -26,6 +26,31 @@ void main() {
       expect(ChatIntent.fromString('invalid_intent'), ChatIntent.unknown);
       expect(ChatIntent.fromString(null), ChatIntent.unknown);
     });
+
+    test('ChatMessage.copyWith preserves existing fields and overrides specified ones', () {
+      final message = ChatMessage(
+        messageId: 'msg-1',
+        role: ChatRole.user,
+        content: 'Chào bác sĩ',
+        createdAt: DateTime(2026, 9, 24),
+        isSafety: false,
+        detectedIntent: ChatIntent.greeting,
+        isRateLimitExceeded: false,
+      );
+
+      final copy = message.copyWith(
+        content: 'Nội dung cập nhật',
+        isSafety: true,
+      );
+
+      expect(copy.messageId, 'msg-1');
+      expect(copy.role, ChatRole.user);
+      expect(copy.content, 'Nội dung cập nhật');
+      expect(copy.createdAt, DateTime(2026, 9, 24));
+      expect(copy.isSafety, isTrue);
+      expect(copy.detectedIntent, ChatIntent.greeting);
+      expect(copy.isRateLimitExceeded, isFalse);
+    });
   });
 
   group('sanitizeAssistantContent', () {
@@ -51,6 +76,32 @@ Luôn hỏi bác sĩ phụ trách trước khi dùng thuốc.
       const input = 'Đoạn 1\n\n\n\n\nĐoạn 2';
       final sanitized = sanitizeAssistantContent(input);
       expect(sanitized, 'Đoạn 1\n\nĐoạn 2');
+    });
+
+    test('strips disclaimers with triple asterisks without leaving orphan asterisks', () {
+      const input = '''
+***Lưu ý: Thông tin do AI sinh ra chỉ mang tính tham khảo.***
+Bác sĩ khuyên bạn uống nhiều nước.
+*** Thông tin trên do AI sinh ra — chỉ mang tính tham khảo... ***
+''';
+      final sanitized = sanitizeAssistantContent(input);
+      expect(sanitized, 'Bác sĩ khuyên bạn uống nhiều nước.');
+      expect(sanitized, isNot(contains('*')));
+    });
+
+    test('preserves valid markdown bolding, headers, and bullet lists', () {
+      const input = '''
+### Chế độ dinh dưỡng cho bà bầu
+
+- **Acid folic**: 400mcg/ngày
+- **Sắt**: 30mg/ngày
+*Uống sau bữa ăn sáng.*
+''';
+      final sanitized = sanitizeAssistantContent(input);
+      expect(sanitized, contains('### Chế độ dinh dưỡng cho bà bầu'));
+      expect(sanitized, contains('- **Acid folic**: 400mcg/ngày'));
+      expect(sanitized, contains('- **Sắt**: 30mg/ngày'));
+      expect(sanitized, contains('*Uống sau bữa ăn sáng.*'));
     });
   });
 

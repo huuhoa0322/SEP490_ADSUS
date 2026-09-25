@@ -120,7 +120,8 @@ public class AppointmentSchedulingAntiAbuseAndClinicalInfoTests : IDisposable
             _caseService.BackedBy(_db).Object,
             noShowService,
             new ADSUS_BE.DAL.Repositories.Implementations.UnitOfWork(_db),
-            Mock.Of<ILogger<AppointmentService>>());
+            Mock.Of<ILogger<AppointmentService>>(),
+            _db);
     }
 
     public void Dispose()
