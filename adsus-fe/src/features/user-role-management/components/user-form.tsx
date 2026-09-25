@@ -19,6 +19,7 @@ import {
   ASSIGNABLE_ROLES,
   type AssignableRole,
   type CreateUserResult,
+  type EditableRole,
   type UserAccount,
 } from "../types/user.types";
 
@@ -94,15 +95,10 @@ function UserFormFields({
   const isEdit = Boolean(userId);
 
   /**
-   * Tài khoản quản trị viên thì KHOÁ ô vai trò lại.
-   *
-   * UC-04 chỉ cho gán Bác sĩ / Điều dưỡng / Bệnh nhân, nên danh sách không có ADMIN. Trước
-   * đây mở một tài khoản Admin ra sửa là ô này rơi về "Bác sĩ" — chỉ cần bấm Lưu để đổi cái
-   * tên là tự hạ quyền chính mình, không hề có cảnh báo nào. Backend cũng đã chặn, đây là
-   * lớp thứ hai và cũng để giao diện nói đúng sự thật.
+   * Vai trò của tài khoản không thể thay đổi sau khi tạo (chặn ở backend:
+   * feat(be): chan viec thay doi vai tro cua moi tai khoan sau khi tao).
+   * Khi sửa (isEdit), khoá ô vai trò lại dưới dạng nhãn chỉ đọc và giữ nguyên role ban đầu.
    */
-  const isAdminAccount = initial?.role === "ADMIN";
-
   const [phoneNumber, setPhoneNumber] = useState(initial?.phoneNumber ?? "");
   const [fullName, setFullName] = useState(initial?.fullName ?? "");
   const [role, setRole] = useState<AssignableRole>(() =>
@@ -121,7 +117,8 @@ function UserFormFields({
   const create = useCreateUser();
   const update = useUpdateUser(userId ?? "");
 
-  const isPatient = role === "PATIENT";
+  const effectiveRole = isEdit ? (initial?.role ?? role) : role;
+  const isPatient = effectiveRole === "PATIENT";
   const isSubmitting = create.isPending || update.isPending;
   const serverError = create.error ?? update.error;
   const maximumDateOfBirth = new Date(latestEligibleBirthDate());
@@ -157,9 +154,8 @@ function UserFormFields({
       update.mutate(
         {
           ...payload,
-          // Gửi lại đúng ADMIN thay vì giá trị trong ô đã bị khoá — nói dối trên đường
-          // truyền để đi qua kiểm tra là kiểu về sau không ai lần ra được.
-          role: isAdminAccount ? "ADMIN" : role,
+          // Giữ nguyên vai trò ban đầu của tài khoản — backend chặn thay đổi vai trò sau khi tạo
+          role: (initial?.role ?? role) as EditableRole,
         },
         { onSuccess: () => router.push("/admin/users") },
       );
@@ -257,21 +253,8 @@ function UserFormFields({
           />
         </Field>
 
-        <Field
-          label="Vai trò"
-          hint={
-            isAdminAccount
-              ? "Không đổi được — tài khoản quản trị viên được cấp lúc dựng hệ thống"
-              : undefined
-          }
-        >
-          {isAdminAccount ? (
-            /* Ô chữ đọc-được thay vì select bị vô hiệu hoá: select có mũi tên xổ xuống,
-               nhìn như bấm được mà bấm lại không ra gì. */
-            <p className={`${inputClass} flex items-center bg-secondary/50 text-muted-foreground`}>
-              {ROLE_LABEL.ADMIN}
-            </p>
-          ) : (
+        {!isEdit && (
+          <Field label="Vai trò">
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as AssignableRole)}
@@ -284,8 +267,8 @@ function UserFormFields({
                 </option>
               ))}
             </select>
-          )}
-        </Field>
+          </Field>
+        )}
 
         <Field label="Email" hint="Không bắt buộc — chỉ dùng để tự khôi phục mật khẩu sau này (UC-03)">
           <input

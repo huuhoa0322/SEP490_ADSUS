@@ -74,6 +74,8 @@ const MESSAGES: Record<string, string> = {
     "Tài khoản này chưa có email nên không gửi được mật khẩu tạm. Hãy bổ sung email trước.",
   "An administrator's role cannot be changed here, and no account can be promoted to administrator on this screen.":
     "Không đổi được vai trò của quản trị viên, và cũng không phong quản trị viên ở màn hình này.",
+  "The role of an account cannot be changed after creation.":
+    "Vai trò của tài khoản không thể thay đổi sau khi tạo.",
 
   // ---- Kết quả có hậu quả kèm theo ----
   "The temporary password could not be emailed, so the current password was left unchanged. Please try again later.":

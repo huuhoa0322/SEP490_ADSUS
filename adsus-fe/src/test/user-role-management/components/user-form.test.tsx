@@ -3,8 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { UserForm } from "@/features/user-role-management/components/user-form";
 
-const { createMutateMock } = vi.hoisted(() => ({
+const { createMutateMock, updateMutateMock } = vi.hoisted(() => ({
   createMutateMock: vi.fn(),
+  updateMutateMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -12,8 +13,21 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/features/user-role-management/hooks/use-users", () => ({
-  useUserDetail: () => ({
-    data: undefined,
+  useUserDetail: (userId?: string) => ({
+    data: userId
+      ? {
+          userId,
+          phoneNumber: "0936904406",
+          fullName: "STC001 Patient",
+          role: "PATIENT",
+          email: "patient@example.com",
+          status: "ACTIVE",
+          dateOfBirth: null,
+          mustChangePassword: false,
+          createdAt: "2026-09-01T00:00:00Z",
+          isCurrentUser: false,
+        }
+      : undefined,
     isLoading: false,
     isError: false,
     error: null,
@@ -24,7 +38,7 @@ vi.mock("@/features/user-role-management/hooks/use-users", () => ({
     error: null,
   }),
   useUpdateUser: () => ({
-    mutate: vi.fn(),
+    mutate: updateMutateMock,
     isPending: false,
     error: null,
   }),
@@ -33,6 +47,7 @@ vi.mock("@/features/user-role-management/hooks/use-users", () => ({
 describe("UserForm date of birth", () => {
   beforeEach(() => {
     createMutateMock.mockClear();
+    updateMutateMock.mockClear();
   });
 
   it("không gửi yêu cầu tạo tài khoản khi ngày sinh là hôm nay", () => {
@@ -73,6 +88,27 @@ describe("UserForm date of birth", () => {
         phoneNumber: "0900000088",
         fullName: "Dược Sĩ Minh",
         role: "PHARMACIST",
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("loại bỏ ô vai trò ở chế độ sửa và giữ nguyên vai trò ban đầu khi submit", () => {
+    render(<UserForm userId="user-123" />);
+
+    // Kiểm tra ô Vai trò đã được loại bỏ hoàn toàn khỏi form sửa
+    expect(screen.queryByLabelText("Vai trò")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Vai trò" })).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Họ và tên"), {
+      target: { value: "STC001 Patient Đã Sửa" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    expect(updateMutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fullName: "STC001 Patient Đã Sửa",
+        role: "PATIENT",
       }),
       expect.anything(),
     );
