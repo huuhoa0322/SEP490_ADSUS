@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -17,10 +17,9 @@ interface RichTextEditorProps {
   placeholder?: string;
 }
 
-const MenuBar = ({ editor }: { editor: any }) => {
-  if (!editor) return null;
-
+const MenuBar = ({ editor }: { editor: Editor | null }) => {
   const addImage = useCallback(() => {
+    if (!editor) return;
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -32,7 +31,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
           formData.append('file', file);
           
           // Endpoint update blog-posts/upload-image
-          const res = await apiClient.post<any>('/api/v1/admin/blog-posts/upload-image', formData, {
+          const res = await apiClient.post<{ data: { url: string } }>('/api/v1/admin/blog-posts/upload-image', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
           
@@ -49,6 +48,8 @@ const MenuBar = ({ editor }: { editor: any }) => {
     };
     input.click();
   }, [editor]);
+
+  if (!editor) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-1 border-b border-border bg-muted/20 p-2">
@@ -212,7 +213,7 @@ export const RichTextEditor = ({ value, onChange, disabled = false, placeholder 
               try {
                 const formData = new FormData();
                 formData.append('file', file);
-                const res = await apiClient.post<any>('/api/v1/admin/blog-posts/upload-image', formData, {
+                const res = await apiClient.post<{ data: { url: string } }>('/api/v1/admin/blog-posts/upload-image', formData, {
                   headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 

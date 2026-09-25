@@ -34,7 +34,7 @@ export function AdminBlogCreateView() {
         content: content.trim(),
       });
       router.push(`/admin/blog/${result.id}`);
-    } catch (e) {
+    } catch {
       // Error handled by mutation
     }
   };

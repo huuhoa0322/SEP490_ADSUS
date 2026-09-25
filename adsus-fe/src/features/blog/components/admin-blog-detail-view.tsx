@@ -2,7 +2,6 @@
 
 import { ArrowLeft, Calendar, CheckCircle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import DOMPurify from "isomorphic-dompurify";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -28,7 +27,6 @@ const STATUS_STYLES: Record<BlogStatus, string> = {
  * SCR-27 - Chi tiết và chỉnh sửa bài viết
  */
 export function AdminBlogDetailView({ id }: { id: string }) {
-  const router = useRouter();
   const { data: post, isLoading, isError, error } = useAdminBlogPost(id);
   const updateMutation = useUpdateBlogPost();
   const publishMutation = usePublishBlogPost();
@@ -50,7 +48,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
         payload: { title, content },
       });
       setIsEditing(false);
-    } catch (e) {
+    } catch {
       // Error handled by mutation
     }
   };
@@ -58,7 +56,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
   const handlePublish = async () => {
     try {
       await publishMutation.mutateAsync(id);
-    } catch (e) {
+    } catch {
       // Error handled by mutation
     }
   };
