@@ -45,4 +45,10 @@ public interface IInvoiceService
     /// Hủy hóa đơn. Nếu đã PAID → reverse dispense (hoàn kho tự động).
     /// </summary>
     Task CancelInvoiceAsync(Guid invoiceId, CancelInvoiceRequest request);
+
+    /// <summary>
+    /// Xóa một dòng thuốc khỏi hóa đơn PENDING: hoàn kho (reverse dispense) cho dòng thuốc đó,
+    /// tính lại tổng tiền hóa đơn. Chỉ áp dụng cho hóa đơn PENDING và item loại Medicine.
+    /// </summary>
+    Task RemoveMedicineItemAsync(Guid invoiceId, Guid invoiceItemId, CancellationToken ct = default);
 }

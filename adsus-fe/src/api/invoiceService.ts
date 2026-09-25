@@ -71,4 +71,8 @@ export const invoiceService = {
     );
     return response.data.data ?? [];
   },
+
+  removeMedicineItem: async (invoiceId: string, itemId: string): Promise<void> => {
+    await api.delete<ApiResponse<void>>(`/api/v1/invoices/${invoiceId}/items/${itemId}`);
+  },
 };

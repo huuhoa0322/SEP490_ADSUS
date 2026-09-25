@@ -523,4 +523,51 @@ public class InvoiceService : IInvoiceService
 
         await _unitOfWork.SaveChangesAsync();
     }
+
+    public async Task RemoveMedicineItemAsync(Guid invoiceId, Guid invoiceItemId, CancellationToken ct = default)
+    {
+        var invoice = await _invoices.GetWithItemsForUpdateAsync(invoiceId, ct);
+        if (invoice == null)
+            throw new ResourceNotFoundException("Không tìm thấy hóa đơn.");
+
+        if (invoice.Status != InvoiceStatus.PENDING)
+            throw new BusinessException("Chỉ có thể xóa dòng thuốc khi hóa đơn đang ở trạng thái chờ thanh toán (PENDING).");
+
+        var item = invoice.InvoiceItems.FirstOrDefault(i => i.Id == invoiceItemId);
+        if (item == null)
+            throw new ResourceNotFoundException("Không tìm thấy dòng hóa đơn.");
+
+        if (item.ItemType != InvoiceItemType.Medicine)
+            throw new BusinessException("Chỉ có thể xóa dòng thuốc, không thể xóa dòng dịch vụ.");
+
+        // 1. Hoàn kho: lấy các giao dịch xuất kho (Dispense) của PrescriptionItem này
+        var prescriptionItemId = item.ReferenceId;
+        if (prescriptionItemId.HasValue)
+        {
+            var dispenseTransactions = await _inventory.ListDispenseTransactionsForUpdateAsync(
+                new[] { prescriptionItemId.Value }, ct);
+
+            foreach (var txn in dispenseTransactions)
+            {
+                var batch = txn.Batch;
+                if (batch != null)
+                {
+                    // Hoàn toàn bộ số lượng về lại lô (hóa đơn PENDING chưa uống thuốc)
+                    batch.QuantityBase += txn.QuantityBase;
+
+                    // Xoá luôn giao dịch trừ kho ban đầu (đơn chưa thanh toán → xóa sạch)
+                    _inventory.RemoveTransaction(txn);
+                }
+            }
+        }
+
+        // 2. Xóa dòng hóa đơn
+        _invoices.RemoveItem(item);
+        invoice.InvoiceItems.Remove(item);
+
+        // 3. Tính lại tổng tiền
+        invoice.TotalAmount = invoice.InvoiceItems.Sum(i => i.TotalPrice);
+
+        await _unitOfWork.SaveChangesAsync(ct);
+    }
 }
