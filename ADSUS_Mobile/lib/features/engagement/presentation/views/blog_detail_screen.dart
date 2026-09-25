@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-// 2026-09-11: chuyển từ `flutter_markdown` (discontinued) sang `flutter_markdown_plus`
-// (continuation chính thức). API giữ nguyên — MarkdownBody, MarkdownStyleSheet.
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+// Render HTML từ TipTap thay vì Markdown
+import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -150,41 +149,63 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
         const SizedBox(height: 16),
         const Divider(height: 1, color: AppColors.border),
         const SizedBox(height: 16),
-        // Render Markdown — flutter_markdown KHÔNG execute script/iframe (an toàn).
-        MarkdownBody(
+        // Render HTML từ TipTap Rich Text Editor
+        Html(
           data: post.content,
-          selectable: true,
-          styleSheet: MarkdownStyleSheet(
-            p: const TextStyle(
-                fontSize: 15, color: AppColors.navy, height: 1.6),
-            h1: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppColors.navy),
-            h2: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.navy),
-            h3: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.navy),
-            strong: const TextStyle(
-                fontWeight: FontWeight.bold, color: AppColors.navy),
-            a: const TextStyle(
-                color: AppColors.teal,
-                decoration: TextDecoration.underline),
-            code: AppFonts.mono(
-                fontSize: 14,
-                color: AppColors.navy,
-              ).copyWith(backgroundColor: const Color(0xFFF1EDFC)),
-            blockquoteDecoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(color: AppColors.aiViolet, width: 4),
-              ),
+          extensions: [
+            TagExtension(
+              tagsToExtend: {"img"},
+              builder: (extensionContext) {
+                final src = extensionContext.attributes['src'];
+                if (src != null) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        src,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
             ),
-            blockquotePadding: const EdgeInsets.only(left: 12),
-          ),
+          ],
+          style: {
+            "body": Style(
+              fontSize: FontSize(15.0),
+              color: AppColors.navy,
+              lineHeight: LineHeight(1.6),
+              margin: Margins.zero,
+            ),
+            "h1": Style(
+              fontSize: FontSize(22.0),
+              fontWeight: FontWeight.bold,
+              color: AppColors.navy,
+            ),
+            "h2": Style(
+              fontSize: FontSize(20.0),
+              fontWeight: FontWeight.bold,
+              color: AppColors.navy,
+            ),
+            "h3": Style(
+              fontSize: FontSize(18.0),
+              fontWeight: FontWeight.bold,
+              color: AppColors.navy,
+            ),
+            "strong": Style(
+              fontWeight: FontWeight.bold,
+              color: AppColors.navy,
+            ),
+            "a": Style(
+              color: AppColors.teal,
+              textDecoration: TextDecoration.underline,
+            ),
+          },
         ),
       ],
     );

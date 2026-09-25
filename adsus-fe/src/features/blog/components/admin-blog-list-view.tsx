@@ -3,8 +3,9 @@
 import { Edit, Eye, FileText, Loader2, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-
 import { getApiErrorMessage } from "@/lib/api-client";
+import DOMPurify from "isomorphic-dompurify";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 import {
   useAdminBlogPost,
@@ -235,7 +236,7 @@ function BlogPostModal({ postId, initialMode, onClose }: { postId: string; initi
 
   return (
     <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div role="presentation" className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-background shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div role="presentation" className="relative flex max-h-[90vh] w-[90%] max-w-[90%] flex-col overflow-hidden rounded-3xl bg-background shadow-2xl" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-3">
@@ -285,17 +286,9 @@ function BlogPostModal({ postId, initialMode, onClose }: { postId: string; initi
 
               {/* Content */}
               {mode === "edit" ? (
-                <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  rows={12}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 font-mono text-sm outline-none focus:border-[var(--success)]"
-                  placeholder="Nội dung bài viết (Markdown)"
-                />
+                <RichTextEditor value={content} onChange={setContent} />
               ) : (
-                <div className="max-h-96 overflow-y-auto whitespace-pre-wrap rounded-xl border border-border bg-secondary/30 p-4 text-sm leading-relaxed text-foreground">
-                  {post.content}
-                </div>
+                <div className="prose prose-sm sm:prose-base max-w-none max-h-96 overflow-y-auto rounded-xl border border-border bg-secondary/30 p-4" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }} />
               )}
 
               {/* Error / Success */}

@@ -1,13 +1,13 @@
-﻿"use client";
+"use client";
 
 import { ArrowLeft, Calendar } from "lucide-react";
 import Link from "next/link";
 import { usePublicBlogPost } from "../hooks/use-blog";
 import { getApiErrorMessage } from "@/lib/api-client";
-
+import DOMPurify from "isomorphic-dompurify";
 /**
  * Blog detail view - PUBLIC, no authentication required.
- * SCR-26 - Chi tiáº¿t bÃ i viáº¿t Blog Sá»©c khá»e
+ * SCR-26 - Chi tiết bài viết Blog Sức khỏe
  */
 export function BlogDetailView({ id }: { id: string }) {
   const { data: post, isLoading, isError, error } = usePublicBlogPost(id);
@@ -16,25 +16,25 @@ export function BlogDetailView({ id }: { id: string }) {
     <div className="min-h-screen bg-muted">
       {/* Header with back button */}
       <div className="border-b border-border bg-background">
-        <div className="mx-auto max-w-4xl px-6 py-4">
+        <div className="mx-auto w-[90%] max-w-[90%] px-6 py-4">
           <Link
             href="/blog"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
           >
             <ArrowLeft className="h-4 w-4" />
-            Quay láº¡i danh sÃ¡ch
+            Quay lại danh sách
           </Link>
         </div>
       </div>
 
       {/* Content */}
-      <div className="mx-auto max-w-4xl px-6 py-10">
+      <div className="mx-auto w-[90%] max-w-[90%] px-6 py-10">
         {isError && (
           <div
             role="alert"
             className="mb-6 flex items-start gap-2.5 rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"
           >
-            {getApiErrorMessage(error, "KhÃ´ng táº£i Ä‘Æ°á»£c bÃ i viáº¿t.")}
+            {getApiErrorMessage(error, "Không tải được bài viết.")}
           </div>
         )}
 
@@ -76,21 +76,15 @@ export function BlogDetailView({ id }: { id: string }) {
 
             {/* Article Content */}
             <div className="p-8">
-              <div className="prose prose-lg max-w-none text-foreground">
-                {post.content.split("\n").map((paragraph, index) => (
-                  <p key={index} className="mb-4 leading-relaxed">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
+              <div className="prose prose-lg max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }} />
             </div>
 
             {/* Disclaimer */}
             <div className="border-t border-border bg-secondary/30 p-6">
               <p className="text-sm text-muted-foreground">
-                <strong className="text-foreground">LÆ°u Ã½:</strong> ThÃ´ng tin trong bÃ i viáº¿t nÃ y chá»‰ mang tÃ­nh cháº¥t tham kháº£o
-                vÃ  khÃ´ng thay tháº¿ cho lá»i khuyÃªn y táº¿ chuyÃªn mÃ´n. Vui lÃ²ng tham kháº£o bÃ¡c sÄ©
-                cá»§a báº¡n Ä‘á»ƒ Ä‘Æ°á»£c tÆ° váº¥n cá»¥ thá»ƒ.
+                <strong className="text-foreground">Lưu ý:</strong> Thông tin trong bài viết này chỉ mang tính chất tham khảo
+                và không thay thế cho lời khuyên y tế chuyên môn. Vui lòng tham khảo bác sĩ
+                của bạn để được tư vấn cụ thể.
               </p>
             </div>
           </article>
@@ -99,4 +93,3 @@ export function BlogDetailView({ id }: { id: string }) {
     </div>
   );
 }
-

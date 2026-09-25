@@ -1,9 +1,11 @@
-﻿"use client";
+"use client";
 
 import { ArrowLeft, Calendar, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import DOMPurify from "isomorphic-dompurify";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 import { getApiErrorMessage } from "@/lib/api-client";
 
@@ -12,8 +14,8 @@ import { useAdminBlogPost, usePublishBlogPost, useUpdateBlogPost } from "../hook
 type BlogStatus = "DRAFT" | "PUBLISHED";
 
 const STATUS_LABELS: Record<BlogStatus, string> = {
-  DRAFT: "Báº£n nhÃ¡p",
-  PUBLISHED: "ÄÃ£ xuáº¥t báº£n",
+  DRAFT: "Bản nháp",
+  PUBLISHED: "Đã xuất bản",
 };
 
 const STATUS_STYLES: Record<BlogStatus, string> = {
@@ -23,7 +25,7 @@ const STATUS_STYLES: Record<BlogStatus, string> = {
 
 /**
  * Admin Blog Detail/Edit View - requires ADMIN role.
- * SCR-27 - Chi tiáº¿t vÃ  chá»‰nh sá»­a bÃ i viáº¿t
+ * SCR-27 - Chi tiết và chỉnh sửa bài viết
  */
 export function AdminBlogDetailView({ id }: { id: string }) {
   const router = useRouter();
@@ -65,21 +67,21 @@ export function AdminBlogDetailView({ id }: { id: string }) {
     <div className="min-h-screen bg-[var(--muted)]">
       {/* Header */}
       <div className="bg-white border-b border-border">
-        <div className="mx-auto max-w-4xl px-6 py-4">
+        <div className="mx-auto w-[90%] max-w-[90%] px-6 py-4">
           <div className="flex items-center justify-between">
             <Link
               href="/admin/blog"
               className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)] transition-colors hover:text-[var(--primary)]"
             >
               <ArrowLeft className="h-4 w-4" />
-              Quay láº¡i danh sÃ¡ch
+              Quay lại danh sách
             </Link>
             {post && !isEditing && post.status === "DRAFT" && (
               <button
                 onClick={() => setIsEditing(true)}
                 className="inline-flex items-center gap-2 rounded-lg border border-[var(--success)] px-4 py-2 text-sm font-medium text-[var(--success)] transition-colors hover:bg-[var(--success)]/10"
               >
-                Chá»‰nh sá»­a
+                Chỉnh sửa
               </button>
             )}
           </div>
@@ -87,13 +89,13 @@ export function AdminBlogDetailView({ id }: { id: string }) {
       </div>
 
       {/* Content */}
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="mx-auto w-[90%] max-w-[90%] px-6 py-8">
         {isError && (
           <div
             role="alert"
             className="mb-6 flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"
           >
-            {getApiErrorMessage(error, "KhÃ´ng táº£i Ä‘Æ°á»£c bÃ i viáº¿t.")}
+            {getApiErrorMessage(error, "Không tải được bài viết.")}
           </div>
         )}
 
@@ -116,7 +118,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         className="w-full rounded-lg border border-border px-4 py-2 text-2xl font-bold focus:border-[var(--success)] focus:outline-none"
-                        placeholder="TiÃªu Ä‘á» bÃ i viáº¿t"
+                        placeholder="Tiêu đề bài viết"
                       />
                     ) : (
                       post.title
@@ -142,7 +144,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
                     className="inline-flex items-center gap-2 rounded-lg bg-[var(--success)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--success)]/90 disabled:opacity-50"
                   >
                     <CheckCircle className="h-4 w-4" />
-                    {publishMutation.isPending ? "Äang xuáº¥t báº£n..." : "Xuáº¥t báº£n"}
+                    {publishMutation.isPending ? "Đang xuất bản..." : "Xuất bản"}
                   </button>
                 )}
               </div>
@@ -151,7 +153,7 @@ export function AdminBlogDetailView({ id }: { id: string }) {
             {/* Article Content */}
             <div className="rounded-xl border border-border bg-white p-6">
               <h2 className="mb-4 font-heading text-lg font-semibold text-[var(--primary)]">
-                Ná»™i dung bÃ i viáº¿t
+                Nội dung bài viết
               </h2>
               {isEditing ? (
                 <RichTextEditor value={content} onChange={setContent} />
@@ -171,14 +173,14 @@ export function AdminBlogDetailView({ id }: { id: string }) {
                   }}
                   className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary"
                 >
-                  Há»§y
+                  Hủy
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={updateMutation.isPending}
                   className="rounded-lg bg-[var(--success)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--success)]/90 disabled:opacity-50"
                 >
-                  {updateMutation.isPending ? "Äang lÆ°u..." : "LÆ°u thay Ä‘á»•i"}
+                  {updateMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"}
                 </button>
               </div>
             )}
@@ -186,25 +188,25 @@ export function AdminBlogDetailView({ id }: { id: string }) {
             {/* Error messages */}
             {updateMutation.isError && (
               <div className="rounded-lg border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive">
-                {getApiErrorMessage(updateMutation.error, "KhÃ´ng lÆ°u Ä‘Æ°á»£c bÃ i viáº¿t.")}
+                {getApiErrorMessage(updateMutation.error, "Không lưu được bài viết.")}
               </div>
             )}
 
             {publishMutation.isError && (
               <div className="rounded-lg border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive">
-                {getApiErrorMessage(publishMutation.error, "KhÃ´ng xuáº¥t báº£n Ä‘Æ°á»£c bÃ i viáº¿t.")}
+                {getApiErrorMessage(publishMutation.error, "Không xuất bản được bài viết.")}
               </div>
             )}
 
             {updateMutation.isSuccess && (
               <div className="rounded-lg border border-[var(--success)]/25 bg-[var(--success)]/5 p-4 text-sm text-[var(--success)]">
-                BÃ i viáº¿t Ä‘Ã£ Ä‘Æ°á»£c lÆ°u thÃ nh cÃ´ng.
+                Bài viết đã được lưu thành công.
               </div>
             )}
 
             {publishMutation.isSuccess && (
               <div className="rounded-lg border border-[var(--success)]/25 bg-[var(--success)]/5 p-4 text-sm text-[var(--success)]">
-                BÃ i viáº¿t Ä‘Ã£ Ä‘Æ°á»£c xuáº¥t báº£n thÃ nh cÃ´ng.
+                Bài viết đã được xuất bản thành công.
               </div>
             )}
           </div>
@@ -213,5 +215,3 @@ export function AdminBlogDetailView({ id }: { id: string }) {
     </div>
   );
 }
-
-

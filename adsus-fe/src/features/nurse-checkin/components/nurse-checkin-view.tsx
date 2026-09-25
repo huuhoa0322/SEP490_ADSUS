@@ -128,7 +128,7 @@ export function NurseCheckinView() {
     <div className="mx-auto w-full max-w-screen-2xl px-6 py-10">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Nurse Check-In</h1>
+          <h1 className="font-heading text-2xl font-bold text-foreground">Danh Sách Lịch Hẹn </h1>
           <p className="text-muted-foreground capitalize">
             {format(new Date(), "EEEE, dd/MM/yyyy", { locale: vi })}
           </p>
