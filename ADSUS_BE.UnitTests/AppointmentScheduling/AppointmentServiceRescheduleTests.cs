@@ -1021,6 +1021,12 @@ public class AppointmentServiceRescheduleTests : IDisposable
         var patient = CreateUser(Guid.NewGuid(), "Trần Thị B", UserRole.Patient);
         var profile = CreatePatientProfile(patient);
 
+        var nowVnTime = TimeOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        if (nowVnTime >= new TimeOnly(23, 30))
+        {
+            return; // Phòng khám đóng cửa; bỏ qua khung giờ sát nửa đêm 23:30 - 23:59
+        }
+
         var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
         var oldDate = today.AddDays(1);
 

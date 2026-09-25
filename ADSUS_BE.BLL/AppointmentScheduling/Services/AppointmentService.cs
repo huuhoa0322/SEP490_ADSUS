@@ -64,6 +64,8 @@ public sealed class AppointmentService : IAppointmentService
     }
 
     private static readonly TimeZoneInfo VietnamZone = GetVietnamTimeZone();
+    private static readonly System.Text.RegularExpressions.Regex HtmlTagRegex =
+        new(@"<[a-zA-Z\/][^>]*>", System.Text.RegularExpressions.RegexOptions.Compiled, TimeSpan.FromSeconds(1));
 
     private static TimeZoneInfo GetVietnamTimeZone()
     {
@@ -228,6 +230,11 @@ public sealed class AppointmentService : IAppointmentService
         bool isStaffOverride = false,
         CancellationToken ct = default)
     {
+        if (!string.IsNullOrWhiteSpace(request.Reason) && HtmlTagRegex.IsMatch(request.Reason))
+        {
+            throw new InvalidOperationException("Reason cannot contain HTML tags.");
+        }
+
         // BR-01: Lấy slot với tracking để update
         var slot = await _slotRepo.GetByIdForUpdateAsync(request.ScheduleSlotId, ct)
             ?? throw new InvalidOperationException($"Slot '{request.ScheduleSlotId}' not found.");
@@ -751,6 +758,11 @@ public sealed class AppointmentService : IAppointmentService
             }
         }
 
+        if (!string.IsNullOrWhiteSpace(request.CancellationReason) && HtmlTagRegex.IsMatch(request.CancellationReason))
+        {
+            throw new InvalidOperationException("Reason cannot contain HTML tags.");
+        }
+
         // Update appointment
         appointment.Status = AppointmentStatus.Cancelled;
         appointment.CancelledReason = request.CancellationReason;
@@ -1183,6 +1195,11 @@ public sealed class AppointmentService : IAppointmentService
             throw new InvalidOperationException("Lý do đổi lịch là bắt buộc.");
         }
 
+        if (HtmlTagRegex.IsMatch(request.RescheduleReason) || (!string.IsNullOrWhiteSpace(request.NewReason) && HtmlTagRegex.IsMatch(request.NewReason)))
+        {
+            throw new InvalidOperationException("Reason cannot contain HTML tags.");
+        }
+
         var oldAppointment = await _appointmentRepo.GetForRescheduleAsync(oldAppointmentId, ct)
             ?? throw new KeyNotFoundException($"Appointment '{oldAppointmentId}' not found.");
 
@@ -1477,6 +1494,10 @@ public sealed class AppointmentService : IAppointmentService
 
         if (request.Reason != null)
         {
+            if (HtmlTagRegex.IsMatch(request.Reason))
+            {
+                throw new InvalidOperationException("Reason cannot contain HTML tags.");
+            }
             appointment.Reason = request.Reason;
         }
 

@@ -292,4 +292,46 @@ public class ShiftRequestServiceTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.ReviewRequestAsync(requestId, _adminId, dto, TestContext.Current.CancellationToken));
         Assert.Contains("lý do từ chối", ex.Message);
     }
+
+    [Theory]
+    [InlineData("<p>Xin nghỉ</p>")]
+    [InlineData("<script>alert(1)</script>")]
+    [InlineData("<b>Nghỉ phép</b>")]
+    public async Task CreateRequestAsync_ReasonContainsHtml_ThrowsInvalidOperationException(string htmlReason)
+    {
+        _userRepoMock.Setup(r => r.GetByIdAsync(_doctorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { UserId = _doctorId, Role = UserRole.Doctor });
+
+        var dto = new CreateShiftRequestDto
+        {
+            RequestType = ShiftRequestType.Leave,
+            RequestDate = ClinicClock.Today().AddDays(3),
+            ShiftType = ShiftType.Morning,
+            Reason = htmlReason
+        };
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.CreateRequestAsync(_doctorId, dto, TestContext.Current.CancellationToken));
+        Assert.Contains("Lý do không được chứa thẻ HTML", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("<p>Không duyệt</p>")]
+    [InlineData("<script>alert(1)</script>")]
+    public async Task ReviewRequestAsync_RejectReasonContainsHtml_ThrowsInvalidOperationException(string htmlRejectReason)
+    {
+        var requestId = Guid.NewGuid();
+        var request = new ShiftRequest { RequestId = requestId, Status = ShiftRequestStatus.Pending };
+        _repoMock.Setup(r => r.GetByIdAsync(requestId, It.IsAny<CancellationToken>())).ReturnsAsync(request);
+
+        var dto = new ReviewShiftRequestDto
+        {
+            Decision = "REJECTED",
+            RejectReason = htmlRejectReason
+        };
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.ReviewRequestAsync(requestId, _adminId, dto, TestContext.Current.CancellationToken));
+        Assert.Contains("Lý do từ chối không được chứa thẻ HTML", ex.Message);
+    }
 }

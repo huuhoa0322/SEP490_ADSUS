@@ -17,6 +17,9 @@ namespace ADSUS_BE.BLL.AppointmentScheduling.Services;
 
 public class ShiftRequestService : IShiftRequestService
 {
+    private static readonly System.Text.RegularExpressions.Regex HtmlTagRegex =
+        new(@"<[a-zA-Z\/][^>]*>", System.Text.RegularExpressions.RegexOptions.Compiled, TimeSpan.FromSeconds(1));
+
     private readonly IShiftRequestRepository _repo;
     private readonly IUserRepository _userRepo;
     private readonly IScheduleSlotRepository _slotRepo;
@@ -80,6 +83,11 @@ public class ShiftRequestService : IShiftRequestService
                 throw new InvalidOperationException("Bạn đã có yêu cầu cho Ca Sáng hoặc Ca Chiều trong ngày này. Để xin nghỉ Cả ngày, hãy hủy yêu cầu cũ trước.");
             }
             throw new InvalidOperationException("Bạn đã gửi yêu cầu cho ca này, hoặc đã có yêu cầu nghỉ Cả ngày rồi.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.Reason) && HtmlTagRegex.IsMatch(dto.Reason))
+        {
+            throw new InvalidOperationException("Lý do không được chứa thẻ HTML.");
         }
 
         var entity = new ShiftRequest
@@ -147,6 +155,10 @@ public class ShiftRequestService : IShiftRequestService
             if (string.IsNullOrWhiteSpace(dto.RejectReason))
             {
                 throw new InvalidOperationException("Vui lòng nhập lý do từ chối.");
+            }
+            if (HtmlTagRegex.IsMatch(dto.RejectReason))
+            {
+                throw new InvalidOperationException("Lý do từ chối không được chứa thẻ HTML.");
             }
             request.Status = ShiftRequestStatus.Rejected;
             request.RejectReason = dto.RejectReason;

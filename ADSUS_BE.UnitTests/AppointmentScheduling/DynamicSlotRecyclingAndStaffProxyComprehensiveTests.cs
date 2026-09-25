@@ -638,6 +638,14 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
     [Fact]
     public async Task TC04_WalkIn_AtMinute3_DoctorFree_StaffBookingSucceeds()
     {
+        var (_, currentTimeVn) = GetNowVn();
+        // Phòng khám chỉ hoạt động từ 8h sáng đến 8h tối (08:00 - 20:00).
+        // Bỏ qua nếu chạy test vào đầu ngày (00:00 - 00:10) vì ngày mới chưa đủ thời gian để tính slot quá khứ.
+        if (currentTimeVn < new TimeOnly(0, 10))
+        {
+            return;
+        }
+
         // Arrange: Slot started 3 minutes ago
         var (todayVn, threeMinsAgo, _) = GetPastSlotTimesToday();
         var slot = CreateSlot(todayVn, threeMinsAgo, threeMinsAgo.AddMinutes(30), status: SlotStatus.Open);
@@ -662,6 +670,14 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
     [Fact]
     public async Task TC04_WalkIn_AtMinute7_Exceeds5Minutes_ThrowsInvalidOperationException()
     {
+        var (_, currentTimeVn) = GetNowVn();
+        // Phòng khám chỉ hoạt động từ 8h sáng đến 8h tối (08:00 - 20:00).
+        // Bỏ qua nếu chạy test vào đầu ngày (00:00 - 00:10) vì ngày mới chưa đủ thời gian để tính slot quá khứ.
+        if (currentTimeVn < new TimeOnly(0, 10))
+        {
+            return;
+        }
+
         // Arrange: Slot started 7 minutes ago
         var (todayVn, _, sevenMinsAgo) = GetPastSlotTimesToday();
         var slot = CreateSlot(todayVn, sevenMinsAgo, sevenMinsAgo.AddMinutes(30), status: SlotStatus.Open);
@@ -683,6 +699,14 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
     [Fact]
     public async Task TC04_WalkIn_AtMinute3_SlotHasInProgressCase_ThrowsInvalidOperationException()
     {
+        var (_, currentTimeVn) = GetNowVn();
+        // Phòng khám chỉ hoạt động từ 8h sáng đến 8h tối (08:00 - 20:00).
+        // Bỏ qua nếu chạy test vào đầu ngày (00:00 - 00:10) vì ngày mới chưa đủ thời gian để tính slot quá khứ.
+        if (currentTimeVn < new TimeOnly(0, 10))
+        {
+            return;
+        }
+
         // Arrange: Slot started 3 minutes ago, but this slot has an active InProgress case
         var (todayVn, threeMinsAgo, _) = GetPastSlotTimesToday();
         var slot = CreateSlot(todayVn, threeMinsAgo, threeMinsAgo.AddMinutes(30), status: SlotStatus.Open);
@@ -727,6 +751,14 @@ public class DynamicSlotRecyclingAndStaffProxyComprehensiveTests : IDisposable
     [Fact]
     public async Task TC04_WalkIn_PatientBookingPastSlot_WithoutStaffOverride_ThrowsInvalidOperationException()
     {
+        var (_, currentTimeVn) = GetNowVn();
+        // Phòng khám chỉ hoạt động từ 8h sáng đến 8h tối (08:00 - 20:00).
+        // Bỏ qua nếu chạy test vào đầu ngày (00:00 - 00:10) vì ngày mới chưa đủ thời gian để tính slot quá khứ.
+        if (currentTimeVn < new TimeOnly(0, 10))
+        {
+            return;
+        }
+
         // Arrange: Patient (online) tries to book a past slot today
         var (todayVn, threeMinsAgo, _) = GetPastSlotTimesToday();
         var slot = CreateSlot(todayVn, threeMinsAgo, threeMinsAgo.AddMinutes(30), status: SlotStatus.Open);
