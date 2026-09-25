@@ -365,17 +365,21 @@ public class InvoiceService : IInvoiceService
         invoice.PaidAt = DateTime.UtcNow;
         invoice.PaymentMethod = method;
 
-        bool hasMedicine = invoice.InvoiceItems.Any(i => i.ItemType == InvoiceItemType.Medicine);
-        if (hasMedicine)
+        var paidPrescriptionItemIds = invoice.InvoiceItems
+            .Where(i => i.ItemType == InvoiceItemType.Medicine && i.ReferenceId.HasValue)
+            .Select(i => i.ReferenceId!.Value)
+            .ToHashSet();
+
+        if (paidPrescriptionItemIds.Count > 0)
         {
-            await GenerateIntakeLogsForPrescriptionAsync(invoice.CaseId);
+            await GenerateIntakeLogsForPrescriptionAsync(invoice.CaseId, paidPrescriptionItemIds);
         }
 
         // Lưu trạng thái hóa đơn (giao dịch Inventory đã được add bên trong DispenseAsync)
         await _unitOfWork.SaveChangesAsync();
     }
 
-    private async Task GenerateIntakeLogsForPrescriptionAsync(Guid caseId)
+    private async Task GenerateIntakeLogsForPrescriptionAsync(Guid caseId, IReadOnlySet<Guid>? activePrescriptionItemIds = null)
     {
         var prescription = await _prescriptions.GetActiveByCaseForIntakeScheduleAsync(caseId);
 
@@ -391,6 +395,11 @@ public class InvoiceService : IInvoiceService
 
         foreach (var pItem in prescription.PrescriptionItems)
         {
+            if (activePrescriptionItemIds != null && !activePrescriptionItemIds.Contains(pItem.PrescriptionItemId))
+            {
+                continue; // Bỏ qua thuốc đã bị loại khỏi hóa đơn (bệnh nhân không lấy / không trả tiền)
+            }
+
             var itemWithPatient = new PrescriptionItemWithPatient(
                 pItem.PrescriptionItemId,
                 prescription.Case.PatientProfileId,

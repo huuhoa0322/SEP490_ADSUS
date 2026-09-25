@@ -9,6 +9,7 @@ using ADSUS_BE.DAL.Data;
 using ADSUS_BE.DAL.Entities;
 using Microsoft.EntityFrameworkCore;
 using ADSUS_BE.BLL.Common.Interfaces;
+using ADSUS_BE.BLL.PrescriptionAdherence.Interfaces;
 using Moq;
 using Xunit;
 
@@ -726,5 +727,97 @@ public class InvoiceServiceTests
         
         var batch = await context.MedicineBatches.FindAsync(new object[] { batchId }, TestContext.Current.CancellationToken);
         Assert.Equal(50, batch!.QuantityBase); // Remains 50
+    }
+
+    [Fact]
+    public async Task PayInvoiceAsync_WhenMedicineItemRemoved_OnlyGeneratesIntakeLogsForRemainingMedicine()
+    {
+        // Arrange
+        var options = GetInMemoryOptions("Invoice_Test_PartialMedicineIntake");
+        using var context = new AppDbContext(options);
+        var inventoryMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IInventoryService>();
+        var logRepoMock = new Moq.Mock<ADSUS_BE.DAL.Repositories.Interfaces.IMedicationIntakeLogRepository>();
+        var scheduleMock = new Moq.Mock<ADSUS_BE.BLL.PrescriptionAdherence.Interfaces.IMedicationIntakeScheduleGenerator>();
+        var service = PrescriptionAdherenceTestServices.Invoice(context, inventoryMock.Object, logRepoMock.Object, scheduleMock.Object, Mock.Of<INotificationService>());
+
+        var caseId = Guid.NewGuid();
+        var patientProfileId = Guid.NewGuid();
+        var invoiceId = Guid.NewGuid();
+        var keptPrescriptionItemId = Guid.NewGuid();
+        var removedPrescriptionItemId = Guid.NewGuid();
+
+        var invoice = new Invoice { Id = invoiceId, CaseId = caseId, Status = InvoiceStatus.PENDING };
+        var keptInvoiceItem = new InvoiceItem
+        {
+            Id = Guid.NewGuid(),
+            InvoiceId = invoiceId,
+            ItemType = InvoiceItemType.Medicine,
+            ReferenceId = keptPrescriptionItemId,
+            Description = "Thuốc A (Viên)",
+            Quantity = 1,
+            UnitPrice = 50000,
+            TotalPrice = 50000
+        };
+        invoice.InvoiceItems.Add(keptInvoiceItem);
+        invoice.TotalAmount = 50000;
+
+        var patientCase = new Case { CaseId = caseId, PatientProfileId = patientProfileId };
+        var prescription = new Prescription
+        {
+            PrescriptionId = Guid.NewGuid(),
+            CaseId = caseId,
+            Status = PrescriptionStatus.Active,
+            Case = patientCase
+        };
+        var keptPItem = new PrescriptionItem
+        {
+            PrescriptionItemId = keptPrescriptionItemId,
+            PrescriptionId = prescription.PrescriptionId,
+            Dosage = "1 viên",
+            DurationDays = 5,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            ScheduleSlots = new[] { ReminderSlot.Morning }
+        };
+        var removedPItem = new PrescriptionItem
+        {
+            PrescriptionItemId = removedPrescriptionItemId,
+            PrescriptionId = prescription.PrescriptionId,
+            Dosage = "2 viên",
+            DurationDays = 5,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            ScheduleSlots = new[] { ReminderSlot.Evening }
+        };
+        prescription.PrescriptionItems.Add(keptPItem);
+        prescription.PrescriptionItems.Add(removedPItem);
+
+        context.Invoices.Add(invoice);
+        context.Cases.Add(patientCase);
+        context.Prescriptions.Add(prescription);
+        context.PrescriptionItems.AddRange(keptPItem, removedPItem);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        scheduleMock.Setup(s => s.GenerateAsync(
+                It.Is<PrescriptionItemWithPatient>(p => p.PrescriptionItemId == keptPrescriptionItemId),
+                It.IsAny<IReadOnlyList<ADSUS_BE.BLL.PrescriptionAdherence.DTOs.ScheduleSlot>>(),
+                It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<TimeOnly>(), It.IsAny<DateTime>(),
+                It.IsAny<System.Threading.CancellationToken>()))
+            .ReturnsAsync(new List<ScheduledDose>
+            {
+                new(keptPrescriptionItemId, DateTime.UtcNow.AddHours(8))
+            });
+
+        List<MedicationIntakeLog>? capturedLogs = null;
+        logRepoMock.Setup(r => r.AddRangeAsync(It.IsAny<IEnumerable<MedicationIntakeLog>>(), It.IsAny<System.Threading.CancellationToken>()))
+            .Callback<IEnumerable<MedicationIntakeLog>, System.Threading.CancellationToken>((logs, _) => capturedLogs = logs.ToList())
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await service.PayInvoiceAsync(invoiceId, PaymentMethod.BANK_TRANSFER);
+
+        // Assert
+        Assert.NotNull(capturedLogs);
+        var generatedItemIds = capturedLogs.Select(l => l.PrescriptionItemId).Distinct().ToList();
+        Assert.Contains(keptPrescriptionItemId, generatedItemIds);
+        Assert.DoesNotContain(removedPrescriptionItemId, generatedItemIds);
     }
 }
