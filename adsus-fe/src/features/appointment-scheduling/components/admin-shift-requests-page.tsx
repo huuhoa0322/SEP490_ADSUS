@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
+const HTML_TAG_REGEX = /<[a-zA-Z\/][^>]*>/;
+
 export function AdminShiftRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<ShiftRequestStatus | "">("");
   const [page, setPage] = useState(1);
@@ -55,6 +57,10 @@ export function AdminShiftRequestsPage() {
     if (!selectedRequest) return;
     if (!rejectReason.trim()) {
       alert("Vui lòng nhập lý do từ chối");
+      return;
+    }
+    if (HTML_TAG_REGEX.test(rejectReason)) {
+      alert("Lý do từ chối không được chứa thẻ HTML");
       return;
     }
     
@@ -204,12 +210,17 @@ export function AdminShiftRequestsPage() {
           </DialogHeader>
           <div className="space-y-4 pt-4">
             {action === "REJECT" && (
-              <Textarea
-                placeholder="Nhập lý do chi tiết..."
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                rows={4}
-              />
+              <div className="space-y-1.5">
+                <Textarea
+                  placeholder="Nhập lý do chi tiết..."
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  rows={4}
+                />
+                {HTML_TAG_REGEX.test(rejectReason) && (
+                  <p className="text-xs text-destructive">Lý do từ chối không được chứa thẻ HTML</p>
+                )}
+              </div>
             )}
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => { setSelectedRequest(null); setAction(null); setRejectReason(""); }}>
@@ -220,7 +231,7 @@ export function AdminShiftRequestsPage() {
                   {isReviewing ? "Đang xử lý..." : "Xác nhận duyệt"}
                 </Button>
               ) : (
-                <Button variant="destructive" onClick={handleReject} disabled={isReviewing}>
+                <Button variant="destructive" onClick={handleReject} disabled={isReviewing || HTML_TAG_REGEX.test(rejectReason)}>
                   {isReviewing ? "Đang xử lý..." : "Xác nhận từ chối"}
                 </Button>
               )}

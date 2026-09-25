@@ -30,6 +30,8 @@ import {
 import { cn } from '@/lib/utils';
 import { useCreateShiftRequest } from '../hooks/use-shift-request';
 
+const HTML_TAG_REGEX = /<[a-zA-Z\/][^>]*>/;
+
 const shiftRequestSchema = z
   .object({
     requestType: z.enum(['LEAVE', 'OVERTIME']),
@@ -40,7 +42,10 @@ const shiftRequestSchema = z
     reason: z
       .string()
       .min(5, 'Lý do quá ngắn')
-      .max(500, 'Lý do không được vượt quá 500 ký tự'),
+      .max(500, 'Lý do không được vượt quá 500 ký tự')
+      .refine((val) => !HTML_TAG_REGEX.test(val), {
+        message: 'Lý do không được chứa thẻ HTML',
+      }),
   })
   .refine(
     (data) => {
