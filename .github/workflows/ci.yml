@@ -45,7 +45,7 @@ jobs:
                   JwtSettings__SecretKey: "ci-only-fake-jwt-signing-key-not-used-anywhere-else-1234567890"
                   JwtSettings__Issuer: "adsus-ci"
                   JwtSettings__Audience: "adsus-ci"
-                  JwtSettings__ExpiryMinutes: "60"
+                  JwtSettings__ExpiryMinutes: "180"
               run: dotnet test ADSUS_BE.IntegrationTests/ADSUS_BE.IntegrationTests.csproj --no-restore --logger trx
 
             # Two separate report steps, not one combined one — dotnet test already writes each
@@ -367,7 +367,7 @@ jobs:
                   JwtSettings__SecretKey: "ci-only-fake-jwt-signing-key-not-used-anywhere-else-1234567890"
                   JwtSettings__Issuer: "adsus-ci"
                   JwtSettings__Audience: "adsus-ci"
-                  JwtSettings__ExpiryMinutes: "60"
+                  JwtSettings__ExpiryMinutes: "180"
               run: dotnet test ADSUS_BE.IntegrationTests/ADSUS_BE.IntegrationTests.csproj --no-restore --collect:"XPlat Code Coverage;Format=opencover"
 
             - name: SonarCloud - End analysis

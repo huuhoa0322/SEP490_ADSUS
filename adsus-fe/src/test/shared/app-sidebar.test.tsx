@@ -63,6 +63,7 @@ describe("AppSidebar", () => {
 
       // Admin items
       expect(screen.getByText("Bảng điều khiển")).toBeInTheDocument();
+      expect(screen.getByText("Danh sách bệnh nhân")).toBeInTheDocument();
       expect(screen.getByText("Duyệt nghỉ phép bác sĩ")).toBeInTheDocument();
       expect(screen.getByText("Danh mục thuốc")).toBeInTheDocument();
       expect(screen.getByText("Nhà cung cấp")).toBeInTheDocument();
@@ -78,7 +79,6 @@ describe("AppSidebar", () => {
       expect(screen.getByText("Đăng xuất")).toBeInTheDocument();
 
       // Clinical items shouldn't appear for Admin
-      expect(screen.queryByText("Danh sách bệnh nhân")).not.toBeInTheDocument();
       expect(screen.queryByText("Tiếp đón / Check-in")).not.toBeInTheDocument();
       expect(screen.queryByText("Quản lý lịch")).not.toBeInTheDocument();
       expect(screen.queryByText("Quản lý hóa đơn")).not.toBeInTheDocument();

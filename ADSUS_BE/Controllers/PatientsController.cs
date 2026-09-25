@@ -16,7 +16,7 @@ namespace ADSUS_BE.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/patients")]
-[Authorize(Roles = "DOCTOR,STAFF")]
+[Authorize(Roles = "ADMIN,DOCTOR,STAFF")]
 [Produces("application/json")]
 public sealed class PatientsController : ControllerBase
 {
@@ -148,7 +148,7 @@ public sealed class PatientsController : ControllerBase
     /// thì lưu là xoá mất email đang có.
     /// </summary>
     [HttpGet("{userId:guid}")]
-    [Authorize(Roles = "STAFF")]
+    [Authorize(Roles = "ADMIN,STAFF")]
     [ProducesResponseType(typeof(ApiResponse<PatientAccountResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

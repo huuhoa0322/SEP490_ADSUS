@@ -14,7 +14,7 @@ namespace ADSUS_BE.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/patient-profiles")]
-[Authorize(Roles = "DOCTOR,STAFF")]
+[Authorize(Roles = "ADMIN,DOCTOR,STAFF")]
 [Produces("application/json")]
 public sealed class PatientProfilesController : ControllerBase
 {
@@ -34,6 +34,7 @@ public sealed class PatientProfilesController : ControllerBase
 
     /// <summary>Tạo hồ sơ y tế nền, gắn 1–1 với một tài khoản bệnh nhân đã có (UC-06).</summary>
     [HttpPost]
+    [Authorize(Roles = "DOCTOR,STAFF")]
     [ProducesResponseType(typeof(ApiResponse<PatientProfileResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
@@ -60,6 +61,7 @@ public sealed class PatientProfilesController : ControllerBase
 
     /// <summary>Thay toàn bộ hồ sơ nền — gửi lại cả giá trị không đổi (UC-06).</summary>
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "DOCTOR,STAFF")]
     [ProducesResponseType(typeof(ApiResponse<PatientProfileResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]

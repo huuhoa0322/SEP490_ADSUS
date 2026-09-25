@@ -48,7 +48,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Lâm sàng",
     items: [
-      { title: "Danh sách bệnh nhân", href: "/patients", icon: ClipboardList, roles: ["DOCTOR", "STAFF"] },
+      { title: "Danh sách bệnh nhân", href: "/patients", icon: ClipboardList, roles: ["DOCTOR", "STAFF", "ADMIN"] },
       { title: "Tiếp đón / Check-in", href: "/checkin", icon: ClipboardCheck, roles: ["STAFF"] },
     ],
   },

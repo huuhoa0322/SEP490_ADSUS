@@ -187,27 +187,11 @@ public class UserAccountService : IUserAccountService
         var user = await _users.GetForUpdateAsync(userId, cancellationToken);
         if (user is null) return AccountOperationResult.NotFound;
 
-        // Vai trò ADMIN bị đóng băng ở CẢ HAI CHIỀU.
-        //
-        // UC-04 chỉ cho gán [Doctor, Nurse, Patient] và ghi rõ "Admin accounts are not created
-        // on this screen". Hệ quả nếu không chặn: ô vai trò trên form không có lựa chọn ADMIN
-        // nên khi mở tài khoản Admin ra sửa, nó rơi về giá trị đầu danh sách — chỉ cần bấm Lưu
-        // để đổi cái tên là mất luôn quyền quản trị, không có cảnh báo nào. Mà mất Admin cuối
-        // cùng thì không còn ai tạo lại được, kể cả chính người vừa bấm.
-        //
-        // Chiều ngược lại cũng chặn: không được nâng người khác lên Admin qua màn này.
-        var isCurrentlyAdmin = user.Role == UserRole.Admin;
-        var wantsToBeAdmin = role.Value == UserRole.Admin;
-
-        if (isCurrentlyAdmin != wantsToBeAdmin)
+        // Không cho phép thay đổi vai trò (Role) của tài khoản sau khi đã tạo.
+        // Frontend vẫn gửi Role cũ lên, nên nếu Role gửi lên khác với Role hiện tại thì chặn lại.
+        if (user.Role != role.Value)
         {
-            return AccountOperationResult.CannotChangeAdminRole;
-        }
-
-        // Ngoài ADMIN thì chỉ nhận ba vai trò gán được.
-        if (role.Value != UserRole.Admin && !AssignableRoles.Contains(role.Value))
-        {
-            return AccountOperationResult.InvalidRole;
+            return AccountOperationResult.CannotChangeRole;
         }
 
         var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();

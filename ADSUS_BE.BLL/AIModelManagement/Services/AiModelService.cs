@@ -199,7 +199,10 @@ public class AiModelService : IAiModelService
 
             var payload = new { repo_id = targetVersion.HfRepoId, filename = targetVersion.HfFilename };
             
-            var endpoint = _aiBackendSettings.WebhookUrl.TrimEnd('/') + "/api/reload-model";
+            var baseUrl = string.IsNullOrWhiteSpace(_aiBackendSettings.WebhookUrl) 
+                ? "http://localhost:8000" 
+                : _aiBackendSettings.WebhookUrl.TrimEnd('/');
+            var endpoint = baseUrl + "/api/reload-model";
             
             var response = await httpClient.PostAsJsonAsync(endpoint, payload, cancellationToken);
             if (!response.IsSuccessStatusCode)
