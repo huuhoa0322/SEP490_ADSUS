@@ -265,11 +265,10 @@ public class AdminUsersController : ControllerBase
                 StatusCodes.Status400BadRequest,
                 "This account has no email address, so a temporary password cannot be delivered.")),
 
-        AccountOperationResult.CannotChangeAdminRole =>
+        AccountOperationResult.CannotChangeRole =>
             BadRequest(ApiResponse<T>.Fail(
                 StatusCodes.Status400BadRequest,
-                "An administrator's role cannot be changed here, and no account can be promoted "
-                + "to administrator on this screen.")),
+                "The role of an account cannot be changed after creation.")),
 
         // 502 chứ không phải 400: dữ liệu Admin gửi lên không sai chỗ nào, hỏng là ở máy chủ
         // mail phía sau. Trả 400 thì Admin ngồi sửa lại form mãi không ra.

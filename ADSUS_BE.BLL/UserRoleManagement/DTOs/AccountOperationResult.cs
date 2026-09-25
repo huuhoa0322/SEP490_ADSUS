@@ -1,4 +1,4 @@
-﻿namespace ADSUS_BE.BLL.UserRoleManagement.DTOs;
+namespace ADSUS_BE.BLL.UserRoleManagement.DTOs;
 
 /// <summary>
 /// Kết quả của một thao tác quản lý tài khoản.
@@ -57,7 +57,7 @@ public enum AccountOperationResult
     /// Lưu là mất quyền quản trị ngay, vì ô vai trò không có lựa chọn ADMIN nên nó rơi về
     /// giá trị đầu danh sách. Mất Admin cuối cùng là không còn ai tạo lại được.
     /// </summary>
-    CannotChangeAdminRole,
+    CannotChangeRole,
 
     /// <summary>
     /// Không gửi được mật khẩu tạm, và mật khẩu cũ ĐƯỢC GIỮ NGUYÊN.

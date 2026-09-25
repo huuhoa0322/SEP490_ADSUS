@@ -473,37 +473,8 @@ public class UserAccountServiceTests
         Assert.Equal(AccountOperationResult.EmailAlreadyUsed, result);
     }
 
-    [Fact]
-    public async Task UpdateAsync_ChangeRoleToNurse_Succeeds()
-    {
-        var user = BuildDbUser(UserRole.Doctor);
-        SetupGetById(user);
 
-        var result = await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
-        {
-            FullName = "Vũ Thị Cẩm Tú",
-            Role = "STAFF",
-        }, _adminId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(AccountOperationResult.Success, result);
-        Assert.Equal(UserRole.Staff, user.Role);
-    }
-
-    [Fact]
-    public async Task UpdateAsync_ChangeRoleToPharmacist_Succeeds()
-    {
-        var user = BuildDbUser(UserRole.Doctor);
-        SetupGetById(user);
-
-        var result = await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
-        {
-            FullName = "Dược sĩ Trần Mai",
-            Role = "PHARMACIST",
-        }, _adminId, TestContext.Current.CancellationToken);
-
-        Assert.Equal(AccountOperationResult.Success, result);
-        Assert.Equal(UserRole.Pharmacist, user.Role);
-    }
 
     [Fact]
     public async Task UpdateAsync_NeverChangesPhoneOrStatus()
@@ -530,7 +501,7 @@ public class UserAccountServiceTests
     {
         // BR-01 nói Admin không được THẤY ngày sinh bệnh nhân — không nói phải XOÁ nó.
         // Hai việc khác nhau, và trước đây code làm nhầm sang việc thứ hai.
-        var user = BuildDbUser(UserRole.Doctor);
+        var user = BuildDbUser(UserRole.Patient);
         user.DateOfBirth = new DateOnly(1985, 3, 10);
         SetupGetById(user);
 
@@ -591,7 +562,7 @@ public class UserAccountServiceTests
             Role = vaiTroMoi,
         }, _adminId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(AccountOperationResult.CannotChangeAdminRole, result);
+        Assert.Equal(AccountOperationResult.CannotChangeRole, result);
         Assert.Equal(UserRole.Admin, user.Role);
         _users.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -610,7 +581,7 @@ public class UserAccountServiceTests
             Role = "ADMIN",
         }, _adminId, TestContext.Current.CancellationToken);
 
-        Assert.Equal(AccountOperationResult.CannotChangeAdminRole, result);
+        Assert.Equal(AccountOperationResult.CannotChangeRole, result);
         Assert.Equal(UserRole.Doctor, user.Role);
     }
 
@@ -668,23 +639,7 @@ public class UserAccountServiceTests
         Assert.Contains("ACTIVE", log.Detail);
     }
 
-    [Fact]
-    public async Task UpdateAsync_AuditLogRecordsRoleBeforeAndAfter()
-    {
-        var user = BuildDbUser(UserRole.Doctor);
-        SetupGetById(user);
 
-        await _sut.UpdateAsync(user.UserId, new UpdateUserAccountRequest
-        {
-            FullName = "Vũ Thị Cẩm Tú",
-            Role = "STAFF",
-        }, _adminId, TestContext.Current.CancellationToken);
-
-        var log = Assert.Single(_audited);
-        Assert.Equal("UPDATE_ACCOUNT", log.Action);
-        Assert.Contains("DOCTOR", log.Detail);
-        Assert.Contains("STAFF", log.Detail);
-    }
 
     [Fact]
     public async Task RejectedOperations_AreNeverWrittenToAuditLog()
