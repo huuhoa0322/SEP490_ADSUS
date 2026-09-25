@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { containsHtmlTags } from "@/lib/utils";
 import { useCancellationStatusToday, useCancelMyAppointment } from "../hooks/use-appointment-history";
 
 interface CancelAppointmentDialogProps {
@@ -63,7 +64,8 @@ export function CancelAppointmentDialog({
     return selectedPreset;
   }
 
-  const canSubmit = resolveReason().length > 0 && !cancelMutation.isPending;
+  const isHtmlReason = selectedPreset === "other" && containsHtmlTags(customReason);
+  const canSubmit = resolveReason().length > 0 && !cancelMutation.isPending && !isHtmlReason;
 
   function handleConfirm() {
     if (!canSubmit) return;
@@ -142,14 +144,21 @@ export function CancelAppointmentDialog({
 
             {/* Textarea: always shown when "Khác" selected or user is typing */}
             {selectedPreset === "other" && (
-              <Textarea
-                value={customReason}
-                onChange={(e) => setCustomReason(e.target.value)}
-                placeholder="Nhập lý do hủy..."
-                rows={3}
-                className="resize-none"
-                data-testid="custom-reason-textarea"
-              />
+              <div className="space-y-1.5">
+                <Textarea
+                  value={customReason}
+                  onChange={(e) => setCustomReason(e.target.value)}
+                  placeholder="Nhập lý do hủy..."
+                  rows={3}
+                  className="resize-none"
+                  data-testid="custom-reason-textarea"
+                />
+                {isHtmlReason && (
+                  <p className="text-xs text-destructive">
+                    Lý do hủy không được chứa thẻ HTML (ví dụ: &lt;p&gt;, &lt;script&gt;, ...)
+                  </p>
+                )}
+              </div>
             )}
           </div>
 

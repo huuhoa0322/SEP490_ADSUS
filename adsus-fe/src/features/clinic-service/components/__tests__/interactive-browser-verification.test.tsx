@@ -138,6 +138,7 @@ vi.mock("@/features/prescription-adherence/hooks/use-invoices", () => ({
   useInvoiceDetail: (id: string) => mockUseInvoiceDetail(id),
   usePayInvoice: () => ({ mutate: vi.fn(), isPending: false }),
   useCancelInvoice: () => ({ mutate: vi.fn(), isPending: false }),
+  useRemoveMedicineItem: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 vi.mock("next/navigation", () => ({

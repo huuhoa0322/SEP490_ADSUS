@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../../core/theme/app_theme.dart';
+import '../../../../../core/utils/html_sanitizer.dart';
 
 /// Bottom sheet chọn lý do hủy cuộc hẹn (UC-14 BR-02, AF-02).
 ///
@@ -38,12 +39,17 @@ class _CancelReasonSheetState extends State<CancelReasonSheet> {
     return _selectedReason ?? '';
   }
 
+  bool get _hasHtml =>
+      _selectedReason == 'Lý do khác' &&
+      HtmlSanitizer.containsHtml(_noteController.text);
+
   bool get _canConfirm {
     if (_selectedReason == null) return false;
     if (_selectedReason == 'Lý do khác' &&
         _noteController.text.trim().isEmpty) {
       return false;
     }
+    if (_hasHtml) return false;
     return true;
   }
 
@@ -102,6 +108,13 @@ class _CancelReasonSheetState extends State<CancelReasonSheet> {
                   hintText: 'Nhập lý do cụ thể...',
                 ),
               ),
+              if (_hasHtml) ...[
+                const SizedBox(height: 6),
+                const Text(
+                  'Lý do hủy không được chứa thẻ HTML.',
+                  style: TextStyle(fontSize: 12, color: AppColors.danger),
+                ),
+              ],
             ],
             const SizedBox(height: 16),
             ElevatedButton(

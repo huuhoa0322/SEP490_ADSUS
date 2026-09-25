@@ -15,8 +15,8 @@ class MedicalRecordPrescriptionItem {
   final String? instructions;
 }
 
-/// Trạng thái đơn thuốc — map từ chuỗi UPPERCASE backend (`"ACTIVE"`) ở tầng Mapper.
-enum PrescriptionStatus { active, completed }
+/// Trạng thái đơn thuốc — map từ chuỗi UPPERCASE backend (`"ACTIVE"`, `"CANCELLED"`) ở tầng Mapper.
+enum PrescriptionStatus { active, completed, cancelled }
 
 /// Đơn thuốc đầy đủ kèm 1 lượt khám — mirror `PrescriptionSummary` (API Spec module 04).
 /// Đính chính 15/08/2026: Module 7 chưa có màn xem chi tiết đơn thuốc riêng, nên SCR-14 hiện

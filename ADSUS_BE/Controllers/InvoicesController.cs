@@ -63,6 +63,17 @@ public class InvoicesController : ControllerBase
         await _invoiceService.CancelInvoiceAsync(id, request);
         return Ok(ApiResponse<object>.Ok(new { message = "Đã hủy hóa đơn thành công." }));
     }
+
+    /// <summary>
+    /// Xóa một dòng thuốc khỏi hóa đơn PENDING — hoàn kho tự động.
+    /// </summary>
+    [HttpDelete("{id}/items/{itemId}")]
+    [Authorize(Roles = "STAFF")]
+    public async Task<IActionResult> RemoveMedicineItem(Guid id, Guid itemId)
+    {
+        await _invoiceService.RemoveMedicineItemAsync(id, itemId);
+        return Ok(ApiResponse<object>.Ok(new { message = "Đã xóa dòng thuốc và hoàn kho thành công." }));
+    }
 }
 
 public class PayInvoiceRequest

@@ -264,12 +264,6 @@ export function PrescriptionForm({
 
         {/* ── Submit ─────────────────────────────────────────────── */}
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
-            <AlertTriangle className="size-4 shrink-0 text-amber-500" />
-            <span>
-              Đơn thuốc chỉ được tạo <strong>một lần duy nhất</strong>. Vui lòng kiểm tra kỹ trước khi bấm xác nhận.
-            </span>
-          </div>
           <div className="flex justify-end">
             <button
               type="submit"

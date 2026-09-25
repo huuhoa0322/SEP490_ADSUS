@@ -269,6 +269,11 @@ export function BookingView({
           rows={3}
           className="resize-none"
         />
+        {form.reason && containsHtmlTags(form.reason) && (
+          <p className="text-xs text-destructive">
+            Lý do khám không được chứa thẻ HTML (ví dụ: &lt;p&gt;, &lt;script&gt;, ...)
+          </p>
+        )}
       </div>
 
       {/* 8. Symptom Section */}
@@ -284,7 +289,7 @@ export function BookingView({
         <Button
           type="button"
           onClick={handleSubmit}
-          disabled={!form.selectedSlotId || bookMutation.isPending}
+          disabled={!form.selectedSlotId || bookMutation.isPending || Boolean(form.reason && containsHtmlTags(form.reason))}
           className="w-full h-12 text-base font-semibold shadow-sm"
         >
           {bookMutation.isPending ? (

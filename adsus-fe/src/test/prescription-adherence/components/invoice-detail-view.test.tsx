@@ -18,8 +18,10 @@ const mockInvoice = {
 // Stable mutable refs so assertions see the same objects across renders
 const cancelMutate = vi.fn();
 const payMutate = vi.fn();
+const removeMutate = vi.fn();
 const cancelState = { mutate: cancelMutate, isPending: false };
 const payState = { mutate: payMutate, isPending: false };
+const removeState = { mutate: removeMutate, isPending: false };
 
 // Mock router
 vi.mock("next/navigation", () => ({
@@ -40,6 +42,7 @@ vi.mock("@/features/prescription-adherence/hooks/use-invoices", () => ({
   useInvoiceDetail: vi.fn(),
   usePayInvoice: vi.fn(() => payState),
   useCancelInvoice: vi.fn(() => cancelState),
+  useRemoveMedicineItem: vi.fn(() => removeState),
 }));
 
 // Mock toast
@@ -55,8 +58,10 @@ describe("InvoiceDetailView", () => {
     vi.clearAllMocks();
     cancelMutate.mockReset();
     payMutate.mockReset();
+    removeMutate.mockReset();
     cancelState.isPending = false;
     payState.isPending = false;
+    removeState.isPending = false;
 
     const mod = await vi.mocked(
       import("@/features/prescription-adherence/hooks/use-invoices"),

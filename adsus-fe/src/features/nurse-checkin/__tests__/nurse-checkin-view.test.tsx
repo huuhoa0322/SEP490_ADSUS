@@ -115,11 +115,16 @@ describe("NurseCheckinView", () => {
     const inputs = screen.getAllByPlaceholderText("dd/mm/yyyy");
     const fromInput = inputs[0];
 
-    fireEvent.change(fromInput, { target: { value: "25/09/2026" } });
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 5);
+    const futureDateStr = format(futureDate, "dd/MM/yyyy");
+    const expectedToDate = format(futureDate, "yyyy-MM-dd");
+
+    fireEvent.change(fromInput, { target: { value: futureDateStr } });
 
     expect(useCheckinQueue).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        toDate: "2026-09-25",
+        toDate: expectedToDate,
         page: 1,
       })
     );

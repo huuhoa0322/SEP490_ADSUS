@@ -17,4 +17,5 @@ public class InvoiceItemResponse
     public decimal UnitPrice { get; set; }
     public decimal TotalPrice { get; set; }
     public string ItemType { get; set; } = "MEDICINE";
+    public Guid? ReferenceId { get; set; }
 }

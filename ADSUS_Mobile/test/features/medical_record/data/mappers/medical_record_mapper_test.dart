@@ -109,6 +109,30 @@ void main() {
       expect(entity.prescription, isNull);
     });
 
+    test('prescription o trang thai CANCELLED (khi bi huy hoa don) map thanh cong sang PrescriptionStatus.cancelled', () {
+      const dto = CaseDto(
+        caseId: 'case-1',
+        visitDate: '2026-08-15',
+        status: 'END',
+        doctorId: 'doctor-1',
+        doctorName: 'BS. Le Minh Hoang',
+        doctorConclusion: 'Theo doi dinh ky',
+        prescription: PrescriptionSummaryDto(
+          prescriptionId: 'rx-cancelled',
+          status: 'CANCELLED',
+          prescribedDate: '2026-08-15',
+          generalNote: 'Don da huy do huy hoa don',
+          items: [],
+        ),
+      );
+
+      final entity = MedicalRecordMapper.caseFromDto(dto);
+
+      expect(entity.prescription, isNotNull);
+      expect(entity.prescription?.status, PrescriptionStatus.cancelled);
+      expect(entity.prescription?.generalNote, 'Don da huy do huy hoa don');
+    });
+
     test('map dung danh sach anh, giu nguyen thu tu tu Dto', () {
       const dto = CaseDto(
         caseId: 'case-1',

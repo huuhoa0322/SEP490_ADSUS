@@ -9,6 +9,7 @@ import {
   useInvoiceDetail,
   usePayInvoice,
   useCancelInvoice,
+  useRemoveMedicineItem,
 } from "../hooks/use-invoices";
 import {
   Table,
@@ -31,7 +32,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
-import { ArrowLeft, CheckCircle2, Ban } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Ban, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
@@ -39,11 +40,13 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
   const isNurse = useAuthStore((s) => s.user?.role === "STAFF");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [removeItemId, setRemoveItemId] = useState<string | null>(null);
 
   const { data, isLoading } = useInvoiceDetail(invoiceId);
 
   const payInvoice = usePayInvoice();
   const cancelInvoice = useCancelInvoice();
+  const removeMedicine = useRemoveMedicineItem();
 
   const handlePay = (method: string) => {
     payInvoice.mutate(
@@ -74,6 +77,22 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
         },
         onError: (error) => {
           toast.error(getApiErrorMessage(error, "Có lỗi xảy ra khi hủy."));
+        },
+      },
+    );
+  };
+
+  const handleRemoveItem = () => {
+    if (!removeItemId) return;
+    removeMedicine.mutate(
+      { invoiceId, itemId: removeItemId },
+      {
+        onSuccess: () => {
+          toast.success("Đã xóa dòng thuốc và hoàn kho thành công.");
+          setRemoveItemId(null);
+        },
+        onError: (error) => {
+          toast.error(getApiErrorMessage(error, "Có lỗi xảy ra khi xóa dòng thuốc."));
         },
       },
     );
@@ -186,6 +205,9 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
                     <TableHead className="text-right font-bold">Số lượng</TableHead>
                     <TableHead className="text-right font-bold">Đơn giá</TableHead>
                     <TableHead className="text-right font-bold">Thành tiền</TableHead>
+                    {isNurse && isPending && (
+                      <TableHead className="w-[50px]"></TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -207,10 +229,25 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
                       <TableCell className="text-right">{item.quantity}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
                       <TableCell className="text-right font-bold">{formatCurrency(item.totalPrice)}</TableCell>
+                      {isNurse && isPending && (
+                        <TableCell className="text-center">
+                          {item.itemType === "MEDICINE" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                              onClick={() => setRemoveItemId(item.id)}
+                              title="Xóa dòng thuốc (bệnh nhân không lấy)"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell colSpan={5} className="text-right font-extrabold text-lg">Tổng cộng:</TableCell>
+                    <TableCell colSpan={isNurse && isPending ? 6 : 5} className="text-right font-extrabold text-lg">Tổng cộng:</TableCell>
                     <TableCell className="text-right font-extrabold text-lg text-primary">{formatCurrency(data.totalAmount)}</TableCell>
                   </TableRow>
                 </TableBody>
@@ -304,6 +341,60 @@ export function InvoiceDetailView({ invoiceId }: { invoiceId: string }) {
             <Button variant="outline" onClick={() => setCancelOpen(false)} disabled={cancelInvoice.isPending}>Đóng</Button>
             <Button variant="destructive" onClick={handleCancel} disabled={cancelInvoice.isPending}>
               {cancelInvoice.isPending ? "Đang xử lý..." : "Xác nhận Hủy"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={removeItemId !== null} onOpenChange={(open) => { if (!open) setRemoveItemId(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Xác Nhận Xóa Dòng Thuốc</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1 pb-2">
+            <p className="text-sm text-muted-foreground">
+              Bệnh nhân không lấy thuốc này. Xóa sẽ tự động hoàn toàn bộ số lượng thuốc về lại kho và xóa các quy cách liên quan trên hóa đơn.
+            </p>
+            {(() => {
+              const selectedItem = data.items.find((i) => i.id === removeItemId);
+              if (!selectedItem) return null;
+              const relatedItems = selectedItem.referenceId
+                ? data.items.filter((i) => i.referenceId === selectedItem.referenceId && i.itemType === "MEDICINE")
+                : [selectedItem];
+              const totalRefund = relatedItems.reduce((acc, curr) => acc + curr.totalPrice, 0);
+
+              return (
+                <div className="bg-muted/70 p-3 rounded-md text-sm space-y-2 border">
+                  <div className="font-semibold text-foreground">
+                    {relatedItems.length > 1
+                      ? `Các dòng thuốc sẽ xóa (${relatedItems.length} dòng):`
+                      : "Dòng thuốc sẽ xóa:"}
+                  </div>
+                  <ul className="space-y-1 divide-y divide-border/50 text-xs">
+                    {relatedItems.map((rel) => (
+                      <li key={rel.id} className="pt-1 first:pt-0 flex justify-between items-center">
+                        <div>
+                          <span className="font-medium">{rel.description}</span>
+                          <span className="text-muted-foreground ml-1">({rel.quantity} {rel.unit})</span>
+                        </div>
+                        <span className="font-semibold text-primary">{formatCurrency(rel.totalPrice)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {relatedItems.length > 1 && (
+                    <div className="pt-1 border-t border-border flex justify-between font-bold text-xs">
+                      <span>Tổng tiền thuốc giảm:</span>
+                      <span className="text-destructive">{formatCurrency(totalRefund)}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemoveItemId(null)} disabled={removeMedicine.isPending}>Đóng</Button>
+            <Button variant="destructive" onClick={handleRemoveItem} disabled={removeMedicine.isPending}>
+              {removeMedicine.isPending ? "Đang xử lý..." : "Xác nhận Xóa"}
             </Button>
           </DialogFooter>
         </DialogContent>

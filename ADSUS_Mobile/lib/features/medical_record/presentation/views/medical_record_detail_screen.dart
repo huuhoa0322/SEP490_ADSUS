@@ -561,5 +561,6 @@ class _PrescriptionCard extends StatelessWidget {
   String _statusLabel(PrescriptionStatus status) => switch (status) {
         PrescriptionStatus.active => 'Đang dùng',
         PrescriptionStatus.completed => 'Đã hoàn thành',
+        PrescriptionStatus.cancelled => 'Đã huỷ',
       };
 }

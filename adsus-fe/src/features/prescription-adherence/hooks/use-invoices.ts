@@ -70,3 +70,15 @@ export function useCaseInvoices(caseId: string | undefined) {
     staleTime: 30 * 1000,
   });
 }
+
+/** DELETE /api/v1/invoices/{id}/items/{itemId} — xóa 1 dòng thuốc khỏi hóa đơn PENDING. */
+export function useRemoveMedicineItem() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, { invoiceId: string; itemId: string }, unknown>({
+    mutationFn: ({ invoiceId, itemId }) => invoiceService.removeMedicineItem(invoiceId, itemId),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: keys.detail(variables.invoiceId) });
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+    },
+  });
+}

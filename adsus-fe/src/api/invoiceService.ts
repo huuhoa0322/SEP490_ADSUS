@@ -31,6 +31,7 @@ export interface InvoiceItemResponse {
   unitPrice: number;
   totalPrice: number;
   itemType?: "MEDICINE" | "SERVICE" | string;
+  referenceId?: string;
 }
 
 export interface InvoiceDetailResponse extends InvoiceResponse {
@@ -70,5 +71,9 @@ export const invoiceService = {
       `/api/v1/cases/${caseId}/invoices`,
     );
     return response.data.data ?? [];
+  },
+
+  removeMedicineItem: async (invoiceId: string, itemId: string): Promise<void> => {
+    await api.delete<ApiResponse<void>>(`/api/v1/invoices/${invoiceId}/items/${itemId}`);
   },
 };

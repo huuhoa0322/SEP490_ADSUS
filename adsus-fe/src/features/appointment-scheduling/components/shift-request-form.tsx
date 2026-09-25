@@ -111,6 +111,7 @@ export function ShiftRequestForm({
     formState: { errors },
   } = useForm<ShiftRequestFormValues>({
     resolver: zodResolver(shiftRequestSchema),
+    mode: 'onChange',
     defaultValues: {
       requestType: defaultRequestType,
       requestDate: defaultDate && defaultDate >= minDate ? defaultDate : undefined,
@@ -131,6 +132,8 @@ export function ShiftRequestForm({
   }, [open, defaultDate, defaultRequestType, minDate, reset]);
 
   const requestType = useWatch({ control, name: 'requestType' });
+  const reason = useWatch({ control, name: 'reason' });
+  const hasReasonHtml = HTML_TAG_REGEX.test(reason || '');
 
   const onSubmit = async (data: ShiftRequestFormValues) => {
     try {
@@ -272,9 +275,13 @@ export function ShiftRequestForm({
                 />
               )}
             />
-            {errors.reason && (
+            {hasReasonHtml ? (
+              <p className="text-sm text-destructive">
+                Lý do không được chứa thẻ HTML (ví dụ: &lt;p&gt;, &lt;script&gt;, ...)
+              </p>
+            ) : errors.reason ? (
               <p className="text-sm text-destructive">{errors.reason.message}</p>
-            )}
+            ) : null}
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
@@ -285,7 +292,7 @@ export function ShiftRequestForm({
             >
               Hủy
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending || hasReasonHtml}>
               {isPending ? 'Đang gửi...' : 'Gửi yêu cầu'}
             </Button>
           </div>
