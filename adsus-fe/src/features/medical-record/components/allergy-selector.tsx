@@ -68,7 +68,7 @@ export function AllergySelector({ value, onChange }: AllergySelectorProps) {
                     onChange={(e) => handleNoteChange(allergy.id, e.target.value)}
                     placeholder="Nhập chi tiết dị ứng..."
                     rows={2}
-                    className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="w-full max-w-full min-w-0 break-all resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
               )}

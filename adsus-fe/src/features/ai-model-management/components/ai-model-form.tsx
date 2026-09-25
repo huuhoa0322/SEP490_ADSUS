@@ -265,7 +265,7 @@ export function AiModelFormDialog({ id, open, onClose, onSuccess }: AiModelFormD
               rows={3}
               placeholder="Vui lòng tải file cấu hình để tự điền..."
               value={formData.description}
-              className="w-full rounded-xl border border-border bg-secondary/30 p-4 text-sm outline-none cursor-default text-muted-foreground"
+              className="w-full max-w-full min-w-0 resize-none break-all rounded-xl border border-border bg-secondary/30 p-4 text-sm outline-none cursor-default text-muted-foreground"
             />
           </div>
 

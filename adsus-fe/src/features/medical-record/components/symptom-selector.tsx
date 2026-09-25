@@ -161,7 +161,7 @@ export function SymptomSelector({ value, onChange }: SymptomSelectorProps) {
                     }}
                     placeholder="Mô tả triệu chứng khác..."
                     rows={3}
-                    className="w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="w-full max-w-full min-w-0 break-all resize-y rounded-lg border border-border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 ) : (() => {
                   // Sắp xếp: Triệu chứng Khác (DB) xuống cuối
