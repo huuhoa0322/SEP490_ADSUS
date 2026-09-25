@@ -57,6 +57,37 @@ class MedicalRecordRepositoryImpl implements MedicalRecordRepository {
   }
 
   @override
+  Future<List<MedicalRecordSummary>> getRelativeCases({
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        ApiConstants.relativeCases,
+        queryParameters: {'page': page, 'pageSize': pageSize},
+      );
+
+      final envelope = ApiEnvelope.fromJson(res.data ?? const {});
+      if (envelope.data == null) {
+        throw const ApiException('Không tải được hồ sơ khám người thân.');
+      }
+
+      final paged = PagedResultDto.fromJson(
+        envelope.data as Map<String, dynamic>,
+        RelativeCaseSummaryDto.fromJson,
+      );
+      return paged.items.map(MedicalRecordMapper.relativeSummaryFromDto).toList();
+    } on DioException catch (e) {
+      throw ApiErrorMapper.general(e, fallback: 'Không tải được hồ sơ khám người thân.');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      debugPrint('[MedicalRecordRepo] getRelativeCases parse/logic error: $e');
+      throw const ApiException('Không tải được hồ sơ khám người thân.');
+    }
+  }
+
+  @override
   Future<MedicalRecordCase> getRecordDetail(String caseId) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(

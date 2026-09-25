@@ -36,6 +36,10 @@ public interface ICaseService
     Task<PagedResult<CaseSummaryResponse>> ListMineAsync(
         Guid callerUserId, int page, int pageSize, CancellationToken ct = default);
 
+    /// <summary>Danh sách lần khám của người thân mà người gọi quản lý, kèm tên + quan hệ.</summary>
+    Task<PagedResult<RelativeCaseSummaryResponse>> ListRelativeCasesAsync(
+        Guid callerUserId, int page, int pageSize, CancellationToken ct = default);
+
     Task<CaseResponse> CreateAsync(
         CreateCaseRequest request, CancellationToken ct = default);
 

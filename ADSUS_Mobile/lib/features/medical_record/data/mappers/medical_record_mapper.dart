@@ -17,6 +17,16 @@ class MedicalRecordMapper {
         doctorId: dto.doctorId,
       );
 
+  static MedicalRecordSummary relativeSummaryFromDto(RelativeCaseSummaryDto dto) =>
+      MedicalRecordSummary(
+        caseId: dto.caseId,
+        visitDate: DateTime.parse(dto.visitDate),
+        status: CaseStatus.values.byName(dto.status.toLowerCase()),
+        doctorId: dto.doctorId,
+        patientName: dto.patientName,
+        relationshipName: dto.relationshipName,
+      );
+
   static MedicalRecordCase caseFromDto(CaseDto dto) => MedicalRecordCase(
         caseId: dto.caseId,
         visitDate: DateTime.parse(dto.visitDate),

@@ -32,12 +32,25 @@ void main() {
             doctorId: 'doctor-1',
           ),
         ]);
+    when(() => repo.getRelativeCases()).thenAnswer((_) async => [
+          MedicalRecordSummary(
+            caseId: 'case-2',
+            visitDate: DateTime(2026, 8, 10),
+            status: CaseStatus.end,
+            doctorId: 'doctor-1',
+            patientName: 'Nguyễn Thị B',
+            relationshipName: 'Mẹ',
+          ),
+        ]);
 
     final notifier = container.read(medicalRecordListViewModelProvider.notifier);
     await notifier.load();
 
     final state = container.read(medicalRecordListViewModelProvider);
-    expect(state.records, hasLength(1));
+    // Mặc định tab SELF → records trả về selfRecords
+    expect(state.selfRecords, hasLength(1));
+    expect(state.relativeRecords, hasLength(1));
+    expect(state.records, hasLength(1)); // filteredRecords (SELF tab)
     expect(state.isLoading, isFalse);
     expect(state.errorMessage, isNull);
   });
@@ -45,6 +58,7 @@ void main() {
   test('repository nem loi thi state co errorMessage, records rong', () async {
     when(() => repo.getMyRecords())
         .thenThrow(const ApiException('Khong tai duoc danh sach luot kham.'));
+    when(() => repo.getRelativeCases()).thenAnswer((_) async => []);
 
     final notifier = container.read(medicalRecordListViewModelProvider.notifier);
     await notifier.load();
@@ -52,5 +66,47 @@ void main() {
     final state = container.read(medicalRecordListViewModelProvider);
     expect(state.errorMessage, 'Khong tai duoc danh sach luot kham.');
     expect(state.records, isEmpty);
+  });
+
+  test('setFilterScope chuyen tab RELATIVE thi records la relativeRecords', () async {
+    when(() => repo.getMyRecords()).thenAnswer((_) async => [
+          MedicalRecordSummary(
+            caseId: 'case-self',
+            visitDate: DateTime(2026, 7, 22),
+            status: CaseStatus.end,
+            doctorId: 'doctor-1',
+          ),
+        ]);
+    when(() => repo.getRelativeCases()).thenAnswer((_) async => [
+          MedicalRecordSummary(
+            caseId: 'case-rel-1',
+            visitDate: DateTime(2026, 8, 10),
+            status: CaseStatus.end,
+            doctorId: 'doctor-1',
+            patientName: 'Nguyễn Thị B',
+            relationshipName: 'Mẹ',
+          ),
+          MedicalRecordSummary(
+            caseId: 'case-rel-2',
+            visitDate: DateTime(2026, 9, 5),
+            status: CaseStatus.end,
+            doctorId: 'doctor-2',
+            patientName: 'Nguyễn Văn C',
+            relationshipName: 'Con',
+          ),
+        ]);
+
+    final notifier = container.read(medicalRecordListViewModelProvider.notifier);
+    await notifier.load();
+
+    // Chuyển sang tab người thân
+    notifier.setFilterScope('RELATIVE');
+
+    final state = container.read(medicalRecordListViewModelProvider);
+    expect(state.filterScope, 'RELATIVE');
+    expect(state.records, hasLength(2)); // 2 relative records
+    expect(state.records.first.patientName, 'Nguyễn Thị B');
+    expect(state.selfCount, 1);
+    expect(state.relativeCount, 2);
   });
 }

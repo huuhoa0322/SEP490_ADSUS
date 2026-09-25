@@ -25,6 +25,7 @@ public sealed class CaseService : ICaseService
     private readonly IUltrasoundImageRepository _images;
     private readonly IPatientProfileRepository _profiles;
     private readonly IUserRepository _users;
+    private readonly IPatientRelationshipRepository _relationships;
     private readonly System.Lazy<IFileStorageService> _storageLazy;
     private readonly INotificationService _notificationService;
     private readonly ILogger<CaseService> _logger;
@@ -39,6 +40,7 @@ public sealed class CaseService : ICaseService
         IUltrasoundImageRepository images,
         IPatientProfileRepository profiles,
         IUserRepository users,
+        IPatientRelationshipRepository relationships,
         System.Lazy<IFileStorageService> storageLazy,
         INotificationService notificationService,
         ILogger<CaseService> logger,
@@ -50,6 +52,7 @@ public sealed class CaseService : ICaseService
         _images = images;
         _profiles = profiles;
         _users = users;
+        _relationships = relationships;
         _storageLazy = storageLazy;
         _notificationService = notificationService;
         _logger = logger;
@@ -98,9 +101,15 @@ public sealed class CaseService : ICaseService
         // Quyết định 14/08/2026 (sau khi trao đổi lại): Patient CHỈ xem được ca đã END (đã
         // Confirmed VÀ đã có đơn thuốc) — ca mới Confirmed nhưng chưa kê đơn vẫn ẩn, kể cả
         // khi Patient có ID trực tiếp.
-        if (medicalCase is null
-            || medicalCase.PatientProfileId != profile.PatientProfileId
-            || medicalCase.Status != CaseStatus.End)
+        if (medicalCase is null || medicalCase.Status != CaseStatus.End)
+        {
+            throw new ResourceNotFoundException("Case not found.");
+        }
+
+        // Cho phép xem nếu: (1) ca của chính mình, HOẶC (2) có quan hệ người thân hợp lệ
+        var isOwn = medicalCase.PatientProfileId == profile.PatientProfileId;
+        var isRelative = !isOwn && await _relationships.ExistsAsync(callerUserId, medicalCase.PatientProfileId, ct);
+        if (!isOwn && !isRelative)
         {
             throw new ResourceNotFoundException("Case not found.");
         }
@@ -160,6 +169,51 @@ public sealed class CaseService : ICaseService
             "desc", page, pageSize, ct);
 
         return ToPagedResult(items, page, pageSize, total, CaseMapper.ToSummary);
+    }
+
+    public async Task<PagedResult<RelativeCaseSummaryResponse>> ListRelativeCasesAsync(
+        Guid callerUserId,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        // Lấy tất cả quan hệ người thân
+        var relationships = await _relationships.GetByUserIdAsync(callerUserId, ct);
+        if (relationships.Count == 0)
+        {
+            return new PagedResult<RelativeCaseSummaryResponse>(new List<RelativeCaseSummaryResponse>(), 0, page, pageSize, 0);
+        }
+
+        // Tạo dictionary: PatientProfileId -> (PatientName, RelationshipName)
+        var profileLookup = new Dictionary<Guid, (string PatientName, string? RelationshipName)>();
+        foreach (var rel in relationships)
+        {
+            var profile = await _profiles.GetByIdAsync(rel.PatientProfileId, ct);
+            if (profile != null)
+            {
+                var name = profile.User?.FullName ?? profile.FullName ?? "Người thân";
+                profileLookup[rel.PatientProfileId] = (name, rel.RelationshipName);
+            }
+        }
+
+        if (profileLookup.Count == 0)
+        {
+            return new PagedResult<RelativeCaseSummaryResponse>(new List<RelativeCaseSummaryResponse>(), 0, page, pageSize, 0);
+        }
+
+        // Query all cases for all relative profile IDs with status End
+        var profileIds = profileLookup.Keys.ToList();
+        var (items, total) = await _cases.SearchByMultipleProfilesAsync(
+            profileIds, new[] { CaseStatus.End }, "desc", page, pageSize, ct);
+
+        var result = items.Select(c =>
+        {
+            var (patientName, relationshipName) = profileLookup.GetValueOrDefault(c.PatientProfileId, ("Người thân", null));
+            return CaseMapper.ToRelativeSummary(c, patientName, relationshipName);
+        }).ToList();
+
+        var totalPages = total > 0 ? (int)Math.Ceiling(total / (double)pageSize) : 0;
+        return new PagedResult<RelativeCaseSummaryResponse>(result, total, page, pageSize, totalPages);
     }
 
     public async Task<CaseResponse> CreateAsync(

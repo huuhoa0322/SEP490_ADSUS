@@ -113,6 +113,25 @@ public sealed class CasesController : ControllerBase
     }
 
     /// <summary>
+    /// Danh sách lần khám của người thân (Mobile) — kèm tên bệnh nhân + quan hệ.
+    /// </summary>
+    [HttpGet("relatives")]
+    [Authorize(Roles = "PATIENT")]
+    [ProducesResponseType(typeof(ApiResponse<PagedResult<RelativeCaseSummaryResponse>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListRelativeCases(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > 100) pageSize = 100;
+
+        var result = await _cases.ListRelativeCasesAsync(GetCallerUserId(), page, pageSize, ct);
+        return Ok(ApiResponse<PagedResult<RelativeCaseSummaryResponse>>.Ok(result, "Relative cases retrieved successfully"));
+    }
+
+    /// <summary>
     /// Chi tiết một lần khám (UC-08).
     ///
     /// Hình dạng dữ liệu trả về KHÁC NHAU theo vai trò: Bác sĩ/Điều dưỡng nhận

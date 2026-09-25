@@ -20,6 +20,36 @@ class CaseSummaryDto {
       );
 }
 
+/// DTO khớp 1:1 `RelativeCaseSummaryResponse` — API (GET /cases/relatives).
+/// Mở rộng CaseSummaryDto với tên bệnh nhân + quan hệ.
+class RelativeCaseSummaryDto {
+  const RelativeCaseSummaryDto({
+    required this.caseId,
+    required this.visitDate,
+    required this.status,
+    required this.doctorId,
+    required this.patientName,
+    this.relationshipName,
+  });
+
+  final String caseId;
+  final String visitDate;
+  final String status;
+  final String doctorId;
+  final String patientName;
+  final String? relationshipName;
+
+  factory RelativeCaseSummaryDto.fromJson(Map<String, dynamic> json) =>
+      RelativeCaseSummaryDto(
+        caseId: json['caseId'] as String,
+        visitDate: json['visitDate'] as String,
+        status: json['status'] as String,
+        doctorId: json['doctorId'] as String,
+        patientName: json['patientName'] as String? ?? 'Người thân',
+        relationshipName: json['relationshipName'] as String?,
+      );
+}
+
 /// DTO khớp 1:1 `PrescriptionItemSummary` lồng trong `PrescriptionSummaryDto`.
 class PrescriptionItemDto {
   const PrescriptionItemDto({

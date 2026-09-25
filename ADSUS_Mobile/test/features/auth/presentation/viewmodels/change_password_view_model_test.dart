@@ -25,6 +25,7 @@ void main() {
     // and calls getMyRecords() — must be stubbed or mocktail returns null for an unstubbed
     // Future<List<...>>, crashing the rebuild (same stub as auth_view_model_test.dart).
     when(() => medicalRepo.getMyRecords()).thenAnswer((_) async => []);
+    when(() => medicalRepo.getRelativeCases()).thenAnswer((_) async => []);
 
     container = ProviderContainer(
       overrides: [
